@@ -1,98 +1,137 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { FeedCard } from '@/components/feed-card'
+import { Ionicons } from '@expo/vector-icons'
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// Mock data for the feed
+const mockWorkouts = [
+  {
+    id: 1,
+    userName: 'Mike Johnson',
+    userAvatar: '',
+    timeAgo: '2 hours ago',
+    workoutTitle: 'Upper Body Power',
+    description: 'Crushed my bench press PR today! 💪',
+    stats: {
+      duration: '1:32:45',
+      calories: 385,
+      exercises: 12,
+    },
+    likes: 24,
+    comments: 8,
+  },
+  {
+    id: 2,
+    userName: 'Sarah Wilson',
+    userAvatar: '',
+    timeAgo: '4 hours ago',
+    workoutTitle: 'Leg Day Destroyer',
+    description: 'Can barely walk but totally worth it! 🔥',
+    stats: {
+      duration: '58:22',
+      calories: 420,
+      exercises: 8,
+    },
+    likes: 31,
+    comments: 12,
+  },
+  {
+    id: 3,
+    userName: 'You',
+    userAvatar: '',
+    timeAgo: '6 hours ago',
+    workoutTitle: 'Morning Cardio + Core',
+    description: 'Started the day right with some cardio and core work 💯',
+    stats: {
+      duration: '45:12',
+      calories: 298,
+      exercises: 6,
+    },
+    likes: 18,
+    comments: 5,
+  },
+  {
+    id: 4,
+    userName: 'Alex Chen',
+    userAvatar: '',
+    timeAgo: '1 day ago',
+    workoutTitle: 'Pull Day Focus',
+    description: 'Back and biceps feeling pumped! New deadlift PR 😤',
+    stats: {
+      duration: '1:15:30',
+      calories: 352,
+      exercises: 10,
+    },
+    likes: 27,
+    comments: 9,
+  },
+]
 
-export default function HomeScreen() {
+export default function FeedScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Uplyft</Text>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="chatbubble-outline" size={24} color="#1a1a1a" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Feed Posts */}
+        <View style={styles.feed}>
+          {mockWorkouts.map((workout) => (
+            <FeedCard key={workout.id} {...workout} />
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+  },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 12,
   },
-});
+  iconButton: {
+    padding: 4,
+  },
+  content: {
+    flex: 1,
+  },
+  feed: {
+    padding: 16,
+  },
+})
