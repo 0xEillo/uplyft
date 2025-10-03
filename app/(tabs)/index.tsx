@@ -1,4 +1,5 @@
 import { FeedCard } from '@/components/feed-card'
+import { usePosts } from '@/contexts/posts-context'
 import { Ionicons } from '@expo/vector-icons'
 import {
   SafeAreaView,
@@ -74,6 +75,9 @@ const mockWorkouts = [
 ]
 
 export default function FeedScreen() {
+  const { posts } = usePosts()
+  const allPosts = [...posts, ...mockWorkouts]
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -83,16 +87,13 @@ export default function FeedScreen() {
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="chatbubble-outline" size={24} color="#1a1a1a" />
-          </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Feed Posts */}
         <View style={styles.feed}>
-          {mockWorkouts.map((workout) => (
+          {allPosts.map((workout) => (
             <FeedCard key={workout.id} {...workout} />
           ))}
         </View>

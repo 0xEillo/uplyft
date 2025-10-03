@@ -1,7 +1,10 @@
+import { usePosts } from '@/contexts/posts-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -13,15 +16,54 @@ import {
 
 export default function CreatePostScreen() {
   const [notes, setNotes] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const { addPost } = usePosts()
 
   const handleCancel = () => {
     router.back()
   }
 
-  const handlePost = () => {
-    // TODO: Handle posting the workout
-    console.log('Posting workout:', notes)
-    router.back()
+  const handlePost = async () => {
+    if (!notes.trim()) {
+      Alert.alert('Error', 'Please enter your workout notes')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/parse-workout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to parse workout')
+      }
+
+      const data = await response.json()
+      const { workout } = data
+
+      addPost({
+        workoutTitle: workout.title,
+        description: workout.description,
+        stats: {
+          duration: workout.duration,
+          calories: workout.calories,
+          exercises: workout.exercises,
+        },
+      })
+
+      setNotes('')
+      router.back()
+    } catch (error) {
+      console.error('Error posting workout:', error)
+      Alert.alert('Error', 'Failed to post workout. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -32,14 +74,23 @@ export default function CreatePostScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
+          <TouchableOpacity
+            onPress={handleCancel}
+            style={styles.headerButton}
+            disabled={isLoading}
+          >
             <Ionicons name="close" size={28} color="#1a1a1a" />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handlePost}
             style={[styles.headerButton, styles.postButton]}
+            disabled={isLoading}
           >
-            <Ionicons name="checkmark" size={28} color="#fff" />
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="checkmark" size={28} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
 
