@@ -2,6 +2,73 @@ import { openai } from '@ai-sdk/openai'
 import { generateObject } from 'ai'
 import { z } from 'zod'
 
+// Database schema matching our Supabase tables
+const workoutSchema = z.object({
+  // Workout session level
+  notes: z
+    .string()
+    .nullish()
+    .describe(
+      'High-level workout notes or description from the user (e.g., "Great upper body day!")',
+    ),
+  type: z
+    .string()
+    .nullish()
+    .describe(
+      'Workout type like "upper body", "leg day", "full body", "cardio", etc',
+    ),
+
+  // Exercises performed
+  exercises: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .describe(
+            'Standardized exercise name (e.g., "Bench Press", "Squat", "Deadlift")',
+          ),
+        order_index: z
+          .number()
+          .describe('Order of exercise in workout (1, 2, 3, etc)'),
+        type: z
+          .string()
+          .nullish()
+          .describe(
+            'Exercise pattern type like "5x5", "pyramid", "1RM", "dropset", etc',
+          ),
+        notes: z
+          .string()
+          .nullish()
+          .describe(
+            'Notes specific to this exercise (e.g., "felt heavy today")',
+          ),
+
+        // Sets for this exercise
+        sets: z.array(
+          z.object({
+            set_number: z.number().describe('Set number (1, 2, 3, etc)'),
+            reps: z.number().describe('Number of repetitions performed'),
+            weight: z
+              .number()
+              .nullish()
+              .describe('Weight in pounds (null for bodyweight)'),
+            rpe: z
+              .number()
+              .nullish()
+              .describe('Rate of Perceived Exertion (1-10 scale)'),
+            notes: z
+              .string()
+              .nullish()
+              .describe(
+                'Notes about this specific set (e.g., "failed last rep")',
+              ),
+          }),
+        ),
+      }),
+    )
+    .describe('List of exercises performed in order'),
+})
+
 export async function POST(request: Request) {
   try {
     const { notes } = await request.json()
@@ -10,30 +77,111 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Notes are required' }, { status: 400 })
     }
 
+    // Using gpt-4o-mini with Structured Outputs (enabled automatically by generateObject)
+    // Models that support Structured Outputs: gpt-4o-mini, gpt-4o-2024-08-06, and later
     const result = await generateObject({
-      model: openai('gpt-4o-mini'),
-      schema: z.object({
-        title: z.string().describe('A catchy title for the workout'),
-        description: z
-          .string()
-          .describe('A brief description of what was done'),
-        duration: z
-          .string()
-          .describe('Duration in format like "1:32:45" or "45:12"'),
-        calories: z.number().describe('Estimated calories burned'),
-        exercises: z.number().describe('Number of exercises performed'),
-      }),
-      prompt: `Parse this workout note and extract structured information: "${notes}"
-      
-      Create a catchy title, brief description, estimate duration, calories burned, and count exercises.
-      If information is not provided, make reasonable estimates based on the workout described.`,
+      model: openai('gpt-4o-mini'), // DO NOT change to gpt-5 - use supported models only
+      schema: workoutSchema,
+      prompt: `You are a workout tracking assistant. Parse the following workout notes and extract structured data that matches our database schema.
+
+User's Workout Notes:
+"${notes}"
+
+INSTRUCTIONS:
+1. Standardize exercise names (e.g., "bench" → "Bench Press", "squat" → "Squat")
+2. Parse sets format like "5x5 @ 225" → 5 sets of 5 reps at 225lbs each
+3. If no weight mentioned for bodyweight exercises (push-ups, pull-ups), leave weight null
+4. Detect workout patterns (5x5, pyramid, etc) and populate the 'type' field
+5. Extract any workout-level notes or feelings
+6. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
+7. Number sets starting from 1 for each exercise
+
+EXPECTED OUTPUT FORMAT (JSON):
+{
+  "notes": "Great upper body workout, felt strong today!",
+  "type": "upper body",
+  "exercises": [
+    {
+      "name": "Bench Press",
+      "order_index": 1,
+      "type": "5x5",
+      "notes": "PR attempt",
+      "sets": [
+        { "set_number": 1, "reps": 5, "weight": 225, "rpe": 7 },
+        { "set_number": 2, "reps": 5, "weight": 225, "rpe": 8 },
+        { "set_number": 3, "reps": 5, "weight": 225, "rpe": 8.5 },
+        { "set_number": 4, "reps": 5, "weight": 225, "rpe": 9 },
+        { "set_number": 5, "reps": 5, "weight": 225, "rpe": 9.5 }
+      ]
+    },
+    {
+      "name": "Incline Dumbbell Press",
+      "order_index": 2,
+      "type": "pyramid",
+      "notes": null,
+      "sets": [
+        { "set_number": 1, "reps": 10, "weight": 60, "rpe": null },
+        { "set_number": 2, "reps": 8, "weight": 70, "rpe": null },
+        { "set_number": 3, "reps": 6, "weight": 80, "rpe": null }
+      ]
+    },
+    {
+      "name": "Push-ups",
+      "order_index": 3,
+      "type": null,
+      "notes": "bodyweight burnout",
+      "sets": [
+        { "set_number": 1, "reps": 25, "weight": null, "rpe": null },
+        { "set_number": 2, "reps": 20, "weight": null, "rpe": null },
+        { "set_number": 3, "reps": 15, "weight": null, "rpe": null }
+      ]
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises is ALWAYS an array, even if empty.`,
     })
 
+    // Handle the result from Structured Outputs
+    const workout = result.object
+
+    // With Structured Outputs enabled, the response is guaranteed to match the schema
+    // However, we still validate to handle edge cases
+    if (!Array.isArray(workout.exercises)) {
+      console.error('AI returned invalid exercises format:', workout.exercises)
+      return Response.json(
+        { error: 'Invalid workout format from AI' },
+        { status: 500 },
+      )
+    }
+
+    // Check if exercises array is empty
+    if (workout.exercises.length === 0) {
+      return Response.json(
+        { error: 'No exercises detected in workout notes' },
+        { status: 400 },
+      )
+    }
+
     return Response.json({
-      workout: result.object,
+      workout,
     })
   } catch (error) {
+    // Handle Structured Outputs errors
+    // Possible errors: refusal, content_filter, max_tokens, etc.
     console.error('Error parsing workout:', error)
-    return Response.json({ error: 'Failed to parse workout' }, { status: 500 })
+
+    // Check for refusal (safety-based rejections)
+    if (error?.cause?.refusal) {
+      return Response.json(
+        { error: 'AI refused to process this content for safety reasons' },
+        { status: 400 },
+      )
+    }
+
+    return Response.json(
+      { error: 'Failed to parse workout. Please try again.' },
+      { status: 500 },
+    )
   }
 }

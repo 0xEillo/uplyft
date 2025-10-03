@@ -1,7 +1,13 @@
 import { FeedCard } from '@/components/feed-card'
-import { usePosts } from '@/contexts/posts-context'
+import { useAuth } from '@/contexts/auth-context'
+import { database } from '@/lib/database'
+import { PrService } from '@/lib/pr'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect } from '@react-navigation/native'
+import { useCallback, useState } from 'react'
 import {
+  ActivityIndicator,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -10,73 +16,137 @@ import {
   View,
 } from 'react-native'
 
-// Mock data for the feed
-const mockWorkouts = [
-  {
-    id: 1,
-    userName: 'Mike Johnson',
-    userAvatar: '',
-    timeAgo: '2 hours ago',
-    workoutTitle: 'Upper Body Power',
-    description: 'Crushed my bench press PR today! 💪',
-    stats: {
-      duration: '1:32:45',
-      calories: 385,
-      exercises: 12,
-    },
-    likes: 24,
-    comments: 8,
-  },
-  {
-    id: 2,
-    userName: 'Sarah Wilson',
-    userAvatar: '',
-    timeAgo: '4 hours ago',
-    workoutTitle: 'Leg Day Destroyer',
-    description: 'Can barely walk but totally worth it! 🔥',
-    stats: {
-      duration: '58:22',
-      calories: 420,
-      exercises: 8,
-    },
-    likes: 31,
-    comments: 12,
-  },
-  {
-    id: 3,
-    userName: 'You',
-    userAvatar: '',
-    timeAgo: '6 hours ago',
-    workoutTitle: 'Morning Cardio + Core',
-    description: 'Started the day right with some cardio and core work 💯',
-    stats: {
-      duration: '45:12',
-      calories: 298,
-      exercises: 6,
-    },
-    likes: 18,
-    comments: 5,
-  },
-  {
-    id: 4,
-    userName: 'Alex Chen',
-    userAvatar: '',
-    timeAgo: '1 day ago',
-    workoutTitle: 'Pull Day Focus',
-    description: 'Back and biceps feeling pumped! New deadlift PR 😤',
-    stats: {
-      duration: '1:15:30',
-      calories: 352,
-      exercises: 10,
-    },
-    likes: 27,
-    comments: 9,
-  },
-]
+// -------- Helpers (module scope) --------
+function formatTimeAgo(dateString: string) {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  return date.toLocaleDateString()
+}
+
+function formatExerciseDetails(workout: WorkoutSessionWithDetails) {
+  if (!workout.workout_exercises || workout.workout_exercises.length === 0) {
+    return workout.notes || 'No exercises logged'
+  }
+
+  return workout.workout_exercises
+    .map((we) => {
+      const exercise = we.exercise
+      const sets = we.sets || []
+
+      if (sets.length === 0) {
+        return `• ${exercise.name}`
+      }
+
+      const allSame = sets.every(
+        (s) => s.reps === sets[0].reps && s.weight === sets[0].weight,
+      )
+
+      let setsSummary = ''
+      if (allSame && sets.length > 1) {
+        const weight = sets[0].weight ? ` @ ${sets[0].weight}lbs` : ''
+        setsSummary = `${sets.length}x${sets[0].reps}${weight}`
+      } else {
+        setsSummary = sets
+          .map((set) => {
+            const weight = set.weight ? ` @ ${set.weight}lbs` : ''
+            return `${set.reps}${weight}`
+          })
+          .join(', ')
+      }
+
+      return `• ${exercise.name}: ${setsSummary}`
+    })
+    .join('\n')
+}
 
 export default function FeedScreen() {
-  const { posts } = usePosts()
-  const allPosts = [...posts, ...mockWorkouts]
+  const { user } = useAuth()
+  const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadWorkouts = useCallback(async () => {
+    if (!user) return
+
+    try {
+      setIsLoading(true)
+      const data = await database.workoutSessions.getRecent(user.id, 20)
+      setWorkouts(data)
+    } catch (error) {
+      console.error('Error loading workouts:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [user])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadWorkouts()
+    }, [loadWorkouts]),
+  )
+
+  const formatExerciseDetails = (workout: WorkoutSessionWithDetails) => {
+    if (!workout.workout_exercises || workout.workout_exercises.length === 0) {
+      return workout.notes || 'No exercises logged'
+    }
+
+    return workout.workout_exercises
+      .map((we, index) => {
+        const exercise = we.exercise
+        const sets = we.sets || []
+
+        if (sets.length === 0) {
+          return `• ${exercise.name}`
+        }
+
+        // Check if all sets have the same reps and weight (like 5x5)
+        const allSame = sets.every(
+          (s) => s.reps === sets[0].reps && s.weight === sets[0].weight,
+        )
+
+        let setsSummary = ''
+        if (allSame && sets.length > 1) {
+          // Format as "5x5 @ 225lbs"
+          const weight = sets[0].weight ? ` @ ${sets[0].weight}lbs` : ''
+          setsSummary = `${sets.length}x${sets[0].reps}${weight}`
+        } else {
+          // Format as individual sets: "5, 5, 5, 4, 3 @ 225lbs" or list each
+          setsSummary = sets
+            .map((set) => {
+              const weight = set.weight ? ` @ ${set.weight}lbs` : ''
+              return `${set.reps}${weight}`
+            })
+            .join(', ')
+        }
+
+        return `• ${exercise.name}: ${setsSummary}`
+      })
+      .join('\n')
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -93,12 +163,74 @@ export default function FeedScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Feed Posts */}
         <View style={styles.feed}>
-          {allPosts.map((workout) => (
-            <FeedCard key={workout.id} {...workout} />
-          ))}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF6B35" />
+            </View>
+          ) : workouts.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="barbell-outline" size={64} color="#ccc" />
+              <Text style={styles.emptyText}>No workouts yet</Text>
+              <Text style={styles.emptySubtext}>
+                Tap the + button to log your first workout
+              </Text>
+            </View>
+          ) : (
+            workouts.map((workout) => (
+              <AsyncPrFeedCard key={workout.id} workout={workout} />
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
+  const { user } = useAuth()
+  const [prs, setPrs] = useState<number>(0)
+
+  const compute = useCallback(async () => {
+    if (!user) return
+    const ctx = {
+      sessionId: workout.id,
+      userId: user.id,
+      createdAt: workout.created_at,
+      exercises: (workout.workout_exercises || []).map((we) => ({
+        exerciseId: we.exercise_id,
+        exerciseName: we.exercise?.name || 'Exercise',
+        sets: (we.sets || []).map((s) => ({ reps: s.reps, weight: s.weight })),
+      })),
+    }
+    const result = await PrService.computePrsForSession(ctx)
+    setPrs(result.totalPrs)
+  }, [user, workout])
+
+  useFocusEffect(
+    useCallback(() => {
+      compute()
+    }, [compute]),
+  )
+
+  return (
+    <FeedCard
+      userName="You"
+      userAvatar=""
+      timeAgo={formatTimeAgo(workout.created_at)}
+      workoutTitle={workout.notes?.split('\n')[0] || 'Workout Session'}
+      description={formatExerciseDetails(workout)}
+      stats={{
+        exercises: (workout.workout_exercises || []).length,
+        sets:
+          workout.workout_exercises?.reduce(
+            (sum, we) => sum + (we.sets?.length || 0),
+            0,
+          ) || 0,
+        prs,
+      }}
+      likes={0}
+      comments={0}
+    />
   )
 }
 
@@ -134,5 +266,28 @@ const styles = StyleSheet.create({
   },
   feed: {
     padding: 16,
+  },
+  loadingContainer: {
+    paddingVertical: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#999',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 15,
+    color: '#bbb',
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 })

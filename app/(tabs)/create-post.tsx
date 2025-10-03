@@ -1,4 +1,5 @@
-import { usePosts } from '@/contexts/posts-context'
+import { useAuth } from '@/contexts/auth-context'
+import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useState } from 'react'
@@ -17,7 +18,7 @@ import {
 export default function CreatePostScreen() {
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { addPost } = usePosts()
+  const { user } = useAuth()
 
   const handleCancel = () => {
     router.back()
@@ -26,6 +27,11 @@ export default function CreatePostScreen() {
   const handlePost = async () => {
     if (!notes.trim()) {
       Alert.alert('Error', 'Please enter your workout notes')
+      return
+    }
+
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to post')
       return
     }
 
@@ -46,15 +52,8 @@ export default function CreatePostScreen() {
       const data = await response.json()
       const { workout } = data
 
-      addPost({
-        workoutTitle: workout.title,
-        description: workout.description,
-        stats: {
-          duration: workout.duration,
-          calories: workout.calories,
-          exercises: workout.exercises,
-        },
-      })
+      // Save to database
+      await database.workoutSessions.create(user.id, workout, notes)
 
       setNotes('')
       router.back()

@@ -1,10 +1,16 @@
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
 interface WorkoutStats {
-  duration: string
-  calories: number
   exercises: number
+  sets: number
+  prs: number // number of personal records achieved
 }
 
 interface FeedCardProps {
@@ -55,16 +61,18 @@ export function FeedCard({
       {/* Stats */}
       <View style={styles.stats}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{stats.duration}</Text>
-          <Text style={styles.statLabel}>Duration</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{stats.calories}</Text>
-          <Text style={styles.statLabel}>Calories</Text>
-        </View>
-        <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.exercises}</Text>
           <Text style={styles.statLabel}>Exercises</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{stats.sets}</Text>
+          <Text style={styles.statLabel}>Sets</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {stats.prs > 0 ? stats.prs : '-'}
+          </Text>
+          <Text style={styles.statLabel}>PRs</Text>
         </View>
       </View>
 
@@ -147,9 +155,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   description: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#666',
-    lineHeight: 20,
+    lineHeight: 22,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   stats: {
     flexDirection: 'row',

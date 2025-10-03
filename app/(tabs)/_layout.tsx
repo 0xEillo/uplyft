@@ -1,6 +1,7 @@
+import { FloatingMenu } from '@/components/floating-menu'
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useRouter } from 'expo-router'
-import React from 'react'
+import React, { useState } from 'react'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import { HapticTab } from '@/components/haptic-tab'
@@ -10,15 +11,37 @@ import { useColorScheme } from '@/hooks/use-color-scheme'
 
 function CreateButton() {
   const router = useRouter()
+  const [showMenu, setShowMenu] = useState(false)
+
+  const handlePress = () => {
+    setShowMenu(!showMenu)
+  }
+
+  const handleSpeech = () => {
+    setShowMenu(false)
+    router.push('/(tabs)/create-speech')
+  }
+
+  const handleNotes = () => {
+    setShowMenu(false)
+    router.push('/(tabs)/create-post')
+  }
 
   return (
-    <TouchableOpacity
-      style={styles.createButton}
-      onPress={() => router.push('/(tabs)/create-post')}
-      activeOpacity={0.8}
-    >
-      <Ionicons name="add" size={32} color="#fff" />
-    </TouchableOpacity>
+    <>
+      <FloatingMenu
+        visible={showMenu}
+        onSpeechPress={handleSpeech}
+        onNotesPress={handleNotes}
+      />
+      <TouchableOpacity
+        style={styles.createButton}
+        onPress={handlePress}
+        activeOpacity={0.8}
+      >
+        <Ionicons name={showMenu ? 'close' : 'add'} size={32} color="#fff" />
+      </TouchableOpacity>
+    </>
   )
 }
 
@@ -83,6 +106,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="create-post"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="create-speech"
         options={{
           href: null,
         }}
