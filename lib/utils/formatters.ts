@@ -1,10 +1,17 @@
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
+export interface SetDetail {
+  reps: number
+  weight: number | null
+}
+
 export interface ExerciseDisplay {
   name: string
   sets: number
   reps: string
   weight: string
+  hasVariedSets: boolean
+  setDetails?: SetDetail[] // Individual set details for varied workouts
 }
 
 export function formatTimeAgo(dateString: string): string {
@@ -39,32 +46,35 @@ export function formatWorkoutForDisplay(
         sets: 0,
         reps: '-',
         weight: '-',
+        hasVariedSets: false,
       }
     }
 
-    // Format reps
+    // Check if sets are varied (different reps or weights)
     const allSameReps = sets.every((s) => s.reps === sets[0].reps)
-    const repsDisplay = allSameReps
-      ? `${sets.length}×${sets[0].reps}` // e.g., "5×5"
-      : sets.map((s) => s.reps).join(', ') // e.g., "10, 8, 6"
-
-    // Format weight
     const weights = sets
       .map((s) => s.weight)
       .filter((w): w is number => w !== null)
+    const allSameWeight =
+      weights.length === 0 || weights.every((w) => w === weights[0])
+    const hasVariedSets = !allSameReps || !allSameWeight
 
+    // Format reps
+    let repsDisplay: string
+    if (allSameReps) {
+      repsDisplay = `${sets.length}×${sets[0].reps}` // e.g., "5×5"
+    } else {
+      repsDisplay = '...'
+    }
+
+    // Format weight
     let weightDisplay: string
     if (weights.length === 0) {
       weightDisplay = 'BW' // Bodyweight
+    } else if (allSameWeight) {
+      weightDisplay = `${weights[0]} kgs`
     } else {
-      const allSameWeight = weights.every((w) => w === weights[0])
-      if (allSameWeight) {
-        weightDisplay = `${weights[0]} lbs`
-      } else {
-        const minWeight = Math.min(...weights)
-        const maxWeight = Math.max(...weights)
-        weightDisplay = `${minWeight}-${maxWeight} lbs`
-      }
+      weightDisplay = '...'
     }
 
     return {
@@ -72,6 +82,10 @@ export function formatWorkoutForDisplay(
       sets: sets.length,
       reps: repsDisplay,
       weight: weightDisplay,
+      hasVariedSets,
+      setDetails: hasVariedSets
+        ? sets.map((s) => ({ reps: s.reps, weight: s.weight }))
+        : undefined,
     }
   })
 }

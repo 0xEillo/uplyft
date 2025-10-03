@@ -9,12 +9,12 @@ import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function CreateSpeechScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null)
@@ -127,7 +127,7 @@ export default function CreateSpeechScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader
         title="Voice Recording"
         onLeftPress={handleCancel}

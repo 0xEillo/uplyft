@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai'
-import { generateObject } from 'ai'
+import { generateObject, generateText } from 'ai'
 import { z } from 'zod'
 
 // Database schema matching our Supabase tables
@@ -167,8 +167,38 @@ IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises i
       )
     }
 
+    // Generate workout title if not provided
+    let workoutType = workout.type
+    if (!workoutType && workout.exercises.length > 0) {
+      const exerciseList = workout.exercises
+        .map((ex) => `${ex.name} (${ex.sets.length} sets)`)
+        .join(', ')
+
+      const titleResult = await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt: `You are a fitness expert analyzing workout sessions. Based on the exercises performed, generate a concise workout title (2-3 words max).
+
+Exercises performed: ${exerciseList}
+
+Guidelines:
+- Use standard workout split terminology: Upper Body, Lower Body, Push, Pull, Legs, Full Body, Core, Cardio, Arms, Shoulders, Back, Chest
+- If it's a specific split, use that (e.g., "Push Session", "Pull Session", "Leg Session")
+- If it's mixed, use broader terms (e.g., "Upper Body", "Full Body")
+- Keep it SHORT and specific (2-3 words maximum)
+- IMPORTANT: Use proper capitalization (Title Case) - capitalize the first letter of each major word
+- Examples: "Upper Body", "Lower Body", "Push Session", "Pull Session", "Leg Session", "Full Body"
+
+Return ONLY the title with proper capitalization, nothing else.`,
+      })
+
+      workoutType = titleResult.text.trim()
+    }
+
     return Response.json({
-      workout,
+      workout: {
+        ...workout,
+        type: workoutType,
+      },
     })
   } catch (error) {
     // Handle Structured Outputs errors

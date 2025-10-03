@@ -16,11 +16,18 @@ interface WorkoutStats {
   prs: number // number of personal records achieved
 }
 
+interface SetDetail {
+  reps: number
+  weight: number | null
+}
+
 interface ExerciseDisplay {
   name: string
   sets: number
-  reps: string // e.g., "5, 5, 5, 5, 5" or "5×5"
-  weight: string // e.g., "225 lbs" or "Bodyweight"
+  reps: string
+  weight: string
+  hasVariedSets: boolean
+  setDetails?: SetDetail[]
 }
 
 interface FeedCardProps {
@@ -45,6 +52,9 @@ export function FeedCard({
   comments,
 }: FeedCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
+    new Set(),
+  )
   const rotateAnim = useRef(new Animated.Value(0)).current
 
   const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
@@ -52,6 +62,18 @@ export function FeedCard({
   const displayedExercises = isExpanded
     ? exercises
     : exercises.slice(0, PREVIEW_LIMIT)
+
+  const toggleExerciseExpand = (index: number) => {
+    setExpandedExercises((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(index)) {
+        newSet.delete(index)
+      } else {
+        newSet.add(index)
+      }
+      return newSet
+    })
+  }
 
   const toggleExpand = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
@@ -112,37 +134,85 @@ export function FeedCard({
         </View>
 
         {/* Table Rows */}
-        {displayedExercises.map((exercise, index) => (
-          <View
-            key={index}
-            style={[
-              styles.tableRow,
-              index === displayedExercises.length - 1 && styles.lastRow,
-            ]}
-          >
-            <Text
-              style={[styles.tableCell, styles.exerciseCol, styles.exerciseName]}
-              numberOfLines={1}
-            >
-              {exercise.name}
-            </Text>
-            <Text style={[styles.tableCell, styles.setsCol]}>
-              {exercise.sets}
-            </Text>
-            <Text
-              style={[styles.tableCell, styles.repsCol]}
-              numberOfLines={1}
-            >
-              {exercise.reps}
-            </Text>
-            <Text
-              style={[styles.tableCell, styles.weightCol]}
-              numberOfLines={1}
-            >
-              {exercise.weight}
-            </Text>
-          </View>
-        ))}
+        {displayedExercises.map((exercise, index) => {
+          const isExerciseExpanded = expandedExercises.has(index)
+
+          return (
+            <View key={index}>
+              {/* Main exercise row */}
+              <TouchableOpacity
+                onPress={
+                  exercise.hasVariedSets
+                    ? () => toggleExerciseExpand(index)
+                    : undefined
+                }
+                activeOpacity={exercise.hasVariedSets ? 0.7 : 1}
+                style={[
+                  styles.tableRow,
+                  !isExerciseExpanded &&
+                    index === displayedExercises.length - 1 &&
+                    styles.lastRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.exerciseCol,
+                    styles.variedCell,
+                  ]}
+                >
+                  <Text
+                    style={styles.exerciseName}
+                    numberOfLines={1}
+                  >
+                    {exercise.name}
+                  </Text>
+                  {exercise.hasVariedSets && (
+                    <Ionicons
+                      name={
+                        isExerciseExpanded ? 'chevron-up' : 'chevron-down'
+                      }
+                      size={12}
+                      color={AppColors.textSecondary}
+                    />
+                  )}
+                </View>
+                <Text style={[styles.tableCell, styles.setsCol]}>
+                  {exercise.sets}
+                </Text>
+                <Text
+                  style={[styles.tableCell, styles.repsCol]}
+                  numberOfLines={1}
+                >
+                  {exercise.reps}
+                </Text>
+                <Text
+                  style={[styles.tableCell, styles.weightCol]}
+                  numberOfLines={1}
+                >
+                  {exercise.weight}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Expanded set details */}
+              {isExerciseExpanded && exercise.setDetails && (
+                <View style={styles.setDetailsContainer}>
+                  {exercise.setDetails.map((set, setIndex) => (
+                    <View key={setIndex} style={styles.setDetailRow}>
+                      <Text style={styles.setDetailLabel}>
+                        Set {setIndex + 1}
+                      </Text>
+                      <Text style={styles.setDetailReps}>{set.reps} reps</Text>
+                      <Text style={styles.setDetailWeight}>
+                        {set.weight ? `${set.weight} lbs` : 'BW'}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )
+        })}
       </View>
 
       {/* Stats */}
@@ -314,6 +384,43 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     fontWeight: '600',
+  },
+  variedCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  setDetailsContainer: {
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  setDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  setDetailLabel: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  setDetailReps: {
+    fontSize: 13,
+    color: AppColors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  setDetailWeight: {
+    fontSize: 13,
+    color: AppColors.text,
+    flex: 1,
+    textAlign: 'right',
   },
   stats: {
     flexDirection: 'row',

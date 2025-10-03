@@ -2,7 +2,7 @@ import { FloatingMenu } from '@/components/floating-menu'
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useState } from 'react'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import { HapticTab } from '@/components/haptic-tab'
 import { IconSymbol } from '@/components/ui/icon-symbol'
@@ -49,7 +49,9 @@ export default function TabLayout() {
   const colorScheme = useColorScheme()
 
   return (
-    <Tabs
+    <>
+      <StatusBar barStyle="dark-content" />
+      <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
@@ -58,8 +60,8 @@ export default function TabLayout() {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#f0f0f0',
-          height: 70,
-          paddingBottom: 20,
+          height: 90,
+          paddingBottom: 30,
           paddingTop: 8,
         },
         tabBarInactiveTintColor: '#999',
@@ -96,11 +98,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={28}
-              name="person.crop.circle.fill"
-              color={color}
-            />
+            <Ionicons name="person-circle" size={28} color={color} />
           ),
         }}
       />
@@ -117,6 +115,7 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </>
   )
 }
 

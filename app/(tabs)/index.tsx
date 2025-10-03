@@ -13,13 +13,13 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function FeedScreen() {
   const { user } = useAuth()
@@ -47,7 +47,7 @@ export default function FeedScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Uplyft</Text>
@@ -132,7 +132,7 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
       userName="You"
       userAvatar=""
       timeAgo={formatTimeAgo(workout.created_at)}
-      workoutTitle={workout.notes?.split('\n')[0] || 'Workout Session'}
+      workoutTitle={workout.type || workout.notes?.split('\n')[0] || 'Workout Session'}
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,

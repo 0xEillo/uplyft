@@ -1,3 +1,13 @@
+export interface Profile {
+  id: string
+  user_tag: string
+  display_name: string
+  bio: string | null
+  avatar_url: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Exercise {
   id: string
   name: string
