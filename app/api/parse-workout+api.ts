@@ -47,7 +47,12 @@ const workoutSchema = z.object({
         sets: z.array(
           z.object({
             set_number: z.number().describe('Set number (1, 2, 3, etc)'),
-            reps: z.number().describe('Number of repetitions performed'),
+            reps: z
+              .number()
+              .min(1)
+              .describe(
+                'Number of repetitions performed (REQUIRED - must be at least 1)',
+              ),
             weight: z
               .number()
               .nullish()
@@ -77,10 +82,8 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Notes are required' }, { status: 400 })
     }
 
-    // Using gpt-4o-mini with Structured Outputs (enabled automatically by generateObject)
-    // Models that support Structured Outputs: gpt-4o-mini, gpt-4o-2024-08-06, and later
     const result = await generateObject({
-      model: openai('gpt-4o-mini'), // DO NOT change to gpt-5 - use supported models only
+      model: openai('gpt-5'),
       schema: workoutSchema,
       prompt: `You are a workout tracking assistant. Parse the following workout notes and extract structured data that matches our database schema.
 
@@ -95,6 +98,7 @@ INSTRUCTIONS:
 5. Extract any workout-level notes or feelings
 6. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
 7. Number sets starting from 1 for each exercise
+8. CRITICAL: Every set MUST have a reps value (cannot be null). If reps are not specified in the notes, infer a reasonable default (e.g., 5 reps for strength exercises, 10 for accessories)
 
 EXPECTED OUTPUT FORMAT (JSON):
 {

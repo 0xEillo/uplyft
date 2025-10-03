@@ -81,32 +81,45 @@ export const database = {
         throw new Error('Invalid workout data: exercises must be an array')
       }
 
-      // Create workout exercises and sets
-      for (const parsedExercise of parsedWorkout.exercises) {
-        // Get or create exercise
+      // Process exercises one by one to avoid duplicate key violations
+      const exerciseMap = new Map<string, Exercise>()
+
+      for (const parsedEx of parsedWorkout.exercises) {
         const exercise = await database.exercises.getOrCreate(
-          parsedExercise.name,
+          parsedEx.name,
           userId,
         )
+        exerciseMap.set(parsedEx.name.toLowerCase(), exercise)
+      }
 
-        // Create workout exercise
-        const { data: workoutExercise, error: weError } = await supabase
-          .from('workout_exercises')
-          .insert({
+      // Batch create workout exercises
+      const workoutExercisesToInsert = parsedWorkout.exercises.map(
+        (parsedEx) => {
+          const exercise = exerciseMap.get(parsedEx.name.toLowerCase())
+          if (!exercise) throw new Error(`Exercise not found: ${parsedEx.name}`)
+
+          return {
             session_id: session.id,
             exercise_id: exercise.id,
-            order_index: parsedExercise.order_index, // Use AI-provided order
-            type: parsedExercise.type,
-            notes: parsedExercise.notes,
-          })
-          .select()
-          .single()
+            order_index: parsedEx.order_index,
+            type: parsedEx.type,
+            notes: parsedEx.notes,
+          }
+        },
+      )
 
-        if (weError) throw weError
+      const { data: workoutExercises, error: weError } = await supabase
+        .from('workout_exercises')
+        .insert(workoutExercisesToInsert)
+        .select()
 
-        // Create sets
-        if (parsedExercise.sets && parsedExercise.sets.length > 0) {
-          const setsToInsert = parsedExercise.sets.map((set) => ({
+      if (weError) throw weError
+
+      // Batch create all sets
+      const allSetsToInsert = parsedWorkout.exercises.flatMap(
+        (parsedEx, index) => {
+          const workoutExercise = workoutExercises[index]
+          return (parsedEx.sets || []).map((set) => ({
             workout_exercise_id: workoutExercise.id,
             set_number: set.set_number,
             reps: set.reps,
@@ -114,13 +127,15 @@ export const database = {
             rpe: set.rpe,
             notes: set.notes,
           }))
+        },
+      )
 
-          const { error: setsError } = await supabase
-            .from('sets')
-            .insert(setsToInsert)
+      if (allSetsToInsert.length > 0) {
+        const { error: setsError } = await supabase
+          .from('sets')
+          .insert(allSetsToInsert)
 
-          if (setsError) throw setsError
-        }
+        if (setsError) throw setsError
       }
 
       return session as WorkoutSession
@@ -197,11 +212,20 @@ export const database = {
 
       if (error) throw error
 
+      interface ExerciseMaxWeightRow {
+        workout_exercises?: Array<{
+          sets?: Array<{
+            reps: number
+            weight: number | null
+          }>
+        }>
+      }
+
       // Find max weight for each rep count
       const maxWeights: Record<number, number> = {}
-      data?.forEach((session: any) => {
-        session.workout_exercises?.forEach((we: any) => {
-          we.sets?.forEach((set: any) => {
+      ;(data as ExerciseMaxWeightRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
             if (set.reps && set.weight) {
               if (!maxWeights[set.reps] || set.weight > maxWeights[set.reps]) {
                 maxWeights[set.reps] = set.weight
@@ -254,11 +278,20 @@ export const database = {
 
       if (error) throw error
 
+      interface TotalVolumeRow {
+        workout_exercises?: Array<{
+          sets?: Array<{
+            reps: number
+            weight: number | null
+          }>
+        }>
+      }
+
       // Calculate total volume
       let totalVolume = 0
-      data?.forEach((session: any) => {
-        session.workout_exercises?.forEach((we: any) => {
-          we.sets?.forEach((set: any) => {
+      ;(data as TotalVolumeRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
             if (set.reps && set.weight) {
               totalVolume += set.reps * set.weight
             }

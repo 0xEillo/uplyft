@@ -157,15 +157,26 @@ export class PrService {
       `,
       )
       .eq('user_id', userId)
+      .eq('workout_exercises.exercise_id', exerciseId)
       .lt('created_at', beforeDateISO)
 
     if (error) throw error
 
+    interface HistoricSetsRow {
+      workout_exercises?: Array<{
+        exercise_id: string
+        sets?: Array<{
+          reps: number
+          weight: number | null
+        }>
+      }>
+    }
+
     const sets: PrContextSet[] = []
-    data?.forEach((session: any) => {
-      session.workout_exercises?.forEach((we: any) => {
+    ;(data as HistoricSetsRow[])?.forEach((session) => {
+      session.workout_exercises?.forEach((we) => {
         if (we.exercise_id === exerciseId) {
-          we.sets?.forEach((s: any) => {
+          we.sets?.forEach((s) => {
             sets.push({ reps: s.reps, weight: s.weight })
           })
         }

@@ -1,3 +1,5 @@
+import { ScreenHeader } from '@/components/screen-header'
+import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
@@ -98,7 +100,12 @@ export default function CreateSpeechScreen() {
 
       // Save to database
       if (user) {
-        await database.workoutSessions.create(user.id, workout, text)
+        try {
+          await database.workoutSessions.create(user.id, workout, text)
+        } catch (dbError) {
+          console.error('Error saving to database:', dbError)
+          throw new Error('Failed to save workout to database')
+        }
       }
 
       router.back()
@@ -121,20 +128,16 @@ export default function CreateSpeechScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
-          <Ionicons name="close" size={28} color="#1a1a1a" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voice Recording</Text>
-        <View style={styles.headerButton} />
-      </View>
+      <ScreenHeader
+        title="Voice Recording"
+        onLeftPress={handleCancel}
+        leftIcon="close"
+      />
 
-      {/* Recording UI */}
       <View style={styles.content}>
         {isProcessing ? (
           <View style={styles.processingContainer}>
-            <ActivityIndicator size="large" color="#FF6B35" />
+            <ActivityIndicator size="large" color={AppColors.primary} />
             <Text style={styles.processingText}>Processing workout...</Text>
           </View>
         ) : (
@@ -143,7 +146,9 @@ export default function CreateSpeechScreen() {
               <Ionicons
                 name={isRecording ? 'radio-button-on' : 'mic'}
                 size={120}
-                color={isRecording ? '#FF6B35' : '#ccc'}
+                color={
+                  isRecording ? AppColors.primary : AppColors.textPlaceholder
+                }
               />
               {isRecording && (
                 <Text style={styles.recordingText}>Recording...</Text>
@@ -168,7 +173,7 @@ export default function CreateSpeechScreen() {
               <Ionicons
                 name={isRecording ? 'stop' : 'mic'}
                 size={32}
-                color="#fff"
+                color={AppColors.white}
               />
             </TouchableOpacity>
           </>
@@ -181,25 +186,7 @@ export default function CreateSpeechScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerButton: {
-    padding: 8,
-    width: 44,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    backgroundColor: AppColors.white,
   },
   content: {
     flex: 1,
@@ -214,7 +201,7 @@ const styles = StyleSheet.create({
   recordingText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: AppColors.primary,
     marginTop: 24,
   },
   instructions: {
@@ -222,7 +209,7 @@ const styles = StyleSheet.create({
   },
   instructionsText: {
     fontSize: 16,
-    color: '#666',
+    color: AppColors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -230,10 +217,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FF6B35',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF6B35',
+    shadowColor: AppColors.primary,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -243,14 +230,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   recordButtonActive: {
-    backgroundColor: '#ff4444',
+    backgroundColor: AppColors.primaryDark,
   },
   processingContainer: {
     alignItems: 'center',
   },
   processingText: {
     fontSize: 17,
-    color: '#666',
+    color: AppColors.textSecondary,
     marginTop: 24,
   },
 })

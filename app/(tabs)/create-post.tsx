@@ -1,18 +1,16 @@
+import { ScreenHeader } from '@/components/screen-header'
+import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
-import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  View,
 } from 'react-native'
 
 export default function CreatePostScreen() {
@@ -53,7 +51,12 @@ export default function CreatePostScreen() {
       const { workout } = data
 
       // Save to database
-      await database.workoutSessions.create(user.id, workout, notes)
+      try {
+        await database.workoutSessions.create(user.id, workout, notes)
+      } catch (dbError) {
+        console.error('Error saving to database:', dbError)
+        throw new Error('Failed to save workout to database')
+      }
 
       setNotes('')
       router.back()
@@ -71,29 +74,17 @@ export default function CreatePostScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleCancel}
-            style={styles.headerButton}
-            disabled={isLoading}
-          >
-            <Ionicons name="close" size={28} color="#1a1a1a" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handlePost}
-            style={[styles.headerButton, styles.postButton]}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="checkmark" size={28} color="#fff" />
-            )}
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          onLeftPress={handleCancel}
+          leftIcon="close"
+          onRightPress={handlePost}
+          rightIcon="checkmark"
+          rightLoading={isLoading}
+          rightDisabled={isLoading}
+          rightStyle="primary"
+          leftDisabled={isLoading}
+        />
 
-        {/* Notes Input */}
         <TextInput
           style={styles.input}
           placeholder=""
@@ -112,33 +103,16 @@ export default function CreatePostScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: AppColors.white,
   },
   keyboardView: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerButton: {
-    padding: 8,
-  },
-  postButton: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 20,
-    paddingHorizontal: 16,
   },
   input: {
     flex: 1,
     padding: 20,
     fontSize: 17,
     lineHeight: 24,
-    color: '#1a1a1a',
+    color: AppColors.text,
   },
 })
