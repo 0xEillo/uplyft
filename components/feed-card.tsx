@@ -39,6 +39,8 @@ interface FeedCardProps {
   stats: WorkoutStats
   likes: number
   comments: number
+  userId?: string
+  onUserPress?: () => void
 }
 
 export function FeedCard({
@@ -50,6 +52,8 @@ export function FeedCard({
   stats,
   likes,
   comments,
+  userId,
+  onUserPress,
 }: FeedCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
@@ -96,7 +100,12 @@ export function FeedCard({
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
+        <TouchableOpacity
+          style={styles.userInfo}
+          onPress={onUserPress}
+          disabled={!onUserPress}
+          activeOpacity={onUserPress ? 0.7 : 1}
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{userName[0]}</Text>
           </View>
@@ -104,7 +113,7 @@ export function FeedCard({
             <Text style={styles.userName}>{userName}</Text>
             <Text style={styles.timeAgo}>{timeAgo}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity>
           <Ionicons
             name="ellipsis-horizontal"
@@ -219,12 +228,14 @@ export function FeedCard({
       <View style={styles.stats}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.exercises}</Text>
-          <Text style={styles.statLabel}>Exercises</Text>
+          <Text style={styles.statLabel}>exercises</Text>
         </View>
+        <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.sets}</Text>
-          <Text style={styles.statLabel}>Sets</Text>
+          <Text style={styles.statLabel}>sets</Text>
         </View>
+        <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>
             {stats.prs > 0 ? stats.prs : '-'}
@@ -251,13 +262,6 @@ export function FeedCard({
               color={AppColors.textSecondary}
             />
             <Text style={styles.actionText}>{comments}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons
-              name="share-outline"
-              size={22}
-              color={AppColors.textSecondary}
-            />
           </TouchableOpacity>
         </View>
         {hasMoreExercises && (
@@ -424,25 +428,33 @@ const styles = StyleSheet.create({
   },
   stats: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: AppColors.border,
-    marginBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 12,
+    backgroundColor: AppColors.backgroundLight,
+    borderRadius: 8,
   },
   statItem: {
+    flex: 1,
     alignItems: 'center',
   },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: AppColors.border,
+  },
   statValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: AppColors.primary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 13,
-    color: AppColors.textTertiary,
+    fontSize: 11,
+    color: AppColors.textSecondary,
+    textTransform: 'lowercase',
   },
   actions: {
     flexDirection: 'row',

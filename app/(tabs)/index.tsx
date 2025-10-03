@@ -10,6 +10,7 @@ import {
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
+import { useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
@@ -94,6 +95,7 @@ export default function FeedScreen() {
 
 function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
   const { user } = useAuth()
+  const router = useRouter()
   const [prs, setPrs] = useState<number>(0)
   const [isComputed, setIsComputed] = useState(false)
 
@@ -127,6 +129,12 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
 
   const exercises = formatWorkoutForDisplay(workout)
 
+  const handleUserPress = () => {
+    if (workout.user_id && workout.user_id !== user?.id) {
+      router.push(`/user/${workout.user_id}`)
+    }
+  }
+
   return (
     <FeedCard
       userName="You"
@@ -145,6 +153,8 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
       }}
       likes={0}
       comments={0}
+      userId={workout.user_id}
+      onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
     />
   )
 }

@@ -62,7 +62,7 @@ export function formatWorkoutForDisplay(
     // Format reps
     let repsDisplay: string
     if (allSameReps) {
-      repsDisplay = `${sets.length}×${sets[0].reps}` // e.g., "5×5"
+      repsDisplay = `${sets[0].reps}` // e.g., "10"
     } else {
       repsDisplay = '...'
     }

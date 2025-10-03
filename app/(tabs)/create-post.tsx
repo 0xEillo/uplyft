@@ -2,15 +2,26 @@ import { ScreenHeader } from '@/components/screen-header'
 import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
+import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -19,7 +30,25 @@ const DRAFT_KEY = '@workout_draft'
 export default function CreatePostScreen() {
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
   const { user } = useAuth()
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+  const recorderState = useAudioRecorderState(audioRecorder)
+
+  // Setup audio permissions
+  useEffect(() => {
+    ;(async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync()
+      if (!status.granted) {
+        console.log('Microphone permission not granted')
+      }
+
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      })
+    })()
+  }, [])
 
   // Load saved draft on mount
   useEffect(() => {
@@ -52,8 +81,65 @@ export default function CreatePostScreen() {
     saveDraft()
   }, [notes])
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (recorderState.isRecording) {
+      await audioRecorder.stop()
+    }
     router.back()
+  }
+
+  const toggleRecording = async () => {
+    if (recorderState.isRecording) {
+      // Stop recording and transcribe
+      setIsTranscribing(true)
+      try {
+        await audioRecorder.stop()
+        const uri = audioRecorder.uri
+
+        if (!uri) {
+          throw new Error('No recording URI')
+        }
+
+        // Send to transcription API
+        const formData = new FormData()
+        formData.append('audio', {
+          uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+          type: 'audio/m4a',
+          name: 'workout.m4a',
+        } as any)
+
+        const transcribeResponse = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        })
+
+        if (!transcribeResponse.ok) {
+          throw new Error('Failed to transcribe audio')
+        }
+
+        const { text } = await transcribeResponse.json()
+
+        // Append transcribed text to notes
+        setNotes((prev) => (prev ? `${prev}\n${text}` : text))
+      } catch (error) {
+        console.error('Error transcribing:', error)
+        Alert.alert('Error', 'Failed to transcribe audio. Please try again.')
+      } finally {
+        setIsTranscribing(false)
+      }
+    } else {
+      // Start recording
+      try {
+        await audioRecorder.prepareToRecordAsync()
+        audioRecorder.record()
+      } catch (error) {
+        console.error('Failed to start recording:', error)
+        Alert.alert('Error', 'Failed to start recording')
+      }
+    }
   }
 
   const handlePost = async () => {
@@ -110,26 +196,61 @@ export default function CreatePostScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScreenHeader
-          onLeftPress={handleCancel}
-          leftIcon="close"
-          onRightPress={handlePost}
-          rightIcon="checkmark"
-          rightLoading={isLoading}
-          rightDisabled={isLoading}
-          rightStyle="primary"
-          leftDisabled={isLoading}
-        />
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={handleCancel}
+            style={styles.headerButton}
+            disabled={isLoading}
+          >
+            <Ionicons name="close" size={28} color={AppColors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[
+                styles.micHeaderButton,
+                recorderState.isRecording && styles.micHeaderButtonActive,
+              ]}
+              onPress={toggleRecording}
+              disabled={isTranscribing || isLoading}
+            >
+              {isTranscribing ? (
+                <ActivityIndicator size="small" color={AppColors.white} />
+              ) : (
+                <Ionicons
+                  name={recorderState.isRecording ? 'stop' : 'mic'}
+                  size={20}
+                  color={AppColors.white}
+                />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handlePost}
+              style={[styles.headerButton, styles.primaryButton]}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={AppColors.white} />
+              ) : (
+                <Ionicons
+                  name="checkmark"
+                  size={28}
+                  color={AppColors.white}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <TextInput
           style={styles.input}
-          placeholder=""
+          placeholder="Describe your workout..."
           placeholderTextColor="#999"
           multiline
           autoFocus
           value={notes}
           onChangeText={setNotes}
           textAlignVertical="top"
+          editable={!recorderState.isRecording && !isTranscribing}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -143,6 +264,40 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  headerButton: {
+    padding: 8,
+    minWidth: 44,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  primaryButton: {
+    backgroundColor: AppColors.primary,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+  },
+  micHeaderButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micHeaderButtonActive: {
+    backgroundColor: AppColors.primaryDark,
   },
   input: {
     flex: 1,

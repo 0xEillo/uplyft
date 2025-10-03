@@ -10,11 +10,10 @@ import {
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
-import { router } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,65 +22,47 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-type TabType = 'progress' | 'log'
-
-export default function ProfileScreen() {
-  const { user, signOut } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabType>('progress')
+export default function UserProfileScreen() {
+  const { userId } = useLocalSearchParams<{ userId: string }>()
+  const { user } = useAuth()
+  const router = useRouter()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [userName, setUserName] = useState('')
 
-  const loadWorkouts = useCallback(async () => {
-    if (!user) return
+  const loadUserData = useCallback(async () => {
+    if (!userId) return
 
     try {
       setIsLoading(true)
-      const data = await database.workoutSessions.getRecent(user.id, 20)
+      const data = await database.workoutSessions.getRecent(userId, 20)
       setWorkouts(data)
+
+      // TODO: Fetch user profile to get display name
+      // For now, just use "User"
+      setUserName('User')
     } catch (error) {
-      console.error('Error loading workouts:', error)
+      console.error('Error loading user workouts:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [user])
+  }, [userId])
 
   useFocusEffect(
     useCallback(() => {
-      if (activeTab === 'log') {
-        loadWorkouts()
-      }
-    }, [loadWorkouts, activeTab]),
+      loadUserData()
+    }, [loadUserData]),
   )
-
-  const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut()
-            router.replace('/(auth)/login')
-          } catch (error) {
-            Alert.alert('Error', error.message || 'Failed to sign out')
-          }
-        },
-      },
-    ])
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={24} color={AppColors.text} />
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={AppColors.text} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.placeholder} />
       </View>
 
       {/* Scrollable Content */}
@@ -91,87 +72,56 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Ionicons name="person" size={48} color="#fff" />
           </View>
-          <Text style={styles.userName}>
-            {user?.email?.split('@')[0] || 'User'}
-          </Text>
-          <Text style={styles.email}>{user?.email}</Text>
+          <Text style={styles.userName}>{userName}</Text>
         </View>
 
-        {/* Tabs */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
-            onPress={() => setActiveTab('progress')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'progress' && styles.activeTabText,
-              ]}
-            >
-              Progress
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'log' && styles.activeTab]}
-            onPress={() => setActiveTab('log')}
-          >
-            <Text
-              style={[styles.tabText, activeTab === 'log' && styles.activeTabText]}
-            >
-              Log
-            </Text>
-          </TouchableOpacity>
+        {/* Tab Header (Log only for other users) */}
+        <View style={styles.tabHeader}>
+          <Text style={styles.tabHeaderText}>Workout Log</Text>
         </View>
 
-        {/* Tab Content */}
-        {activeTab === 'progress' ? (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="analytics-outline"
-              size={64}
-              color={AppColors.textPlaceholder}
-            />
-            <Text style={styles.emptyText}>Analytics Coming Soon</Text>
-          </View>
-        ) : (
-          <View style={styles.logContent}>
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={AppColors.primary} />
-              </View>
-            ) : workouts.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name="barbell-outline"
-                  size={64}
-                  color={AppColors.textPlaceholder}
-                />
-                <Text style={styles.emptyText}>No workouts yet</Text>
-              </View>
-            ) : (
-              workouts.map((workout) => (
-                <AsyncPrFeedCard key={workout.id} workout={workout} />
-              ))
-            )}
-          </View>
-        )}
+        {/* Workout Posts */}
+        <View style={styles.logContent}>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={AppColors.primary} />
+            </View>
+          ) : workouts.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="barbell-outline"
+                size={64}
+                color={AppColors.textPlaceholder}
+              />
+              <Text style={styles.emptyText}>No workouts yet</Text>
+            </View>
+          ) : (
+            workouts.map((workout) => (
+              <AsyncPrFeedCard key={workout.id} workout={workout} userId={userId} />
+            ))
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
 }
 
-function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
-  const { user } = useAuth()
+function AsyncPrFeedCard({
+  workout,
+  userId,
+}: {
+  workout: WorkoutSessionWithDetails
+  userId: string
+}) {
   const [prs, setPrs] = useState<number>(0)
   const [isComputed, setIsComputed] = useState(false)
 
   const compute = useCallback(async () => {
-    if (!user || isComputed) return
+    if (isComputed) return
     try {
       const ctx = {
         sessionId: workout.id,
-        userId: user.id,
+        userId: userId,
         createdAt: workout.created_at,
         exercises: (workout.workout_exercises || []).map((we) => ({
           exerciseId: we.exercise_id,
@@ -186,7 +136,7 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
       console.error('Error computing PRs:', error)
       setPrs(0)
     }
-  }, [user, workout, isComputed])
+  }, [userId, workout, isComputed])
 
   useFocusEffect(
     useCallback(() => {
@@ -198,10 +148,12 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
 
   return (
     <FeedCard
-      userName="You"
+      userName="User"
       userAvatar=""
       timeAgo={formatTimeAgo(workout.created_at)}
-      workoutTitle={workout.type || workout.notes?.split('\n')[0] || 'Workout Session'}
+      workoutTitle={
+        workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
+      }
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,
@@ -234,9 +186,12 @@ const styles = StyleSheet.create({
     borderBottomColor: AppColors.border,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: AppColors.text,
+  },
+  placeholder: {
+    width: 24,
   },
   profileSection: {
     alignItems: 'center',
@@ -258,35 +213,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: AppColors.text,
-    marginBottom: 4,
   },
-  email: {
-    fontSize: 14,
-    color: AppColors.textSecondary,
-  },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  tab: {
-    flex: 1,
+  tabHeader: {
     paddingVertical: 16,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: AppColors.white,
     borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
     borderBottomColor: AppColors.primary,
   },
-  tabText: {
+  tabHeaderText: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.textSecondary,
-  },
-  activeTabText: {
     color: AppColors.primary,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,

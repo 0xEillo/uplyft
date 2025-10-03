@@ -11,37 +11,19 @@ import { useColorScheme } from '@/hooks/use-color-scheme'
 
 function CreateButton() {
   const router = useRouter()
-  const [showMenu, setShowMenu] = useState(false)
 
   const handlePress = () => {
-    setShowMenu(!showMenu)
-  }
-
-  const handleSpeech = () => {
-    setShowMenu(false)
-    router.push('/(tabs)/create-speech')
-  }
-
-  const handleNotes = () => {
-    setShowMenu(false)
     router.push('/(tabs)/create-post')
   }
 
   return (
-    <>
-      <FloatingMenu
-        visible={showMenu}
-        onSpeechPress={handleSpeech}
-        onNotesPress={handleNotes}
-      />
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={handlePress}
-        activeOpacity={0.8}
-      >
-        <Ionicons name={showMenu ? 'close' : 'add'} size={32} color="#fff" />
-      </TouchableOpacity>
-    </>
+    <TouchableOpacity
+      style={styles.createButton}
+      onPress={handlePress}
+      activeOpacity={0.8}
+    >
+      <Ionicons name="add" size={32} color="#fff" />
+    </TouchableOpacity>
   )
 }
 

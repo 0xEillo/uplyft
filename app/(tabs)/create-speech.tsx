@@ -3,7 +3,13 @@ import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
-import { Audio } from 'expo-av'
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
@@ -17,33 +23,29 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function CreateSpeechScreen() {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null)
-  const [isRecording, setIsRecording] = useState(false)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+  const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
   const { user } = useAuth()
 
   useEffect(() => {
-    // Request permissions on mount
     ;(async () => {
-      const { status } = await Audio.requestPermissionsAsync()
-      if (status !== 'granted') {
+      const status = await AudioModule.requestRecordingPermissionsAsync()
+      if (!status.granted) {
         Alert.alert('Permission required', 'Please grant microphone access')
       }
+
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      })
     })()
   }, [])
 
   const startRecording = async () => {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      })
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      )
-      setRecording(recording)
-      setIsRecording(true)
+      await audioRecorder.prepareToRecordAsync()
+      audioRecorder.record()
     } catch (error) {
       console.error('Failed to start recording:', error)
       Alert.alert('Error', 'Failed to start recording')
@@ -51,14 +53,13 @@ export default function CreateSpeechScreen() {
   }
 
   const stopRecording = async () => {
-    if (!recording) return
+    if (!recorderState.isRecording) return
 
-    setIsRecording(false)
     setIsProcessing(true)
 
     try {
-      await recording.stopAndUnloadAsync()
-      const uri = recording.getURI()
+      await audioRecorder.stop()
+      const uri = audioRecorder.uri
 
       if (!uri) {
         throw new Error('No recording URI')
@@ -113,15 +114,13 @@ export default function CreateSpeechScreen() {
       console.error('Error processing recording:', error)
       Alert.alert('Error', 'Failed to process your workout. Please try again.')
     } finally {
-      setRecording(null)
       setIsProcessing(false)
     }
   }
 
-  const handleCancel = () => {
-    if (recording) {
-      recording.stopAndUnloadAsync()
-      setRecording(null)
+  const handleCancel = async () => {
+    if (recorderState.isRecording) {
+      await audioRecorder.stop()
     }
     router.back()
   }
@@ -144,20 +143,22 @@ export default function CreateSpeechScreen() {
           <>
             <View style={styles.waveformContainer}>
               <Ionicons
-                name={isRecording ? 'radio-button-on' : 'mic'}
+                name={recorderState.isRecording ? 'radio-button-on' : 'mic'}
                 size={120}
                 color={
-                  isRecording ? AppColors.primary : AppColors.textPlaceholder
+                  recorderState.isRecording
+                    ? AppColors.primary
+                    : AppColors.textPlaceholder
                 }
               />
-              {isRecording && (
+              {recorderState.isRecording && (
                 <Text style={styles.recordingText}>Recording...</Text>
               )}
             </View>
 
             <View style={styles.instructions}>
               <Text style={styles.instructionsText}>
-                {isRecording
+                {recorderState.isRecording
                   ? 'Describe your workout. Tap stop when done.'
                   : 'Tap the button below to start recording'}
               </Text>
@@ -166,12 +167,14 @@ export default function CreateSpeechScreen() {
             <TouchableOpacity
               style={[
                 styles.recordButton,
-                isRecording && styles.recordButtonActive,
+                recorderState.isRecording && styles.recordButtonActive,
               ]}
-              onPress={isRecording ? stopRecording : startRecording}
+              onPress={
+                recorderState.isRecording ? stopRecording : startRecording
+              }
             >
               <Ionicons
-                name={isRecording ? 'stop' : 'mic'}
+                name={recorderState.isRecording ? 'stop' : 'mic'}
                 size={32}
                 color={AppColors.white}
               />
