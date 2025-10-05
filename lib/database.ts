@@ -322,6 +322,18 @@ export const database = {
       if (error) throw error
       return data as WorkoutSessionWithDetails
     },
+
+    async delete(sessionId: string) {
+      // Delete sets first (cascaded by workout_exercises deletion)
+      // Then delete workout_exercises (cascaded by session deletion)
+      // Finally delete the session
+      const { error } = await supabase
+        .from('workout_sessions')
+        .delete()
+        .eq('id', sessionId)
+
+      if (error) throw error
+    },
   },
 
   // Stats and analytics

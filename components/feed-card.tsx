@@ -4,6 +4,8 @@ import { useRef, useState } from 'react'
 import {
   Animated,
   LayoutAnimation,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -47,7 +49,9 @@ interface FeedCardProps {
   likes: number
   comments: number
   userId?: string
+  workoutId?: string
   onUserPress?: () => void
+  onDelete?: () => void
   prInfo?: ExercisePRInfo[]
 }
 
@@ -61,13 +65,16 @@ export function FeedCard({
   likes,
   comments,
   userId,
+  workoutId,
   onUserPress,
+  onDelete,
   prInfo = [],
 }: FeedCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
     new Set(),
   )
+  const [menuVisible, setMenuVisible] = useState(false)
   const rotateAnim = useRef(new Animated.Value(0)).current
 
   const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
@@ -123,7 +130,7 @@ export function FeedCard({
             <Text style={styles.timeAgo}>{timeAgo}</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setMenuVisible(true)}>
           <Ionicons
             name="ellipsis-horizontal"
             size={20}
@@ -297,6 +304,36 @@ export function FeedCard({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Action Menu Modal */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false)
+                onDelete?.()
+              }}
+            >
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={AppColors.error}
+              />
+              <Text style={styles.menuItemTextDelete}>Delete Workout</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -509,5 +546,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: AppColors.link,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuContainer: {
+    backgroundColor: AppColors.white,
+    borderRadius: 12,
+    minWidth: 200,
+    padding: 8,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  menuItemTextDelete: {
+    fontSize: 16,
+    color: AppColors.error,
+    fontWeight: '500',
   },
 })

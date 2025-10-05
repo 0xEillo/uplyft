@@ -110,7 +110,7 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dedlyft</Text>
+        <Text style={styles.headerTitle}>Uplyft</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons
@@ -143,7 +143,11 @@ export default function FeedScreen() {
             </View>
           ) : (
             workouts.map((workout) => (
-              <AsyncPrFeedCard key={workout.id} workout={workout} />
+              <AsyncPrFeedCard
+                key={workout.id}
+                workout={workout}
+                onDelete={loadWorkouts}
+              />
             ))
           )}
         </View>
@@ -152,7 +156,13 @@ export default function FeedScreen() {
   )
 }
 
-function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
+function AsyncPrFeedCard({
+  workout,
+  onDelete,
+}: {
+  workout: WorkoutSessionWithDetails
+  onDelete: () => void
+}) {
   const { user } = useAuth()
   const router = useRouter()
   const [prs, setPrs] = useState<number>(0)
@@ -208,6 +218,32 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
     }
   }
 
+  const handleDelete = async () => {
+    Alert.alert(
+      'Delete Workout',
+      'Are you sure you want to delete this workout? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await database.workoutSessions.delete(workout.id)
+              onDelete()
+            } catch (error) {
+              console.error('Error deleting workout:', error)
+              Alert.alert('Error', 'Failed to delete workout. Please try again.')
+            }
+          },
+        },
+      ],
+    )
+  }
+
   return (
     <FeedCard
       userName="You"
@@ -229,7 +265,9 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
       likes={0}
       comments={0}
       userId={workout.user_id}
+      workoutId={workout.id}
       onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
+      onDelete={handleDelete}
       prInfo={prInfo}
     />
   )

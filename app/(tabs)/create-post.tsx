@@ -1,6 +1,5 @@
 import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
-import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -203,44 +202,24 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="close" size={28} color={AppColors.text} />
+            <Ionicons name="arrow-back" size={28} color={AppColors.text} />
           </TouchableOpacity>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={[
-                styles.micHeaderButton,
-                recorderState.isRecording && styles.micHeaderButtonActive,
-              ]}
-              onPress={toggleRecording}
-              disabled={isTranscribing || isLoading}
-            >
-              {isTranscribing ? (
-                <ActivityIndicator size="small" color={AppColors.white} />
-              ) : (
-                <Ionicons
-                  name={recorderState.isRecording ? 'stop' : 'mic'}
-                  size={20}
-                  color={AppColors.white}
-                />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handlePost}
-              style={[styles.headerButton, styles.primaryButton]}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={AppColors.white} />
-              ) : (
-                <Ionicons name="checkmark" size={28} color={AppColors.white} />
-              )}
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={handlePost}
+            style={[styles.headerButton, styles.primaryButton]}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={AppColors.white} />
+            ) : (
+              <Ionicons name="checkmark" size={28} color={AppColors.white} />
+            )}
+          </TouchableOpacity>
         </View>
 
         <TextInput
           style={styles.input}
-          placeholder="Describe your workout..."
+          placeholder="Input your workout..."
           placeholderTextColor="#999"
           multiline
           autoFocus
@@ -249,6 +228,26 @@ export default function CreatePostScreen() {
           textAlignVertical="top"
           editable={!recorderState.isRecording && !isTranscribing}
         />
+
+        {/* Floating Microphone Button */}
+        <TouchableOpacity
+          style={[
+            styles.micFab,
+            recorderState.isRecording && styles.micFabActive,
+          ]}
+          onPress={toggleRecording}
+          disabled={isTranscribing || isLoading}
+        >
+          {isTranscribing ? (
+            <ActivityIndicator size="small" color={AppColors.white} />
+          ) : (
+            <Ionicons
+              name={recorderState.isRecording ? 'stop' : 'mic'}
+              size={28}
+              color={AppColors.white}
+            />
+          )}
+        </TouchableOpacity>
       </KeyboardAvoidingView>
 
       {/* Title Modal */}
@@ -320,25 +319,28 @@ const styles = StyleSheet.create({
     padding: 8,
     minWidth: 44,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
   primaryButton: {
     backgroundColor: AppColors.primary,
     borderRadius: 20,
     paddingHorizontal: 16,
   },
-  micHeaderButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  micFab: {
+    position: 'absolute',
+    bottom: -16,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  micHeaderButtonActive: {
+  micFabActive: {
     backgroundColor: AppColors.primaryDark,
   },
   input: {
