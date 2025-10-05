@@ -3,18 +3,15 @@ import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
-import {
-  formatTimeAgo,
-  formatWorkoutForDisplay,
-} from '@/lib/utils/formatters'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
+import { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,10 +23,22 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 type TabType = 'progress' | 'log'
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<TabType>('progress')
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
+
+  const loadProfile = useCallback(async () => {
+    if (!user?.email) return
+
+    try {
+      const data = await database.profiles.getOrCreate(user.id, user.email)
+      setProfile(data)
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }, [user])
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return
@@ -47,54 +56,43 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      loadProfile()
       if (activeTab === 'log') {
         loadWorkouts()
       }
-    }, [loadWorkouts, activeTab]),
+    }, [loadProfile, loadWorkouts, activeTab]),
   )
-
-  const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut()
-            router.replace('/(auth)/login')
-          } catch (error) {
-            Alert.alert('Error', error.message || 'Failed to sign out')
-          }
-        },
-      },
-    ])
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={24} color={AppColors.text} />
+        <TouchableOpacity onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={24} color={AppColors.text} />
         </TouchableOpacity>
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profile Info */}
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={48} color="#fff" />
-          </View>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={48} color="#fff" />
+            </View>
+          )}
           <Text style={styles.userName}>
-            {user?.email?.split('@')[0] || 'User'}
+            {profile?.display_name || user?.email?.split('@')[0] || 'User'}
           </Text>
-          <Text style={styles.email}>{user?.email}</Text>
+          {profile?.user_tag && (
+            <Text style={styles.userTag}>@{profile.user_tag}</Text>
+          )}
         </View>
 
         {/* Tabs */}
@@ -117,7 +115,10 @@ export default function ProfileScreen() {
             onPress={() => setActiveTab('log')}
           >
             <Text
-              style={[styles.tabText, activeTab === 'log' && styles.activeTabText]}
+              style={[
+                styles.tabText,
+                activeTab === 'log' && styles.activeTabText,
+              ]}
             >
               Log
             </Text>
@@ -176,7 +177,10 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
         exercises: (workout.workout_exercises || []).map((we) => ({
           exerciseId: we.exercise_id,
           exerciseName: we.exercise?.name || 'Exercise',
-          sets: (we.sets || []).map((s) => ({ reps: s.reps, weight: s.weight })),
+          sets: (we.sets || []).map((s) => ({
+            reps: s.reps,
+            weight: s.weight,
+          })),
         })),
       }
       const result = await PrService.computePrsForSession(ctx)
@@ -201,7 +205,9 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
       userName="You"
       userAvatar=""
       timeAgo={formatTimeAgo(workout.created_at)}
-      workoutTitle={workout.type || workout.notes?.split('\n')[0] || 'Workout Session'}
+      workoutTitle={
+        workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
+      }
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,
@@ -260,8 +266,9 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     marginBottom: 4,
   },
-  email: {
-    fontSize: 14,
+  userTag: {
+    fontSize: 15,
+    fontWeight: '500',
     color: AppColors.textSecondary,
   },
   tabs: {

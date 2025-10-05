@@ -1,4 +1,3 @@
-import { ScreenHeader } from '@/components/screen-header'
 import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
@@ -17,8 +16,10 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -26,11 +27,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 const DRAFT_KEY = '@workout_draft'
+const PENDING_POST_KEY = '@pending_workout_post'
 
 export default function CreatePostScreen() {
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [showTitleModal, setShowTitleModal] = useState(false)
+  const [workoutTitle, setWorkoutTitle] = useState('')
   const { user } = useAuth()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
@@ -142,7 +146,7 @@ export default function CreatePostScreen() {
     }
   }
 
-  const handlePost = async () => {
+  const handlePost = () => {
     if (!notes.trim()) {
       Alert.alert('Error', 'Please enter your workout notes')
       return
@@ -153,40 +157,37 @@ export default function CreatePostScreen() {
       return
     }
 
-    setIsLoading(true)
+    // Show title modal
+    setShowTitleModal(true)
+  }
+
+  const handleCreatePost = async () => {
+    if (!workoutTitle.trim()) {
+      Alert.alert('Error', 'Please enter a title for your workout')
+      return
+    }
+
     try {
-      const response = await fetch('/api/parse-workout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ notes }),
-      })
+      // Store pending post data
+      await AsyncStorage.setItem(
+        PENDING_POST_KEY,
+        JSON.stringify({
+          notes: notes.trim(),
+          title: workoutTitle.trim(),
+        }),
+      )
 
-      if (!response.ok) {
-        throw new Error('Failed to parse workout')
-      }
-
-      const data = await response.json()
-      const { workout } = data
-
-      // Save to database
-      try {
-        await database.workoutSessions.create(user.id, workout, notes)
-      } catch (dbError) {
-        console.error('Error saving to database:', dbError)
-        throw new Error('Failed to save workout to database')
-      }
-
-      // Clear draft after successful post
+      // Clear draft since we're creating the post
       await AsyncStorage.removeItem(DRAFT_KEY)
+
+      // Close modal and navigate to feed immediately
+      setShowTitleModal(false)
       setNotes('')
+      setWorkoutTitle('')
       router.back()
     } catch (error) {
-      console.error('Error posting workout:', error)
-      Alert.alert('Error', 'Failed to post workout. Please try again.')
-    } finally {
-      setIsLoading(false)
+      console.error('Error saving pending post:', error)
+      Alert.alert('Error', 'Failed to prepare workout post')
     }
   }
 
@@ -231,11 +232,7 @@ export default function CreatePostScreen() {
               {isLoading ? (
                 <ActivityIndicator color={AppColors.white} />
               ) : (
-                <Ionicons
-                  name="checkmark"
-                  size={28}
-                  color={AppColors.white}
-                />
+                <Ionicons name="checkmark" size={28} color={AppColors.white} />
               )}
             </TouchableOpacity>
           </View>
@@ -253,6 +250,51 @@ export default function CreatePostScreen() {
           editable={!recorderState.isRecording && !isTranscribing}
         />
       </KeyboardAvoidingView>
+
+      {/* Title Modal */}
+      <Modal
+        visible={showTitleModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTitleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Give your workout a title</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g., Push, Pull..."
+              placeholderTextColor={AppColors.textTertiary}
+              value={workoutTitle}
+              onChangeText={setWorkoutTitle}
+              autoFocus
+              onSubmitEditing={handleCreatePost}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setShowTitleModal(false)
+                  setWorkoutTitle('')
+                }}
+              >
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPost]}
+                onPress={handleCreatePost}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={AppColors.white} />
+                ) : (
+                  <Text style={styles.modalButtonTextPost}>Post</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -305,5 +347,67 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 24,
     color: AppColors.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: AppColors.text,
+    marginBottom: 16,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: AppColors.text,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  modalButtonCancel: {
+    backgroundColor: AppColors.backgroundLight,
+  },
+  modalButtonPost: {
+    backgroundColor: AppColors.primary,
+  },
+  modalButtonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.text,
+  },
+  modalButtonTextPost: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.white,
   },
 })

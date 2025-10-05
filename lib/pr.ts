@@ -21,17 +21,20 @@ export interface SessionContext {
   exercises: PrContextExercise[]
 }
 
+export interface PrDetail {
+  kind: 'single-rep-max' | 'rep-max' | 'scheme-max'
+  label: string // e.g. "1RM", "5-rep max", "5x5 max"
+  previous?: number
+  current: number
+  setIndices?: number[] // which sets contributed to this PR
+}
+
 export interface PrResult {
   totalPrs: number
   perExercise: {
     exerciseId: UUID
     exerciseName: string
-    prs: {
-      kind: 'single-rep-max' | 'rep-max' | 'scheme-max'
-      label: string // e.g. "1RM", "5-rep max", "5x5 max"
-      previous?: number
-      current: number
-    }[]
+    prs: PrDetail[]
   }[]
 }
 
@@ -82,13 +85,22 @@ export class PrService {
     const hist1Rm = this.maxWeightForReps(historic, 1)
     const cur1Rm = this.maxWeightForReps(currentSets, 1)
 
-    const prs: PrResult['perExercise'][number]['prs'] = []
+    const prs: PrDetail[] = []
+
+    // Track which sets achieved 1RM PR
+    const oneRmSetIndices: number[] = []
     if (cur1Rm && (!hist1Rm || cur1Rm > hist1Rm)) {
+      currentSets.forEach((s, idx) => {
+        if (s.reps === 1 && s.weight === cur1Rm) {
+          oneRmSetIndices.push(idx)
+        }
+      })
       prs.push({
         kind: 'single-rep-max',
         label: '1RM',
         previous: hist1Rm ?? undefined,
         current: cur1Rm,
+        setIndices: oneRmSetIndices,
       })
     }
 
@@ -101,11 +113,18 @@ export class PrService {
       const hist = this.maxWeightForReps(historic, reps)
       const cur = this.maxWeightForReps(currentSets, reps)
       if (cur && (!hist || cur > hist)) {
+        const repMaxSetIndices: number[] = []
+        currentSets.forEach((s, idx) => {
+          if (s.reps === reps && s.weight === cur) {
+            repMaxSetIndices.push(idx)
+          }
+        })
         prs.push({
           kind: 'rep-max',
           label: `${reps}-rep max`,
           previous: hist ?? undefined,
           current: cur,
+          setIndices: repMaxSetIndices,
         })
       }
     }

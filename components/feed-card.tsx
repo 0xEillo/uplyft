@@ -30,6 +30,12 @@ interface ExerciseDisplay {
   setDetails?: SetDetail[]
 }
 
+interface ExercisePRInfo {
+  exerciseName: string
+  prSetIndices: Set<number>
+  prLabels: string[]
+}
+
 interface FeedCardProps {
   userName: string
   userAvatar: string
@@ -41,6 +47,7 @@ interface FeedCardProps {
   comments: number
   userId?: string
   onUserPress?: () => void
+  prInfo?: ExercisePRInfo[]
 }
 
 export function FeedCard({
@@ -54,6 +61,7 @@ export function FeedCard({
   comments,
   userId,
   onUserPress,
+  prInfo = [],
 }: FeedCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
@@ -145,6 +153,8 @@ export function FeedCard({
         {/* Table Rows */}
         {displayedExercises.map((exercise, index) => {
           const isExerciseExpanded = expandedExercises.has(index)
+          const exercisePR = prInfo.find((pr) => pr.exerciseName === exercise.name)
+          const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
 
           return (
             <View key={index}>
@@ -158,6 +168,7 @@ export function FeedCard({
                 activeOpacity={exercise.hasVariedSets ? 0.7 : 1}
                 style={[
                   styles.tableRow,
+                  hasPR && styles.tableRowWithPR,
                   !isExerciseExpanded &&
                     index === displayedExercises.length - 1 &&
                     styles.lastRow,
@@ -171,11 +182,17 @@ export function FeedCard({
                   ]}
                 >
                   <Text
-                    style={styles.exerciseName}
+                    style={[styles.exerciseName, styles.exerciseNameText]}
                     numberOfLines={1}
+                    ellipsizeMode="tail"
                   >
                     {exercise.name}
                   </Text>
+                  {hasPR && (
+                    <View style={styles.prBadge}>
+                      <Text style={styles.prBadgeText}>PR</Text>
+                    </View>
+                  )}
                   {exercise.hasVariedSets && (
                     <Ionicons
                       name={
@@ -206,42 +223,36 @@ export function FeedCard({
               {/* Expanded set details */}
               {isExerciseExpanded && exercise.setDetails && (
                 <View style={styles.setDetailsContainer}>
-                  {exercise.setDetails.map((set, setIndex) => (
-                    <View key={setIndex} style={styles.setDetailRow}>
-                      <Text style={styles.setDetailLabel}>
-                        Set {setIndex + 1}
-                      </Text>
-                      <Text style={styles.setDetailReps}>{set.reps} reps</Text>
-                      <Text style={styles.setDetailWeight}>
-                        {set.weight ? `${set.weight} lbs` : 'BW'}
-                      </Text>
-                    </View>
-                  ))}
+                  {exercise.setDetails.map((set, setIndex) => {
+                    const setHasPR = exercisePR?.prSetIndices.has(setIndex)
+                    return (
+                      <View
+                        key={setIndex}
+                        style={[
+                          styles.setDetailRow,
+                          setHasPR && styles.setDetailRowWithPR,
+                        ]}
+                      >
+                        <Text style={styles.setDetailLabel}>
+                          Set {setIndex + 1}
+                        </Text>
+                        <Text style={styles.setDetailReps}>{set.reps} reps</Text>
+                        <Text style={styles.setDetailWeight}>
+                          {set.weight ? `${set.weight} lbs` : 'BW'}
+                        </Text>
+                        {setHasPR && (
+                          <View style={styles.prBadgeSmall}>
+                            <Text style={styles.prBadgeTextSmall}>PR</Text>
+                          </View>
+                        )}
+                      </View>
+                    )
+                  })}
                 </View>
               )}
             </View>
           )
         })}
-      </View>
-
-      {/* Stats */}
-      <View style={styles.stats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{stats.exercises}</Text>
-          <Text style={styles.statLabel}>exercises</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{stats.sets}</Text>
-          <Text style={styles.statLabel}>sets</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>
-            {stats.prs > 0 ? stats.prs : '-'}
-          </Text>
-          <Text style={styles.statLabel}>PRs</Text>
-        </View>
       </View>
 
       {/* Actions */}
@@ -342,13 +353,16 @@ const styles = StyleSheet.create({
   },
   exercisesContainer: {
     marginBottom: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: AppColors.border,
   },
   tableHeader: {
     flexDirection: 'row',
     paddingVertical: 8,
     paddingHorizontal: 4,
     backgroundColor: AppColors.backgroundLight,
-    borderRadius: 6,
   },
   tableHeaderText: {
     fontSize: 11,
@@ -363,9 +377,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
+    backgroundColor: '#fafafa',
+  },
+  tableRowWithPR: {
+    backgroundColor: AppColors.primaryLight,
   },
   lastRow: {
     borderBottomWidth: 0,
+  },
+  prBadge: {
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  prBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: AppColors.white,
+    letterSpacing: 0.5,
+  },
+  prBadgeSmall: {
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+    marginLeft: 8,
+  },
+  prBadgeTextSmall: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: AppColors.white,
+    letterSpacing: 0.5,
   },
   tableCell: {
     fontSize: 14,
@@ -389,6 +433,10 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontWeight: '600',
   },
+  exerciseNameText: {
+    flex: 1,
+    minWidth: 0,
+  },
   variedCell: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -408,6 +456,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 16,
   },
+  setDetailRowWithPR: {
+    backgroundColor: AppColors.white,
+  },
   setDetailLabel: {
     fontSize: 13,
     color: AppColors.textSecondary,
@@ -425,36 +476,6 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     flex: 1,
     textAlign: 'right',
-  },
-  stats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginVertical: 12,
-    backgroundColor: AppColors.backgroundLight,
-    borderRadius: 8,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: AppColors.border,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: AppColors.primary,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: AppColors.textSecondary,
-    textTransform: 'lowercase',
   },
   actions: {
     flexDirection: 'row',

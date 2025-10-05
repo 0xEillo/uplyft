@@ -1,18 +1,39 @@
 import { FloatingMenu } from '@/components/floating-menu'
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useRouter } from 'expo-router'
-import React, { useState } from 'react'
-import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import {
+  ActivityIndicator,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { HapticTab } from '@/components/haptic-tab'
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { Colors } from '@/constants/theme'
 import { useColorScheme } from '@/hooks/use-color-scheme'
 
+const PENDING_POST_KEY = '@pending_workout_post'
+
 function CreateButton() {
   const router = useRouter()
+  const [isCreatingPost, setIsCreatingPost] = useState(false)
+
+  useEffect(() => {
+    // Check for pending post every 300ms
+    const interval = setInterval(async () => {
+      const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
+      setIsCreatingPost(!!pendingData)
+    }, 300)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const handlePress = () => {
+    if (isCreatingPost) return
     router.push('/(tabs)/create-post')
   }
 
@@ -21,8 +42,13 @@ function CreateButton() {
       style={styles.createButton}
       onPress={handlePress}
       activeOpacity={0.8}
+      disabled={isCreatingPost}
     >
-      <Ionicons name="add" size={32} color="#fff" />
+      {isCreatingPost ? (
+        <ActivityIndicator size="large" color="#fff" />
+      ) : (
+        <Ionicons name="add" size={32} color="#fff" />
+      )}
     </TouchableOpacity>
   )
 }

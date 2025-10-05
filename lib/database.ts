@@ -1,12 +1,99 @@
 import type {
   Exercise,
   ParsedWorkout,
+  Profile,
   WorkoutSession,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { supabase } from './supabase'
 
 export const database = {
+  // Profile operations
+  profiles: {
+    async getById(userId: string) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+      return data as Profile
+    },
+
+    async getOrCreate(userId: string, email: string) {
+      // Try to get existing profile
+      const { data: existing, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (existing && !fetchError) {
+        return existing as Profile
+      }
+
+      // Profile doesn't exist, create it
+      const baseTag = email
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+      const displayName = email.split('@')[0]
+
+      // Ensure baseTag is at least 3 chars
+      let userTag = baseTag.length >= 3 ? baseTag : `user${userId.slice(0, 6)}`
+
+      // Ensure max 30 chars
+      if (userTag.length > 30) {
+        userTag = userTag.substring(0, 30)
+      }
+
+      // Try to create with base tag, add numbers if collision
+      let counter = 0
+      while (counter < 100) {
+        const tryTag =
+          counter === 0 ? userTag : `${userTag.substring(0, 25)}${counter}`
+
+        const { data: created, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            user_tag: tryTag,
+            display_name: displayName,
+          })
+          .select()
+          .single()
+
+        if (!createError && created) {
+          return created as Profile
+        }
+
+        // If unique constraint violation, try next number
+        if (createError?.code === '23505') {
+          counter++
+          continue
+        }
+
+        // Other error, throw it
+        if (createError) throw createError
+      }
+
+      throw new Error('Could not generate unique user tag')
+    },
+
+    async update(userId: string, updates: Partial<Profile>) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Profile
+    },
+  },
+
   // Exercise operations
   exercises: {
     async getAll() {
@@ -213,12 +300,12 @@ export const database = {
       if (error) throw error
 
       interface ExerciseMaxWeightRow {
-        workout_exercises?: Array<{
-          sets?: Array<{
+        workout_exercises?: {
+          sets?: {
             reps: number
             weight: number | null
-          }>
-        }>
+          }[]
+        }[]
       }
 
       // Find max weight for each rep count
@@ -279,12 +366,12 @@ export const database = {
       if (error) throw error
 
       interface TotalVolumeRow {
-        workout_exercises?: Array<{
-          sets?: Array<{
+        workout_exercises?: {
+          sets?: {
             reps: number
             weight: number | null
-          }>
-        }>
+          }[]
+        }[]
       }
 
       // Calculate total volume
