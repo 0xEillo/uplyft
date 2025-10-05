@@ -107,6 +107,16 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerLeft}>
+          <Ionicons name="barbell" size={24} color={AppColors.primary} />
+          <Text style={styles.title}>Exercise Progress</Text>
+        </View>
+      </View>
+
+      <Text style={styles.subtitle}>Track weight progress per exercise</Text>
+
       {/* Exercise Selector */}
       <TouchableOpacity
         style={styles.exerciseSelector}
@@ -308,6 +318,29 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+    paddingTop: 8,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: AppColors.text,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    marginBottom: 16,
+    marginLeft: 32,
   },
   exerciseSelector: {
     flexDirection: 'row',

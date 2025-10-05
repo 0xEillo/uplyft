@@ -1,4 +1,5 @@
 import { ExerciseProgressChart } from '@/components/exercise-progress-chart'
+import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
 import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
@@ -66,7 +67,12 @@ export default function ProfileScreen() {
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
         >
-          {user && <ExerciseProgressChart userId={user.id} />}
+          {user && (
+            <>
+              <StrengthScoreChart userId={user.id} />
+              <ExerciseProgressChart userId={user.id} />
+            </>
+          )}
         </ScrollView>
       ) : (
         <WorkoutChat />

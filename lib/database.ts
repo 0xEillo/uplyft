@@ -447,12 +447,12 @@ export const database = {
       interface WeightProgressRow {
         id: string
         created_at: string
-        workout_exercises?: Array<{
-          sets?: Array<{
+        workout_exercises?: {
+          sets?: {
             reps: number
             weight: number | null
-          }>
-        }>
+          }[]
+        }[]
       }
 
       // Transform data to get max weight per workout date
@@ -517,6 +517,81 @@ export const database = {
       })
 
       return totalVolume
+    },
+
+    async getStrengthScoreProgress(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          created_at,
+          workout_exercises!inner (
+            exercise_id,
+            exercise:exercises (name),
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .not('workout_exercises.sets.weight', 'is', null)
+        .order('created_at', { ascending: true })
+
+      // Filter by date range if specified
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      interface StrengthScoreRow {
+        id: string
+        created_at: string
+        workout_exercises?: {
+          exercise_id: string
+          sets?: {
+            reps: number
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      // Calculate strength score for each workout
+      // Strength Score = sum of estimated 1RMs for best set of each exercise
+      const progressData = (data as StrengthScoreRow[])?.map((session) => {
+        const exerciseBest = new Map<string, number>()
+
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
+            if (set.weight && set.reps) {
+              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
+              const estimated1RM = set.weight * (1 + set.reps / 30)
+
+              const currentBest = exerciseBest.get(we.exercise_id) || 0
+              if (estimated1RM > currentBest) {
+                exerciseBest.set(we.exercise_id, estimated1RM)
+              }
+            }
+          })
+        })
+
+        // Sum all estimated 1RMs to get strength score
+        const strengthScore = Array.from(exerciseBest.values()).reduce(
+          (sum, val) => sum + val,
+          0,
+        )
+
+        return {
+          date: session.created_at,
+          strengthScore: Math.round(strengthScore), // Round to whole number
+        }
+      })
+
+      return progressData || []
     },
   },
 }
