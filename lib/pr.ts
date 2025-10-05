@@ -22,11 +22,12 @@ export interface SessionContext {
 }
 
 export interface PrDetail {
-  kind: 'single-rep-max' | 'rep-max' | 'scheme-max'
-  label: string // e.g. "1RM", "5-rep max", "5x5 max"
+  kind: 'single-rep-max' | 'rep-max'
+  label: string // e.g. "1RM", "5-rep max"
   previous?: number
   current: number
   setIndices?: number[] // which sets contributed to this PR
+  isCurrent: boolean // true if this is still the all-time PR, false if it's been beaten since
 }
 
 export interface PrResult {
@@ -67,7 +68,7 @@ export class PrService {
     return { totalPrs, perExercise: perExerciseResults }
   }
 
-  // Computes PRs for: single (1RM), rep-specific maxes (e.g., best 5-rep), and scheme (e.g., best 5x5 total weight)
+  // Computes PRs for: single (1RM) and rep-specific maxes (e.g., best 5-rep, best 8-rep)
   static async computePrsForExercise(
     userId: UUID,
     exerciseId: UUID,
@@ -81,9 +82,17 @@ export class PrService {
       beforeDateISO,
     )
 
+    // Fetch future sets to determine if PRs are still current
+    const future = await this.fetchFutureSets(
+      userId,
+      exerciseId,
+      beforeDateISO,
+    )
+
     // Single 1RM: max weight at reps === 1
     const hist1Rm = this.maxWeightForReps(historic, 1)
     const cur1Rm = this.maxWeightForReps(currentSets, 1)
+    const future1Rm = this.maxWeightForReps(future, 1)
 
     const prs: PrDetail[] = []
 
@@ -101,6 +110,7 @@ export class PrService {
         previous: hist1Rm ?? undefined,
         current: cur1Rm,
         setIndices: oneRmSetIndices,
+        isCurrent: !future1Rm || cur1Rm >= future1Rm,
       })
     }
 
@@ -110,9 +120,10 @@ export class PrService {
       if (s.reps && s.weight) repsSet.add(s.reps)
     })
     for (const reps of repsSet) {
-      const hist = this.maxWeightForReps(historic, reps)
       const cur = this.maxWeightForReps(currentSets, reps)
-      if (cur && (!hist || cur > hist)) {
+      if (cur && this.isTrueRepMaxPr(historic, cur, reps)) {
+        const hist = this.maxWeightForReps(historic, reps)
+        const futureRepMax = this.maxWeightForReps(future, reps)
         const repMaxSetIndices: number[] = []
         currentSets.forEach((s, idx) => {
           if (s.reps === reps && s.weight === cur) {
@@ -125,33 +136,7 @@ export class PrService {
           previous: hist ?? undefined,
           current: cur,
           setIndices: repMaxSetIndices,
-        })
-      }
-    }
-
-    // Scheme PR example: 5x5 best total weight (sum of 5 top sets at 5 reps)
-    // Only compute if there are at least five 5-rep sets in current
-    const cur5s = currentSets.filter((s) => s.weight && s.reps === 5)
-    if (cur5s.length >= 5) {
-      const curTop5 = this.sumTopN(
-        cur5s.map((s) => s.weight! * s.reps),
-        5,
-      )
-      // Historic: find historic top-5 of five-rep sets
-      const hist5s = historic.filter((s) => s.weight && s.reps === 5)
-      const histTop5 =
-        hist5s.length >= 5
-          ? this.sumTopN(
-              hist5s.map((s) => s.weight! * s.reps),
-              5,
-            )
-          : undefined
-      if (curTop5 && (!histTop5 || curTop5 > histTop5)) {
-        prs.push({
-          kind: 'scheme-max',
-          label: 'Best 5x5 total',
-          previous: histTop5 ?? undefined,
-          current: curTop5,
+          isCurrent: !futureRepMax || cur >= futureRepMax,
         })
       }
     }
@@ -204,6 +189,51 @@ export class PrService {
     return sets
   }
 
+  private static async fetchFutureSets(
+    userId: UUID,
+    exerciseId: UUID,
+    afterDateISO: string,
+  ): Promise<PrContextSet[]> {
+    const { data, error } = await supabase
+      .from('workout_sessions')
+      .select(
+        `
+        created_at,
+        workout_exercises!inner (
+          exercise_id,
+          sets!inner (reps, weight)
+        )
+      `,
+      )
+      .eq('user_id', userId)
+      .eq('workout_exercises.exercise_id', exerciseId)
+      .gt('created_at', afterDateISO)
+
+    if (error) throw error
+
+    interface FutureSetsRow {
+      workout_exercises?: Array<{
+        exercise_id: string
+        sets?: Array<{
+          reps: number
+          weight: number | null
+        }>
+      }>
+    }
+
+    const sets: PrContextSet[] = []
+    ;(data as FutureSetsRow[])?.forEach((session) => {
+      session.workout_exercises?.forEach((we) => {
+        if (we.exercise_id === exerciseId) {
+          we.sets?.forEach((s) => {
+            sets.push({ reps: s.reps, weight: s.weight })
+          })
+        }
+      })
+    })
+    return sets
+  }
+
   private static maxWeightForReps(
     sets: PrContextSet[],
     reps: number,
@@ -217,9 +247,17 @@ export class PrService {
     return max
   }
 
-  private static sumTopN(values: number[], n: number): number | undefined {
-    if (values.length < n) return undefined
-    const sorted = [...values].sort((a, b) => b - a)
-    return sorted.slice(0, n).reduce((a, b) => a + b, 0)
+  // Check if weight/reps is a true PR: no historical set with weight >= current weight AND reps >= current reps
+  private static isTrueRepMaxPr(
+    historic: PrContextSet[],
+    currentWeight: number,
+    currentReps: number,
+  ): boolean {
+    for (const h of historic) {
+      if (h.weight && h.weight >= currentWeight && h.reps >= currentReps) {
+        return false // Found a historical set that is equal or better
+      }
+    }
+    return true
   }
 }

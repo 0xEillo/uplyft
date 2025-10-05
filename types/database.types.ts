@@ -33,7 +33,6 @@ export interface WorkoutExercise {
   session_id: string
   exercise_id: string
   order_index: number
-  type: string | null
   notes: string | null
   created_at: string
 }
@@ -69,7 +68,6 @@ export interface ParsedWorkout {
 export interface ParsedExercise {
   name: string
   order_index: number
-  type?: string // e.g., "5x5", "pyramid", "1RM"
   notes?: string
   sets: ParsedSet[]
 }

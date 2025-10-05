@@ -34,6 +34,7 @@ interface ExercisePRInfo {
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
+  hasCurrentPR: boolean // true if at least one PR is still current
 }
 
 interface FeedCardProps {
@@ -132,9 +133,7 @@ export function FeedCard({
       </View>
 
       {/* Workout Title */}
-      {workoutTitle && (
-        <Text style={styles.workoutTitle}>{workoutTitle}</Text>
-      )}
+      {workoutTitle && <Text style={styles.workoutTitle}>{workoutTitle}</Text>}
 
       {/* Exercises Table */}
       <View style={styles.exercisesContainer}>
@@ -146,14 +145,16 @@ export function FeedCard({
           <Text style={[styles.tableHeaderText, styles.setsCol]}>Sets</Text>
           <Text style={[styles.tableHeaderText, styles.repsCol]}>Reps</Text>
           <Text style={[styles.tableHeaderText, styles.weightCol]}>
-            Weight
+            Weight (kg)
           </Text>
         </View>
 
         {/* Table Rows */}
         {displayedExercises.map((exercise, index) => {
           const isExerciseExpanded = expandedExercises.has(index)
-          const exercisePR = prInfo.find((pr) => pr.exerciseName === exercise.name)
+          const exercisePR = prInfo.find(
+            (pr) => pr.exerciseName === exercise.name,
+          )
           const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
 
           return (
@@ -189,15 +190,18 @@ export function FeedCard({
                     {exercise.name}
                   </Text>
                   {hasPR && (
-                    <View style={styles.prBadge}>
+                    <View
+                      style={[
+                        styles.prBadge,
+                        !exercisePR?.hasCurrentPR && styles.prBadgeHistorical,
+                      ]}
+                    >
                       <Text style={styles.prBadgeText}>PR</Text>
                     </View>
                   )}
                   {exercise.hasVariedSets && (
                     <Ionicons
-                      name={
-                        isExerciseExpanded ? 'chevron-up' : 'chevron-down'
-                      }
+                      name={isExerciseExpanded ? 'chevron-up' : 'chevron-down'}
                       size={12}
                       color={AppColors.textSecondary}
                     />
@@ -236,9 +240,11 @@ export function FeedCard({
                         <Text style={styles.setDetailLabel}>
                           Set {setIndex + 1}
                         </Text>
-                        <Text style={styles.setDetailReps}>{set.reps} reps</Text>
+                        <Text style={styles.setDetailReps}>
+                          {set.reps} reps
+                        </Text>
                         <Text style={styles.setDetailWeight}>
-                          {set.weight ? `${set.weight} lbs` : 'BW'}
+                          {set.weight ? `${set.weight}` : 'BW'}
                         </Text>
                         {setHasPR && (
                           <View style={styles.prBadgeSmall}>
@@ -286,11 +292,7 @@ export function FeedCard({
             <Animated.View
               style={{ transform: [{ rotate: rotateInterpolate }] }}
             >
-              <Ionicons
-                name="chevron-down"
-                size={16}
-                color={AppColors.link}
-              />
+              <Ionicons name="chevron-down" size={16} color={AppColors.link} />
             </Animated.View>
           </TouchableOpacity>
         )}
@@ -391,6 +393,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 6,
+  },
+  prBadgeHistorical: {
+    backgroundColor: AppColors.textPlaceholder,
   },
   prBadgeText: {
     fontSize: 10,

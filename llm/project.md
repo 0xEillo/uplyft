@@ -22,7 +22,7 @@ Traditional gym tracking apps require users to navigate complex interfaces, sele
 
 ## Solution
 
-GymFlow prioritizes ultra-low friction through a simple, notepad-like input system powered by AI. Users write workouts in any format they prefer – e.g., "bench 3x10 225" or "Did squats today, felt great, 5 sets of 8 at 315lbs" – and the app's backend AI interprets the notes to extract and standardize details like exercises, weights, reps, sets, and notes. This data is stored in the database for analytics and progress tracking.
+GymFlow prioritizes ultra-low friction through a simple, notepad-like input system powered by AI. Users write workouts in any format they prefer – e.g., "bench 3x10 225" or "Did squats today, felt great, 5 sets of 8 at kg" – and the app's backend AI interprets the notes to extract and standardize details like exercises, weights, reps, sets, and notes. This data is stored in the database for analytics and progress tracking.
 
 Once submitted, the workout generates a clean, standardized post on a social feed, allowing users to share achievements with friends, fostering motivation and community. The app's design emphasizes beauty and simplicity: clean lines, intuitive navigation, and a focus on core functionality without overwhelming features.
 

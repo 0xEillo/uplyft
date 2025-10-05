@@ -189,7 +189,6 @@ export const database = {
             session_id: session.id,
             exercise_id: exercise.id,
             order_index: parsedEx.order_index,
-            type: parsedEx.type,
             notes: parsedEx.notes,
           }
         },

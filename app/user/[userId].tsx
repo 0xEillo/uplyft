@@ -153,6 +153,7 @@ function AsyncPrFeedCard({
   avatarUrl: string | null
 }) {
   const [prs, setPrs] = useState<number>(0)
+  const [prInfo, setPrInfo] = useState<any[]>([])
   const [isComputed, setIsComputed] = useState(false)
 
   const compute = useCallback(async () => {
@@ -173,10 +174,20 @@ function AsyncPrFeedCard({
       }
       const result = await PrService.computePrsForSession(ctx)
       setPrs(result.totalPrs)
+
+      // Build PR info for the feed card
+      const prData = result.perExercise.map((exPr) => ({
+        exerciseName: exPr.exerciseName,
+        prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
+        prLabels: exPr.prs.map((pr) => pr.label),
+        hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
+      }))
+      setPrInfo(prData)
       setIsComputed(true)
     } catch (error) {
       console.error('Error computing PRs:', error)
       setPrs(0)
+      setPrInfo([])
     }
   }, [userId, workout, isComputed])
 
@@ -208,6 +219,7 @@ function AsyncPrFeedCard({
       }}
       likes={0}
       comments={0}
+      prInfo={prInfo}
     />
   )
 }

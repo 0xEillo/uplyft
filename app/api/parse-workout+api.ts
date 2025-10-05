@@ -30,12 +30,6 @@ const workoutSchema = z.object({
         order_index: z
           .number()
           .describe('Order of exercise in workout (1, 2, 3, etc)'),
-        type: z
-          .string()
-          .nullish()
-          .describe(
-            'Exercise pattern type like "5x5", "pyramid", "1RM", "dropset", etc',
-          ),
         notes: z
           .string()
           .nullish()
@@ -56,7 +50,7 @@ const workoutSchema = z.object({
             weight: z
               .number()
               .nullish()
-              .describe('Weight in pounds (null for bodyweight)'),
+              .describe('Weight in kilograms (null for bodyweight)'),
             rpe: z
               .number()
               .nullish()
@@ -83,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     const result = await generateObject({
-      model: openai('gpt-5'),
+      model: openai('gpt-5-nano'),
       schema: workoutSchema,
       prompt: `You are a workout tracking assistant. Parse the following workout notes and extract structured data that matches our database schema.
 
@@ -92,13 +86,13 @@ User's Workout Notes:
 
 INSTRUCTIONS:
 1. Standardize exercise names (e.g., "bench" → "Bench Press", "squat" → "Squat")
-2. Parse sets format like "5x5 @ 225" → 5 sets of 5 reps at 225lbs each
+2. Parse sets format like "5x5 @ 100kg" → 5 sets of 5 reps at 100kg each
 3. If no weight mentioned for bodyweight exercises (push-ups, pull-ups), leave weight null
-4. Detect workout patterns (5x5, pyramid, etc) and populate the 'type' field
-5. Extract any workout-level notes or feelings
-6. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
-7. Number sets starting from 1 for each exercise
-8. CRITICAL: Every set MUST have a reps value (cannot be null). If reps are not specified in the notes, infer a reasonable default (e.g., 5 reps for strength exercises, 10 for accessories)
+4. Extract any workout-level notes or feelings
+5. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
+6. Number sets starting from 1 for each exercise
+7. CRITICAL: Every set MUST have a reps value (cannot be null). If reps are not specified in the notes, infer a reasonable default (e.g., 5 reps for strength exercises, 10 for accessories)
+8. IMPORTANT: Keep weights in kilograms as provided by the user. Do NOT convert to pounds.
 
 EXPECTED OUTPUT FORMAT (JSON):
 {
@@ -108,31 +102,28 @@ EXPECTED OUTPUT FORMAT (JSON):
     {
       "name": "Bench Press",
       "order_index": 1,
-      "type": "5x5",
       "notes": "PR attempt",
       "sets": [
-        { "set_number": 1, "reps": 5, "weight": 225, "rpe": 7 },
-        { "set_number": 2, "reps": 5, "weight": 225, "rpe": 8 },
-        { "set_number": 3, "reps": 5, "weight": 225, "rpe": 8.5 },
-        { "set_number": 4, "reps": 5, "weight": 225, "rpe": 9 },
-        { "set_number": 5, "reps": 5, "weight": 225, "rpe": 9.5 }
+        { "set_number": 1, "reps": 5, "weight": 100, "rpe": 7 },
+        { "set_number": 2, "reps": 5, "weight": 100, "rpe": 8 },
+        { "set_number": 3, "reps": 5, "weight": 100, "rpe": 8.5 },
+        { "set_number": 4, "reps": 5, "weight": 100, "rpe": 9 },
+        { "set_number": 5, "reps": 5, "weight": 100, "rpe": 9.5 }
       ]
     },
     {
       "name": "Incline Dumbbell Press",
       "order_index": 2,
-      "type": "pyramid",
       "notes": null,
       "sets": [
-        { "set_number": 1, "reps": 10, "weight": 60, "rpe": null },
-        { "set_number": 2, "reps": 8, "weight": 70, "rpe": null },
-        { "set_number": 3, "reps": 6, "weight": 80, "rpe": null }
+        { "set_number": 1, "reps": 10, "weight": 27.5, "rpe": null },
+        { "set_number": 2, "reps": 8, "weight": 32.5, "rpe": null },
+        { "set_number": 3, "reps": 6, "weight": 37.5, "rpe": null }
       ]
     },
     {
       "name": "Push-ups",
       "order_index": 3,
-      "type": null,
       "notes": "bodyweight burnout",
       "sets": [
         { "set_number": 1, "reps": 25, "weight": null, "rpe": null },

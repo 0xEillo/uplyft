@@ -183,6 +183,7 @@ function AsyncPrFeedCard({ workout }: { workout: WorkoutSessionWithDetails }) {
         exerciseName: exPr.exerciseName,
         prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
         prLabels: exPr.prs.map((pr) => pr.label),
+        hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
       }))
       setPrInfo(prData)
       setIsComputed(true)

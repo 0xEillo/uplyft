@@ -72,7 +72,7 @@ export function formatWorkoutForDisplay(
     if (weights.length === 0) {
       weightDisplay = 'BW' // Bodyweight
     } else if (allSameWeight) {
-      weightDisplay = `${weights[0]} kgs`
+      weightDisplay = `${weights[0]}`
     } else {
       weightDisplay = '...'
     }
