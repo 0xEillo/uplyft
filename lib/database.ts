@@ -106,6 +106,61 @@ export const database = {
       return data as Exercise[]
     },
 
+    async getExercisesWithData(userId: string) {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select(
+          `
+          *,
+          workout_exercises!inner (
+            id,
+            session_id
+          )
+        `,
+        )
+        .eq('workout_exercises.session_id', 'workout_sessions.id')
+
+      if (error) {
+        // If the query fails, try a different approach
+        const { data: sessions, error: sessionsError } = await supabase
+          .from('workout_sessions')
+          .select(
+            `
+            workout_exercises!inner (
+              exercise:exercises!inner (*)
+            )
+          `,
+          )
+          .eq('user_id', userId)
+
+        if (sessionsError) throw sessionsError
+
+        // Extract unique exercises
+        const exerciseMap = new Map<string, Exercise>()
+        sessions?.forEach((session: any) => {
+          session.workout_exercises?.forEach((we: any) => {
+            if (we.exercise && !exerciseMap.has(we.exercise.id)) {
+              exerciseMap.set(we.exercise.id, we.exercise)
+            }
+          })
+        })
+
+        const exercises = Array.from(exerciseMap.values()).sort((a, b) =>
+          a.name.localeCompare(b.name),
+        )
+        return exercises as Exercise[]
+      }
+
+      // Remove duplicates and sort
+      const uniqueExercises = data
+        .filter(
+          (ex, index, self) => index === self.findIndex((e) => e.id === ex.id),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      return uniqueExercises as Exercise[]
+    },
+
     async findByName(name: string) {
       const { data, error } = await supabase
         .from('exercises')
@@ -342,6 +397,70 @@ export const database = {
 
       if (error) throw error
       return data
+    },
+
+    async getExerciseWeightProgress(
+      userId: string,
+      exerciseId: string,
+      daysBack?: number,
+    ) {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          created_at,
+          workout_exercises!inner (
+            exercise_id,
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .eq('workout_exercises.exercise_id', exerciseId)
+        .not('workout_exercises.sets.weight', 'is', null)
+        .order('created_at', { ascending: true })
+
+      // Filter by date range if specified
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      interface WeightProgressRow {
+        id: string
+        created_at: string
+        workout_exercises?: Array<{
+          sets?: Array<{
+            reps: number
+            weight: number | null
+          }>
+        }>
+      }
+
+      // Transform data to get max weight per workout date
+      const progressData = (data as WeightProgressRow[])?.map((session) => {
+        let maxWeight = 0
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
+            if (set.weight && set.weight > maxWeight) {
+              maxWeight = set.weight
+            }
+          })
+        })
+
+        return {
+          date: session.created_at,
+          maxWeight,
+        }
+      })
+
+      return progressData || []
     },
 
     async getTotalVolume(userId: string, dateFrom?: Date) {
