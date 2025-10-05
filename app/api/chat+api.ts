@@ -19,6 +19,7 @@ function buildContext(messages: CoreMessage[], userContext?: string): CoreMessag
       `- Concise and actionable\n` +
       `- Encouraging and supportive\n` +
       `- Evidence-based when giving advice\n` +
+      `- Omit any match or calculation reasoning\n` +
       `- Conversational and friendly`,
   }
   const windowSize = 16
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     const result = streamText({
-      model: openai('gpt-5-nano'),
+      model: openai('gpt-4o-mini'),
       messages: buildContext(messages, userContext),
       temperature: 0.3,
       tools: {

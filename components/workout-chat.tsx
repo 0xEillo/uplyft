@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface Message {
   id: string
@@ -21,12 +22,11 @@ interface Message {
 }
 
 const EXAMPLE_QUESTIONS = [
+  "What's my 1 rep max for squat?",
   "What's my strongest exercise?",
   'Show me my progress on bench press',
   'How many PRs did I hit this month?',
   'What muscle groups am I neglecting?',
-  'Am I getting stronger overall?',
-  'When did I last workout?',
 ]
 
 export function WorkoutChat() {
@@ -35,6 +35,7 @@ export function WorkoutChat() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { user, session } = useAuth()
+  const insets = useSafeAreaInsets()
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -230,13 +231,15 @@ export function WorkoutChat() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
     >
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}
       >
         {messages.length === 0 ? (
@@ -250,13 +253,9 @@ export function WorkoutChat() {
               <Text style={styles.welcomeTitle}>
                 Chat with Your Personal AI
               </Text>
-              <Text style={styles.welcomeSubtitle}>
-                Ask me anything about your training, progress, and stats
-              </Text>
             </View>
 
             <View style={styles.examplesContainer}>
-              <Text style={styles.examplesTitle}>Try asking:</Text>
               <View style={styles.examplesGrid}>
                 {EXAMPLE_QUESTIONS.map((question, index) => (
                   <TouchableOpacity
@@ -326,7 +325,12 @@ export function WorkoutChat() {
       </ScrollView>
 
       {/* Input Area */}
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          { paddingBottom: Math.max(12, insets.bottom || 0) },
+        ]}
+      >
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}

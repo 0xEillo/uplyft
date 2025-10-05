@@ -18,7 +18,7 @@ type TabType = 'progress' | 'chat'
 
 export default function ProfileScreen() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabType>('progress')
+  const [activeTab, setActiveTab] = useState<TabType>('chat')
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -33,19 +33,6 @@ export default function ProfileScreen() {
       {/* Tabs */}
       <View style={styles.tabs}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
-            onPress={() => setActiveTab('progress')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'progress' && styles.activeTabText,
-              ]}
-            >
-              Progress
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
             onPress={() => setActiveTab('chat')}
           >
@@ -56,6 +43,19 @@ export default function ProfileScreen() {
               ]}
             >
               Chat
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
+            onPress={() => setActiveTab('progress')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'progress' && styles.activeTabText,
+              ]}
+            >
+              Stats
             </Text>
           </TouchableOpacity>
         </View>
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     borderBottomColor: AppColors.border,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
     color: AppColors.text,
   },

@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     borderBottomColor: AppColors.border,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
     color: AppColors.text,
   },

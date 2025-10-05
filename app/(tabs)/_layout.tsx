@@ -1,5 +1,5 @@
-import { FloatingMenu } from '@/components/floating-menu'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { HapticTab } from '@/components/haptic-tab'
 import { IconSymbol } from '@/components/ui/icon-symbol'
@@ -60,69 +59,72 @@ export default function TabLayout() {
     <>
       <StatusBar barStyle="dark-content" />
       <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
-          height: 90,
-          paddingBottom: 30,
-          paddingTop: 8,
-        },
-        tabBarInactiveTintColor: '#999',
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Feed',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: '',
-          tabBarIcon: () => null,
-          tabBarButton: () => (
-            <View style={styles.createButtonContainer}>
-              <CreateButton />
-            </View>
-          ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault()
+        screenOptions={{
+          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          headerShown: false,
+          tabBarHideOnKeyboard: true,
+          tabBarButton: HapticTab,
+          tabBarStyle: {
+            backgroundColor: '#fff',
+            borderTopWidth: 1,
+            borderTopColor: '#f0f0f0',
+            height: 90,
+            paddingBottom: 30,
+            paddingTop: 8,
           },
+          tabBarInactiveTintColor: '#999',
         }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person-circle" size={28} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="create-post"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="create-speech"
-        options={{
-          href: null,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Feed',
+            tabBarIcon: ({ color }) => (
+              <IconSymbol size={28} name="house.fill" color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="create"
+          options={{
+            title: '',
+            tabBarIcon: () => null,
+            tabBarButton: () => (
+              <View style={styles.createButtonContainer}>
+                <CreateButton />
+              </View>
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault()
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="explore"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="person-circle" size={28} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="create-post"
+          options={{
+            href: null,
+            tabBarStyle: { display: 'none' },
+          }}
+        />
+        <Tabs.Screen
+          name="create-speech"
+          options={{
+            href: null,
+            tabBarStyle: { display: 'none' },
+          }}
+        />
+      </Tabs>
     </>
   )
 }

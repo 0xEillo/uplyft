@@ -87,10 +87,9 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
   )
 
   // Transform data for the chart
-  const chartData = progressData.map((point, index) => ({
+  const chartData = progressData.map((point) => ({
     value: point.maxWeight,
-    label: index % Math.ceil(progressData.length / 5) === 0 ? '' : '', // Show fewer labels to avoid clutter
-    dataPointText: `${point.maxWeight}kg`,
+    dataPointText: `${point.maxWeight}`,
   }))
 
   // Calculate stats
@@ -203,42 +202,41 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
             </Text>
           </View>
         ) : (
-          <LineChart
-            data={chartData}
-            width={340}
-            height={220}
-            spacing={Math.max(40, 340 / chartData.length)}
-            initialSpacing={20}
-            endSpacing={20}
-            color={AppColors.primary}
-            thickness={3}
-            startFillColor={AppColors.primaryLight}
-            endFillColor={AppColors.white}
-            startOpacity={0.4}
-            endOpacity={0.1}
-            areaChart
-            hideDataPoints={false}
-            dataPointsColor={AppColors.primary}
-            dataPointsRadius={4}
-            textColor1={AppColors.textSecondary}
-            textShiftY={-8}
-            textShiftX={-10}
-            textFontSize={10}
-            yAxisColor={AppColors.border}
-            xAxisColor={AppColors.border}
-            yAxisTextStyle={{ color: AppColors.textSecondary, fontSize: 11 }}
-            xAxisLabelTextStyle={{
-              color: AppColors.textSecondary,
-              fontSize: 10,
-            }}
-            curved
-            hideRules
-            hideYAxisText={false}
-            yAxisLabelPrefix=""
-            yAxisLabelSuffix="kg"
-            noOfSections={4}
-            maxValue={Math.ceil(maxWeight * 1.1)} // Add 10% padding
-          />
+          <>
+            <Text style={styles.yAxisLabel}>(kg)</Text>
+            <LineChart
+              data={chartData}
+              width={340}
+              height={220}
+              spacing={Math.max(40, 340 / chartData.length)}
+              initialSpacing={20}
+              endSpacing={20}
+              color={AppColors.primary}
+              thickness={3}
+              startFillColor={AppColors.primaryLight}
+              endFillColor={AppColors.white}
+              startOpacity={0.4}
+              endOpacity={0.1}
+              areaChart
+              hideDataPoints={false}
+              dataPointsColor={AppColors.primary}
+              dataPointsRadius={4}
+              textColor1={AppColors.textSecondary}
+              textShiftY={-8}
+              textShiftX={-10}
+              textFontSize={10}
+              curved
+              hideRules
+              hideYAxisText
+              yAxisColor={AppColors.border}
+              xAxisColor={AppColors.border}
+              xAxisLabelTextStyle={{
+                color: AppColors.textSecondary,
+                fontSize: 10,
+              }}
+              maxValue={Math.ceil(maxWeight * 1.1)} // Add 10% padding
+            />
+          </>
         )}
       </View>
 
@@ -425,6 +423,14 @@ const styles = StyleSheet.create({
     color: AppColors.textTertiary,
     textAlign: 'center',
     marginTop: 12,
+  },
+  yAxisLabel: {
+    position: 'absolute',
+    top: 16,
+    left: 2,
+    fontSize: 11,
+    color: AppColors.textSecondary,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
