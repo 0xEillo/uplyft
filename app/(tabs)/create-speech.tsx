@@ -1,5 +1,5 @@
 import { ScreenHeader } from '@/components/screen-header'
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function CreateSpeechScreen() {
+  const colors = useThemedColors()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -125,6 +126,8 @@ export default function CreateSpeechScreen() {
     router.back()
   }
 
+  const styles = createStyles(colors)
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader
@@ -136,7 +139,7 @@ export default function CreateSpeechScreen() {
       <View style={styles.content}>
         {isProcessing ? (
           <View style={styles.processingContainer}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.processingText}>Processing workout...</Text>
           </View>
         ) : (
@@ -147,8 +150,8 @@ export default function CreateSpeechScreen() {
                 size={120}
                 color={
                   recorderState.isRecording
-                    ? AppColors.primary
-                    : AppColors.textPlaceholder
+                    ? colors.primary
+                    : colors.textPlaceholder
                 }
               />
               {recorderState.isRecording && (
@@ -176,7 +179,7 @@ export default function CreateSpeechScreen() {
               <Ionicons
                 name={recorderState.isRecording ? 'stop' : 'mic'}
                 size={32}
-                color={AppColors.white}
+                color={colors.white}
               />
             </TouchableOpacity>
           </>
@@ -186,61 +189,62 @@ export default function CreateSpeechScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppColors.white,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  waveformContainer: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  recordingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: AppColors.primary,
-    marginTop: 24,
-  },
-  instructions: {
-    marginBottom: 48,
-  },
-  instructionsText: {
-    fontSize: 16,
-    color: AppColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  recordButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: AppColors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.white,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  recordButtonActive: {
-    backgroundColor: AppColors.primaryDark,
-  },
-  processingContainer: {
-    alignItems: 'center',
-  },
-  processingText: {
-    fontSize: 17,
-    color: AppColors.textSecondary,
-    marginTop: 24,
-  },
-})
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 32,
+    },
+    waveformContainer: {
+      alignItems: 'center',
+      marginBottom: 48,
+    },
+    recordingText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.primary,
+      marginTop: 24,
+    },
+    instructions: {
+      marginBottom: 48,
+    },
+    instructionsText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 24,
+    },
+    recordButton: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.primary,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    recordButtonActive: {
+      backgroundColor: colors.primaryDark,
+    },
+    processingContainer: {
+      alignItems: 'center',
+    },
+    processingText: {
+      fontSize: 17,
+      color: colors.textSecondary,
+      marginTop: 24,
+    },
+  })

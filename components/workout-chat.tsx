@@ -1,4 +1,4 @@
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef, useState } from 'react'
@@ -37,6 +37,7 @@ export function WorkoutChat() {
   const [isLoading, setIsLoading] = useState(false)
   const { user, session } = useAuth()
   const insets = useSafeAreaInsets()
+  const colors = useThemedColors()
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -230,6 +231,8 @@ export function WorkoutChat() {
     setInput(question)
   }
 
+  const styles = createStyles(colors)
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -250,7 +253,7 @@ export function WorkoutChat() {
               <Ionicons
                 name="chatbubbles-outline"
                 size={64}
-                color={AppColors.primary}
+                color={colors.primary}
               />
               <Text style={styles.welcomeTitle}>
                 Chat with Your Personal AI
@@ -269,7 +272,7 @@ export function WorkoutChat() {
                     <Ionicons
                       name="arrow-forward"
                       size={16}
-                      color={AppColors.primary}
+                      color={colors.primary}
                     />
                   </TouchableOpacity>
                 ))}
@@ -290,7 +293,7 @@ export function WorkoutChat() {
               >
                 {message.role === 'assistant' && (
                   <View style={styles.aiAvatar}>
-                    <Ionicons name="flash" size={16} color={AppColors.white} />
+                    <Ionicons name="flash" size={16} color={colors.white} />
                   </View>
                 )}
                 <View
@@ -307,11 +310,11 @@ export function WorkoutChat() {
                         body: {
                           fontSize: 15,
                           lineHeight: 20,
-                          color: AppColors.text,
+                          color: colors.text,
                           margin: 0,
                         },
                         code_inline: {
-                          backgroundColor: AppColors.backgroundLight,
+                          backgroundColor: colors.backgroundLight,
                           paddingHorizontal: 4,
                           paddingVertical: 2,
                           borderRadius: 4,
@@ -320,7 +323,7 @@ export function WorkoutChat() {
                             Platform.OS === 'ios' ? 'Menlo' : 'monospace',
                         },
                         code_block: {
-                          backgroundColor: AppColors.backgroundLight,
+                          backgroundColor: colors.backgroundLight,
                           padding: 12,
                           borderRadius: 8,
                           fontSize: 14,
@@ -362,10 +365,10 @@ export function WorkoutChat() {
             {isLoading && (
               <View style={styles.loadingMessageContainer}>
                 <View style={styles.aiAvatar}>
-                  <Ionicons name="flash" size={16} color={AppColors.white} />
+                  <Ionicons name="flash" size={16} color={colors.white} />
                 </View>
                 <View style={styles.loadingBubble}>
-                  <ActivityIndicator size="small" color={AppColors.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               </View>
             )}
@@ -384,7 +387,7 @@ export function WorkoutChat() {
           <TextInput
             style={styles.input}
             placeholder="Ask about your workouts..."
-            placeholderTextColor={AppColors.textPlaceholder}
+            placeholderTextColor={colors.textPlaceholder}
             value={input}
             onChangeText={setInput}
             multiline
@@ -405,14 +408,14 @@ export function WorkoutChat() {
             {isLoading ? (
               <ActivityIndicator
                 size="small"
-                color={AppColors.textPlaceholder}
+                color={colors.textPlaceholder}
               />
             ) : (
               <Ionicons
                 name="send"
                 size={20}
                 color={
-                  input.trim() ? AppColors.white : AppColors.textPlaceholder
+                  input.trim() ? colors.white : colors.textPlaceholder
                 }
               />
             )}
@@ -423,175 +426,176 @@ export function WorkoutChat() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppColors.background,
-  },
-  messagesContainer: {
-    flex: 1,
-  },
-  messagesContent: {
-    flexGrow: 1,
-    padding: 16,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingBottom: 60,
-  },
-  welcomeSection: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: AppColors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 15,
-    color: AppColors.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-  examplesContainer: {
-    marginTop: 16,
-  },
-  examplesTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: AppColors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  examplesGrid: {
-    gap: 8,
-  },
-  exampleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: AppColors.white,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  exampleText: {
-    fontSize: 15,
-    color: AppColors.text,
-    flex: 1,
-    marginRight: 12,
-  },
-  chatMessages: {
-    gap: 16,
-  },
-  messageBubble: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  userMessage: {
-    justifyContent: 'flex-end',
-  },
-  assistantMessage: {
-    justifyContent: 'flex-start',
-  },
-  aiAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  messageContent: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-  },
-  userMessageContent: {
-    backgroundColor: AppColors.primary,
-    borderBottomRightRadius: 4,
-  },
-  assistantMessageContent: {
-    backgroundColor: AppColors.white,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: AppColors.text,
-  },
-  userMessageText: {
-    color: AppColors.white,
-  },
-  inputContainer: {
-    backgroundColor: AppColors.white,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 12 : 12,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: AppColors.backgroundLight,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingTop: 10,
-    fontSize: 15,
-    color: AppColors.text,
-    maxHeight: 100,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: AppColors.backgroundLight,
-  },
-  loadingMessageContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 16,
-  },
-  loadingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: AppColors.white,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    borderRadius: 16,
-    borderBottomLeftRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: AppColors.textSecondary,
-    fontStyle: 'italic',
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    messagesContainer: {
+      flex: 1,
+    },
+    messagesContent: {
+      flexGrow: 1,
+      padding: 16,
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingBottom: 60,
+    },
+    welcomeSection: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    welcomeTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    welcomeSubtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 32,
+    },
+    examplesContainer: {
+      marginTop: 16,
+    },
+    examplesTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 12,
+    },
+    examplesGrid: {
+      gap: 8,
+    },
+    exampleCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.white,
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    exampleText: {
+      fontSize: 15,
+      color: colors.text,
+      flex: 1,
+      marginRight: 12,
+    },
+    chatMessages: {
+      gap: 16,
+    },
+    messageBubble: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    userMessage: {
+      justifyContent: 'flex-end',
+    },
+    assistantMessage: {
+      justifyContent: 'flex-start',
+    },
+    aiAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    messageContent: {
+      maxWidth: '80%',
+      padding: 12,
+      borderRadius: 16,
+    },
+    userMessageContent: {
+      backgroundColor: colors.primary,
+      borderBottomRightRadius: 4,
+    },
+    assistantMessageContent: {
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderBottomLeftRadius: 4,
+    },
+    messageText: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: colors.text,
+    },
+    userMessageText: {
+      color: colors.white,
+    },
+    inputContainer: {
+      backgroundColor: colors.white,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      paddingBottom: Platform.OS === 'ios' ? 12 : 12,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      paddingTop: 10,
+      fontSize: 15,
+      color: colors.text,
+      maxHeight: 100,
+    },
+    sendButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sendButtonDisabled: {
+      backgroundColor: colors.backgroundLight,
+    },
+    loadingMessageContainer: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 16,
+    },
+    loadingBubble: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderBottomLeftRadius: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+    },
+  })

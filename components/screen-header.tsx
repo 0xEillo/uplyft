@@ -1,4 +1,4 @@
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { ReactNode } from 'react'
 import {
@@ -34,6 +34,9 @@ export function ScreenHeader({
   leftDisabled = false,
   centerComponent,
 }: ScreenHeaderProps) {
+  const colors = useThemedColors()
+  const styles = createStyles(colors)
+
   return (
     <View style={styles.header}>
       <TouchableOpacity
@@ -42,7 +45,7 @@ export function ScreenHeader({
         disabled={leftDisabled}
       >
         {leftIcon && (
-          <Ionicons name={leftIcon} size={28} color={AppColors.text} />
+          <Ionicons name={leftIcon} size={28} color={colors.text} />
         )}
       </TouchableOpacity>
 
@@ -66,14 +69,14 @@ export function ScreenHeader({
           {rightLoading ? (
             <ActivityIndicator
               color={
-                rightStyle === 'primary' ? AppColors.white : AppColors.text
+                rightStyle === 'primary' ? colors.white : colors.text
               }
             />
           ) : rightIcon ? (
             <Ionicons
               name={rightIcon}
               size={28}
-              color={rightStyle === 'primary' ? AppColors.white : AppColors.text}
+              color={rightStyle === 'primary' ? colors.white : colors.text}
             />
           ) : null}
         </TouchableOpacity>
@@ -84,28 +87,29 @@ export function ScreenHeader({
   )
 }
 
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  headerButton: {
-    padding: 8,
-    minWidth: 44,
-  },
-  primaryButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerButton: {
+      padding: 8,
+      minWidth: 44,
+    },
+    primaryButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+  })

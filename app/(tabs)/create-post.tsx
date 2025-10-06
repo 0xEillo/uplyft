@@ -1,4 +1,4 @@
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -71,6 +71,7 @@ Finished with 10min cardio. Shoulder felt great today!`,
 ]
 
 export default function CreatePostScreen() {
+  const colors = useThemedColors()
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -80,6 +81,8 @@ export default function CreatePostScreen() {
   const { user } = useAuth()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
+
+  const styles = createStyles(colors)
 
   // Randomize example each time screen is focused
   useFocusEffect(
@@ -264,7 +267,7 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="arrow-back" size={28} color={AppColors.text} />
+            <Ionicons name="arrow-back" size={28} color={colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handlePost}
@@ -272,9 +275,9 @@ export default function CreatePostScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color={AppColors.white} />
+              <ActivityIndicator color={colors.white} />
             ) : (
-              <Ionicons name="checkmark" size={28} color={AppColors.white} />
+              <Ionicons name="checkmark" size={28} color={colors.white} />
             )}
           </TouchableOpacity>
         </View>
@@ -328,12 +331,12 @@ export default function CreatePostScreen() {
           disabled={isTranscribing || isLoading}
         >
           {isTranscribing ? (
-            <ActivityIndicator size="small" color={AppColors.white} />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Ionicons
               name={recorderState.isRecording ? 'stop' : 'mic'}
               size={28}
-              color={AppColors.white}
+              color={colors.white}
             />
           )}
         </TouchableOpacity>
@@ -342,116 +345,117 @@ export default function CreatePostScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppColors.white,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  headerButton: {
-    padding: 8,
-    minWidth: 44,
-  },
-  primaryButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-  },
-  micFab: {
-    position: 'absolute',
-    bottom: -16,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  micFabActive: {
-    backgroundColor: AppColors.primaryDark,
-  },
-  inputContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  titleInput: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
-    fontSize: 28,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: AppColors.border,
-    marginHorizontal: 20,
-  },
-  notesInput: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
-    fontSize: 17,
-    lineHeight: 24,
-    color: AppColors.text,
-  },
-  exampleContainer: {
-    position: 'absolute',
-    top: '35%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    pointerEvents: 'none',
-  },
-  exampleLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: AppColors.textTertiary,
-    marginBottom: 8,
-  },
-  exampleCard: {
-    backgroundColor: '#fafafa',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-    borderStyle: 'dashed',
-    maxWidth: 280,
-    alignSelf: 'center',
-  },
-  exampleTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: AppColors.textSecondary,
-    marginBottom: 8,
-  },
-  exampleDivider: {
-    height: 1,
-    backgroundColor: '#e8e8e8',
-    marginBottom: 12,
-  },
-  exampleText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: AppColors.textSecondary,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.white,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerButton: {
+      padding: 8,
+      minWidth: 44,
+    },
+    primaryButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+    },
+    micFab: {
+      position: 'absolute',
+      bottom: -16,
+      right: 24,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    micFabActive: {
+      backgroundColor: colors.primaryDark,
+    },
+    inputContainer: {
+      flex: 1,
+      position: 'relative',
+    },
+    titleInput: {
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 12,
+      fontSize: 28,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginHorizontal: 20,
+    },
+    notesInput: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 20,
+      fontSize: 17,
+      lineHeight: 24,
+      color: colors.text,
+    },
+    exampleContainer: {
+      position: 'absolute',
+      top: '35%',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      pointerEvents: 'none',
+    },
+    exampleLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      marginBottom: 8,
+    },
+    exampleCard: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      maxWidth: 280,
+      alignSelf: 'center',
+    },
+    exampleTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    exampleDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: 12,
+    },
+    exampleText: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+  })

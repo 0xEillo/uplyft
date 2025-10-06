@@ -1,4 +1,4 @@
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { useRef, useState } from 'react'
 import {
@@ -70,12 +70,15 @@ export function FeedCard({
   onDelete,
   prInfo = [],
 }: FeedCardProps) {
+  const colors = useThemedColors()
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
     new Set(),
   )
   const [menuVisible, setMenuVisible] = useState(false)
   const rotateAnim = useRef(new Animated.Value(0)).current
+
+  const styles = createStyles(colors)
 
   const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
@@ -134,7 +137,7 @@ export function FeedCard({
           <Ionicons
             name="ellipsis-horizontal"
             size={20}
-            color={AppColors.textSecondary}
+            color={colors.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -215,7 +218,7 @@ export function FeedCard({
                     <Ionicons
                       name={isExerciseExpanded ? 'chevron-up' : 'chevron-down'}
                       size={12}
-                      color={AppColors.textSecondary}
+                      color={colors.textSecondary}
                     />
                   )}
                 </View>
@@ -286,7 +289,7 @@ export function FeedCard({
             <Animated.View
               style={{ transform: [{ rotate: rotateInterpolate }] }}
             >
-              <Ionicons name="chevron-down" size={16} color={AppColors.link} />
+              <Ionicons name="chevron-down" size={16} color={colors.link} />
             </Animated.View>
           </TouchableOpacity>
         </View>
@@ -315,7 +318,7 @@ export function FeedCard({
                 <Ionicons
                   name="create-outline"
                   size={20}
-                  color={AppColors.text}
+                  color={colors.text}
                 />
                 <Text style={styles.menuItemText}>Edit Workout</Text>
               </TouchableOpacity>
@@ -330,7 +333,7 @@ export function FeedCard({
               <Ionicons
                 name="trash-outline"
                 size={20}
-                color={AppColors.error}
+                color={colors.error}
               />
               <Text style={styles.menuItemTextDelete}>Delete Workout</Text>
             </TouchableOpacity>
@@ -341,13 +344,14 @@ export function FeedCard({
   )
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: AppColors.white,
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: AppColors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
@@ -368,35 +372,35 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: AppColors.white,
+    color: colors.white,
     fontSize: 18,
     fontWeight: '600',
   },
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
   },
   timeAgo: {
     fontSize: 13,
-    color: AppColors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 2,
   },
   workoutTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   workoutDescription: {
     fontSize: 14,
     lineHeight: 20,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 12,
   },
   exercisesContainer: {
@@ -404,18 +408,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   tableHeader: {
     flexDirection: 'row',
     paddingVertical: 8,
     paddingHorizontal: 4,
-    backgroundColor: AppColors.backgroundLight,
+    backgroundColor: colors.backgroundLight,
   },
   tableHeaderText: {
     fontSize: 11,
     fontWeight: '700',
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -424,33 +428,33 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: '#fafafa',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.backgroundLight,
   },
   tableRowWithPR: {
-    backgroundColor: AppColors.primaryLight,
+    backgroundColor: colors.primaryLight,
   },
   lastRow: {
     borderBottomWidth: 0,
   },
   prBadge: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 6,
   },
   prBadgeHistorical: {
-    backgroundColor: AppColors.textPlaceholder,
+    backgroundColor: colors.textPlaceholder,
   },
   prBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: AppColors.white,
+    color: colors.white,
     letterSpacing: 0.5,
   },
   prBadgeSmall: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 3,
@@ -459,12 +463,12 @@ const styles = StyleSheet.create({
   prBadgeTextSmall: {
     fontSize: 9,
     fontWeight: '700',
-    color: AppColors.white,
+    color: colors.white,
     letterSpacing: 0.5,
   },
   tableCell: {
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
   },
   exerciseCol: {
     flex: 3,
@@ -483,6 +487,7 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     fontWeight: '600',
+    color: colors.text,
   },
   exerciseNameText: {
     flex: 1,
@@ -494,11 +499,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   setDetailsContainer: {
-    backgroundColor: AppColors.primaryLight,
+    backgroundColor: colors.primaryLight,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   setDetailRow: {
     flexDirection: 'row',
@@ -508,23 +513,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   setDetailRowWithPR: {
-    backgroundColor: AppColors.white,
+    backgroundColor: colors.white,
   },
   setDetailLabel: {
     fontSize: 13,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     flex: 1,
   },
   setDetailReps: {
     fontSize: 13,
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
     textAlign: 'center',
   },
   setDetailWeight: {
     fontSize: 13,
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
     textAlign: 'right',
   },
@@ -541,7 +546,7 @@ const styles = StyleSheet.create({
   viewDetails: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.link,
+    color: colors.link,
   },
   modalOverlay: {
     flex: 1,
@@ -550,11 +555,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   menuContainer: {
-    backgroundColor: AppColors.white,
+    backgroundColor: colors.white,
     borderRadius: 12,
     minWidth: 200,
     padding: 8,
-    shadowColor: AppColors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -570,12 +575,12 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: '500',
   },
   menuItemTextDelete: {
     fontSize: 16,
-    color: AppColors.error,
+    color: colors.error,
     fontWeight: '500',
   },
-})
+  })

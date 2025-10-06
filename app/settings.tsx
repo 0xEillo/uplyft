@@ -1,5 +1,6 @@
-import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Gender, Goal, Profile } from '@/types/database.types'
@@ -39,6 +40,8 @@ const GOALS: { value: Goal; label: string }[] = [
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const { isDark, toggleTheme } = useTheme()
+  const colors = useThemedColors()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditModalVisible, setIsEditModalVisible] = useState(false)
@@ -88,6 +91,8 @@ export default function SettingsScreen() {
       console.error('Error loading preferences:', error)
     }
   }
+
+  const styles = createStyles(colors)
 
   const handleToggleExamples = async (value: boolean) => {
     try {
@@ -290,13 +295,13 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={AppColors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Settings</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     )
@@ -307,7 +312,7 @@ export default function SettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={AppColors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.placeholder} />
@@ -338,9 +343,9 @@ export default function SettingsScreen() {
                   disabled={isUploadingImage}
                 >
                   {isUploadingImage ? (
-                    <ActivityIndicator size="small" color={AppColors.white} />
+                    <ActivityIndicator size="small" color={colors.white} />
                   ) : (
-                    <Ionicons name="camera" size={20} color={AppColors.white} />
+                    <Ionicons name="camera" size={20} color={colors.white} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -353,7 +358,7 @@ export default function SettingsScreen() {
                   <Ionicons
                     name="person-outline"
                     size={20}
-                    color={AppColors.textSecondary}
+                    color={colors.textSecondary}
                   />
                   <Text style={styles.detailLabel}>Username</Text>
                 </View>
@@ -368,7 +373,7 @@ export default function SettingsScreen() {
                     <Ionicons
                       name="create-outline"
                       size={20}
-                      color={AppColors.primary}
+                      color={colors.primary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -379,7 +384,7 @@ export default function SettingsScreen() {
                   <Ionicons
                     name="at"
                     size={20}
-                    color={AppColors.textSecondary}
+                    color={colors.textSecondary}
                   />
                   <Text style={styles.detailLabel}>User Tag</Text>
                 </View>
@@ -393,7 +398,7 @@ export default function SettingsScreen() {
                   <Ionicons
                     name="mail-outline"
                     size={20}
-                    color={AppColors.textSecondary}
+                    color={colors.textSecondary}
                   />
                   <Text style={styles.detailLabel}>Email</Text>
                 </View>
@@ -465,6 +470,28 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Preferences</Text>
 
           <View style={styles.preferenceCard}>
+            {/* Dark Mode Toggle */}
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <View>
+                  <Text style={styles.preferenceTitle}>Dark Mode</Text>
+                  <Text style={styles.preferenceDescription}>
+                    Use dark theme throughout the app
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
+                thumbColor={isDark ? colors.primary : '#F3F4F6'}
+              />
+            </View>
+
+            {/* Divider */}
+            <View style={styles.preferenceDivider} />
+
+            {/* Show Examples Toggle */}
             <View style={styles.preferenceRow}>
               <View style={styles.preferenceLeft}>
                 <View>
@@ -477,8 +504,8 @@ export default function SettingsScreen() {
               <Switch
                 value={showExamples}
                 onValueChange={handleToggleExamples}
-                trackColor={{ false: '#D1D5DB', true: AppColors.primaryLight }}
-                thumbColor={showExamples ? AppColors.primary : '#F3F4F6'}
+                trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
+                thumbColor={showExamples ? colors.primary : '#F3F4F6'}
               />
             </View>
           </View>
@@ -493,14 +520,14 @@ export default function SettingsScreen() {
               <Ionicons
                 name="log-out-outline"
                 size={22}
-                color={AppColors.textSecondary}
+                color={colors.textSecondary}
               />
               <Text style={styles.actionButtonTextNeutral}>Sign Out</Text>
             </View>
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={AppColors.textLight}
+              color={colors.textLight}
             />
           </TouchableOpacity>
         </View>
@@ -517,7 +544,7 @@ export default function SettingsScreen() {
               <Ionicons
                 name="trash-outline"
                 size={22}
-                color={AppColors.error}
+                color={colors.error}
               />
               <Text style={styles.dangerButtonText}>Delete Account</Text>
             </View>
@@ -540,7 +567,7 @@ export default function SettingsScreen() {
                 onPress={() => setIsEditModalVisible(false)}
                 style={styles.modalCloseButton}
               >
-                <Ionicons name="close" size={24} color={AppColors.text} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -549,7 +576,7 @@ export default function SettingsScreen() {
               value={editedName}
               onChangeText={setEditedName}
               placeholder="Enter username"
-              placeholderTextColor={AppColors.textPlaceholder}
+              placeholderTextColor={colors.textPlaceholder}
               autoFocus
               maxLength={50}
             />
@@ -572,7 +599,7 @@ export default function SettingsScreen() {
                 disabled={!editedName.trim() || isSaving}
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color={AppColors.white} />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <Text style={styles.modalSaveText}>Save</Text>
                 )}
@@ -601,7 +628,7 @@ export default function SettingsScreen() {
                   onPress={() => setIsEditContextModalVisible(false)}
                   style={styles.modalCloseButton}
                 >
-                  <Ionicons name="close" size={24} color={AppColors.text} />
+                  <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -641,7 +668,7 @@ export default function SettingsScreen() {
                   value={editedHeight}
                   onChangeText={setEditedHeight}
                   placeholder="e.g., 175"
-                  placeholderTextColor={AppColors.textPlaceholder}
+                  placeholderTextColor={colors.textPlaceholder}
                   keyboardType="decimal-pad"
                 />
               </View>
@@ -654,7 +681,7 @@ export default function SettingsScreen() {
                   value={editedWeight}
                   onChangeText={setEditedWeight}
                   placeholder="e.g., 70"
-                  placeholderTextColor={AppColors.textPlaceholder}
+                  placeholderTextColor={colors.textPlaceholder}
                   keyboardType="decimal-pad"
                 />
               </View>
@@ -694,7 +721,7 @@ export default function SettingsScreen() {
                   value={editedBio}
                   onChangeText={setEditedBio}
                   placeholder="E.g., I have a knee injury, I do powerlifting, I'm a beginner..."
-                  placeholderTextColor={AppColors.textPlaceholder}
+                  placeholderTextColor={colors.textPlaceholder}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -720,7 +747,7 @@ export default function SettingsScreen() {
                   disabled={isSaving}
                 >
                   {isSaving ? (
-                    <ActivityIndicator size="small" color={AppColors.white} />
+                    <ActivityIndicator size="small" color={colors.white} />
                   ) : (
                     <Text style={styles.modalSaveText}>Save</Text>
                   )}
@@ -734,394 +761,400 @@ export default function SettingsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppColors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  placeholder: {
-    width: 24,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: AppColors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  profileCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  avatarContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  avatarWrapper: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: AppColors.backgroundLight,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarEditButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: AppColors.white,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  profileDetails: {
-    gap: 20,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  detailLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  detailLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: AppColors.textSecondary,
-  },
-  detailValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  detailValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppColors.text,
-    textAlign: 'right',
-  },
-  editButton: {
-    padding: 4,
-  },
-  actionButton: {
-    backgroundColor: AppColors.white,
-    borderRadius: 12,
-    padding: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  actionButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  actionButtonTextNeutral: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  dangerButton: {
-    backgroundColor: AppColors.white,
-    borderRadius: 12,
-    padding: 18,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  dangerButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: AppColors.error,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: AppColors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: AppColors.text,
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  modalInput: {
-    backgroundColor: AppColors.backgroundLight,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: AppColors.text,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: AppColors.backgroundLight,
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  modalSaveButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: AppColors.primary,
-    alignItems: 'center',
-  },
-  modalSaveButtonDisabled: {
-    opacity: 0.5,
-  },
-  modalSaveText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: AppColors.white,
-  },
-  modalScrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  contextRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  contextItem: {
-    flex: 1,
-  },
-  contextLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: AppColors.textSecondary,
-    marginBottom: 4,
-  },
-  contextValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  editContextButton: {
-    marginTop: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: AppColors.primary,
-    alignItems: 'center',
-  },
-  editContextButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppColors.white,
-  },
-  formSection: {
-    marginBottom: 24,
-  },
-  formLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppColors.text,
-    marginBottom: 12,
-  },
-  genderOptions: {
-    gap: 8,
-  },
-  genderOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.white,
-  },
-  genderOptionSelected: {
-    borderColor: AppColors.primary,
-    backgroundColor: AppColors.primary,
-  },
-  genderOptionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppColors.text,
-    textAlign: 'center',
-  },
-  genderOptionTextSelected: {
-    color: AppColors.white,
-  },
-  goalOptions: {
-    gap: 8,
-  },
-  goalOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.white,
-  },
-  goalOptionSelected: {
-    borderColor: AppColors.primary,
-    backgroundColor: AppColors.primary,
-  },
-  goalOptionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppColors.text,
-    textAlign: 'center',
-  },
-  goalOptionTextSelected: {
-    color: AppColors.white,
-  },
-  bioContainer: {
-    marginBottom: 16,
-  },
-  bioValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: AppColors.text,
-    lineHeight: 20,
-  },
-  bioInput: {
-    backgroundColor: AppColors.backgroundLight,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: AppColors.text,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  characterCount: {
-    fontSize: 13,
-    color: AppColors.textSecondary,
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  preferenceCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  preferenceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  preferenceLeft: {
-    flex: 1,
-  },
-  preferenceTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.text,
-    marginBottom: 2,
-  },
-  preferenceDescription: {
-    fontSize: 13,
-    color: AppColors.textSecondary,
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.white,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    placeholder: {
+      width: 24,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    content: {
+      flex: 1,
+    },
+    section: {
+      marginTop: 24,
+      paddingHorizontal: 20,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 12,
+    },
+    profileCard: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    avatarContainer: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    avatarWrapper: {
+      position: 'relative',
+    },
+    avatar: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.backgroundLight,
+    },
+    avatarPlaceholder: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarEditButton: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 3,
+      borderColor: colors.white,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    profileDetails: {
+      gap: 20,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    detailLabelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+    },
+    detailLabel: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    detailValueContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    detailValue: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'right',
+    },
+    editButton: {
+      padding: 4,
+    },
+    actionButton: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 18,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    actionButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    actionButtonTextNeutral: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    dangerButton: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 18,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    dangerButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.error,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: colors.white,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    modalCloseButton: {
+      padding: 4,
+    },
+    modalInput: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    modalCancelButton: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: colors.backgroundLight,
+      alignItems: 'center',
+    },
+    modalCancelText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    modalSaveButton: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+    },
+    modalSaveButtonDisabled: {
+      opacity: 0.5,
+    },
+    modalSaveText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.white,
+    },
+    modalScrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 20,
+    },
+    contextRow: {
+      flexDirection: 'row',
+      gap: 16,
+      marginBottom: 16,
+    },
+    contextItem: {
+      flex: 1,
+    },
+    contextLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    contextValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    editContextButton: {
+      marginTop: 8,
+      paddingVertical: 12,
+      borderRadius: 8,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+    },
+    editContextButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.white,
+    },
+    formSection: {
+      marginBottom: 24,
+    },
+    formLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    genderOptions: {
+      gap: 8,
+    },
+    genderOption: {
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: colors.border,
+      backgroundColor: colors.white,
+    },
+    genderOptionSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    genderOptionText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    genderOptionTextSelected: {
+      color: colors.white,
+    },
+    goalOptions: {
+      gap: 8,
+    },
+    goalOption: {
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: colors.border,
+      backgroundColor: colors.white,
+    },
+    goalOptionSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    goalOptionText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    goalOptionTextSelected: {
+      color: colors.white,
+    },
+    bioContainer: {
+      marginBottom: 16,
+    },
+    bioValue: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text,
+      lineHeight: 20,
+    },
+    bioInput: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 15,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+    characterCount: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: 'right',
+      marginTop: 8,
+    },
+    preferenceCard: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    preferenceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    preferenceLeft: {
+      flex: 1,
+    },
+    preferenceTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    preferenceDescription: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    preferenceDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 16,
+    },
+  })

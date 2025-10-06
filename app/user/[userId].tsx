@@ -1,5 +1,5 @@
 import { FeedCard } from '@/components/feed-card'
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
@@ -24,6 +24,7 @@ export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
   const { user } = useAuth()
   const router = useRouter()
+  const colors = useThemedColors()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [userName, setUserName] = useState('')
@@ -63,6 +64,7 @@ export default function UserProfileScreen() {
     }, [loadUserData]),
   )
 
+  const styles = createStyles(colors)
   const isOwnProfile = user?.id === userId
 
   return (
@@ -70,7 +72,7 @@ export default function UserProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={AppColors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         {isOwnProfile ? (
@@ -78,7 +80,7 @@ export default function UserProfileScreen() {
             <Ionicons
               name="settings-outline"
               size={24}
-              color={AppColors.text}
+              color={colors.text}
             />
           </TouchableOpacity>
         ) : (
@@ -113,14 +115,14 @@ export default function UserProfileScreen() {
         <View style={styles.logContent}>
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={AppColors.primary} />
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : workouts.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons
                 name="barbell-outline"
                 size={64}
-                color={AppColors.textPlaceholder}
+                color={colors.textPlaceholder}
               />
               <Text style={styles.emptyText}>No workouts yet</Text>
             </View>
@@ -225,89 +227,90 @@ function AsyncPrFeedCard({
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppColors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  placeholder: {
-    width: 24,
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: AppColors.text,
-  },
-  userTag: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: AppColors.textSecondary,
-    marginTop: 4,
-  },
-  tabHeader: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 2,
-    borderBottomColor: AppColors.primary,
-  },
-  tabHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.primary,
-    textAlign: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  logContent: {
-    padding: 16,
-  },
-  loadingContainer: {
-    paddingVertical: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyState: {
-    paddingVertical: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: AppColors.textTertiary,
-    marginTop: 16,
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.white,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    placeholder: {
+      width: 24,
+    },
+    profileSection: {
+      alignItems: 'center',
+      paddingVertical: 24,
+      backgroundColor: colors.white,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    avatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    userName: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    userTag: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    tabHeader: {
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      backgroundColor: colors.white,
+      borderBottomWidth: 2,
+      borderBottomColor: colors.primary,
+    },
+    tabHeaderText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+      textAlign: 'center',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    logContent: {
+      padding: 16,
+    },
+    loadingContainer: {
+      paddingVertical: 64,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyState: {
+      paddingVertical: 64,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textTertiary,
+      marginTop: 16,
+    },
+  })

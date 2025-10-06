@@ -1,4 +1,4 @@
-import { AppColors } from '@/constants/colors'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useState } from 'react'
@@ -52,6 +52,7 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
     [],
   )
   const [isLoading, setIsLoading] = useState(false)
+  const colors = useThemedColors()
 
   useEffect(() => {
     loadDistributionData()
@@ -80,12 +81,14 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
     ? Math.max(...distributionData.map((d) => d.percentage))
     : 0
 
+  const styles = createStyles(colors)
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Ionicons name="fitness" size={24} color={AppColors.primary} />
+          <Ionicons name="fitness" size={24} color={colors.primary} />
           <Text style={styles.title}>Muscle Balance</Text>
         </View>
       </View>
@@ -119,14 +122,14 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
       <View style={styles.chartContainer}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : distributionData.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons
               name="analytics-outline"
               size={48}
-              color={AppColors.textPlaceholder}
+              color={colors.textPlaceholder}
             />
             <Text style={styles.emptyText}>
               Complete workouts to see your muscle balance
@@ -136,7 +139,7 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
           <View style={styles.barsContainer}>
             {distributionData.map((item, index) => {
               const color =
-                MUSCLE_GROUP_COLORS[item.muscleGroup] || AppColors.primary
+                MUSCLE_GROUP_COLORS[item.muscleGroup] || colors.primary
               const icon =
                 MUSCLE_GROUP_ICONS[item.muscleGroup] || 'barbell-outline'
 
@@ -180,123 +183,124 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: AppColors.text,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: AppColors.textSecondary,
-    marginBottom: 16,
-    marginLeft: 32,
-  },
-  timeRangeContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  timeRangeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: AppColors.backgroundLight,
-    alignItems: 'center',
-  },
-  timeRangeButtonActive: {
-    backgroundColor: AppColors.primary,
-  },
-  timeRangeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppColors.textSecondary,
-  },
-  timeRangeButtonTextActive: {
-    color: AppColors.white,
-  },
-  chartContainer: {
-    backgroundColor: AppColors.white,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    minHeight: 200,
-  },
-  loadingContainer: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyState: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: AppColors.textTertiary,
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  barsContainer: {
-    gap: 20,
-  },
-  barRow: {
-    gap: 8,
-  },
-  barHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  muscleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  muscleGroupName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  percentageText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: AppColors.text,
-  },
-  barBackground: {
-    height: 12,
-    backgroundColor: AppColors.backgroundLight,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 6,
-  },
-  volumeText: {
-    fontSize: 12,
-    color: AppColors.textSecondary,
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      padding: 16,
+      paddingTop: 8,
+    },
+    headerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 16,
+      marginLeft: 32,
+    },
+    timeRangeContainer: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 16,
+    },
+    timeRangeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: colors.backgroundLight,
+      alignItems: 'center',
+    },
+    timeRangeButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    timeRangeButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    timeRangeButtonTextActive: {
+      color: colors.white,
+    },
+    chartContainer: {
+      backgroundColor: colors.white,
+      padding: 16,
+      borderRadius: 12,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+      minHeight: 200,
+    },
+    loadingContainer: {
+      height: 200,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyState: {
+      height: 200,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 32,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      textAlign: 'center',
+      marginTop: 12,
+    },
+    barsContainer: {
+      gap: 20,
+    },
+    barRow: {
+      gap: 8,
+    },
+    barHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    muscleInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    muscleGroupName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    percentageText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    barBackground: {
+      height: 12,
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 6,
+      overflow: 'hidden',
+    },
+    barFill: {
+      height: '100%',
+      borderRadius: 6,
+    },
+    volumeText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+  })

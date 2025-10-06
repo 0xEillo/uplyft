@@ -361,6 +361,58 @@ export const database = {
     },
   },
 
+  // Set operations
+  sets: {
+    async create(workoutExerciseId: string, setData: { set_number: number; reps: number; weight?: number | null }) {
+      const { data, error } = await supabase
+        .from('sets')
+        .insert({
+          workout_exercise_id: workoutExerciseId,
+          set_number: setData.set_number,
+          reps: setData.reps,
+          weight: setData.weight || null,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
+    async update(setId: string, updates: { reps?: number; weight?: number | null }) {
+      const { data, error } = await supabase
+        .from('sets')
+        .update(updates)
+        .eq('id', setId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
+    async delete(setId: string) {
+      const { error } = await supabase
+        .from('sets')
+        .delete()
+        .eq('id', setId)
+
+      if (error) throw error
+    },
+  },
+
+  // Workout Exercise operations
+  workoutExercises: {
+    async delete(workoutExerciseId: string) {
+      const { error } = await supabase
+        .from('workout_exercises')
+        .delete()
+        .eq('id', workoutExerciseId)
+
+      if (error) throw error
+    },
+  },
+
   // Stats and analytics
   stats: {
     async getExerciseMaxWeight(

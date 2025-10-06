@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { Link, router } from 'expo-router'
 import { useState } from 'react'
@@ -20,6 +21,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { signIn } = useAuth()
+  const colors = useThemedColors()
+  const styles = createStyles(colors)
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -47,7 +50,7 @@ export default function LoginScreen() {
         <View style={styles.content}>
           {/* Logo/Title */}
           <View style={styles.header}>
-            <Ionicons name="fitness" size={64} color="#FF6B35" />
+            <Ionicons name="fitness" size={64} color={colors.primary} />
             <Text style={styles.title}>Uplyft</Text>
             <Text style={styles.subtitle}>
               Track your gains, share your progress
@@ -59,7 +62,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email"
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -69,7 +72,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Password"
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -82,7 +85,7 @@ export default function LoginScreen() {
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.buttonText} />
               ) : (
                 <Text style={styles.buttonText}>Log In</Text>
               )}
@@ -103,76 +106,78 @@ export default function LoginScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 32,
-    justifyContent: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginTop: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  form: {
-    width: '100%',
-  },
-  input: {
-    height: 54,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#fafafa',
-  },
-  button: {
-    height: 54,
-    backgroundColor: '#FF6B35',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    fontSize: 15,
-    color: '#666',
-  },
-  link: {
-    fontSize: 15,
-    color: '#FF6B35',
-    fontWeight: '600',
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 32,
+      justifyContent: 'center',
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 48,
+    },
+    title: {
+      fontSize: 42,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginTop: 8,
+      textAlign: 'center',
+    },
+    form: {
+      width: '100%',
+    },
+    input: {
+      height: 54,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      marginBottom: 16,
+      backgroundColor: colors.inputBackground,
+      color: colors.text,
+    },
+    button: {
+      height: 54,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: colors.buttonText,
+      fontSize: 17,
+      fontWeight: '600',
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: 24,
+    },
+    footerText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    link: {
+      fontSize: 15,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  })

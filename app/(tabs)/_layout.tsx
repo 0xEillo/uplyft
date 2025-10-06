@@ -12,13 +12,14 @@ import {
 
 import { HapticTab } from '@/components/haptic-tab'
 import { IconSymbol } from '@/components/ui/icon-symbol'
-import { Colors } from '@/constants/theme'
-import { useColorScheme } from '@/hooks/use-color-scheme'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useTheme } from '@/contexts/theme-context'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 
 function CreateButton() {
   const router = useRouter()
+  const colors = useThemedColors()
   const [isCreatingPost, setIsCreatingPost] = useState(false)
 
   useEffect(() => {
@@ -36,6 +37,8 @@ function CreateButton() {
     router.push('/(tabs)/create-post')
   }
 
+  const styles = createStyles(colors)
+
   return (
     <TouchableOpacity
       style={styles.createButton}
@@ -44,35 +47,36 @@ function CreateButton() {
       disabled={isCreatingPost}
     >
       {isCreatingPost ? (
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={colors.white} />
       ) : (
-        <Ionicons name="add" size={32} color="#fff" />
+        <Ionicons name="add" size={32} color={colors.white} />
       )}
     </TouchableOpacity>
   )
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme()
+  const colors = useThemedColors()
+  const { isDark } = useTheme()
 
   return (
     <>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          tabBarActiveTintColor: colors.primary,
           headerShown: false,
           tabBarHideOnKeyboard: true,
           tabBarButton: HapticTab,
           tabBarStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: colors.white,
             borderTopWidth: 1,
-            borderTopColor: '#f0f0f0',
+            borderTopColor: colors.border,
             height: 90,
             paddingBottom: 30,
             paddingTop: 8,
           },
-          tabBarInactiveTintColor: '#999',
+          tabBarInactiveTintColor: colors.textSecondary,
         }}
       >
         <Tabs.Screen
@@ -90,7 +94,7 @@ export default function TabLayout() {
             title: '',
             tabBarIcon: () => null,
             tabBarButton: () => (
-              <View style={styles.createButtonContainer}>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <CreateButton />
               </View>
             ),
@@ -129,26 +133,22 @@ export default function TabLayout() {
   )
 }
 
-const styles = StyleSheet.create({
-  createButtonContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  createButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FF6B35',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FF6B35',
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    createButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.primary,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-})
+  })

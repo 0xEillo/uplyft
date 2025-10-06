@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -10,12 +10,13 @@ import 'react-native-reanimated'
 
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
-import { useColorScheme } from '@/hooks/use-color-scheme'
+import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
   const segments = useSegments()
   const router = useRouter()
+  const { isDark } = useTheme()
 
   useEffect(() => {
     if (isLoading) return
@@ -31,22 +32,24 @@ function RootLayoutNav() {
     }
   }, [user, segments, isLoading])
 
-  return <Slot />
+  return (
+    <>
+      <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <Slot />
+      </NavigationThemeProvider>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </>
+  )
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme()
-
   return (
-    <AuthProvider>
-      <PostsProvider>
-        <ThemeProvider
-          value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
-        >
+    <ThemeProvider>
+      <AuthProvider>
+        <PostsProvider>
           <RootLayoutNav />
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </PostsProvider>
-    </AuthProvider>
+        </PostsProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
