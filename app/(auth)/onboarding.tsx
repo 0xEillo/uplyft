@@ -15,6 +15,7 @@ import {
 } from 'react-native'
 
 type OnboardingData = {
+  name: string
   gender: Gender | null
   height_cm: string
   weight_kg: string
@@ -37,6 +38,7 @@ const GENDERS: { value: Gender; label: string }[] = [
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1)
   const [data, setData] = useState<OnboardingData>({
+    name: '',
     gender: null,
     height_cm: '',
     weight_kg: '',
@@ -44,7 +46,7 @@ export default function OnboardingScreen() {
   })
 
   const handleNext = () => {
-    if (step < 4) {
+    if (step < 5) {
       setStep(step + 1)
     } else {
       // Navigate to signup with onboarding data
@@ -52,6 +54,7 @@ export default function OnboardingScreen() {
         pathname: '/(auth)/signup',
         params: {
           onboarding_data: JSON.stringify({
+            name: data.name,
             gender: data.gender,
             height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
             weight_kg: data.weight_kg ? parseFloat(data.weight_kg) : null,
@@ -73,12 +76,14 @@ export default function OnboardingScreen() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return data.gender !== null
+        return data.name.trim() !== ''
       case 2:
-        return data.height_cm !== '' && parseFloat(data.height_cm) > 0
+        return data.gender !== null
       case 3:
-        return data.weight_kg !== '' && parseFloat(data.weight_kg) > 0
+        return data.height_cm !== '' && parseFloat(data.height_cm) > 0
       case 4:
+        return data.weight_kg !== '' && parseFloat(data.weight_kg) > 0
+      case 5:
         return data.goal !== null
       default:
         return false
@@ -88,6 +93,27 @@ export default function OnboardingScreen() {
   const renderStep = () => {
     switch (step) {
       case 1:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Ionicons name="person-outline" size={48} color="#FF6B35" />
+              <Text style={styles.stepTitle}>What's your name?</Text>
+              <Text style={styles.stepSubtitle}>
+                This will be your display name
+              </Text>
+            </View>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Enter your name"
+              placeholderTextColor="#999"
+              value={data.name}
+              onChangeText={(text) => setData({ ...data, name: text })}
+              autoFocus
+              maxLength={50}
+            />
+          </View>
+        )
+      case 2:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -121,7 +147,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 2:
+      case 3:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -143,7 +169,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 3:
+      case 4:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -165,7 +191,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 4:
+      case 5:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -218,7 +244,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <View
                 key={i}
                 style={[
@@ -248,7 +274,7 @@ export default function OnboardingScreen() {
             disabled={!canProceed()}
           >
             <Text style={styles.nextButtonText}>
-              {step === 4 ? 'Continue' : 'Next'}
+              {step === 5 ? 'Continue' : 'Next'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -365,6 +391,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#666',
+  },
+  nameInput: {
+    height: 64,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    textAlign: 'center',
   },
   goalButton: {
     height: 80,

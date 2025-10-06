@@ -24,19 +24,65 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
+import { useCallback } from 'react'
 
 const DRAFT_KEY = '@workout_draft'
 const PENDING_POST_KEY = '@pending_workout_post'
+
+const EXAMPLE_WORKOUTS = [
+  {
+    title: 'Push Day',
+    notes: `Bench Press
+135 x 8
+155 x 6
+165 x 4
+
+Incline DB Press
+50 x 10
+55 x 8 x 3`,
+  },
+  {
+    title: 'Leg Day',
+    notes: `Squats: 185x5, 205x5, 225x3
+Romanian Deadlifts: 135 for 3 sets of 10
+Leg Press: 270x12, 290x10, 310x8`,
+  },
+  {
+    title: 'Pull',
+    notes: `Pull-ups
+bodyweight x 8, 8, 7
+
+Barbell Rows
+135 lbs x 10 reps
+155 lbs x 8 reps x 3 sets`,
+  },
+  {
+    title: 'Upper Body',
+    notes: `Overhead Press 95x8, 105x6, 115x5
+Cable Flyes 30lbs x 12 x 3
+Finished with 10min cardio`,
+  },
+]
 
 export default function CreatePostScreen() {
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
-  const [showTitleModal, setShowTitleModal] = useState(false)
   const [workoutTitle, setWorkoutTitle] = useState('')
+  const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
   const { user } = useAuth()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
+
+  // Randomize example each time screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const randomExample =
+        EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
+      setExampleWorkout(randomExample)
+    }, [])
+  )
 
   // Setup audio permissions
   useEffect(() => {
@@ -145,7 +191,12 @@ export default function CreatePostScreen() {
     }
   }
 
-  const handlePost = () => {
+  const handlePost = async () => {
+    if (!workoutTitle.trim()) {
+      Alert.alert('Error', 'Please enter a title for your workout')
+      return
+    }
+
     if (!notes.trim()) {
       Alert.alert('Error', 'Please enter your workout notes')
       return
@@ -156,17 +207,8 @@ export default function CreatePostScreen() {
       return
     }
 
-    // Show title modal
-    setShowTitleModal(true)
-  }
-
-  const handleCreatePost = async () => {
-    if (!workoutTitle.trim()) {
-      Alert.alert('Error', 'Please enter a title for your workout')
-      return
-    }
-
     try {
+      setIsLoading(true)
       // Store pending post data
       await AsyncStorage.setItem(
         PENDING_POST_KEY,
@@ -179,14 +221,15 @@ export default function CreatePostScreen() {
       // Clear draft since we're creating the post
       await AsyncStorage.removeItem(DRAFT_KEY)
 
-      // Close modal and navigate to feed immediately
-      setShowTitleModal(false)
+      // Navigate to feed immediately
       setNotes('')
       setWorkoutTitle('')
       router.back()
     } catch (error) {
       console.error('Error saving pending post:', error)
       Alert.alert('Error', 'Failed to prepare workout post')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -217,17 +260,45 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
         </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Input your workout..."
-          placeholderTextColor="#999"
-          multiline
-          autoFocus
-          value={notes}
-          onChangeText={setNotes}
-          textAlignVertical="top"
-          editable={!recorderState.isRecording && !isTranscribing}
-        />
+        <View style={styles.inputContainer}>
+          {/* Title Input */}
+          <TextInput
+            style={styles.titleInput}
+            placeholder="Workout Title"
+            placeholderTextColor="#999"
+            value={workoutTitle}
+            onChangeText={setWorkoutTitle}
+            editable={!recorderState.isRecording && !isTranscribing}
+            maxLength={50}
+          />
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Workout Notes Input */}
+          <TextInput
+            style={styles.notesInput}
+            placeholder="Input your workout..."
+            placeholderTextColor="#999"
+            multiline
+            value={notes}
+            onChangeText={setNotes}
+            textAlignVertical="top"
+            editable={!recorderState.isRecording && !isTranscribing}
+          />
+
+          {/* Example Workout - shown when both inputs are empty */}
+          {!notes.trim() && !workoutTitle.trim() && (
+            <View style={styles.exampleContainer}>
+              <Text style={styles.exampleLabel}>Example:</Text>
+              <View style={styles.exampleCard}>
+                <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
+                <View style={styles.exampleDivider} />
+                <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Floating Microphone Button */}
         <TouchableOpacity
@@ -249,51 +320,6 @@ export default function CreatePostScreen() {
           )}
         </TouchableOpacity>
       </KeyboardAvoidingView>
-
-      {/* Title Modal */}
-      <Modal
-        visible={showTitleModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTitleModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Give your workout a title</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g., Push, Pull..."
-              placeholderTextColor={AppColors.textTertiary}
-              value={workoutTitle}
-              onChangeText={setWorkoutTitle}
-              autoFocus
-              onSubmitEditing={handleCreatePost}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => {
-                  setShowTitleModal(false)
-                  setWorkoutTitle('')
-                }}
-              >
-                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonPost]}
-                onPress={handleCreatePost}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={AppColors.white} />
-                ) : (
-                  <Text style={styles.modalButtonTextPost}>Post</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   )
 }
@@ -343,73 +369,69 @@ const styles = StyleSheet.create({
   micFabActive: {
     backgroundColor: AppColors.primaryDark,
   },
-  input: {
+  inputContainer: {
     flex: 1,
-    padding: 20,
+    position: 'relative',
+  },
+  titleInput: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    fontSize: 28,
+    fontWeight: '600',
+    color: AppColors.text,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: AppColors.border,
+    marginHorizontal: 20,
+  },
+  notesInput: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
     fontSize: 17,
     lineHeight: 24,
     color: AppColors.text,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  exampleContainer: {
+    position: 'absolute',
+    top: '35%',
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    padding: 20,
+    pointerEvents: 'none',
   },
-  modalContent: {
-    backgroundColor: AppColors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: AppColors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+  exampleLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: AppColors.textTertiary,
+    marginBottom: 8,
   },
-  modalTitle: {
+  exampleCard: {
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    borderStyle: 'dashed',
+  },
+  exampleTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: AppColors.text,
-    marginBottom: 16,
+    color: AppColors.textSecondary,
+    marginBottom: 8,
   },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: AppColors.text,
-    marginBottom: 20,
+  exampleDivider: {
+    height: 1,
+    backgroundColor: '#e8e8e8',
+    marginBottom: 12,
   },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  modalButtonCancel: {
-    backgroundColor: AppColors.backgroundLight,
-  },
-  modalButtonPost: {
-    backgroundColor: AppColors.primary,
-  },
-  modalButtonTextCancel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  modalButtonTextPost: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppColors.white,
+  exampleText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: AppColors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 })

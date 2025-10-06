@@ -18,6 +18,7 @@ import {
 } from 'react-native'
 
 type OnboardingData = {
+  name: string
   gender: Gender | null
   height_cm: number | null
   weight_kg: number | null
@@ -61,6 +62,7 @@ export default function SignupScreen() {
       if (userId && onboardingData) {
         try {
           await database.profiles.update(userId, {
+            display_name: onboardingData.name,
             gender: onboardingData.gender,
             height_cm: onboardingData.height_cm,
             weight_kg: onboardingData.weight_kg,
