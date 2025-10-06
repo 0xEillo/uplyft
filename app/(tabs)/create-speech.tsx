@@ -95,7 +95,21 @@ export default function CreateSpeechScreen() {
       })
 
       if (!parseResponse.ok) {
-        throw new Error('Failed to parse workout')
+        const errorData = await parseResponse.json().catch(() => ({}))
+        const errorMessage = errorData.error || 'Failed to parse workout'
+
+        setIsProcessing(false)
+        Alert.alert(
+          'Unable to Parse Workout',
+          errorMessage,
+          [
+            {
+              text: 'Try Again',
+              onPress: () => {},
+            },
+          ]
+        )
+        return
       }
 
       const { workout } = await parseResponse.json()
@@ -106,14 +120,32 @@ export default function CreateSpeechScreen() {
           await database.workoutSessions.create(user.id, workout, text)
         } catch (dbError) {
           console.error('Error saving to database:', dbError)
-          throw new Error('Failed to save workout to database')
+          setIsProcessing(false)
+          Alert.alert(
+            'Error',
+            'Failed to save workout to database. Please try again.',
+            [
+              {
+                text: 'OK',
+              },
+            ]
+          )
+          return
         }
       }
 
       router.back()
     } catch (error) {
       console.error('Error processing recording:', error)
-      Alert.alert('Error', 'Failed to process your workout. Please try again.')
+      Alert.alert(
+        'Error',
+        'Something went wrong while processing your recording. Please try again.',
+        [
+          {
+            text: 'OK',
+          },
+        ]
+      )
     } finally {
       setIsProcessing(false)
     }

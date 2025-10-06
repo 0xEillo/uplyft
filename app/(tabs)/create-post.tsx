@@ -199,7 +199,11 @@ export default function CreatePostScreen() {
         setNotes((prev) => (prev ? `${prev}\n${text}` : text))
       } catch (error) {
         console.error('Error transcribing:', error)
-        Alert.alert('Error', 'Failed to transcribe audio. Please try again.')
+        Alert.alert(
+          'Transcription Failed',
+          'Unable to convert your audio. Please try recording again.',
+          [{ text: 'OK' }]
+        )
       } finally {
         setIsTranscribing(false)
       }
@@ -210,24 +214,40 @@ export default function CreatePostScreen() {
         audioRecorder.record()
       } catch (error) {
         console.error('Failed to start recording:', error)
-        Alert.alert('Error', 'Failed to start recording')
+        Alert.alert(
+          'Recording Issue',
+          'Unable to start recording. Check your microphone permissions.',
+          [{ text: 'OK' }]
+        )
       }
     }
   }
 
   const handlePost = async () => {
     if (!workoutTitle.trim()) {
-      Alert.alert('Error', 'Please enter a title for your workout')
+      Alert.alert(
+        'Title Required',
+        'Give your workout a title so you can find it later.',
+        [{ text: 'OK' }]
+      )
       return
     }
 
     if (!notes.trim()) {
-      Alert.alert('Error', 'Please enter your workout notes')
+      Alert.alert(
+        'Workout Details Missing',
+        'Add your exercises, sets, and reps to track your progress.',
+        [{ text: 'OK' }]
+      )
       return
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to post')
+      Alert.alert(
+        'Not Logged In',
+        'Sign in to save and track your workouts.',
+        [{ text: 'OK' }]
+      )
       return
     }
 
@@ -251,7 +271,11 @@ export default function CreatePostScreen() {
       router.back()
     } catch (error) {
       console.error('Error saving pending post:', error)
-      Alert.alert('Error', 'Failed to prepare workout post')
+      Alert.alert(
+        'Save Failed',
+        'Unable to save your workout. Please try again.',
+        [{ text: 'OK' }]
+      )
     } finally {
       setIsLoading(false)
     }

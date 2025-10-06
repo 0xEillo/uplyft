@@ -66,7 +66,29 @@ export default function FeedScreen() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to parse workout')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || 'Failed to parse workout'
+
+        // Restore notes to draft for user to retry
+        await AsyncStorage.setItem(DRAFT_KEY, notes)
+        await AsyncStorage.removeItem(PENDING_POST_KEY)
+
+        // Show friendly error with actionable options
+        Alert.alert(
+          'Unable to Parse Workout',
+          errorMessage,
+          [
+            {
+              text: 'Edit & Try Again',
+              onPress: () => router.push('/(tabs)/create-post'),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ]
+        )
+        return
       }
 
       const data = await response.json()
@@ -98,8 +120,20 @@ export default function FeedScreen() {
         console.error('Error restoring draft:', restoreError)
       }
 
-      Alert.alert('Error', 'Failed to create workout post. Please try again.')
-      router.push('/(tabs)/create-post')
+      Alert.alert(
+        'Error',
+        'Something went wrong while saving your workout. Please try again.',
+        [
+          {
+            text: 'Try Again',
+            onPress: () => router.push('/(tabs)/create-post'),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      )
     }
   }, [user, loadWorkouts, router])
 
