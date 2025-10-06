@@ -1,11 +1,16 @@
 import { AppColors } from '@/constants/colors'
 import { database } from '@/lib/database'
+import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Modal,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
@@ -15,20 +20,51 @@ interface StrengthScoreChartProps {
 }
 
 export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
+    null,
+  )
+  const [showExercisePicker, setShowExercisePicker] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [progressData, setProgressData] = useState<
     { date: string; strengthScore: number }[]
   >([])
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    loadProgressData()
+    loadExercises()
   }, [userId])
+
+  useEffect(() => {
+    loadProgressData()
+  }, [userId, selectedExercise])
+
+  const loadExercises = async () => {
+    try {
+      const data = await database.exercises.getExercisesWithData(userId)
+      setExercises(data)
+    } catch (error) {
+      console.error('Error loading exercises:', error)
+    }
+  }
 
   const loadProgressData = async () => {
     setIsLoading(true)
     try {
-      const data = await database.stats.getStrengthScoreProgress(userId)
-      setProgressData(data)
+      if (selectedExercise) {
+        // Load individual exercise progress
+        const data = await database.stats.getExerciseWeightProgress(
+          userId,
+          selectedExercise.id,
+        )
+        setProgressData(
+          data.map((d) => ({ date: d.date, strengthScore: d.maxWeight })),
+        )
+      } else {
+        // Load combined strength score
+        const data = await database.stats.getStrengthScoreProgress(userId)
+        setProgressData(data)
+      }
     } catch (error) {
       console.error('Error loading strength score data:', error)
       setProgressData([])
@@ -36,6 +72,10 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
       setIsLoading(false)
     }
   }
+
+  const filteredExercises = exercises.filter((ex) =>
+    ex.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
 
   // Transform data for the chart
   const chartData = progressData.map((point) => ({
@@ -64,16 +104,27 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
           <Ionicons name="trophy" size={24} color={AppColors.primary} />
           <Text style={styles.title}>Strength Score</Text>
         </View>
-        <Ionicons
-          name="information-circle-outline"
-          size={20}
-          color={AppColors.textSecondary}
-        />
       </View>
 
-      <Text style={styles.subtitle}>
-        Sum of estimated 1RMs across all exercises
-      </Text>
+      <Text style={styles.subtitle}>Tracking progressive overload</Text>
+
+      {/* Exercise Selector */}
+      <TouchableOpacity
+        style={styles.exerciseSelector}
+        onPress={() => setShowExercisePicker(true)}
+      >
+        <View style={styles.exerciseSelectorLeft}>
+          <Ionicons
+            name="barbell-outline"
+            size={20}
+            color={AppColors.primary}
+          />
+          <Text style={styles.exerciseSelectorText}>
+            {selectedExercise?.name || 'All Exercises'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-down" size={20} color={AppColors.textSecondary} />
+      </TouchableOpacity>
 
       {/* Stats Cards */}
       {progressData.length > 0 && (
@@ -164,6 +215,98 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
           </>
         )}
       </View>
+
+      {/* Exercise Picker Modal */}
+      <Modal
+        visible={showExercisePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowExercisePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Exercise</Text>
+              <TouchableOpacity onPress={() => setShowExercisePicker(false)}>
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search exercises..."
+              placeholderTextColor={AppColors.textPlaceholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+
+            <ScrollView style={styles.exerciseList}>
+              {/* All Exercises option */}
+              <TouchableOpacity
+                style={[
+                  styles.exerciseItem,
+                  !selectedExercise && styles.exerciseItemSelected,
+                ]}
+                onPress={() => {
+                  setSelectedExercise(null)
+                  setShowExercisePicker(false)
+                  setSearchQuery('')
+                }}
+              >
+                <Text
+                  style={[
+                    styles.exerciseItemText,
+                    !selectedExercise && styles.exerciseItemTextSelected,
+                  ]}
+                >
+                  All Exercises
+                </Text>
+                {!selectedExercise && (
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={AppColors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+
+              {/* Individual exercises */}
+              {filteredExercises.map((exercise) => (
+                <TouchableOpacity
+                  key={exercise.id}
+                  style={[
+                    styles.exerciseItem,
+                    selectedExercise?.id === exercise.id &&
+                      styles.exerciseItemSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedExercise(exercise)
+                    setShowExercisePicker(false)
+                    setSearchQuery('')
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.exerciseItemText,
+                      selectedExercise?.id === exercise.id &&
+                        styles.exerciseItemTextSelected,
+                    ]}
+                  >
+                    {exercise.name}
+                  </Text>
+                  {selectedExercise?.id === exercise.id && (
+                    <Ionicons
+                      name="checkmark"
+                      size={20}
+                      color={AppColors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -269,5 +412,85 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: AppColors.textSecondary,
     fontWeight: '500',
+  },
+  exerciseSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: AppColors.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  exerciseSelectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exerciseSelectorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: AppColors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: AppColors.text,
+  },
+  searchInput: {
+    margin: 16,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: AppColors.backgroundLight,
+    borderRadius: 8,
+    fontSize: 16,
+    color: AppColors.text,
+  },
+  exerciseList: {
+    paddingHorizontal: 16,
+  },
+  exerciseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  exerciseItemSelected: {
+    backgroundColor: AppColors.primaryLight,
+  },
+  exerciseItemText: {
+    fontSize: 16,
+    color: AppColors.text,
+  },
+  exerciseItemTextSelected: {
+    fontWeight: '600',
+    color: AppColors.primary,
   },
 })

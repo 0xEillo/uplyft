@@ -455,20 +455,21 @@ export const database = {
         }[]
       }
 
-      // Transform data to get max weight per workout date
+      // Transform data to show running personal best over time
+      let runningMax = 0
       const progressData = (data as WeightProgressRow[])?.map((session) => {
-        let maxWeight = 0
+        // Find max weight in this session
         session.workout_exercises?.forEach((we) => {
           we.sets?.forEach((set) => {
-            if (set.weight && set.weight > maxWeight) {
-              maxWeight = set.weight
+            if (set.weight && set.weight > runningMax) {
+              runningMax = set.weight
             }
           })
         })
 
         return {
           date: session.created_at,
-          maxWeight,
+          maxWeight: runningMax, // Show cumulative PR, not just this session
         }
       })
 
@@ -561,26 +562,27 @@ export const database = {
       }
 
       // Calculate strength score for each workout
-      // Strength Score = sum of estimated 1RMs for best set of each exercise
+      // Strength Score = sum of all-time best estimated 1RMs across all exercises
+      // Maintains running personal bests as we iterate through workouts chronologically
+      const allTimeBests = new Map<string, number>()
       const progressData = (data as StrengthScoreRow[])?.map((session) => {
-        const exerciseBest = new Map<string, number>()
-
+        // Update personal bests based on this session's performance
         session.workout_exercises?.forEach((we) => {
           we.sets?.forEach((set) => {
             if (set.weight && set.reps) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
               const estimated1RM = set.weight * (1 + set.reps / 30)
 
-              const currentBest = exerciseBest.get(we.exercise_id) || 0
+              const currentBest = allTimeBests.get(we.exercise_id) || 0
               if (estimated1RM > currentBest) {
-                exerciseBest.set(we.exercise_id, estimated1RM)
+                allTimeBests.set(we.exercise_id, estimated1RM)
               }
             }
           })
         })
 
-        // Sum all estimated 1RMs to get strength score
-        const strengthScore = Array.from(exerciseBest.values()).reduce(
+        // Sum all personal bests to get cumulative strength score
+        const strengthScore = Array.from(allTimeBests.values()).reduce(
           (sum, val) => sum + val,
           0,
         )
