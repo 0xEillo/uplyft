@@ -2,6 +2,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { Link, router } from 'expo-router'
 import {
+  Image,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -18,7 +19,11 @@ export default function WelcomeScreen() {
       <View style={styles.content}>
         {/* Logo/Title */}
         <View style={styles.header}>
-          <Ionicons name="fitness" size={80} color={colors.primary} />
+          <Image
+            source={require('@/llm/bell-logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Uplyft</Text>
           <Text style={styles.subtitle}>
             Track your gains, share your progress
@@ -76,6 +81,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     header: {
       alignItems: 'center',
       marginTop: 48,
+    },
+    logo: {
+      width: 160,
+      height: 160,
     },
     title: {
       fontSize: 48,

@@ -261,11 +261,13 @@ export function FeedCard({
                         <Text style={styles.setDetailWeight}>
                           {set.weight ? `${set.weight}` : 'BW'}
                         </Text>
-                        {setHasPR && (
-                          <View style={styles.prBadgeSmall}>
-                            <Text style={styles.prBadgeTextSmall}>PR</Text>
-                          </View>
-                        )}
+                        <View style={styles.prBadgeContainer}>
+                          {setHasPR && (
+                            <View style={styles.prBadgeSmall}>
+                              <Text style={styles.prBadgeTextSmall}>PR</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     )
                   })}
@@ -315,11 +317,7 @@ export function FeedCard({
                   onEdit()
                 }}
               >
-                <Ionicons
-                  name="create-outline"
-                  size={20}
-                  color={colors.text}
-                />
+                <Ionicons name="create-outline" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Edit Workout</Text>
               </TouchableOpacity>
             )}
@@ -330,11 +328,7 @@ export function FeedCard({
                 onDelete?.()
               }}
             >
-              <Ionicons
-                name="trash-outline"
-                size={20}
-                color={colors.error}
-              />
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
               <Text style={styles.menuItemTextDelete}>Delete Workout</Text>
             </TouchableOpacity>
           </View>
@@ -348,239 +342,243 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  timeAgo: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  workoutTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  workoutDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.text,
-    marginBottom: 12,
-  },
-  exercisesContainer: {
-    marginBottom: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    backgroundColor: colors.backgroundLight,
-  },
-  tableHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.backgroundLight,
-  },
-  tableRowWithPR: {
-    backgroundColor: colors.primaryLight,
-  },
-  lastRow: {
-    borderBottomWidth: 0,
-  },
-  prBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 6,
-  },
-  prBadgeHistorical: {
-    backgroundColor: colors.textPlaceholder,
-  },
-  prBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-  prBadgeSmall: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    marginLeft: 8,
-  },
-  prBadgeTextSmall: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-  tableCell: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  exerciseCol: {
-    flex: 3,
-  },
-  setsCol: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  repsCol: {
-    flex: 1.5,
-    textAlign: 'center',
-  },
-  weightCol: {
-    flex: 1.5,
-    textAlign: 'right',
-  },
-  exerciseName: {
-    fontWeight: '600',
-    color: colors.text,
-  },
-  exerciseNameText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  variedCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  setDetailsContainer: {
-    backgroundColor: colors.primaryLight,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  setDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-  },
-  setDetailRowWithPR: {
-    backgroundColor: colors.white,
-  },
-  setDetailLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    flex: 1,
-  },
-  setDetailReps: {
-    fontSize: 13,
-    color: colors.text,
-    flex: 1,
-    textAlign: 'center',
-  },
-  setDetailWeight: {
-    fontSize: 13,
-    color: colors.text,
-    flex: 1,
-    textAlign: 'right',
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  viewDetailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewDetails: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.link,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    minWidth: 200,
-    padding: 8,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  menuItemTextDelete: {
-    fontSize: 16,
-    color: colors.error,
-    fontWeight: '500',
-  },
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: {
+      color: colors.white,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    userName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    timeAgo: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    workoutTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    workoutDescription: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.text,
+      marginBottom: 12,
+    },
+    exercisesContainer: {
+      marginBottom: 12,
+      borderRadius: 8,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    tableHeader: {
+      flexDirection: 'row',
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+      backgroundColor: colors.backgroundLight,
+    },
+    tableHeaderText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    tableRow: {
+      flexDirection: 'row',
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.backgroundLight,
+    },
+    tableRowWithPR: {
+      backgroundColor: colors.primaryLight,
+    },
+    lastRow: {
+      borderBottomWidth: 0,
+    },
+    prBadge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginLeft: 6,
+    },
+    prBadgeHistorical: {
+      backgroundColor: colors.textPlaceholder,
+    },
+    prBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.white,
+      letterSpacing: 0.5,
+    },
+    prBadgeSmall: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 3,
+    },
+    prBadgeContainer: {
+      width: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    prBadgeTextSmall: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.white,
+      letterSpacing: 0.5,
+    },
+    tableCell: {
+      fontSize: 14,
+      color: colors.text,
+    },
+    exerciseCol: {
+      flex: 3,
+    },
+    setsCol: {
+      flex: 1,
+      textAlign: 'center',
+    },
+    repsCol: {
+      flex: 1.5,
+      textAlign: 'center',
+    },
+    weightCol: {
+      flex: 1.5,
+      textAlign: 'right',
+    },
+    exerciseName: {
+      fontWeight: '600',
+      color: colors.text,
+    },
+    exerciseNameText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    variedCell: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    setDetailsContainer: {
+      backgroundColor: colors.primaryLight,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    setDetailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+    },
+    setDetailRowWithPR: {
+      backgroundColor: colors.white,
+    },
+    setDetailLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '600',
+      flex: 1,
+    },
+    setDetailReps: {
+      fontSize: 13,
+      color: colors.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    setDetailWeight: {
+      fontSize: 13,
+      color: colors.text,
+      flex: 1,
+      textAlign: 'right',
+    },
+    actions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    viewDetailsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    viewDetails: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.link,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    menuContainer: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      minWidth: 200,
+      padding: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+    },
+    menuItemText: {
+      fontSize: 16,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    menuItemTextDelete: {
+      fontSize: 16,
+      color: colors.error,
+      fontWeight: '500',
+    },
   })

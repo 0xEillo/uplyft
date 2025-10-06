@@ -12,8 +12,8 @@ import {
 
 import { HapticTab } from '@/components/haptic-tab'
 import { IconSymbol } from '@/components/ui/icon-symbol'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 
@@ -94,7 +94,13 @@ export default function TabLayout() {
             title: '',
             tabBarIcon: () => null,
             tabBarButton: () => (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
                 <CreateButton />
               </View>
             ),
@@ -125,6 +131,7 @@ export default function TabLayout() {
           name="create-speech"
           options={{
             href: null,
+            animation: 'fade',
             tabBarStyle: { display: 'none' },
           }}
         />

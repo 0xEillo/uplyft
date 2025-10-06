@@ -2,11 +2,13 @@ import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useTheme } from '@/contexts/theme-context'
 import { useAuth } from '@/contexts/auth-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +22,7 @@ type TabType = 'progress' | 'chat'
 export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const [activeTab, setActiveTab] = useState<TabType>('chat')
 
   const styles = createStyles(colors)
@@ -28,7 +31,14 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.headerTitleContainer}>
+          <Image
+            source={isDark ? require('@/llm/bellwhite.png') : require('@/llm/bellblack.png')}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
         <TouchableOpacity onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -99,6 +109,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.white,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    headerTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerIcon: {
+      width: 28,
+      height: 28,
     },
     headerTitle: {
       fontSize: 20,

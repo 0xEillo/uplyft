@@ -3,7 +3,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { Gender, Goal, Profile } from '@/types/database.types'
+import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
@@ -24,18 +24,35 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-const GENDERS: { value: Gender; label: string }[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-]
+const formatGender = (gender: string | null) => {
+  if (!gender) return 'Not set'
+  switch (gender) {
+    case 'male':
+      return 'Male'
+    case 'female':
+      return 'Female'
+    case 'prefer_not_to_say':
+      return 'Prefer not to say'
+    default:
+      return 'Not set'
+  }
+}
 
-const GOALS: { value: Goal; label: string }[] = [
-  { value: 'build_muscle', label: 'Build Muscle' },
-  { value: 'gain_strength', label: 'Gain Strength' },
-  { value: 'lose_fat', label: 'Lose Fat' },
-  { value: 'general_fitness', label: 'General Fitness' },
-]
+const formatGoal = (goal: string | null) => {
+  if (!goal) return 'Not set'
+  switch (goal) {
+    case 'build_muscle':
+      return 'Build Muscle'
+    case 'gain_strength':
+      return 'Gain Strength'
+    case 'lose_fat':
+      return 'Lose Fat'
+    case 'general_fitness':
+      return 'General Fitness'
+    default:
+      return 'Not set'
+  }
+}
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
@@ -48,16 +65,6 @@ export default function SettingsScreen() {
   const [editedName, setEditedName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-
-  // Context editing states
-  const [isEditContextModalVisible, setIsEditContextModalVisible] = useState(
-    false,
-  )
-  const [editedGender, setEditedGender] = useState<Gender | null>(null)
-  const [editedHeight, setEditedHeight] = useState('')
-  const [editedWeight, setEditedWeight] = useState('')
-  const [editedGoal, setEditedGoal] = useState<Goal | null>(null)
-  const [editedBio, setEditedBio] = useState('')
 
   // Preferences
   const [showExamples, setShowExamples] = useState(true)
@@ -222,34 +229,7 @@ export default function SettingsScreen() {
   }
 
   const handleEditContext = () => {
-    setEditedGender(profile?.gender || null)
-    setEditedHeight(profile?.height_cm?.toString() || '')
-    setEditedWeight(profile?.weight_kg?.toString() || '')
-    setEditedGoal(profile?.goal || null)
-    setEditedBio(profile?.bio || '')
-    setIsEditContextModalVisible(true)
-  }
-
-  const handleSaveContext = async () => {
-    if (!user) return
-
-    try {
-      setIsSaving(true)
-      const updated = await database.profiles.update(user.id, {
-        gender: editedGender,
-        height_cm: editedHeight ? parseFloat(editedHeight) : null,
-        weight_kg: editedWeight ? parseFloat(editedWeight) : null,
-        goal: editedGoal,
-        bio: editedBio.trim() || null,
-      })
-      setProfile(updated)
-      setIsEditContextModalVisible(false)
-    } catch (error) {
-      console.error('Error updating profile context:', error)
-      Alert.alert('Error', 'Failed to update profile. Please try again.')
-    } finally {
-      setIsSaving(false)
-    }
+    router.push('/edit-profile')
   }
 
   const handleDeleteAccount = async () => {
@@ -318,7 +298,11 @@ export default function SettingsScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profile Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile</Text>
@@ -419,17 +403,13 @@ export default function SettingsScreen() {
               <View style={styles.contextItem}>
                 <Text style={styles.contextLabel}>Gender</Text>
                 <Text style={styles.contextValue}>
-                  {profile?.gender
-                    ? GENDERS.find((g) => g.value === profile.gender)?.label
-                    : 'Not set'}
+                  {formatGender(profile?.gender || null)}
                 </Text>
               </View>
               <View style={styles.contextItem}>
                 <Text style={styles.contextLabel}>Goal</Text>
                 <Text style={styles.contextValue}>
-                  {profile?.goal
-                    ? GOALS.find((g) => g.value === profile.goal)?.label
-                    : 'Not set'}
+                  {formatGoal(profile?.goal || null)}
                 </Text>
               </View>
             </View>
@@ -608,155 +588,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Edit Context Modal */}
-      <Modal
-        visible={isEditContextModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsEditContextModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <ScrollView
-            contentContainerStyle={styles.modalScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Edit Personal Information</Text>
-                <TouchableOpacity
-                  onPress={() => setIsEditContextModalVisible(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <Ionicons name="close" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Gender Selection */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Gender</Text>
-                <View style={styles.genderOptions}>
-                  {GENDERS.map((gender) => (
-                    <TouchableOpacity
-                      key={gender.value}
-                      style={[
-                        styles.genderOption,
-                        editedGender === gender.value &&
-                          styles.genderOptionSelected,
-                      ]}
-                      onPress={() => setEditedGender(gender.value)}
-                    >
-                      <Text
-                        style={[
-                          styles.genderOptionText,
-                          editedGender === gender.value &&
-                            styles.genderOptionTextSelected,
-                        ]}
-                      >
-                        {gender.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Height Input */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Height (cm)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editedHeight}
-                  onChangeText={setEditedHeight}
-                  placeholder="e.g., 175"
-                  placeholderTextColor={colors.textPlaceholder}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-
-              {/* Weight Input */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Weight (kg)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editedWeight}
-                  onChangeText={setEditedWeight}
-                  placeholder="e.g., 70"
-                  placeholderTextColor={colors.textPlaceholder}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-
-              {/* Goal Selection */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Goal</Text>
-                <View style={styles.goalOptions}>
-                  {GOALS.map((goal) => (
-                    <TouchableOpacity
-                      key={goal.value}
-                      style={[
-                        styles.goalOption,
-                        editedGoal === goal.value && styles.goalOptionSelected,
-                      ]}
-                      onPress={() => setEditedGoal(goal.value)}
-                    >
-                      <Text
-                        style={[
-                          styles.goalOptionText,
-                          editedGoal === goal.value &&
-                            styles.goalOptionTextSelected,
-                        ]}
-                      >
-                        {goal.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Bio Input */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>AI Context (Optional)</Text>
-                <TextInput
-                  style={styles.bioInput}
-                  value={editedBio}
-                  onChangeText={setEditedBio}
-                  placeholder="E.g., I have a knee injury, I do powerlifting, I'm a beginner..."
-                  placeholderTextColor={colors.textPlaceholder}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  maxLength={500}
-                />
-                <Text style={styles.characterCount}>{editedBio.length}/500</Text>
-              </View>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={() => setIsEditContextModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.modalSaveButton,
-                    isSaving && styles.modalSaveButtonDisabled,
-                  ]}
-                  onPress={handleSaveContext}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Text style={styles.modalSaveText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
     </SafeAreaView>
   )
 }
@@ -792,6 +623,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     content: {
       flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 40,
     },
     section: {
       marginTop: 24,
@@ -1005,11 +839,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
       color: colors.white,
     },
-    modalScrollContent: {
-      flexGrow: 1,
-      justifyContent: 'center',
-      padding: 20,
-    },
     contextRow: {
       flexDirection: 'row',
       gap: 16,
@@ -1041,63 +870,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       color: colors.white,
     },
-    formSection: {
-      marginBottom: 24,
-    },
-    formLabel: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 12,
-    },
-    genderOptions: {
-      gap: 8,
-    },
-    genderOption: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      borderWidth: 2,
-      borderColor: colors.border,
-      backgroundColor: colors.white,
-    },
-    genderOptionSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
-    },
-    genderOptionText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
-    },
-    genderOptionTextSelected: {
-      color: colors.white,
-    },
-    goalOptions: {
-      gap: 8,
-    },
-    goalOption: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      borderWidth: 2,
-      borderColor: colors.border,
-      backgroundColor: colors.white,
-    },
-    goalOptionSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
-    },
-    goalOptionText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
-    },
-    goalOptionTextSelected: {
-      color: colors.white,
-    },
     bioContainer: {
       marginBottom: 16,
     },
@@ -1106,23 +878,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '500',
       color: colors.text,
       lineHeight: 20,
-    },
-    bioInput: {
-      backgroundColor: colors.backgroundLight,
-      borderRadius: 12,
-      padding: 16,
-      fontSize: 15,
-      color: colors.text,
-      borderWidth: 1,
-      borderColor: colors.border,
-      minHeight: 100,
-      textAlignVertical: 'top',
-    },
-    characterCount: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      textAlign: 'right',
-      marginTop: 8,
     },
     preferenceCard: {
       backgroundColor: colors.white,

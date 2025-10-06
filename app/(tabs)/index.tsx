@@ -1,6 +1,7 @@
 import { FeedCard } from '@/components/feed-card'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
@@ -13,6 +14,7 @@ import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,6 +29,7 @@ export default function FeedScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -112,7 +115,14 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Flex AI</Text>
+        <View style={styles.headerTitleContainer}>
+          <Image
+            source={isDark ? require('@/llm/bellwhite.png') : require('@/llm/bellblack.png')}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>Flex AI</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -290,6 +300,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.white,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    headerTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerIcon: {
+      width: 28,
+      height: 28,
     },
     headerTitle: {
       fontSize: 20,
