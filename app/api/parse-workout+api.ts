@@ -4,6 +4,13 @@ import { z } from 'zod'
 
 // Database schema matching our Supabase tables
 const workoutSchema = z.object({
+  // Validation field
+  isWorkoutRelated: z
+    .boolean()
+    .describe(
+      'Whether the input is actually workout/fitness related content. Set to false if the input is nonsense, unrelated topics, spam, or random text',
+    ),
+
   // Workout session level
   notes: z
     .string()
@@ -85,6 +92,15 @@ User's Workout Notes:
 "${notes}"
 
 INSTRUCTIONS:
+0. FIRST: Determine if the input is actually workout/fitness related content:
+   - Set isWorkoutRelated to TRUE if the input describes exercises, sets, reps, weights, fitness activities, or workout sessions
+   - Set isWorkoutRelated to FALSE if the input is:
+     * Random nonsense or gibberish (e.g., "asdflkj", "blah blah blah")
+     * Unrelated topics (e.g., recipes, weather, shopping lists)
+     * Spam or inappropriate content
+     * Generic conversation with no workout information
+   - If isWorkoutRelated is FALSE, set exercises to an empty array and return immediately
+
 1. Standardize exercise names using these guidelines:
    - Use proper capitalization (e.g., "Bench Press", "Squat", "Deadlift")
    - When equipment is specified, include it (e.g., "Dumbbell Curl", "Barbell Row")
@@ -106,6 +122,7 @@ INSTRUCTIONS:
 
 EXPECTED OUTPUT FORMAT (JSON):
 {
+  "isWorkoutRelated": true,
   "notes": "Great upper body workout, felt strong today!",
   "type": "upper body",
   "exercises": [
@@ -150,6 +167,17 @@ IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises i
     // Handle the result from Structured Outputs
     const workout = result.object
 
+    // Check if the input is actually workout-related
+    if (!workout.isWorkoutRelated) {
+      return Response.json(
+        {
+          error:
+            "This doesn't appear to be workout-related content. Please describe your exercises, sets, and reps.",
+        },
+        { status: 400 },
+      )
+    }
+
     // With Structured Outputs enabled, the response is guaranteed to match the schema
     // However, we still validate to handle edge cases
     if (!Array.isArray(workout.exercises)) {
@@ -163,7 +191,10 @@ IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises i
     // Check if exercises array is empty
     if (workout.exercises.length === 0) {
       return Response.json(
-        { error: 'No exercises detected in workout notes' },
+        {
+          error:
+            'No exercises could be detected. Please include specific exercises with sets and reps.',
+        },
         { status: 400 },
       )
     }
@@ -195,9 +226,12 @@ Return ONLY the title with proper capitalization, nothing else.`,
       workoutType = titleResult.text.trim()
     }
 
+    // Remove validation field before returning
+    const { isWorkoutRelated, ...workoutData } = workout
+
     return Response.json({
       workout: {
-        ...workout,
+        ...workoutData,
         type: workoutType,
       },
     })
