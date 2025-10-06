@@ -1,6 +1,8 @@
 import { useAuth } from '@/contexts/auth-context'
+import { database } from '@/lib/database'
+import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { Link, router } from 'expo-router'
+import { Link, router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
   ActivityIndicator,
@@ -15,12 +17,25 @@ import {
   View,
 } from 'react-native'
 
+type OnboardingData = {
+  gender: Gender | null
+  height_cm: number | null
+  weight_kg: number | null
+  goal: Goal | null
+}
+
 export default function SignupScreen() {
+  const params = useLocalSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { signUp } = useAuth()
+
+  // Parse onboarding data from params
+  const onboardingData: OnboardingData | null = params.onboarding_data
+    ? JSON.parse(params.onboarding_data as string)
+    : null
 
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword) {
@@ -40,7 +55,23 @@ export default function SignupScreen() {
 
     setIsLoading(true)
     try {
-      await signUp(email, password)
+      const { userId } = await signUp(email, password)
+
+      // If we have onboarding data, update the profile
+      if (userId && onboardingData) {
+        try {
+          await database.profiles.update(userId, {
+            gender: onboardingData.gender,
+            height_cm: onboardingData.height_cm,
+            weight_kg: onboardingData.weight_kg,
+            goal: onboardingData.goal,
+          })
+        } catch (profileError) {
+          console.error('Error updating profile with onboarding data:', profileError)
+          // Don't fail the signup if profile update fails
+        }
+      }
+
       Alert.alert(
         'Success',
         'Account created! Please check your email to verify your account.',

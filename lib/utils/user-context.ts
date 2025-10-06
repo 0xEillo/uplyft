@@ -3,9 +3,12 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export interface UserContextSummary {
   profile: {
-    id: string
     userTag: string
     displayName: string
+    gender?: string | null
+    heightCm?: number | null
+    weightKg?: number | null
+    goal?: string | null
   }
   totals: {
     totalVolumeAllTime: number
@@ -63,9 +66,12 @@ export async function buildUserContextSummary(
 
   return {
     profile: {
-      id: profile.id,
       userTag: profile.user_tag,
       displayName: profile.display_name,
+      gender: profile.gender,
+      heightCm: profile.height_cm,
+      weightKg: profile.weight_kg,
+      goal: profile.goal,
     },
     totals: {
       totalVolumeAllTime: Math.round(totalVolumeAllTime || 0),
@@ -82,6 +88,20 @@ export async function buildUserContextSummary(
 export function userContextToPrompt(ctx: UserContextSummary): string {
   const lines: string[] = []
   lines.push(`User: ${ctx.profile.displayName} (@${ctx.profile.userTag})`)
+
+  // Personal information
+  const personalInfo: string[] = []
+  if (ctx.profile.gender) personalInfo.push(`gender=${ctx.profile.gender}`)
+  if (ctx.profile.heightCm)
+    personalInfo.push(`height=${ctx.profile.heightCm}cm`)
+  if (ctx.profile.weightKg)
+    personalInfo.push(`weight=${ctx.profile.weightKg}kg`)
+  if (ctx.profile.goal)
+    personalInfo.push(`goal=${ctx.profile.goal.replace('_', ' ')}`)
+  if (personalInfo.length > 0) {
+    lines.push(`Personal info: ${personalInfo.join(', ')}`)
+  }
+
   lines.push(
     `Training summary: sessions=${ctx.totals.sessionsCount}, total_volume=${ctx.totals.totalVolumeAllTime} kg·reps`,
   )

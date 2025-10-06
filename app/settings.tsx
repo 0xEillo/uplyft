@@ -2,7 +2,7 @@ import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { Profile } from '@/types/database.types'
+import { Gender, Goal, Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
@@ -21,6 +21,19 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+const GENDERS: { value: Gender; label: string }[] = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+]
+
+const GOALS: { value: Goal; label: string }[] = [
+  { value: 'build_muscle', label: 'Build Muscle' },
+  { value: 'gain_strength', label: 'Gain Strength' },
+  { value: 'lose_fat', label: 'Lose Fat' },
+  { value: 'general_fitness', label: 'General Fitness' },
+]
+
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
@@ -30,6 +43,15 @@ export default function SettingsScreen() {
   const [editedName, setEditedName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+
+  // Context editing states
+  const [isEditContextModalVisible, setIsEditContextModalVisible] = useState(
+    false,
+  )
+  const [editedGender, setEditedGender] = useState<Gender | null>(null)
+  const [editedHeight, setEditedHeight] = useState('')
+  const [editedWeight, setEditedWeight] = useState('')
+  const [editedGoal, setEditedGoal] = useState<Goal | null>(null)
 
   useEffect(() => {
     loadProfile()
@@ -164,6 +186,35 @@ export default function SettingsScreen() {
       Alert.alert('Error', 'Failed to upload image. Please try again.')
     } finally {
       setIsUploadingImage(false)
+    }
+  }
+
+  const handleEditContext = () => {
+    setEditedGender(profile?.gender || null)
+    setEditedHeight(profile?.height_cm?.toString() || '')
+    setEditedWeight(profile?.weight_kg?.toString() || '')
+    setEditedGoal(profile?.goal || null)
+    setIsEditContextModalVisible(true)
+  }
+
+  const handleSaveContext = async () => {
+    if (!user) return
+
+    try {
+      setIsSaving(true)
+      const updated = await database.profiles.update(user.id, {
+        gender: editedGender,
+        height_cm: editedHeight ? parseFloat(editedHeight) : null,
+        weight_kg: editedWeight ? parseFloat(editedWeight) : null,
+        goal: editedGoal,
+      })
+      setProfile(updated)
+      setIsEditContextModalVisible(false)
+    } catch (error) {
+      console.error('Error updating profile context:', error)
+      Alert.alert('Error', 'Failed to update profile. Please try again.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -325,6 +376,54 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* User Context Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+
+          <View style={styles.profileCard}>
+            <View style={styles.contextRow}>
+              <View style={styles.contextItem}>
+                <Text style={styles.contextLabel}>Gender</Text>
+                <Text style={styles.contextValue}>
+                  {profile?.gender
+                    ? GENDERS.find((g) => g.value === profile.gender)?.label
+                    : 'Not set'}
+                </Text>
+              </View>
+              <View style={styles.contextItem}>
+                <Text style={styles.contextLabel}>Goal</Text>
+                <Text style={styles.contextValue}>
+                  {profile?.goal
+                    ? GOALS.find((g) => g.value === profile.goal)?.label
+                    : 'Not set'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.contextRow}>
+              <View style={styles.contextItem}>
+                <Text style={styles.contextLabel}>Height</Text>
+                <Text style={styles.contextValue}>
+                  {profile?.height_cm ? `${profile.height_cm} cm` : 'Not set'}
+                </Text>
+              </View>
+              <View style={styles.contextItem}>
+                <Text style={styles.contextLabel}>Weight</Text>
+                <Text style={styles.contextValue}>
+                  {profile?.weight_kg ? `${profile.weight_kg} kg` : 'Not set'}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.editContextButton}
+              onPress={handleEditContext}
+            >
+              <Text style={styles.editContextButtonText}>Edit Context</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Actions Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions</Text>
@@ -420,6 +519,138 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Edit Context Modal */}
+      <Modal
+        visible={isEditContextModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsEditContextModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Personal Information</Text>
+                <TouchableOpacity
+                  onPress={() => setIsEditContextModalVisible(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={24} color={AppColors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Gender Selection */}
+              <View style={styles.formSection}>
+                <Text style={styles.formLabel}>Gender</Text>
+                <View style={styles.genderOptions}>
+                  {GENDERS.map((gender) => (
+                    <TouchableOpacity
+                      key={gender.value}
+                      style={[
+                        styles.genderOption,
+                        editedGender === gender.value &&
+                          styles.genderOptionSelected,
+                      ]}
+                      onPress={() => setEditedGender(gender.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.genderOptionText,
+                          editedGender === gender.value &&
+                            styles.genderOptionTextSelected,
+                        ]}
+                      >
+                        {gender.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Height Input */}
+              <View style={styles.formSection}>
+                <Text style={styles.formLabel}>Height (cm)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editedHeight}
+                  onChangeText={setEditedHeight}
+                  placeholder="e.g., 175"
+                  placeholderTextColor={AppColors.textPlaceholder}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              {/* Weight Input */}
+              <View style={styles.formSection}>
+                <Text style={styles.formLabel}>Weight (kg)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editedWeight}
+                  onChangeText={setEditedWeight}
+                  placeholder="e.g., 70"
+                  placeholderTextColor={AppColors.textPlaceholder}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              {/* Goal Selection */}
+              <View style={styles.formSection}>
+                <Text style={styles.formLabel}>Goal</Text>
+                <View style={styles.goalOptions}>
+                  {GOALS.map((goal) => (
+                    <TouchableOpacity
+                      key={goal.value}
+                      style={[
+                        styles.goalOption,
+                        editedGoal === goal.value && styles.goalOptionSelected,
+                      ]}
+                      onPress={() => setEditedGoal(goal.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.goalOptionText,
+                          editedGoal === goal.value &&
+                            styles.goalOptionTextSelected,
+                        ]}
+                      >
+                        {goal.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => setIsEditContextModalVisible(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalSaveButton,
+                    isSaving && styles.modalSaveButtonDisabled,
+                  ]}
+                  onPress={handleSaveContext}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color={AppColors.white} />
+                  ) : (
+                    <Text style={styles.modalSaveText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </SafeAreaView>
@@ -667,6 +898,99 @@ const styles = StyleSheet.create({
   modalSaveText: {
     fontSize: 16,
     fontWeight: '700',
+    color: AppColors.white,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  contextRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  contextItem: {
+    flex: 1,
+  },
+  contextLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: AppColors.textSecondary,
+    marginBottom: 4,
+  },
+  contextValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.text,
+  },
+  editContextButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: AppColors.primary,
+    alignItems: 'center',
+  },
+  editContextButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppColors.white,
+  },
+  formSection: {
+    marginBottom: 24,
+  },
+  formLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppColors.text,
+    marginBottom: 12,
+  },
+  genderOptions: {
+    gap: 8,
+  },
+  genderOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: AppColors.border,
+    backgroundColor: AppColors.white,
+  },
+  genderOptionSelected: {
+    borderColor: AppColors.primary,
+    backgroundColor: AppColors.primary,
+  },
+  genderOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppColors.text,
+    textAlign: 'center',
+  },
+  genderOptionTextSelected: {
+    color: AppColors.white,
+  },
+  goalOptions: {
+    gap: 8,
+  },
+  goalOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: AppColors.border,
+    backgroundColor: AppColors.white,
+  },
+  goalOptionSelected: {
+    borderColor: AppColors.primary,
+    backgroundColor: AppColors.primary,
+  },
+  goalOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppColors.text,
+    textAlign: 'center',
+  },
+  goalOptionTextSelected: {
     color: AppColors.white,
   },
 })

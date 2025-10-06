@@ -23,8 +23,8 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)'
 
     if (!user && !inAuthGroup) {
-      // Redirect to login if not authenticated
-      router.replace('/(auth)/login')
+      // Redirect to welcome screen if not authenticated
+      router.replace('/(auth)/welcome')
     } else if (user && inAuthGroup) {
       // Redirect to app if authenticated
       router.replace('/(tabs)')

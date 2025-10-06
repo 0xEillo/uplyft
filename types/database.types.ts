@@ -1,9 +1,16 @@
+export type Gender = 'male' | 'female' | 'prefer_not_to_say'
+export type Goal = 'build_muscle' | 'lose_fat' | 'gain_strength' | 'general_fitness'
+
 export interface Profile {
   id: string
   user_tag: string
   display_name: string
   bio: string | null
   avatar_url: string | null
+  gender: Gender | null
+  height_cm: number | null
+  weight_kg: number | null
+  goal: Goal | null
   created_at: string
   updated_at: string
 }
