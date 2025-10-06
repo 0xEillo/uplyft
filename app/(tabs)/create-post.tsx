@@ -338,6 +338,7 @@ export default function CreatePostScreen() {
           {/* Example Workout - shown when both inputs are empty and preference is enabled */}
           {!notes.trim() && !workoutTitle.trim() && showExamples && (
             <View style={styles.exampleContainer}>
+              <Text style={styles.exampleLabel}>Example:</Text>
               <View style={styles.exampleCard}>
                 <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
                 <View style={styles.exampleDivider} />
