@@ -38,7 +38,7 @@ INSERT INTO exercises (name, muscle_group, type, equipment) VALUES
   ('Barbell Curl', 'Biceps', 'isolation', 'barbell'),
   ('Dumbbell Curl', 'Biceps', 'isolation', 'dumbbell'),
   ('Hammer Curl', 'Biceps', 'isolation', 'dumbbell'),
-  ('Tricep Dip', 'Triceps', 'compound', 'bodyweight'),
+  ('Dip', 'Triceps', 'compound', 'bodyweight'),
   ('Tricep Pushdown', 'Triceps', 'isolation', 'cable'),
   ('Skull Crusher', 'Triceps', 'isolation', 'barbell'),
   ('Close Grip Bench Press', 'Triceps', 'compound', 'barbell'),

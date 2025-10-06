@@ -190,7 +190,7 @@ export async function POST(request: Request) {
         : undefined
 
     const result = streamText({
-      model: openai('gpt-5-nano'),
+      model: openai('gpt-4.1-nano'),
       messages,
       ...(systemPrompt ? { system: systemPrompt } : {}),
       ...(tools ? { tools } : {}),

@@ -207,6 +207,7 @@ function AsyncPrFeedCard({
       workoutTitle={
         workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
       }
+      workoutDescription={workout.notes}
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,

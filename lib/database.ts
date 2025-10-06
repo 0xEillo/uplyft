@@ -336,6 +336,18 @@ export const database = {
       return data as WorkoutSessionWithDetails
     },
 
+    async update(sessionId: string, updates: { type?: string; notes?: string }) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .update(updates)
+        .eq('id', sessionId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutSession
+    },
+
     async delete(sessionId: string) {
       // Delete sets first (cascaded by workout_exercises deletion)
       // Then delete workout_exercises (cascaded by session deletion)

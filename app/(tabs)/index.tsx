@@ -13,9 +13,13 @@ import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -110,16 +114,7 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Uplyft</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={AppColors.text}
-            />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.headerTitle}>Flex AI</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -168,6 +163,10 @@ function AsyncPrFeedCard({
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<any[]>([])
   const [isComputed, setIsComputed] = useState(false)
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false)
+  const [editedTitle, setEditedTitle] = useState(workout.type || '')
+  const [editedNotes, setEditedNotes] = useState(workout.notes || '')
+  const [isSaving, setIsSaving] = useState(false)
 
   const compute = useCallback(async () => {
     if (!user || isComputed) return
@@ -218,6 +217,29 @@ function AsyncPrFeedCard({
     }
   }
 
+  const handleEdit = () => {
+    setEditedTitle(workout.type || '')
+    setEditedNotes(workout.notes || '')
+    setIsEditModalVisible(true)
+  }
+
+  const handleSaveEdit = async () => {
+    try {
+      setIsSaving(true)
+      await database.workoutSessions.update(workout.id, {
+        type: editedTitle.trim() || undefined,
+        notes: editedNotes.trim() || undefined,
+      })
+      setIsEditModalVisible(false)
+      onDelete() // Refresh the feed
+    } catch (error) {
+      console.error('Error updating workout:', error)
+      Alert.alert('Error', 'Failed to update workout. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleDelete = async () => {
     Alert.alert(
       'Delete Workout',
@@ -236,7 +258,10 @@ function AsyncPrFeedCard({
               onDelete()
             } catch (error) {
               console.error('Error deleting workout:', error)
-              Alert.alert('Error', 'Failed to delete workout. Please try again.')
+              Alert.alert(
+                'Error',
+                'Failed to delete workout. Please try again.',
+              )
             }
           },
         },
@@ -245,31 +270,108 @@ function AsyncPrFeedCard({
   }
 
   return (
-    <FeedCard
-      userName="You"
-      userAvatar=""
-      timeAgo={formatTimeAgo(workout.created_at)}
-      workoutTitle={
-        workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
-      }
-      exercises={exercises}
-      stats={{
-        exercises: (workout.workout_exercises || []).length,
-        sets:
-          workout.workout_exercises?.reduce(
-            (sum, we) => sum + (we.sets?.length || 0),
-            0,
-          ) || 0,
-        prs,
-      }}
-      likes={0}
-      comments={0}
-      userId={workout.user_id}
-      workoutId={workout.id}
-      onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
-      onDelete={handleDelete}
-      prInfo={prInfo}
-    />
+    <>
+      <FeedCard
+        userName="You"
+        userAvatar=""
+        timeAgo={formatTimeAgo(workout.created_at)}
+        workoutTitle={
+          workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
+        }
+        workoutDescription={workout.notes}
+        exercises={exercises}
+        stats={{
+          exercises: (workout.workout_exercises || []).length,
+          sets:
+            workout.workout_exercises?.reduce(
+              (sum, we) => sum + (we.sets?.length || 0),
+              0,
+            ) || 0,
+          prs,
+        }}
+        likes={0}
+        comments={0}
+        userId={workout.user_id}
+        workoutId={workout.id}
+        onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        prInfo={prInfo}
+      />
+
+      {/* Edit Modal */}
+      <Modal
+        visible={isEditModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.editModalContent}>
+            <View style={styles.editModalHeader}>
+              <Text style={styles.editModalTitle}>Edit Workout</Text>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.editModalBody}>
+              <Text style={styles.editLabel}>Title</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editedTitle}
+                onChangeText={setEditedTitle}
+                placeholder="Workout Title"
+                placeholderTextColor={AppColors.textPlaceholder}
+                maxLength={50}
+              />
+
+              <Text style={styles.editLabel}>Notes</Text>
+              <TextInput
+                style={[styles.editInput, styles.editTextArea]}
+                value={editedNotes}
+                onChangeText={setEditedNotes}
+                placeholder="Workout notes..."
+                placeholderTextColor={AppColors.textPlaceholder}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.editModalActions}>
+              <TouchableOpacity
+                style={styles.editCancelButton}
+                onPress={() => setIsEditModalVisible(false)}
+              >
+                <Text style={styles.editCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.editSaveButton,
+                  isSaving && styles.editSaveButtonDisabled,
+                ]}
+                onPress={handleSaveEdit}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={AppColors.white} />
+                ) : (
+                  <Text style={styles.editSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   )
 }
 
@@ -280,7 +382,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -292,13 +394,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: AppColors.text,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  iconButton: {
-    padding: 4,
   },
   content: {
     flex: 1,
@@ -328,5 +423,96 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  editModalContent: {
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 500,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  editModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: AppColors.text,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  editModalBody: {
+    padding: 20,
+  },
+  editLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppColors.text,
+    marginBottom: 8,
+  },
+  editInput: {
+    backgroundColor: AppColors.backgroundLight,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: AppColors.text,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    marginBottom: 16,
+  },
+  editTextArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  editModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+  },
+  editCancelButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: AppColors.backgroundLight,
+    alignItems: 'center',
+  },
+  editCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.text,
+  },
+  editSaveButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: AppColors.primary,
+    alignItems: 'center',
+  },
+  editSaveButtonDisabled: {
+    opacity: 0.5,
+  },
+  editSaveText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: AppColors.white,
   },
 })

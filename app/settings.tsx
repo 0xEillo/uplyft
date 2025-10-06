@@ -4,6 +4,7 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Gender, Goal, Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -14,6 +15,7 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -54,8 +56,12 @@ export default function SettingsScreen() {
   const [editedGoal, setEditedGoal] = useState<Goal | null>(null)
   const [editedBio, setEditedBio] = useState('')
 
+  // Preferences
+  const [showExamples, setShowExamples] = useState(true)
+
   useEffect(() => {
     loadProfile()
+    loadPreferences()
   }, [])
 
   const loadProfile = async () => {
@@ -69,6 +75,26 @@ export default function SettingsScreen() {
       console.error('Error loading profile:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadPreferences = async () => {
+    try {
+      const value = await AsyncStorage.getItem('@show_workout_examples')
+      if (value !== null) {
+        setShowExamples(value === 'true')
+      }
+    } catch (error) {
+      console.error('Error loading preferences:', error)
+    }
+  }
+
+  const handleToggleExamples = async (value: boolean) => {
+    try {
+      setShowExamples(value)
+      await AsyncStorage.setItem('@show_workout_examples', value.toString())
+    } catch (error) {
+      console.error('Error saving preference:', error)
     }
   }
 
@@ -431,6 +457,30 @@ export default function SettingsScreen() {
             >
               <Text style={styles.editContextButtonText}>Edit Information</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Preferences Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+
+          <View style={styles.preferenceCard}>
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <View>
+                  <Text style={styles.preferenceTitle}>Show Workout Examples</Text>
+                  <Text style={styles.preferenceDescription}>
+                    Display example workouts on create post screen
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={showExamples}
+                onValueChange={handleToggleExamples}
+                trackColor={{ false: '#D1D5DB', true: AppColors.primaryLight }}
+                thumbColor={showExamples ? AppColors.primary : '#F3F4F6'}
+              />
+            </View>
           </View>
         </View>
 
@@ -1045,5 +1095,33 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
     textAlign: 'right',
     marginTop: 8,
+  },
+  preferenceCard: {
+    backgroundColor: AppColors.white,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  preferenceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  preferenceLeft: {
+    flex: 1,
+  },
+  preferenceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.text,
+    marginBottom: 2,
+  },
+  preferenceDescription: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
   },
 })

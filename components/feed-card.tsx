@@ -44,13 +44,13 @@ interface FeedCardProps {
   userAvatar: string
   timeAgo: string
   workoutTitle: string
+  workoutDescription?: string | null
   exercises: ExerciseDisplay[]
   stats: WorkoutStats
-  likes: number
-  comments: number
   userId?: string
   workoutId?: string
   onUserPress?: () => void
+  onEdit?: () => void
   onDelete?: () => void
   prInfo?: ExercisePRInfo[]
 }
@@ -60,13 +60,13 @@ export function FeedCard({
   userAvatar,
   timeAgo,
   workoutTitle,
+  workoutDescription,
   exercises,
   stats,
-  likes,
-  comments,
   userId,
   workoutId,
   onUserPress,
+  onEdit,
   onDelete,
   prInfo = [],
 }: FeedCardProps) {
@@ -141,6 +141,11 @@ export function FeedCard({
 
       {/* Workout Title */}
       {workoutTitle && <Text style={styles.workoutTitle}>{workoutTitle}</Text>}
+
+      {/* Workout Description */}
+      {workoutDescription && (
+        <Text style={styles.workoutDescription}>{workoutDescription}</Text>
+      )}
 
       {/* Exercises Table */}
       <View style={styles.exercisesContainer}>
@@ -269,26 +274,8 @@ export function FeedCard({
       </View>
 
       {/* Actions */}
-      <View style={styles.actions}>
-        <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons
-              name="heart-outline"
-              size={22}
-              color={AppColors.textSecondary}
-            />
-            <Text style={styles.actionText}>{likes}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons
-              name="chatbubble-outline"
-              size={20}
-              color={AppColors.textSecondary}
-            />
-            <Text style={styles.actionText}>{comments}</Text>
-          </TouchableOpacity>
-        </View>
-        {hasMoreExercises && (
+      {hasMoreExercises && (
+        <View style={styles.actions}>
           <TouchableOpacity
             onPress={toggleExpand}
             style={styles.viewDetailsButton}
@@ -302,8 +289,8 @@ export function FeedCard({
               <Ionicons name="chevron-down" size={16} color={AppColors.link} />
             </Animated.View>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Action Menu Modal */}
       <Modal
@@ -317,6 +304,22 @@ export function FeedCard({
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.menuContainer}>
+            {onEdit && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onEdit()
+                }}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={20}
+                  color={AppColors.text}
+                />
+                <Text style={styles.menuItemText}>Edit Workout</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -387,6 +390,12 @@ const styles = StyleSheet.create({
   workoutTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: AppColors.text,
+    marginBottom: 8,
+  },
+  workoutDescription: {
+    fontSize: 14,
+    lineHeight: 20,
     color: AppColors.text,
     marginBottom: 12,
   },
@@ -521,21 +530,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-  },
-  leftActions: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  actionText: {
-    fontSize: 14,
-    color: AppColors.textSecondary,
   },
   viewDetailsButton: {
     flexDirection: 'row',
@@ -571,6 +567,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: AppColors.text,
+    fontWeight: '500',
   },
   menuItemTextDelete: {
     fontSize: 16,

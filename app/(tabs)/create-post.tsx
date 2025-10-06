@@ -31,7 +31,9 @@ const PENDING_POST_KEY = '@pending_workout_post'
 const EXAMPLE_WORKOUTS = [
   {
     title: 'Push Day',
-    notes: `Bench Press
+    notes: `Felt strong today, hit a new PR on bench!
+
+Bench Press
 135 x 8
 155 x 6
 165 x 4
@@ -44,11 +46,15 @@ Incline DB Press
     title: 'Leg Day',
     notes: `Squats: 185x5, 205x5, 225x3
 RDL's: 135 for 3 sets of 10
-Leg Press: 270x12, 290x10, 310x8`,
+Leg Press: 270x12, 290x10, 310x8
+
+Really focusing on form this week. Legs are getting stronger!`,
   },
   {
     title: 'Pull',
-    notes: `Pull-ups
+    notes: `Back day complete! 💪
+
+Pull-ups
 bodyweight x 8, 8, 7
 
 Barbell Rows
@@ -59,7 +65,8 @@ Barbell Rows
     title: 'Upper Body',
     notes: `Overhead Press 95x8, 105x6, 115x5
 Cable Flyes 30lbs x 12 x 3
-Finished with 10min cardio`,
+
+Finished with 10min cardio. Shoulder felt great today!`,
   },
 ]
 
@@ -69,6 +76,7 @@ export default function CreatePostScreen() {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [workoutTitle, setWorkoutTitle] = useState('')
   const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
+  const [showExamples, setShowExamples] = useState(true)
   const { user } = useAuth()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
@@ -79,6 +87,19 @@ export default function CreatePostScreen() {
       const randomExample =
         EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
       setExampleWorkout(randomExample)
+
+      // Load preference
+      const loadPreference = async () => {
+        try {
+          const value = await AsyncStorage.getItem('@show_workout_examples')
+          if (value !== null) {
+            setShowExamples(value === 'true')
+          }
+        } catch (error) {
+          console.error('Error loading preference:', error)
+        }
+      }
+      loadPreference()
     }, []),
   )
 
@@ -285,10 +306,9 @@ export default function CreatePostScreen() {
             editable={!recorderState.isRecording && !isTranscribing}
           />
 
-          {/* Example Workout - shown when both inputs are empty */}
-          {!notes.trim() && !workoutTitle.trim() && (
+          {/* Example Workout - shown when both inputs are empty and preference is enabled */}
+          {!notes.trim() && !workoutTitle.trim() && showExamples && (
             <View style={styles.exampleContainer}>
-              <Text style={styles.exampleLabel}>Example:</Text>
               <View style={styles.exampleCard}>
                 <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
                 <View style={styles.exampleDivider} />
@@ -414,6 +434,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f0f0f0',
     borderStyle: 'dashed',
+    maxWidth: 280,
+    alignSelf: 'center',
   },
   exampleTitle: {
     fontSize: 20,
