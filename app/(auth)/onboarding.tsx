@@ -20,6 +20,7 @@ type OnboardingData = {
   height_cm: string
   weight_kg: string
   goal: Goal | null
+  bio: string
 }
 
 const GOALS: { value: Goal; label: string; icon: string }[] = [
@@ -43,10 +44,11 @@ export default function OnboardingScreen() {
     height_cm: '',
     weight_kg: '',
     goal: null,
+    bio: '',
   })
 
   const handleNext = () => {
-    if (step < 5) {
+    if (step < 6) {
       setStep(step + 1)
     } else {
       // Navigate to signup with onboarding data
@@ -59,6 +61,7 @@ export default function OnboardingScreen() {
             height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
             weight_kg: data.weight_kg ? parseFloat(data.weight_kg) : null,
             goal: data.goal,
+            bio: data.bio.trim() || null,
           }),
         },
       })
@@ -85,6 +88,8 @@ export default function OnboardingScreen() {
         return data.weight_kg !== '' && parseFloat(data.weight_kg) > 0
       case 5:
         return data.goal !== null
+      case 6:
+        return true // Optional step
       default:
         return false
     }
@@ -136,8 +141,7 @@ export default function OnboardingScreen() {
                   <Text
                     style={[
                       styles.optionText,
-                      data.gender === gender.value &&
-                        styles.optionTextSelected,
+                      data.gender === gender.value && styles.optionTextSelected,
                     ]}
                   >
                     {gender.label}
@@ -227,6 +231,31 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
+      case 6:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Ionicons name="chatbubbles-outline" size={48} color="#FF6B35" />
+              <Text style={styles.stepTitle}>Personalize your AI</Text>
+              <Text style={styles.stepSubtitle}>
+                Help your AI better understand you
+              </Text>
+            </View>
+            <TextInput
+              style={styles.bioInput}
+              placeholder="E.g., I have a knee injury, I do powerlifting, I'm a beginner..."
+              placeholderTextColor="#999"
+              value={data.bio}
+              onChangeText={(text) => setData({ ...data, bio: text })}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              autoFocus
+              maxLength={500}
+            />
+            <Text style={styles.characterCount}>{data.bio.length}/500</Text>
+          </View>
+        )
       default:
         return null
     }
@@ -244,7 +273,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <View
                 key={i}
                 style={[
@@ -269,12 +298,15 @@ export default function OnboardingScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]}
+            style={[
+              styles.nextButton,
+              !canProceed() && styles.nextButtonDisabled,
+            ]}
             onPress={handleNext}
             disabled={!canProceed()}
           >
             <Text style={styles.nextButtonText}>
-              {step === 5 ? 'Continue' : 'Next'}
+              {step === 6 ? 'Finish' : 'Next'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -445,5 +477,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  bioInput: {
+    minHeight: 150,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#1a1a1a',
+    backgroundColor: '#fafafa',
+  },
+  characterCount: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'right',
+    marginTop: 8,
   },
 })

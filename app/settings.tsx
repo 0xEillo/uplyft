@@ -52,6 +52,7 @@ export default function SettingsScreen() {
   const [editedHeight, setEditedHeight] = useState('')
   const [editedWeight, setEditedWeight] = useState('')
   const [editedGoal, setEditedGoal] = useState<Goal | null>(null)
+  const [editedBio, setEditedBio] = useState('')
 
   useEffect(() => {
     loadProfile()
@@ -194,6 +195,7 @@ export default function SettingsScreen() {
     setEditedHeight(profile?.height_cm?.toString() || '')
     setEditedWeight(profile?.weight_kg?.toString() || '')
     setEditedGoal(profile?.goal || null)
+    setEditedBio(profile?.bio || '')
     setIsEditContextModalVisible(true)
   }
 
@@ -207,6 +209,7 @@ export default function SettingsScreen() {
         height_cm: editedHeight ? parseFloat(editedHeight) : null,
         weight_kg: editedWeight ? parseFloat(editedWeight) : null,
         goal: editedGoal,
+        bio: editedBio.trim() || null,
       })
       setProfile(updated)
       setIsEditContextModalVisible(false)
@@ -415,11 +418,18 @@ export default function SettingsScreen() {
               </View>
             </View>
 
+            <View style={styles.bioContainer}>
+              <Text style={styles.contextLabel}>AI Context</Text>
+              <Text style={styles.bioValue}>
+                {profile?.bio || 'Not set'}
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={styles.editContextButton}
               onPress={handleEditContext}
             >
-              <Text style={styles.editContextButtonText}>Edit Context</Text>
+              <Text style={styles.editContextButtonText}>Edit Information</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -457,7 +467,7 @@ export default function SettingsScreen() {
               <Ionicons
                 name="trash-outline"
                 size={22}
-                color={AppColors.white}
+                color={AppColors.error}
               />
               <Text style={styles.dangerButtonText}>Delete Account</Text>
             </View>
@@ -624,6 +634,23 @@ export default function SettingsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+              </View>
+
+              {/* Bio Input */}
+              <View style={styles.formSection}>
+                <Text style={styles.formLabel}>AI Context (Optional)</Text>
+                <TextInput
+                  style={styles.bioInput}
+                  value={editedBio}
+                  onChangeText={setEditedBio}
+                  placeholder="E.g., I have a knee injury, I do powerlifting, I'm a beginner..."
+                  placeholderTextColor={AppColors.textPlaceholder}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  maxLength={500}
+                />
+                <Text style={styles.characterCount}>{editedBio.length}/500</Text>
               </View>
 
               <View style={styles.modalActions}>
@@ -809,22 +836,22 @@ const styles = StyleSheet.create({
     color: AppColors.text,
   },
   dangerButton: {
-    backgroundColor: AppColors.error,
+    backgroundColor: AppColors.white,
     borderRadius: 12,
     padding: 18,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: AppColors.error,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   dangerButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: AppColors.white,
+    color: AppColors.error,
   },
   modalOverlay: {
     flex: 1,
@@ -992,5 +1019,31 @@ const styles = StyleSheet.create({
   },
   goalOptionTextSelected: {
     color: AppColors.white,
+  },
+  bioContainer: {
+    marginBottom: 16,
+  },
+  bioValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: AppColors.text,
+    lineHeight: 20,
+  },
+  bioInput: {
+    backgroundColor: AppColors.backgroundLight,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 15,
+    color: AppColors.text,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  characterCount: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    textAlign: 'right',
+    marginTop: 8,
   },
 })

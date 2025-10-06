@@ -85,7 +85,17 @@ User's Workout Notes:
 "${notes}"
 
 INSTRUCTIONS:
-1. Standardize exercise names (e.g., "bench" → "Bench Press", "squat" → "Squat")
+1. Standardize exercise names using these guidelines:
+   - Use proper capitalization (e.g., "Bench Press", "Squat", "Deadlift")
+   - When equipment is specified, include it (e.g., "Dumbbell Curl", "Barbell Row")
+   - When equipment is NOT specified, use the most common variant:
+     * "bench" or "bench press" → "Bench Press" (barbell is implied)
+     * "squat" → "Squat" (barbell is implied)
+     * "deadlift" → "Deadlift" (barbell is implied)
+     * "curl" or "bicep curl" → "Dumbbell Curl" (most common)
+     * "shoulder press" or "press" → "Dumbbell Shoulder Press" (most common)
+     * "row" → "Bent Over Row" (barbell is implied)
+   - Examples: "db bench" → "Dumbbell Bench Press", "bb curl" → "Barbell Curl"
 2. Parse sets format like "5x5 @ 100kg" → 5 sets of 5 reps at 100kg each
 3. If no weight mentioned for bodyweight exercises (push-ups, pull-ups), leave weight null
 4. Extract any workout-level notes or feelings

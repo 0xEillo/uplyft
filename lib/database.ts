@@ -173,16 +173,29 @@ export const database = {
     },
 
     async getOrCreate(name: string, userId: string) {
-      // Try to find existing exercise (case-insensitive)
-      const { data: existing } = await supabase
+      const normalizedName = name.trim().toLowerCase()
+
+      // Try to find existing exercise by exact name match (case-insensitive)
+      const { data: exactMatch } = await supabase
         .from('exercises')
         .select('*')
         .ilike('name', name)
         .single()
 
-      if (existing) return existing as Exercise
+      if (exactMatch) return exactMatch as Exercise
 
-      // Create new exercise
+      // Try to find by alias match
+      const { data: aliasMatches } = await supabase
+        .from('exercises')
+        .select('*')
+        .contains('aliases', [normalizedName])
+
+      if (aliasMatches && aliasMatches.length > 0) {
+        // Return first match (system exercises are prioritized in seed order)
+        return aliasMatches[0] as Exercise
+      }
+
+      // No match found, create new exercise with proper capitalization
       const { data, error } = await supabase
         .from('exercises')
         .insert({
@@ -594,6 +607,80 @@ export const database = {
       })
 
       return progressData || []
+    },
+
+    async getMuscleGroupDistribution(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          workout_exercises!inner (
+            exercise:exercises!inner (muscle_group),
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .not('workout_exercises.exercise.muscle_group', 'is', null)
+
+      // Filter by date range if specified
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      interface MuscleGroupRow {
+        workout_exercises?: {
+          exercise?: {
+            muscle_group: string | null
+          }
+          sets?: {
+            reps: number
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      // Calculate volume per muscle group
+      const muscleGroupVolumes = new Map<string, number>()
+
+      ;(data as MuscleGroupRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          const muscleGroup = we.exercise?.muscle_group
+          if (!muscleGroup) return
+
+          we.sets?.forEach((set) => {
+            if (set.reps && set.weight) {
+              const volume = set.reps * set.weight
+              const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
+              muscleGroupVolumes.set(muscleGroup, currentVolume + volume)
+            }
+          })
+        })
+      })
+
+      // Calculate total volume
+      const totalVolume = Array.from(muscleGroupVolumes.values()).reduce(
+        (sum, vol) => sum + vol,
+        0,
+      )
+
+      // Convert to array with percentages
+      const distribution = Array.from(muscleGroupVolumes.entries())
+        .map(([muscleGroup, volume]) => ({
+          muscleGroup,
+          volume: Math.round(volume),
+          percentage:
+            totalVolume > 0 ? Math.round((volume / totalVolume) * 100) : 0,
+        }))
+        .sort((a, b) => b.volume - a.volume) // Sort by volume descending
+
+      return distribution
     },
   },
 }

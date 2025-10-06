@@ -101,7 +101,7 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Ionicons name="trophy" size={24} color={AppColors.primary} />
+          <Ionicons name="analytics" size={24} color={AppColors.primary} />
           <Text style={styles.title}>Strength Score</Text>
         </View>
       </View>

@@ -23,6 +23,7 @@ type OnboardingData = {
   height_cm: number | null
   weight_kg: number | null
   goal: Goal | null
+  bio: string | null
 }
 
 export default function SignupScreen() {
@@ -67,6 +68,7 @@ export default function SignupScreen() {
             height_cm: onboardingData.height_cm,
             weight_kg: onboardingData.weight_kg,
             goal: onboardingData.goal,
+            bio: onboardingData.bio,
           })
         } catch (profileError) {
           console.error('Error updating profile with onboarding data:', profileError)
