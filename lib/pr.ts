@@ -96,14 +96,12 @@ export class PrService {
 
     const prs: PrDetail[] = []
 
-    // Track which sets achieved 1RM PR
-    const oneRmSetIndices: number[] = []
+    // Track which set achieved 1RM PR (only the first one)
     if (cur1Rm && (!hist1Rm || cur1Rm > hist1Rm)) {
-      currentSets.forEach((s, idx) => {
-        if (s.reps === 1 && s.weight === cur1Rm) {
-          oneRmSetIndices.push(idx)
-        }
-      })
+      const firstOneRmSetIndex = currentSets.findIndex(
+        (s) => s.reps === 1 && s.weight === cur1Rm
+      )
+      const oneRmSetIndices = firstOneRmSetIndex !== -1 ? [firstOneRmSetIndex] : []
       prs.push({
         kind: 'single-rep-max',
         label: '1RM',
@@ -121,23 +119,30 @@ export class PrService {
     })
     for (const reps of repsSet) {
       const cur = this.maxWeightForReps(currentSets, reps)
+      // Check if this is a PR compared to history
       if (cur && this.isTrueRepMaxPr(historic, cur, reps)) {
-        const hist = this.maxWeightForReps(historic, reps)
-        const futureRepMax = this.maxWeightForReps(future, reps)
-        const repMaxSetIndices: number[] = []
-        currentSets.forEach((s, idx) => {
-          if (s.reps === reps && s.weight === cur) {
-            repMaxSetIndices.push(idx)
-          }
-        })
-        prs.push({
-          kind: 'rep-max',
-          label: `${reps}-rep max`,
-          previous: hist ?? undefined,
-          current: cur,
-          setIndices: repMaxSetIndices,
-          isCurrent: !futureRepMax || cur >= futureRepMax,
-        })
+        // Also check if this rep count is beaten by any other set in current session with more reps
+        const isBeatenInCurrentSession = currentSets.some(
+          (s) => s.weight && s.weight >= cur && s.reps > reps
+        )
+
+        if (!isBeatenInCurrentSession) {
+          const hist = this.maxWeightForReps(historic, reps)
+          const futureRepMax = this.maxWeightForReps(future, reps)
+          // Only mark the FIRST set that achieved this PR weight
+          const firstPrSetIndex = currentSets.findIndex(
+            (s) => s.reps === reps && s.weight === cur
+          )
+          const repMaxSetIndices = firstPrSetIndex !== -1 ? [firstPrSetIndex] : []
+          prs.push({
+            kind: 'rep-max',
+            label: `${reps}-rep max`,
+            previous: hist ?? undefined,
+            current: cur,
+            setIndices: repMaxSetIndices,
+            isCurrent: !futureRepMax || cur >= futureRepMax,
+          })
+        }
       }
     }
 

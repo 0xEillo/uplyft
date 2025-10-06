@@ -2,6 +2,7 @@ import { AppColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useFocusEffect } from '@react-navigation/native'
 import {
   AudioModule,
   RecordingPresets,
@@ -10,12 +11,11 @@ import {
   useAudioRecorderState,
 } from 'expo-audio'
 import { router } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -24,8 +24,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useFocusEffect } from '@react-navigation/native'
-import { useCallback } from 'react'
 
 const DRAFT_KEY = '@workout_draft'
 const PENDING_POST_KEY = '@pending_workout_post'
@@ -45,7 +43,7 @@ Incline DB Press
   {
     title: 'Leg Day',
     notes: `Squats: 185x5, 205x5, 225x3
-Romanian Deadlifts: 135 for 3 sets of 10
+RDL's: 135 for 3 sets of 10
 Leg Press: 270x12, 290x10, 310x8`,
   },
   {
@@ -81,7 +79,7 @@ export default function CreatePostScreen() {
       const randomExample =
         EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
       setExampleWorkout(randomExample)
-    }, [])
+    }, []),
   )
 
   // Setup audio permissions
