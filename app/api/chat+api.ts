@@ -19,7 +19,7 @@ function buildContext(messages: CoreMessage[], userContext?: string): CoreMessag
       `- Concise and actionable\n` +
       `- Encouraging and supportive\n` +
       `- Evidence-based when giving advice\n` +
-      `- Omit any match or calculation reasoning\n` +
+      `- Omit any math or calculation reasoning\n` +
       `- Conversational and friendly`,
   }
   const windowSize = 16
