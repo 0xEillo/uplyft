@@ -1,4 +1,5 @@
 import { createServerDatabase } from '@/lib/database-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export interface UserContextSummary {
   profile: {
@@ -13,11 +14,11 @@ export interface UserContextSummary {
     lastSessionDate?: string
   }
   highlights: {
-    topExercisesByMax?: Array<{
+    topExercisesByMax?: {
       name: string
       estMax?: number
       bestSingle?: number
-    }>
+    }[]
   }
 }
 
@@ -100,4 +101,96 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
     )
   }
   return lines.join('\n')
+}
+
+// Build a complete, flattened dump of a user's data for direct LLM context
+// This avoids any context selection/summary heuristics.
+export async function buildUserFullContextDump(
+  userId: string,
+  accessToken?: string,
+  options?: { maxSessions?: number },
+): Promise<string> {
+  const maxSessions = options?.maxSessions ?? 500
+
+  const supabase = createServerSupabaseClient(accessToken)
+
+  const { data: sessions, error } = await supabase
+    .from('workout_sessions')
+    .select(
+      `
+      date,
+      type,
+      workout_exercises (
+        order_index,
+        exercise:exercises (
+          name,
+          muscle_group,
+          type,
+          equipment
+        ),
+        sets (
+          set_number,
+          reps,
+          weight,
+          rpe
+        )
+      )
+    `,
+    )
+    .eq('user_id', userId)
+    .order('date', { ascending: true })
+    .limit(maxSessions)
+
+  if (error) throw error
+
+  type AnySession = any
+  const flatSets: Record<string, any>[] = []
+
+  for (const session of (sessions as AnySession[]) || []) {
+    for (const we of session.workout_exercises || []) {
+      const exercise = we.exercise
+      for (const s of we.sets || []) {
+        flatSets.push({
+          sessionDate: session.date,
+          sessionType: session.type,
+          exerciseName: exercise?.name,
+          exerciseMuscleGroup: exercise?.muscle_group,
+          exerciseType: exercise?.type,
+          exerciseEquipment: exercise?.equipment,
+          exerciseOrderIndex: we.order_index,
+          setNumber: s.set_number,
+          reps: s.reps,
+          weight: s.weight,
+          rpe: s.rpe,
+        })
+      }
+    }
+  }
+
+  const exercisesMap = new Map<string, any>()
+  for (const session of (sessions as AnySession[]) || []) {
+    for (const we of session.workout_exercises || []) {
+      const ex = we.exercise
+      const key = (ex?.name || '').toLowerCase()
+      if (key && !exercisesMap.has(key)) {
+        exercisesMap.set(key, {
+          name: ex?.name,
+          muscle_group: ex?.muscle_group,
+          type: ex?.type,
+          equipment: ex?.equipment,
+        })
+      }
+    }
+  }
+
+  const dump = {
+    sessions: ((sessions as AnySession[]) || []).map((s) => ({
+      date: s.date,
+      type: s.type,
+    })),
+    exercises: Array.from(exercisesMap.values()),
+    sets: flatSets,
+  }
+
+  return JSON.stringify(dump)
 }

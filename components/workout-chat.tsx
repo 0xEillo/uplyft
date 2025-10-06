@@ -64,6 +64,7 @@ export function WorkoutChat() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-no-stream': '1',
           ...(session?.access_token
             ? { Authorization: `Bearer ${session.access_token}` }
             : {}),

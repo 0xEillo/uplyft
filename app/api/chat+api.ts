@@ -1,7 +1,7 @@
 import { createServerDatabase } from '@/lib/database-server'
-import { buildUserContextSummary, userContextToPrompt } from '@/lib/utils/user-context'
+import { buildUserFullContextDump } from '@/lib/utils/user-context'
 import { openai } from '@ai-sdk/openai'
-import { streamText, type CoreMessage } from 'ai'
+import { generateText, streamText, type CoreMessage } from 'ai'
 import { z } from 'zod'
 
 function buildContext(messages: CoreMessage[], userContext?: string): CoreMessage[] {
@@ -39,15 +39,34 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Messages are required' }, { status: 400 })
     }
 
-    // Build compact user context if userId is provided
+    // Build full flattened user data dump if userId is provided
     let userContext: string | undefined
     if (userId && typeof userId === 'string') {
       try {
-        const summary = await buildUserContextSummary(userId, accessToken)
-        userContext = userContextToPrompt(summary)
+        userContext = await buildUserFullContextDump(userId, accessToken, {
+          maxSessions: 500,
+        })
       } catch (e) {
         console.warn('Could not build user context:', e)
       }
+    }
+
+    const userAgent = request.headers.get('user-agent') || ''
+    const noStreamHeader = request.headers.get('x-no-stream')
+    const disableStreaming =
+      (typeof noStreamHeader === 'string' && noStreamHeader !== '0') ||
+      userAgent.includes('ReactNative') ||
+      userAgent.includes('Expo')
+
+    if (disableStreaming) {
+      const result = await generateText({
+        model: openai('gpt-4o-mini'),
+        messages: buildContext(messages, userContext),
+        temperature: 0.3,
+      })
+      return new Response(result.text, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      })
     }
 
     const result = streamText({
@@ -75,7 +94,6 @@ export async function POST(request: Request) {
         },
       },
     })
-
     return result.toTextStreamResponse()
   } catch (error) {
     console.error('Error in chat API:', error)
