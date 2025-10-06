@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Markdown from 'react-native-markdown-display'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface Message {
@@ -300,14 +301,61 @@ export function WorkoutChat() {
                       : styles.assistantMessageContent,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.messageText,
-                      message.role === 'user' && styles.userMessageText,
-                    ]}
-                  >
-                    {message.content}
-                  </Text>
+                  {message.role === 'assistant' ? (
+                    <Markdown
+                      style={{
+                        body: {
+                          fontSize: 15,
+                          lineHeight: 20,
+                          color: AppColors.text,
+                          margin: 0,
+                        },
+                        code_inline: {
+                          backgroundColor: AppColors.backgroundLight,
+                          paddingHorizontal: 4,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                          fontSize: 14,
+                          fontFamily:
+                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                        },
+                        code_block: {
+                          backgroundColor: AppColors.backgroundLight,
+                          padding: 12,
+                          borderRadius: 8,
+                          fontSize: 14,
+                          fontFamily:
+                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                        },
+                        strong: {
+                          fontWeight: '600',
+                        },
+                        em: {
+                          fontStyle: 'italic',
+                        },
+                        bullet_list: {
+                          marginVertical: 4,
+                        },
+                        ordered_list: {
+                          marginVertical: 4,
+                        },
+                        list_item: {
+                          marginVertical: 2,
+                        },
+                      }}
+                    >
+                      {message.content}
+                    </Markdown>
+                  ) : (
+                    <Text
+                      style={[
+                        styles.messageText,
+                        message.role === 'user' && styles.userMessageText,
+                      ]}
+                    >
+                      {message.content}
+                    </Text>
+                  )}
                 </View>
               </View>
             ))}
