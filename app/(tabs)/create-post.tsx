@@ -188,7 +188,9 @@ export default function CreatePostScreen() {
         })
 
         if (!transcribeResponse.ok) {
-          throw new Error('Failed to transcribe audio')
+          const errorData = await transcribeResponse.json()
+          console.error('Transcription error:', errorData)
+          throw new Error(errorData.details || errorData.error || 'Failed to transcribe audio')
         }
 
         const { text } = await transcribeResponse.json()

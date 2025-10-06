@@ -160,9 +160,10 @@ export function FeedCard({
           <Text style={[styles.tableHeaderText, styles.setsCol]}>Sets</Text>
           <Text style={[styles.tableHeaderText, styles.repsCol]}>Reps</Text>
           <Text style={[styles.tableHeaderText, styles.weightCol]}>
-            Weight (kg)
+            Wt (kg)
           </Text>
         </View>
+        <View style={styles.headerDivider} />
 
         {/* Table Rows */}
         {displayedExercises.map((exercise, index) => {
@@ -416,6 +417,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
+    },
+    headerDivider: {
+      height: 1,
+      backgroundColor: colors.border,
     },
     tableRow: {
       flexDirection: 'row',
