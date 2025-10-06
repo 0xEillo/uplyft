@@ -117,6 +117,75 @@ export async function POST(request: Request) {
                 }))
               },
             }),
+            getPersonalRecords: tool({
+              description:
+                "Return the user's strongest sets (PRs). Call this when summarizing best lifts or asking about max weight/reps.",
+              inputSchema: z
+                .object({
+                  exerciseName: z.string().trim().min(1).max(120).optional(),
+                  limit: z.number().int().min(1).max(20).optional(),
+                })
+                .partial(),
+              execute: async ({ exerciseName, limit } = {}) => {
+                const db = createServerDatabase(accessToken)
+
+                const sessions = await db.workoutSessions.getRecent(userId, 200)
+                const normalizedExercise = exerciseName?.toLowerCase()
+                const prByExercise = new Map<
+                  string,
+                  {
+                    weight: number
+                    reps: number | null
+                    sessionDate: string | null
+                    sessionType: string | null
+                    sessionId: string
+                  }
+                >()
+
+                for (const session of sessions) {
+                  for (const we of session.workout_exercises || []) {
+                    const name = we.exercise?.name
+                    if (!name) continue
+                    if (
+                      normalizedExercise &&
+                      !name.toLowerCase().includes(normalizedExercise)
+                    ) {
+                      continue
+                    }
+
+                    for (const set of we.sets || []) {
+                      if (typeof set.weight !== 'number') continue
+
+                      const current = prByExercise.get(name)
+                      if (!current || set.weight > current.weight) {
+                        prByExercise.set(name, {
+                          weight: set.weight,
+                          reps: set.reps ?? null,
+                          sessionDate: session.date ?? null,
+                          sessionType: session.type,
+                          sessionId: session.id,
+                        })
+                      }
+                    }
+                  }
+                }
+
+                const entries = Array.from(prByExercise.entries())
+                  .map(([name, record]) => ({
+                    exercise: name,
+                    bestWeight: record.weight,
+                    reps: record.reps,
+                    sessionDate: record.sessionDate,
+                    sessionType: record.sessionType,
+                    sessionId: record.sessionId,
+                  }))
+                  .sort((a, b) => b.bestWeight - a.bestWeight)
+
+                const limited = entries.slice(0, Math.min(limit ?? 5, 20))
+
+                return limited
+              },
+            }),
           }
         : undefined
 
