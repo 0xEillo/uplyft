@@ -1,9 +1,9 @@
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useTheme } from '@/contexts/theme-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useState } from 'react'
@@ -33,7 +33,11 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Image
-            source={isDark ? require('@/llm/bellwhite.png') : require('@/llm/bellblack.png')}
+            source={
+              isDark
+                ? require('@/llm/bellwhite.png')
+                : require('@/llm/bellblack.png')
+            }
             style={styles.headerIcon}
             resizeMode="contain"
           />
@@ -46,33 +50,33 @@ export default function ProfileScreen() {
 
       {/* Tabs */}
       <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
-            onPress={() => setActiveTab('chat')}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
+          onPress={() => setActiveTab('chat')}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'chat' && styles.activeTabText,
+            ]}
           >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'chat' && styles.activeTabText,
-              ]}
-            >
-              Chat
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
-            onPress={() => setActiveTab('progress')}
+            Chat
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
+          onPress={() => setActiveTab('progress')}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'progress' && styles.activeTabText,
+            ]}
           >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'progress' && styles.activeTabText,
-              ]}
-            >
-              Stats
-            </Text>
-          </TouchableOpacity>
-        </View>
+            Stats
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Tab Content */}
       {activeTab === 'progress' ? (
@@ -150,5 +154,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     scrollView: {
       flex: 1,
+      paddingTop: 14,
     },
   })

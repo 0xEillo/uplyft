@@ -12,12 +12,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
 interface StrengthScoreChartProps {
   userId: string
 }
+
+type TimeRange = 'week' | 'month' | 'all'
 
 export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -29,6 +32,7 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
   const [progressData, setProgressData] = useState<
     { date: string; strengthScore: number }[]
   >([])
+  const [timeRange, setTimeRange] = useState<TimeRange>('month')
   const [isLoading, setIsLoading] = useState(false)
   const colors = useThemedColors()
 
@@ -78,21 +82,132 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
     ex.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
+  // Aggregate data intelligently based on time range
+  const getAggregatedData = () => {
+    if (progressData.length === 0) return []
+
+    const now = new Date()
+    let filteredData = progressData
+
+    // First, filter by time range
+    if (timeRange === 'week') {
+      const cutoffDate = new Date()
+      cutoffDate.setDate(now.getDate() - 7)
+      filteredData = progressData.filter(
+        (point) => new Date(point.date) >= cutoffDate,
+      )
+    } else if (timeRange === 'month') {
+      const cutoffDate = new Date()
+      cutoffDate.setMonth(now.getMonth() - 1)
+      filteredData = progressData.filter(
+        (point) => new Date(point.date) >= cutoffDate,
+      )
+    }
+
+    // Then aggregate based on granularity
+    if (timeRange === 'week') {
+      // Show all data points for week view
+      return filteredData
+    } else if (timeRange === 'month') {
+      // Group by week, show one point per week (latest in each week)
+      return aggregateByWeek(filteredData)
+    } else {
+      // All time: group by month, show one point per month
+      return aggregateByMonth(filteredData)
+    }
+  }
+
+  const aggregateByWeek = (
+    data: { date: string; strengthScore: number }[],
+  ) => {
+    const weekMap = new Map<string, { date: string; strengthScore: number }>()
+
+    data.forEach((point) => {
+      const date = new Date(point.date)
+      // Get week key (year-week format)
+      const weekStart = new Date(date)
+      weekStart.setDate(date.getDate() - date.getDay()) // Start of week
+      const weekKey = `${weekStart.getFullYear()}-W${Math.ceil(
+        (weekStart.getTime() - new Date(weekStart.getFullYear(), 0, 1).getTime()) /
+          604800000,
+      )}`
+
+      // Keep the latest/strongest entry in each week
+      const existing = weekMap.get(weekKey)
+      if (
+        !existing ||
+        new Date(point.date) > new Date(existing.date) ||
+        point.strengthScore > existing.strengthScore
+      ) {
+        weekMap.set(weekKey, point)
+      }
+    })
+
+    return Array.from(weekMap.values()).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    )
+  }
+
+  const aggregateByMonth = (
+    data: { date: string; strengthScore: number }[],
+  ) => {
+    const monthMap = new Map<string, { date: string; strengthScore: number }>()
+
+    data.forEach((point) => {
+      const date = new Date(point.date)
+      // Get month key (year-month format)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+      // Keep the latest/strongest entry in each month
+      const existing = monthMap.get(monthKey)
+      if (
+        !existing ||
+        new Date(point.date) > new Date(existing.date) ||
+        point.strengthScore > existing.strengthScore
+      ) {
+        monthMap.set(monthKey, point)
+      }
+    })
+
+    return Array.from(monthMap.values()).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    )
+  }
+
+  const filteredData = getAggregatedData()
+
   // Transform data for the chart
-  const chartData = progressData.map((point) => ({
+  const chartData = filteredData.map((point) => ({
     value: point.strengthScore,
     dataPointText: `${point.strengthScore}`,
   }))
 
+  // Calculate dynamic chart width and spacing
+  const screenWidth = Dimensions.get('window').width
+  const baseWidth = screenWidth - 64 // Account for padding
+
+  // Calculate optimal spacing based on number of points
+  // Aim for 40-60px spacing, but allow scrolling if needed for readability
+  const optimalSpacing = chartData.length > 0
+    ? Math.max(40, Math.min(60, baseWidth / (chartData.length + 1)))
+    : 50
+
+  const calculatedWidth = Math.max(
+    baseWidth,
+    chartData.length * optimalSpacing + 40, // Add padding
+  )
+
+  const needsScroll = calculatedWidth > baseWidth
+
   // Calculate stats
-  const maxScore = progressData.length
-    ? Math.max(...progressData.map((p) => p.strengthScore))
+  const maxScore = filteredData.length
+    ? Math.max(...filteredData.map((p) => p.strengthScore))
     : 0
   const latestScore =
-    progressData.length > 0
-      ? progressData[progressData.length - 1].strengthScore
+    filteredData.length > 0
+      ? filteredData[filteredData.length - 1].strengthScore
       : 0
-  const firstScore = progressData.length > 0 ? progressData[0].strengthScore : 0
+  const firstScore = filteredData.length > 0 ? filteredData[0].strengthScore : 0
   const scoreChange = latestScore - firstScore
   const percentChange =
     firstScore > 0 ? ((scoreChange / firstScore) * 100).toFixed(1) : '0'
@@ -128,6 +243,58 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
         </View>
         <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
+
+      {/* Time Range Selector */}
+      <View style={styles.timeRangeContainer}>
+        <TouchableOpacity
+          style={[
+            styles.timeRangeButton,
+            timeRange === 'week' && styles.timeRangeButtonActive,
+          ]}
+          onPress={() => setTimeRange('week')}
+        >
+          <Text
+            style={[
+              styles.timeRangeText,
+              timeRange === 'week' && styles.timeRangeTextActive,
+            ]}
+          >
+            Week
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.timeRangeButton,
+            timeRange === 'month' && styles.timeRangeButtonActive,
+          ]}
+          onPress={() => setTimeRange('month')}
+        >
+          <Text
+            style={[
+              styles.timeRangeText,
+              timeRange === 'month' && styles.timeRangeTextActive,
+            ]}
+          >
+            Month
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.timeRangeButton,
+            timeRange === 'all' && styles.timeRangeButtonActive,
+          ]}
+          onPress={() => setTimeRange('all')}
+        >
+          <Text
+            style={[
+              styles.timeRangeText,
+              timeRange === 'all' && styles.timeRangeTextActive,
+            ]}
+          >
+            All Time
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Stats Cards */}
       {progressData.length > 0 && (
@@ -183,38 +350,59 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
         ) : (
           <>
             <Text style={styles.yAxisLabel}>(kg)</Text>
-            <LineChart
-              data={chartData}
-              width={340}
-              height={220}
-              spacing={Math.max(40, 340 / chartData.length)}
-              initialSpacing={20}
-              endSpacing={20}
-              color={colors.primary}
-              thickness={3}
-              startFillColor={colors.primaryLight}
-              endFillColor={colors.white}
-              startOpacity={0.4}
-              endOpacity={0.1}
-              areaChart
-              hideDataPoints={false}
-              dataPointsColor={colors.primary}
-              dataPointsRadius={4}
-              textColor1={colors.textSecondary}
-              textShiftY={-8}
-              textShiftX={-10}
-              textFontSize={10}
-              curved
-              hideRules
-              hideYAxisText
-              yAxisColor={colors.border}
-              xAxisColor={colors.border}
-              xAxisLabelTextStyle={{
-                color: colors.textSecondary,
-                fontSize: 10,
-              }}
-              maxValue={Math.ceil(maxScore * 1.1)} // Add 10% padding
-            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chartScrollContent}
+            >
+              <LineChart
+                data={chartData}
+                width={calculatedWidth}
+                height={220}
+                spacing={optimalSpacing}
+                initialSpacing={20}
+                endSpacing={20}
+                color={colors.primary}
+                thickness={3}
+                startFillColor={colors.primaryLight}
+                endFillColor={colors.white}
+                startOpacity={0.4}
+                endOpacity={0.1}
+                areaChart
+                hideDataPoints={false}
+                dataPointsColor={colors.primary}
+                dataPointsRadius={4}
+                textColor1={colors.textSecondary}
+                textShiftY={-8}
+                textShiftX={-10}
+                textFontSize={10}
+                curved
+                hideRules
+                hideYAxisText
+                yAxisColor={colors.border}
+                xAxisColor={colors.border}
+                xAxisLabelTextStyle={{
+                  color: colors.textSecondary,
+                  fontSize: 10,
+                }}
+                maxValue={Math.ceil(maxScore * 1.1)} // Add 10% padding
+              />
+            </ScrollView>
+            {needsScroll && (
+              <View style={styles.scrollHint}>
+                <Ionicons
+                  name="chevron-back"
+                  size={16}
+                  color={colors.textPlaceholder}
+                />
+                <Text style={styles.scrollHintText}>Scroll to see more</Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.textPlaceholder}
+                />
+              </View>
+            )}
           </>
         )}
       </View>
@@ -416,6 +604,45 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 11,
       color: colors.textSecondary,
       fontWeight: '500',
+    },
+    chartScrollContent: {
+      paddingRight: 16,
+    },
+    scrollHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      marginTop: 8,
+    },
+    scrollHintText: {
+      fontSize: 11,
+      color: colors.textPlaceholder,
+      fontStyle: 'italic',
+    },
+    timeRangeContainer: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 16,
+    },
+    timeRangeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: colors.backgroundLight,
+      alignItems: 'center',
+    },
+    timeRangeButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    timeRangeText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    timeRangeTextActive: {
+      color: colors.white,
     },
     exerciseSelector: {
       flexDirection: 'row',
