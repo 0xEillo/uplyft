@@ -1,6 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import { Link, router } from 'expo-router'
+import { router } from 'expo-router'
 import {
   Image,
   StyleSheet,
@@ -54,12 +54,6 @@ export default function WelcomeScreen() {
           >
             <Text style={styles.getStartedText}>Get Started</Text>
           </TouchableOpacity>
-
-          <Link href="/(auth)/login" asChild>
-            <TouchableOpacity style={styles.signInButton}>
-              <Text style={styles.signInText}>Sign In</Text>
-            </TouchableOpacity>
-          </Link>
         </View>
       </View>
     </SafeAreaView>

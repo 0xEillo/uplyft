@@ -3,8 +3,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -42,13 +43,76 @@ export default function OnboardingScreen() {
   const colors = useThemedColors()
   const styles = createStyles(colors)
 
+  // Animation for lightning bolt
+  const flashAnim = useRef(new Animated.Value(1)).current
+  const pulseAnim = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    if (step === 7) {
+      // Flash animation - quick opacity changes
+      const flash = Animated.loop(
+        Animated.sequence([
+          Animated.timing(flashAnim, {
+            toValue: 0.3,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(flashAnim, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(flashAnim, {
+            toValue: 0.5,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(flashAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.delay(2000),
+        ]),
+      )
+
+      // Pulse animation - gentle scale
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+      )
+
+      // Delay animations by 0.2s
+      const timer = setTimeout(() => {
+        flash.start()
+        pulse.start()
+      }, 500)
+
+      return () => {
+        clearTimeout(timer)
+        flash.stop()
+        pulse.stop()
+      }
+    }
+  }, [step])
+
   const handleNext = () => {
-    if (step < 8) {
+    if (step < 10) {
       setStep(step + 1)
     } else {
-      // Navigate to rating screen with onboarding data
+      // Navigate to congratulations screen with onboarding data
       router.push({
-        pathname: '/(auth)/rating',
+        pathname: '/(auth)/congratulations',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,
@@ -76,10 +140,12 @@ export default function OnboardingScreen() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return data.name.trim() !== ''
+        return true // Feature screen
       case 2:
-        return data.gender !== null
+        return data.name.trim() !== ''
       case 3:
+        return data.gender !== null
+      case 4:
         const height = parseFloat(data.height_cm)
         return (
           data.height_cm !== '' &&
@@ -87,7 +153,7 @@ export default function OnboardingScreen() {
           height >= 50 &&
           height <= 300
         )
-      case 4:
+      case 5:
         const weight = parseFloat(data.weight_kg)
         return (
           data.weight_kg !== '' &&
@@ -95,19 +161,16 @@ export default function OnboardingScreen() {
           weight >= 20 &&
           weight <= 500
         )
-      case 5:
-        const age = parseInt(data.age)
-        return (
-          data.age !== '' &&
-          !isNaN(age) &&
-          age >= 13 &&
-          age <= 120
-        )
       case 6:
-        return data.goal !== null
+        const age = parseInt(data.age)
+        return data.age !== '' && !isNaN(age) && age >= 13 && age <= 120
       case 7:
-        return data.commitment !== null
+        return true // Info screen
       case 8:
+        return data.goal !== null
+      case 9:
+        return true // Optional step
+      case 10:
         return true // Optional step
       default:
         return false
@@ -119,13 +182,56 @@ export default function OnboardingScreen() {
       case 1:
         return (
           <View style={styles.stepContainer}>
+            <View style={styles.featureScreenHeader}>
+              <View style={styles.featureIconContainer}>
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={56}
+                  color={colors.primary}
+                />
+              </View>
+
+              <Text style={styles.featureHook}>Log workouts in seconds</Text>
+
+              <Text style={styles.featureSubhook}>Not minutes</Text>
+            </View>
+
+            <View style={styles.featureExampleContainer}>
+              <View style={styles.featureBubble}>
+                <Text style={styles.featureBubbleText}>
+                  "I did bench press, 3 sets of 8 reps at 185lbs"
+                </Text>
+              </View>
+
+              <View style={styles.featureArrow}>
+                <Ionicons name="arrow-down" size={32} color={colors.primary} />
+              </View>
+
+              <View style={styles.featureResult}>
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                <Text style={styles.featureResultText}>
+                  Logged instantly by your AI
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureFooter}>
+              <Text style={styles.featureFooterText}>
+                Your AI understands natural language. No tedious forms.
+              </Text>
+            </View>
+          </View>
+        )
+      case 2:
+        return (
+          <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Ionicons
                 name="person-outline"
                 size={48}
                 color={colors.primary}
               />
-              <Text style={styles.stepTitle}>What's your name</Text>
+              <Text style={styles.stepTitle}>What's your name?</Text>
               <Text style={styles.stepSubtitle}>
                 This will be your display name
               </Text>
@@ -141,12 +247,12 @@ export default function OnboardingScreen() {
             />
           </View>
         )
-      case 2:
+      case 3:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Ionicons name="person" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>What's your gender</Text>
+              <Text style={styles.stepTitle}>What's your gender?</Text>
             </View>
             <View style={styles.optionsContainer}>
               {GENDERS.map((gender) => (
@@ -171,7 +277,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 3:
+      case 4:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -187,7 +293,10 @@ export default function OnboardingScreen() {
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9.]/g, '')
                   const parts = cleaned.split('.')
-                  const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned
+                  const formatted =
+                    parts.length > 2
+                      ? parts[0] + '.' + parts.slice(1).join('')
+                      : cleaned
                   setData({ ...data, height_cm: formatted })
                 }}
                 keyboardType="decimal-pad"
@@ -198,7 +307,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 4:
+      case 5:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -214,7 +323,10 @@ export default function OnboardingScreen() {
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9.]/g, '')
                   const parts = cleaned.split('.')
-                  const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned
+                  const formatted =
+                    parts.length > 2
+                      ? parts[0] + '.' + parts.slice(1).join('')
+                      : cleaned
                   setData({ ...data, weight_kg: formatted })
                 }}
                 keyboardType="decimal-pad"
@@ -225,7 +337,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 5:
+      case 6:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -250,12 +362,130 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 6:
+      case 7:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.aiProfileHeader}>
+              <View style={styles.sparkleContainer}>
+                <Animated.View
+                  style={{
+                    opacity: flashAnim,
+                    transform: [{ scale: pulseAnim }],
+                  }}
+                >
+                  <Ionicons name="flash" size={48} color={colors.primary} />
+                </Animated.View>
+              </View>
+              <Text style={styles.aiProfileTitle}>Building Your AI</Text>
+              <Text style={styles.aiProfileSubtitle}>
+                We're creating a personalized training assistant designed
+                specifically for you
+              </Text>
+            </View>
+
+            <View style={styles.aiFeaturesList}>
+              <View style={styles.aiFeatureItem}>
+                <View style={styles.aiFeatureIcon}>
+                  <Ionicons name="fitness" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.aiFeatureContent}>
+                  <Text style={styles.aiFeatureTitle}>Tailored Workouts</Text>
+                  <Text style={styles.aiFeatureDescription}>
+                    Programs designed around your body, experience, and goals
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.aiFeatureItem}>
+                <View style={styles.aiFeatureIcon}>
+                  <Ionicons
+                    name="trending-up"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.aiFeatureContent}>
+                  <Text style={styles.aiFeatureTitle}>Smart Progression</Text>
+                  <Text style={styles.aiFeatureDescription}>
+                    Your AI adapts as you get stronger, ensuring constant growth
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.aiFeatureItem}>
+                <View style={styles.aiFeatureIcon}>
+                  <Ionicons
+                    name="chatbubbles"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.aiFeatureContent}>
+                  <Text style={styles.aiFeatureTitle}>24/7 Assistance</Text>
+                  <Text style={styles.aiFeatureDescription}>
+                    Ask anything, anytime. Form tips, exercise swaps, nutrition
+                    advice
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.aiProfileFooter}>
+              <Text style={styles.aiProfileFooterText}>
+                Help us complete your profile to unlock the full power of your
+                AI coach
+              </Text>
+            </View>
+          </View>
+        )
+      case 7:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.featureScreenHeader}>
+              <View style={styles.featureIconContainer}>
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={56}
+                  color={colors.primary}
+                />
+              </View>
+
+              <Text style={styles.featureHook}>Log workouts in seconds</Text>
+
+              <Text style={styles.featureSubhook}>Not minutes</Text>
+            </View>
+
+            <View style={styles.featureExampleContainer}>
+              <View style={styles.featureBubble}>
+                <Text style={styles.featureBubbleText}>
+                  "I did bench press, 3 sets of 8 reps at 185lbs"
+                </Text>
+              </View>
+
+              <View style={styles.featureArrow}>
+                <Ionicons name="arrow-down" size={32} color={colors.primary} />
+              </View>
+
+              <View style={styles.featureResult}>
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                <Text style={styles.featureResultText}>
+                  Logged instantly by your AI
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureFooter}>
+              <Text style={styles.featureFooterText}>
+                Your AI understands natural language. No tedious forms.
+              </Text>
+            </View>
+          </View>
+        )
+      case 8:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="trophy" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>What's your goal</Text>
+              <Text style={styles.stepTitle}>What's your goal?</Text>
             </View>
             <View style={styles.optionsContainer}>
               {GOALS.map((goal) => (
@@ -289,7 +519,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 7:
+      case 9:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -301,6 +531,7 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
             </View>
+            <Text style={styles.optionalText}>Optional</Text>
             <View style={styles.optionsContainer}>
               {COMMITMENTS.map((commitment) => (
                 <TouchableOpacity
@@ -337,15 +568,11 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 8:
+      case 10:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons
-                name="flash"
-                size={48}
-                color={colors.primary}
-              />
+              <Ionicons name="flash" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Tell your AI about yourself</Text>
             </View>
             <Text style={styles.optionalText}>Optional</Text>
@@ -377,7 +604,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
               <View
                 key={i}
                 style={[
@@ -417,9 +644,7 @@ export default function OnboardingScreen() {
             onPress={handleNext}
             disabled={!canProceed()}
           >
-            <Text style={styles.nextButtonText}>
-              Next
-            </Text>
+            <Text style={styles.nextButtonText}>Next</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -632,5 +857,151 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '500',
       color: colors.textSecondary,
       marginBottom: 8,
+    },
+    aiProfileHeader: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    sparkleContainer: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: colors.primary + '15',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    aiProfileTitle: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    aiProfileSubtitle: {
+      fontSize: 17,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 24,
+      paddingHorizontal: 16,
+    },
+    aiFeaturesList: {
+      gap: 20,
+      marginBottom: 32,
+    },
+    aiFeatureItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 16,
+    },
+    aiFeatureIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primary + '15',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    aiFeatureContent: {
+      flex: 1,
+      paddingTop: 4,
+    },
+    aiFeatureTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    aiFeatureDescription: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      lineHeight: 21,
+    },
+    aiProfileFooter: {
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    aiProfileFooterText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.primary,
+      textAlign: 'center',
+    },
+    featureScreenHeader: {
+      alignItems: 'center',
+      marginBottom: 48,
+    },
+    featureIconContainer: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: colors.primary + '15',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    featureHook: {
+      fontSize: 36,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    featureSubhook: {
+      fontSize: 28,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    featureExampleContainer: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    featureBubble: {
+      backgroundColor: colors.primary + '15',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.primary + '30',
+      marginBottom: 16,
+    },
+    featureBubbleText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      textAlign: 'center',
+      lineHeight: 24,
+    },
+    featureArrow: {
+      marginBottom: 16,
+    },
+    featureResult: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: '#10B98115',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: '#10B981',
+    },
+    featureResultText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    featureFooter: {
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    featureFooterText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
     },
   })

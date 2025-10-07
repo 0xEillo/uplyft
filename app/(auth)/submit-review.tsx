@@ -26,7 +26,7 @@ export default function SubmitReviewScreen() {
 
   const handleNext = () => {
     router.push({
-      pathname: '/(auth)/congratulations',
+      pathname: '/(auth)/signup',
       params: {
         onboarding_data: params.onboarding_data as string,
       },

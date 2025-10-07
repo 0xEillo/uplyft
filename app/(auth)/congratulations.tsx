@@ -93,7 +93,7 @@ export default function CongratulationsScreen() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/(auth)/signup',
+      pathname: '/(auth)/rating',
       params: {
         onboarding_data: params.onboarding_data as string,
       },
