@@ -7,6 +7,7 @@ import { Slot, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import 'react-native-reanimated'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
@@ -44,12 +45,14 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <PostsProvider>
-          <RootLayoutNav />
-        </PostsProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <PostsProvider>
+            <RootLayoutNav />
+          </PostsProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   )
 }
