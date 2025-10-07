@@ -1,13 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useState } from 'react'
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function RatingScreen() {
@@ -17,7 +11,7 @@ export default function RatingScreen() {
 
   const handleNext = () => {
     router.push({
-      pathname: '/(auth)/congratulations',
+      pathname: '/(auth)/submit-review',
       params: {
         onboarding_data: params.onboarding_data as string,
       },
@@ -40,16 +34,14 @@ export default function RatingScreen() {
         </View>
 
         <Text style={styles.subtitle}>
-          I'm a solo developer building this for our community. Your rating would really help other lifters discover Uplyft.
+          As a solo dev and gym goer, building Rep AI for the lifting community,
+          your rating means a lot. It helps Rep AI reach more lifters!
         </Text>
       </View>
 
       {/* Actions */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={handleNext}
-        >
+        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
           <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>
       </View>

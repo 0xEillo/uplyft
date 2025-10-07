@@ -3,11 +3,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
+  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Animated,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -79,13 +79,13 @@ export default function CongratulationsScreen() {
       Animated.sequence([
         Animated.parallel(sparkleAnimations),
         Animated.parallel(
-          sparkles.map(sparkle =>
+          sparkles.map((sparkle) =>
             Animated.timing(sparkle.opacity, {
               toValue: 0,
               duration: 400,
               useNativeDriver: true,
-            })
-          )
+            }),
+          ),
         ),
       ]).start()
     })
@@ -114,7 +114,11 @@ export default function CongratulationsScreen() {
         >
           {/* Checkmark Icon */}
           <View style={styles.iconContainer}>
-            <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
+            <Ionicons
+              name="checkmark-circle"
+              size={64}
+              color={colors.primary}
+            />
 
             {/* Sparkles */}
             {sparkles.map((sparkle, index) => (
@@ -139,13 +143,14 @@ export default function CongratulationsScreen() {
 
           {/* Congratulations Text */}
           <Text style={styles.title}>Congratulations, {userName}!</Text>
-          <Text style={styles.subtitle}>Your AI Profile is ready!</Text>
+          <Text style={styles.subtitle}>Your Profile is ready!</Text>
 
           {/* Success Message */}
           <View style={styles.messageBox}>
             <Ionicons name="checkmark-circle" size={32} color="#10B981" />
             <Text style={styles.messageText}>
-              Your personalized AI coach knows your goals, stats, and preferences.
+              Your personalized AI coach knows your goals, stats, and
+              preferences.
             </Text>
           </View>
         </Animated.View>
@@ -157,7 +162,11 @@ export default function CongratulationsScreen() {
             onPress={handleContinue}
           >
             <Text style={styles.continueButtonText}>Finish</Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.buttonText} />
+            <Ionicons
+              name="arrow-forward"
+              size={20}
+              color={colors.buttonText}
+            />
           </TouchableOpacity>
         </View>
       </View>
