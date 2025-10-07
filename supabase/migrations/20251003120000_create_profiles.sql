@@ -1,5 +1,5 @@
 -- Create profiles table
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   user_tag TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
@@ -10,34 +10,59 @@ CREATE TABLE profiles (
 );
 
 -- Add constraint for user_tag format (lowercase alphanumeric and underscores only)
-ALTER TABLE profiles ADD CONSTRAINT user_tag_format
-  CHECK (user_tag ~ '^[a-z0-9_]{3,30}$');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_tag_format') THEN
+    ALTER TABLE profiles ADD CONSTRAINT user_tag_format
+      CHECK (user_tag ~ '^[a-z0-9_]{3,30}$');
+  END IF;
+END $$;
 
 -- Index for user_tag lookups
-CREATE INDEX idx_profiles_user_tag ON profiles(user_tag);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_tag ON profiles(user_tag);
 
 -- Enable RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Profiles are viewable by everyone (for social features)
-CREATE POLICY "Profiles are viewable by everyone"
-  ON profiles FOR SELECT
-  USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Profiles are viewable by everyone') THEN
+    CREATE POLICY "Profiles are viewable by everyone"
+      ON profiles FOR SELECT
+      USING (true);
+  END IF;
+END $$;
 
 -- Users can insert their own profile
-CREATE POLICY "Users can insert their own profile"
-  ON profiles FOR INSERT
-  WITH CHECK (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can insert their own profile') THEN
+    CREATE POLICY "Users can insert their own profile"
+      ON profiles FOR INSERT
+      WITH CHECK (auth.uid() = id);
+  END IF;
+END $$;
 
 -- Users can update their own profile
-CREATE POLICY "Users can update their own profile"
-  ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can update their own profile') THEN
+    CREATE POLICY "Users can update their own profile"
+      ON profiles FOR UPDATE
+      USING (auth.uid() = id);
+  END IF;
+END $$;
 
 -- Users can delete their own profile
-CREATE POLICY "Users can delete their own profile"
-  ON profiles FOR DELETE
-  USING (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can delete their own profile') THEN
+    CREATE POLICY "Users can delete their own profile"
+      ON profiles FOR DELETE
+      USING (auth.uid() = id);
+  END IF;
+END $$;
 
 -- Function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -49,10 +74,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update updated_at on profile updates
-CREATE TRIGGER update_profiles_updated_at
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_profiles_updated_at') THEN
+    CREATE TRIGGER update_profiles_updated_at
+      BEFORE UPDATE ON profiles
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- Function to create profile on user signup
 CREATE OR REPLACE FUNCTION create_profile_on_signup()
@@ -96,7 +126,12 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to create profile when user signs up
-CREATE TRIGGER create_profile_on_signup_trigger
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION create_profile_on_signup();
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'create_profile_on_signup_trigger') THEN
+    CREATE TRIGGER create_profile_on_signup_trigger
+      AFTER INSERT ON auth.users
+      FOR EACH ROW
+      EXECUTE FUNCTION create_profile_on_signup();
+  END IF;
+END $$;

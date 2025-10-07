@@ -92,6 +92,41 @@ export const database = {
       if (error) throw error
       return data as Profile
     },
+
+    async generateUniqueUserTag(displayName: string): Promise<string> {
+      // Normalize the display name to a valid user tag format
+      const baseTag = displayName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .substring(0, 25) // Leave room for digits
+
+      // Ensure minimum length
+      if (baseTag.length < 3) {
+        throw new Error('Display name must contain at least 3 alphanumeric characters')
+      }
+
+      // Try the base tag first, then add numbers if needed
+      let counter = 0
+      while (counter < 1000) {
+        const tryTag = counter === 0 ? baseTag : `${baseTag}${counter}`
+
+        // Check if this tag is available
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_tag')
+          .eq('user_tag', tryTag)
+          .maybeSingle()
+
+        // If no error and no data, the tag is available
+        if (!error && !data) {
+          return tryTag
+        }
+
+        counter++
+      }
+
+      throw new Error('Could not generate unique user tag')
+    },
   },
 
   // Exercise operations

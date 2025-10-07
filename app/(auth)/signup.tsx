@@ -65,7 +65,13 @@ export default function SignupScreen() {
       // If we have onboarding data, update the profile
       if (userId && onboardingData) {
         try {
+          // Generate a unique user_tag based on the display name
+          const userTag = await database.profiles.generateUniqueUserTag(
+            onboardingData.name,
+          )
+
           await database.profiles.update(userId, {
+            user_tag: userTag,
             display_name: onboardingData.name,
             gender: onboardingData.gender,
             height_cm: onboardingData.height_cm,

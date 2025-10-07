@@ -364,9 +364,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 12,
     },
     avatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 41,
+      height: 41,
+      borderRadius: 21,
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
