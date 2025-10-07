@@ -143,7 +143,7 @@ export default function CongratulationsScreen() {
 
           {/* Congratulations Text */}
           <Text style={styles.title}>Congratulations, {userName}!</Text>
-          <Text style={styles.subtitle}>Your Profile is ready!</Text>
+          <Text style={styles.subtitle}>Your Profile is ready</Text>
 
           {/* Success Message */}
           <View style={styles.messageBox}>

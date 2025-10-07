@@ -1,59 +1,43 @@
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { Link, router } from 'expo-router'
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function WelcomeScreen() {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const styles = createStyles(colors)
+  const logoSource = isDark
+    ? require('@/llm/bellwhite.png')
+    : require('@/llm/bellblack.png')
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Logo/Title */}
+        {/* Logo & Title */}
         <View style={styles.header}>
-          <Image
-            source={require('@/llm/bell-logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Uplyft</Text>
-          <Text style={styles.subtitle}>
-            Track your gains, share your progress
-          </Text>
+          <Image source={logoSource} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.title}>Rep AI</Text>
         </View>
 
-        {/* Features */}
-        <View style={styles.features}>
-          <View style={styles.feature}>
-            <Ionicons name="barbell" size={32} color={colors.primary} />
-            <Text style={styles.featureText}>Track your workouts</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="trending-up" size={32} color={colors.primary} />
-            <Text style={styles.featureText}>Monitor your progress</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="people" size={32} color={colors.primary} />
-            <Text style={styles.featureText}>Share with friends</Text>
-          </View>
-        </View>
-
-        {/* CTA Buttons */}
+        {/* Hook & CTA */}
         <View style={styles.actions}>
+          <Text style={styles.subtitle}>Workout tracking made easy</Text>
           <TouchableOpacity
             style={styles.getStartedButton}
             onPress={() => router.push('/(auth)/onboarding')}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
           </TouchableOpacity>
+          <View style={styles.signInRow}>
+            <Text style={styles.signInPrompt}>Already have an account? </Text>
+            <Link href="/(auth)/login" asChild>
+              <TouchableOpacity>
+                <Text style={styles.signInLink}>Sign in</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -74,39 +58,42 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     header: {
       alignItems: 'center',
-      marginTop: 48,
+      marginTop: 96,
     },
     logo: {
-      width: 160,
-      height: 160,
+      width: 120,
+      height: 120,
+      marginBottom: 16,
     },
     title: {
       fontSize: 48,
       fontWeight: '700',
       color: colors.text,
-      marginTop: 24,
+      marginTop: 0,
     },
     subtitle: {
-      fontSize: 18,
-      color: colors.textSecondary,
-      marginTop: 12,
-      textAlign: 'center',
-    },
-    features: {
-      gap: 32,
-    },
-    feature: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-    },
-    featureText: {
-      fontSize: 18,
+      fontSize: 26,
+      color: '#d5d5d5',
       fontWeight: '500',
-      color: colors.text,
+      marginTop: 0,
+      textAlign: 'center',
     },
     actions: {
       gap: 16,
+    },
+    signInRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    signInPrompt: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    signInLink: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '600',
     },
     getStartedButton: {
       height: 56,

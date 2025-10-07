@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons'
 import { Gender, Goal } from '@/types/database.types'
+import { Ionicons } from '@expo/vector-icons'
 
 /**
  * Shared constants for user profile options.
@@ -11,10 +11,10 @@ export const GOALS: {
   label: string
   icon: keyof typeof Ionicons.glyphMap
 }[] = [
-  { value: 'build_muscle', label: 'Build Muscle', icon: 'body' },
-  { value: 'gain_strength', label: 'Gain Strength', icon: 'barbell' },
-  { value: 'lose_fat', label: 'Lose Fat', icon: 'flame' },
-  { value: 'general_fitness', label: 'General Fitness', icon: 'heart' },
+  { value: 'build_muscle', label: 'Build more muscle', icon: 'body' },
+  { value: 'gain_strength', label: 'Get stronger', icon: 'barbell' },
+  { value: 'lose_fat', label: 'Lose body fat', icon: 'flame' },
+  { value: 'general_fitness', label: 'Improve overall fitness', icon: 'heart' },
 ]
 
 export const GENDERS: { value: Gender; label: string }[] = [

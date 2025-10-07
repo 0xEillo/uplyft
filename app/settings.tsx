@@ -44,7 +44,7 @@ const formatGoal = (goal: string | null) => {
     case 'build_muscle':
       return 'Build Muscle'
     case 'gain_strength':
-      return 'Gain Strength'
+      return 'Increase Strength'
     case 'lose_fat':
       return 'Lose Fat'
     case 'general_fitness':
@@ -381,11 +381,7 @@ export default function SettingsScreen() {
 
               <View style={styles.detailRow}>
                 <View style={styles.detailLabelContainer}>
-                  <Ionicons
-                    name="at"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
+                  <Ionicons name="at" size={20} color={colors.textSecondary} />
                   <Text style={styles.detailLabel}>User Tag</Text>
                 </View>
                 <Text style={styles.detailValue}>
@@ -462,9 +458,7 @@ export default function SettingsScreen() {
 
             <View style={styles.bioContainer}>
               <Text style={styles.contextLabel}>AI Context</Text>
-              <Text style={styles.bioValue}>
-                {profile?.bio || 'Not set'}
-              </Text>
+              <Text style={styles.bioValue}>{profile?.bio || 'Not set'}</Text>
             </View>
 
             <TouchableOpacity
@@ -506,7 +500,9 @@ export default function SettingsScreen() {
             <View style={styles.preferenceRow}>
               <View style={styles.preferenceLeft}>
                 <View>
-                  <Text style={styles.preferenceTitle}>Show Workout Examples</Text>
+                  <Text style={styles.preferenceTitle}>
+                    Show Workout Examples
+                  </Text>
                   <Text style={styles.preferenceDescription}>
                     Display example workouts on create post screen
                   </Text>
@@ -552,11 +548,7 @@ export default function SettingsScreen() {
             onPress={handleDeleteAccount}
           >
             <View style={styles.actionButtonContent}>
-              <Ionicons
-                name="trash-outline"
-                size={22}
-                color={colors.error}
-              />
+              <Ionicons name="trash-outline" size={22} color={colors.error} />
               <Text style={styles.dangerButtonText}>Delete Account</Text>
             </View>
           </TouchableOpacity>

@@ -1,7 +1,8 @@
-import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
+import { GENDERS, GOALS } from '@/constants/options'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { Picker } from '@react-native-picker/picker'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -22,9 +23,10 @@ type OnboardingData = {
   gender: Gender | null
   height_cm: string
   weight_kg: string
-  age: string
+  birth_day: string
+  birth_month: string
+  birth_year: string
   goal: Goal | null
-  commitment: string | null
   bio: string
 }
 
@@ -35,9 +37,10 @@ export default function OnboardingScreen() {
     gender: null,
     height_cm: '',
     weight_kg: '',
-    age: '',
+    birth_day: '',
+    birth_month: '',
+    birth_year: '',
     goal: null,
-    commitment: null,
     bio: '',
   })
   const colors = useThemedColors()
@@ -48,7 +51,7 @@ export default function OnboardingScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
-    if (step === 7) {
+    if (step === 6) {
       // Flash animation - quick opacity changes
       const flash = Animated.loop(
         Animated.sequence([
@@ -107,9 +110,28 @@ export default function OnboardingScreen() {
   }, [step])
 
   const handleNext = () => {
-    if (step < 10) {
+    if (step < 8) {
       setStep(step + 1)
     } else {
+      // Calculate age from birth date
+      let age = null
+      if (data.birth_day && data.birth_month && data.birth_year) {
+        const birthDate = new Date(
+          parseInt(data.birth_year),
+          parseInt(data.birth_month) - 1,
+          parseInt(data.birth_day),
+        )
+        const today = new Date()
+        age = today.getFullYear() - birthDate.getFullYear()
+        const monthDiff = today.getMonth() - birthDate.getMonth()
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--
+        }
+      }
+
       // Navigate to congratulations screen with onboarding data
       router.push({
         pathname: '/(auth)/congratulations',
@@ -119,9 +141,8 @@ export default function OnboardingScreen() {
             gender: data.gender,
             height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
             weight_kg: data.weight_kg ? parseFloat(data.weight_kg) : null,
-            age: data.age ? parseInt(data.age) : null,
+            age: age,
             goal: data.goal,
-            commitment: data.commitment,
             bio: data.bio.trim() || null,
           }),
         },
@@ -147,30 +168,41 @@ export default function OnboardingScreen() {
         return data.gender !== null
       case 4:
         const height = parseFloat(data.height_cm)
+        const weight = parseFloat(data.weight_kg)
         return (
           data.height_cm !== '' &&
           !isNaN(height) &&
           height >= 50 &&
-          height <= 300
-        )
-      case 5:
-        const weight = parseFloat(data.weight_kg)
-        return (
+          height <= 300 &&
           data.weight_kg !== '' &&
           !isNaN(weight) &&
           weight >= 20 &&
           weight <= 500
         )
+      case 5:
+        if (!data.birth_day || !data.birth_month || !data.birth_year) {
+          return false
+        }
+        const day = parseInt(data.birth_day)
+        const month = parseInt(data.birth_month)
+        const year = parseInt(data.birth_year)
+        const currentYear = new Date().getFullYear()
+        return (
+          !isNaN(day) &&
+          day >= 1 &&
+          day <= 31 &&
+          !isNaN(month) &&
+          month >= 1 &&
+          month <= 12 &&
+          !isNaN(year) &&
+          year >= currentYear - 120 &&
+          year <= currentYear - 13
+        )
       case 6:
-        const age = parseInt(data.age)
-        return data.age !== '' && !isNaN(age) && age >= 13 && age <= 120
-      case 7:
         return true // Info screen
-      case 8:
+      case 7:
         return data.goal !== null
-      case 9:
-        return true // Optional step
-      case 10:
+      case 8:
         return true // Optional step
       default:
         return false
@@ -231,10 +263,7 @@ export default function OnboardingScreen() {
                 size={48}
                 color={colors.primary}
               />
-              <Text style={styles.stepTitle}>What's your name?</Text>
-              <Text style={styles.stepSubtitle}>
-                This will be your display name
-              </Text>
+              <Text style={styles.stepTitle}>Choose your name</Text>
             </View>
             <TextInput
               style={styles.nameInput}
@@ -252,7 +281,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Ionicons name="person" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>What's your gender?</Text>
+              <Text style={styles.stepTitle}>Choose your gender</Text>
             </View>
             <View style={styles.optionsContainer}>
               {GENDERS.map((gender) => (
@@ -281,29 +310,56 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="resize" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>How tall are you?</Text>
+              <Ionicons name="body" size={48} color={colors.primary} />
+              <Text style={styles.stepTitle}>Height & Weight</Text>
             </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="175"
-                placeholderTextColor={colors.textSecondary}
-                value={data.height_cm}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, '')
-                  const parts = cleaned.split('.')
-                  const formatted =
-                    parts.length > 2
-                      ? parts[0] + '.' + parts.slice(1).join('')
-                      : cleaned
-                  setData({ ...data, height_cm: formatted })
-                }}
-                keyboardType="decimal-pad"
-                autoFocus
-                maxLength={5}
-              />
-              <Text style={styles.inputLabel}>cm</Text>
+            <View style={styles.pickerRow}>
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Height (cm)</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={data.height_cm || '170'}
+                    onValueChange={(value) =>
+                      setData({ ...data, height_cm: value })
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {Array.from({ length: 251 }, (_, i) => i + 50).map(
+                      (height) => (
+                        <Picker.Item
+                          key={height}
+                          label={`${height}`}
+                          value={`${height}`}
+                        />
+                      ),
+                    )}
+                  </Picker>
+                </View>
+              </View>
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Weight (kg)</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={data.weight_kg || '70'}
+                    onValueChange={(value) =>
+                      setData({ ...data, weight_kg: value })
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {Array.from({ length: 481 }, (_, i) => i + 20).map(
+                      (weight) => (
+                        <Picker.Item
+                          key={weight}
+                          label={`${weight}`}
+                          value={`${weight}`}
+                        />
+                      ),
+                    )}
+                  </Picker>
+                </View>
+              </View>
             </View>
           </View>
         )
@@ -311,58 +367,93 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="barbell" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>What's your weight?</Text>
+              <Ionicons name="calendar" size={48} color={colors.primary} />
+              <Text style={styles.stepTitle}>When were you born?</Text>
             </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="70"
-                placeholderTextColor={colors.textSecondary}
-                value={data.weight_kg}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, '')
-                  const parts = cleaned.split('.')
-                  const formatted =
-                    parts.length > 2
-                      ? parts[0] + '.' + parts.slice(1).join('')
-                      : cleaned
-                  setData({ ...data, weight_kg: formatted })
-                }}
-                keyboardType="decimal-pad"
-                autoFocus
-                maxLength={5}
-              />
-              <Text style={styles.inputLabel}>kg</Text>
+            <View style={styles.birthDateRow}>
+              <View style={styles.birthDateColumnSmall}>
+                <Text style={styles.pickerLabel}>Day</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={data.birth_day || '1'}
+                    onValueChange={(value) =>
+                      setData({ ...data, birth_day: value })
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                      <Picker.Item
+                        key={day}
+                        label={`${day}`}
+                        value={`${day}`}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              <View style={styles.birthDateColumnSmall}>
+                <Text style={styles.pickerLabel}>Month</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={data.birth_month || '1'}
+                    onValueChange={(value) =>
+                      setData({ ...data, birth_month: value })
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {[
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ].map((month, index) => (
+                      <Picker.Item
+                        key={index + 1}
+                        label={month}
+                        value={`${index + 1}`}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              <View style={styles.birthDateColumnYear}>
+                <Text style={styles.pickerLabel}>Year</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={data.birth_year || '2000'}
+                    onValueChange={(value) =>
+                      setData({ ...data, birth_year: value })
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {Array.from(
+                      { length: 108 },
+                      (_, i) => new Date().getFullYear() - 13 - i,
+                    ).map((year) => (
+                      <Picker.Item
+                        key={year}
+                        label={`${year}`}
+                        value={`${year}`}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
             </View>
           </View>
         )
       case 6:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Ionicons name="calendar" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>How old are you?</Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="25"
-                placeholderTextColor={colors.textSecondary}
-                value={data.age}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9]/g, '')
-                  setData({ ...data, age: cleaned })
-                }}
-                keyboardType="number-pad"
-                autoFocus
-                maxLength={3}
-              />
-              <Text style={styles.inputLabel}>years old</Text>
-            </View>
-          </View>
-        )
-      case 7:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.aiProfileHeader}>
@@ -373,26 +464,19 @@ export default function OnboardingScreen() {
                     transform: [{ scale: pulseAnim }],
                   }}
                 >
-                  <Ionicons name="flash" size={48} color={colors.primary} />
+                  <Ionicons name="flash" size={40} color={colors.primary} />
                 </Animated.View>
               </View>
-              <Text style={styles.aiProfileTitle}>Building Your AI</Text>
-              <Text style={styles.aiProfileSubtitle}>
-                We're creating a personalized training assistant designed
-                specifically for you
-              </Text>
+              <Text style={styles.aiProfileTitle}>Building your AI</Text>
             </View>
 
             <View style={styles.aiFeaturesList}>
               <View style={styles.aiFeatureItem}>
                 <View style={styles.aiFeatureIcon}>
-                  <Ionicons name="fitness" size={24} color={colors.primary} />
+                  <Ionicons name="fitness" size={28} color={colors.primary} />
                 </View>
                 <View style={styles.aiFeatureContent}>
                   <Text style={styles.aiFeatureTitle}>Tailored Workouts</Text>
-                  <Text style={styles.aiFeatureDescription}>
-                    Programs designed around your body, experience, and goals
-                  </Text>
                 </View>
               </View>
 
@@ -400,15 +484,12 @@ export default function OnboardingScreen() {
                 <View style={styles.aiFeatureIcon}>
                   <Ionicons
                     name="trending-up"
-                    size={24}
+                    size={28}
                     color={colors.primary}
                   />
                 </View>
                 <View style={styles.aiFeatureContent}>
                   <Text style={styles.aiFeatureTitle}>Smart Progression</Text>
-                  <Text style={styles.aiFeatureDescription}>
-                    Your AI adapts as you get stronger, ensuring constant growth
-                  </Text>
                 </View>
               </View>
 
@@ -416,16 +497,12 @@ export default function OnboardingScreen() {
                 <View style={styles.aiFeatureIcon}>
                   <Ionicons
                     name="chatbubbles"
-                    size={24}
+                    size={28}
                     color={colors.primary}
                   />
                 </View>
                 <View style={styles.aiFeatureContent}>
                   <Text style={styles.aiFeatureTitle}>24/7 Assistance</Text>
-                  <Text style={styles.aiFeatureDescription}>
-                    Ask anything, anytime. Form tips, exercise swaps, nutrition
-                    advice
-                  </Text>
                 </View>
               </View>
             </View>
@@ -433,7 +510,7 @@ export default function OnboardingScreen() {
             <View style={styles.aiProfileFooter}>
               <Text style={styles.aiProfileFooterText}>
                 Help us complete your profile to unlock the full power of your
-                AI coach
+                AI assistant
               </Text>
             </View>
           </View>
@@ -441,51 +518,10 @@ export default function OnboardingScreen() {
       case 7:
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.featureScreenHeader}>
-              <View style={styles.featureIconContainer}>
-                <Ionicons
-                  name="chatbubble-ellipses"
-                  size={56}
-                  color={colors.primary}
-                />
-              </View>
-
-              <Text style={styles.featureHook}>Log workouts in seconds</Text>
-
-              <Text style={styles.featureSubhook}>Not minutes</Text>
-            </View>
-
-            <View style={styles.featureExampleContainer}>
-              <View style={styles.featureBubble}>
-                <Text style={styles.featureBubbleText}>
-                  "I did bench press, 3 sets of 8 reps at 185lbs"
-                </Text>
-              </View>
-
-              <View style={styles.featureArrow}>
-                <Ionicons name="arrow-down" size={32} color={colors.primary} />
-              </View>
-
-              <View style={styles.featureResult}>
-                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                <Text style={styles.featureResultText}>
-                  Logged instantly by your AI
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureFooter}>
-              <Text style={styles.featureFooterText}>
-                Your AI understands natural language. No tedious forms.
-              </Text>
-            </View>
-          </View>
-        )
-      case 8:
-        return (
-          <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>What's your goal?</Text>
+              <Text style={styles.stepTitle}>
+                What would you like to accomplish?
+              </Text>
             </View>
             <View style={styles.optionsContainer}>
               {GOALS.map((goal) => (
@@ -519,56 +555,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 9:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Ionicons name="rocket" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>Your commitment</Text>
-              <View style={styles.commitmentNote}>
-                <Text style={styles.commitmentNoteText}>
-                  People who commit are 3x more likely to reach their goals
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.optionalText}>Optional</Text>
-            <View style={styles.optionsContainer}>
-              {COMMITMENTS.map((commitment) => (
-                <TouchableOpacity
-                  key={commitment.value}
-                  style={[
-                    styles.optionButton,
-                    data.commitment === commitment.value &&
-                      styles.optionButtonSelected,
-                  ]}
-                  onPress={() =>
-                    setData({ ...data, commitment: commitment.value })
-                  }
-                >
-                  <Ionicons
-                    name={commitment.icon}
-                    size={24}
-                    color={
-                      data.commitment === commitment.value
-                        ? colors.buttonText
-                        : colors.primary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.optionText,
-                      data.commitment === commitment.value &&
-                        styles.optionTextSelected,
-                    ]}
-                  >
-                    {commitment.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )
-      case 10:
+      case 8:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -604,7 +591,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <View
                 key={i}
                 style={[
@@ -860,57 +847,57 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     aiProfileHeader: {
       alignItems: 'center',
-      marginBottom: 40,
+      marginBottom: 48,
     },
     sparkleContainer: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       backgroundColor: colors.primary + '15',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 24,
+      marginBottom: 20,
     },
     aiProfileTitle: {
-      fontSize: 32,
+      fontSize: 30,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
     },
     aiProfileSubtitle: {
-      fontSize: 17,
+      fontSize: 16,
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 24,
-      paddingHorizontal: 16,
+      lineHeight: 22,
+      paddingHorizontal: 20,
     },
     aiFeaturesList: {
-      gap: 20,
-      marginBottom: 32,
+      gap: 18,
+      marginBottom: 40,
     },
     aiFeatureItem: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       gap: 16,
+      paddingHorizontal: 4,
     },
     aiFeatureIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       backgroundColor: colors.primary + '15',
       justifyContent: 'center',
       alignItems: 'center',
     },
     aiFeatureContent: {
       flex: 1,
-      paddingTop: 4,
+      justifyContent: 'center',
     },
     aiFeatureTitle: {
-      fontSize: 18,
+      fontSize: 19,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 4,
     },
     aiFeatureDescription: {
       fontSize: 15,
@@ -918,15 +905,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 21,
     },
     aiProfileFooter: {
-      paddingTop: 24,
+      paddingTop: 28,
+      paddingHorizontal: 8,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+      marginTop: 8,
     },
     aiProfileFooterText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '500',
       color: colors.primary,
       textAlign: 'center',
+      lineHeight: 21,
     },
     featureScreenHeader: {
       alignItems: 'center',
@@ -1003,5 +993,57 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
+    },
+    pickerRow: {
+      flexDirection: 'row',
+      gap: 12,
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+    },
+    pickerColumn: {
+      flex: 1,
+      alignItems: 'center',
+      maxWidth: 150,
+    },
+    pickerLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    pickerContainer: {
+      width: '100%',
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      backgroundColor: colors.background,
+      overflow: 'hidden',
+    },
+    picker: {
+      width: '100%',
+      height: 200,
+    },
+    pickerItem: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      height: 200,
+    },
+    birthDateRow: {
+      flexDirection: 'row',
+      gap: 6,
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    birthDateColumnSmall: {
+      flex: 1,
+      alignItems: 'center',
+      minWidth: 90,
+    },
+    birthDateColumnYear: {
+      flex: 1.3,
+      alignItems: 'center',
+      minWidth: 120,
     },
   })

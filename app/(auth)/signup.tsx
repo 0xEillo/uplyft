@@ -133,7 +133,7 @@ export default function SignupScreen() {
           {/* Logo/Title */}
           <View style={styles.header}>
             <Ionicons name="fitness" size={64} color={colors.primary} />
-            <Text style={styles.title}>Join RepAI</Text>
+            <Text style={styles.title}>Join Rep AI</Text>
             <Text style={styles.subtitle}>
               Start tracking your fitness journey
             </Text>

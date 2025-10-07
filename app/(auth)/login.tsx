@@ -64,7 +64,7 @@ export default function LoginScreen() {
           {/* Logo/Title */}
           <View style={styles.header}>
             <Ionicons name="fitness" size={64} color={colors.primary} />
-            <Text style={styles.title}>RepAI</Text>
+            <Text style={styles.title}>Rep AI</Text>
             <Text style={styles.subtitle}>
               Track your gains, share your progress
             </Text>

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         const summary = await buildUserContextSummary(userId, accessToken)
 
         systemPrompt = [
-          "You are the UpLyft training copilot. Ground every answer in the user's actual data. If the data is missing, say so.",
+          "You are the Rep AI training copilot. Ground every answer in the user's actual data. If the data is missing, say so.",
           'User context:\n' + userContextToPrompt(summary),
           'When suggesting next steps, keep them actionable and tied to the metrics you have.',
         ].join('\n\n')
