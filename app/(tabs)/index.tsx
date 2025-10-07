@@ -1,4 +1,4 @@
-import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
+import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -11,13 +11,56 @@ import { useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  LayoutAnimation,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
+
+// Custom animation for sleek, elegant card slide-in
+// Mimics high-end apps like Instagram with smooth spring physics
+const CustomSlideAnimation = {
+  duration: 600, // Slower, more luxurious feel
+  create: {
+    type: LayoutAnimation.Types.spring,
+    property: LayoutAnimation.Properties.opacity,
+    springDamping: 0.75, // Slightly bouncier for premium feel
+  },
+  update: {
+    type: LayoutAnimation.Types.spring,
+    springDamping: 0.75,
+    delay: 0,
+  },
+  delete: {
+    type: LayoutAnimation.Types.spring,
+    property: LayoutAnimation.Properties.opacity,
+    springDamping: 0.8,
+  },
+}
+
+// Even smoother variant for card deletion
+const CardDeleteAnimation = {
+  duration: 400,
+  delete: {
+    type: LayoutAnimation.Types.easeOut,
+    property: LayoutAnimation.Properties.opacity,
+  },
+  update: {
+    type: LayoutAnimation.Types.spring,
+    springDamping: 0.7,
+  },
+}
 
 const PENDING_POST_KEY = '@pending_workout_post'
 const DRAFT_KEY = '@workout_draft'
@@ -29,20 +72,32 @@ export default function FeedScreen() {
   const { isDark } = useTheme()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [newWorkoutId, setNewWorkoutId] = useState<string | null>(null)
+  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(null)
 
-  const loadWorkouts = useCallback(async () => {
+  const loadWorkouts = useCallback(async (showLoading = false) => {
     if (!user) return
 
     try {
-      setIsLoading(true)
+      if (showLoading) {
+        setIsLoading(true)
+      }
       const data = await database.workoutSessions.getRecent(user.id, 20)
+
+      // Use animation when updating existing list
+      if (!isInitialLoad && workouts.length > 0) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      }
+
       setWorkouts(data)
+      setIsInitialLoad(false)
     } catch (error) {
       console.error('Error loading workouts:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [user])
+  }, [user, isInitialLoad, workouts.length])
 
   const handlePendingPost = useCallback(async () => {
     if (!user) return
@@ -94,14 +149,26 @@ export default function FeedScreen() {
       // Override type with user-provided title
       workout.type = title
 
-      // Save to database
-      await database.workoutSessions.create(user.id, workout, notes)
+      // Save to database and get the created workout back
+      const createdSession = await database.workoutSessions.create(user.id, workout, notes)
 
       // Clear pending post on success
       await AsyncStorage.removeItem(PENDING_POST_KEY)
 
-      // Reload workouts to show new post
-      await loadWorkouts()
+      // Fetch the complete workout with all details
+      const newWorkout = await database.workoutSessions.getById(createdSession.id)
+
+      // Mark this workout as new for animation
+      setNewWorkoutId(newWorkout.id)
+
+      // Smooth layout animation for existing cards sliding down
+      LayoutAnimation.configureNext(CustomSlideAnimation)
+
+      // Add new workout to the top of the list
+      setWorkouts((prev) => [newWorkout, ...prev])
+
+      // Clear new workout flag after animation completes
+      setTimeout(() => setNewWorkoutId(null), 1000)
     } catch (error) {
       console.error('Error creating post:', error)
 
@@ -132,12 +199,15 @@ export default function FeedScreen() {
         ]
       )
     }
-  }, [user, loadWorkouts, router])
+  }, [user, router])
 
   useFocusEffect(
     useCallback(() => {
-      handlePendingPost().then(() => loadWorkouts())
-    }, [handlePendingPost, loadWorkouts]),
+      handlePendingPost().then(() => {
+        // Only show loading spinner on initial load
+        loadWorkouts(isInitialLoad)
+      })
+    }, [handlePendingPost, loadWorkouts, isInitialLoad]),
   )
 
   const styles = createStyles(colors)
@@ -176,11 +246,25 @@ export default function FeedScreen() {
               </Text>
             </View>
           ) : (
-            workouts.map((workout) => (
-              <AsyncPrFeedCard
+            workouts.map((workout, index) => (
+              <AnimatedFeedCard
                 key={workout.id}
                 workout={workout}
-                onDelete={loadWorkouts}
+                index={index}
+                isNew={workout.id === newWorkoutId}
+                isDeleting={workout.id === deletingWorkoutId}
+                onDelete={() => {
+                  // If already marked for deletion, actually remove from state
+                  if (workout.id === deletingWorkoutId) {
+                    // Smooth layout animation for remaining cards sliding up
+                    LayoutAnimation.configureNext(CardDeleteAnimation)
+                    setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
+                    setDeletingWorkoutId(null)
+                  } else {
+                    // Mark for deletion to trigger exit animation
+                    setDeletingWorkoutId(workout.id)
+                  }
+                }}
               />
             ))
           )}

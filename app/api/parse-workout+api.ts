@@ -258,7 +258,14 @@ Return ONLY the title with proper capitalization, nothing else.`,
     console.error('Error parsing workout:', error)
 
     // Check for refusal (safety-based rejections)
-    if (error?.cause?.refusal) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'cause' in error &&
+      error.cause &&
+      typeof error.cause === 'object' &&
+      'refusal' in error.cause
+    ) {
       return Response.json(
         { error: 'AI refused to process this content for safety reasons' },
         { status: 400 },
