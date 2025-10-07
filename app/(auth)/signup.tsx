@@ -35,7 +35,8 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { signUp } = useAuth()
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const { signUp, signInWithGoogle } = useAuth()
   const colors = useThemedColors()
   const styles = createStyles(colors)
 
@@ -84,7 +85,10 @@ export default function SignupScreen() {
             bio: onboardingData.bio,
           })
         } catch (profileError) {
-          console.error('Error updating profile with onboarding data:', profileError)
+          console.error(
+            'Error updating profile with onboarding data:',
+            profileError,
+          )
           // Don't fail the signup if profile update fails
         }
       }
@@ -107,6 +111,18 @@ export default function SignupScreen() {
     }
   }
 
+  const handleGoogleSignup = async () => {
+    setIsGoogleLoading(true)
+    try {
+      await signInWithGoogle()
+      router.replace('/(tabs)')
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to sign up with Google')
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -117,7 +133,7 @@ export default function SignupScreen() {
           {/* Logo/Title */}
           <View style={styles.header}>
             <Ionicons name="fitness" size={64} color={colors.primary} />
-            <Text style={styles.title}>Join Uplyft</Text>
+            <Text style={styles.title}>Join RepAI</Text>
             <Text style={styles.subtitle}>
               Start tracking your fitness journey
             </Text>
@@ -166,10 +182,38 @@ export default function SignupScreen() {
               )}
             </TouchableOpacity>
 
+            {/* Separator */}
+            <View style={styles.separator}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>OR</Text>
+              <View style={styles.separatorLine} />
+            </View>
+
+            {/* Google Sign Up */}
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                isGoogleLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleGoogleSignup}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color={colors.text} />
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
               <Link href="/(auth)/login" asChild>
-                <TouchableOpacity disabled={isLoading}>
+                <TouchableOpacity disabled={isLoading || isGoogleLoading}>
                   <Text style={styles.link}>Log In</Text>
                 </TouchableOpacity>
               </Link>
@@ -253,6 +297,38 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     link: {
       fontSize: 15,
       color: colors.primary,
+      fontWeight: '600',
+    },
+    separator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 24,
+    },
+    separatorLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    separatorText: {
+      marginHorizontal: 16,
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    googleButton: {
+      height: 54,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+    },
+    googleButtonText: {
+      color: colors.text,
+      fontSize: 17,
       fontWeight: '600',
     },
   })

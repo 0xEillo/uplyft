@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
+import * as WebBrowser from 'expo-web-browser'
 import React, {
   createContext,
   ReactNode,
@@ -8,12 +9,15 @@ import React, {
   useState,
 } from 'react'
 
+WebBrowser.maybeCompleteAuthSession()
+
 interface AuthContextType {
   user: User | null
   session: Session | null
   isLoading: boolean
   signUp: (email: string, password: string) => Promise<{ userId: string }>
   signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -64,6 +68,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
+  const signInWithGoogle = async () => {
+    console.log('=== Google OAuth Debug ===')
+
+    // Use repai:// for standalone builds
+    const redirectUrl = 'repai://'
+
+    console.log('Generated redirect URL:', redirectUrl)
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+      },
+    })
+
+    if (error) {
+      console.log('OAuth error:', error)
+      throw error
+    }
+
+    console.log('OAuth URL:', data.url)
+
+    if (!data.url) {
+      throw new Error('No OAuth URL generated')
+    }
+
+    // Open OAuth in browser - works with standalone builds only
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
+
+    console.log('Browser result:', result)
+
+    if (result.type === 'success' && result.url) {
+      console.log('Success URL:', result.url)
+      // Parse tokens from URL
+      const hashParams = new URLSearchParams(result.url.split('#')[1] || '')
+      const queryParams = new URLSearchParams(
+        result.url.split('?')[1]?.split('#')[0] || '',
+      )
+
+      const accessToken =
+        hashParams.get('access_token') || queryParams.get('access_token')
+      const refreshToken =
+        hashParams.get('refresh_token') || queryParams.get('refresh_token')
+
+      console.log('Has access token:', !!accessToken)
+      console.log('Has refresh token:', !!refreshToken)
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+      } else {
+        throw new Error('No tokens received from OAuth')
+      }
+    } else if (result.type === 'cancel' || result.type === 'dismiss') {
+      throw new Error('Sign in cancelled')
+    }
+  }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -77,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         signUp,
         signIn,
+        signInWithGoogle,
         signOut,
       }}
     >

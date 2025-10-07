@@ -20,7 +20,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { signIn } = useAuth()
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const { signIn, signInWithGoogle } = useAuth()
   const colors = useThemedColors()
   const styles = createStyles(colors)
 
@@ -41,6 +42,18 @@ export default function LoginScreen() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true)
+    try {
+      await signInWithGoogle()
+      router.replace('/(tabs)')
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to sign in with Google')
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -51,7 +64,7 @@ export default function LoginScreen() {
           {/* Logo/Title */}
           <View style={styles.header}>
             <Ionicons name="fitness" size={64} color={colors.primary} />
-            <Text style={styles.title}>Uplyft</Text>
+            <Text style={styles.title}>RepAI</Text>
             <Text style={styles.subtitle}>
               Track your gains, share your progress
             </Text>
@@ -91,10 +104,40 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
+            {/* Separator */}
+            <View style={styles.separator}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>OR</Text>
+              <View style={styles.separatorLine} />
+            </View>
+
+            {/* Google Sign In */}
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                isGoogleLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleGoogleLogin}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color={colors.text} />
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text style={styles.footerText}>
+                Don&apos;t have an account?{' '}
+              </Text>
               <Link href="/(auth)/signup" asChild>
-                <TouchableOpacity disabled={isLoading}>
+                <TouchableOpacity disabled={isLoading || isGoogleLoading}>
                   <Text style={styles.link}>Sign Up</Text>
                 </TouchableOpacity>
               </Link>
@@ -178,6 +221,38 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     link: {
       fontSize: 15,
       color: colors.primary,
+      fontWeight: '600',
+    },
+    separator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 24,
+    },
+    separatorLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    separatorText: {
+      marginHorizontal: 16,
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    googleButton: {
+      height: 54,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+    },
+    googleButtonText: {
+      color: colors.text,
+      fontSize: 17,
       fontWeight: '600',
     },
   })

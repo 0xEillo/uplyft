@@ -1,18 +1,19 @@
 {
   "expo": {
-    "name": "uplyft",
-    "slug": "uplyft",
+    "name": "RepAI",
+    "slug": "repai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "uplyft",
+    "scheme": "repai",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to your microphone to record workout notes via voice."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.repai"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +25,8 @@
       "windowSoftInputMode": "adjustPan",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": ["RECORD_AUDIO"],
+      "package": "com.anonymous.repai"
     },
     "web": {
       "output": "server",
