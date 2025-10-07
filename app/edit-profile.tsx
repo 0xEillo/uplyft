@@ -30,6 +30,13 @@ const GOALS: { value: Goal; label: string }[] = [
   { value: 'general_fitness', label: 'General Fitness' },
 ]
 
+const COMMITMENTS: { value: string; label: string }[] = [
+  { value: '2_times', label: '2x per week' },
+  { value: '3_times', label: '3x per week' },
+  { value: '4_times', label: '4x per week' },
+  { value: '5_plus', label: '5+ per week' },
+]
+
 export default function EditProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
@@ -40,7 +47,9 @@ export default function EditProfileScreen() {
   const [editedGender, setEditedGender] = useState<Gender | null>(null)
   const [editedHeight, setEditedHeight] = useState('')
   const [editedWeight, setEditedWeight] = useState('')
+  const [editedAge, setEditedAge] = useState('')
   const [editedGoal, setEditedGoal] = useState<Goal | null>(null)
+  const [editedCommitment, setEditedCommitment] = useState<string | null>(null)
   const [editedBio, setEditedBio] = useState('')
 
   useEffect(() => {
@@ -56,7 +65,9 @@ export default function EditProfileScreen() {
       setEditedGender(profile?.gender || null)
       setEditedHeight(profile?.height_cm?.toString() || '')
       setEditedWeight(profile?.weight_kg?.toString() || '')
+      setEditedAge(profile?.age?.toString() || '')
       setEditedGoal(profile?.goal || null)
+      setEditedCommitment(profile?.commitment || null)
       setEditedBio(profile?.bio || '')
     } catch (error) {
       console.error('Error loading profile:', error)
@@ -76,7 +87,9 @@ export default function EditProfileScreen() {
         gender: editedGender,
         height_cm: editedHeight ? parseFloat(editedHeight) : null,
         weight_kg: editedWeight ? parseFloat(editedWeight) : null,
+        age: editedAge ? parseInt(editedAge) : null,
         goal: editedGoal,
+        commitment: editedCommitment,
         bio: editedBio.trim() || null,
       })
       router.back()
@@ -180,6 +193,19 @@ export default function EditProfileScreen() {
           />
         </View>
 
+        {/* Age Input */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Age</Text>
+          <TextInput
+            style={styles.input}
+            value={editedAge}
+            onChangeText={setEditedAge}
+            placeholder="e.g., 25"
+            placeholderTextColor={colors.textPlaceholder}
+            keyboardType="number-pad"
+          />
+        </View>
+
         {/* Goal Selection */}
         <View style={styles.section}>
           <Text style={styles.label}>Goal</Text>
@@ -200,6 +226,32 @@ export default function EditProfileScreen() {
                   ]}
                 >
                   {goal.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Commitment Selection */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Commitment</Text>
+          <View style={styles.goalOptions}>
+            {COMMITMENTS.map((commitment) => (
+              <TouchableOpacity
+                key={commitment.value}
+                style={[
+                  styles.goalOption,
+                  editedCommitment === commitment.value && styles.goalOptionSelected,
+                ]}
+                onPress={() => setEditedCommitment(commitment.value)}
+              >
+                <Text
+                  style={[
+                    styles.goalOptionText,
+                    editedCommitment === commitment.value && styles.goalOptionTextSelected,
+                  ]}
+                >
+                  {commitment.label}
                 </Text>
               </TouchableOpacity>
             ))}

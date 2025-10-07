@@ -54,6 +54,22 @@ const formatGoal = (goal: string | null) => {
   }
 }
 
+const formatCommitment = (commitment: string | null) => {
+  if (!commitment) return 'Not set'
+  switch (commitment) {
+    case '2_times':
+      return '2x per week'
+    case '3_times':
+      return '3x per week'
+    case '4_times':
+      return '4x per week'
+    case '5_plus':
+      return '5+ per week'
+    default:
+      return 'Not set'
+  }
+}
+
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
@@ -425,6 +441,21 @@ export default function SettingsScreen() {
                 <Text style={styles.contextLabel}>Weight</Text>
                 <Text style={styles.contextValue}>
                   {profile?.weight_kg ? `${profile.weight_kg} kg` : 'Not set'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.contextRow}>
+              <View style={styles.contextItem}>
+                <Text style={styles.contextLabel}>Age</Text>
+                <Text style={styles.contextValue}>
+                  {profile?.age ? `${profile.age} years` : 'Not set'}
+                </Text>
+              </View>
+              <View style={styles.contextItem}>
+                <Text style={styles.contextLabel}>Commitment</Text>
+                <Text style={styles.contextValue}>
+                  {formatCommitment(profile?.commitment || null)}
                 </Text>
               </View>
             </View>

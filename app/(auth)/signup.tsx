@@ -23,7 +23,9 @@ type OnboardingData = {
   gender: Gender | null
   height_cm: number | null
   weight_kg: number | null
+  age: number | null
   goal: Goal | null
+  commitment: string | null
   bio: string | null
 }
 
@@ -76,7 +78,9 @@ export default function SignupScreen() {
             gender: onboardingData.gender,
             height_cm: onboardingData.height_cm,
             weight_kg: onboardingData.weight_kg,
+            age: onboardingData.age,
             goal: onboardingData.goal,
+            commitment: onboardingData.commitment,
             bio: onboardingData.bio,
           })
         } catch (profileError) {
@@ -85,6 +89,7 @@ export default function SignupScreen() {
         }
       }
 
+      // Navigate to login screen
       Alert.alert(
         'Success',
         'Account created! Please check your email to verify your account.',

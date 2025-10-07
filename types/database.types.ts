@@ -10,7 +10,9 @@ export interface Profile {
   gender: Gender | null
   height_cm: number | null
   weight_kg: number | null
+  age: number | null
   goal: Goal | null
+  commitment: string | null
   created_at: string
   updated_at: string
 }
