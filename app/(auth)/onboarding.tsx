@@ -1,3 +1,4 @@
+import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -25,26 +26,6 @@ type OnboardingData = {
   commitment: string | null
   bio: string
 }
-
-const GOALS: { value: Goal; label: string; icon: string }[] = [
-  { value: 'build_muscle', label: 'Build Muscle', icon: 'body' },
-  { value: 'gain_strength', label: 'Gain Strength', icon: 'barbell' },
-  { value: 'lose_fat', label: 'Lose Fat', icon: 'flame' },
-  { value: 'general_fitness', label: 'General Fitness', icon: 'heart' },
-]
-
-const GENDERS: { value: Gender; label: string }[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-]
-
-const COMMITMENTS: { value: string; label: string; icon: string }[] = [
-  { value: '2_times', label: '2x per week', icon: 'calendar' },
-  { value: '3_times', label: '3x per week', icon: 'calendar' },
-  { value: '4_times', label: '4x per week', icon: 'calendar' },
-  { value: '5_plus', label: '5+ per week', icon: 'flame' },
-]
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1)
@@ -287,7 +268,7 @@ export default function OnboardingScreen() {
                   onPress={() => setData({ ...data, goal: goal.value })}
                 >
                   <Ionicons
-                    name={goal.icon as any}
+                    name={goal.icon}
                     size={32}
                     color={
                       data.goal === goal.value
@@ -334,7 +315,7 @@ export default function OnboardingScreen() {
                   }
                 >
                   <Ionicons
-                    name={commitment.icon as any}
+                    name={commitment.icon}
                     size={24}
                     color={
                       data.commitment === commitment.value

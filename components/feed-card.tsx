@@ -1,6 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import {
   Animated,
   LayoutAnimation,
@@ -55,7 +55,11 @@ interface FeedCardProps {
   prInfo?: ExercisePRInfo[]
 }
 
-export function FeedCard({
+/**
+ * Feed card component for displaying workout sessions.
+ * Memoized to prevent unnecessary re-renders when parent re-renders.
+ */
+export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
   timeAgo,
@@ -337,7 +341,7 @@ export function FeedCard({
       </Modal>
     </View>
   )
-}
+})
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({

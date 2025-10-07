@@ -7,6 +7,15 @@ import type {
 } from '@/types/database.types'
 import { supabase } from './supabase'
 
+/**
+ * Type for nested Supabase query results
+ */
+interface SessionWithExercises {
+  workout_exercises: Array<{
+    exercise: Exercise
+  }>
+}
+
 export const database = {
   // Profile operations
   profiles: {
@@ -172,8 +181,9 @@ export const database = {
 
         // Extract unique exercises
         const exerciseMap = new Map<string, Exercise>()
-        sessions?.forEach((session: any) => {
-          session.workout_exercises?.forEach((we: any) => {
+        const typedSessions = sessions as SessionWithExercises[] | null
+        typedSessions?.forEach((session) => {
+          session.workout_exercises?.forEach((we) => {
             if (we.exercise && !exerciseMap.has(we.exercise.id)) {
               exerciseMap.set(we.exercise.id, we.exercise)
             }

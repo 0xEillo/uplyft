@@ -1,15 +1,9 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
-import {
-  AudioModule,
-  RecordingPresets,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -74,13 +68,18 @@ export default function CreatePostScreen() {
   const colors = useThemedColors()
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false)
   const [workoutTitle, setWorkoutTitle] = useState('')
   const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
   const [showExamples, setShowExamples] = useState(true)
   const { user } = useAuth()
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
-  const recorderState = useAudioRecorderState(audioRecorder)
+
+  // Use audio transcription hook
+  const { isRecording, isTranscribing, toggleRecording, stopRecording } =
+    useAudioTranscription({
+      onTranscriptionComplete: (text) => {
+        setNotes((prev) => (prev ? `${prev}\n${text}` : text))
+      },
+    })
 
   const styles = createStyles(colors)
 
@@ -106,20 +105,6 @@ export default function CreatePostScreen() {
     }, []),
   )
 
-  // Setup audio permissions
-  useEffect(() => {
-    ;(async () => {
-      const status = await AudioModule.requestRecordingPermissionsAsync()
-      if (!status.granted) {
-        console.log('Microphone permission not granted')
-      }
-
-      setAudioModeAsync({
-        playsInSilentMode: true,
-        allowsRecording: true,
-      })
-    })()
-  }, [])
 
   // Load saved draft on mount
   useEffect(() => {
@@ -153,74 +138,10 @@ export default function CreatePostScreen() {
   }, [notes])
 
   const handleCancel = async () => {
-    if (recorderState.isRecording) {
-      await audioRecorder.stop()
+    if (isRecording) {
+      await stopRecording()
     }
     router.back()
-  }
-
-  const toggleRecording = async () => {
-    if (recorderState.isRecording) {
-      // Stop recording and transcribe
-      setIsTranscribing(true)
-      try {
-        await audioRecorder.stop()
-        const uri = audioRecorder.uri
-
-        if (!uri) {
-          throw new Error('No recording URI')
-        }
-
-        // Send to transcription API
-        const formData = new FormData()
-        formData.append('audio', {
-          uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
-          type: 'audio/m4a',
-          name: 'workout.m4a',
-        } as any)
-
-        const transcribeResponse = await fetch('/api/transcribe', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        })
-
-        if (!transcribeResponse.ok) {
-          const errorData = await transcribeResponse.json()
-          console.error('Transcription error:', errorData)
-          throw new Error(errorData.details || errorData.error || 'Failed to transcribe audio')
-        }
-
-        const { text } = await transcribeResponse.json()
-
-        // Append transcribed text to notes
-        setNotes((prev) => (prev ? `${prev}\n${text}` : text))
-      } catch (error) {
-        console.error('Error transcribing:', error)
-        Alert.alert(
-          'Transcription Failed',
-          'Unable to convert your audio. Please try recording again.',
-          [{ text: 'OK' }]
-        )
-      } finally {
-        setIsTranscribing(false)
-      }
-    } else {
-      // Start recording
-      try {
-        await audioRecorder.prepareToRecordAsync()
-        audioRecorder.record()
-      } catch (error) {
-        console.error('Failed to start recording:', error)
-        Alert.alert(
-          'Recording Issue',
-          'Unable to start recording. Check your microphone permissions.',
-          [{ text: 'OK' }]
-        )
-      }
-    }
   }
 
   const handlePost = async () => {
@@ -316,7 +237,7 @@ export default function CreatePostScreen() {
             placeholderTextColor="#999"
             value={workoutTitle}
             onChangeText={setWorkoutTitle}
-            editable={!recorderState.isRecording && !isTranscribing}
+            editable={!isRecording && !isTranscribing}
             maxLength={50}
           />
 
@@ -332,7 +253,7 @@ export default function CreatePostScreen() {
             value={notes}
             onChangeText={setNotes}
             textAlignVertical="top"
-            editable={!recorderState.isRecording && !isTranscribing}
+            editable={!isRecording && !isTranscribing}
           />
 
           {/* Example Workout - shown when both inputs are empty and preference is enabled */}
@@ -350,10 +271,7 @@ export default function CreatePostScreen() {
 
         {/* Floating Microphone Button */}
         <TouchableOpacity
-          style={[
-            styles.micFab,
-            recorderState.isRecording && styles.micFabActive,
-          ]}
+          style={[styles.micFab, isRecording && styles.micFabActive]}
           onPress={toggleRecording}
           disabled={isTranscribing || isLoading}
         >
@@ -361,7 +279,7 @@ export default function CreatePostScreen() {
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Ionicons
-              name={recorderState.isRecording ? 'stop' : 'mic'}
+              name={isRecording ? 'stop' : 'mic'}
               size={28}
               color={colors.white}
             />

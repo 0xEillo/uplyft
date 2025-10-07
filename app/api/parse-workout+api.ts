@@ -16,7 +16,7 @@ const workoutSchema = z.object({
     .string()
     .nullish()
     .describe(
-      'High-level workout notes or description from the user (e.g., "Great upper body day!")',
+      'ONLY subjective feelings/observations about the workout (e.g., "Great session, felt strong!" or "Shoulder was sore today"). Do NOT include workout data like sets/reps/weights here.',
     ),
   type: z
     .string()
@@ -41,7 +41,7 @@ const workoutSchema = z.object({
           .string()
           .nullish()
           .describe(
-            'Notes specific to this exercise (e.g., "felt heavy today")',
+            'ONLY subjective observations about this exercise (e.g., "felt heavy today" or "form was off"). Do NOT include set/rep/weight data here.',
           ),
 
         // Sets for this exercise
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     }
 
     const result = await generateObject({
-      model: openai('gpt-4.1-nano'),
+      model: openai('gpt-5-nano'),
       schema: workoutSchema,
       prompt: `You are a workout tracking assistant. Parse the following workout notes and extract structured data that matches our database schema.
 
@@ -112,13 +112,30 @@ INSTRUCTIONS:
      * "shoulder press" or "press" → "Dumbbell Shoulder Press" (most common)
      * "row" → "Bent Over Row" (barbell is implied)
    - Examples: "db bench" → "Dumbbell Bench Press", "bb curl" → "Barbell Curl"
-2. Parse sets format like "5x5 @ 100kg" → 5 sets of 5 reps at 100kg each
-3. If no weight mentioned for bodyweight exercises (push-ups, pull-ups), leave weight null
-4. Extract any workout-level notes or feelings
-5. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
-6. Number sets starting from 1 for each exercise
-7. CRITICAL: Every set MUST have a reps value (cannot be null). If reps are not specified in the notes, infer a reasonable default (e.g., 5 reps for strength exercises, 10 for accessories)
-8. IMPORTANT: Keep weights in kilograms as provided by the user. Do NOT convert to pounds.
+
+2. **CRITICAL - CREATE INDIVIDUAL SET OBJECTS:**
+   - When the user says "3 sets of 5 reps" → Create 3 SEPARATE set objects, each with 5 reps
+   - When the user says "5x5 @ 100kg" → Create 5 SEPARATE set objects, each with 5 reps at 100kg
+   - When the user says "4 sets of 8-12 reps" → Create 4 SEPARATE set objects with varying reps (8, 10, 12, 12)
+   - NEVER create just one set object when multiple sets are mentioned!
+   - Examples:
+     * "Bench press 3 sets of 5 reps @ 100kg" = [{set_number: 1, reps: 5, weight: 100}, {set_number: 2, reps: 5, weight: 100}, {set_number: 3, reps: 5, weight: 100}]
+     * "Squat 5x5 @ 140kg" = 5 separate set objects, numbered 1-5, each with 5 reps at 140kg
+     * "Deadlift 3 sets" = 3 separate set objects with reasonable default reps (e.g., 5 each)
+
+3. **SEPARATE WORKOUT DATA FROM NOTES:**
+   - Workout data (sets, reps, weights) goes into the structured "sets" array
+   - The "notes" fields are ONLY for subjective feelings/observations
+   - Examples of GOOD notes: "felt strong today", "shoulder was sore", "PR attempt!", "form was great"
+   - Examples of BAD notes: "5x5 @ 100kg", "3 sets of 10 reps", "did 4 sets" ❌ (this is data, not notes!)
+   - If there are no subjective observations, leave notes as null
+
+4. If no weight mentioned for bodyweight exercises (push-ups, pull-ups), leave weight null
+5. Extract any workout-level feelings or observations into the workout notes field
+6. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
+7. Number sets starting from 1 for each exercise (set_number: 1, 2, 3, etc.)
+8. CRITICAL: Every set MUST have a reps value (cannot be null). If reps are not specified in the notes, infer a reasonable default (e.g., 5 reps for strength exercises, 10 for accessories)
+9. IMPORTANT: Keep weights in kilograms as provided by the user. Do NOT convert to pounds.
 
 EXPECTED OUTPUT FORMAT (JSON):
 {
@@ -129,7 +146,7 @@ EXPECTED OUTPUT FORMAT (JSON):
     {
       "name": "Bench Press",
       "order_index": 1,
-      "notes": "PR attempt",
+      "notes": "PR attempt! Form felt solid",
       "sets": [
         { "set_number": 1, "reps": 5, "weight": 100, "rpe": 7 },
         { "set_number": 2, "reps": 5, "weight": 100, "rpe": 8 },
@@ -141,7 +158,7 @@ EXPECTED OUTPUT FORMAT (JSON):
     {
       "name": "Incline Dumbbell Press",
       "order_index": 2,
-      "notes": null,
+      "notes": "Felt heavy today",
       "sets": [
         { "set_number": 1, "reps": 10, "weight": 27.5, "rpe": null },
         { "set_number": 2, "reps": 8, "weight": 32.5, "rpe": null },
@@ -151,7 +168,7 @@ EXPECTED OUTPUT FORMAT (JSON):
     {
       "name": "Push-ups",
       "order_index": 3,
-      "notes": "bodyweight burnout",
+      "notes": "Burnout set to failure",
       "sets": [
         { "set_number": 1, "reps": 25, "weight": null, "rpe": null },
         { "set_number": 2, "reps": 20, "weight": null, "rpe": null },
@@ -207,7 +224,7 @@ IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises i
         .join(', ')
 
       const titleResult = await generateText({
-        model: openai('gpt-4.1-nano'),
+        model: openai('gpt-5-nano'),
         prompt: `You are a fitness expert analyzing workout sessions. Based on the exercises performed, generate a concise workout title (2-3 words max).
 
 Exercises performed: ${exerciseList}

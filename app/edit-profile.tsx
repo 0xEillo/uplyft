@@ -1,3 +1,4 @@
+import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -16,26 +17,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-
-const GENDERS: { value: Gender; label: string }[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-]
-
-const GOALS: { value: Goal; label: string }[] = [
-  { value: 'build_muscle', label: 'Build Muscle' },
-  { value: 'gain_strength', label: 'Gain Strength' },
-  { value: 'lose_fat', label: 'Lose Fat' },
-  { value: 'general_fitness', label: 'General Fitness' },
-]
-
-const COMMITMENTS: { value: string; label: string }[] = [
-  { value: '2_times', label: '2x per week' },
-  { value: '3_times', label: '3x per week' },
-  { value: '4_times', label: '4x per week' },
-  { value: '5_plus', label: '5+ per week' },
-]
 
 export default function EditProfileScreen() {
   const { user } = useAuth()

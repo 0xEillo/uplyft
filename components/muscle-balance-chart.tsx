@@ -1,7 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   StyleSheet,
@@ -46,7 +46,13 @@ const MUSCLE_GROUP_COLORS: Record<string, string> = {
   Cardio: '#EC7063',
 }
 
-export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
+/**
+ * Muscle balance chart component with optimized rendering.
+ * Memoized to prevent unnecessary re-renders.
+ */
+export const MuscleBalanceChart = memo(function MuscleBalanceChart({
+  userId
+}: MuscleBalanceChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('3M')
   const [distributionData, setDistributionData] = useState<MuscleGroupData[]>(
     [],
@@ -54,11 +60,7 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
   const [isLoading, setIsLoading] = useState(false)
   const colors = useThemedColors()
 
-  useEffect(() => {
-    loadDistributionData()
-  }, [userId, timeRange])
-
-  const loadDistributionData = async () => {
+  const loadDistributionData = useCallback(async () => {
     setIsLoading(true)
     try {
       const daysBack =
@@ -75,11 +77,20 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [userId, timeRange])
 
-  const maxPercentage = distributionData.length
-    ? Math.max(...distributionData.map((d) => d.percentage))
-    : 0
+  useEffect(() => {
+    loadDistributionData()
+  }, [loadDistributionData])
+
+  // Memoize max percentage calculation
+  const maxPercentage = useMemo(
+    () =>
+      distributionData.length
+        ? Math.max(...distributionData.map((d) => d.percentage))
+        : 0,
+    [distributionData],
+  )
 
   const styles = createStyles(colors)
 
@@ -181,7 +192,7 @@ export function MuscleBalanceChart({ userId }: MuscleBalanceChartProps) {
       </View>
     </View>
   )
-}
+})
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({

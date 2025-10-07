@@ -2,7 +2,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Modal,
@@ -22,7 +22,13 @@ interface StrengthScoreChartProps {
 
 type TimeRange = 'week' | 'month' | 'all'
 
-export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
+/**
+ * Strength score chart component with memoized data aggregation.
+ * Optimized to prevent unnecessary recomputations.
+ */
+export const StrengthScoreChart = memo(function StrengthScoreChart({
+  userId
+}: StrengthScoreChartProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
     null,
@@ -82,24 +88,84 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
     ex.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  // Aggregate data intelligently based on time range
-  const getAggregatedData = () => {
+  // Memoized helper functions for data aggregation
+  const aggregateByWeek = useMemo(
+    () => (data: { date: string; strengthScore: number }[]) => {
+      const weekMap = new Map<string, { date: string; strengthScore: number }>()
+
+      data.forEach((point) => {
+        const date = new Date(point.date)
+        // Get week key (year-week format)
+        const weekStart = new Date(date)
+        weekStart.setDate(date.getDate() - date.getDay()) // Start of week
+        const weekKey = `${weekStart.getFullYear()}-W${Math.ceil(
+          (weekStart.getTime() - new Date(weekStart.getFullYear(), 0, 1).getTime()) /
+            604800000,
+        )}`
+
+        // Keep the latest/strongest entry in each week
+        const existing = weekMap.get(weekKey)
+        if (
+          !existing ||
+          new Date(point.date) > new Date(existing.date) ||
+          point.strengthScore > existing.strengthScore
+        ) {
+          weekMap.set(weekKey, point)
+        }
+      })
+
+      return Array.from(weekMap.values()).sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      )
+    },
+    [],
+  )
+
+  const aggregateByMonth = useMemo(
+    () => (data: { date: string; strengthScore: number }[]) => {
+      const monthMap = new Map<string, { date: string; strengthScore: number }>()
+
+      data.forEach((point) => {
+        const date = new Date(point.date)
+        // Get month key (year-month format)
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+        // Keep the latest/strongest entry in each month
+        const existing = monthMap.get(monthKey)
+        if (
+          !existing ||
+          new Date(point.date) > new Date(existing.date) ||
+          point.strengthScore > existing.strengthScore
+        ) {
+          monthMap.set(monthKey, point)
+        }
+      })
+
+      return Array.from(monthMap.values()).sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      )
+    },
+    [],
+  )
+
+  // Memoized data aggregation - only recomputes when progressData or timeRange changes
+  const filteredData = useMemo(() => {
     if (progressData.length === 0) return []
 
     const now = new Date()
-    let filteredData = progressData
+    let filtered = progressData
 
     // First, filter by time range
     if (timeRange === 'week') {
       const cutoffDate = new Date()
       cutoffDate.setDate(now.getDate() - 7)
-      filteredData = progressData.filter(
+      filtered = progressData.filter(
         (point) => new Date(point.date) >= cutoffDate,
       )
     } else if (timeRange === 'month') {
       const cutoffDate = new Date()
       cutoffDate.setMonth(now.getMonth() - 1)
-      filteredData = progressData.filter(
+      filtered = progressData.filter(
         (point) => new Date(point.date) >= cutoffDate,
       )
     }
@@ -107,74 +173,15 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
     // Then aggregate based on granularity
     if (timeRange === 'week') {
       // Show all data points for week view
-      return filteredData
+      return filtered
     } else if (timeRange === 'month') {
       // Group by week, show one point per week (latest in each week)
-      return aggregateByWeek(filteredData)
+      return aggregateByWeek(filtered)
     } else {
       // All time: group by month, show one point per month
-      return aggregateByMonth(filteredData)
+      return aggregateByMonth(filtered)
     }
-  }
-
-  const aggregateByWeek = (
-    data: { date: string; strengthScore: number }[],
-  ) => {
-    const weekMap = new Map<string, { date: string; strengthScore: number }>()
-
-    data.forEach((point) => {
-      const date = new Date(point.date)
-      // Get week key (year-week format)
-      const weekStart = new Date(date)
-      weekStart.setDate(date.getDate() - date.getDay()) // Start of week
-      const weekKey = `${weekStart.getFullYear()}-W${Math.ceil(
-        (weekStart.getTime() - new Date(weekStart.getFullYear(), 0, 1).getTime()) /
-          604800000,
-      )}`
-
-      // Keep the latest/strongest entry in each week
-      const existing = weekMap.get(weekKey)
-      if (
-        !existing ||
-        new Date(point.date) > new Date(existing.date) ||
-        point.strengthScore > existing.strengthScore
-      ) {
-        weekMap.set(weekKey, point)
-      }
-    })
-
-    return Array.from(weekMap.values()).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    )
-  }
-
-  const aggregateByMonth = (
-    data: { date: string; strengthScore: number }[],
-  ) => {
-    const monthMap = new Map<string, { date: string; strengthScore: number }>()
-
-    data.forEach((point) => {
-      const date = new Date(point.date)
-      // Get month key (year-month format)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-
-      // Keep the latest/strongest entry in each month
-      const existing = monthMap.get(monthKey)
-      if (
-        !existing ||
-        new Date(point.date) > new Date(existing.date) ||
-        point.strengthScore > existing.strengthScore
-      ) {
-        monthMap.set(monthKey, point)
-      }
-    })
-
-    return Array.from(monthMap.values()).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    )
-  }
-
-  const filteredData = getAggregatedData()
+  }, [progressData, timeRange, aggregateByWeek, aggregateByMonth])
 
   // Transform data for the chart
   const chartData = filteredData.map((point) => ({
@@ -500,7 +507,7 @@ export function StrengthScoreChart({ userId }: StrengthScoreChartProps) {
       </Modal>
     </View>
   )
-}
+})
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
