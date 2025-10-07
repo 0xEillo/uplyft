@@ -27,6 +27,9 @@ export default function RatingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        {/* Title */}
+        <Text style={styles.title}>Give us a rating</Text>
+
         {/* Rating Stars Visual */}
         <View style={styles.starsWrapper}>
           <View style={styles.starsContainer}>
@@ -36,10 +39,8 @@ export default function RatingScreen() {
           </View>
         </View>
 
-        {/* Title */}
-        <Text style={styles.title}>Give us a rating</Text>
         <Text style={styles.subtitle}>
-          I'm a solo developer and fellow gym-goer building this app to help our community. Your rating would mean the world and help other lifters discover Uplyft.
+          I'm a solo developer building this for our community. Your rating would really help other lifters discover Uplyft.
         </Text>
       </View>
 

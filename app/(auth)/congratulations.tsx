@@ -18,6 +18,14 @@ export default function CongratulationsScreen() {
   const [fadeAnim] = useState(new Animated.Value(0))
   const [scaleAnim] = useState(new Animated.Value(0.5))
 
+  // Sparkle animations
+  const sparkles = Array.from({ length: 12 }, () => ({
+    opacity: new Animated.Value(0),
+    translateX: new Animated.Value(0),
+    translateY: new Animated.Value(0),
+    scale: new Animated.Value(0),
+  }))
+
   // Parse onboarding data to get user's name
   const onboardingData = params.onboarding_data
     ? JSON.parse(params.onboarding_data as string)
@@ -38,7 +46,49 @@ export default function CongratulationsScreen() {
         tension: 40,
         useNativeDriver: true,
       }),
-    ]).start()
+    ]).start(() => {
+      // After main animation, trigger sparkles
+      const sparkleAnimations = sparkles.map((sparkle, index) => {
+        const angle = (index / sparkles.length) * Math.PI * 2
+        const distance = 80
+
+        return Animated.parallel([
+          Animated.timing(sparkle.opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sparkle.scale, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sparkle.translateX, {
+            toValue: Math.cos(angle) * distance,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sparkle.translateY, {
+            toValue: Math.sin(angle) * distance,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      })
+
+      Animated.sequence([
+        Animated.parallel(sparkleAnimations),
+        Animated.parallel(
+          sparkles.map(sparkle =>
+            Animated.timing(sparkle.opacity, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            })
+          )
+        ),
+      ]).start()
+    })
   }, [])
 
   const handleContinue = () => {
@@ -65,6 +115,26 @@ export default function CongratulationsScreen() {
           {/* Checkmark Icon */}
           <View style={styles.iconContainer}>
             <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
+
+            {/* Sparkles */}
+            {sparkles.map((sparkle, index) => (
+              <Animated.View
+                key={index}
+                style={[
+                  styles.sparkle,
+                  {
+                    opacity: sparkle.opacity,
+                    transform: [
+                      { translateX: sparkle.translateX },
+                      { translateY: sparkle.translateY },
+                      { scale: sparkle.scale },
+                    ],
+                  },
+                ]}
+              >
+                <Ionicons name="sparkles" size={20} color={colors.primary} />
+              </Animated.View>
+            ))}
           </View>
 
           {/* Congratulations Text */}
@@ -86,7 +156,7 @@ export default function CongratulationsScreen() {
             style={styles.continueButton}
             onPress={handleContinue}
           >
-            <Text style={styles.continueButtonText}>Sign Up to Continue</Text>
+            <Text style={styles.continueButtonText}>Finish</Text>
             <Ionicons name="arrow-forward" size={20} color={colors.buttonText} />
           </TouchableOpacity>
         </View>
@@ -120,6 +190,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 32,
+      overflow: 'visible',
+    },
+    sparkle: {
+      position: 'absolute',
     },
     title: {
       fontSize: 36,
