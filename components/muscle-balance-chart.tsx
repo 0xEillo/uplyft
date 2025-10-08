@@ -53,7 +53,7 @@ const MUSCLE_GROUP_COLORS: Record<string, string> = {
 export const MuscleBalanceChart = memo(function MuscleBalanceChart({
   userId,
 }: MuscleBalanceChartProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('3M')
+  const [timeRange, setTimeRange] = useState<TimeRange>('30D')
   const [distributionData, setDistributionData] = useState<MuscleGroupData[]>(
     [],
   )

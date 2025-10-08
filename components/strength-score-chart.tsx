@@ -38,7 +38,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   const [progressData, setProgressData] = useState<
     { date: string; strengthScore: number }[]
   >([])
-  const [timeRange, setTimeRange] = useState<TimeRange>('month')
+  const [timeRange, setTimeRange] = useState<TimeRange>('week')
   const [isLoading, setIsLoading] = useState(false)
   const colors = useThemedColors()
 

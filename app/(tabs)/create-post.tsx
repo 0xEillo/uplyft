@@ -1,7 +1,7 @@
-import { database } from '@/lib/database'
 import { useAuth } from '@/contexts/auth-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
@@ -385,11 +385,9 @@ export default function CreatePostScreen() {
               editable={!isRecording && !isTranscribing}
               autoFocus={false}
               onFocus={() => {
-                console.log('TextInput onFocus')
                 setIsNotesFocused(true)
               }}
               onBlur={() => {
-                console.log('TextInput onBlur')
                 setIsNotesFocused(false)
               }}
             />
@@ -397,7 +395,6 @@ export default function CreatePostScreen() {
               <Pressable
                 style={styles.notesOverlay}
                 onPress={() => {
-                  console.log('Overlay tapped - blurring notes input')
                   notesInputRef.current?.blur()
                 }}
               />
@@ -406,7 +403,6 @@ export default function CreatePostScreen() {
               <Pressable
                 style={styles.notesOverlay}
                 onPress={() => {
-                  console.log('Overlay tapped - focusing notes input')
                   notesInputRef.current?.focus()
                 }}
               />
