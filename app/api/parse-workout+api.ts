@@ -102,6 +102,15 @@ INSTRUCTIONS:
    - If isWorkoutRelated is FALSE, set exercises to an empty array and return immediately
 
 1. Standardize exercise names using these guidelines:
+   - **CRITICAL - Handle "weighted" variations of bodyweight exercises:**
+     * When user says "weighted [exercise]" (e.g., "weighted pull ups", "weighted dips", "weighted push ups"), map it to the base exercise name and put the weight in the weight field
+     * Examples:
+       - "weighted pull ups 10kg" → exercise: "Pull-ups", weight: 10
+       - "weighted push ups 5kg" → exercise: "Push-ups", weight: 5
+       - "weighted dips 20kg" → exercise: "Dip", weight: 20
+       - "pull ups with 10kg" → exercise: "Pull-ups", weight: 10
+       - "10kg weighted chin ups" → exercise: "Chin-ups", weight: 10
+     * DO NOT create separate exercises for weighted variations!
    - Use proper capitalization (e.g., "Bench Press", "Squat", "Deadlift")
    - When equipment is specified, include it (e.g., "Dumbbell Curl", "Barbell Row")
    - When equipment is NOT specified, use the most common variant:

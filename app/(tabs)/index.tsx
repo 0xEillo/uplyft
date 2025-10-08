@@ -1,7 +1,7 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,7 +24,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 // Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
@@ -74,30 +77,35 @@ export default function FeedScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [newWorkoutId, setNewWorkoutId] = useState<string | null>(null)
-  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(null)
+  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
+    null,
+  )
 
-  const loadWorkouts = useCallback(async (showLoading = false) => {
-    if (!user) return
+  const loadWorkouts = useCallback(
+    async (showLoading = false) => {
+      if (!user) return
 
-    try {
-      if (showLoading) {
-        setIsLoading(true)
+      try {
+        if (showLoading) {
+          setIsLoading(true)
+        }
+        const data = await database.workoutSessions.getRecent(user.id, 20)
+
+        // Use animation when updating existing list
+        if (!isInitialLoad && workouts.length > 0) {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+        }
+
+        setWorkouts(data)
+        setIsInitialLoad(false)
+      } catch (error) {
+        console.error('Error loading workouts:', error)
+      } finally {
+        setIsLoading(false)
       }
-      const data = await database.workoutSessions.getRecent(user.id, 20)
-
-      // Use animation when updating existing list
-      if (!isInitialLoad && workouts.length > 0) {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-      }
-
-      setWorkouts(data)
-      setIsInitialLoad(false)
-    } catch (error) {
-      console.error('Error loading workouts:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user, isInitialLoad, workouts.length])
+    },
+    [user, isInitialLoad, workouts.length],
+  )
 
   const handlePendingPost = useCallback(async () => {
     if (!user) return
@@ -126,20 +134,16 @@ export default function FeedScreen() {
         await AsyncStorage.removeItem(PENDING_POST_KEY)
 
         // Show friendly error with actionable options
-        Alert.alert(
-          'Unable to Parse Workout',
-          errorMessage,
-          [
-            {
-              text: 'Edit & Try Again',
-              onPress: () => router.push('/(tabs)/create-post'),
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ]
-        )
+        Alert.alert('Unable to Parse Workout', errorMessage, [
+          {
+            text: 'Edit & Try Again',
+            onPress: () => router.push('/(tabs)/create-post'),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ])
         return
       }
 
@@ -150,13 +154,19 @@ export default function FeedScreen() {
       workout.type = title
 
       // Save to database and get the created workout back
-      const createdSession = await database.workoutSessions.create(user.id, workout, notes)
+      const createdSession = await database.workoutSessions.create(
+        user.id,
+        workout,
+        notes,
+      )
 
       // Clear pending post on success
       await AsyncStorage.removeItem(PENDING_POST_KEY)
 
       // Fetch the complete workout with all details
-      const newWorkout = await database.workoutSessions.getById(createdSession.id)
+      const newWorkout = await database.workoutSessions.getById(
+        createdSession.id,
+      )
 
       // Mark this workout as new for animation
       setNewWorkoutId(newWorkout.id)
@@ -196,7 +206,7 @@ export default function FeedScreen() {
             text: 'Cancel',
             style: 'cancel',
           },
-        ]
+        ],
       )
     }
   }, [user, router])
@@ -218,11 +228,15 @@ export default function FeedScreen() {
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Image
-            source={isDark ? require('@/llm/bellwhite.png') : require('@/llm/bellblack.png')}
+            source={
+              isDark
+                ? require('@/llm/bellwhite.png')
+                : require('@/llm/bellblack.png')
+            }
             style={styles.headerIcon}
             resizeMode="contain"
           />
-          <Text style={styles.headerTitle}>Flex AI</Text>
+          <Text style={styles.headerTitle}>Rep AI</Text>
         </View>
       </View>
 
@@ -258,7 +272,9 @@ export default function FeedScreen() {
                   if (workout.id === deletingWorkoutId) {
                     // Smooth layout animation for remaining cards sliding up
                     LayoutAnimation.configureNext(CardDeleteAnimation)
-                    setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
+                    setWorkouts((prev) =>
+                      prev.filter((w) => w.id !== workout.id),
+                    )
                     setDeletingWorkoutId(null)
                   } else {
                     // Mark for deletion to trigger exit animation
@@ -273,7 +289,6 @@ export default function FeedScreen() {
     </SafeAreaView>
   )
 }
-
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
