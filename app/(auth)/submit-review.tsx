@@ -144,7 +144,7 @@ export default function SubmitReviewScreen() {
                 <Text style={styles.reviewLabel}>Add a comment</Text>
                 <TextInput
                   style={styles.reviewInput}
-                  placeholder="Great app!"
+                  placeholder="e.g. Great app!"
                   placeholderTextColor={colors.textSecondary}
                   value={review}
                   onChangeText={setReview}

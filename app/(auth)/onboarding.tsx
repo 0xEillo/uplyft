@@ -4,9 +4,8 @@ import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { router } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import {
-  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -45,69 +44,6 @@ export default function OnboardingScreen() {
   })
   const colors = useThemedColors()
   const styles = createStyles(colors)
-
-  // Animation for lightning bolt
-  const flashAnim = useRef(new Animated.Value(1)).current
-  const pulseAnim = useRef(new Animated.Value(1)).current
-
-  useEffect(() => {
-    if (step === 6) {
-      // Flash animation - quick opacity changes
-      const flash = Animated.loop(
-        Animated.sequence([
-          Animated.timing(flashAnim, {
-            toValue: 0.3,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(flashAnim, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(flashAnim, {
-            toValue: 0.5,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.timing(flashAnim, {
-            toValue: 1,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.delay(2000),
-        ]),
-      )
-
-      // Pulse animation - gentle scale
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ]),
-      )
-
-      // Delay animations by 0.2s
-      const timer = setTimeout(() => {
-        flash.start()
-        pulse.start()
-      }, 500)
-
-      return () => {
-        clearTimeout(timer)
-        flash.stop()
-        pulse.stop()
-      }
-    }
-  }, [step])
 
   const handleNext = () => {
     if (step < 8) {
@@ -161,9 +97,9 @@ export default function OnboardingScreen() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return true // Feature screen
-      case 2:
         return data.name.trim() !== ''
+      case 2:
+        return true // Feature screen
       case 3:
         return data.gender !== null
       case 4:
@@ -214,6 +150,28 @@ export default function OnboardingScreen() {
       case 1:
         return (
           <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Ionicons
+                name="person-outline"
+                size={48}
+                color={colors.primary}
+              />
+              <Text style={styles.stepTitle}>Choose your name</Text>
+            </View>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Enter your name"
+              placeholderTextColor={colors.textSecondary}
+              value={data.name}
+              onChangeText={(text) => setData({ ...data, name: text })}
+              autoFocus
+              maxLength={50}
+            />
+          </View>
+        )
+      case 2:
+        return (
+          <View style={styles.stepContainer}>
             <View style={styles.featureScreenHeader}>
               <View style={styles.featureIconContainer}>
                 <Ionicons
@@ -224,8 +182,6 @@ export default function OnboardingScreen() {
               </View>
 
               <Text style={styles.featureHook}>Log workouts in seconds</Text>
-
-              <Text style={styles.featureSubhook}>Not minutes</Text>
             </View>
 
             <View style={styles.featureExampleContainer}>
@@ -246,34 +202,6 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
             </View>
-
-            <View style={styles.featureFooter}>
-              <Text style={styles.featureFooterText}>
-                Your AI understands natural language. No tedious forms.
-              </Text>
-            </View>
-          </View>
-        )
-      case 2:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Ionicons
-                name="person-outline"
-                size={48}
-                color={colors.primary}
-              />
-              <Text style={styles.stepTitle}>Choose your name</Text>
-            </View>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.textSecondary}
-              value={data.name}
-              onChangeText={(text) => setData({ ...data, name: text })}
-              autoFocus
-              maxLength={50}
-            />
           </View>
         )
       case 3:
@@ -456,61 +384,25 @@ export default function OnboardingScreen() {
       case 6:
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.aiProfileHeader}>
-              <View style={styles.sparkleContainer}>
-                <Animated.View
-                  style={{
-                    opacity: flashAnim,
-                    transform: [{ scale: pulseAnim }],
-                  }}
-                >
-                  <Ionicons name="flash" size={40} color={colors.primary} />
-                </Animated.View>
+            <View style={styles.thankYouHeader}>
+              <View style={styles.clappingIconContainer}>
+                <Ionicons name="happy" size={72} color={colors.primary} />
               </View>
-              <Text style={styles.aiProfileTitle}>Building your AI</Text>
+              <Text style={styles.thankYouTitle}>
+                Thank you for trusting us!
+              </Text>
+              <Text style={styles.thankYouSubtitle}>
+                Now let's personalize Rep AI for you...
+              </Text>
             </View>
 
-            <View style={styles.aiFeaturesList}>
-              <View style={styles.aiFeatureItem}>
-                <View style={styles.aiFeatureIcon}>
-                  <Ionicons name="fitness" size={28} color={colors.primary} />
-                </View>
-                <View style={styles.aiFeatureContent}>
-                  <Text style={styles.aiFeatureTitle}>Tailored Workouts</Text>
-                </View>
-              </View>
-
-              <View style={styles.aiFeatureItem}>
-                <View style={styles.aiFeatureIcon}>
-                  <Ionicons
-                    name="trending-up"
-                    size={28}
-                    color={colors.primary}
-                  />
-                </View>
-                <View style={styles.aiFeatureContent}>
-                  <Text style={styles.aiFeatureTitle}>Smart Progression</Text>
-                </View>
-              </View>
-
-              <View style={styles.aiFeatureItem}>
-                <View style={styles.aiFeatureIcon}>
-                  <Ionicons
-                    name="chatbubbles"
-                    size={28}
-                    color={colors.primary}
-                  />
-                </View>
-                <View style={styles.aiFeatureContent}>
-                  <Text style={styles.aiFeatureTitle}>24/7 Assistance</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.aiProfileFooter}>
-              <Text style={styles.aiProfileFooterText}>
-                Help us complete your profile to unlock the full power of your
-                AI assistant
+            <View style={styles.privacyFooter}>
+              <Text style={styles.privacyTitle}>
+                Your privacy and security matter to us.
+              </Text>
+              <Text style={styles.privacySubtitle}>
+                We promise to always keep your personal information safe and
+                secure.
               </Text>
             </View>
           </View>
@@ -1045,5 +937,55 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1.3,
       alignItems: 'center',
       minWidth: 120,
+    },
+    thankYouHeader: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 40,
+      paddingBottom: 20,
+    },
+    clappingIconContainer: {
+      marginBottom: 32,
+    },
+    thankYouTitle: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 12,
+      paddingHorizontal: 20,
+    },
+    thankYouSubtitle: {
+      fontSize: 17,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 24,
+      paddingHorizontal: 24,
+    },
+    privacyFooter: {
+      marginHorizontal: 20,
+      marginBottom: 0,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      backgroundColor: colors.primary + '08',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.primary + '20',
+      alignItems: 'center',
+    },
+    privacyTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 6,
+    },
+    privacySubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 18,
+      paddingHorizontal: 4,
     },
   })

@@ -1,3 +1,4 @@
+import { ExerciseLeaderboardCard } from '@/components/exercise-leaderboard-card'
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
@@ -6,9 +7,10 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,7 +25,17 @@ export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const [activeTab, setActiveTab] = useState<TabType>('chat')
+  const [activeTab, setActiveTab] = useState<TabType>('progress')
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    setRefreshTrigger((prev) => prev + 1) // Trigger components to refresh
+    // Give components time to refresh their data
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    setRefreshing(false)
+  }, [])
 
   const styles = createStyles(colors)
 
@@ -83,9 +95,22 @@ export default function ProfileScreen() {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+              progressBackgroundColor={colors.white}
+            />
+          }
         >
           {user && (
             <>
+              <ExerciseLeaderboardCard
+                userId={user.id}
+                refreshTrigger={refreshTrigger}
+              />
               <StrengthScoreChart userId={user.id} />
               <MuscleBalanceChart userId={user.id} />
             </>

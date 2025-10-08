@@ -111,7 +111,9 @@ export const database = {
 
       // Ensure minimum length
       if (baseTag.length < 3) {
-        throw new Error('Display name must contain at least 3 alphanumeric characters')
+        throw new Error(
+          'Display name must contain at least 3 alphanumeric characters',
+        )
       }
 
       // Try the base tag first, then add numbers if needed
@@ -381,7 +383,10 @@ export const database = {
       return data as WorkoutSessionWithDetails
     },
 
-    async update(sessionId: string, updates: { type?: string; notes?: string }) {
+    async update(
+      sessionId: string,
+      updates: { type?: string; notes?: string },
+    ) {
       const { data, error } = await supabase
         .from('workout_sessions')
         .update(updates)
@@ -408,7 +413,10 @@ export const database = {
 
   // Set operations
   sets: {
-    async create(workoutExerciseId: string, setData: { set_number: number; reps: number; weight?: number | null }) {
+    async create(
+      workoutExerciseId: string,
+      setData: { set_number: number; reps: number; weight?: number | null },
+    ) {
       const { data, error } = await supabase
         .from('sets')
         .insert({
@@ -424,7 +432,10 @@ export const database = {
       return data
     },
 
-    async update(setId: string, updates: { reps?: number; weight?: number | null }) {
+    async update(
+      setId: string,
+      updates: { reps?: number; weight?: number | null },
+    ) {
       const { data, error } = await supabase
         .from('sets')
         .update(updates)
@@ -437,10 +448,7 @@ export const database = {
     },
 
     async delete(setId: string) {
-      const { error } = await supabase
-        .from('sets')
-        .delete()
-        .eq('id', setId)
+      const { error } = await supabase.from('sets').delete().eq('id', setId)
 
       if (error) throw error
     },
@@ -790,6 +798,198 @@ export const database = {
         .sort((a, b) => b.volume - a.volume) // Sort by volume descending
 
       return distribution
+    },
+
+    async getUserMax1RMs(userId: string) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          workout_exercises!inner (
+            exercise_id,
+            exercise:exercises!inner (id, name),
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .not('workout_exercises.sets.weight', 'is', null)
+
+      if (error) throw error
+
+      interface User1RMRow {
+        workout_exercises?: {
+          exercise_id: string
+          exercise?: {
+            id: string
+            name: string
+          }
+          sets?: {
+            reps: number
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      // Calculate max 1RM for each exercise
+      const exerciseMax1RMs = new Map<
+        string,
+        { name: string; max1RM: number }
+      >()
+
+      ;(data as User1RMRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          if (!we.exercise) return
+
+          we.sets?.forEach((set) => {
+            if (set.reps && set.weight) {
+              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
+              const estimated1RM = set.weight * (1 + set.reps / 30)
+
+              const current = exerciseMax1RMs.get(we.exercise_id)
+              if (!current || estimated1RM > current.max1RM) {
+                exerciseMax1RMs.set(we.exercise_id, {
+                  name: we.exercise.name,
+                  max1RM: Math.round(estimated1RM),
+                })
+              }
+            }
+          })
+        })
+      })
+
+      return Array.from(exerciseMax1RMs.entries()).map(
+        ([exerciseId, data]) => ({
+          exerciseId,
+          exerciseName: data.name,
+          max1RM: data.max1RM,
+        }),
+      )
+    },
+
+    async getAllUsersMax1RMs(exerciseId: string) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          user_id,
+          workout_exercises!inner (
+            exercise_id,
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('workout_exercises.exercise_id', exerciseId)
+        .not('workout_exercises.sets.weight', 'is', null)
+
+      if (error) throw error
+
+      interface AllUsers1RMRow {
+        user_id: string
+        workout_exercises?: {
+          sets?: {
+            reps: number
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      // Calculate max 1RM for each user for this exercise
+      const userMax1RMs = new Map<string, number>()
+
+      ;(data as AllUsers1RMRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
+            if (set.reps && set.weight) {
+              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
+              const estimated1RM = set.weight * (1 + set.reps / 30)
+
+              const currentMax = userMax1RMs.get(session.user_id) || 0
+              if (estimated1RM > currentMax) {
+                userMax1RMs.set(session.user_id, estimated1RM)
+              }
+            }
+          })
+        })
+      })
+
+      // Return array of all max 1RMs (without user IDs for privacy)
+      return Array.from(userMax1RMs.values())
+    },
+
+    async getExercisePercentile(userId: string, exerciseId: string) {
+      try {
+        // Get user's max 1RM for this exercise
+        const userMax1RMs = await this.getUserMax1RMs(userId)
+        const userExercise = userMax1RMs.find(
+          (ex) => ex.exerciseId === exerciseId,
+        )
+
+        if (!userExercise) {
+          return null // User hasn't performed this exercise
+        }
+
+        // Get all users' max 1RMs for this exercise
+        const allUserMax1RMs = await this.getAllUsersMax1RMs(exerciseId)
+
+        if (allUserMax1RMs.length === 0) {
+          return {
+            percentile: 100,
+            userMax1RM: userExercise.max1RM,
+            totalUsers: 0,
+          }
+        }
+
+        // Calculate percentile: percentage of users with lower 1RM
+        const usersWithLower1RM = allUserMax1RMs.filter(
+          (max1RM) => max1RM < userExercise.max1RM,
+        ).length
+
+        const percentile = Math.round(
+          (usersWithLower1RM / allUserMax1RMs.length) * 100,
+        )
+
+        return {
+          percentile,
+          userMax1RM: userExercise.max1RM,
+          totalUsers: allUserMax1RMs.length,
+          exerciseName: userExercise.exerciseName,
+        }
+      } catch (error) {
+        console.error('Error calculating exercise percentile:', error)
+        return null
+      }
+    },
+
+    async getUserLeaderboardRankings(userId: string) {
+      try {
+        const userMax1RMs = await this.getUserMax1RMs(userId)
+
+        // Get percentiles for all user's exercises
+        const rankings = await Promise.all(
+          userMax1RMs.map(async (exercise) => {
+            const percentile = await this.getExercisePercentile(
+              userId,
+              exercise.exerciseId,
+            )
+            return {
+              exerciseId: exercise.exerciseId,
+              exerciseName: exercise.exerciseName,
+              userMax1RM: exercise.max1RM,
+              percentile: percentile?.percentile || 0,
+              totalUsers: percentile?.totalUsers || 0,
+            }
+          }),
+        )
+
+        // Sort by percentile (highest first) and return top exercises
+        return rankings
+          .filter((r) => r.totalUsers > 0) // Only include exercises with multiple users
+          .sort((a, b) => b.percentile - a.percentile)
+      } catch (error) {
+        console.error('Error getting user leaderboard rankings:', error)
+        return []
+      }
     },
   },
 }
