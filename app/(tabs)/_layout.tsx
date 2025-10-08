@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Tabs, useRouter } from 'expo-router'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
+  Animated,
+  Easing,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
@@ -21,6 +22,7 @@ function CreateButton() {
   const router = useRouter()
   const colors = useThemedColors()
   const [isCreatingPost, setIsCreatingPost] = useState(false)
+  const spinValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     // Check for pending post every 300ms
@@ -32,10 +34,32 @@ function CreateButton() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    if (isCreatingPost) {
+      // Start smooth spinning animation
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start()
+    } else {
+      // Reset
+      spinValue.setValue(0)
+    }
+  }, [isCreatingPost, spinValue])
+
   const handlePress = () => {
     if (isCreatingPost) return
     router.push('/(tabs)/create-post')
   }
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  })
 
   const styles = createStyles(colors)
 
@@ -47,7 +71,11 @@ function CreateButton() {
       disabled={isCreatingPost}
     >
       {isCreatingPost ? (
-        <ActivityIndicator size="large" color={colors.white} />
+        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+          <View style={styles.loaderRing}>
+            <View style={styles.loaderArc} />
+          </View>
+        </Animated.View>
       ) : (
         <Ionicons name="add" size={32} color={colors.white} />
       )}
@@ -157,5 +185,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 8,
+    },
+    loaderRing: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 3,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loaderArc: {
+      position: 'absolute',
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 3,
+      borderColor: 'transparent',
+      borderTopColor: '#ffffff',
+      borderRightColor: '#ffffff',
     },
   })

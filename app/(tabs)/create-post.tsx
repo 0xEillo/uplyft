@@ -222,7 +222,7 @@ export default function CreatePostScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color={colors.white} />
+              <Ionicons name="hourglass-outline" size={28} color={colors.white} />
             ) : (
               <Ionicons name="checkmark" size={28} color={colors.white} />
             )}
@@ -311,11 +311,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerButton: {
       padding: 8,
       minWidth: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     primaryButton: {
       backgroundColor: colors.primary,
       borderRadius: 20,
       paddingHorizontal: 16,
+      height: 44,
+    },
+    loaderContainer: {
+      width: 28,
+      height: 28,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     micFab: {
       position: 'absolute',
