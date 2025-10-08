@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Dimensions,
   Modal,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Dimensions,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
@@ -27,7 +27,7 @@ type TimeRange = 'week' | 'month' | 'all'
  * Optimized to prevent unnecessary recomputations.
  */
 export const StrengthScoreChart = memo(function StrengthScoreChart({
-  userId
+  userId,
 }: StrengthScoreChartProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
@@ -99,7 +99,8 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
         const weekStart = new Date(date)
         weekStart.setDate(date.getDate() - date.getDay()) // Start of week
         const weekKey = `${weekStart.getFullYear()}-W${Math.ceil(
-          (weekStart.getTime() - new Date(weekStart.getFullYear(), 0, 1).getTime()) /
+          (weekStart.getTime() -
+            new Date(weekStart.getFullYear(), 0, 1).getTime()) /
             604800000,
         )}`
 
@@ -123,12 +124,17 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
 
   const aggregateByMonth = useMemo(
     () => (data: { date: string; strengthScore: number }[]) => {
-      const monthMap = new Map<string, { date: string; strengthScore: number }>()
+      const monthMap = new Map<
+        string,
+        { date: string; strengthScore: number }
+      >()
 
       data.forEach((point) => {
         const date = new Date(point.date)
         // Get month key (year-month format)
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        const monthKey = `${date.getFullYear()}-${String(
+          date.getMonth() + 1,
+        ).padStart(2, '0')}`
 
         // Keep the latest/strongest entry in each month
         const existing = monthMap.get(monthKey)
@@ -195,9 +201,10 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
 
   // Calculate optimal spacing based on number of points
   // Aim for 40-60px spacing, but allow scrolling if needed for readability
-  const optimalSpacing = chartData.length > 0
-    ? Math.max(40, Math.min(60, baseWidth / (chartData.length + 1)))
-    : 50
+  const optimalSpacing =
+    chartData.length > 0
+      ? Math.max(40, Math.min(60, baseWidth / (chartData.length + 1)))
+      : 50
 
   const calculatedWidth = Math.max(
     baseWidth,
@@ -226,12 +233,15 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Ionicons name="analytics" size={24} color={colors.primary} />
-          <Text style={styles.title}>Strength Score</Text>
+          <View style={styles.iconContainer}>
+            <Ionicons name="analytics" size={24} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.title}>Strength Score</Text>
+            <Text style={styles.subtitle}>Tracking progressive overload</Text>
+          </View>
         </View>
       </View>
-
-      <Text style={styles.subtitle}>Tracking progressive overload</Text>
 
       {/* Exercise Selector */}
       <TouchableOpacity
@@ -239,11 +249,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
         onPress={() => setShowExercisePicker(true)}
       >
         <View style={styles.exerciseSelectorLeft}>
-          <Ionicons
-            name="barbell-outline"
-            size={20}
-            color={colors.primary}
-          />
+          <Ionicons name="barbell-outline" size={20} color={colors.primary} />
           <Text style={styles.exerciseSelectorText}>
             {selectedExercise?.name || 'All Exercises'}
           </Text>
@@ -460,11 +466,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
                   All Exercises
                 </Text>
                 {!selectedExercise && (
-                  <Ionicons
-                    name="checkmark"
-                    size={20}
-                    color={colors.primary}
-                  />
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
 
@@ -512,8 +514,16 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      padding: 16,
-      paddingTop: 8,
+      backgroundColor: colors.white,
+      borderRadius: 16,
+      padding: 20,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     },
     headerContainer: {
       flexDirection: 'row',
@@ -526,16 +536,25 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       gap: 8,
     },
+    iconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
     title: {
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: '700',
       color: colors.text,
+      marginBottom: 2,
     },
     subtitle: {
       fontSize: 13,
       color: colors.textSecondary,
       marginBottom: 16,
-      marginLeft: 32,
     },
     statsContainer: {
       flexDirection: 'row',
@@ -544,14 +563,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.backgroundLight,
       padding: 12,
       borderRadius: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
     },
     statLabel: {
       fontSize: 11,
@@ -575,14 +589,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.error,
     },
     chartContainer: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.backgroundLight,
       padding: 16,
       borderRadius: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2,
       minHeight: 280,
       justifyContent: 'center',
       alignItems: 'center',
@@ -655,15 +664,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.white,
+      backgroundColor: colors.backgroundLight,
       padding: 16,
       borderRadius: 12,
       marginBottom: 16,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2,
     },
     exerciseSelectorLeft: {
       flexDirection: 'row',

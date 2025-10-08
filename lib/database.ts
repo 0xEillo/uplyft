@@ -11,9 +11,9 @@ import { supabase } from './supabase'
  * Type for nested Supabase query results
  */
 interface SessionWithExercises {
-  workout_exercises: Array<{
+  workout_exercises: {
     exercise: Exercise
-  }>
+  }[]
 }
 
 export const database = {
@@ -468,6 +468,20 @@ export const database = {
 
   // Stats and analytics
   stats: {
+    // Key exercises for leaderboard rankings (main compound lifts only)
+    LEADERBOARD_EXERCISES: [
+      'Bench Press',
+      'Incline Bench Press',
+      'Dumbbell Bench Press',
+      'Squat',
+      'Deadlift',
+      'Overhead Press',
+      'Dumbbell Shoulder Press',
+      'Bent Over Row',
+      'Pull-ups',
+      'Dip',
+    ] as string[],
+
     async getExerciseMaxWeight(
       userId: string,
       exerciseName: string,
@@ -940,13 +954,23 @@ export const database = {
           }
         }
 
-        // Calculate percentile: percentage of users with lower 1RM
-        const usersWithLower1RM = allUserMax1RMs.filter(
-          (max1RM) => max1RM < userExercise.max1RM,
+        // If only one user (you), you're at 100th percentile
+        if (allUserMax1RMs.length === 1) {
+          return {
+            percentile: 100,
+            userMax1RM: userExercise.max1RM,
+            totalUsers: 1,
+            exerciseName: userExercise.exerciseName,
+          }
+        }
+
+        // Calculate percentile: percentage of users with lower or equal 1RM
+        const usersWithLowerOrEqual1RM = allUserMax1RMs.filter(
+          (max1RM) => max1RM <= userExercise.max1RM,
         ).length
 
         const percentile = Math.round(
-          (usersWithLower1RM / allUserMax1RMs.length) * 100,
+          (usersWithLowerOrEqual1RM / allUserMax1RMs.length) * 100,
         )
 
         return {
@@ -965,9 +989,18 @@ export const database = {
       try {
         const userMax1RMs = await this.getUserMax1RMs(userId)
 
-        // Get percentiles for all user's exercises
+        // Filter to only include key compound exercises
+        const keyExercises = userMax1RMs.filter((exercise) =>
+          this.LEADERBOARD_EXERCISES.includes(exercise.exerciseName),
+        )
+
+        if (keyExercises.length === 0) {
+          return []
+        }
+
+        // Get percentiles for key exercises only
         const rankings = await Promise.all(
-          userMax1RMs.map(async (exercise) => {
+          keyExercises.map(async (exercise) => {
             const percentile = await this.getExercisePercentile(
               userId,
               exercise.exerciseId,

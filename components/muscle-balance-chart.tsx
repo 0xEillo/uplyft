@@ -51,7 +51,7 @@ const MUSCLE_GROUP_COLORS: Record<string, string> = {
  * Memoized to prevent unnecessary re-renders.
  */
 export const MuscleBalanceChart = memo(function MuscleBalanceChart({
-  userId
+  userId,
 }: MuscleBalanceChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('3M')
   const [distributionData, setDistributionData] = useState<MuscleGroupData[]>(
@@ -64,7 +64,13 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
     setIsLoading(true)
     try {
       const daysBack =
-        timeRange === '30D' ? 30 : timeRange === '3M' ? 90 : timeRange === '6M' ? 180 : undefined
+        timeRange === '30D'
+          ? 30
+          : timeRange === '3M'
+          ? 90
+          : timeRange === '6M'
+          ? 180
+          : undefined
 
       const data = await database.stats.getMuscleGroupDistribution(
         userId,
@@ -99,12 +105,17 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Ionicons name="fitness" size={24} color={colors.primary} />
-          <Text style={styles.title}>Muscle Balance</Text>
+          <View style={styles.iconContainer}>
+            <Ionicons name="fitness" size={24} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.title}>Muscle Balance</Text>
+            <Text style={styles.subtitle}>
+              Training distribution by muscle group
+            </Text>
+          </View>
         </View>
       </View>
-
-      <Text style={styles.subtitle}>Training distribution by muscle group</Text>
 
       {/* Time Range Selector */}
       <View style={styles.timeRangeContainer}>
@@ -164,7 +175,9 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
                         {item.muscleGroup}
                       </Text>
                     </View>
-                    <Text style={styles.percentageText}>{item.percentage}%</Text>
+                    <Text style={styles.percentageText}>
+                      {item.percentage}%
+                    </Text>
                   </View>
 
                   {/* Bar */}
@@ -197,30 +210,47 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      padding: 16,
-      paddingTop: 8,
+      backgroundColor: colors.white,
+      borderRadius: 16,
+      padding: 20,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     },
     headerContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: 16,
     },
     headerLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      flex: 1,
+    },
+    iconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
     },
     title: {
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: '700',
       color: colors.text,
+      marginBottom: 2,
     },
     subtitle: {
       fontSize: 13,
       color: colors.textSecondary,
       marginBottom: 16,
-      marginLeft: 32,
     },
     timeRangeContainer: {
       flexDirection: 'row',
@@ -247,14 +277,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.white,
     },
     chartContainer: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.backgroundLight,
       padding: 16,
       borderRadius: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2,
       minHeight: 200,
     },
     loadingContainer: {

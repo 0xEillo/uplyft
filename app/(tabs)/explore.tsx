@@ -94,6 +94,7 @@ export default function ProfileScreen() {
       {activeTab === 'progress' ? (
         <ScrollView
           style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -179,6 +180,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     scrollView: {
       flex: 1,
-      paddingTop: 14,
+    },
+    scrollViewContent: {
+      paddingTop: 16,
+      paddingBottom: 20,
     },
   })

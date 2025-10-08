@@ -153,11 +153,10 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             size={48}
             color={colors.textPlaceholder}
           />
-          <Text style={styles.emptyText}>
-            Complete workouts to see your rankings
-          </Text>
+          <Text style={styles.emptyText}>No key lifts tracked yet</Text>
           <Text style={styles.emptySubtext}>
-            Log exercises with weights to compete with other users
+            Log compound exercises like Bench Press, Squat, or Deadlift to see
+            your rankings
           </Text>
         </View>
       </View>
@@ -266,29 +265,33 @@ function RankingRow({
   const tierInfo = getTierInfo(ranking.percentile)
   const styles = createStyles(colors)
 
+  // Format the animated percentile value
+  const [displayPercentile, setDisplayPercentile] = useState(
+    `${ranking.percentile}th`,
+  )
+
+  useEffect(() => {
+    // Set initial value
+    setDisplayPercentile(`${ranking.percentile}th`)
+
+    const listener = animatedValue.addListener(({ value }) => {
+      const roundedValue = Math.round(value)
+      setDisplayPercentile(`${roundedValue}th`)
+    })
+
+    return () => animatedValue.removeListener(listener)
+  }, [animatedValue, ranking.percentile])
+
   return (
     <View style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}>
       {/* Exercise Info */}
       <View style={styles.exerciseInfo}>
         <View style={styles.exerciseHeader}>
-          <View style={styles.exerciseTitleRow}>
-            <Text
-              style={[styles.exerciseName, isFirst && styles.firstExerciseName]}
-            >
-              {ranking.exerciseName}
-            </Text>
-            <View
-              style={[
-                styles.tierBadge,
-                { backgroundColor: tierInfo.color + '20' },
-              ]}
-            >
-              <Ionicons name={tierInfo.icon} size={12} color={tierInfo.color} />
-              <Text style={[styles.tierText, { color: tierInfo.color }]}>
-                {tierInfo.tier}
-              </Text>
-            </View>
-          </View>
+          <Text
+            style={[styles.exerciseName, isFirst && styles.firstExerciseName]}
+          >
+            {ranking.exerciseName}
+          </Text>
           <Text style={styles.weightInfo}>
             {ranking.userMax1RM}kg • {ranking.totalUsers} users
           </Text>
@@ -311,23 +314,15 @@ function RankingRow({
               ]}
             />
           </View>
-          <Animated.Text
+          <Text
             style={[
               styles.percentileText,
               isFirst && styles.firstPercentileText,
+              { color: tierInfo.color },
             ]}
           >
-            {animatedValue
-              .interpolate({
-                inputRange: [0, 100],
-                outputRange: [0, ranking.percentile],
-                extrapolate: 'clamp',
-              })
-              .interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0th', `${ranking.percentile}th`],
-              })}
-          </Animated.Text>
+            {displayPercentile}
+          </Text>
         </View>
       </View>
     </View>
@@ -437,32 +432,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseHeader: {
       marginBottom: 12,
     },
-    exerciseTitleRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
-      flex: 1,
+      marginBottom: 4,
     },
     firstExerciseName: {
       fontSize: 17,
-      fontWeight: '700',
-    },
-    tierBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      gap: 4,
-    },
-    tierText: {
-      fontSize: 11,
       fontWeight: '700',
     },
     weightInfo: {
@@ -493,13 +470,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     percentileText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.text,
-      minWidth: 35,
+      minWidth: 40,
       textAlign: 'right',
     },
     firstPercentileText: {
       fontSize: 16,
-      color: colors.primary,
+      fontWeight: '800',
     },
     expandedContainer: {
       marginTop: 16,
