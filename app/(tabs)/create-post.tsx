@@ -1,3 +1,4 @@
+import { database } from '@/lib/database'
 import { useAuth } from '@/contexts/auth-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -14,6 +15,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -75,6 +77,7 @@ export default function CreatePostScreen() {
   const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
   const [showExamples, setShowExamples] = useState(true)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
+  const [isNotesFocused, setIsNotesFocused] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
@@ -219,32 +222,7 @@ export default function CreatePostScreen() {
     router.back()
   }
 
-  const handlePost = async () => {
-    if (!workoutTitle.trim()) {
-      Alert.alert(
-        'Title Required',
-        'Give your workout a title so you can find it later.',
-        [{ text: 'OK' }],
-      )
-      return
-    }
-
-    if (!notes.trim()) {
-      Alert.alert(
-        'Workout Details Missing',
-        'Add your exercises, sets, and reps to track your progress.',
-        [{ text: 'OK' }],
-      )
-      return
-    }
-
-    if (!user) {
-      Alert.alert('Not Logged In', 'Sign in to save and track your workouts.', [
-        { text: 'OK' },
-      ])
-      return
-    }
-
+  const submitWorkout = async () => {
     try {
       setIsLoading(true)
       // Store pending post data
@@ -274,6 +252,63 @@ export default function CreatePostScreen() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handlePost = async () => {
+    if (!workoutTitle.trim()) {
+      Alert.alert(
+        'Title Required',
+        'Give your workout a title so you can find it later.',
+        [{ text: 'OK' }],
+      )
+      return
+    }
+
+    if (!notes.trim()) {
+      Alert.alert(
+        'Workout Details Missing',
+        'Add your exercises, sets, and reps to track your progress.',
+        [{ text: 'OK' }],
+      )
+      return
+    }
+
+    if (!user) {
+      Alert.alert('Not Logged In', 'Sign in to save and track your workouts.', [
+        { text: 'OK' },
+      ])
+      return
+    }
+
+    // Check if this is a first-time user (0 workouts)
+    try {
+      const workouts = await database.workoutSessions.getRecent(user.id, 1)
+
+      if (workouts.length === 0) {
+        // First-time user - show confirmation modal
+        Alert.alert(
+          'Submit Your First Workout',
+          "You're about to submit your workout! We'll analyze it and add it to your feed. Ready to track your progress?",
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Submit',
+              onPress: submitWorkout,
+            },
+          ],
+        )
+        return
+      }
+    } catch (error) {
+      console.error('Error checking workout count:', error)
+      // If check fails, just proceed with submission
+    }
+
+    // Not a first-time user, submit directly
+    await submitWorkout()
   }
 
   return (
@@ -337,18 +372,46 @@ export default function CreatePostScreen() {
           <View style={styles.divider} />
 
           {/* Workout Notes Input */}
-          <TextInput
-            ref={notesInputRef}
-            style={styles.notesInput}
-            placeholder="Input your workout..."
-            placeholderTextColor="#999"
-            multiline
-            value={notes}
-            onChangeText={setNotes}
-            textAlignVertical="top"
-            editable={!isRecording && !isTranscribing}
-            autoFocus={false}
-          />
+          <View style={styles.notesInputWrapper}>
+            <TextInput
+              ref={notesInputRef}
+              style={styles.notesInput}
+              placeholder="Input your workout..."
+              placeholderTextColor="#999"
+              multiline
+              value={notes}
+              onChangeText={setNotes}
+              textAlignVertical="top"
+              editable={!isRecording && !isTranscribing}
+              autoFocus={false}
+              onFocus={() => {
+                console.log('TextInput onFocus')
+                setIsNotesFocused(true)
+              }}
+              onBlur={() => {
+                console.log('TextInput onBlur')
+                setIsNotesFocused(false)
+              }}
+            />
+            {isNotesFocused && (
+              <Pressable
+                style={styles.notesOverlay}
+                onPress={() => {
+                  console.log('Overlay tapped - blurring notes input')
+                  notesInputRef.current?.blur()
+                }}
+              />
+            )}
+            {!isNotesFocused && (
+              <Pressable
+                style={styles.notesOverlay}
+                onPress={() => {
+                  console.log('Overlay tapped - focusing notes input')
+                  notesInputRef.current?.focus()
+                }}
+              />
+            )}
+          </View>
 
           {/* Example Workout - shown when both inputs are empty and preference is enabled */}
           {!notes.trim() && !workoutTitle.trim() && showExamples && (
@@ -470,6 +533,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.border,
       marginHorizontal: 20,
     },
+    notesInputWrapper: {
+      flex: 1,
+      position: 'relative',
+    },
     notesInput: {
       flex: 1,
       paddingHorizontal: 20,
@@ -478,6 +545,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 17,
       lineHeight: 24,
       color: colors.text,
+    },
+    notesOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     exampleContainer: {
       position: 'absolute',
