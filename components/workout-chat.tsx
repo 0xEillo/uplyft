@@ -446,7 +446,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     welcomeSection: {
       alignItems: 'center',
-      marginBottom: 40,
+      marginBottom: 24,
+      marginTop: 20,
     },
     welcomeTitle: {
       fontSize: 24,
@@ -462,7 +463,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 32,
     },
     examplesContainer: {
-      marginTop: 16,
+      marginTop: 8,
     },
     examplesTitle: {
       fontSize: 13,
