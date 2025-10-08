@@ -5,10 +5,13 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  InteractionManager,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -71,26 +74,79 @@ export default function CreatePostScreen() {
   const [workoutTitle, setWorkoutTitle] = useState('')
   const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
   const [showExamples, setShowExamples] = useState(true)
+  const [showDraftSaved, setShowDraftSaved] = useState(false)
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const titleInputRef = useRef<TextInput>(null)
+  const notesInputRef = useRef<TextInput>(null)
   const { user } = useAuth()
 
+  const blurInputs = useCallback(() => {
+    const activeInput = InteractionManager.runAfterInteractions
+      ? (TextInput as any)?.State?.currentlyFocusedInput?.()
+      : null
+
+    if (activeInput) {
+      ;(TextInput as any)?.State?.blurTextInput?.(activeInput)
+    }
+
+    titleInputRef.current?.blur?.()
+    notesInputRef.current?.blur?.()
+    Keyboard.dismiss()
+  }, [])
+
   // Use audio transcription hook
-  const { isRecording, isTranscribing, toggleRecording, stopRecording } =
-    useAudioTranscription({
-      onTranscriptionComplete: (text) => {
-        setNotes((prev) => (prev ? `${prev}\n${text}` : text))
-      },
-    })
+  const {
+    isRecording,
+    isTranscribing,
+    toggleRecording,
+    stopRecording,
+  } = useAudioTranscription({
+    onTranscriptionComplete: (text) => {
+      setNotes((prev) => (prev ? `${prev}\n${text}` : text))
+    },
+  })
 
   const styles = createStyles(colors)
 
-  // Randomize example each time screen is focused
+  // Animate draft saved indicator
+  useEffect(() => {
+    if (showDraftSaved) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1800),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [showDraftSaved, fadeAnim])
+
+  // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
+      // Blur inputs immediately on focus
+      blurInputs()
+
+      // Blur inputs after a short delay to catch any late focus events
+      const timeoutId = setTimeout(blurInputs, 0)
+
+      // Blur inputs after interactions complete
+      const interactionHandle = InteractionManager.runAfterInteractions(
+        blurInputs,
+      )
+
+      // Randomize example workout
       const randomExample =
         EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
       setExampleWorkout(randomExample)
 
-      // Load preference
+      // Load user preference for showing examples
       const loadPreference = async () => {
         try {
           const value = await AsyncStorage.getItem('@show_workout_examples')
@@ -102,9 +158,21 @@ export default function CreatePostScreen() {
         }
       }
       loadPreference()
-    }, []),
+
+      return () => {
+        clearTimeout(timeoutId)
+        interactionHandle.cancel?.()
+        blurInputs()
+      }
+    }, [blurInputs]),
   )
 
+  // Blur inputs when component unmounts
+  useEffect(() => {
+    return () => {
+      blurInputs()
+    }
+  }, [blurInputs])
 
   // Load saved draft on mount
   useEffect(() => {
@@ -121,26 +189,33 @@ export default function CreatePostScreen() {
     loadDraft()
   }, [])
 
-  // Auto-save draft whenever notes change
+  // Auto-save draft whenever notes change with debounce
   useEffect(() => {
-    const saveDraft = async () => {
+    const timer = setTimeout(async () => {
       try {
         if (notes.trim()) {
           await AsyncStorage.setItem(DRAFT_KEY, notes)
+          // Show "Draft saved" indicator
+          setShowDraftSaved(true)
+          // Hide after 2 seconds
+          setTimeout(() => setShowDraftSaved(false), 2000)
         } else {
           await AsyncStorage.removeItem(DRAFT_KEY)
+          setShowDraftSaved(false)
         }
       } catch (error) {
         console.error('Error saving draft:', error)
       }
-    }
-    saveDraft()
+    }, 800) // Wait 800ms after user stops typing
+
+    return () => clearTimeout(timer)
   }, [notes])
 
   const handleCancel = async () => {
     if (isRecording) {
       await stopRecording()
     }
+    blurInputs()
     router.back()
   }
 
@@ -149,7 +224,7 @@ export default function CreatePostScreen() {
       Alert.alert(
         'Title Required',
         'Give your workout a title so you can find it later.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
       return
     }
@@ -158,17 +233,15 @@ export default function CreatePostScreen() {
       Alert.alert(
         'Workout Details Missing',
         'Add your exercises, sets, and reps to track your progress.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
       return
     }
 
     if (!user) {
-      Alert.alert(
-        'Not Logged In',
-        'Sign in to save and track your workouts.',
-        [{ text: 'OK' }]
-      )
+      Alert.alert('Not Logged In', 'Sign in to save and track your workouts.', [
+        { text: 'OK' },
+      ])
       return
     }
 
@@ -189,13 +262,14 @@ export default function CreatePostScreen() {
       // Navigate to feed immediately
       setNotes('')
       setWorkoutTitle('')
+      blurInputs()
       router.back()
     } catch (error) {
       console.error('Error saving pending post:', error)
       Alert.alert(
         'Save Failed',
         'Unable to save your workout. Please try again.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
     } finally {
       setIsLoading(false)
@@ -216,13 +290,29 @@ export default function CreatePostScreen() {
           >
             <Ionicons name="arrow-back" size={28} color={colors.text} />
           </TouchableOpacity>
+          {showDraftSaved && (
+            <Animated.View
+              style={[styles.draftSavedContainer, { opacity: fadeAnim }]}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={colors.primary}
+              />
+              <Text style={styles.draftSavedText}>Draft saved</Text>
+            </Animated.View>
+          )}
           <TouchableOpacity
             onPress={handlePost}
             style={[styles.headerButton, styles.primaryButton]}
             disabled={isLoading}
           >
             {isLoading ? (
-              <Ionicons name="hourglass-outline" size={28} color={colors.white} />
+              <Ionicons
+                name="hourglass-outline"
+                size={28}
+                color={colors.white}
+              />
             ) : (
               <Ionicons name="checkmark" size={28} color={colors.white} />
             )}
@@ -232,6 +322,7 @@ export default function CreatePostScreen() {
         <View style={styles.inputContainer}>
           {/* Title Input */}
           <TextInput
+            ref={titleInputRef}
             style={styles.titleInput}
             placeholder="Workout Title"
             placeholderTextColor="#999"
@@ -239,6 +330,7 @@ export default function CreatePostScreen() {
             onChangeText={setWorkoutTitle}
             editable={!isRecording && !isTranscribing}
             maxLength={50}
+            autoFocus={false}
           />
 
           {/* Divider */}
@@ -246,6 +338,7 @@ export default function CreatePostScreen() {
 
           {/* Workout Notes Input */}
           <TextInput
+            ref={notesInputRef}
             style={styles.notesInput}
             placeholder="Input your workout..."
             placeholderTextColor="#999"
@@ -254,6 +347,7 @@ export default function CreatePostScreen() {
             onChangeText={setNotes}
             textAlignVertical="top"
             editable={!isRecording && !isTranscribing}
+            autoFocus={false}
           />
 
           {/* Example Workout - shown when both inputs are empty and preference is enabled */}
@@ -319,6 +413,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 20,
       paddingHorizontal: 16,
       height: 44,
+    },
+    draftSavedContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 16,
+    },
+    draftSavedText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.primary,
     },
     loaderContainer: {
       width: 28,

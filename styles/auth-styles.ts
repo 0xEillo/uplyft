@@ -30,11 +30,19 @@ export const createAuthStyles = (colors: {
       alignItems: 'center',
       marginBottom: 48,
     },
+    logoTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    logo: {
+      width: 48,
+      height: 48,
+    },
     title: {
       fontSize: 42,
       fontWeight: '700',
       color: colors.text,
-      marginTop: 16,
     },
     subtitle: {
       fontSize: 16,

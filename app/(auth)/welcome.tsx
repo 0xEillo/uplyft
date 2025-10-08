@@ -9,8 +9,8 @@ export default function WelcomeScreen() {
   const { isDark } = useTheme()
   const styles = createStyles(colors)
   const logoSource = isDark
-    ? require('@/llm/bellwhite.png')
-    : require('@/llm/bellblack.png')
+    ? require('@/llm/repai-logo-white.png')
+    : require('@/llm/repai-logo-black.png')
 
   return (
     <SafeAreaView style={styles.container}>

@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { createAuthStyles } from '@/styles/auth-styles'
@@ -9,6 +10,7 @@ import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Text,
@@ -37,8 +39,12 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { signUp, signInWithGoogle } = useAuth()
+  const { isDark } = useTheme()
   const colors = useThemedColors()
   const styles = createAuthStyles(colors)
+  const logoSource = isDark
+    ? require('@/llm/repai-logo-white.png')
+    : require('@/llm/repai-logo-black.png')
 
   // Parse onboarding data from params
   const onboardingData: OnboardingData | null = params.onboarding_data
@@ -132,8 +138,14 @@ export default function SignupScreen() {
         <View style={styles.content}>
           {/* Logo/Title */}
           <View style={styles.header}>
-            <Ionicons name="fitness" size={64} color={colors.primary} />
-            <Text style={styles.title}>Join Rep AI</Text>
+            <View style={styles.logoTitleContainer}>
+              <Image
+                source={logoSource}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.title}>Join Rep AI</Text>
+            </View>
             <Text style={styles.subtitle}>
               Start tracking your fitness journey
             </Text>

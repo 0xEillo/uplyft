@@ -17,18 +17,22 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 
 const PENDING_POST_KEY = '@pending_workout_post'
+const DRAFT_KEY = '@workout_draft'
 
 function CreateButton() {
   const router = useRouter()
   const colors = useThemedColors()
   const [isCreatingPost, setIsCreatingPost] = useState(false)
+  const [hasDraft, setHasDraft] = useState(false)
   const spinValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    // Check for pending post every 300ms
+    // Check for pending post and draft every 300ms
     const interval = setInterval(async () => {
       const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
+      const draftData = await AsyncStorage.getItem(DRAFT_KEY)
       setIsCreatingPost(!!pendingData)
+      setHasDraft(!!draftData && draftData.trim().length > 0)
     }, 300)
 
     return () => clearInterval(interval)
@@ -65,7 +69,10 @@ function CreateButton() {
 
   return (
     <TouchableOpacity
-      style={styles.createButton}
+      style={[
+        styles.createButton,
+        hasDraft && !isCreatingPost && styles.createButtonWithDraft,
+      ]}
       onPress={handlePress}
       activeOpacity={0.8}
       disabled={isCreatingPost}
@@ -77,7 +84,11 @@ function CreateButton() {
           </View>
         </Animated.View>
       ) : (
-        <Ionicons name="add" size={32} color={colors.white} />
+        <Ionicons
+          name={hasDraft ? 'document-text' : 'add'}
+          size={32}
+          color={colors.white}
+        />
       )}
     </TouchableOpacity>
   )
@@ -185,6 +196,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 8,
+    },
+    createButtonWithDraft: {
+      backgroundColor: colors.primaryDark,
+      shadowOpacity: 0.4,
     },
     loaderRing: {
       width: 28,

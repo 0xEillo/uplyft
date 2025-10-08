@@ -47,8 +47,8 @@ export default function ProfileScreen() {
           <Image
             source={
               isDark
-                ? require('@/llm/bellwhite.png')
-                : require('@/llm/bellblack.png')
+                ? require('@/llm/repai-logo-white.png')
+                : require('@/llm/repai-logo-black.png')
             }
             style={styles.headerIcon}
             resizeMode="contain"
