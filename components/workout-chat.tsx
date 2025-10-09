@@ -248,7 +248,7 @@ export function WorkoutChat() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={scrollToBottom}
+        onContentSizeChange={() => messages.length > 0 && scrollToBottom()}
       >
         {messages.length === 0 ? (
           <View style={styles.emptyState}>

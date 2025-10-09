@@ -233,7 +233,7 @@ IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises i
         .join(', ')
 
       const titleResult = await generateText({
-        model: openai('gpt-5-nano'),
+        model: openai('gpt-4.1-nano'),
         prompt: `You are a fitness expert analyzing workout sessions. Based on the exercises performed, generate a concise workout title (2-3 words max).
 
 Exercises performed: ${exerciseList}
