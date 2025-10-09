@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -75,6 +76,12 @@ export default function SettingsScreen() {
   const router = useRouter()
   const { isDark, toggleTheme } = useTheme()
   const colors = useThemedColors()
+  const {
+    isSubscribed,
+    isInTrial,
+    trialDaysRemaining,
+    showPaywall,
+  } = useSubscription()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditModalVisible, setIsEditModalVisible] = useState(false)
@@ -467,6 +474,80 @@ export default function SettingsScreen() {
             >
               <Text style={styles.editContextButtonText}>Edit Information</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Subscription Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+
+          <View style={styles.subscriptionCard}>
+            <View style={styles.subscriptionHeader}>
+              <Ionicons
+                name={
+                  isSubscribed
+                    ? 'checkmark-circle'
+                    : isInTrial
+                    ? 'time'
+                    : 'lock-closed'
+                }
+                size={32}
+                color={
+                  isSubscribed
+                    ? '#10B981'
+                    : isInTrial
+                    ? '#F59E0B'
+                    : colors.primary
+                }
+              />
+              <View style={styles.subscriptionInfo}>
+                <Text style={styles.subscriptionStatus}>
+                  {isSubscribed
+                    ? 'Premium Active'
+                    : isInTrial
+                    ? 'Free Trial Active'
+                    : 'No Active Subscription'}
+                </Text>
+                <Text style={styles.subscriptionDescription}>
+                  {isSubscribed
+                    ? 'Unlimited workout logging'
+                    : isInTrial
+                    ? `${trialDaysRemaining} day${
+                        trialDaysRemaining !== 1 ? 's' : ''
+                      } remaining`
+                    : 'Start your trial to log workouts'}
+                </Text>
+              </View>
+            </View>
+
+            {!isSubscribed && !isInTrial && (
+              <TouchableOpacity
+                style={styles.upgradeButton}
+                onPress={showPaywall}
+              >
+                <Text style={styles.upgradeButtonText}>Start Free Trial</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </TouchableOpacity>
+            )}
+
+            {isInTrial && (
+              <TouchableOpacity
+                style={styles.upgradeButton}
+                onPress={showPaywall}
+              >
+                <Text style={styles.upgradeButtonText}>Subscribe Now</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </TouchableOpacity>
+            )}
+
+            {isSubscribed && (
+              <TouchableOpacity
+                style={styles.manageButton}
+                onPress={showPaywall}
+              >
+                <Text style={styles.manageButtonText}>Manage Subscription</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -901,6 +982,62 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '500',
       color: colors.text,
       lineHeight: 20,
+    },
+    subscriptionCard: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    subscriptionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    subscriptionInfo: {
+      marginLeft: 12,
+      flex: 1,
+    },
+    subscriptionStatus: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subscriptionDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    upgradeButton: {
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+      gap: 8,
+    },
+    upgradeButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    manageButton: {
+      backgroundColor: colors.backgroundSecondary,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    manageButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary,
     },
     preferenceCard: {
       backgroundColor: colors.white,

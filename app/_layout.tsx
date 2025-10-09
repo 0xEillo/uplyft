@@ -11,7 +11,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
+import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
+import PaywallScreen from './paywall'
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
@@ -37,6 +39,7 @@ function RootLayoutNav() {
     <>
       <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
         <Slot />
+        <PaywallScreen />
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </>
@@ -48,9 +51,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <PostsProvider>
-            <RootLayoutNav />
-          </PostsProvider>
+          <SubscriptionProvider>
+            <PostsProvider>
+              <RootLayoutNav />
+            </PostsProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

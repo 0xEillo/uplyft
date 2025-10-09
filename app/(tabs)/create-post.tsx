@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -82,11 +83,13 @@ export default function CreatePostScreen() {
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const { user } = useAuth()
+  const { canLogWorkout, showPaywall, isInTrial } = useSubscription()
 
   const blurInputs = useCallback(() => {
-    const activeInput = InteractionManager.runAfterInteractions
-      ? (TextInput as any)?.State?.currentlyFocusedInput?.()
-      : null
+    const activeInput =
+      typeof InteractionManager.runAfterInteractions !== 'undefined'
+        ? (TextInput as any)?.State?.currentlyFocusedInput?.()
+        : null
 
     if (activeInput) {
       ;(TextInput as any)?.State?.blurTextInput?.(activeInput)
@@ -277,6 +280,27 @@ export default function CreatePostScreen() {
       Alert.alert('Not Logged In', 'Sign in to save and track your workouts.', [
         { text: 'OK' },
       ])
+      return
+    }
+
+    // Check if user can log workout (subscription/trial check)
+    if (!canLogWorkout) {
+      Alert.alert(
+        isInTrial ? 'Trial Ended' : 'Subscription Required',
+        isInTrial
+          ? 'Your trial has ended. Subscribe to continue logging workouts!'
+          : 'Start your free trial or subscribe to log workouts!',
+        [
+          {
+            text: 'Subscribe',
+            onPress: () => showPaywall(),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+      )
       return
     }
 

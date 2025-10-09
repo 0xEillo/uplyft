@@ -1,6 +1,7 @@
 import { ScreenHeader } from '@/components/screen-header'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -28,6 +29,7 @@ export default function CreateSpeechScreen() {
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
   const { user } = useAuth()
+  const { canLogWorkout, showPaywall, isInTrial } = useSubscription()
 
   useEffect(() => {
     ;(async () => {
@@ -99,16 +101,12 @@ export default function CreateSpeechScreen() {
         const errorMessage = errorData.error || 'Failed to parse workout'
 
         setIsProcessing(false)
-        Alert.alert(
-          'Unable to Parse Workout',
-          errorMessage,
-          [
-            {
-              text: 'Try Again',
-              onPress: () => {},
-            },
-          ]
-        )
+        Alert.alert('Unable to Parse Workout', errorMessage, [
+          {
+            text: 'Try Again',
+            onPress: () => {},
+          },
+        ])
         return
       }
 
@@ -116,6 +114,28 @@ export default function CreateSpeechScreen() {
 
       // Save to database
       if (user) {
+        // Check if user can log workout (subscription/trial check)
+        if (!canLogWorkout) {
+          setIsProcessing(false)
+          Alert.alert(
+            isInTrial ? 'Trial Ended' : 'Subscription Required',
+            isInTrial
+              ? 'Your trial has ended. Subscribe to continue logging workouts!'
+              : 'Start your free trial or subscribe to log workouts!',
+            [
+              {
+                text: 'Subscribe',
+                onPress: () => showPaywall(),
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+            ],
+          )
+          return
+        }
+
         try {
           await database.workoutSessions.create(user.id, workout, text)
         } catch (dbError) {
@@ -128,7 +148,7 @@ export default function CreateSpeechScreen() {
               {
                 text: 'OK',
               },
-            ]
+            ],
           )
           return
         }
@@ -144,7 +164,7 @@ export default function CreateSpeechScreen() {
           {
             text: 'OK',
           },
-        ]
+        ],
       )
     } finally {
       setIsProcessing(false)
