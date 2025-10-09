@@ -9,15 +9,25 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 export default function EditWorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
@@ -161,6 +171,8 @@ export default function EditWorkoutScreen() {
   }
 
   const deleteSet = (setId: string) => {
+    // Smooth animation for set removal
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     setDeletedSetIds((prev) => new Set(prev).add(setId))
   }
 
@@ -174,6 +186,8 @@ export default function EditWorkoutScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            // Smooth animation for exercise removal
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
             setDeletedExerciseIds((prev) => new Set(prev).add(exerciseId))
           },
         },
@@ -204,14 +218,31 @@ export default function EditWorkoutScreen() {
       const defaultWeight = lastSet?.weight || null
 
       // Create the new set
-      await database.sets.create(workoutExerciseId, {
+      const newSet = await database.sets.create(workoutExerciseId, {
         set_number: nextSetNumber,
         reps: defaultReps,
         weight: defaultWeight,
       })
 
-      // Reload the workout to show the new set
-      await loadWorkout()
+      // Smooth animation for set addition
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+
+      // Update local state instead of reloading
+      setWorkout((prevWorkout) => {
+        if (!prevWorkout) return prevWorkout
+
+        return {
+          ...prevWorkout,
+          workout_exercises: prevWorkout.workout_exercises?.map((we) =>
+            we.id === workoutExerciseId
+              ? {
+                  ...we,
+                  sets: [...(we.sets || []), newSet],
+                }
+              : we
+          ),
+        }
+      })
 
       // Ensure the exercise is expanded
       setExpandedExercises((prev) => new Set(prev).add(workoutExerciseId))
