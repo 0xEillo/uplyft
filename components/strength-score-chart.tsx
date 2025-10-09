@@ -390,10 +390,15 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
                 textShiftX={-10}
                 textFontSize={10}
                 curved
-                hideRules
                 hideYAxisText
-                yAxisColor={colors.border}
-                xAxisColor={colors.border}
+                yAxisColor="#CCCCCC"
+                xAxisColor="#CCCCCC"
+                yAxisThickness={2}
+                xAxisThickness={2}
+                rulesType="solid"
+                rulesColor={colors.border}
+                showVerticalLines
+                verticalLinesColor={colors.border}
                 xAxisLabelTextStyle={{
                   color: colors.textSecondary,
                   fontSize: 10,

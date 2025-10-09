@@ -210,7 +210,7 @@ export default function CreatePostScreen() {
       } catch (error) {
         console.error('Error saving draft:', error)
       }
-    }, 800) // Wait 800ms after user stops typing
+    }, 1200) // Wait 1200ms after user stops typing
 
     return () => clearTimeout(timer)
   }, [notes])
