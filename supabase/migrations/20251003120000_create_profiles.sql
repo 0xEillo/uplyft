@@ -92,7 +92,8 @@ DECLARE
   unique_tag TEXT;
   counter INTEGER := 0;
 BEGIN
-  -- Extract username from email (before @)
+  -- Extract username from email (before @) as temporary fallback
+  -- This will be updated with display name-based tag during signup
   base_tag := lower(regexp_replace(split_part(NEW.email, '@', 1), '[^a-z0-9]', '', 'g'));
 
   -- Ensure base_tag is at least 3 characters
@@ -100,17 +101,17 @@ BEGIN
     base_tag := 'user' || substring(NEW.id::text, 1, 6);
   END IF;
 
-  -- Ensure base_tag is max 30 characters
-  IF length(base_tag) > 30 THEN
-    base_tag := substring(base_tag, 1, 30);
+  -- Ensure base_tag is max 27 characters (room for 3-digit suffix)
+  IF length(base_tag) > 27 THEN
+    base_tag := substring(base_tag, 1, 27);
   END IF;
 
   unique_tag := base_tag;
 
-  -- Keep trying until we find a unique user_tag
-  WHILE EXISTS (SELECT 1 FROM profiles WHERE user_tag = unique_tag) LOOP
+  -- Try up to 999 numbers like Twitter (1-999)
+  WHILE counter <= 999 AND EXISTS (SELECT 1 FROM profiles WHERE user_tag = unique_tag) LOOP
     counter := counter + 1;
-    unique_tag := substring(base_tag, 1, 25) || counter;
+    unique_tag := base_tag || counter;
   END LOOP;
 
   -- Create profile with generated user_tag

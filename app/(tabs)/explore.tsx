@@ -25,7 +25,7 @@ export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const [activeTab, setActiveTab] = useState<TabType>('progress')
+  const [activeTab, setActiveTab] = useState<TabType>('chat')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 

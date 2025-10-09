@@ -52,16 +52,14 @@ export const database = {
       // Ensure baseTag is at least 3 chars
       let userTag = baseTag.length >= 3 ? baseTag : `user${userId.slice(0, 6)}`
 
-      // Ensure max 30 chars
-      if (userTag.length > 30) {
-        userTag = userTag.substring(0, 30)
+      // Ensure max 27 chars (room for 3-digit suffix like Twitter)
+      if (userTag.length > 27) {
+        userTag = userTag.substring(0, 27)
       }
 
-      // Try to create with base tag, add numbers if collision
-      let counter = 0
-      while (counter < 100) {
-        const tryTag =
-          counter === 0 ? userTag : `${userTag.substring(0, 25)}${counter}`
+      // Try to create with base tag, add numbers (1-999) if collision
+      for (let counter = 0; counter <= 999; counter++) {
+        const tryTag = counter === 0 ? userTag : `${userTag}${counter}`
 
         const { data: created, error: createError } = await supabase
           .from('profiles')
@@ -79,7 +77,6 @@ export const database = {
 
         // If unique constraint violation, try next number
         if (createError?.code === '23505') {
-          counter++
           continue
         }
 
@@ -107,7 +104,7 @@ export const database = {
       const baseTag = displayName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '')
-        .substring(0, 25) // Leave room for digits
+        .substring(0, 27) // Leave room for up to 3 digits
 
       // Ensure minimum length
       if (baseTag.length < 3) {
@@ -116,9 +113,8 @@ export const database = {
         )
       }
 
-      // Try the base tag first, then add numbers if needed
-      let counter = 0
-      while (counter < 1000) {
+      // Try the base tag first, then add numbers (1-999) like Twitter
+      for (let counter = 0; counter <= 999; counter++) {
         const tryTag = counter === 0 ? baseTag : `${baseTag}${counter}`
 
         // Check if this tag is available
@@ -132,8 +128,6 @@ export const database = {
         if (!error && !data) {
           return tryTag
         }
-
-        counter++
       }
 
       throw new Error('Could not generate unique user tag')

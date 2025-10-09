@@ -1,20 +1,6 @@
--- Fix profile creation trigger to work with RLS
--- The issue is that the trigger runs before the user is authenticated,
--- so auth.uid() returns null, blocking the INSERT.
+-- Update user tag generation to use Twitter-style numbering (1-999)
+-- This updates the existing trigger function to match the new pattern
 
--- Drop the old INSERT policy that blocks trigger execution
-DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
-
--- Create new INSERT policy that allows both authenticated users and service role
-CREATE POLICY "Users can insert their own profile"
-  ON profiles FOR INSERT
-  WITH CHECK (
-    auth.uid() = id OR 
-    auth.role() = 'service_role'
-  );
-
--- Alternative: Update the trigger function to set the JWT context
--- This makes auth.uid() work correctly in the trigger
 CREATE OR REPLACE FUNCTION create_profile_on_signup()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -24,7 +10,7 @@ DECLARE
 BEGIN
   -- Set JWT context so auth.uid() works in RLS policies
   PERFORM set_config('request.jwt.claim.sub', NEW.id::text, true);
-  
+
   -- Extract username from email (before @) as temporary fallback
   -- This will be updated with display name-based tag during signup
   base_tag := lower(regexp_replace(split_part(NEW.email, '@', 1), '[^a-z0-9]', '', 'g'));
