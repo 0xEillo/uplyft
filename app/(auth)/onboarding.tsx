@@ -4,7 +4,7 @@ import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +15,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 type OnboardingData = {
@@ -27,6 +37,49 @@ type OnboardingData = {
   birth_year: string
   goal: Goal | null
   bio: string
+}
+
+// Animated TouchableOpacity with press animation
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
+
+// Animated Button with scale press effect
+function AnimatedButton({
+  onPress,
+  disabled,
+  style,
+  children,
+}: {
+  onPress: () => void
+  disabled?: boolean
+  style: any
+  children: React.ReactNode
+}) {
+  const scale = useSharedValue(1)
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }))
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 })
+  }
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 })
+  }
+
+  return (
+    <AnimatedTouchable
+      style={[style, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={disabled}
+      activeOpacity={0.9}
+    >
+      {children}
+    </AnimatedTouchable>
+  )
 }
 
 export default function OnboardingScreen() {
@@ -44,6 +97,24 @@ export default function OnboardingScreen() {
   })
   const colors = useThemedColors()
   const styles = createStyles(colors)
+
+  // Animation values
+  const contentOpacity = useSharedValue(1)
+  const contentTranslateY = useSharedValue(0)
+
+  // Trigger animation when step changes
+  useEffect(() => {
+    contentOpacity.value = 0
+    contentTranslateY.value = 30
+    contentOpacity.value = withSpring(1, { damping: 20, stiffness: 90 })
+    contentTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 })
+  }, [step])
+
+  // Animated style for content
+  const animatedContentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }))
 
   const handleNext = () => {
     if (step < 8) {
@@ -149,99 +220,136 @@ export default function OnboardingScreen() {
     switch (step) {
       case 1:
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
+            <Animated.View
+              style={styles.stepHeader}
+              entering={FadeInDown.delay(100).springify()}
+            >
               <Ionicons
                 name="person-outline"
                 size={48}
                 color={colors.primary}
               />
               <Text style={styles.stepTitle}>Choose your name</Text>
-            </View>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.textSecondary}
-              value={data.name}
-              onChangeText={(text) => setData({ ...data, name: text })}
-              autoFocus
-              maxLength={50}
-            />
-          </View>
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
+              <TextInput
+                style={styles.nameInput}
+                placeholder="Enter your name"
+                placeholderTextColor={colors.textSecondary}
+                value={data.name}
+                onChangeText={(text) => setData({ ...data, name: text })}
+                autoFocus
+                maxLength={50}
+              />
+            </Animated.View>
+          </Animated.View>
         )
       case 2:
         return (
-          <View style={styles.stepContainer}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
             <View style={styles.featureScreenHeader}>
-              <View style={styles.featureIconContainer}>
+              <Animated.View
+                style={styles.featureIconContainer}
+                entering={FadeIn.delay(100).duration(600)}
+              >
                 <Ionicons
                   name="chatbubble-ellipses"
                   size={56}
                   color={colors.primary}
                 />
-              </View>
+              </Animated.View>
 
-              <Text style={styles.featureHook}>Log workouts in seconds</Text>
+              <Animated.Text
+                style={styles.featureHook}
+                entering={FadeIn.delay(200).duration(600)}
+              >
+                Log workouts in seconds
+              </Animated.Text>
             </View>
 
             <View style={styles.featureExampleContainer}>
-              <View style={styles.featureBubble}>
+              <Animated.View
+                style={styles.featureBubble}
+                entering={FadeIn.delay(300).duration(600)}
+              >
                 <Text style={styles.featureBubbleText}>
                   "I did bench press, 3 sets of 8 reps at 185lbs"
                 </Text>
-              </View>
+              </Animated.View>
 
-              <View style={styles.featureArrow}>
+              <Animated.View
+                style={styles.featureArrow}
+                entering={FadeIn.delay(400).duration(600)}
+              >
                 <Ionicons name="arrow-down" size={32} color={colors.primary} />
-              </View>
+              </Animated.View>
 
-              <View style={styles.featureResult}>
+              <Animated.View
+                style={styles.featureResult}
+                entering={FadeIn.delay(500).duration(600)}
+              >
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                 <Text style={styles.featureResultText}>
                   Logged instantly by your AI
                 </Text>
-              </View>
+              </Animated.View>
             </View>
-          </View>
+          </Animated.View>
         )
       case 3:
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
+            <Animated.View
+              style={styles.stepHeader}
+              entering={FadeInDown.delay(100).springify()}
+            >
               <Ionicons name="person" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Choose your gender</Text>
-            </View>
+            </Animated.View>
             <View style={styles.optionsContainer}>
-              {GENDERS.map((gender) => (
-                <TouchableOpacity
+              {GENDERS.map((gender, index) => (
+                <Animated.View
                   key={gender.value}
-                  style={[
-                    styles.optionButton,
-                    data.gender === gender.value && styles.optionButtonSelected,
-                  ]}
-                  onPress={() => setData({ ...data, gender: gender.value })}
+                  entering={FadeInDown.delay(200 + index * 80).springify()}
                 >
-                  <Text
+                  <TouchableOpacity
                     style={[
-                      styles.optionText,
-                      data.gender === gender.value && styles.optionTextSelected,
+                      styles.optionButton,
+                      data.gender === gender.value &&
+                        styles.optionButtonSelected,
                     ]}
+                    onPress={() => setData({ ...data, gender: gender.value })}
                   >
-                    {gender.label}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        data.gender === gender.value &&
+                          styles.optionTextSelected,
+                      ]}
+                    >
+                      {gender.label}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
               ))}
             </View>
-          </View>
+          </Animated.View>
         )
       case 4:
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
+            <Animated.View
+              style={styles.stepHeader}
+              entering={FadeInDown.delay(100).springify()}
+            >
               <Ionicons name="body" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Height & Weight</Text>
-            </View>
-            <View style={styles.pickerRow}>
+            </Animated.View>
+            <Animated.View
+              style={styles.pickerRow}
+              entering={FadeInDown.delay(200).springify()}
+            >
               <View style={styles.pickerColumn}>
                 <Text style={styles.pickerLabel}>Height (cm)</Text>
                 <View style={styles.pickerContainer}>
@@ -288,17 +396,23 @@ export default function OnboardingScreen() {
                   </Picker>
                 </View>
               </View>
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         )
       case 5:
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
+            <Animated.View
+              style={styles.stepHeader}
+              entering={FadeInDown.delay(100).springify()}
+            >
               <Ionicons name="calendar" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>When were you born?</Text>
-            </View>
-            <View style={styles.birthDateRow}>
+            </Animated.View>
+            <Animated.View
+              style={styles.birthDateRow}
+              entering={FadeInDown.delay(200).springify()}
+            >
               <View style={styles.birthDateColumnSmall}>
                 <Text style={styles.pickerLabel}>Day</Text>
                 <View style={styles.pickerContainer}>
@@ -378,25 +492,37 @@ export default function OnboardingScreen() {
                   </Picker>
                 </View>
               </View>
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         )
       case 6:
         return (
-          <View style={styles.stepContainer}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
             <View style={styles.thankYouHeader}>
-              <View style={styles.clappingIconContainer}>
+              <Animated.View
+                style={styles.clappingIconContainer}
+                entering={FadeInDown.delay(100).springify()}
+              >
                 <Ionicons name="happy" size={72} color={colors.primary} />
-              </View>
-              <Text style={styles.thankYouTitle}>
+              </Animated.View>
+              <Animated.Text
+                style={styles.thankYouTitle}
+                entering={FadeInDown.delay(200).springify()}
+              >
                 Thank you for trusting us!
-              </Text>
-              <Text style={styles.thankYouSubtitle}>
+              </Animated.Text>
+              <Animated.Text
+                style={styles.thankYouSubtitle}
+                entering={FadeInDown.delay(300).springify()}
+              >
                 Now let's personalize Rep AI for you...
-              </Text>
+              </Animated.Text>
             </View>
 
-            <View style={styles.privacyFooter}>
+            <Animated.View
+              style={styles.privacyFooter}
+              entering={FadeInDown.delay(400).springify()}
+            >
               <Text style={styles.privacyTitle}>
                 Your privacy and security matter to us.
               </Text>
@@ -404,70 +530,87 @@ export default function OnboardingScreen() {
                 We promise to always keep your personal information safe and
                 secure.
               </Text>
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         )
       case 7:
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
+            <Animated.View
+              style={styles.stepHeader}
+              entering={FadeInDown.delay(100).springify()}
+            >
               <Text style={styles.stepTitle}>
                 What would you like to accomplish?
               </Text>
-            </View>
+            </Animated.View>
             <View style={styles.optionsContainer}>
-              {GOALS.map((goal) => (
-                <TouchableOpacity
+              {GOALS.map((goal, index) => (
+                <Animated.View
                   key={goal.value}
-                  style={[
-                    styles.goalButton,
-                    data.goal === goal.value && styles.goalButtonSelected,
-                  ]}
-                  onPress={() => setData({ ...data, goal: goal.value })}
+                  entering={FadeInDown.delay(200 + index * 100).springify()}
                 >
-                  <Ionicons
-                    name={goal.icon}
-                    size={32}
-                    color={
-                      data.goal === goal.value
-                        ? colors.buttonText
-                        : colors.primary
-                    }
-                  />
-                  <Text
+                  <TouchableOpacity
                     style={[
-                      styles.goalText,
-                      data.goal === goal.value && styles.goalTextSelected,
+                      styles.goalButton,
+                      data.goal === goal.value && styles.goalButtonSelected,
                     ]}
+                    onPress={() => setData({ ...data, goal: goal.value })}
                   >
-                    {goal.label}
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons
+                      name={goal.icon}
+                      size={32}
+                      color={
+                        data.goal === goal.value
+                          ? colors.buttonText
+                          : colors.primary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.goalText,
+                        data.goal === goal.value && styles.goalTextSelected,
+                      ]}
+                    >
+                      {goal.label}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
               ))}
             </View>
-          </View>
+          </Animated.View>
         )
       case 8:
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
+          <Animated.View style={[styles.stepContainer, animatedContentStyle]}>
+            <Animated.View
+              style={styles.stepHeader}
+              entering={FadeInDown.delay(100).springify()}
+            >
               <Ionicons name="flash" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Tell your AI about yourself</Text>
-            </View>
-            <Text style={styles.optionalText}>Optional</Text>
-            <TextInput
-              style={styles.bioInput}
-              placeholder="e.g., I've been lifting for 2 years but took a 6-month break recently. I have an old knee injury so I avoid heavy squats. I prefer high volume training with shorter rest periods."
-              placeholderTextColor={colors.textSecondary}
-              value={data.bio}
-              onChangeText={(text) => setData({ ...data, bio: text })}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              maxLength={500}
-            />
-            <Text style={styles.characterCount}>{data.bio.length}/500</Text>
-          </View>
+            </Animated.View>
+            <Animated.Text
+              style={styles.optionalText}
+              entering={FadeInDown.delay(200).springify()}
+            >
+              Optional
+            </Animated.Text>
+            <Animated.View entering={FadeInDown.delay(250).springify()}>
+              <TextInput
+                style={styles.bioInput}
+                placeholder="e.g., I've been lifting for 2 years but took a 6-month break recently. I have an old knee injury so I avoid heavy squats. I prefer high volume training with shorter rest periods."
+                placeholderTextColor={colors.textSecondary}
+                value={data.bio}
+                onChangeText={(text) => setData({ ...data, bio: text })}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                maxLength={500}
+              />
+              <Text style={styles.characterCount}>{data.bio.length}/500</Text>
+            </Animated.View>
+          </Animated.View>
         )
       default:
         return null
@@ -484,12 +627,13 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
           <View style={styles.progressContainer}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <View
+              <Animated.View
                 key={i}
                 style={[
                   styles.progressDot,
                   i <= step && styles.progressDotActive,
                 ]}
+                entering={FadeIn.delay(i * 50).springify()}
               />
             ))}
           </View>
@@ -514,8 +658,11 @@ export default function OnboardingScreen() {
         </KeyboardAvoidingView>
 
         {/* Footer - Fixed at bottom */}
-        <View style={styles.footer}>
-          <TouchableOpacity
+        <Animated.View
+          style={styles.footer}
+          entering={FadeInDown.delay(100).springify()}
+        >
+          <AnimatedButton
             style={[
               styles.nextButton,
               !canProceed() && styles.nextButtonDisabled,
@@ -524,8 +671,8 @@ export default function OnboardingScreen() {
             disabled={!canProceed()}
           >
             <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-        </View>
+          </AnimatedButton>
+        </Animated.View>
       </View>
     </SafeAreaView>
   )

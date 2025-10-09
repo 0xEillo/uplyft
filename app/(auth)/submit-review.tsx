@@ -2,7 +2,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as StoreReview from 'expo-store-review'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,7 +15,57 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Animated TouchableOpacity with press animation
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
+
+// Animated Button with scale press effect
+function AnimatedButton({
+  onPress,
+  disabled,
+  style,
+  children,
+}: {
+  onPress: () => void
+  disabled?: boolean
+  style: any
+  children: React.ReactNode
+}) {
+  const scale = useSharedValue(1)
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }))
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 })
+  }
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 })
+  }
+
+  return (
+    <AnimatedTouchable
+      style={[style, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={disabled}
+      activeOpacity={0.9}
+    >
+      {children}
+    </AnimatedTouchable>
+  )
+}
 
 export default function SubmitReviewScreen() {
   const params = useLocalSearchParams()
@@ -113,34 +163,52 @@ export default function SubmitReviewScreen() {
         >
           <View style={styles.content}>
             {/* Title */}
-            <Text style={styles.title}>Help us grow😄</Text>
+            <Animated.Text
+              style={styles.title}
+              entering={FadeIn.delay(100).duration(500)}
+            >
+              Help us grow😄
+            </Animated.Text>
 
-            <Text style={styles.subtitle}>
+            <Animated.Text
+              style={styles.subtitle}
+              entering={FadeIn.delay(200).duration(500)}
+            >
               Your early support means everything. Tap the stars to rate Rep AI
-            </Text>
+            </Animated.Text>
 
             {/* Interactive Rating Stars */}
-            <View style={styles.starsWrapper}>
+            <Animated.View
+              style={styles.starsWrapper}
+              entering={FadeIn.delay(300).duration(500)}
+            >
               <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity
+                {[1, 2, 3, 4, 5].map((star, index) => (
+                  <Animated.View
                     key={star}
-                    onPress={() => setRating(star)}
-                    style={styles.starButton}
+                    entering={FadeIn.delay(400 + index * 60).duration(500)}
                   >
-                    <Ionicons
-                      name={star <= rating ? 'star' : 'star-outline'}
-                      size={48}
-                      color={star <= rating ? '#FFD700' : colors.border}
-                    />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setRating(star)}
+                      style={styles.starButton}
+                    >
+                      <Ionicons
+                        name={star <= rating ? 'star' : 'star-outline'}
+                        size={48}
+                        color={star <= rating ? '#FFD700' : colors.border}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
                 ))}
               </View>
-            </View>
+            </Animated.View>
 
             {/* Review Text Input */}
             {rating > 0 && (
-              <View style={styles.reviewContainer}>
+              <Animated.View
+                style={styles.reviewContainer}
+                entering={FadeIn.duration(500)}
+              >
                 <Text style={styles.reviewLabel}>Add a comment</Text>
                 <TextInput
                   style={styles.reviewInput}
@@ -153,14 +221,17 @@ export default function SubmitReviewScreen() {
                   textAlignVertical="top"
                   maxLength={500}
                 />
-              </View>
+              </Animated.View>
             )}
           </View>
         </ScrollView>
 
         {/* Actions */}
-        <View style={styles.footer}>
-          <TouchableOpacity
+        <Animated.View
+          style={styles.footer}
+          entering={FadeIn.delay(700).duration(500)}
+        >
+          <AnimatedButton
             style={[
               styles.submitButton,
               rating === 0 && styles.submitButtonDisabled,
@@ -169,12 +240,12 @@ export default function SubmitReviewScreen() {
             disabled={rating === 0}
           >
             <Text style={styles.submitButtonText}>Submit Review</Text>
-          </TouchableOpacity>
+          </AnimatedButton>
 
-          <TouchableOpacity style={styles.skipButton} onPress={handleNext}>
+          <AnimatedButton style={styles.skipButton} onPress={handleNext}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
-        </View>
+          </AnimatedButton>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )

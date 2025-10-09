@@ -1,95 +1,119 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import React, { useEffect } from 'react'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Animated TouchableOpacity with press animation
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
+
+// Animated Button with scale press effect
+function AnimatedButton({
+  onPress,
+  style,
+  children,
+}: {
+  onPress: () => void
+  style: any
+  children: React.ReactNode
+}) {
+  const scale = useSharedValue(1)
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }))
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 })
+  }
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 })
+  }
+
+  return (
+    <AnimatedTouchable
+      style={[style, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={0.9}
+    >
+      {children}
+    </AnimatedTouchable>
+  )
+}
+
+// Sparkle component with individual animation
+function Sparkle({ index, colors }: { index: number; colors: any }) {
+  const angle = (index / 12) * Math.PI * 2
+  const distance = 80
+
+  const opacity = useSharedValue(0)
+  const scale = useSharedValue(0)
+  const translateX = useSharedValue(0)
+  const translateY = useSharedValue(0)
+
+  useEffect(() => {
+    // Sparkle out animation
+    opacity.value = withDelay(600, withTiming(1, { duration: 400 }))
+    scale.value = withDelay(600, withTiming(1, { duration: 400 }))
+    translateX.value = withDelay(
+      600,
+      withTiming(Math.cos(angle) * distance, { duration: 800 }),
+    )
+    translateY.value = withDelay(
+      600,
+      withTiming(Math.sin(angle) * distance, { duration: 800 }),
+    )
+
+    // Fade out
+    opacity.value = withDelay(1400, withTiming(0, { duration: 400 }))
+  }, [])
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }))
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+        },
+        animatedStyle,
+      ]}
+    >
+      <Ionicons name="sparkles" size={20} color={colors.primary} />
+    </Animated.View>
+  )
+}
 
 export default function CongratulationsScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const [fadeAnim] = useState(new Animated.Value(0))
-  const [scaleAnim] = useState(new Animated.Value(0.5))
-
-  // Sparkle animations
-  const sparkles = Array.from({ length: 12 }, () => ({
-    opacity: new Animated.Value(0),
-    translateX: new Animated.Value(0),
-    translateY: new Animated.Value(0),
-    scale: new Animated.Value(0),
-  }))
 
   // Parse onboarding data to get user's name
   const onboardingData = params.onboarding_data
     ? JSON.parse(params.onboarding_data as string)
     : null
   const userName = onboardingData?.name || 'Champion'
-
-  useEffect(() => {
-    // Animate entrance
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 4,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // After main animation, trigger sparkles
-      const sparkleAnimations = sparkles.map((sparkle, index) => {
-        const angle = (index / sparkles.length) * Math.PI * 2
-        const distance = 80
-
-        return Animated.parallel([
-          Animated.timing(sparkle.opacity, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(sparkle.scale, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(sparkle.translateX, {
-            toValue: Math.cos(angle) * distance,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(sparkle.translateY, {
-            toValue: Math.sin(angle) * distance,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      })
-
-      Animated.sequence([
-        Animated.parallel(sparkleAnimations),
-        Animated.parallel(
-          sparkles.map((sparkle) =>
-            Animated.timing(sparkle.opacity, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-          ),
-        ),
-      ]).start()
-    })
-  }, [])
 
   const handleContinue = () => {
     router.push({
@@ -103,17 +127,12 @@ export default function CongratulationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Animated.View
-          style={[
-            styles.celebrationContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
+        <View style={styles.celebrationContainer}>
           {/* Checkmark Icon */}
-          <View style={styles.iconContainer}>
+          <Animated.View
+            style={styles.iconContainer}
+            entering={FadeInDown.delay(100).springify()}
+          >
             <Ionicons
               name="checkmark-circle"
               size={64}
@@ -121,43 +140,44 @@ export default function CongratulationsScreen() {
             />
 
             {/* Sparkles */}
-            {sparkles.map((sparkle, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.sparkle,
-                  {
-                    opacity: sparkle.opacity,
-                    transform: [
-                      { translateX: sparkle.translateX },
-                      { translateY: sparkle.translateY },
-                      { scale: sparkle.scale },
-                    ],
-                  },
-                ]}
-              >
-                <Ionicons name="sparkles" size={20} color={colors.primary} />
-              </Animated.View>
+            {Array.from({ length: 12 }).map((_, index) => (
+              <Sparkle key={index} index={index} colors={colors} />
             ))}
-          </View>
+          </Animated.View>
 
           {/* Congratulations Text */}
-          <Text style={styles.title}>Congratulations, {userName}!</Text>
-          <Text style={styles.subtitle}>Your Profile is ready</Text>
+          <Animated.Text
+            style={styles.title}
+            entering={FadeInDown.delay(200).springify()}
+          >
+            Congratulations, {userName}!
+          </Animated.Text>
+          <Animated.Text
+            style={styles.subtitle}
+            entering={FadeInDown.delay(300).springify()}
+          >
+            Your Profile is ready
+          </Animated.Text>
 
           {/* Success Message */}
-          <View style={styles.messageBox}>
+          <Animated.View
+            style={styles.messageBox}
+            entering={FadeInDown.delay(400).springify()}
+          >
             <Ionicons name="checkmark-circle" size={32} color="#10B981" />
             <Text style={styles.messageText}>
               Your personalized AI coach knows your goals, stats, and
               preferences.
             </Text>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </View>
 
         {/* Continue Button */}
-        <View style={styles.footer}>
-          <TouchableOpacity
+        <Animated.View
+          style={styles.footer}
+          entering={FadeInDown.delay(500).springify()}
+        >
+          <AnimatedButton
             style={styles.continueButton}
             onPress={handleContinue}
           >
@@ -167,8 +187,8 @@ export default function CongratulationsScreen() {
               size={20}
               color={colors.buttonText}
             />
-          </TouchableOpacity>
-        </View>
+          </AnimatedButton>
+        </Animated.View>
       </View>
     </SafeAreaView>
   )

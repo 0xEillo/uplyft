@@ -4,7 +4,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,58 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Animated TouchableOpacity with press animation
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
+
+// Animated Button with scale press effect
+function AnimatedButton({
+  onPress,
+  disabled,
+  style,
+  children,
+}: {
+  onPress: () => void
+  disabled?: boolean
+  style: any
+  children: React.ReactNode
+}) {
+  const scale = useSharedValue(1)
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }))
+
+  const handlePressIn = () => {
+    if (!disabled) {
+      scale.value = withSpring(0.96, { damping: 15, stiffness: 400 })
+    }
+  }
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 })
+  }
+
+  return (
+    <AnimatedTouchable
+      style={[style, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={disabled}
+      activeOpacity={0.9}
+    >
+      {children}
+    </AnimatedTouchable>
+  )
+}
 
 export default function TrialOfferScreen() {
   const params = useLocalSearchParams()
@@ -72,56 +123,73 @@ export default function TrialOfferScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Icon */}
-        <View style={styles.step1IconContainer}>
+        <Animated.View
+          style={styles.step1IconContainer}
+          entering={FadeInDown.delay(100).duration(600)}
+        >
           <Ionicons name="barbell" size={80} color={colors.primary} />
-        </View>
+        </Animated.View>
 
         {/* Title */}
-        <Text style={styles.step1Title}>
+        <Animated.Text
+          style={styles.step1Title}
+          entering={FadeInDown.delay(200).duration(600)}
+        >
           We want you to try Rep AI for free.
-        </Text>
+        </Animated.Text>
 
         {/* Features */}
         <View style={styles.step1FeaturesContainer}>
-          <Feature
-            icon="infinite"
-            title="Unlimited Workouts"
-            description="Log as many workouts as you want"
-            colors={colors}
-          />
-          <Feature
-            icon="analytics"
-            title="AI-Powered Chat"
-            description="AI assistant with all your workout data"
-            colors={colors}
-          />
-          <Feature
-            icon="trending-up"
-            title="Track Your PRs"
-            description="Celebrate every personal record"
-            colors={colors}
-          />
-          <Feature
-            icon="mic"
-            title="Voice Logging"
-            description="Log workouts faster with your voice"
-            colors={colors}
-          />
+          <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+            <Feature
+              icon="infinite"
+              title="Unlimited Workouts"
+              description="Log as many workouts as you want"
+              colors={colors}
+            />
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(380).duration(600)}>
+            <Feature
+              icon="analytics"
+              title="AI-Powered Chat"
+              description="AI assistant with all your workout data"
+              colors={colors}
+            />
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(460).duration(600)}>
+            <Feature
+              icon="trending-up"
+              title="Track Your PRs"
+              description="Celebrate every personal record"
+              colors={colors}
+            />
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(540).duration(600)}>
+            <Feature
+              icon="mic"
+              title="Voice Logging"
+              description="Log workouts faster with your voice"
+              colors={colors}
+            />
+          </Animated.View>
         </View>
       </ScrollView>
 
       {/* Button */}
-      <View style={styles.footer}>
+      <Animated.View
+        style={styles.footer}
+        entering={FadeInDown.delay(620).duration(600)}
+      >
         {/* No Payment Due */}
         <View style={styles.noPaymentContainer}>
           <Ionicons name="checkmark" size={24} color={colors.text} />
           <Text style={styles.noPaymentText}>No Payment Due Now</Text>
         </View>
 
-        <TouchableOpacity style={styles.startButton} onPress={() => setStep(2)}>
+        <AnimatedButton style={styles.startButton} onPress={() => setStep(2)}>
           <Text style={styles.startButtonText}>Try for FREE</Text>
-        </TouchableOpacity>
-      </View>
+        </AnimatedButton>
+      </Animated.View>
     </>
   )
 
@@ -136,33 +204,45 @@ export default function TrialOfferScreen() {
 
       <View style={styles.centeredContent}>
         {/* Bell Icon */}
-        <View style={styles.bellContainer}>
+        <Animated.View
+          style={styles.bellContainer}
+          entering={FadeInDown.delay(100).duration(600)}
+        >
           <View style={styles.bellIconWrapper}>
             <Ionicons name="notifications" size={120} color={colors.border} />
-            <View style={styles.notificationBadge}>
+            <Animated.View
+              style={styles.notificationBadge}
+              entering={FadeInDown.delay(300).duration(600)}
+            >
               <Text style={styles.notificationBadgeText}>1</Text>
-            </View>
+            </Animated.View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Title */}
-        <Text style={styles.title}>
+        <Animated.Text
+          style={styles.title}
+          entering={FadeInDown.delay(400).duration(600)}
+        >
           We'll send you a reminder before your free trial ends
-        </Text>
+        </Animated.Text>
       </View>
 
       {/* Button */}
-      <View style={styles.footer}>
+      <Animated.View
+        style={styles.footer}
+        entering={FadeInDown.delay(500).duration(600)}
+      >
         {/* No Payment Due */}
         <View style={styles.noPaymentContainer}>
           <Ionicons name="checkmark" size={24} color={colors.text} />
           <Text style={styles.noPaymentText}>No Payment Due Now</Text>
         </View>
 
-        <TouchableOpacity style={styles.startButton} onPress={() => setStep(3)}>
+        <AnimatedButton style={styles.startButton} onPress={() => setStep(3)}>
           <Text style={styles.startButtonText}>Continue for FREE</Text>
-        </TouchableOpacity>
-      </View>
+        </AnimatedButton>
+      </Animated.View>
     </>
   )
 
@@ -193,40 +273,52 @@ export default function TrialOfferScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Title */}
-            <Text style={styles.step3Title}>
+            <Animated.Text
+              style={styles.step3Title}
+              entering={FadeInDown.delay(100).duration(600)}
+            >
               Start your 3-day FREE trial to continue.
-            </Text>
+            </Animated.Text>
 
             {/* Timeline */}
             <View style={styles.timelineContainer}>
-              <TimelineItem
-                icon="lock-open"
-                iconColor={colors.primary}
-                title="Today"
-                description="Unlock all the app's features like AI calorie scanning and more."
-                colors={colors}
-                isActive
-              />
-              <TimelineItem
-                icon="notifications"
-                iconColor={colors.primary}
-                title="In 2 Days - Reminder"
-                description="We'll send you a reminder that your trial is ending soon."
-                colors={colors}
-              />
-              <TimelineItem
-                icon="card"
-                iconColor={colors.text}
-                title="In 3 Days - Billing Starts"
-                description={`You'll be charged on ${formattedDate} unless you cancel anytime before.`}
-                colors={colors}
-                isLast
-              />
+              <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+                <TimelineItem
+                  icon="lock-open"
+                  iconColor={colors.primary}
+                  title="Today"
+                  description="Unlock all the app's features like AI calorie scanning and more."
+                  colors={colors}
+                  isActive
+                />
+              </Animated.View>
+              <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+                <TimelineItem
+                  icon="notifications"
+                  iconColor={colors.primary}
+                  title="In 2 Days - Reminder"
+                  description="We'll send you a reminder that your trial is ending soon."
+                  colors={colors}
+                />
+              </Animated.View>
+              <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+                <TimelineItem
+                  icon="card"
+                  iconColor={colors.text}
+                  title="In 3 Days - Billing Starts"
+                  description={`You'll be charged on ${formattedDate} unless you cancel anytime before.`}
+                  colors={colors}
+                  isLast
+                />
+              </Animated.View>
             </View>
           </ScrollView>
 
           {/* Pricing Section - Fixed at bottom */}
-          <View style={styles.step3PricingSection}>
+          <Animated.View
+            style={styles.step3PricingSection}
+            entering={FadeInDown.delay(500).duration(600)}
+          >
             {/* Pricing Card */}
             <View style={styles.pricingCardsContainer}>
               <View
@@ -248,18 +340,21 @@ export default function TrialOfferScreen() {
                 </View>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Button */}
-        <View style={styles.footer}>
+        <Animated.View
+          style={styles.footer}
+          entering={FadeInDown.delay(600).duration(600)}
+        >
           {/* No Payment Due */}
           <View style={styles.noPaymentContainer}>
             <Ionicons name="checkmark" size={24} color={colors.text} />
             <Text style={styles.noPaymentText}>No Payment Due Now</Text>
           </View>
 
-          <TouchableOpacity
+          <AnimatedButton
             style={styles.startButton}
             onPress={handleStartTrial}
             disabled={isStartingTrial}
@@ -271,11 +366,11 @@ export default function TrialOfferScreen() {
                 Start My 3-Day Free Trial
               </Text>
             )}
-          </TouchableOpacity>
+          </AnimatedButton>
           <Text style={styles.footerSubtext}>
             3 days free, then $5.99 per month
           </Text>
-        </View>
+        </Animated.View>
       </>
     )
   }
