@@ -106,7 +106,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons name="fitness" size={24} color={colors.primary} />
+            <Ionicons name="body" size={24} color={colors.primary} />
           </View>
           <View>
             <Text style={styles.title}>Muscle Balance</Text>
