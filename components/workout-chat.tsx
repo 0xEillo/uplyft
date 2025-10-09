@@ -39,14 +39,16 @@ export function WorkoutChat() {
   const insets = useSafeAreaInsets()
   const colors = useThemedColors()
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or content changes
+  const scrollToBottom = () => {
+    scrollViewRef.current?.scrollToEnd({ animated: true })
+  }
+
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
+      scrollToBottom()
     }
-  }, [messages])
+  }, [messages.length])
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -246,6 +248,7 @@ export function WorkoutChat() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}
+        onContentSizeChange={scrollToBottom}
       >
         {messages.length === 0 ? (
           <View style={styles.emptyState}>

@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -354,7 +355,14 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.inputContainer}>
+        <ScrollView
+          style={styles.inputContainer}
+          contentContainerStyle={styles.scrollContent}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="never"
+          scrollEnabled={isNotesFocused}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Title Input */}
           <TextInput
             ref={titleInputRef}
@@ -391,14 +399,6 @@ export default function CreatePostScreen() {
                 setIsNotesFocused(false)
               }}
             />
-            {isNotesFocused && (
-              <Pressable
-                style={styles.notesOverlay}
-                onPress={() => {
-                  notesInputRef.current?.blur()
-                }}
-              />
-            )}
             {!isNotesFocused && (
               <Pressable
                 style={styles.notesOverlay}
@@ -420,7 +420,7 @@ export default function CreatePostScreen() {
               </View>
             </View>
           )}
-        </View>
+        </ScrollView>
 
         {/* Floating Microphone Button */}
         <TouchableOpacity
@@ -514,6 +514,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     inputContainer: {
       flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
       position: 'relative',
     },
     titleInput: {
