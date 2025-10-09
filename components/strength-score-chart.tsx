@@ -237,7 +237,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
             <Ionicons name="analytics" size={24} color={colors.primary} />
           </View>
           <View>
-            <Text style={styles.title}>Strength Score</Text>
+            <Text style={styles.title}>Strength Progress</Text>
             <Text style={styles.subtitle}>Tracking progressive overload</Text>
           </View>
         </View>
@@ -310,7 +310,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
       </View>
 
       {/* Stats Cards */}
-      {progressData.length > 0 && (
+      {progressData.length > 0 && selectedExercise && (
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Current</Text>
@@ -391,8 +391,8 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
                 textFontSize={10}
                 curved
                 hideYAxisText
-                yAxisColor="#CCCCCC"
-                xAxisColor="#CCCCCC"
+                yAxisColor={colors.textTertiary}
+                xAxisColor={colors.textTertiary}
                 yAxisThickness={2}
                 xAxisThickness={2}
                 rulesType="solid"
