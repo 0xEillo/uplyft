@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -286,6 +287,32 @@ export default function SettingsScreen() {
     )
   }
 
+  const handleContactSupport = async () => {
+    const supportEmail = 'support@repaifit.app'
+    const subject = 'Support Request'
+    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}`
+
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl)
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl)
+      } else {
+        Alert.alert(
+          'Email Not Available',
+          `Please send an email to ${supportEmail}`,
+          [{ text: 'OK' }],
+        )
+      }
+    } catch (error) {
+      console.error('Error opening email:', error)
+      Alert.alert(
+        'Email Not Available',
+        `Please send an email to ${supportEmail}`,
+        [{ text: 'OK' }],
+      )
+    }
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -516,6 +543,33 @@ export default function SettingsScreen() {
               />
             </View>
           </View>
+        </View>
+
+        {/* Support Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Support</Text>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleContactSupport}
+          >
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="mail-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+              <View>
+                <Text style={styles.actionButtonTextNeutral}>Contact Support</Text>
+                <Text style={styles.supportEmail}>support@repaifit.app</Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textLight}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Actions Section */}
@@ -769,6 +823,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
+    },
+    supportEmail: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
     },
     dangerButton: {
       backgroundColor: colors.white,
