@@ -360,7 +360,6 @@ export default function CreatePostScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="never"
-          scrollEnabled={isNotesFocused}
           showsVerticalScrollIndicator={false}
         >
           {/* Title Input */}
