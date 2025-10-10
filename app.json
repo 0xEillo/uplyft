@@ -11,7 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record workout notes via voice."
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record workout notes via voice.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos of your workout notes.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select workout images."
       },
       "bundleIdentifier": "com.anonymous.repai"
     },
@@ -25,7 +27,7 @@
       "windowSoftInputMode": "adjustPan",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["RECORD_AUDIO"],
+      "permissions": ["RECORD_AUDIO", "CAMERA", "READ_MEDIA_IMAGES"],
       "package": "com.anonymous.repai"
     },
     "web": {

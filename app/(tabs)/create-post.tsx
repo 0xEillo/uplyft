@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
+import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
@@ -107,6 +108,21 @@ export default function CreatePostScreen() {
   } = useAudioTranscription({
     onTranscriptionComplete: (text) => {
       setNotes((prev) => (prev ? `${prev}\n${text}` : text))
+    },
+  })
+
+  // Use image transcription hook
+  const { isProcessing: isProcessingImage, pickImage } = useImageTranscription({
+    onExtractionComplete: (data) => {
+      // Set title if extracted
+      if (data.title) {
+        setWorkoutTitle(data.title)
+      }
+      // Combine description and workout data in notes
+      const newNotes = data.description
+        ? `${data.description}\n\n${data.workout}`
+        : data.workout
+      setNotes((prev) => (prev ? `${prev}\n\n${newNotes}` : newNotes))
     },
   })
 
@@ -221,6 +237,11 @@ export default function CreatePostScreen() {
     }
     blurInputs()
     router.back()
+  }
+
+  const handlePickImage = async () => {
+    blurInputs()
+    await pickImage()
   }
 
   const submitWorkout = async () => {
@@ -422,11 +443,26 @@ export default function CreatePostScreen() {
           )}
         </ScrollView>
 
+        {/* Floating Camera Button */}
+        <TouchableOpacity
+          style={styles.cameraFab}
+          onPress={handlePickImage}
+          disabled={
+            isProcessingImage || isRecording || isTranscribing || isLoading
+          }
+        >
+          {isProcessingImage ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Ionicons name="camera" size={28} color={colors.white} />
+          )}
+        </TouchableOpacity>
+
         {/* Floating Microphone Button */}
         <TouchableOpacity
           style={[styles.micFab, isRecording && styles.micFabActive]}
           onPress={toggleRecording}
-          disabled={isTranscribing || isLoading}
+          disabled={isTranscribing || isLoading || isProcessingImage}
         >
           {isTranscribing ? (
             <ActivityIndicator size="small" color={colors.white} />
@@ -492,6 +528,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 28,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    cameraFab: {
+      position: 'absolute',
+      bottom: -16,
+      right: 104,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
     },
     micFab: {
       position: 'absolute',
