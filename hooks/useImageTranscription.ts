@@ -128,14 +128,13 @@ export function useImageTranscription(
                   const data = await extractTextFromImage(result.assets[0].uri)
                   onExtractionComplete?.(data)
                 } catch (error) {
-                  console.error('Error extracting text:', error)
                   const errorObj =
                     error instanceof Error ? error : new Error('Unknown error')
                   onError?.(errorObj)
 
                   Alert.alert(
-                    'Extraction Failed',
-                    'Unable to extract workout information from the image. Please try again or enter it manually.',
+                    'Could Not Extract Workout',
+                    errorObj.message || 'Unable to extract workout information from the image. Please try again or enter it manually.',
                     [{ text: 'OK' }],
                   )
                 } finally {
@@ -167,14 +166,13 @@ export function useImageTranscription(
                   const data = await extractTextFromImage(result.assets[0].uri)
                   onExtractionComplete?.(data)
                 } catch (error) {
-                  console.error('Error extracting text:', error)
                   const errorObj =
                     error instanceof Error ? error : new Error('Unknown error')
                   onError?.(errorObj)
 
                   Alert.alert(
-                    'Extraction Failed',
-                    'Unable to extract workout information from the image. Please try again or enter it manually.',
+                    'Could Not Extract Workout',
+                    errorObj.message || 'Unable to extract workout information from the image. Please try again or enter it manually.',
                     [{ text: 'OK' }],
                   )
                 } finally {

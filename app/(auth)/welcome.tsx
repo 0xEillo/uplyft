@@ -57,13 +57,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 48,
     },
     header: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       marginTop: 96,
     },
     logo: {
-      width: 120,
-      height: 120,
-      marginBottom: 16,
+      width: 76,
+      height: 76,
+      marginRight: 0,
     },
     title: {
       fontSize: 48,

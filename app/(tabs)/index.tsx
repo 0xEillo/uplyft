@@ -309,11 +309,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitleContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 0,
     },
     headerIcon: {
-      width: 28,
-      height: 28,
+      width: 32,
+      height: 32,
     },
     headerTitle: {
       fontSize: 20,
