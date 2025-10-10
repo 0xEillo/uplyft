@@ -25,52 +25,6 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-const formatGender = (gender: string | null) => {
-  if (!gender) return 'Not set'
-  switch (gender) {
-    case 'male':
-      return 'Male'
-    case 'female':
-      return 'Female'
-    case 'prefer_not_to_say':
-      return 'Prefer not to say'
-    default:
-      return 'Not set'
-  }
-}
-
-const formatGoal = (goal: string | null) => {
-  if (!goal) return 'Not set'
-  switch (goal) {
-    case 'build_muscle':
-      return 'Build Muscle'
-    case 'gain_strength':
-      return 'Increase Strength'
-    case 'lose_fat':
-      return 'Lose Fat'
-    case 'general_fitness':
-      return 'General Fitness'
-    default:
-      return 'Not set'
-  }
-}
-
-const formatCommitment = (commitment: string | null) => {
-  if (!commitment) return 'Not set'
-  switch (commitment) {
-    case '2_times':
-      return '2x per week'
-    case '3_times':
-      return '3x per week'
-    case '4_times':
-      return '4x per week'
-    case '5_plus':
-      return '5+ per week'
-    default:
-      return 'Not set'
-  }
-}
-
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
@@ -243,10 +197,6 @@ export default function SettingsScreen() {
     } finally {
       setIsUploadingImage(false)
     }
-  }
-
-  const handleEditContext = () => {
-    router.push('/edit-profile')
   }
 
   const handleDeleteAccount = async () => {
@@ -433,68 +383,35 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* User Context Section */}
+        {/* Personal Information Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
 
-          <View style={styles.profileCard}>
-            <View style={styles.contextRow}>
-              <View style={styles.contextItem}>
-                <Text style={styles.contextLabel}>Gender</Text>
-                <Text style={styles.contextValue}>
-                  {formatGender(profile?.gender || null)}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/edit-profile')}
+          >
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="person-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+              <View>
+                <Text style={styles.actionButtonTextNeutral}>
+                  Personal Details
                 </Text>
-              </View>
-              <View style={styles.contextItem}>
-                <Text style={styles.contextLabel}>Goal</Text>
-                <Text style={styles.contextValue}>
-                  {formatGoal(profile?.goal || null)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.contextRow}>
-              <View style={styles.contextItem}>
-                <Text style={styles.contextLabel}>Height</Text>
-                <Text style={styles.contextValue}>
-                  {profile?.height_cm ? `${profile.height_cm} cm` : 'Not set'}
-                </Text>
-              </View>
-              <View style={styles.contextItem}>
-                <Text style={styles.contextLabel}>Weight</Text>
-                <Text style={styles.contextValue}>
-                  {profile?.weight_kg ? `${profile.weight_kg} kg` : 'Not set'}
+                <Text style={styles.supportEmail}>
+                  Gender, height, weight, goals & more
                 </Text>
               </View>
             </View>
-
-            <View style={styles.contextRow}>
-              <View style={styles.contextItem}>
-                <Text style={styles.contextLabel}>Age</Text>
-                <Text style={styles.contextValue}>
-                  {profile?.age ? `${profile.age} years` : 'Not set'}
-                </Text>
-              </View>
-              <View style={styles.contextItem}>
-                <Text style={styles.contextLabel}>Commitment</Text>
-                <Text style={styles.contextValue}>
-                  {formatCommitment(profile?.commitment || null)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.bioContainer}>
-              <Text style={styles.contextLabel}>AI Context</Text>
-              <Text style={styles.bioValue}>{profile?.bio || 'Not set'}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.editContextButton}
-              onPress={handleEditContext}
-            >
-              <Text style={styles.editContextButtonText}>Edit Information</Text>
-            </TouchableOpacity>
-          </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textLight}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Preferences Section */}
@@ -920,46 +837,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 16,
       fontWeight: '700',
       color: colors.white,
-    },
-    contextRow: {
-      flexDirection: 'row',
-      gap: 16,
-      marginBottom: 16,
-    },
-    contextItem: {
-      flex: 1,
-    },
-    contextLabel: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.textSecondary,
-      marginBottom: 4,
-    },
-    contextValue: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    editContextButton: {
-      marginTop: 8,
-      paddingVertical: 12,
-      borderRadius: 8,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-    },
-    editContextButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.white,
-    },
-    bioContainer: {
-      marginBottom: 16,
-    },
-    bioValue: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.text,
-      lineHeight: 20,
     },
     preferenceCard: {
       backgroundColor: colors.white,
