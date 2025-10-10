@@ -18,6 +18,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   UIManager,
   View,
 } from 'react-native'
@@ -238,6 +239,13 @@ export default function FeedScreen() {
           />
           <Text style={styles.headerTitle}>Rep AI</Text>
         </View>
+        <TouchableOpacity onPress={() => {}}>
+          <Ionicons
+            name="notifications-outline"
+            size={24}
+            color={colors.text}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -298,7 +306,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     header: {
       flexDirection: 'row',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
       paddingVertical: 16,

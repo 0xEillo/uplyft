@@ -43,18 +43,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTitleContainer}>
-          <Image
-            source={
-              isDark
-                ? require('@/llm/repai-logo-white.png')
-                : require('@/llm/repai-logo-black.png')
-            }
-            style={styles.headerIcon}
-            resizeMode="contain"
-          />
-          <Text style={styles.headerTitle}>Profile</Text>
-        </View>
+        <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={24} color={colors.text} />
         </TouchableOpacity>
