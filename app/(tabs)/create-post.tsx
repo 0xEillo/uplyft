@@ -9,9 +9,9 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Animated,
+  Easing,
   InteractionManager,
   Keyboard,
   KeyboardAvoidingView,
@@ -81,6 +81,7 @@ export default function CreatePostScreen() {
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
+  const spinValue = useRef(new Animated.Value(0)).current
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const { user } = useAuth()
@@ -146,6 +147,22 @@ export default function CreatePostScreen() {
       ]).start()
     }
   }, [showDraftSaved, fadeAnim])
+
+  // Animate camera processing and audio transcription spinner
+  useEffect(() => {
+    if (isProcessingImage || isTranscribing) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ).start()
+    } else {
+      spinValue.setValue(0)
+    }
+  }, [isProcessingImage, isTranscribing, spinValue])
 
   // Handle screen focus and blur keyboard
   useFocusEffect(
@@ -243,6 +260,11 @@ export default function CreatePostScreen() {
     blurInputs()
     await pickImage()
   }
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  })
 
   const submitWorkout = async () => {
     try {
@@ -442,6 +464,27 @@ export default function CreatePostScreen() {
           )}
         </ScrollView>
 
+        {/* Floating Microphone Button */}
+        <TouchableOpacity
+          style={[styles.micFab, isRecording && styles.micFabActive]}
+          onPress={toggleRecording}
+          disabled={isTranscribing || isLoading || isProcessingImage}
+        >
+          {isTranscribing ? (
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <View style={styles.loaderRing}>
+                <View style={styles.loaderArc} />
+              </View>
+            </Animated.View>
+          ) : (
+            <Ionicons
+              name={isRecording ? 'stop' : 'mic'}
+              size={28}
+              color={colors.white}
+            />
+          )}
+        </TouchableOpacity>
+
         {/* Floating Camera Button */}
         <TouchableOpacity
           style={styles.cameraFab}
@@ -451,26 +494,13 @@ export default function CreatePostScreen() {
           }
         >
           {isProcessingImage ? (
-            <ActivityIndicator size="small" color={colors.white} />
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <View style={styles.loaderRing}>
+                <View style={styles.loaderArc} />
+              </View>
+            </Animated.View>
           ) : (
             <Ionicons name="camera" size={28} color={colors.white} />
-          )}
-        </TouchableOpacity>
-
-        {/* Floating Microphone Button */}
-        <TouchableOpacity
-          style={[styles.micFab, isRecording && styles.micFabActive]}
-          onPress={toggleRecording}
-          disabled={isTranscribing || isLoading || isProcessingImage}
-        >
-          {isTranscribing ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Ionicons
-              name={isRecording ? 'stop' : 'mic'}
-              size={28}
-              color={colors.white}
-            />
           )}
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -528,10 +558,29 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    cameraFab: {
+    loaderRing: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 3,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loaderArc: {
       position: 'absolute',
-      bottom: -16,
-      right: 104,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 3,
+      borderColor: 'transparent',
+      borderTopColor: '#ffffff',
+      borderRightColor: '#ffffff',
+    },
+    micFab: {
+      position: 'absolute',
+      bottom: 64,
+      right: 24,
       width: 64,
       height: 64,
       borderRadius: 32,
@@ -544,7 +593,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowRadius: 8,
       elevation: 8,
     },
-    micFab: {
+    cameraFab: {
       position: 'absolute',
       bottom: -16,
       right: 24,

@@ -85,7 +85,7 @@ Please extract and return the information in the following format:
 
 TITLE: [Only include this line if there is an actual workout title present, otherwise completely omit this line]
 DESCRIPTION: [Only include this line if there are general notes/comments like "felt strong today" or "shoulder was sore", otherwise completely omit this line]
-WORKOUT: [Extract all exercise details including exercise names, sets, reps, weights in a format like:
+WORKOUT: [Extract all exercise details including exercise names, number ofsets, number of reps, weight used, in a format like:
 Bench Press
 135 x 8
 155 x 6
