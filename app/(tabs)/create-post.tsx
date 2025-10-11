@@ -90,9 +90,7 @@ export default function CreatePostScreen() {
 
   const blurInputs = useCallback(() => {
     const textInputState = (TextInput as any)?.State
-    const activeInput =
-      textInputState?.currentlyFocusedInput?.() ??
-      textInputState?.currentlyFocusedField?.()
+    const activeInput = textInputState?.currentlyFocusedInput?.()
 
     if (activeInput) {
       textInputState?.blurTextInput?.(activeInput)
@@ -209,7 +207,7 @@ export default function CreatePostScreen() {
         interactionHandle.cancel?.()
         blurInputs()
       }
-    }, [blurInputs, notes, workoutTitle]),
+    }, [blurInputs]),
   )
 
   // Blur inputs when component unmounts
