@@ -111,7 +111,9 @@ export default function SignupScreen() {
         ],
       )
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to sign up')
+      const message =
+        error instanceof Error ? error.message : 'Failed to sign up'
+      Alert.alert('Error', message)
     } finally {
       setIsLoading(false)
     }
@@ -123,7 +125,9 @@ export default function SignupScreen() {
       await signInWithGoogle()
       router.replace('/(tabs)')
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to sign up with Google')
+      const message =
+        error instanceof Error ? error.message : 'Failed to sign up with Google'
+      Alert.alert('Error', message)
     } finally {
       setIsGoogleLoading(false)
     }

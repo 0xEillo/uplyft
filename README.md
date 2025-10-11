@@ -1,3 +1,11 @@
+# Mixpanel Integration
+
+- Add your Mixpanel token to `.env` as `MIXPANEL_TOKEN`, and optionally `MIXPANEL_DEBUG=true` for verbose logging.
+- Run `node scripts/verify-mixpanel.js` before shipping to ensure tokens flow into Expo config.
+- Validate events via Mixpanel Live View while walking through auth, onboarding, feed, create workout (text and speech), and explore flows.
+- Event names live in `lib/analytics/mixpanel.ts`. Keep payloads flat, use lowerCamelCase keys, and prefer boolean/number/string primitives.
+- When adding features, call `track(...)` from `useAnalytics()` or import the helper directly; never wrap in try/catch that swallows errors.
+
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).

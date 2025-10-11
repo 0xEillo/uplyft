@@ -129,10 +129,10 @@ export function UnitProvider({ children }: PropsWithChildren) {
   )
 }
 
-export function useUnits() {
+export function useUnit() {
   const context = useContext(UnitContext)
   if (!context) {
-    throw new Error('useUnits must be used within a UnitProvider')
+    throw new Error('useUnit must be used within a UnitProvider')
   }
   return context
 }

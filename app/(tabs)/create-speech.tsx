@@ -2,6 +2,7 @@ import { ScreenHeader } from '@/components/screen-header'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { track } from '@/lib/analytics/mixpanel'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -43,12 +44,19 @@ export default function CreateSpeechScreen() {
         allowsRecording: true,
       })
     })()
+
+    void track('Workout Create Started', {
+      mode: 'speech',
+    })
   }, [])
 
   const startRecording = async () => {
     try {
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
+      void track('Workout Create Started', {
+        mode: 'speech_recording',
+      })
     } catch (error) {
       console.error('Failed to start recording:', error)
       Alert.alert('Error', 'Failed to start recording')
@@ -116,6 +124,11 @@ export default function CreateSpeechScreen() {
       if (user) {
         try {
           await database.workoutSessions.create(user.id, workout, text)
+
+          void track('Workout Create Submitted', {
+            mode: 'speech',
+            exercises: workout?.exercises?.length ?? 0,
+          })
         } catch (dbError) {
           console.error('Error saving to database:', dbError)
           setIsProcessing(false)
@@ -154,6 +167,10 @@ export default function CreateSpeechScreen() {
       await audioRecorder.stop()
     }
     router.back()
+    void track('Workout Create Saved', {
+      mode: 'speech_cancelled',
+      isRecording: recorderState.isRecording,
+    })
   }
 
   const styles = createStyles(colors)

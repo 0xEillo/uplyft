@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { track } from '@/lib/analytics/mixpanel'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -88,12 +89,13 @@ export default function CreatePostScreen() {
   const { user } = useAuth()
 
   const blurInputs = useCallback(() => {
-    const activeInput = InteractionManager.runAfterInteractions
-      ? (TextInput as any)?.State?.currentlyFocusedInput?.()
-      : null
+    const textInputState = (TextInput as any)?.State
+    const activeInput =
+      textInputState?.currentlyFocusedInput?.() ??
+      textInputState?.currentlyFocusedField?.()
 
     if (activeInput) {
-      ;(TextInput as any)?.State?.blurTextInput?.(activeInput)
+      textInputState?.blurTextInput?.(activeInput)
     }
 
     titleInputRef.current?.blur?.()
@@ -171,6 +173,11 @@ export default function CreatePostScreen() {
       // Blur inputs immediately on focus
       blurInputs()
 
+      void track('Workout Create Started', {
+        hasDraft: Boolean(notes.trim()),
+        hasTitle: Boolean(workoutTitle.trim()),
+      })
+
       // Blur inputs after a short delay to catch any late focus events
       const timeoutId = setTimeout(blurInputs, 0)
 
@@ -202,7 +209,7 @@ export default function CreatePostScreen() {
         interactionHandle.cancel?.()
         blurInputs()
       }
-    }, [blurInputs]),
+    }, [blurInputs, notes, workoutTitle]),
   )
 
   // Blur inputs when component unmounts
@@ -241,6 +248,11 @@ export default function CreatePostScreen() {
           setShowDraftSaved(true)
           // Hide after 2 seconds
           setTimeout(() => setShowDraftSaved(false), 2000)
+
+          void track('Workout Create Saved', {
+            length: notes.trim().length,
+            hasTitle: Boolean(workoutTitle.trim()),
+          })
         } else {
           await AsyncStorage.removeItem(DRAFT_KEY)
           setShowDraftSaved(false)
@@ -251,7 +263,7 @@ export default function CreatePostScreen() {
     }, 1200) // Wait 1200ms after user stops typing
 
     return () => clearTimeout(timer)
-  }, [notes])
+  }, [notes, workoutTitle])
 
   // Auto-save title draft whenever title changes with debounce
   useEffect(() => {
@@ -299,6 +311,12 @@ export default function CreatePostScreen() {
           title: workoutTitle.trim(),
         }),
       )
+
+      void track('Workout Create Saved', {
+        status: 'pending_saved',
+        hasTitle: Boolean(workoutTitle.trim()),
+        length: notes.trim().length,
+      })
 
       // Don't clear draft yet - keep it until workout successfully posts
       // This way if submission fails, user can edit and retry
@@ -375,6 +393,11 @@ export default function CreatePostScreen() {
 
     // Not a first-time user, submit directly
     await submitWorkout()
+
+    void track('Workout Create Submitted', {
+      hasTitle: Boolean(workoutTitle.trim()),
+      length: notes.trim().length,
+    })
   }
 
   return (

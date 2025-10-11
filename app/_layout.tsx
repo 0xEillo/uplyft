@@ -9,6 +9,7 @@ import { useEffect } from 'react'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { AnalyticsProvider } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
@@ -19,6 +20,18 @@ function RootLayoutNav() {
   const segments = useSegments()
   const router = useRouter()
   const { isDark } = useTheme()
+
+  useEffect(() => {
+    // Track initial app open once when layout mounts
+    import('@/lib/analytics/mixpanel').then(({ track }) => {
+      track('App Open', {
+        timestamp: Date.now(),
+        segment: segments[0] ?? 'unknown',
+      }).catch((err) => {
+        console.warn('mixpanel track error', err)
+      })
+    })
+  }, [])
 
   useEffect(() => {
     if (isLoading) return
@@ -50,9 +63,11 @@ export default function RootLayout() {
       <ThemeProvider>
         <UnitProvider>
           <AuthProvider>
-            <PostsProvider>
-              <RootLayoutNav />
-            </PostsProvider>
+            <AnalyticsProvider>
+              <PostsProvider>
+                <RootLayoutNav />
+              </PostsProvider>
+            </AnalyticsProvider>
           </AuthProvider>
         </UnitProvider>
       </ThemeProvider>
