@@ -1,5 +1,6 @@
 import { GENDERS, GOALS } from '@/constants/options'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
@@ -43,7 +44,8 @@ export default function OnboardingScreen() {
     bio: '',
   })
   const colors = useThemedColors()
-  const styles = createStyles(colors)
+  const { weightUnit, convertInputToKg, formatWeight } = useWeightUnits()
+  const styles = createStyles(colors, weightUnit)
 
   const handleNext = () => {
     if (step < 8) {
@@ -76,7 +78,9 @@ export default function OnboardingScreen() {
             name: data.name,
             gender: data.gender,
             height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
-            weight_kg: data.weight_kg ? parseFloat(data.weight_kg) : null,
+            weight_kg: data.weight_kg
+              ? convertInputToKg(parseFloat(data.weight_kg))
+              : null,
             age: age,
             goal: data.goal,
             bio: data.bio.trim() || null,
@@ -105,15 +109,16 @@ export default function OnboardingScreen() {
       case 4:
         const height = parseFloat(data.height_cm)
         const weight = parseFloat(data.weight_kg)
+        const weightKg = convertInputToKg(isNaN(weight) ? null : weight)
         return (
           data.height_cm !== '' &&
           !isNaN(height) &&
           height >= 50 &&
           height <= 300 &&
           data.weight_kg !== '' &&
-          !isNaN(weight) &&
-          weight >= 20 &&
-          weight <= 500
+          weightKg !== null &&
+          weightKg >= 20 &&
+          weightKg <= 500
         )
       case 5:
         if (!data.birth_day || !data.birth_month || !data.birth_year) {
@@ -266,7 +271,9 @@ export default function OnboardingScreen() {
                 </View>
               </View>
               <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Weight (kg)</Text>
+                <Text style={styles.pickerLabel}>
+                  {`Weight (${weightUnit})`}
+                </Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={data.weight_kg || '70'}
@@ -531,7 +538,10 @@ export default function OnboardingScreen() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  weightUnit: 'kg' | 'lb',
+) =>
   StyleSheet.create({
     container: {
       flex: 1,

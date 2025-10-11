@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types/database.types'
@@ -30,6 +31,7 @@ export default function SettingsScreen() {
   const router = useRouter()
   const { isDark, toggleTheme } = useTheme()
   const colors = useThemedColors()
+  const { weightUnit, setWeightUnit } = useWeightUnits()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditModalVisible, setIsEditModalVisible] = useState(false)
@@ -240,7 +242,9 @@ export default function SettingsScreen() {
   const handleContactSupport = async () => {
     const supportEmail = 'support@repaifit.app'
     const subject = 'Support Request'
-    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}`
+    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(
+      subject,
+    )}`
 
     try {
       const canOpen = await Linking.canOpenURL(mailtoUrl)
@@ -401,9 +405,6 @@ export default function SettingsScreen() {
                 <Text style={styles.actionButtonTextNeutral}>
                   Personal Details
                 </Text>
-                <Text style={styles.supportEmail}>
-                  Gender, height, weight, goals & more
-                </Text>
               </View>
             </View>
             <Ionicons
@@ -419,14 +420,57 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Preferences</Text>
 
           <View style={styles.preferenceCard}>
+            {/* Unit Toggle */}
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <View>
+                  <Text style={styles.preferenceTitle}>Weight Units</Text>
+                </View>
+              </View>
+              <View style={styles.unitToggleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.unitButton,
+                    weightUnit === 'kg' && styles.unitButtonActive,
+                  ]}
+                  onPress={() => setWeightUnit('kg')}
+                >
+                  <Text
+                    style={[
+                      styles.unitButtonText,
+                      weightUnit === 'kg' && styles.unitButtonTextActive,
+                    ]}
+                  >
+                    kg
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.unitButton,
+                    weightUnit === 'lb' && styles.unitButtonActive,
+                  ]}
+                  onPress={() => setWeightUnit('lb')}
+                >
+                  <Text
+                    style={[
+                      styles.unitButtonText,
+                      weightUnit === 'lb' && styles.unitButtonTextActive,
+                    ]}
+                  >
+                    lbs
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.preferenceDivider} />
+
             {/* Dark Mode Toggle */}
             <View style={styles.preferenceRow}>
               <View style={styles.preferenceLeft}>
                 <View>
                   <Text style={styles.preferenceTitle}>Dark Mode</Text>
-                  <Text style={styles.preferenceDescription}>
-                    Use dark theme throughout the app
-                  </Text>
                 </View>
               </View>
               <Switch
@@ -446,9 +490,6 @@ export default function SettingsScreen() {
                 <View>
                   <Text style={styles.preferenceTitle}>
                     Show Workout Examples
-                  </Text>
-                  <Text style={styles.preferenceDescription}>
-                    Display example workouts on create post screen
                   </Text>
                 </View>
               </View>
@@ -477,7 +518,9 @@ export default function SettingsScreen() {
                 color={colors.textSecondary}
               />
               <View>
-                <Text style={styles.actionButtonTextNeutral}>Contact Support</Text>
+                <Text style={styles.actionButtonTextNeutral}>
+                  Contact Support
+                </Text>
                 <Text style={styles.supportEmail}>support@repaifit.app</Text>
               </View>
             </View>
@@ -852,6 +895,31 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+    },
+    unitToggleContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 20,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 4,
+    },
+    unitButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    unitButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    unitButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    unitButtonTextActive: {
+      color: colors.white,
     },
     preferenceLeft: {
       flex: 1,

@@ -1,4 +1,5 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useRef, useState } from 'react'
 import {
@@ -83,6 +84,7 @@ export const FeedCard = memo(function FeedCard({
   const rotateAnim = useRef(new Animated.Value(0)).current
 
   const styles = createStyles(colors)
+  const { weightUnit } = useWeightUnits()
 
   const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
@@ -164,7 +166,7 @@ export const FeedCard = memo(function FeedCard({
           <Text style={[styles.tableHeaderText, styles.setsCol]}>Sets</Text>
           <Text style={[styles.tableHeaderText, styles.repsCol]}>Reps</Text>
           <Text style={[styles.tableHeaderText, styles.weightCol]}>
-            Wt (kg)
+            {`Wt (${weightUnit})`}
           </Text>
         </View>
         <View style={styles.headerDivider} />
@@ -264,7 +266,11 @@ export const FeedCard = memo(function FeedCard({
                           {set.reps} reps
                         </Text>
                         <Text style={styles.setDetailWeight}>
-                          {set.weight ? `${set.weight}` : 'BW'}
+                          {set.weight
+                            ? `${set.weight.toFixed(
+                                weightUnit === 'kg' ? 1 : 0,
+                              )}`
+                            : 'BW'}
                         </Text>
                         <View style={styles.prBadgeContainer}>
                           {setHasPR && (

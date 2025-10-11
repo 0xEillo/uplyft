@@ -10,7 +10,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const { messages, userId } = await request.json()
+    const { messages, userId, weightUnit = 'kg' } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
       return Response.json({ error: 'Messages are required' }, { status: 400 })
@@ -30,6 +30,9 @@ export async function POST(request: Request) {
         systemPrompt = [
           "You are the Rep AI training copilot. Ground every answer in the user's actual data. If the data is missing, say so.",
           'User context:\n' + userContextToPrompt(summary),
+          `Weight preferences: The user prefers ${
+            weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
+          }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
           'When suggesting next steps, keep them actionable and tied to the metrics you have.',
         ].join('\n\n')
       } catch (contextError) {

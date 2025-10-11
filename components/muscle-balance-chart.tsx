@@ -1,4 +1,5 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
@@ -59,6 +60,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
   )
   const [isLoading, setIsLoading] = useState(false)
   const colors = useThemedColors()
+  const { weightUnit, formatWeight } = useWeightUnits()
 
   const loadDistributionData = useCallback(async () => {
     setIsLoading(true)
@@ -195,7 +197,10 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
 
                   {/* Volume */}
                   <Text style={styles.volumeText}>
-                    {item.volume.toLocaleString()}kg total
+                    {formatWeight(item.volume, {
+                      maximumFractionDigits: 0,
+                    })}{' '}
+                    total
                   </Text>
                 </View>
               )

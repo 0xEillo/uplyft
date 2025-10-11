@@ -1,9 +1,5 @@
+import { WeightUnit, kgToPreferred } from '@/contexts/unit-context'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-
-export interface SetDetail {
-  reps: number
-  weight: number | null
-}
 
 export interface ExerciseDisplay {
   name: string
@@ -11,7 +7,10 @@ export interface ExerciseDisplay {
   reps: string
   weight: string
   hasVariedSets: boolean
-  setDetails?: SetDetail[] // Individual set details for varied workouts
+  setDetails?: {
+    reps: number
+    weight: number | null
+  }[]
 }
 
 export function formatTimeAgo(dateString: string): string {
@@ -31,6 +30,7 @@ export function formatTimeAgo(dateString: string): string {
 
 export function formatWorkoutForDisplay(
   workout: WorkoutSessionWithDetails,
+  unit: WeightUnit,
 ): ExerciseDisplay[] {
   if (!workout.workout_exercises || workout.workout_exercises.length === 0) {
     return []
@@ -72,7 +72,8 @@ export function formatWorkoutForDisplay(
     if (weights.length === 0) {
       weightDisplay = 'BW' // Bodyweight
     } else if (allSameWeight) {
-      weightDisplay = `${weights[0]}`
+      const converted = kgToPreferred(weights[0], unit)
+      weightDisplay = `${converted.toFixed(unit === 'kg' ? 1 : 0)}`
     } else {
       weightDisplay = '...'
     }
@@ -84,7 +85,10 @@ export function formatWorkoutForDisplay(
       weight: weightDisplay,
       hasVariedSets,
       setDetails: hasVariedSets
-        ? sets.map((s) => ({ reps: s.reps, weight: s.weight }))
+        ? sets.map((s) => ({
+            reps: s.reps,
+            weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
+          }))
         : undefined,
     }
   })

@@ -1,6 +1,7 @@
 import { ScreenHeader } from '@/components/screen-header'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -24,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function CreateSpeechScreen() {
   const colors = useThemedColors()
+  const { weightUnit } = useWeightUnits()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -91,7 +93,7 @@ export default function CreateSpeechScreen() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ notes: text }),
+        body: JSON.stringify({ notes: text, weightUnit }),
       })
 
       if (!parseResponse.ok) {
@@ -99,16 +101,12 @@ export default function CreateSpeechScreen() {
         const errorMessage = errorData.error || 'Failed to parse workout'
 
         setIsProcessing(false)
-        Alert.alert(
-          'Unable to Parse Workout',
-          errorMessage,
-          [
-            {
-              text: 'Try Again',
-              onPress: () => {},
-            },
-          ]
-        )
+        Alert.alert('Unable to Parse Workout', errorMessage, [
+          {
+            text: 'Try Again',
+            onPress: () => {},
+          },
+        ])
         return
       }
 
@@ -128,7 +126,7 @@ export default function CreateSpeechScreen() {
               {
                 text: 'OK',
               },
-            ]
+            ],
           )
           return
         }
@@ -144,7 +142,7 @@ export default function CreateSpeechScreen() {
           {
             text: 'OK',
           },
-        ]
+        ],
       )
     } finally {
       setIsProcessing(false)

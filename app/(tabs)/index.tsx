@@ -2,6 +2,7 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -75,6 +76,7 @@ export default function FeedScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const { weightUnit } = useWeightUnits()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -124,7 +126,7 @@ export default function FeedScreen() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes, weightUnit }),
       })
 
       if (!response.ok) {
@@ -216,7 +218,7 @@ export default function FeedScreen() {
         ],
       )
     }
-  }, [user, router])
+  }, [user, router, weightUnit])
 
   useFocusEffect(
     useCallback(() => {

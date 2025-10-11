@@ -1,5 +1,6 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -38,6 +39,7 @@ export function WorkoutChat() {
   const { user, session } = useAuth()
   const insets = useSafeAreaInsets()
   const colors = useThemedColors()
+  const { weightUnit } = useWeightUnits()
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
@@ -79,6 +81,7 @@ export function WorkoutChat() {
             content: m.content,
           })),
           userId: user?.id,
+          weightUnit,
         }),
       })
 
@@ -409,17 +412,12 @@ export function WorkoutChat() {
             disabled={!input.trim() || isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator
-                size="small"
-                color={colors.textPlaceholder}
-              />
+              <ActivityIndicator size="small" color={colors.textPlaceholder} />
             ) : (
               <Ionicons
                 name="send"
                 size={20}
-                color={
-                  input.trim() ? colors.white : colors.textPlaceholder
-                }
+                color={input.trim() ? colors.white : colors.textPlaceholder}
               />
             )}
           </TouchableOpacity>

@@ -1,8 +1,9 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Modal,
@@ -34,6 +35,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showExercisePicker, setShowExercisePicker] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const { weightUnit, formatWeight } = useWeightUnits()
 
   // Load all exercises on mount
   useEffect(() => {
@@ -102,9 +104,14 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
       ? progressData[progressData.length - 1].maxWeight
       : 0
   const firstWeight = progressData.length > 0 ? progressData[0].maxWeight : 0
-  const weightChange = latestWeight - firstWeight
+  const weightChange =
+    latestWeight === null || firstWeight === null
+      ? null
+      : latestWeight - firstWeight
   const percentChange =
-    firstWeight > 0 ? ((weightChange / firstWeight) * 100).toFixed(1) : '0'
+    weightChange === null || firstWeight === null || firstWeight === 0
+      ? '0'
+      : (((weightChange / firstWeight) * 100) as number).toFixed(1)
 
   const styles = createStyles(colors)
 
@@ -126,11 +133,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
         onPress={() => setShowExercisePicker(true)}
       >
         <View style={styles.exerciseSelectorLeft}>
-          <Ionicons
-            name="barbell-outline"
-            size={20}
-            color={colors.primary}
-          />
+          <Ionicons name="barbell-outline" size={20} color={colors.primary} />
           <Text style={styles.exerciseSelectorText}>
             {selectedExercise?.name || 'Select Exercise'}
           </Text>
@@ -164,33 +167,53 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
       {/* Stats Cards */}
       {selectedExercise && progressData.length > 0 && (
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Current</Text>
-            <Text style={styles.statValue}>{latestWeight}kg</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>All-Time Max</Text>
-            <Text style={styles.statValue}>{maxWeight}kg</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Change</Text>
-            <Text
-              style={[
-                styles.statValue,
-                weightChange >= 0 ? styles.statPositive : styles.statNegative,
-              ]}
-            >
-              {weightChange >= 0 ? '+' : ''}
-              {weightChange}kg
-            </Text>
-            <Text
-              style={[
-                styles.statPercentage,
-                weightChange >= 0 ? styles.statPositive : styles.statNegative,
-              ]}
-            >
-              ({percentChange}%)
-            </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>1RM Estimate</Text>
+              <Text style={styles.statValue}>
+                {latestWeight === null || latestWeight === undefined
+                  ? 'BW'
+                  : formatWeight(latestWeight, {
+                      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                    })}
+              </Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Lifetime Best</Text>
+              <Text style={styles.statValue}>
+                {maxWeight === null || maxWeight === undefined
+                  ? 'BW'
+                  : formatWeight(maxWeight, {
+                      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                    })}
+              </Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Change</Text>
+              <Text
+                style={[
+                  styles.statValue,
+                  weightChange >= 0 ? styles.statPositive : styles.statNegative,
+                ]}
+              >
+                {weightChange === null || weightChange === undefined
+                  ? 'BW'
+                  : formatWeight(weightChange, {
+                      signDisplay: 'always',
+                      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                    })}
+              </Text>
+              <Text
+                style={[
+                  styles.statPercentage,
+                  weightChange !== null && weightChange >= 0
+                    ? styles.statPositive
+                    : styles.statNegative,
+                ]}
+              >
+                ({percentChange}%)
+              </Text>
+            </View>
           </View>
         </View>
       )}
@@ -216,7 +239,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
           </View>
         ) : (
           <>
-            <Text style={styles.yAxisLabel}>(kg)</Text>
+            <Text style={styles.yAxisLabel}>{`(${weightUnit})`}</Text>
             <LineChart
               data={chartData}
               width={340}
@@ -398,6 +421,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       gap: 8,
       marginBottom: 16,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: 8,
     },
     statCard: {
       flex: 1,

@@ -1,5 +1,6 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -34,6 +35,7 @@ export default function EditWorkoutScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
+  const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -45,9 +47,13 @@ export default function EditWorkoutScreen() {
   )
 
   // Track edited sets: { setId: { reps, weight } } - store as strings to allow typing
-  const [editedSets, setEditedSets] = useState<Record<string, { reps?: string; weight?: string }>>({})
+  const [editedSets, setEditedSets] = useState<
+    Record<string, { reps?: string; weight?: string }>
+  >({})
   const [deletedSetIds, setDeletedSetIds] = useState<Set<string>>(new Set())
-  const [deletedExerciseIds, setDeletedExerciseIds] = useState<Set<string>>(new Set())
+  const [deletedExerciseIds, setDeletedExerciseIds] = useState<Set<string>>(
+    new Set(),
+  )
 
   useEffect(() => {
     loadWorkout()
@@ -85,45 +91,50 @@ export default function EditWorkoutScreen() {
 
       // 2. Delete exercises (and their sets will cascade delete)
       const deleteExercisePromises = Array.from(deletedExerciseIds).map((id) =>
-        database.workoutExercises.delete(id)
+        database.workoutExercises.delete(id),
       )
       await Promise.all(deleteExercisePromises)
 
       // 3. Delete sets
       const deleteSetPromises = Array.from(deletedSetIds).map((id) =>
-        database.sets.delete(id)
+        database.sets.delete(id),
       )
       await Promise.all(deleteSetPromises)
 
       // 4. Update edited sets
-      const updateSetPromises = Object.entries(editedSets).map(([setId, values]) => {
-        // Only update if the set hasn't been deleted
-        if (!deletedSetIds.has(setId)) {
-          const updates: { reps?: number; weight?: number | null } = {}
+      const updateSetPromises = Object.entries(editedSets).map(
+        ([setId, values]) => {
+          // Only update if the set hasn't been deleted
+          if (!deletedSetIds.has(setId)) {
+            const updates: { reps?: number; weight?: number | null } = {}
 
-          // Parse reps if it was edited
-          if (values.reps !== undefined) {
-            const reps = values.reps === '' ? 0 : parseFloat(values.reps)
-            if (!isNaN(reps)) {
-              updates.reps = reps
+            // Parse reps if it was edited
+            if (values.reps !== undefined) {
+              const reps = values.reps === '' ? 0 : parseFloat(values.reps)
+              if (!isNaN(reps)) {
+                updates.reps = reps
+              }
+            }
+
+            // Parse weight if it was edited
+            if (values.weight !== undefined) {
+              const weight =
+                values.weight === '' ? null : parseFloat(values.weight)
+              if (weight === null || !isNaN(weight)) {
+                // Convert from preferred unit back to kg
+                updates.weight =
+                  weight !== null ? convertInputToKg(weight) : null
+              }
+            }
+
+            // Only update if there are valid changes
+            if (Object.keys(updates).length > 0) {
+              return database.sets.update(setId, updates)
             }
           }
-
-          // Parse weight if it was edited
-          if (values.weight !== undefined) {
-            const weight = values.weight === '' ? null : parseFloat(values.weight)
-            if (weight === null || !isNaN(weight)) {
-              updates.weight = weight
-            }
-          }
-
-          // Only update if there are valid changes
-          if (Object.keys(updates).length > 0) {
-            return database.sets.update(setId, updates)
-          }
-        }
-        return Promise.resolve()
-      })
+          return Promise.resolve()
+        },
+      )
       await Promise.all(updateSetPromises)
 
       router.back()
@@ -147,16 +158,30 @@ export default function EditWorkoutScreen() {
     })
   }
 
-  const getSetValue = (setId: string, field: 'reps' | 'weight', originalValue: number | null): string => {
+  const getSetValue = (
+    setId: string,
+    field: 'reps' | 'weight',
+    originalValue: number | null,
+  ): string => {
     // Check if this set has been edited
     if (editedSets[setId] && editedSets[setId][field] !== undefined) {
       return editedSets[setId][field] || ''
     }
-    // Return original value as string
+    // Return original value as string, converting weight from kg to preferred unit
+    if (field === 'weight' && originalValue !== null) {
+      const converted = convertToPreferred(originalValue)
+      return converted !== null
+        ? converted.toFixed(weightUnit === 'kg' ? 1 : 0)
+        : ''
+    }
     return originalValue !== null ? String(originalValue) : ''
   }
 
-  const updateSet = (setId: string, field: 'reps' | 'weight', value: string) => {
+  const updateSet = (
+    setId: string,
+    field: 'reps' | 'weight',
+    value: string,
+  ) => {
     setEditedSets((prev) => {
       const currentSet = prev[setId] || {}
 
@@ -199,15 +224,14 @@ export default function EditWorkoutScreen() {
     try {
       // Find the workout exercise
       const workoutExercise = workout?.workout_exercises?.find(
-        (we) => we.id === workoutExerciseId
+        (we) => we.id === workoutExerciseId,
       )
 
       if (!workoutExercise) return
 
       // Get active sets (not deleted)
-      const activeSets = workoutExercise.sets?.filter(
-        (s) => !deletedSetIds.has(s.id)
-      ) || []
+      const activeSets =
+        workoutExercise.sets?.filter((s) => !deletedSetIds.has(s.id)) || []
 
       // Calculate next set number
       const nextSetNumber = activeSets.length + 1
@@ -239,7 +263,7 @@ export default function EditWorkoutScreen() {
                   ...we,
                   sets: [...(we.sets || []), newSet],
                 }
-              : we
+              : we,
           ),
         }
       })
@@ -333,7 +357,7 @@ export default function EditWorkoutScreen() {
               .map((workoutExercise, index) => {
                 const isExpanded = expandedExercises.has(workoutExercise.id)
                 const activeSets = workoutExercise.sets?.filter(
-                  (s) => !deletedSetIds.has(s.id)
+                  (s) => !deletedSetIds.has(s.id),
                 )
                 return (
                   <View key={workoutExercise.id} style={styles.exerciseCard}>
@@ -376,18 +400,30 @@ export default function EditWorkoutScreen() {
                         <View style={styles.setsTableHeader}>
                           <Text style={styles.setHeaderText}>Set</Text>
                           <Text style={styles.setHeaderText}>Reps</Text>
-                          <Text style={styles.setHeaderText}>Weight (kg)</Text>
+                          <Text style={styles.setHeaderText}>
+                            Weight ({weightUnit})
+                          </Text>
                           <Text style={styles.setHeaderText}></Text>
                         </View>
 
                         {/* Sets Rows */}
                         {activeSets?.map((set, setIndex) => {
-                          const repsValue = getSetValue(set.id, 'reps', set.reps)
-                          const weightValue = getSetValue(set.id, 'weight', set.weight)
+                          const repsValue = getSetValue(
+                            set.id,
+                            'reps',
+                            set.reps,
+                          )
+                          const weightValue = getSetValue(
+                            set.id,
+                            'weight',
+                            set.weight,
+                          )
 
                           return (
                             <View key={set.id} style={styles.setRow}>
-                              <Text style={styles.setNumber}>{setIndex + 1}</Text>
+                              <Text style={styles.setNumber}>
+                                {setIndex + 1}
+                              </Text>
                               <TextInput
                                 style={styles.setInput}
                                 value={repsValue}

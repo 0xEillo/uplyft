@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
+import { UnitProvider } from '@/contexts/unit-context'
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
@@ -47,11 +48,13 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <PostsProvider>
-            <RootLayoutNav />
-          </PostsProvider>
-        </AuthProvider>
+        <UnitProvider>
+          <AuthProvider>
+            <PostsProvider>
+              <RootLayoutNav />
+            </PostsProvider>
+          </AuthProvider>
+        </UnitProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   )

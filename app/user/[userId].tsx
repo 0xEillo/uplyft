@@ -1,6 +1,7 @@
 import { FeedCard } from '@/components/feed-card'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAuth } from '@/contexts/auth-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
@@ -25,6 +26,7 @@ export default function UserProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
+  const { weightUnit } = useWeightUnits()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [userName, setUserName] = useState('')
@@ -77,11 +79,7 @@ export default function UserProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
         {isOwnProfile ? (
           <TouchableOpacity onPress={() => router.push('/settings')}>
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color={colors.text}
-            />
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         ) : (
           <View style={styles.placeholder} />
@@ -199,7 +197,7 @@ function AsyncPrFeedCard({
     }, [compute]),
   )
 
-  const exercises = formatWorkoutForDisplay(workout)
+  const exercises = formatWorkoutForDisplay(workout, weightUnit)
 
   return (
     <FeedCard

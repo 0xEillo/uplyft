@@ -1,4 +1,5 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -6,7 +7,6 @@ import { memo, useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,8 +27,6 @@ interface ExerciseLeaderboardCardProps {
   refreshTrigger?: number
 }
 
-const { width: screenWidth } = Dimensions.get('window')
-
 /**
  * Exercise leaderboard card showing user's percentile rankings.
  * Features sleek modern design with animated progress bars and tier badges.
@@ -42,6 +40,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [animatedValues] = useState(() => new Map<string, Animated.Value>())
   const colors = useThemedColors()
+  const { formatWeight } = useWeightUnits()
 
   const loadRankings = useCallback(async () => {
     setIsLoading(true)
@@ -262,6 +261,7 @@ function RankingRow({
   isFirst = false,
   isCompact = false,
 }: RankingRowProps) {
+  const { formatWeight } = useWeightUnits()
   const tierInfo = getTierInfo(ranking.percentile)
   const styles = createStyles(colors)
 
@@ -293,7 +293,8 @@ function RankingRow({
             {ranking.exerciseName}
           </Text>
           <Text style={styles.weightInfo}>
-            {ranking.userMax1RM}kg • {ranking.totalUsers} users
+            {formatWeight(ranking.userMax1RM, { maximumFractionDigits: 0 })} •{' '}
+            {ranking.totalUsers} users
           </Text>
         </View>
 

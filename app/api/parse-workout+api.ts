@@ -77,14 +77,14 @@ const workoutSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { notes } = await request.json()
+    const { notes, weightUnit = 'kg' } = await request.json()
 
     if (!notes || typeof notes !== 'string') {
       return Response.json({ error: 'Notes are required' }, { status: 400 })
     }
 
     const result = await generateObject({
-      model: openai('gpt-5-nano'),
+      model: openai('gpt-5-mini'),
       schema: workoutSchema,
       prompt: `You are a workout tracking assistant. Parse the following workout notes and extract structured data that matches our database schema.
 
@@ -144,7 +144,18 @@ INSTRUCTIONS:
 6. Order exercises as they appear in the notes (order_index: 1, 2, 3...)
 7. Number sets starting from 1 for each exercise (set_number: 1, 2, 3, etc.)
 8. CRITICAL: Every set MUST have a reps value (cannot be null). If reps are not specified in the notes, infer a reasonable default (e.g., 5 reps for strength exercises, 10 for accessories)
-9. IMPORTANT: Keep weights in kilograms as provided by the user. Do NOT convert to pounds.
+9. WEIGHT UNIT HANDLING - The user's preferred unit is "${weightUnit}":
+   - ALWAYS store weights in kilograms (kg) in the output, regardless of input
+   - If user writes explicit units ("185 lbs", "100 kg", "225 pounds"), respect that unit regardless of their preference
+   - If NO unit is specified, assume they're using their preferred unit: ${weightUnit}
+   - Conversion: 1 kg = 2.2046 lbs (so lbs ÷ 2.2046 = kg)
+   - Examples:
+     * Input: "185 lbs x 5" → weight: 84 (convert 185 ÷ 2.2046 = ~84 kg)
+     * Input: "100 kg x 5" → weight: 100 (already kg, keep it)
+     * Input: "225 pounds x 3" → weight: 102 (convert 225 ÷ 2.2046 = ~102 kg)
+     * User pref is "lb", input: "185 x 5" (no unit) → weight: 84 (assume lbs, convert to kg)
+     * User pref is "kg", input: "100 x 5" (no unit) → weight: 100 (assume kg, keep it)
+     * User pref is "lb", input: "100 kg x 5" → weight: 100 (explicit kg overrides preference)
 
 EXPECTED OUTPUT FORMAT (JSON):
 {

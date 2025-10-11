@@ -1,10 +1,11 @@
 import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
-import { Gender, Goal, Profile } from '@/types/database.types'
+import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -22,6 +23,7 @@ export default function EditProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
+  const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -45,7 +47,13 @@ export default function EditProfileScreen() {
       const profile = await database.profiles.getOrCreate(user.id, user.email)
       setEditedGender(profile?.gender || null)
       setEditedHeight(profile?.height_cm?.toString() || '')
-      setEditedWeight(profile?.weight_kg?.toString() || '')
+      setEditedWeight(
+        profile?.weight_kg !== null && profile?.weight_kg !== undefined
+          ? convertToPreferred(profile.weight_kg)?.toFixed(
+              weightUnit === 'kg' ? 1 : 0,
+            )
+          : '',
+      )
       setEditedAge(profile?.age?.toString() || '')
       setEditedGoal(profile?.goal || null)
       setEditedCommitment(profile?.commitment || null)
@@ -57,7 +65,7 @@ export default function EditProfileScreen() {
     }
   }
 
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, weightUnit)
 
   const handleSave = async () => {
     if (!user) return
@@ -67,7 +75,9 @@ export default function EditProfileScreen() {
       await database.profiles.update(user.id, {
         gender: editedGender,
         height_cm: editedHeight ? parseFloat(editedHeight) : null,
-        weight_kg: editedWeight ? parseFloat(editedWeight) : null,
+        weight_kg: editedWeight
+          ? convertInputToKg(parseFloat(editedWeight))
+          : null,
         age: editedAge ? parseInt(editedAge) : null,
         goal: editedGoal,
         commitment: editedCommitment,
@@ -163,7 +173,7 @@ export default function EditProfileScreen() {
 
         {/* Weight Input */}
         <View style={styles.section}>
-          <Text style={styles.label}>Weight (kg)</Text>
+          <Text style={styles.label}>{`Weight (${weightUnit})`}</Text>
           <TextInput
             style={styles.input}
             value={editedWeight}
@@ -222,14 +232,16 @@ export default function EditProfileScreen() {
                 key={commitment.value}
                 style={[
                   styles.goalOption,
-                  editedCommitment === commitment.value && styles.goalOptionSelected,
+                  editedCommitment === commitment.value &&
+                    styles.goalOptionSelected,
                 ]}
                 onPress={() => setEditedCommitment(commitment.value)}
               >
                 <Text
                   style={[
                     styles.goalOptionText,
-                    editedCommitment === commitment.value && styles.goalOptionTextSelected,
+                    editedCommitment === commitment.value &&
+                      styles.goalOptionTextSelected,
                   ]}
                 >
                   {commitment.label}
@@ -264,7 +276,10 @@ export default function EditProfileScreen() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  weightUnit: 'kg' | 'lb',
+) =>
   StyleSheet.create({
     container: {
       flex: 1,

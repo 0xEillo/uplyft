@@ -1,5 +1,6 @@
 import { FeedCard } from '@/components/feed-card'
 import { useAuth } from '@/contexts/auth-context'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
@@ -31,6 +32,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 }: AsyncPrFeedCardProps) {
   const { user } = useAuth()
   const router = useRouter()
+  const { weightUnit } = useWeightUnits()
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
   const [isComputed, setIsComputed] = useState(false)
@@ -76,7 +78,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     }, [compute]),
   )
 
-  const exercises = formatWorkoutForDisplay(workout)
+  const exercises = formatWorkoutForDisplay(workout, weightUnit)
 
   const handleUserPress = useCallback(() => {
     if (workout.user_id && workout.user_id !== user?.id) {
@@ -136,8 +138,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           ) || 0,
         prs,
       }}
-      likes={0}
-      comments={0}
       userId={workout.user_id}
       workoutId={workout.id}
       onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
