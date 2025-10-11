@@ -36,6 +36,18 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
   const [isComputed, setIsComputed] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+
+  const loadProfile = useCallback(async () => {
+    if (!user) return
+    try {
+      const profile = await database.profiles.getById(user.id)
+      setAvatarUrl(profile.avatar_url)
+    } catch (error) {
+      console.error('Error loading profile:', error)
+      setAvatarUrl(null)
+    }
+  }, [user?.id])
 
   const compute = useCallback(async () => {
     if (!user || isComputed) return
@@ -74,8 +86,9 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 
   useFocusEffect(
     useCallback(() => {
+      loadProfile()
       compute()
-    }, [compute]),
+    }, [loadProfile, compute]),
   )
 
   const exercises = formatWorkoutForDisplay(workout, weightUnit)
@@ -122,7 +135,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   return (
     <FeedCard
       userName="You"
-      userAvatar=""
+      userAvatar={avatarUrl || ''}
       timeAgo={formatTimeAgo(workout.created_at)}
       workoutTitle={
         workout.type || workout.notes?.split('\n')[0] || 'Workout Session'

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
           `Weight preferences: The user prefers ${
             weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
           }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
-          'When suggesting next steps, keep them actionable and tied to the metrics you have.',
+          'When suggesting next steps, keep them actionable and tied to the metrics you have. If asked about 1 rep max. Calculate it based on their data (do not inlcude maths or formulas in responses)',
         ].join('\n\n')
       } catch (contextError) {
         console.warn('Failed to build user context summary:', contextError)

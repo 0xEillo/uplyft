@@ -518,7 +518,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 4,
+      alignSelf: 'flex-end',
     },
     messageContent: {
       maxWidth: '80%',

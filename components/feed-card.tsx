@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useRef, useState } from 'react'
 import {
   Animated,
+  Image,
   LayoutAnimation,
   Modal,
   Pressable,
@@ -131,9 +132,13 @@ export const FeedCard = memo(function FeedCard({
           disabled={!onUserPress}
           activeOpacity={onUserPress ? 0.7 : 1}
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{userName[0]}</Text>
-          </View>
+          {userAvatar ? (
+            <Image source={{ uri: userAvatar }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{userName[0]}</Text>
+            </View>
+          )}
           <View>
             <Text style={styles.userName}>{userName}</Text>
             <Text style={styles.timeAgo}>{timeAgo}</Text>
@@ -274,7 +279,13 @@ export const FeedCard = memo(function FeedCard({
                         </Text>
                         <View style={styles.prBadgeContainer}>
                           {setHasPR && (
-                            <View style={styles.prBadgeSmall}>
+                            <View
+                              style={[
+                                styles.prBadgeSmall,
+                                !exercisePR?.hasCurrentPR &&
+                                  styles.prBadgeSmallHistorical,
+                              ]}
+                            >
                               <Text style={styles.prBadgeTextSmall}>PR</Text>
                             </View>
                           )}
@@ -467,6 +478,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 4,
       paddingVertical: 1,
       borderRadius: 3,
+    },
+    prBadgeSmallHistorical: {
+      backgroundColor: colors.textPlaceholder,
     },
     prBadgeContainer: {
       width: 32,
