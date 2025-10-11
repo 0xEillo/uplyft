@@ -27,6 +27,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 const DRAFT_KEY = '@workout_draft'
+const TITLE_DRAFT_KEY = '@workout_title_draft'
 const PENDING_POST_KEY = '@pending_workout_post'
 
 const EXAMPLE_WORKOUTS = [
@@ -216,8 +217,12 @@ export default function CreatePostScreen() {
     const loadDraft = async () => {
       try {
         const draft = await AsyncStorage.getItem(DRAFT_KEY)
+        const titleDraft = await AsyncStorage.getItem(TITLE_DRAFT_KEY)
         if (draft) {
           setNotes(draft)
+        }
+        if (titleDraft) {
+          setWorkoutTitle(titleDraft)
         }
       } catch (error) {
         console.error('Error loading draft:', error)
@@ -247,6 +252,23 @@ export default function CreatePostScreen() {
 
     return () => clearTimeout(timer)
   }, [notes])
+
+  // Auto-save title draft whenever title changes with debounce
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        if (workoutTitle.trim()) {
+          await AsyncStorage.setItem(TITLE_DRAFT_KEY, workoutTitle)
+        } else {
+          await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
+        }
+      } catch (error) {
+        console.error('Error saving title draft:', error)
+      }
+    }, 1200) // Wait 1200ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [workoutTitle])
 
   const handleCancel = async () => {
     if (isRecording) {
@@ -278,8 +300,8 @@ export default function CreatePostScreen() {
         }),
       )
 
-      // Clear draft since we're creating the post
-      await AsyncStorage.removeItem(DRAFT_KEY)
+      // Don't clear draft yet - keep it until workout successfully posts
+      // This way if submission fails, user can edit and retry
 
       // Navigate to feed immediately
       setNotes('')

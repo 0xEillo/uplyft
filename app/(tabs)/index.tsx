@@ -68,6 +68,7 @@ const CardDeleteAnimation = {
 
 const PENDING_POST_KEY = '@pending_workout_post'
 const DRAFT_KEY = '@workout_draft'
+const TITLE_DRAFT_KEY = '@workout_title_draft'
 
 export default function FeedScreen() {
   const { user } = useAuth()
@@ -161,8 +162,10 @@ export default function FeedScreen() {
         notes,
       )
 
-      // Clear pending post on success
+      // Clear pending post and draft on success
       await AsyncStorage.removeItem(PENDING_POST_KEY)
+      await AsyncStorage.removeItem(DRAFT_KEY)
+      await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
 
       // Fetch the complete workout with all details
       const newWorkout = await database.workoutSessions.getById(
@@ -183,12 +186,15 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('Error creating post:', error)
 
-      // Restore notes to draft for user to retry
+      // Restore notes and title to draft for user to retry
       try {
         const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
         if (pendingData) {
-          const { notes } = JSON.parse(pendingData)
+          const { notes, title } = JSON.parse(pendingData)
           await AsyncStorage.setItem(DRAFT_KEY, notes)
+          if (title) {
+            await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
+          }
           await AsyncStorage.removeItem(PENDING_POST_KEY)
         }
       } catch (restoreError) {
