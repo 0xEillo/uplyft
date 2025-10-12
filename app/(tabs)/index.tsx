@@ -5,6 +5,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { track } from '@/lib/analytics/mixpanel'
 import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -121,13 +122,24 @@ export default function FeedScreen() {
 
       const { notes, title } = JSON.parse(pendingData)
 
-      // Parse workout
+      // Get the access token for authenticated API calls
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+
+      // Parse workout and create it in database with AI-enriched exercises
       const response = await fetch('/api/parse-workout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ notes, weightUnit }),
+        body: JSON.stringify({
+          notes,
+          weightUnit,
+          createWorkout: true,
+          userId: user.id,
+          workoutTitle: title,
+        }),
       })
 
       if (!response.ok) {
@@ -153,27 +165,19 @@ export default function FeedScreen() {
       }
 
       const data = await response.json()
-      const { workout } = data
 
-      // Override type with user-provided title
-      workout.type = title
+      // Check if there was a DB error during workout creation
+      if (data.error) {
+        throw new Error(data.details || data.error)
+      }
 
-      // Save to database and get the created workout back
-      const createdSession = await database.workoutSessions.create(
-        user.id,
-        workout,
-        notes,
-      )
+      // Get the created workout (with AI-enriched exercises)
+      const newWorkout = data.createdWorkout
 
       // Clear pending post and draft on success
       await AsyncStorage.removeItem(PENDING_POST_KEY)
       await AsyncStorage.removeItem(DRAFT_KEY)
       await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
-
-      // Fetch the complete workout with all details
-      const newWorkout = await database.workoutSessions.getById(
-        createdSession.id,
-      )
 
       // Mark this workout as new for animation
       setNewWorkoutId(newWorkout.id)

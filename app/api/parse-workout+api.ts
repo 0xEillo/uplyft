@@ -1,3 +1,4 @@
+import { createServerDatabase } from '@/lib/database-server'
 import { openai } from '@ai-sdk/openai'
 import { generateObject, generateText } from 'ai'
 import { z } from 'zod'
@@ -77,10 +78,24 @@ const workoutSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { notes, weightUnit = 'kg' } = await request.json()
+    const {
+      notes,
+      weightUnit = 'kg',
+      createWorkout,
+      userId,
+      workoutTitle,
+    } = await request.json()
 
     if (!notes || typeof notes !== 'string') {
       return Response.json({ error: 'Notes are required' }, { status: 400 })
+    }
+
+    // If createWorkout is true, userId is required
+    if (createWorkout && (!userId || typeof userId !== 'string')) {
+      return Response.json(
+        { error: 'User ID is required for workout creation' },
+        { status: 400 },
+      )
     }
 
     const result = await generateObject({
@@ -236,8 +251,8 @@ IMPORTANT: Return ONLY valid JSON in this exact structure. Make sure exercises i
       )
     }
 
-    // Generate workout title if not provided
-    let workoutType = workout.type
+    // Use user-provided title, or generate if not provided
+    let workoutType = workoutTitle || workout.type
     if (!workoutType && workout.exercises.length > 0) {
       const exerciseList = workout.exercises
         .map((ex) => `${ex.name} (${ex.sets.length} sets)`)
@@ -266,11 +281,48 @@ Return ONLY the title with proper capitalization, nothing else.`,
     // Remove validation field before returning
     const { isWorkoutRelated, ...workoutData } = workout
 
+    const finalWorkout = {
+      ...workoutData,
+      type: workoutType,
+    }
+
+    // Optionally create workout in database with AI-enriched exercises
+    if (createWorkout && userId) {
+      const bearer = request.headers.get('Authorization')
+      const accessToken = bearer?.startsWith('Bearer ')
+        ? bearer.slice('Bearer '.length).trim() || undefined
+        : undefined
+
+      const db = createServerDatabase(accessToken)
+
+      try {
+        // Create workout session with AI-enriched exercises
+        const session = await db.workoutSessions.create(
+          userId,
+          finalWorkout,
+          notes,
+        )
+
+        // Fetch the complete workout with all details
+        const completeWorkout = await db.workoutSessions.getById(session.id)
+
+        return Response.json({
+          workout: finalWorkout,
+          createdWorkout: completeWorkout,
+        })
+      } catch (dbError) {
+        console.error('Error creating workout in database:', dbError)
+        // Return parsed workout even if DB creation fails
+        return Response.json({
+          workout: finalWorkout,
+          error: 'Workout parsed but failed to save to database',
+          details: dbError instanceof Error ? dbError.message : String(dbError),
+        })
+      }
+    }
+
     return Response.json({
-      workout: {
-        ...workoutData,
-        type: workoutType,
-      },
+      workout: finalWorkout,
     })
   } catch (error) {
     // Handle Structured Outputs errors

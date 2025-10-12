@@ -28,12 +28,12 @@ export async function POST(request: Request) {
         const summary = await buildUserContextSummary(userId, accessToken)
 
         systemPrompt = [
-          "You are the Rep AI training copilot. Ground every answer in the user's actual data. If the data is missing, say so.",
+          "You are the Rep AI gym training copilot. Ground every answer in the user's actual data. If the data is missing, say so.",
           'User context:\n' + userContextToPrompt(summary),
           `Weight preferences: The user prefers ${
             weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
           }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
-          'When suggesting next steps, keep them actionable and tied to the metrics you have. If asked about 1 rep max. Calculate it based on their data (do not inlcude maths or formulas in responses)',
+          "When suggesting next steps, keep them actionable, succinct and tied to the metrics you have. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
         ].join('\n\n')
       } catch (contextError) {
         console.warn('Failed to build user context summary:', contextError)
