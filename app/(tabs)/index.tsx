@@ -127,6 +127,10 @@ export default function FeedScreen() {
       const accessToken = session?.access_token
 
       // Parse workout and create it in database with AI-enriched exercises
+      // Use AbortController to set a generous timeout for AI processing
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout
+
       const response = await fetch('/api/parse-workout', {
         method: 'POST',
         headers: {
@@ -140,7 +144,10 @@ export default function FeedScreen() {
           userId: user.id,
           workoutTitle: title,
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -208,20 +215,23 @@ export default function FeedScreen() {
         console.error('Error restoring draft:', restoreError)
       }
 
-      Alert.alert(
-        'Error',
-        'Something went wrong while saving your workout. Please try again.',
-        [
-          {
-            text: 'Try Again',
-            onPress: () => router.push('/(tabs)/create-post'),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ],
-      )
+      // Provide specific error message for timeout
+      const isTimeout =
+        error instanceof Error && error.name === 'AbortError'
+      const errorMessage = isTimeout
+        ? 'The request took too long. This usually happens with slow internet or large workouts. Your draft has been saved - please try again.'
+        : 'Something went wrong while saving your workout. Please try again.'
+
+      Alert.alert('Error', errorMessage, [
+        {
+          text: 'Try Again',
+          onPress: () => router.push('/(tabs)/create-post'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ])
     }
   }, [user, router, weightUnit])
 

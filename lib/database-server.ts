@@ -152,17 +152,34 @@ export function createServerDatabase(accessToken?: string) {
           throw new Error('Invalid workout data: exercises must be an array')
         }
 
-        // Get or create exercises with AI-generated metadata
+        // Get or create exercises with AI-generated metadata in parallel
         // This ensures all exercises have muscle_group, type, and equipment metadata
-        const exerciseMap = new Map<string, Exercise>()
+        // Processing in parallel significantly reduces total time for multiple new exercises
 
-        for (const parsedEx of parsedWorkout.exercises) {
-          const exercise = await getOrCreateExerciseWithMetadata(
-            parsedEx.name,
-            userId,
-          )
-          exerciseMap.set(parsedEx.name.toLowerCase(), exercise)
-        }
+        // Deduplicate exercise names (case-insensitive) to avoid parallel conflicts
+        const uniqueExerciseNames = [
+          ...new Set(
+            parsedWorkout.exercises.map((ex) => ex.name.toLowerCase()),
+          ),
+        ]
+
+        // Process unique exercises in parallel
+        const exercisePromises = uniqueExerciseNames.map((name) => {
+          // Find the original casing from the parsed workout
+          const originalName =
+            parsedWorkout.exercises.find(
+              (ex) => ex.name.toLowerCase() === name,
+            )?.name || name
+          return getOrCreateExerciseWithMetadata(originalName, userId)
+        })
+
+        const exercises = await Promise.all(exercisePromises)
+
+        // Create a map for quick lookup
+        const exerciseMap = new Map<string, Exercise>()
+        uniqueExerciseNames.forEach((name, index) => {
+          exerciseMap.set(name, exercises[index])
+        })
 
         // Create workout exercises (links exercises to this session)
         const workoutExercisesToInsert = parsedWorkout.exercises.map(
@@ -259,6 +276,8 @@ export function createServerDatabase(accessToken?: string) {
           .eq('user_id', userId)
           .eq('workout_exercises.exercise_id', exerciseId)
           .not('workout_exercises.sets.weight', 'is', null)
+          .not('workout_exercises.sets.reps', 'is', null)
+          .gt('workout_exercises.sets.reps', 0)
           .order('created_at', { ascending: true })
 
         if (daysBack) {
@@ -270,14 +289,33 @@ export function createServerDatabase(accessToken?: string) {
         const { data, error } = await query
         if (error) throw error
 
-        return (data as any[]).map((session) => {
-          let maxWeight = 0
-          session.workout_exercises?.forEach((we: any) => {
-            we.sets?.forEach((set: any) => {
-              if (set.weight && set.weight > maxWeight) maxWeight = set.weight
+        interface WeightProgressRow {
+          id: string
+          created_at: string
+          workout_exercises?: {
+            sets?: {
+              reps: number
+              weight: number | null
+            }[]
+          }[]
+        }
+
+        // Transform data to show running personal best estimated 1RM over time
+        let runningMax = 0
+        return (data as WeightProgressRow[]).map((session) => {
+          // Find max estimated 1RM in this session using Epley formula
+          session.workout_exercises?.forEach((we) => {
+            we.sets?.forEach((set) => {
+              if (set.weight && set.reps) {
+                // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
+                const estimated1RM = set.weight * (1 + set.reps / 30)
+                if (estimated1RM > runningMax) {
+                  runningMax = estimated1RM
+                }
+              }
             })
           })
-          return { date: session.created_at, maxWeight }
+          return { date: session.created_at, maxWeight: runningMax }
         })
       },
     },

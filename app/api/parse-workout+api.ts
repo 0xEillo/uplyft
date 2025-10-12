@@ -284,6 +284,17 @@ Return ONLY the title with proper capitalization, nothing else.`,
     const finalWorkout = {
       ...workoutData,
       type: workoutType,
+      notes: workoutData.notes ?? undefined,
+      exercises: workoutData.exercises.map((ex) => ({
+        ...ex,
+        notes: ex.notes ?? undefined,
+        sets: ex.sets.map((set) => ({
+          ...set,
+          weight: set.weight ?? undefined,
+          rpe: set.rpe ?? undefined,
+          notes: set.notes ?? undefined,
+        })),
+      })),
     }
 
     // Optionally create workout in database with AI-enriched exercises

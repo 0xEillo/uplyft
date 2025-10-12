@@ -177,11 +177,12 @@ export const database = {
 
         // Extract unique exercises
         const exerciseMap = new Map<string, Exercise>()
-        const typedSessions = sessions as SessionWithExercises[] | null
-        typedSessions?.forEach((session) => {
-          session.workout_exercises?.forEach((we) => {
-            if (we.exercise && !exerciseMap.has(we.exercise.id)) {
-              exerciseMap.set(we.exercise.id, we.exercise)
+        const typedSessions = sessions as any
+        typedSessions?.forEach((session: any) => {
+          session.workout_exercises?.forEach((we: any) => {
+            const exercise = we.exercise
+            if (exercise && !exerciseMap.has(exercise.id)) {
+              exerciseMap.set(exercise.id, exercise)
             }
           })
         })
@@ -569,6 +570,8 @@ export const database = {
         .eq('user_id', userId)
         .eq('workout_exercises.exercise_id', exerciseId)
         .not('workout_exercises.sets.weight', 'is', null)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
         .order('created_at', { ascending: true })
 
       // Filter by date range if specified
@@ -593,21 +596,25 @@ export const database = {
         }[]
       }
 
-      // Transform data to show running personal best over time
+      // Transform data to show running personal best estimated 1RM over time
       let runningMax = 0
       const progressData = (data as WeightProgressRow[])?.map((session) => {
-        // Find max weight in this session
+        // Find max estimated 1RM in this session using Epley formula
         session.workout_exercises?.forEach((we) => {
           we.sets?.forEach((set) => {
-            if (set.weight && set.weight > runningMax) {
-              runningMax = set.weight
+            if (set.weight && set.reps) {
+              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
+              const estimated1RM = set.weight * (1 + set.reps / 30)
+              if (estimated1RM > runningMax) {
+                runningMax = estimated1RM
+              }
             }
           })
         })
 
         return {
           date: session.created_at,
-          maxWeight: runningMax, // Show cumulative PR, not just this session
+          maxWeight: runningMax, // Show cumulative PR estimated 1RM
         }
       })
 
@@ -674,6 +681,8 @@ export const database = {
         )
         .eq('user_id', userId)
         .not('workout_exercises.sets.weight', 'is', null)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
         .order('created_at', { ascending: true })
 
       // Filter by date range if specified
@@ -759,27 +768,15 @@ export const database = {
 
       if (error) throw error
 
-      interface MuscleGroupRow {
-        workout_exercises?: {
-          exercise?: {
-            muscle_group: string | null
-          }
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
       // Calculate volume per muscle group
       const muscleGroupVolumes = new Map<string, number>()
 
-      ;(data as MuscleGroupRow[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
+      ;(data as any)?.forEach((session: any) => {
+        session.workout_exercises?.forEach((we: any) => {
           const muscleGroup = we.exercise?.muscle_group
           if (!muscleGroup) return
 
-          we.sets?.forEach((set) => {
+          we.sets?.forEach((set: any) => {
             if (set.reps && set.weight) {
               const volume = set.reps * set.weight
               const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
@@ -825,31 +822,17 @@ export const database = {
 
       if (error) throw error
 
-      interface User1RMRow {
-        workout_exercises?: {
-          exercise_id: string
-          exercise?: {
-            id: string
-            name: string
-          }
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
       // Calculate max 1RM for each exercise
       const exerciseMax1RMs = new Map<
         string,
         { name: string; max1RM: number }
       >()
 
-      ;(data as User1RMRow[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
+      ;(data as any)?.forEach((session: any) => {
+        session.workout_exercises?.forEach((we: any) => {
           if (!we.exercise) return
 
-          we.sets?.forEach((set) => {
+          we.sets?.forEach((set: any) => {
             if (set.reps && set.weight) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
               const estimated1RM = set.weight * (1 + set.reps / 30)

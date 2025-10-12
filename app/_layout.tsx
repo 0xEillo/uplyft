@@ -31,7 +31,7 @@ function RootLayoutNav() {
         console.warn('mixpanel track error', err)
       })
     })
-  }, [])
+  }, [segments])
 
   useEffect(() => {
     if (isLoading) return
@@ -45,7 +45,7 @@ function RootLayoutNav() {
       // Redirect to app if authenticated
       router.replace('/(tabs)')
     }
-  }, [user, segments, isLoading])
+  }, [user, segments, isLoading, router])
 
   return (
     <>

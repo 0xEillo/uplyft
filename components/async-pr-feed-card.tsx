@@ -5,9 +5,8 @@ import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 
 interface PrInfo {
@@ -35,61 +34,74 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const { weightUnit } = useWeightUnits()
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
-  const [isComputed, setIsComputed] = useState(false)
+  const computeContext = useMemo(() => {
+    if (!user) return null
+    return {
+      sessionId: workout.id,
+      userId: user.id,
+      createdAt: workout.created_at,
+      exercises: (workout.workout_exercises || []).map((we) => ({
+        exerciseId: we.exercise_id,
+        exerciseName: we.exercise?.name || 'Exercise',
+        sets: (we.sets || []).map((s) => ({
+          reps: s.reps,
+          weight: s.weight,
+        })),
+      })),
+    }
+  }, [user, workout])
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
-  const loadProfile = useCallback(async () => {
+  useEffect(() => {
     if (!user) return
-    try {
-      const profile = await database.profiles.getById(user.id)
-      setAvatarUrl(profile.avatar_url)
-    } catch (error) {
-      console.error('Error loading profile:', error)
-      setAvatarUrl(null)
-    }
-  }, [user?.id])
 
-  const compute = useCallback(async () => {
-    if (!user || isComputed) return
-    try {
-      const ctx = {
-        sessionId: workout.id,
-        userId: user.id,
-        createdAt: workout.created_at,
-        exercises: (workout.workout_exercises || []).map((we) => ({
-          exerciseId: we.exercise_id,
-          exerciseName: we.exercise?.name || 'Exercise',
-          sets: (we.sets || []).map((s) => ({
-            reps: s.reps,
-            weight: s.weight,
-          })),
-        })),
+    const loadProfile = async () => {
+      try {
+        const profile = await database.profiles.getById(user.id)
+        setAvatarUrl(profile.avatar_url)
+      } catch (error) {
+        console.error('Error loading profile:', error)
+        setAvatarUrl(null)
       }
-      const result = await PrService.computePrsForSession(ctx)
-      setPrs(result.totalPrs)
-
-      // Build PR info for the feed card
-      const prData = result.perExercise.map((exPr) => ({
-        exerciseName: exPr.exerciseName,
-        prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
-        prLabels: exPr.prs.map((pr) => pr.label),
-        hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
-      }))
-      setPrInfo(prData)
-      setIsComputed(true)
-    } catch (error) {
-      console.error('Error computing PRs:', error)
-      setPrs(0)
-      setPrInfo([])
     }
-  }, [user?.id, workout.id, workout.created_at, isComputed])
 
-  useFocusEffect(
-    useCallback(() => {
-      loadProfile()
-      compute()
-    }, [loadProfile, compute]),
-  )
+    loadProfile()
+  }, [user])
+
+  useEffect(() => {
+    if (!computeContext) return
+
+    let isMounted = true
+
+    const compute = async () => {
+      try {
+        const result = await PrService.computePrsForSession(computeContext)
+        if (!isMounted) return
+
+        setPrs(result.totalPrs)
+
+        const prData = result.perExercise.map((exPr) => ({
+          exerciseName: exPr.exerciseName,
+          prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
+          prLabels: exPr.prs.map((pr) => pr.label),
+          hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
+        }))
+        setPrInfo(prData)
+      } catch (error) {
+        console.error('Error computing PRs:', error)
+        if (isMounted) {
+          setPrs(0)
+          setPrInfo([])
+        }
+      }
+    }
+
+    compute()
+
+    return () => {
+      isMounted = false
+    }
+  }, [computeContext])
 
   const exercises = formatWorkoutForDisplay(workout, weightUnit)
 

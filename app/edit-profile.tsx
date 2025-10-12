@@ -6,7 +6,7 @@ import { database } from '@/lib/database'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -35,11 +35,7 @@ export default function EditProfileScreen() {
   const [editedCommitment, setEditedCommitment] = useState<string | null>(null)
   const [editedBio, setEditedBio] = useState('')
 
-  useEffect(() => {
-    loadProfile()
-  }, [])
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     if (!user?.email) return
 
     try {
@@ -51,7 +47,7 @@ export default function EditProfileScreen() {
         profile?.weight_kg !== null && profile?.weight_kg !== undefined
           ? convertToPreferred(profile.weight_kg)?.toFixed(
               weightUnit === 'kg' ? 1 : 0,
-            )
+            ) || ''
           : '',
       )
       setEditedAge(profile?.age?.toString() || '')
@@ -63,7 +59,11 @@ export default function EditProfileScreen() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [convertToPreferred, user?.email, user?.id, weightUnit])
+
+  useEffect(() => {
+    loadProfile()
+  }, [loadProfile])
 
   const styles = createStyles(colors, weightUnit)
 

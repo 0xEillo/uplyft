@@ -26,7 +26,6 @@ export default function UserProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
-  const { weightUnit } = useWeightUnits()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [userName, setUserName] = useState('')
@@ -155,6 +154,7 @@ function AsyncPrFeedCard({
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<any[]>([])
   const [isComputed, setIsComputed] = useState(false)
+  const { weightUnit } = useWeightUnits()
 
   const compute = useCallback(async () => {
     if (isComputed) return
@@ -218,8 +218,6 @@ function AsyncPrFeedCard({
           ) || 0,
         prs,
       }}
-      likes={0}
-      comments={0}
       prInfo={prInfo}
     />
   )

@@ -1,6 +1,6 @@
 import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { Animated } from 'react-native'
 
 interface AnimatedFeedCardProps {
@@ -87,18 +87,10 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
     }
   }, [isDeleting, slideAnim, opacityAnim, scaleAnim, onDelete])
 
-  const handleDelete = useCallback(() => {
-    // Don't trigger the actual delete here, just mark as deleting
-    // The parent component will handle this
-  }, [])
-
   return (
     <Animated.View
       style={{
-        transform: [
-          { translateY: slideAnim },
-          { scale: scaleAnim },
-        ],
+        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
         opacity: opacityAnim,
       }}
     >

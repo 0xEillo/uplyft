@@ -3,7 +3,6 @@ import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
 import { useAuth } from '@/contexts/auth-context'
-import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { track } from '@/lib/analytics/mixpanel'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,7 +23,6 @@ type TabType = 'progress' | 'chat'
 export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
-  const { isDark } = useTheme()
   const [activeTab, setActiveTab] = useState<TabType>('chat')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)

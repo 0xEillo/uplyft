@@ -3,7 +3,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Modal,
@@ -37,19 +37,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const { weightUnit, formatWeight } = useWeightUnits()
 
-  // Load all exercises on mount
-  useEffect(() => {
-    loadExercises()
-  }, [userId])
-
-  // Load progress data when exercise or time range changes
-  useEffect(() => {
-    if (selectedExercise) {
-      loadProgressData()
-    }
-  }, [selectedExercise, timeRange])
-
-  const loadExercises = async () => {
+  const loadExercises = useCallback(async () => {
     try {
       const data = await database.exercises.getExercisesWithData(userId)
       setExercises(data)
@@ -60,9 +48,9 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
     } catch (error) {
       console.error('Error loading exercises:', error)
     }
-  }
+  }, [selectedExercise, userId])
 
-  const loadProgressData = async () => {
+  const loadProgressData = useCallback(async () => {
     if (!selectedExercise) return
 
     setIsLoading(true)
@@ -83,7 +71,15 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedExercise, timeRange, userId])
+
+  useEffect(() => {
+    loadExercises()
+  }, [loadExercises])
+
+  useEffect(() => {
+    loadProgressData()
+  }, [loadProgressData])
 
   const filteredExercises = exercises.filter((ex) =>
     ex.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -193,7 +189,9 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
               <Text
                 style={[
                   styles.statValue,
-                  weightChange >= 0 ? styles.statPositive : styles.statNegative,
+                  weightChange !== null && weightChange >= 0
+                    ? styles.statPositive
+                    : styles.statNegative,
                 ]}
               >
                 {weightChange === null || weightChange === undefined

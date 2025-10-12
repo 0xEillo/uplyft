@@ -86,6 +86,8 @@ export default function CreatePostScreen() {
   const spinValue = useRef(new Animated.Value(0)).current
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
+  const latestNotes = useRef('')
+  const latestTitle = useRef('')
   const { user } = useAuth()
 
   const blurInputs = useCallback(() => {
@@ -172,8 +174,8 @@ export default function CreatePostScreen() {
       blurInputs()
 
       void track('Workout Create Started', {
-        hasDraft: Boolean(notes.trim()),
-        hasTitle: Boolean(workoutTitle.trim()),
+        hasDraft: Boolean(latestNotes.current.trim()),
+        hasTitle: Boolean(latestTitle.current.trim()),
       })
 
       // Blur inputs after a short delay to catch any late focus events
@@ -216,6 +218,14 @@ export default function CreatePostScreen() {
       blurInputs()
     }
   }, [blurInputs])
+
+  useEffect(() => {
+    latestNotes.current = notes
+  }, [notes])
+
+  useEffect(() => {
+    latestTitle.current = workoutTitle
+  }, [workoutTitle])
 
   // Load saved draft on mount
   useEffect(() => {

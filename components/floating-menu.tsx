@@ -50,7 +50,7 @@ export function FloatingMenu({
         }),
       ]).start()
     }
-  }, [visible])
+  }, [fadeAnim, slideAnim, visible])
 
   if (!visible) return null
 

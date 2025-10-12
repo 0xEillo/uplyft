@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -42,12 +42,7 @@ export default function SettingsScreen() {
   // Preferences
   const [showExamples, setShowExamples] = useState(true)
 
-  useEffect(() => {
-    loadProfile()
-    loadPreferences()
-  }, [])
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     if (!user?.email) return
 
     try {
@@ -59,9 +54,9 @@ export default function SettingsScreen() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user?.email, user?.id])
 
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     try {
       const value = await AsyncStorage.getItem('@show_workout_examples')
       if (value !== null) {
@@ -70,7 +65,12 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Error loading preferences:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadProfile()
+    loadPreferences()
+  }, [loadPreferences, loadProfile])
 
   const styles = createStyles(colors)
 
@@ -97,7 +97,10 @@ export default function SettingsScreen() {
             await signOut()
             router.replace('/(auth)/login')
           } catch (error) {
-            Alert.alert('Error', error.message || 'Failed to sign out')
+            Alert.alert(
+              'Error',
+              error instanceof Error ? error.message : 'Failed to sign out',
+            )
           }
         },
       },
@@ -230,7 +233,9 @@ export default function SettingsScreen() {
               console.error('Error deleting account:', error)
               Alert.alert(
                 'Error',
-                error?.message || 'Failed to delete account. Please try again.',
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to delete account. Please try again.',
               )
             }
           },

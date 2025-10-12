@@ -3,7 +3,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Dimensions,
@@ -44,24 +44,16 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
 
-  useEffect(() => {
-    loadExercises()
-  }, [userId])
-
-  useEffect(() => {
-    loadProgressData()
-  }, [userId, selectedExercise])
-
-  const loadExercises = async () => {
+  const loadExercises = useCallback(async () => {
     try {
       const data = await database.exercises.getExercisesWithData(userId)
       setExercises(data)
     } catch (error) {
       console.error('Error loading exercises:', error)
     }
-  }
+  }, [userId])
 
-  const loadProgressData = async () => {
+  const loadProgressData = useCallback(async () => {
     setIsLoading(true)
     try {
       if (selectedExercise) {
@@ -84,7 +76,15 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [userId, selectedExercise])
+
+  useEffect(() => {
+    loadExercises()
+  }, [loadExercises])
+
+  useEffect(() => {
+    loadProgressData()
+  }, [loadProgressData])
 
   const filteredExercises = exercises.filter((ex) =>
     ex.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -194,7 +194,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   // Transform data for the chart
   const chartData = filteredData.map((point) => ({
     value: point.strengthScore,
-    dataPointText: `${point.strengthScore}`,
+    dataPointText: point.strengthScore.toFixed(0),
   }))
 
   // Calculate dynamic chart width and spacing
@@ -239,8 +239,8 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
             <Ionicons name="analytics" size={24} color={colors.primary} />
           </View>
           <View>
-            <Text style={styles.title}>Strength Progress</Text>
-            <Text style={styles.subtitle}>Tracking progressive overload</Text>
+            <Text style={styles.title}>Progressive Overload</Text>
+            <Text style={styles.subtitle}>Tracking estimated 1RM</Text>
           </View>
         </View>
       </View>
@@ -315,20 +315,11 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
       {progressData.length > 0 && selectedExercise && (
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Latest Max</Text>
+            <Text style={styles.statLabel}>Current 1RM</Text>
             <Text style={styles.statValue}>
               {latestScore === null || latestScore === 0
                 ? 'BW'
                 : formatWeight(latestScore, {
-                    maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                  })}
-            </Text>
-            <View style={styles.statDivider} />
-            <Text style={styles.statLabel}>All-Time Best</Text>
-            <Text style={styles.statValue}>
-              {maxScore === null || maxScore === 0
-                ? 'BW'
-                : formatWeight(maxScore, {
                     maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
                   })}
             </Text>
@@ -343,24 +334,8 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
                   : styles.statNegative,
               ]}
             >
-              <Text style={styles.percentChangeValue}>
-                {scoreChange === null || scoreChange === 0
-                  ? 'BW'
-                  : formatWeight(scoreChange, {
-                      signDisplay: 'always',
-                      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                    })}
-              </Text>
-            </Text>
-            <Text
-              style={[
-                styles.statPercentage,
-                scoreChange !== null && scoreChange >= 0
-                  ? styles.statPositive
-                  : styles.statNegative,
-              ]}
-            >
-              ({percentChange}%)
+              {scoreChange >= 0 ? '+' : ''}
+              {percentChange}%
             </Text>
           </View>
         </View>
@@ -762,15 +737,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseItemTextSelected: {
       fontWeight: '600',
       color: colors.primary,
-    },
-    statDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginVertical: 8,
-    },
-    percentChangeValue: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.text,
     },
   })

@@ -1,7 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Animated,
   StyleSheet,
@@ -19,12 +19,16 @@ export default function CongratulationsScreen() {
   const [scaleAnim] = useState(new Animated.Value(0.5))
 
   // Sparkle animations
-  const sparkles = Array.from({ length: 12 }, () => ({
-    opacity: new Animated.Value(0),
-    translateX: new Animated.Value(0),
-    translateY: new Animated.Value(0),
-    scale: new Animated.Value(0),
-  }))
+  const sparkles = useMemo(
+    () =>
+      Array.from({ length: 12 }, () => ({
+        opacity: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        translateY: new Animated.Value(0),
+        scale: new Animated.Value(0),
+      })),
+    [],
+  )
 
   // Parse onboarding data to get user's name
   const onboardingData = params.onboarding_data
@@ -89,7 +93,7 @@ export default function CongratulationsScreen() {
         ),
       ]).start()
     })
-  }, [])
+  }, [fadeAnim, scaleAnim, sparkles])
 
   const handleContinue = () => {
     router.push({

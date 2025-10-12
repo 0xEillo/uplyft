@@ -2,7 +2,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   StyleSheet,
@@ -60,7 +60,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
   )
   const [isLoading, setIsLoading] = useState(false)
   const colors = useThemedColors()
-  const { weightUnit, formatWeight } = useWeightUnits()
+  const { formatWeight } = useWeightUnits()
 
   const loadDistributionData = useCallback(async () => {
     setIsLoading(true)
@@ -90,15 +90,6 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
   useEffect(() => {
     loadDistributionData()
   }, [loadDistributionData])
-
-  // Memoize max percentage calculation
-  const maxPercentage = useMemo(
-    () =>
-      distributionData.length
-        ? Math.max(...distributionData.map((d) => d.percentage))
-        : 0,
-    [distributionData],
-  )
 
   const styles = createStyles(colors)
 

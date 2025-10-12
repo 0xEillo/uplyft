@@ -1,11 +1,10 @@
-import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -32,7 +31,6 @@ if (
 
 export default function EditWorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
-  const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
@@ -55,11 +53,7 @@ export default function EditWorkoutScreen() {
     new Set(),
   )
 
-  useEffect(() => {
-    loadWorkout()
-  }, [workoutId])
-
-  const loadWorkout = async () => {
+  const loadWorkout = useCallback(async () => {
     if (!workoutId) return
 
     try {
@@ -75,9 +69,13 @@ export default function EditWorkoutScreen() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [router, workoutId])
 
-  const handleSave = async () => {
+  useEffect(() => {
+    loadWorkout()
+  }, [loadWorkout])
+
+  const handleSave = useCallback(async () => {
     if (!workoutId) return
 
     try {
@@ -144,9 +142,18 @@ export default function EditWorkoutScreen() {
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [
+    convertInputToKg,
+    deletedExerciseIds,
+    deletedSetIds,
+    editedNotes,
+    editedSets,
+    editedTitle,
+    router,
+    workoutId,
+  ])
 
-  const toggleExercise = (exerciseId: string) => {
+  const toggleExercise = useCallback((exerciseId: string) => {
     setExpandedExercises((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(exerciseId)) {
@@ -156,7 +163,7 @@ export default function EditWorkoutScreen() {
       }
       return newSet
     })
-  }
+  }, [])
 
   const getSetValue = (
     setId: string,

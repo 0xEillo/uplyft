@@ -193,7 +193,7 @@ export async function POST(request: Request) {
         : undefined
 
     const result = streamText({
-      model: openai('gpt-4.1-nano'),
+      model: openai('gpt-4.1-mini'),
       messages,
       ...(systemPrompt ? { system: systemPrompt } : {}),
       ...(tools ? { tools } : {}),

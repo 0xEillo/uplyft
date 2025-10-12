@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
     bio: '',
   })
   const colors = useThemedColors()
-  const { weightUnit, convertInputToKg, formatWeight } = useWeightUnits()
+  const { weightUnit, convertInputToKg } = useWeightUnits()
   const styles = createStyles(colors, weightUnit)
 
   const handleNext = () => {
@@ -204,7 +204,7 @@ export default function OnboardingScreen() {
             <View style={styles.featureExampleContainer}>
               <View style={styles.featureBubble}>
                 <Text style={styles.featureBubbleText}>
-                  "I did bench press, 3 sets of 8 reps at 185lbs"
+                  &ldquo;I did bench press, 3 sets of 8 reps at 185lbs&rdquo;
                 </Text>
               </View>
 
@@ -411,7 +411,7 @@ export default function OnboardingScreen() {
                 Thank you for trusting us!
               </Text>
               <Text style={styles.thankYouSubtitle}>
-                Now let's personalize Rep AI for you...
+                Now let&rsquo;s personalize Rep AI for you...
               </Text>
             </View>
 

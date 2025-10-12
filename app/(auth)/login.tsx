@@ -42,7 +42,10 @@ export default function LoginScreen() {
       await signIn(email, password)
       router.replace('/(tabs)')
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to sign in')
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to sign in',
+      )
     } finally {
       setIsLoading(false)
     }
@@ -54,7 +57,12 @@ export default function LoginScreen() {
       await signInWithGoogle()
       router.replace('/(tabs)')
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to sign in with Google')
+      Alert.alert(
+        'Error',
+        error instanceof Error
+          ? error.message
+          : 'Failed to sign in with Google',
+      )
     } finally {
       setIsGoogleLoading(false)
     }

@@ -40,7 +40,6 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [animatedValues] = useState(() => new Map<string, Animated.Value>())
   const colors = useThemedColors()
-  const { formatWeight } = useWeightUnits()
 
   const loadRankings = useCallback(async () => {
     setIsLoading(true)
@@ -81,29 +80,9 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
     loadRankings()
   }, [loadRankings, refreshTrigger])
 
-  const getTierInfo = (percentile: number) => {
-    if (percentile >= 95)
-      return { tier: 'Elite', color: '#FFD700', icon: 'trophy' as const }
-    if (percentile >= 90)
-      return { tier: 'Top 10%', color: '#C0C0C0', icon: 'medal' as const }
-    if (percentile >= 75)
-      return { tier: 'Top 25%', color: '#CD7F32', icon: 'ribbon' as const }
-    if (percentile >= 50)
-      return {
-        tier: 'Top 50%',
-        color: colors.primary,
-        icon: 'trending-up' as const,
-      }
-    return {
-      tier: 'Developing',
-      color: colors.textSecondary,
-      icon: 'fitness' as const,
-    }
-  }
-
   const topRankings = rankings.slice(0, 3)
   const remainingRankings = rankings.slice(3)
-  const shouldShowExpand = rankings.length > 3
+  const shouldShowExpand = remainingRankings.length > 0
 
   const styles = createStyles(colors)
 
@@ -262,7 +241,7 @@ function RankingRow({
   isCompact = false,
 }: RankingRowProps) {
   const { formatWeight } = useWeightUnits()
-  const tierInfo = getTierInfo(ranking.percentile)
+  const tierInfo = resolveTierInfo(ranking.percentile, colors)
   const styles = createStyles(colors)
 
   // Format the animated percentile value
@@ -330,7 +309,10 @@ function RankingRow({
   )
 }
 
-function getTierInfo(percentile: number) {
+function resolveTierInfo(
+  percentile: number,
+  colors: ReturnType<typeof useThemedColors>,
+) {
   if (percentile >= 95)
     return { tier: 'Elite', color: '#FFD700', icon: 'trophy' as const }
   if (percentile >= 90)
@@ -338,8 +320,16 @@ function getTierInfo(percentile: number) {
   if (percentile >= 75)
     return { tier: 'Top 25%', color: '#CD7F32', icon: 'ribbon' as const }
   if (percentile >= 50)
-    return { tier: 'Top 50%', color: '#4ECDC4', icon: 'trending-up' as const }
-  return { tier: 'Developing', color: '#94A3B8', icon: 'fitness' as const }
+    return {
+      tier: 'Top 50%',
+      color: colors.primary,
+      icon: 'trending-up' as const,
+    }
+  return {
+    tier: 'Developing',
+    color: colors.textSecondary,
+    icon: 'fitness' as const,
+  }
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>

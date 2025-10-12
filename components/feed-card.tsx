@@ -203,11 +203,7 @@ export const FeedCard = memo(function FeedCard({
                 ]}
               >
                 <View
-                  style={[
-                    styles.tableCell,
-                    styles.exerciseCol,
-                    styles.variedCell,
-                  ]}
+                  style={[styles.exerciseCol, styles.variedCell]}
                 >
                   <Text
                     style={[styles.exerciseName, styles.exerciseNameText]}
