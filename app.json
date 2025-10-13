@@ -15,7 +15,7 @@
         "NSCameraUsageDescription": "This app needs access to your camera to take photos of your workout notes.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select workout images."
       },
-      "bundleIdentifier": "com.anonymous.repai"
+      "bundleIdentifier": "com.viralstudio.repai"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +32,7 @@
         "CAMERA",
         "READ_MEDIA_IMAGES"
       ],
-      "package": "com.anonymous.repai"
+      "package": "com.viralstudio.repai"
     },
     "web": {
       "output": "server",
