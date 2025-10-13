@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -23,6 +24,8 @@ type OnboardingData = {
   name: string
   gender: Gender | null
   height_cm: string
+  height_feet: string
+  height_inches: string
   weight_kg: string
   birth_day: string
   birth_month: string
@@ -37,6 +40,8 @@ export default function OnboardingScreen() {
     name: '',
     gender: null,
     height_cm: '',
+    height_feet: '',
+    height_inches: '',
     weight_kg: '',
     birth_day: '',
     birth_month: '',
@@ -45,7 +50,7 @@ export default function OnboardingScreen() {
     bio: '',
   })
   const colors = useThemedColors()
-  const { weightUnit, convertInputToKg } = useWeightUnits()
+  const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
   const styles = createStyles(colors, weightUnit)
 
   const handleNext = () => {
@@ -75,6 +80,16 @@ export default function OnboardingScreen() {
         }
       }
 
+      // Calculate height in cm
+      let heightCm = null
+      if (weightUnit === 'kg' && data.height_cm) {
+        heightCm = parseFloat(data.height_cm)
+      } else if (weightUnit === 'lb' && data.height_feet && data.height_inches) {
+        const feet = parseFloat(data.height_feet)
+        const inches = parseFloat(data.height_inches)
+        heightCm = (feet * 12 + inches) * 2.54
+      }
+
       // Navigate to congratulations screen with onboarding data
       router.push({
         pathname: '/(auth)/congratulations',
@@ -82,7 +97,7 @@ export default function OnboardingScreen() {
           onboarding_data: JSON.stringify({
             name: data.name,
             gender: data.gender,
-            height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
+            height_cm: heightCm,
             weight_kg: data.weight_kg
               ? convertInputToKg(parseFloat(data.weight_kg))
               : null,
@@ -113,20 +128,35 @@ export default function OnboardingScreen() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return data.name.trim() !== ''
-      case 2:
         return true // Feature screen
+      case 2:
+        return data.name.trim() !== ''
       case 3:
         return data.gender !== null
       case 4:
-        const height = parseFloat(data.height_cm)
         const weight = parseFloat(data.weight_kg)
         const weightKg = convertInputToKg(isNaN(weight) ? null : weight)
+
+        let heightValid = false
+        if (weightUnit === 'kg') {
+          const height = parseFloat(data.height_cm)
+          heightValid = data.height_cm !== '' && !isNaN(height) && height >= 50 && height <= 300
+        } else {
+          const feet = parseFloat(data.height_feet)
+          const inches = parseFloat(data.height_inches)
+          heightValid =
+            data.height_feet !== '' &&
+            data.height_inches !== '' &&
+            !isNaN(feet) &&
+            !isNaN(inches) &&
+            feet >= 3 &&
+            feet <= 9 &&
+            inches >= 0 &&
+            inches < 12
+        }
+
         return (
-          data.height_cm !== '' &&
-          !isNaN(height) &&
-          height >= 50 &&
-          height <= 300 &&
+          heightValid &&
           data.weight_kg !== '' &&
           weightKg !== null &&
           weightKg >= 20 &&
@@ -167,28 +197,6 @@ export default function OnboardingScreen() {
       case 1:
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Ionicons
-                name="person-outline"
-                size={48}
-                color={colors.primary}
-              />
-              <Text style={styles.stepTitle}>Choose your name</Text>
-            </View>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.textSecondary}
-              value={data.name}
-              onChangeText={(text) => setData({ ...data, name: text })}
-              autoFocus
-              maxLength={50}
-            />
-          </View>
-        )
-      case 2:
-        return (
-          <View style={styles.stepContainer}>
             <View style={styles.featureScreenHeader}>
               <View style={styles.featureIconContainer}>
                 <Ionicons
@@ -219,6 +227,28 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
             </View>
+          </View>
+        )
+      case 2:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Ionicons
+                name="person-outline"
+                size={48}
+                color={colors.primary}
+              />
+              <Text style={styles.stepTitle}>Choose your name</Text>
+            </View>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Enter your name"
+              placeholderTextColor={colors.textSecondary}
+              value={data.name}
+              onChangeText={(text) => setData({ ...data, name: text })}
+              autoFocus
+              maxLength={50}
+            />
           </View>
         )
       case 3:
@@ -258,56 +288,164 @@ export default function OnboardingScreen() {
               <Ionicons name="body" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Height & Weight</Text>
             </View>
-            <View style={styles.pickerRow}>
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Height (cm)</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={data.height_cm || '170'}
-                    onValueChange={(value) =>
-                      setData({ ...data, height_cm: value })
-                    }
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    {Array.from({ length: 251 }, (_, i) => i + 50).map(
-                      (height) => (
-                        <Picker.Item
-                          key={height}
-                          label={`${height}`}
-                          value={`${height}`}
-                        />
-                      ),
-                    )}
-                  </Picker>
-                </View>
-              </View>
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>
-                  {`Weight (${weightUnit})`}
-                </Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={data.weight_kg || '70'}
-                    onValueChange={(value) =>
-                      setData({ ...data, weight_kg: value })
-                    }
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    {Array.from({ length: 481 }, (_, i) => i + 20).map(
-                      (weight) => (
-                        <Picker.Item
-                          key={weight}
-                          label={`${weight}`}
-                          value={`${weight}`}
-                        />
-                      ),
-                    )}
-                  </Picker>
-                </View>
-              </View>
+
+            {/* Unit System Toggle */}
+            <View style={styles.unitToggleContainer}>
+              <Text
+                style={[
+                  styles.unitToggleLabel,
+                  weightUnit === 'kg' && styles.unitToggleLabelActive,
+                ]}
+              >
+                Metric
+              </Text>
+              <Switch
+                value={weightUnit === 'lb'}
+                onValueChange={(value) => setWeightUnit(value ? 'lb' : 'kg')}
+                trackColor={{
+                  false: colors.primary,
+                  true: colors.primary,
+                }}
+                thumbColor={colors.buttonText}
+                ios_backgroundColor={colors.primary}
+              />
+              <Text
+                style={[
+                  styles.unitToggleLabel,
+                  weightUnit === 'lb' && styles.unitToggleLabelActive,
+                ]}
+              >
+                Imperial
+              </Text>
             </View>
+
+            {weightUnit === 'kg' ? (
+              // Metric: Single height picker (cm) + weight (kg)
+              <View style={styles.pickerRow}>
+                <View style={styles.pickerColumn}>
+                  <Text style={styles.pickerLabel}>Height</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={data.height_cm || '170'}
+                      onValueChange={(value) =>
+                        setData({ ...data, height_cm: value })
+                      }
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                    >
+                      {Array.from({ length: 251 }, (_, i) => i + 50).map(
+                        (height) => (
+                          <Picker.Item
+                            key={height}
+                            label={`${height} cm`}
+                            value={`${height}`}
+                          />
+                        ),
+                      )}
+                    </Picker>
+                  </View>
+                </View>
+                <View style={styles.pickerColumn}>
+                  <Text style={styles.pickerLabel}>Weight</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={data.weight_kg || '70'}
+                      onValueChange={(value) =>
+                        setData({ ...data, weight_kg: value })
+                      }
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                    >
+                      {Array.from({ length: 481 }, (_, i) => i + 20).map(
+                        (weight) => (
+                          <Picker.Item
+                            key={weight}
+                            label={`${weight} kg`}
+                            value={`${weight}`}
+                          />
+                        ),
+                      )}
+                    </Picker>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              // Imperial: Height (feet + inches) and Weight
+              <View style={styles.imperialContainer}>
+                <View style={styles.imperialHeightGroup}>
+                  <Text style={styles.pickerLabel}>Height</Text>
+                  <View style={styles.imperialHeightPickers}>
+                    <View style={styles.imperialHeightPickerWrapper}>
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={data.height_feet || '5'}
+                          onValueChange={(value) =>
+                            setData({ ...data, height_feet: value })
+                          }
+                          style={styles.picker}
+                          itemStyle={styles.pickerItem}
+                        >
+                          {Array.from({ length: 7 }, (_, i) => i + 3).map(
+                            (feet) => (
+                              <Picker.Item
+                                key={feet}
+                                label={`${feet} ft`}
+                                value={`${feet}`}
+                              />
+                            ),
+                          )}
+                        </Picker>
+                      </View>
+                    </View>
+                    <View style={styles.imperialHeightPickerWrapper}>
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={data.height_inches || '8'}
+                          onValueChange={(value) =>
+                            setData({ ...data, height_inches: value })
+                          }
+                          style={styles.picker}
+                          itemStyle={styles.pickerItem}
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i).map(
+                            (inches) => (
+                              <Picker.Item
+                                key={inches}
+                                label={`${inches} in`}
+                                value={`${inches}`}
+                              />
+                            ),
+                          )}
+                        </Picker>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.imperialWeightColumn}>
+                  <Text style={styles.pickerLabel}>Weight</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={data.weight_kg || '154'}
+                      onValueChange={(value) =>
+                        setData({ ...data, weight_kg: value })
+                      }
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                    >
+                      {Array.from({ length: 551 }, (_, i) => i + 50).map(
+                        (weight) => (
+                          <Picker.Item
+                            key={weight}
+                            label={`${weight} lb`}
+                            value={`${weight}`}
+                          />
+                        ),
+                      )}
+                    </Picker>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         )
       case 5:
@@ -928,9 +1066,6 @@ const createStyles = (
     },
     pickerContainer: {
       width: '100%',
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 12,
       backgroundColor: colors.background,
       overflow: 'hidden',
     },
@@ -1009,5 +1144,41 @@ const createStyles = (
       textAlign: 'center',
       lineHeight: 18,
       paddingHorizontal: 4,
+    },
+    unitToggleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      marginBottom: 32,
+    },
+    unitToggleLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    unitToggleLabelActive: {
+      color: colors.text,
+    },
+    imperialContainer: {
+      flexDirection: 'row',
+      gap: 12,
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+    },
+    imperialHeightGroup: {
+      alignItems: 'center',
+    },
+    imperialHeightPickers: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    imperialHeightPickerWrapper: {
+      width: 90,
+      alignItems: 'center',
+    },
+    imperialWeightColumn: {
+      alignItems: 'center',
+      width: 110,
     },
   })
