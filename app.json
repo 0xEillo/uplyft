@@ -27,7 +27,11 @@
       "windowSoftInputMode": "adjustPan",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["RECORD_AUDIO", "CAMERA", "READ_MEDIA_IMAGES"],
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ],
       "package": "com.anonymous.repai"
     },
     "web": {
@@ -47,14 +51,17 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "posthogApiKey": "${POSTHOG_API_KEY}",
+      "posthogHost": "${POSTHOG_HOST:-https://us.i.posthog.com}"
     }
   }
 }

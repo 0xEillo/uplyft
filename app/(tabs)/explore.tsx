@@ -4,6 +4,7 @@ import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -22,6 +23,7 @@ type TabType = 'progress' | 'chat'
 export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
+  const { trackEvent } = useAnalytics()
   const [activeTab, setActiveTab] = useState<TabType>('chat')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -33,6 +35,12 @@ export default function ProfileScreen() {
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setRefreshing(false)
   }, [])
+
+  useEffect(() => {
+    trackEvent('Explore Viewed', {
+      timestamp: Date.now(),
+    })
+  }, [trackEvent])
 
   const styles = createStyles(colors)
 

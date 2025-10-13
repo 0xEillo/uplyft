@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
 import * as WebBrowser from 'expo-web-browser'
+import { usePostHog } from 'posthog-react-native'
 import React, {
   createContext,
   ReactNode,
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const posthog = usePostHog()
 
   useEffect(() => {
     // Get initial session
@@ -56,6 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
     if (!data.user) throw new Error('No user returned from signup')
 
+    posthog?.capture('Auth Sign Up', {
+      method: 'password',
+      userId: data.user.id,
+      email: email.toLowerCase(),
+    })
+
     return { userId: data.user.id }
   }
 
@@ -66,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     if (error) throw error
+
+    posthog?.capture('Auth Login', {
+      method: 'password',
+      email: email.toLowerCase(),
+    })
   }
 
   const signInWithGoogle = async () => {
@@ -120,6 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           access_token: accessToken,
           refresh_token: refreshToken,
         })
+
+        posthog?.capture('Auth Login', {
+          method: 'google',
+        })
       } else {
         throw new Error('No tokens received from OAuth')
       }
@@ -131,6 +148,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+
+    posthog?.capture('Auth Logout', {
+      timestamp: Date.now(),
+    })
+    posthog?.reset() // Clear user identity on logout
   }
 
   return (

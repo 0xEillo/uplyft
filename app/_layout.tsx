@@ -8,8 +8,10 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { PostHogProvider } from 'posthog-react-native'
+import Constants from 'expo-constants'
 
-import { AnalyticsProvider } from '@/contexts/analytics-context'
+import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
@@ -20,6 +22,15 @@ function RootLayoutNav() {
   const segments = useSegments()
   const router = useRouter()
   const { isDark } = useTheme()
+  const { trackEvent } = useAnalytics()
+
+  useEffect(() => {
+    // Track initial app open once when layout mounts
+    trackEvent('App Open', {
+      timestamp: Date.now(),
+      segment: segments[0] ?? 'unknown',
+    })
+  }, [trackEvent, segments])
 
   useEffect(() => {
     if (isLoading) return
@@ -46,19 +57,35 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const posthogApiKey = Constants.expoConfig?.extra?.posthogApiKey as
+    | string
+    | undefined
+  const posthogHost =
+    (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
+    'https://us.i.posthog.com'
+
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <UnitProvider>
-          <AuthProvider>
-            <AnalyticsProvider>
-              <PostsProvider>
-                <RootLayoutNav />
-              </PostsProvider>
-            </AnalyticsProvider>
-          </AuthProvider>
-        </UnitProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <PostHogProvider
+      apiKey={posthogApiKey || ''}
+      options={{
+        host: posthogHost,
+        // Enable autocapture for automatic event tracking
+        captureMode: 'screen',
+      }}
+    >
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <UnitProvider>
+            <AuthProvider>
+              <AnalyticsProvider>
+                <PostsProvider>
+                  <RootLayoutNav />
+                </PostsProvider>
+              </AnalyticsProvider>
+            </AuthProvider>
+          </UnitProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </PostHogProvider>
   )
 }

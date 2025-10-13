@@ -2,6 +2,7 @@ import { ScreenHeader } from '@/components/screen-header'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -26,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 export default function CreateSpeechScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
+  const { trackEvent } = useAnalytics()
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -43,12 +45,20 @@ export default function CreateSpeechScreen() {
         allowsRecording: true,
       })
     })()
-  }, [])
+
+    trackEvent('Workout Create Started', {
+      mode: 'speech',
+    })
+  }, [trackEvent])
 
   const startRecording = async () => {
     try {
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
+
+      trackEvent('Workout Create Started', {
+        mode: 'speech_recording',
+      })
     } catch (error) {
       console.error('Failed to start recording:', error)
       Alert.alert('Error', 'Failed to start recording')
@@ -116,6 +126,11 @@ export default function CreateSpeechScreen() {
       if (user) {
         try {
           await database.workoutSessions.create(user.id, workout, text)
+
+          trackEvent('Workout Create Submitted', {
+            mode: 'speech',
+            exercises: workout?.exercises?.length ?? 0,
+          })
         } catch (dbError) {
           console.error('Error saving to database:', dbError)
           setIsProcessing(false)
@@ -154,6 +169,11 @@ export default function CreateSpeechScreen() {
       await audioRecorder.stop()
     }
     router.back()
+
+    trackEvent('Workout Create Saved', {
+      mode: 'speech_cancelled',
+      isRecording: recorderState.isRecording,
+    })
   }
 
   const styles = createStyles(colors)

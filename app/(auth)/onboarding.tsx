@@ -1,6 +1,7 @@
 import { GENDERS, GOALS } from '@/constants/options'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
@@ -50,9 +51,14 @@ export default function OnboardingScreen() {
   })
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
+  const { trackEvent } = useAnalytics()
   const styles = createStyles(colors, weightUnit)
 
   const handleNext = () => {
+    trackEvent('Onboarding Step Viewed', {
+      step,
+    })
+
     if (step < 8) {
       setStep(step + 1)
     } else {
@@ -101,6 +107,13 @@ export default function OnboardingScreen() {
             bio: data.bio.trim() || null,
           }),
         },
+      })
+
+      trackEvent('Onboarding Completed', {
+        name: data.name,
+        goal: data.goal,
+        age,
+        gender: data.gender,
       })
     }
   }
