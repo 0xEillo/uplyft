@@ -1,4 +1,3 @@
-import { track } from '@/lib/analytics/mixpanel'
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
 import * as WebBrowser from 'expo-web-browser'
@@ -57,12 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
     if (!data.user) throw new Error('No user returned from signup')
 
-    void track('Auth Sign Up', {
-      method: 'password',
-      userId: data.user.id,
-      email: email.toLowerCase(),
-    })
-
     return { userId: data.user.id }
   }
 
@@ -73,11 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     if (error) throw error
-
-    void track('Auth Login', {
-      method: 'password',
-      email: email.toLowerCase(),
-    })
   }
 
   const signInWithGoogle = async () => {
@@ -132,10 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           access_token: accessToken,
           refresh_token: refreshToken,
         })
-
-        void track('Auth Login', {
-          method: 'google',
-        })
       } else {
         throw new Error('No tokens received from OAuth')
       }
@@ -147,10 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
-
-    void track('Auth Logout', {
-      timestamp: Date.now(),
-    })
   }
 
   return (

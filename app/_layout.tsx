@@ -22,18 +22,6 @@ function RootLayoutNav() {
   const { isDark } = useTheme()
 
   useEffect(() => {
-    // Track initial app open once when layout mounts
-    import('@/lib/analytics/mixpanel').then(({ track }) => {
-      track('App Open', {
-        timestamp: Date.now(),
-        segment: segments[0] ?? 'unknown',
-      }).catch((err) => {
-        console.warn('mixpanel track error', err)
-      })
-    })
-  }, [segments])
-
-  useEffect(() => {
     if (isLoading) return
 
     const inAuthGroup = segments[0] === '(auth)'

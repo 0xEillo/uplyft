@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { track } from '@/lib/analytics/mixpanel'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -237,11 +236,6 @@ export default function FeedScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void track('Feed Viewed', {
-        timestamp: Date.now(),
-        workoutCount: workouts.length,
-      })
-
       handlePendingPost().then(() => {
         // Only show loading spinner on initial load
         loadWorkouts(isInitialLoad)
@@ -312,19 +306,9 @@ export default function FeedScreen() {
                       prev.filter((w) => w.id !== workout.id),
                     )
                     setDeletingWorkoutId(null)
-
-                    void track('Workout Create Saved', {
-                      workoutId: workout.id,
-                      action: 'delete_confirmed',
-                    })
                   } else {
                     // Mark for deletion to trigger exit animation
                     setDeletingWorkoutId(workout.id)
-
-                    void track('Workout Create Saved', {
-                      workoutId: workout.id,
-                      action: 'delete_requested',
-                    })
                   }
                 }}
               />

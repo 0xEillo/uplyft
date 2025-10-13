@@ -54,9 +54,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
-      "mixpanelToken": "${MIXPANEL_TOKEN}",
-      "mixpanelDebug": "${MIXPANEL_DEBUG:-false}"
+      "router": {}
     }
   }
 }

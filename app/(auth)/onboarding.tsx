@@ -1,7 +1,6 @@
 import { GENDERS, GOALS } from '@/constants/options'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { track } from '@/lib/analytics/mixpanel'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
@@ -54,10 +53,6 @@ export default function OnboardingScreen() {
   const styles = createStyles(colors, weightUnit)
 
   const handleNext = () => {
-    void track('Onboarding Step Viewed', {
-      step,
-    })
-
     if (step < 8) {
       setStep(step + 1)
     } else {
@@ -106,13 +101,6 @@ export default function OnboardingScreen() {
             bio: data.bio.trim() || null,
           }),
         },
-      })
-
-      void track('Onboarding Completed', {
-        name: data.name,
-        goal: data.goal,
-        age,
-        gender: data.gender,
       })
     }
   }

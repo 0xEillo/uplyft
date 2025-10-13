@@ -4,7 +4,6 @@ import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { track } from '@/lib/analytics/mixpanel'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -33,12 +32,6 @@ export default function ProfileScreen() {
     // Give components time to refresh their data
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setRefreshing(false)
-  }, [])
-
-  useEffect(() => {
-    void track('Explore Viewed', {
-      timestamp: Date.now(),
-    })
   }, [])
 
   const styles = createStyles(colors)
