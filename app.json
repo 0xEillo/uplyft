@@ -61,7 +61,9 @@
     "extra": {
       "router": {},
       "posthogApiKey": "${POSTHOG_API_KEY}",
-      "posthogHost": "${POSTHOG_HOST:-https://us.i.posthog.com}"
+      "posthogHost": "${POSTHOG_HOST:-https://us.i.posthog.com}",
+      "revenueCatAppleApiKey": "${REVENUECAT_APPLE_API_KEY}",
+      "revenueCatGoogleApiKey": "${REVENUECAT_GOOGLE_API_KEY}"
     }
   }
 }

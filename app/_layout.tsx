@@ -14,6 +14,7 @@ import Constants from 'expo-constants'
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { PostsProvider } from '@/contexts/posts-context'
+import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
 
@@ -77,11 +78,13 @@ export default function RootLayout() {
         <ThemeProvider>
           <UnitProvider>
             <AuthProvider>
-              <AnalyticsProvider>
-                <PostsProvider>
-                  <RootLayoutNav />
-                </PostsProvider>
-              </AnalyticsProvider>
+              <SubscriptionProvider>
+                <AnalyticsProvider>
+                  <PostsProvider>
+                    <RootLayoutNav />
+                  </PostsProvider>
+                </AnalyticsProvider>
+              </SubscriptionProvider>
             </AuthProvider>
           </UnitProvider>
         </ThemeProvider>
