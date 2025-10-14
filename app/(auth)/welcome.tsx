@@ -11,20 +11,19 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
+  withDecay,
   withDelay,
   withRepeat,
   withSequence,
-  withTiming,
   withSpring,
-  withDecay,
-  cancelAnimation,
-  runOnJS,
+  withTiming,
 } from 'react-native-reanimated'
-import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function WelcomeScreen() {
@@ -98,31 +97,34 @@ export default function WelcomeScreen() {
             savedOffset.value = targetPosition
 
             // Restart auto-animation after 3 seconds
-            translateX.value = withDelay(3000, withSequence(
-              withTiming(translateX.value, { duration: 0 }),
-              withRepeat(
-                withSequence(
-                  withDelay(
-                    2500,
-                    withTiming(targetPosition === 0 ? -width : 0, {
-                      duration: 800,
-                      easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
-                    }),
+            translateX.value = withDelay(
+              3000,
+              withSequence(
+                withTiming(translateX.value, { duration: 0 }),
+                withRepeat(
+                  withSequence(
+                    withDelay(
+                      2500,
+                      withTiming(targetPosition === 0 ? -width : 0, {
+                        duration: 800,
+                        easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
+                      }),
+                    ),
+                    withDelay(
+                      2500,
+                      withTiming(targetPosition === 0 ? 0 : -width, {
+                        duration: 800,
+                        easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
+                      }),
+                    ),
                   ),
-                  withDelay(
-                    2500,
-                    withTiming(targetPosition === 0 ? 0 : -width, {
-                      duration: 800,
-                      easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
-                    }),
-                  ),
+                  -1,
+                  false,
                 ),
-                -1,
-                false,
               ),
-            ))
+            )
           }
-        }
+        },
       )
     })
 
@@ -186,7 +188,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     header: {
-      height: '62%',
+      height: '64%',
       alignItems: 'flex-start',
       justifyContent: 'flex-start',
       paddingTop: 24,
