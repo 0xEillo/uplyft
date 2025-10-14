@@ -1,20 +1,23 @@
+import { AnimatedInput } from '@/components/animated-input'
+import { HapticButton } from '@/components/haptic-button'
 import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
+import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -56,6 +59,58 @@ export default function OnboardingScreen() {
   const { trackEvent } = useAnalytics()
   const styles = createStyles(colors, weightUnit)
 
+  // Animation refs for step transitions
+  const fadeAnim = useRef(new Animated.Value(1)).current
+  const slideAnim = useRef(new Animated.Value(0)).current
+  const prevStep = useRef(step)
+
+  // Progress dot animations
+  const progressDotAnims = useRef(
+    Array.from({ length: 9 }, () => new Animated.Value(1)),
+  ).current
+
+  // Animate step transitions
+  useEffect(() => {
+    if (prevStep.current !== step) {
+      // Start from right, slide and fade in
+      fadeAnim.setValue(0)
+      slideAnim.setValue(30)
+
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start()
+
+      // Animate progress dot
+      if (step >= 1 && step <= 9) {
+        Animated.sequence([
+          Animated.spring(progressDotAnims[step - 1], {
+            toValue: 1.3,
+            useNativeDriver: true,
+            tension: 200,
+            friction: 10,
+          }),
+          Animated.spring(progressDotAnims[step - 1], {
+            toValue: 1,
+            useNativeDriver: true,
+            tension: 200,
+            friction: 10,
+          }),
+        ]).start()
+      }
+
+      prevStep.current = step
+    }
+  }, [step, fadeAnim, slideAnim, progressDotAnims])
+
   const handleNext = () => {
     trackEvent('Onboarding Step Viewed', {
       step,
@@ -87,7 +142,11 @@ export default function OnboardingScreen() {
       let heightCm = null
       if (weightUnit === 'kg' && data.height_cm) {
         heightCm = parseFloat(data.height_cm)
-      } else if (weightUnit === 'lb' && data.height_feet && data.height_inches) {
+      } else if (
+        weightUnit === 'lb' &&
+        data.height_feet &&
+        data.height_inches
+      ) {
         const feet = parseFloat(data.height_feet)
         const inches = parseFloat(data.height_inches)
         heightCm = (feet * 12 + inches) * 2.54
@@ -122,6 +181,9 @@ export default function OnboardingScreen() {
   }
 
   const handleBack = () => {
+    // Strong haptic for back navigation
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+
     if (step > 1) {
       setStep(step - 1)
     } else {
@@ -144,7 +206,11 @@ export default function OnboardingScreen() {
         let heightValid = false
         if (weightUnit === 'kg') {
           const height = parseFloat(data.height_cm)
-          heightValid = data.height_cm !== '' && !isNaN(height) && height >= 50 && height <= 300
+          heightValid =
+            data.height_cm !== '' &&
+            !isNaN(height) &&
+            height >= 50 &&
+            height <= 300
         } else {
           const feet = parseFloat(data.height_feet)
           const inches = parseFloat(data.height_inches)
@@ -203,34 +269,30 @@ export default function OnboardingScreen() {
       case 1:
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.featureScreenHeader}>
-              <View style={styles.featureIconContainer}>
-                <Ionicons
-                  name="chatbubble-ellipses"
-                  size={56}
-                  color={colors.primary}
-                />
-              </View>
-
-              <Text style={styles.featureHook}>Log workouts in seconds</Text>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Log workouts in seconds</Text>
+              <Text style={styles.stepSubtitle}>
+                Use notes, camera, or voice to log your workouts
+              </Text>
             </View>
 
-            <View style={styles.featureExampleContainer}>
-              <View style={styles.featureBubble}>
-                <Text style={styles.featureBubbleText}>
-                  &ldquo;I did bench press, 3 sets of 8 reps at 185lbs&rdquo;
-                </Text>
-              </View>
+            <View style={styles.stepContent}>
+              <View style={styles.featureExampleContainer}>
+                <View style={styles.featureBubble}>
+                  <Text style={styles.featureBubbleText}>
+                    &ldquo;I did bench press, 3 sets of 8 reps at 185lbs&rdquo;
+                  </Text>
+                </View>
 
-              <View style={styles.featureArrow}>
-                <Ionicons name="arrow-down" size={32} color={colors.primary} />
-              </View>
+                <View style={styles.featureArrow}>
+                  <Text style={styles.featureArrowText}>↓</Text>
+                </View>
 
-              <View style={styles.featureResult}>
-                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                <Text style={styles.featureResultText}>
-                  Logged instantly by your AI
-                </Text>
+                <View style={styles.featureResult}>
+                  <Text style={styles.featureResultText}>
+                    ✓ Logged instantly by your AI
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -239,51 +301,54 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons
-                name="person-outline"
-                size={48}
-                color={colors.primary}
-              />
-              <Text style={styles.stepTitle}>Choose your name</Text>
+              <Text style={styles.stepTitle}>What&rsquo;s your name?</Text>
             </View>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.textSecondary}
-              value={data.name}
-              onChangeText={(text) => setData({ ...data, name: text })}
-              autoFocus
-              maxLength={50}
-            />
+
+            <View style={styles.stepContent}>
+              <AnimatedInput
+                style={styles.nameInput}
+                placeholder="Enter your name"
+                placeholderTextColor={colors.textSecondary}
+                value={data.name}
+                onChangeText={(text) => setData({ ...data, name: text })}
+                autoFocus
+                maxLength={50}
+              />
+            </View>
           </View>
         )
       case 3:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="person" size={48} color={colors.primary} />
-              <Text style={styles.stepTitle}>Choose your gender</Text>
+              <Text style={styles.stepTitle}>What&rsquo;s your gender?</Text>
             </View>
-            <View style={styles.optionsContainer}>
-              {GENDERS.map((gender) => (
-                <TouchableOpacity
-                  key={gender.value}
-                  style={[
-                    styles.optionButton,
-                    data.gender === gender.value && styles.optionButtonSelected,
-                  ]}
-                  onPress={() => setData({ ...data, gender: gender.value })}
-                >
-                  <Text
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                {GENDERS.map((gender) => (
+                  <HapticButton
+                    key={gender.value}
                     style={[
-                      styles.optionText,
-                      data.gender === gender.value && styles.optionTextSelected,
+                      styles.optionButton,
+                      data.gender === gender.value &&
+                        styles.optionButtonSelected,
                     ]}
+                    onPress={() => setData({ ...data, gender: gender.value })}
+                    hapticStyle="light"
                   >
-                    {gender.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.optionText,
+                        data.gender === gender.value &&
+                          styles.optionTextSelected,
+                      ]}
+                    >
+                      {gender.label}
+                    </Text>
+                  </HapticButton>
+                ))}
+              </View>
             </View>
           </View>
         )
@@ -291,254 +356,268 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="body" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Height & Weight</Text>
-            </View>
-
-            {/* Unit System Toggle */}
-            <View style={styles.unitToggleContainer}>
-              <Text
-                style={[
-                  styles.unitToggleLabel,
-                  weightUnit === 'kg' && styles.unitToggleLabelActive,
-                ]}
-              >
-                Metric
-              </Text>
-              <Switch
-                value={weightUnit === 'lb'}
-                onValueChange={(value) => setWeightUnit(value ? 'lb' : 'kg')}
-                trackColor={{
-                  false: colors.primary,
-                  true: colors.primary,
-                }}
-                thumbColor={colors.buttonText}
-                ios_backgroundColor={colors.primary}
-              />
-              <Text
-                style={[
-                  styles.unitToggleLabel,
-                  weightUnit === 'lb' && styles.unitToggleLabelActive,
-                ]}
-              >
-                Imperial
+              <Text style={styles.stepSubtitle}>
+                This helps personalize your fitness goals
               </Text>
             </View>
 
-            {weightUnit === 'kg' ? (
-              // Metric: Single height picker (cm) + weight (kg)
-              <View style={styles.pickerRow}>
-                <View style={styles.pickerColumn}>
-                  <Text style={styles.pickerLabel}>Height</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={data.height_cm || '170'}
-                      onValueChange={(value) =>
-                        setData({ ...data, height_cm: value })
-                      }
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                    >
-                      {Array.from({ length: 251 }, (_, i) => i + 50).map(
-                        (height) => (
-                          <Picker.Item
-                            key={height}
-                            label={`${height} cm`}
-                            value={`${height}`}
-                          />
-                        ),
-                      )}
-                    </Picker>
-                  </View>
-                </View>
-                <View style={styles.pickerColumn}>
-                  <Text style={styles.pickerLabel}>Weight</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={data.weight_kg || '70'}
-                      onValueChange={(value) =>
-                        setData({ ...data, weight_kg: value })
-                      }
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                    >
-                      {Array.from({ length: 481 }, (_, i) => i + 20).map(
-                        (weight) => (
-                          <Picker.Item
-                            key={weight}
-                            label={`${weight} kg`}
-                            value={`${weight}`}
-                          />
-                        ),
-                      )}
-                    </Picker>
-                  </View>
-                </View>
+            <View style={styles.stepContent}>
+              {/* Unit System Toggle */}
+              <View style={styles.unitToggleContainer}>
+                <Text
+                  style={[
+                    styles.unitToggleLabel,
+                    weightUnit === 'kg' && styles.unitToggleLabelActive,
+                  ]}
+                >
+                  Metric
+                </Text>
+                <Switch
+                  value={weightUnit === 'lb'}
+                  onValueChange={(value) => {
+                    Haptics.selectionAsync()
+                    setWeightUnit(value ? 'lb' : 'kg')
+                  }}
+                  trackColor={{
+                    false: colors.primary,
+                    true: colors.primary,
+                  }}
+                  thumbColor={colors.buttonText}
+                  ios_backgroundColor={colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.unitToggleLabel,
+                    weightUnit === 'lb' && styles.unitToggleLabelActive,
+                  ]}
+                >
+                  Imperial
+                </Text>
               </View>
-            ) : (
-              // Imperial: Height (feet + inches) and Weight
-              <View style={styles.imperialContainer}>
-                <View style={styles.imperialHeightGroup}>
-                  <Text style={styles.pickerLabel}>Height</Text>
-                  <View style={styles.imperialHeightPickers}>
-                    <View style={styles.imperialHeightPickerWrapper}>
-                      <View style={styles.pickerContainer}>
-                        <Picker
-                          selectedValue={data.height_feet || '5'}
-                          onValueChange={(value) =>
-                            setData({ ...data, height_feet: value })
-                          }
-                          style={styles.picker}
-                          itemStyle={styles.pickerItem}
-                        >
-                          {Array.from({ length: 7 }, (_, i) => i + 3).map(
-                            (feet) => (
-                              <Picker.Item
-                                key={feet}
-                                label={`${feet} ft`}
-                                value={`${feet}`}
-                              />
-                            ),
-                          )}
-                        </Picker>
-                      </View>
+
+              {weightUnit === 'kg' ? (
+                // Metric: Single height picker (cm) + weight (kg)
+                <View style={styles.pickerRow}>
+                  <View style={styles.pickerColumn}>
+                    <Text style={styles.pickerLabel}>Height</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={data.height_cm || '170'}
+                        onValueChange={(value) =>
+                          setData({ ...data, height_cm: value })
+                        }
+                        style={styles.picker}
+                        itemStyle={styles.pickerItem}
+                      >
+                        {Array.from({ length: 251 }, (_, i) => i + 50).map(
+                          (height) => (
+                            <Picker.Item
+                              key={height}
+                              label={`${height} cm`}
+                              value={`${height}`}
+                            />
+                          ),
+                        )}
+                      </Picker>
                     </View>
-                    <View style={styles.imperialHeightPickerWrapper}>
-                      <View style={styles.pickerContainer}>
-                        <Picker
-                          selectedValue={data.height_inches || '8'}
-                          onValueChange={(value) =>
-                            setData({ ...data, height_inches: value })
-                          }
-                          style={styles.picker}
-                          itemStyle={styles.pickerItem}
-                        >
-                          {Array.from({ length: 12 }, (_, i) => i).map(
-                            (inches) => (
-                              <Picker.Item
-                                key={inches}
-                                label={`${inches} in`}
-                                value={`${inches}`}
-                              />
-                            ),
-                          )}
-                        </Picker>
-                      </View>
+                  </View>
+                  <View style={styles.pickerColumn}>
+                    <Text style={styles.pickerLabel}>Weight</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={data.weight_kg || '70'}
+                        onValueChange={(value) =>
+                          setData({ ...data, weight_kg: value })
+                        }
+                        style={styles.picker}
+                        itemStyle={styles.pickerItem}
+                      >
+                        {Array.from({ length: 481 }, (_, i) => i + 20).map(
+                          (weight) => (
+                            <Picker.Item
+                              key={weight}
+                              label={`${weight} kg`}
+                              value={`${weight}`}
+                            />
+                          ),
+                        )}
+                      </Picker>
                     </View>
                   </View>
                 </View>
-                <View style={styles.imperialWeightColumn}>
-                  <Text style={styles.pickerLabel}>Weight</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={data.weight_kg || '154'}
-                      onValueChange={(value) =>
-                        setData({ ...data, weight_kg: value })
-                      }
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                    >
-                      {Array.from({ length: 551 }, (_, i) => i + 50).map(
-                        (weight) => (
-                          <Picker.Item
-                            key={weight}
-                            label={`${weight} lb`}
-                            value={`${weight}`}
-                          />
-                        ),
-                      )}
-                    </Picker>
+              ) : (
+                // Imperial: Height (feet + inches) and Weight
+                <View style={styles.imperialContainer}>
+                  <View style={styles.imperialHeightGroup}>
+                    <Text style={styles.pickerLabel}>Height</Text>
+                    <View style={styles.imperialHeightPickers}>
+                      <View style={styles.imperialHeightPickerWrapper}>
+                        <View style={styles.pickerContainer}>
+                          <Picker
+                            selectedValue={data.height_feet || '5'}
+                            onValueChange={(value) =>
+                              setData({ ...data, height_feet: value })
+                            }
+                            style={styles.picker}
+                            itemStyle={styles.pickerItem}
+                          >
+                            {Array.from({ length: 7 }, (_, i) => i + 3).map(
+                              (feet) => (
+                                <Picker.Item
+                                  key={feet}
+                                  label={`${feet} ft`}
+                                  value={`${feet}`}
+                                />
+                              ),
+                            )}
+                          </Picker>
+                        </View>
+                      </View>
+                      <View style={styles.imperialHeightPickerWrapper}>
+                        <View style={styles.pickerContainer}>
+                          <Picker
+                            selectedValue={data.height_inches || '8'}
+                            onValueChange={(value) =>
+                              setData({ ...data, height_inches: value })
+                            }
+                            style={styles.picker}
+                            itemStyle={styles.pickerItem}
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i).map(
+                              (inches) => (
+                                <Picker.Item
+                                  key={inches}
+                                  label={`${inches} in`}
+                                  value={`${inches}`}
+                                />
+                              ),
+                            )}
+                          </Picker>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.imperialWeightColumn}>
+                    <Text style={styles.pickerLabel}>Weight</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={data.weight_kg || '154'}
+                        onValueChange={(value) =>
+                          setData({ ...data, weight_kg: value })
+                        }
+                        style={styles.picker}
+                        itemStyle={styles.pickerItem}
+                      >
+                        {Array.from({ length: 551 }, (_, i) => i + 50).map(
+                          (weight) => (
+                            <Picker.Item
+                              key={weight}
+                              label={`${weight} lb`}
+                              value={`${weight}`}
+                            />
+                          ),
+                        )}
+                      </Picker>
+                    </View>
                   </View>
                 </View>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         )
       case 5:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="calendar" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>When were you born?</Text>
+              <Text style={styles.stepSubtitle}>
+                This helps calculate your body composition
+              </Text>
             </View>
-            <View style={styles.birthDateRow}>
-              <View style={styles.birthDateColumnSmall}>
-                <Text style={styles.pickerLabel}>Day</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={data.birth_day || '1'}
-                    onValueChange={(value) =>
-                      setData({ ...data, birth_day: value })
-                    }
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <Picker.Item
-                        key={day}
-                        label={`${day}`}
-                        value={`${day}`}
-                      />
-                    ))}
-                  </Picker>
+
+            <View style={styles.stepContent}>
+              <View style={styles.birthDateRow}>
+                <View style={styles.birthDateColumnSmall}>
+                  <Text style={styles.pickerLabel}>Day</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={data.birth_day || '1'}
+                      onValueChange={(value) =>
+                        setData({ ...data, birth_day: value })
+                      }
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(
+                        (day) => (
+                          <Picker.Item
+                            key={day}
+                            label={`${day}`}
+                            value={`${day}`}
+                          />
+                        ),
+                      )}
+                    </Picker>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.birthDateColumnSmall}>
-                <Text style={styles.pickerLabel}>Month</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={data.birth_month || '1'}
-                    onValueChange={(value) =>
-                      setData({ ...data, birth_month: value })
-                    }
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    {[
-                      'Jan',
-                      'Feb',
-                      'Mar',
-                      'Apr',
-                      'May',
-                      'Jun',
-                      'Jul',
-                      'Aug',
-                      'Sep',
-                      'Oct',
-                      'Nov',
-                      'Dec',
-                    ].map((month, index) => (
-                      <Picker.Item
-                        key={index + 1}
-                        label={month}
-                        value={`${index + 1}`}
-                      />
-                    ))}
-                  </Picker>
+                <View style={styles.birthDateColumnSmall}>
+                  <Text style={styles.pickerLabel}>Month</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={data.birth_month || '1'}
+                      onValueChange={(value) =>
+                        setData({ ...data, birth_month: value })
+                      }
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                    >
+                      {[
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                      ].map((month, index) => (
+                        <Picker.Item
+                          key={index + 1}
+                          label={month}
+                          value={`${index + 1}`}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.birthDateColumnYear}>
-                <Text style={styles.pickerLabel}>Year</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={data.birth_year || '2000'}
-                    onValueChange={(value) =>
-                      setData({ ...data, birth_year: value })
-                    }
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    {Array.from(
-                      { length: 108 },
-                      (_, i) => new Date().getFullYear() - 13 - i,
-                    ).map((year) => (
-                      <Picker.Item
-                        key={year}
-                        label={`${year}`}
-                        value={`${year}`}
-                      />
-                    ))}
-                  </Picker>
+                <View style={styles.birthDateColumnYear}>
+                  <Text style={styles.pickerLabel}>Year</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={data.birth_year || '2000'}
+                      onValueChange={(value) =>
+                        setData({ ...data, birth_year: value })
+                      }
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                    >
+                      {Array.from(
+                        { length: 108 },
+                        (_, i) => new Date().getFullYear() - 13 - i,
+                      ).map((year) => (
+                        <Picker.Item
+                          key={year}
+                          label={`${year}`}
+                          value={`${year}`}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
                 </View>
               </View>
             </View>
@@ -547,26 +626,23 @@ export default function OnboardingScreen() {
       case 6:
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.thankYouHeader}>
-              <View style={styles.clappingIconContainer}>
-                <Ionicons name="happy" size={72} color={colors.primary} />
-              </View>
-              <Text style={styles.thankYouTitle}>
-                Thank you for trusting us!
-              </Text>
-              <Text style={styles.thankYouSubtitle}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Thank you for trusting us!</Text>
+              <Text style={styles.stepSubtitle}>
                 Now let&rsquo;s personalize Rep AI for you...
               </Text>
             </View>
 
-            <View style={styles.privacyFooter}>
-              <Text style={styles.privacyTitle}>
-                Your privacy and security matter to us.
-              </Text>
-              <Text style={styles.privacySubtitle}>
-                We promise to always keep your personal information safe and
-                secure.
-              </Text>
+            <View style={styles.stepContent}>
+              <View style={styles.privacyFooter}>
+                <Text style={styles.privacyTitle}>
+                  Your privacy and security matter to us.
+                </Text>
+                <Text style={styles.privacySubtitle}>
+                  We promise to always keep your personal information safe and
+                  secure.
+                </Text>
+              </View>
             </View>
           </View>
         )
@@ -578,35 +654,30 @@ export default function OnboardingScreen() {
                 What would you like to accomplish?
               </Text>
             </View>
-            <View style={styles.optionsContainer}>
-              {GOALS.map((goal) => (
-                <TouchableOpacity
-                  key={goal.value}
-                  style={[
-                    styles.goalButton,
-                    data.goal === goal.value && styles.goalButtonSelected,
-                  ]}
-                  onPress={() => setData({ ...data, goal: goal.value })}
-                >
-                  <Ionicons
-                    name={goal.icon}
-                    size={28}
-                    color={
-                      data.goal === goal.value
-                        ? colors.buttonText
-                        : colors.primary
-                    }
-                  />
-                  <Text
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                {GOALS.map((goal) => (
+                  <HapticButton
+                    key={goal.value}
                     style={[
-                      styles.goalText,
-                      data.goal === goal.value && styles.goalTextSelected,
+                      styles.goalButton,
+                      data.goal === goal.value && styles.goalButtonSelected,
                     ]}
+                    onPress={() => setData({ ...data, goal: goal.value })}
+                    hapticStyle="light"
                   >
-                    {goal.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.goalText,
+                        data.goal === goal.value && styles.goalTextSelected,
+                      ]}
+                    >
+                      {goal.label}
+                    </Text>
+                  </HapticButton>
+                ))}
+              </View>
             </View>
           </View>
         )
@@ -614,42 +685,36 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="calendar" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>How often do you work out?</Text>
             </View>
-            <View style={styles.optionsContainer}>
-              {COMMITMENTS.map((commitment) => (
-                <TouchableOpacity
-                  key={commitment.value}
-                  style={[
-                    styles.goalButton,
-                    data.commitment === commitment.value &&
-                      styles.goalButtonSelected,
-                  ]}
-                  onPress={() =>
-                    setData({ ...data, commitment: commitment.value })
-                  }
-                >
-                  <Ionicons
-                    name={commitment.icon}
-                    size={28}
-                    color={
-                      data.commitment === commitment.value
-                        ? colors.buttonText
-                        : colors.primary
-                    }
-                  />
-                  <Text
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                {COMMITMENTS.map((commitment) => (
+                  <HapticButton
+                    key={commitment.value}
                     style={[
-                      styles.goalText,
+                      styles.goalButton,
                       data.commitment === commitment.value &&
-                        styles.goalTextSelected,
+                        styles.goalButtonSelected,
                     ]}
+                    onPress={() =>
+                      setData({ ...data, commitment: commitment.value })
+                    }
+                    hapticStyle="light"
                   >
-                    {commitment.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.goalText,
+                        data.commitment === commitment.value &&
+                          styles.goalTextSelected,
+                      ]}
+                    >
+                      {commitment.label}
+                    </Text>
+                  </HapticButton>
+                ))}
+              </View>
             </View>
           </View>
         )
@@ -657,22 +722,28 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Ionicons name="flash" size={48} color={colors.primary} />
               <Text style={styles.stepTitle}>Tell your AI about yourself</Text>
+              <Text style={styles.stepSubtitle}>
+                Optional - Helps personalize your experience
+              </Text>
             </View>
-            <Text style={styles.optionalText}>Optional</Text>
-            <TextInput
-              style={styles.bioInput}
-              placeholder="e.g., I've been lifting for 2 years but took a 6-month break recently. I have an old knee injury so I avoid heavy squats. I prefer high volume training with shorter rest periods."
-              placeholderTextColor={colors.textSecondary}
-              value={data.bio}
-              onChangeText={(text) => setData({ ...data, bio: text })}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              maxLength={500}
-            />
-            <Text style={styles.characterCount}>{data.bio.length}/500</Text>
+
+            <View style={styles.stepContent}>
+              <View>
+                <AnimatedInput
+                  style={styles.bioInput}
+                  placeholder="e.g., I've been lifting for 2 years but took a 6-month break recently. I have an old knee injury so I avoid heavy squats."
+                  placeholderTextColor={colors.textSecondary}
+                  value={data.bio}
+                  onChangeText={(text) => setData({ ...data, bio: text })}
+                  multiline
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                  maxLength={500}
+                />
+                <Text style={styles.characterCount}>{data.bio.length}/500</Text>
+              </View>
+            </View>
           </View>
         )
       default:
@@ -690,11 +761,18 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
           <View style={styles.progressContainer}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-              <View
+              <Animated.View
                 key={i}
                 style={[
                   styles.progressDot,
                   i <= step && styles.progressDotActive,
+                  {
+                    transform: [
+                      {
+                        scale: i === step ? progressDotAnims[i - 1] : 1,
+                      },
+                    ],
+                  },
                 ]}
               />
             ))}
@@ -715,22 +793,34 @@ export default function OnboardingScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-            {renderStep()}
+            <Animated.View
+              style={[
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateX: slideAnim }],
+                },
+                styles.animatedContent,
+              ]}
+            >
+              {renderStep()}
+            </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
 
         {/* Footer - Fixed at bottom */}
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticButton
             style={[
               styles.nextButton,
               !canProceed() && styles.nextButtonDisabled,
             ]}
             onPress={handleNext}
             disabled={!canProceed()}
+            hapticEnabled={canProceed()}
+            hapticStyle="heavy"
           >
             <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </View>
     </SafeAreaView>
@@ -785,28 +875,39 @@ const createStyles = (
     contentContainer: {
       flexGrow: 1,
       paddingHorizontal: 32,
+      minHeight: '100%',
+    },
+    animatedContent: {
+      flexGrow: 1,
     },
     stepContainer: {
       flex: 1,
-      justifyContent: 'center',
-      paddingVertical: 32,
+      justifyContent: 'flex-start',
     },
     stepHeader: {
-      alignItems: 'center',
-      marginBottom: 48,
+      paddingTop: 0,
+      paddingBottom: 24,
     },
     stepTitle: {
       fontSize: 28,
       fontWeight: '700',
       color: colors.text,
-      marginTop: 24,
-      textAlign: 'center',
+      textAlign: 'left',
+      marginBottom: 8,
     },
     stepSubtitle: {
       fontSize: 16,
       color: colors.textSecondary,
-      marginTop: 8,
-      textAlign: 'center',
+      textAlign: 'left',
+      lineHeight: 22,
+    },
+    stepContent: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'stretch',
+    },
+    stepContentInner: {
+      // Natural size, centered by parent
     },
     optionsContainer: {
       gap: 12,
@@ -870,10 +971,8 @@ const createStyles = (
       borderWidth: 2,
       borderColor: colors.border,
       borderRadius: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
       justifyContent: 'center',
-      gap: 12,
+      alignItems: 'center',
       backgroundColor: colors.background,
     },
     goalButtonSelected: {
@@ -1068,13 +1167,15 @@ const createStyles = (
     featureArrow: {
       marginBottom: 16,
     },
+    featureArrowText: {
+      fontSize: 32,
+      color: colors.primary,
+      textAlign: 'center',
+    },
     featureResult: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
       backgroundColor: '#10B98115',
       paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingVertical: 14,
       borderRadius: 12,
       borderLeftWidth: 3,
       borderLeftColor: '#10B981',
@@ -1083,6 +1184,7 @@ const createStyles = (
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
+      textAlign: 'center',
     },
     featureFooter: {
       paddingTop: 24,

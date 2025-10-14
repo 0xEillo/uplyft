@@ -1,13 +1,24 @@
+import { HapticButton } from '@/components/haptic-button'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Animated, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function RatingScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const fadeAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start()
+  }, [fadeAnim])
 
   const handleNext = () => {
     router.push({
@@ -25,13 +36,13 @@ export default function RatingScreen() {
         <Text style={styles.title}>Give us a rating</Text>
 
         {/* Rating Stars Visual */}
-        <View style={styles.starsWrapper}>
+        <Animated.View style={[styles.starsWrapper, { opacity: fadeAnim }]}>
           <View style={styles.starsContainer}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Ionicons key={star} name="star" size={40} color="#FFD700" />
             ))}
           </View>
-        </View>
+        </Animated.View>
 
         <Text style={styles.subtitle}>
           As a solo dev and gym goer, building Rep AI for the lifting community,
@@ -41,9 +52,9 @@ export default function RatingScreen() {
 
       {/* Actions */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+        <HapticButton style={styles.nextButton} onPress={handleNext}>
           <Text style={styles.nextButtonText}>Next</Text>
-        </TouchableOpacity>
+        </HapticButton>
       </View>
     </SafeAreaView>
   )

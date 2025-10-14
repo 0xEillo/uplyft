@@ -1,17 +1,20 @@
+import { AnimatedInput } from '@/components/animated-input'
+import { HapticButton } from '@/components/haptic-button'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as StoreReview from 'expo-store-review'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Linking,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -23,6 +26,34 @@ export default function SubmitReviewScreen() {
   const styles = createStyles(colors)
   const [rating, setRating] = useState(0)
   const [review, setReview] = useState('')
+
+  // Animation refs for star scale
+  const starScaleAnims = useRef(
+    Array.from({ length: 5 }, () => new Animated.Value(1)),
+  ).current
+
+  const handleStarPress = (star: number) => {
+    // Heavy haptic feedback (testing)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+
+    // Animate star scale
+    Animated.sequence([
+      Animated.spring(starScaleAnims[star - 1], {
+        toValue: 1.3,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 10,
+      }),
+      Animated.spring(starScaleAnims[star - 1], {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 10,
+      }),
+    ]).start()
+
+    setRating(star)
+  }
 
   const handleNext = () => {
     router.push({
@@ -125,14 +156,21 @@ export default function SubmitReviewScreen() {
                 {[1, 2, 3, 4, 5].map((star) => (
                   <TouchableOpacity
                     key={star}
-                    onPress={() => setRating(star)}
+                    onPress={() => handleStarPress(star)}
                     style={styles.starButton}
+                    activeOpacity={1}
                   >
-                    <Ionicons
-                      name={star <= rating ? 'star' : 'star-outline'}
-                      size={48}
-                      color={star <= rating ? '#FFD700' : colors.border}
-                    />
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: starScaleAnims[star - 1] }],
+                      }}
+                    >
+                      <Ionicons
+                        name={star <= rating ? 'star' : 'star-outline'}
+                        size={48}
+                        color={star <= rating ? '#FFD700' : colors.border}
+                      />
+                    </Animated.View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -142,7 +180,7 @@ export default function SubmitReviewScreen() {
             {rating > 0 && (
               <View style={styles.reviewContainer}>
                 <Text style={styles.reviewLabel}>Add a comment</Text>
-                <TextInput
+                <AnimatedInput
                   style={styles.reviewInput}
                   placeholder="e.g. Great app!"
                   placeholderTextColor={colors.textSecondary}
@@ -160,20 +198,21 @@ export default function SubmitReviewScreen() {
 
         {/* Actions */}
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticButton
             style={[
               styles.submitButton,
               rating === 0 && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmitReview}
             disabled={rating === 0}
+            hapticEnabled={rating > 0}
           >
             <Text style={styles.submitButtonText}>Submit Review</Text>
-          </TouchableOpacity>
+          </HapticButton>
 
-          <TouchableOpacity style={styles.skipButton} onPress={handleNext}>
+          <HapticButton style={styles.skipButton} onPress={handleNext}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
