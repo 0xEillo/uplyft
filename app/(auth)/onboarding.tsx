@@ -635,6 +635,13 @@ export default function OnboardingScreen() {
 
             <View style={styles.stepContent}>
               <View style={styles.privacyFooter}>
+                <View style={styles.privacyIconBadge}>
+                  <Ionicons
+                    name="lock-closed"
+                    size={22}
+                    color={colors.primary}
+                  />
+                </View>
                 <Text style={styles.privacyTitle}>
                   Your privacy and security matter to us.
                 </Text>
@@ -1272,28 +1279,44 @@ const createStyles = (
       paddingHorizontal: 24,
     },
     privacyFooter: {
+      position: 'relative',
       marginHorizontal: 20,
+      marginTop: 24,
       marginBottom: 0,
-      paddingVertical: 16,
-      paddingHorizontal: 20,
+      paddingTop: 28,
+      paddingBottom: 20,
+      paddingHorizontal: 24,
       backgroundColor: colors.primary + '08',
-      borderRadius: 16,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.primary + '20',
       alignItems: 'center',
     },
+    privacyIconBadge: {
+      position: 'absolute',
+      top: -21,
+      alignSelf: 'center',
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.primary + '20',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     privacyTitle: {
-      fontSize: 15,
+      fontSize: 17,
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 6,
+      marginBottom: 8,
     },
     privacySubtitle: {
-      fontSize: 13,
+      fontSize: 15,
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 18,
+      lineHeight: 21,
       paddingHorizontal: 4,
     },
     unitToggleContainer: {
