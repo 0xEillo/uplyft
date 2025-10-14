@@ -33,7 +33,7 @@ type OnboardingData = {
   birth_day: string
   birth_month: string
   birth_year: string
-  goal: Goal | null
+  goal: Goal[]
   commitment: string | null
   bio: string
 }
@@ -43,14 +43,14 @@ export default function OnboardingScreen() {
   const [data, setData] = useState<OnboardingData>({
     name: '',
     gender: null,
-    height_cm: '',
-    height_feet: '',
-    height_inches: '',
-    weight_kg: '',
-    birth_day: '',
-    birth_month: '',
-    birth_year: '',
-    goal: null,
+    height_cm: '170',
+    height_feet: '5',
+    height_inches: '8',
+    weight_kg: '70',
+    birth_day: '1',
+    birth_month: '1',
+    birth_year: '2000',
+    goal: [],
     commitment: null,
     bio: '',
   })
@@ -254,7 +254,7 @@ export default function OnboardingScreen() {
       case 6:
         return true // Info screen
       case 7:
-        return data.goal !== null
+        return data.goal.length > 0
       case 8:
         return data.commitment !== null
       case 9:
@@ -280,7 +280,7 @@ export default function OnboardingScreen() {
               <View style={styles.featureExampleContainer}>
                 <View style={styles.featureBubble}>
                   <Text style={styles.featureBubbleText}>
-                    &ldquo;I did bench press, 3 sets of 8 reps at 185lbs&rdquo;
+                    &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
                   </Text>
                 </View>
 
@@ -288,10 +288,78 @@ export default function OnboardingScreen() {
                   <Text style={styles.featureArrowText}>↓</Text>
                 </View>
 
-                <View style={styles.featureResult}>
-                  <Text style={styles.featureResultText}>
-                    ✓ Logged instantly by your AI
-                  </Text>
+                <View style={styles.workoutGridPreview}>
+                  {/* Table Header */}
+                  <View style={styles.workoutTableHeader}>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutExerciseCol,
+                      ]}
+                    >
+                      Exercise
+                    </Text>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutSetsCol,
+                      ]}
+                    >
+                      Sets
+                    </Text>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutRepsCol,
+                      ]}
+                    >
+                      Reps
+                    </Text>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutWeightCol,
+                      ]}
+                    >
+                      Wt (lb)
+                    </Text>
+                  </View>
+                  <View style={styles.workoutHeaderDivider} />
+
+                  {/* Table Row */}
+                  <View style={styles.workoutTableRow}>
+                    <View
+                      style={[
+                        styles.workoutExerciseCol,
+                        styles.workoutExerciseCell,
+                      ]}
+                    >
+                      <Text
+                        style={styles.workoutExerciseName}
+                        numberOfLines={1}
+                      >
+                        Bench Press
+                      </Text>
+                      <View style={styles.workoutPrBadge}>
+                        <Text style={styles.workoutPrBadgeText}>PR</Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[styles.workoutTableCell, styles.workoutSetsCol]}
+                    >
+                      3
+                    </Text>
+                    <Text
+                      style={[styles.workoutTableCell, styles.workoutRepsCol]}
+                    >
+                      8
+                    </Text>
+                    <Text
+                      style={[styles.workoutTableCell, styles.workoutWeightCol]}
+                    >
+                      185
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -313,6 +381,8 @@ export default function OnboardingScreen() {
                 onChangeText={(text) => setData({ ...data, name: text })}
                 autoFocus
                 maxLength={50}
+                returnKeyType="done"
+                onSubmitEditing={handleNext}
               />
             </View>
           </View>
@@ -669,15 +739,22 @@ export default function OnboardingScreen() {
                     key={goal.value}
                     style={[
                       styles.goalButton,
-                      data.goal === goal.value && styles.goalButtonSelected,
+                      data.goal.includes(goal.value) &&
+                        styles.goalButtonSelected,
                     ]}
-                    onPress={() => setData({ ...data, goal: goal.value })}
+                    onPress={() => {
+                      const newGoals = data.goal.includes(goal.value)
+                        ? data.goal.filter((g) => g !== goal.value)
+                        : [...data.goal, goal.value]
+                      setData({ ...data, goal: newGoals })
+                    }}
                     hapticStyle="light"
                   >
                     <Text
                       style={[
                         styles.goalText,
-                        data.goal === goal.value && styles.goalTextSelected,
+                        data.goal.includes(goal.value) &&
+                          styles.goalTextSelected,
                       ]}
                     >
                       {goal.label}
@@ -729,9 +806,10 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Tell your AI about yourself</Text>
+              <Text style={styles.stepTitle}>Help train your AI assistant</Text>
               <Text style={styles.stepSubtitle}>
-                Optional - Helps personalize your experience
+                <Text style={{ fontWeight: '700' }}>Optional</Text> - Helps
+                personalize your experience
               </Text>
             </View>
 
@@ -747,6 +825,8 @@ export default function OnboardingScreen() {
                   numberOfLines={6}
                   textAlignVertical="top"
                   maxLength={500}
+                  returnKeyType="done"
+                  onSubmitEditing={handleNext}
                 />
                 <Text style={styles.characterCount}>{data.bio.length}/500</Text>
               </View>
@@ -797,6 +877,7 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
@@ -1152,8 +1233,9 @@ const createStyles = (
       textAlign: 'center',
     },
     featureExampleContainer: {
-      alignItems: 'center',
+      alignItems: 'stretch',
       marginBottom: 40,
+      paddingHorizontal: 0,
     },
     featureBubble: {
       backgroundColor: colors.primary + '15',
@@ -1163,6 +1245,7 @@ const createStyles = (
       borderWidth: 2,
       borderColor: colors.primary + '30',
       marginBottom: 16,
+      alignSelf: 'center',
     },
     featureBubbleText: {
       fontSize: 16,
@@ -1173,6 +1256,7 @@ const createStyles = (
     },
     featureArrow: {
       marginBottom: 16,
+      alignSelf: 'center',
     },
     featureArrowText: {
       fontSize: 32,
@@ -1354,5 +1438,77 @@ const createStyles = (
     imperialWeightColumn: {
       alignItems: 'center',
       width: 110,
+    },
+    workoutGridPreview: {
+      borderRadius: 12,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.white,
+    },
+    workoutTableHeader: {
+      flexDirection: 'row',
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+      backgroundColor: colors.backgroundLight,
+    },
+    workoutTableHeaderText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    workoutHeaderDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    workoutTableRow: {
+      flexDirection: 'row',
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      backgroundColor: colors.backgroundLight,
+    },
+    workoutTableCell: {
+      fontSize: 14,
+      color: colors.text,
+    },
+    workoutExerciseCol: {
+      flex: 3,
+    },
+    workoutSetsCol: {
+      flex: 1,
+      textAlign: 'center',
+    },
+    workoutRepsCol: {
+      flex: 1.5,
+      textAlign: 'center',
+    },
+    workoutWeightCol: {
+      flex: 1.5,
+      textAlign: 'right',
+    },
+    workoutExerciseName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    workoutExerciseCell: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    workoutPrBadge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginLeft: 2,
+    },
+    workoutPrBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.white,
+      letterSpacing: 0.5,
     },
   })
