@@ -1234,7 +1234,6 @@ const createStyles = (
     },
     featureExampleContainer: {
       alignItems: 'stretch',
-      marginBottom: 40,
       paddingHorizontal: 0,
     },
     featureBubble: {

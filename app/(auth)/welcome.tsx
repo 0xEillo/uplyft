@@ -2,24 +2,155 @@ import { HapticButton } from '@/components/haptic-button'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Link, router } from 'expo-router'
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useEffect } from 'react'
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+  withSpring,
+  withDecay,
+  cancelAnimation,
+  runOnJS,
+} from 'react-native-reanimated'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function WelcomeScreen() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
   const styles = createStyles(colors)
-  const logoSource = isDark
-    ? require('@/llm/repai-logo-white.png')
-    : require('@/llm/repai-logo-black.png')
+
+  const translateX = useSharedValue(0)
+  const savedOffset = useSharedValue(0)
+  const isAutoPlaying = useSharedValue(true)
+
+  const startAutoAnimation = () => {
+    translateX.value = withRepeat(
+      withSequence(
+        withDelay(
+          2500,
+          withTiming(-width, {
+            duration: 800,
+            easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
+          }),
+        ),
+        withDelay(
+          2500,
+          withTiming(0, {
+            duration: 800,
+            easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
+          }),
+        ),
+      ),
+      -1,
+      false,
+    )
+  }
+
+  useEffect(() => {
+    startAutoAnimation()
+  }, [width])
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      isAutoPlaying.value = false
+      cancelAnimation(translateX)
+      savedOffset.value = translateX.value
+    })
+    .onUpdate((event) => {
+      translateX.value = savedOffset.value + event.translationX
+    })
+    .onEnd((event) => {
+      const velocity = event.velocityX
+
+      // Use decay for momentum, then snap to nearest screen
+      translateX.value = withDecay(
+        {
+          velocity: velocity,
+          deceleration: 0.998,
+          clamp: [-width, 0],
+        },
+        (finished) => {
+          if (finished) {
+            // Snap to nearest screen
+            const currentPosition = translateX.value
+            const targetPosition = currentPosition < -width / 2 ? -width : 0
+
+            translateX.value = withSpring(targetPosition, {
+              damping: 15,
+              stiffness: 100,
+              overshootClamping: false,
+            })
+
+            savedOffset.value = targetPosition
+
+            // Restart auto-animation after 3 seconds
+            translateX.value = withDelay(3000, withSequence(
+              withTiming(translateX.value, { duration: 0 }),
+              withRepeat(
+                withSequence(
+                  withDelay(
+                    2500,
+                    withTiming(targetPosition === 0 ? -width : 0, {
+                      duration: 800,
+                      easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
+                    }),
+                  ),
+                  withDelay(
+                    2500,
+                    withTiming(targetPosition === 0 ? 0 : -width, {
+                      duration: 800,
+                      easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
+                    }),
+                  ),
+                ),
+                -1,
+                false,
+              ),
+            ))
+          }
+        }
+      )
+    })
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+    }
+  })
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Logo & Title */}
-        <View style={styles.header}>
-          <Image source={logoSource} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.title}>Rep AI</Text>
+        {/* Hero Image */}
+        <View style={[styles.header, { width }]}>
+          <GestureDetector gesture={panGesture}>
+            <Animated.View style={[styles.imageContainer, animatedStyle]}>
+              <Image
+                source={require('@/docs/notes-screen.png')}
+                style={[styles.heroImage, { width }]}
+                resizeMode="contain"
+              />
+              <Image
+                source={require('@/docs/workout-screen.png')}
+                style={[styles.heroImage, { width }]}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          </GestureDetector>
         </View>
 
         {/* Hook & CTA */}
@@ -53,36 +184,34 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     content: {
       flex: 1,
-      paddingHorizontal: 32,
-      justifyContent: 'space-between',
-      paddingVertical: 48,
     },
     header: {
+      height: '62%',
+      alignItems: 'flex-start',
+      justifyContent: 'flex-start',
+      paddingTop: 24,
+      overflow: 'hidden',
+    },
+    imageContainer: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 96,
+      height: '100%',
     },
-    logo: {
-      width: 76,
-      height: 76,
-      marginRight: 0,
-    },
-    title: {
-      fontSize: 48,
-      fontWeight: '700',
-      color: colors.text,
-      marginTop: 0,
+    heroImage: {
+      height: '100%',
     },
     subtitle: {
-      fontSize: 26,
-      color: '#d5d5d5',
-      fontWeight: '500',
-      marginTop: 0,
+      fontSize: 30,
+      color: colors.text,
+      fontWeight: '700',
+      marginTop: 20,
+      marginBottom: 10,
       textAlign: 'center',
     },
     actions: {
       gap: 16,
+      paddingHorizontal: 32,
+      paddingTop: 64,
+      paddingBottom: 48,
     },
     signInRow: {
       flexDirection: 'row',

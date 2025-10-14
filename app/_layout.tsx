@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { PostHogProvider } from 'posthog-react-native'
 import Constants from 'expo-constants'
 
@@ -64,27 +65,29 @@ export default function RootLayout() {
     'https://us.i.posthog.com'
 
   return (
-    <PostHogProvider
-      apiKey={posthogApiKey || ''}
-      options={{
-        host: posthogHost,
-        // Enable autocapture for automatic event tracking
-        captureMode: 'screen',
-      }}
-    >
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <UnitProvider>
-            <AuthProvider>
-              <AnalyticsProvider>
-                <PostsProvider>
-                  <RootLayoutNav />
-                </PostsProvider>
-              </AnalyticsProvider>
-            </AuthProvider>
-          </UnitProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </PostHogProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PostHogProvider
+        apiKey={posthogApiKey || ''}
+        options={{
+          host: posthogHost,
+          // Enable autocapture for automatic event tracking
+          captureMode: 'screen',
+        }}
+      >
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <UnitProvider>
+              <AuthProvider>
+                <AnalyticsProvider>
+                  <PostsProvider>
+                    <RootLayoutNav />
+                  </PostsProvider>
+                </AnalyticsProvider>
+              </AuthProvider>
+            </UnitProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </PostHogProvider>
+    </GestureHandlerRootView>
   )
 }
