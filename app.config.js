@@ -13,6 +13,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription:
           'This app needs access to your microphone to record workout notes via voice.',
         NSCameraUsageDescription:
