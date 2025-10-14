@@ -1,12 +1,13 @@
+import { HapticButton } from '@/components/haptic-button'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Animated,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -37,6 +38,9 @@ export default function CongratulationsScreen() {
   const userName = onboardingData?.name || 'Champion'
 
   useEffect(() => {
+    // Success haptic when screen appears
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+
     // Animate entrance
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -161,7 +165,7 @@ export default function CongratulationsScreen() {
 
         {/* Continue Button */}
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticButton
             style={styles.continueButton}
             onPress={handleContinue}
           >
@@ -171,7 +175,7 @@ export default function CongratulationsScreen() {
               size={20}
               color={colors.buttonText}
             />
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </View>
     </SafeAreaView>

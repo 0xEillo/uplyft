@@ -1,3 +1,5 @@
+import { AnimatedInput } from '@/components/animated-input'
+import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -14,7 +16,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -157,7 +158,7 @@ export default function SignupScreen() {
 
           {/* Form */}
           <View style={styles.form}>
-            <TextInput
+            <AnimatedInput
               style={styles.input}
               placeholder="Email"
               placeholderTextColor={colors.textSecondary}
@@ -167,7 +168,7 @@ export default function SignupScreen() {
               keyboardType="email-address"
               editable={!isLoading}
             />
-            <TextInput
+            <AnimatedInput
               style={styles.input}
               placeholder="Password"
               placeholderTextColor={colors.textSecondary}
@@ -176,7 +177,7 @@ export default function SignupScreen() {
               secureTextEntry
               editable={!isLoading}
             />
-            <TextInput
+            <AnimatedInput
               style={styles.input}
               placeholder="Confirm Password"
               placeholderTextColor={colors.textSecondary}
@@ -186,17 +187,18 @@ export default function SignupScreen() {
               editable={!isLoading}
             />
 
-            <TouchableOpacity
+            <HapticButton
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleSignup}
               disabled={isLoading}
+              hapticEnabled={!isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color={colors.buttonText} />
               ) : (
                 <Text style={styles.buttonText}>Sign Up</Text>
               )}
-            </TouchableOpacity>
+            </HapticButton>
 
             {/* Separator */}
             <View style={styles.separator}>
@@ -206,13 +208,14 @@ export default function SignupScreen() {
             </View>
 
             {/* Google Sign Up */}
-            <TouchableOpacity
+            <HapticButton
               style={[
                 styles.googleButton,
                 isGoogleLoading && styles.buttonDisabled,
               ]}
               onPress={handleGoogleSignup}
               disabled={isGoogleLoading}
+              hapticEnabled={!isGoogleLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator color={colors.text} />
@@ -224,7 +227,7 @@ export default function SignupScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </HapticButton>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>

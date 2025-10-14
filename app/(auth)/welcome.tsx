@@ -1,3 +1,4 @@
+import { HapticButton } from '@/components/haptic-button'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Link, router } from 'expo-router'
@@ -24,12 +25,12 @@ export default function WelcomeScreen() {
         {/* Hook & CTA */}
         <View style={styles.actions}>
           <Text style={styles.subtitle}>Workout tracking made easy</Text>
-          <TouchableOpacity
+          <HapticButton
             style={styles.getStartedButton}
             onPress={() => router.push('/(auth)/onboarding')}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
-          </TouchableOpacity>
+          </HapticButton>
           <View style={styles.signInRow}>
             <Text style={styles.signInPrompt}>Already have an account? </Text>
             <Link href="/(auth)/login" asChild>
