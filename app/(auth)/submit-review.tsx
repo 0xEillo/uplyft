@@ -66,7 +66,7 @@ export default function SubmitReviewScreen() {
           const APP_STORE_ID = 'YOUR_APP_STORE_ID'
           storeUrl = `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}?action=write-review`
         } else {
-          const PACKAGE_NAME = 'com.anonymous.repai'
+          const PACKAGE_NAME = 'com.viralstudio.repai'
           storeUrl = `market://details?id=${PACKAGE_NAME}`
         }
 

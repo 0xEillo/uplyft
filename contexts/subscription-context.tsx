@@ -37,8 +37,22 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initRevenueCat = async () => {
       try {
+        // Check if running in Expo Go (not supported)
+        const isExpoGo = Constants.appOwnership === 'expo'
+        if (isExpoGo) {
+          console.warn(
+            '[RevenueCat] Running in Expo Go - RevenueCat requires a development build. Skipping initialization.',
+          )
+          setIsLoading(false)
+          return
+        }
+
         // Set log level for debugging (set to ERROR in production)
         Purchases.setLogLevel(LOG_LEVEL.DEBUG)
+
+        // Debug: Log what we're loading
+        console.log('[RevenueCat] Platform:', Platform.OS)
+        console.log('[RevenueCat] Constants.expoConfig?.extra:', Constants.expoConfig?.extra)
 
         // Get API keys from config
         const appleApiKey = Constants.expoConfig?.extra
@@ -46,20 +60,37 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         const googleApiKey = Constants.expoConfig?.extra
           ?.revenueCatGoogleApiKey as string | undefined
 
-        // Configure for the appropriate platform
-        if (Platform.OS === 'ios' && appleApiKey) {
-          await Purchases.configure({ apiKey: appleApiKey })
-        } else if (Platform.OS === 'android' && googleApiKey) {
-          await Purchases.configure({ apiKey: googleApiKey })
-        } else {
-          console.warn('[RevenueCat] No API key configured for this platform')
+        // Debug: Log API key info (masked for security)
+        console.log('[RevenueCat] Apple API Key loaded:', appleApiKey ? `${appleApiKey.substring(0, 10)}...` : 'MISSING')
+        console.log('[RevenueCat] Google API Key loaded:', googleApiKey ? `${googleApiKey.substring(0, 10)}...` : 'MISSING')
+
+        // Validate API key exists
+        if (Platform.OS === 'ios' && !appleApiKey) {
+          console.warn('[RevenueCat] No Apple API key configured')
+          setIsLoading(false)
+          return
+        }
+        if (Platform.OS === 'android' && !googleApiKey) {
+          console.warn('[RevenueCat] No Google API key configured')
           setIsLoading(false)
           return
         }
 
+        // Configure for the appropriate platform
+        if (Platform.OS === 'ios' && appleApiKey) {
+          console.log('[RevenueCat] Configuring with Apple key')
+          await Purchases.configure({ apiKey: appleApiKey })
+        } else if (Platform.OS === 'android' && googleApiKey) {
+          console.log('[RevenueCat] Configuring with Google key')
+          await Purchases.configure({ apiKey: googleApiKey })
+        }
+
+        console.log('[RevenueCat] SDK configured successfully')
+
         // Set user ID if available
         if (user?.id) {
           await Purchases.logIn(user.id)
+          console.log('[RevenueCat] User logged in:', user.id)
         }
 
         // Fetch initial customer info and offerings
@@ -70,6 +101,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
         setCustomerInfo(info)
         setOfferings(currentOfferings.current)
+        console.log('[RevenueCat] Initialization complete')
       } catch (error) {
         console.error('[RevenueCat] Initialization error:', error)
       } finally {
