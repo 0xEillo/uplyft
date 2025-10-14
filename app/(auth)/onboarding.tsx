@@ -1,4 +1,4 @@
-import { GENDERS, GOALS } from '@/constants/options'
+import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -31,6 +31,7 @@ type OnboardingData = {
   birth_month: string
   birth_year: string
   goal: Goal | null
+  commitment: string | null
   bio: string
 }
 
@@ -47,6 +48,7 @@ export default function OnboardingScreen() {
     birth_month: '',
     birth_year: '',
     goal: null,
+    commitment: null,
     bio: '',
   })
   const colors = useThemedColors()
@@ -59,7 +61,7 @@ export default function OnboardingScreen() {
       step,
     })
 
-    if (step < 8) {
+    if (step < 9) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -104,6 +106,7 @@ export default function OnboardingScreen() {
               : null,
             age: age,
             goal: data.goal,
+            commitment: data.commitment,
             bio: data.bio.trim() || null,
           }),
         },
@@ -187,6 +190,8 @@ export default function OnboardingScreen() {
       case 7:
         return data.goal !== null
       case 8:
+        return data.commitment !== null
+      case 9:
         return true // Optional step
       default:
         return false
@@ -585,7 +590,7 @@ export default function OnboardingScreen() {
                 >
                   <Ionicons
                     name={goal.icon}
-                    size={32}
+                    size={28}
                     color={
                       data.goal === goal.value
                         ? colors.buttonText
@@ -606,6 +611,49 @@ export default function OnboardingScreen() {
           </View>
         )
       case 8:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Ionicons name="calendar" size={48} color={colors.primary} />
+              <Text style={styles.stepTitle}>How often do you work out?</Text>
+            </View>
+            <View style={styles.optionsContainer}>
+              {COMMITMENTS.map((commitment) => (
+                <TouchableOpacity
+                  key={commitment.value}
+                  style={[
+                    styles.goalButton,
+                    data.commitment === commitment.value &&
+                      styles.goalButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setData({ ...data, commitment: commitment.value })
+                  }
+                >
+                  <Ionicons
+                    name={commitment.icon}
+                    size={28}
+                    color={
+                      data.commitment === commitment.value
+                        ? colors.buttonText
+                        : colors.primary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.goalText,
+                      data.commitment === commitment.value &&
+                        styles.goalTextSelected,
+                    ]}
+                  >
+                    {commitment.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )
+      case 9:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -641,7 +689,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
               <View
                 key={i}
                 style={[
@@ -818,14 +866,14 @@ const createStyles = (
       textAlign: 'center',
     },
     goalButton: {
-      height: 80,
+      height: 64,
       borderWidth: 2,
       borderColor: colors.border,
       borderRadius: 12,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 16,
+      gap: 12,
       backgroundColor: colors.background,
     },
     goalButtonSelected: {
@@ -833,7 +881,7 @@ const createStyles = (
       backgroundColor: colors.primary,
     },
     goalText: {
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '600',
       color: colors.text,
     },
