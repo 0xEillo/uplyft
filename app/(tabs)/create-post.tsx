@@ -4,10 +4,12 @@ import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { database } from '@/lib/database'
+import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
+import * as Haptics from 'expo-haptics'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert,
@@ -82,8 +84,16 @@ export default function CreatePostScreen() {
   const [showExamples, setShowExamples] = useState(true)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
+  const buttonScaleAnim = useRef(new Animated.Value(1)).current
+
+  // Page opening animation - like lifting a notepad or opening a book
+  const pageSlideAnim = useRef(new Animated.Value(100)).current // Start below screen
+  const pageScaleAnim = useRef(new Animated.Value(0.94)).current // Start slightly smaller
+  const pageOpacityAnim = useRef(new Animated.Value(0)).current // Start transparent
+
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const latestNotes = useRef('')
@@ -171,6 +181,38 @@ export default function CreatePostScreen() {
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
+      // Reset animation values
+      pageSlideAnim.setValue(100)
+      pageScaleAnim.setValue(0.94)
+      pageOpacityAnim.setValue(0)
+
+      // Light haptic feedback when page opens
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+      // Elegant page opening animation - like lifting a notepad
+      Animated.parallel([
+        // Slide up from below
+        Animated.spring(pageSlideAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        // Scale up to full size
+        Animated.spring(pageScaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        // Fade in
+        Animated.timing(pageOpacityAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start()
+
       // Blur inputs immediately on focus
       blurInputs()
 
@@ -210,7 +252,7 @@ export default function CreatePostScreen() {
         interactionHandle.cancel?.()
         blurInputs()
       }
-    }, [blurInputs, trackEvent]),
+    }, [blurInputs, trackEvent, pageSlideAnim, pageScaleAnim, pageOpacityAnim]),
   )
 
   // Blur inputs when component unmounts
@@ -300,8 +342,14 @@ export default function CreatePostScreen() {
   }
 
   const handlePickImage = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     blurInputs()
     await pickImage()
+  }
+
+  const handleToggleRecording = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    await toggleRecording()
   }
 
   const spin = spinValue.interpolate({
@@ -312,6 +360,25 @@ export default function CreatePostScreen() {
   const submitWorkout = async () => {
     try {
       setIsLoading(true)
+
+      // Haptic feedback for button press
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+      // Animate button press
+      Animated.sequence([
+        Animated.timing(buttonScaleAnim, {
+          toValue: 0.92,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(buttonScaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+      ]).start()
+
       // Store pending post data
       await AsyncStorage.setItem(
         PENDING_POST_KEY,
@@ -330,13 +397,22 @@ export default function CreatePostScreen() {
       // Don't clear draft yet - keep it until workout successfully posts
       // This way if submission fails, user can edit and retry
 
-      // Navigate to feed immediately
-      setNotes('')
-      setWorkoutTitle('')
-      blurInputs()
-      router.back()
+      // Show success overlay
+      setShowSuccessOverlay(true)
+
+      // Haptic success feedback
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+
+      // Wait for user to see success, then navigate during page turn
+      setTimeout(() => {
+        setNotes('')
+        setWorkoutTitle('')
+        blurInputs()
+        router.back()
+      }, 1500) // Success visible 1000ms, navigate mid-page-turn for smooth reveal
     } catch (error) {
       console.error('Error saving pending post:', error)
+      setShowSuccessOverlay(false)
       Alert.alert(
         'Save Failed',
         'Unable to save your workout. Please try again.',
@@ -411,11 +487,21 @@ export default function CreatePostScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+      <Animated.View
+        style={{
+          flex: 1,
+          transform: [
+            { translateY: pageSlideAnim },
+            { scale: pageScaleAnim },
+          ],
+          opacity: pageOpacityAnim,
+        }}
       >
-        <View style={styles.header}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <View style={styles.header}>
           <TouchableOpacity
             onPress={handleCancel}
             style={styles.headerButton}
@@ -439,16 +525,15 @@ export default function CreatePostScreen() {
             onPress={handlePost}
             style={[styles.headerButton, styles.primaryButton]}
             disabled={isLoading}
+            activeOpacity={0.8}
           >
-            {isLoading ? (
-              <Ionicons
-                name="hourglass-outline"
-                size={28}
-                color={colors.white}
-              />
-            ) : (
+            <Animated.View
+              style={{
+                transform: [{ scale: buttonScaleAnim }],
+              }}
+            >
               <Ionicons name="checkmark" size={28} color={colors.white} />
-            )}
+            </Animated.View>
           </TouchableOpacity>
         </View>
 
@@ -521,7 +606,7 @@ export default function CreatePostScreen() {
         {/* Floating Microphone Button */}
         <TouchableOpacity
           style={[styles.micFab, isRecording && styles.micFabActive]}
-          onPress={toggleRecording}
+          onPress={handleToggleRecording}
           disabled={isTranscribing || isLoading || isProcessingImage}
         >
           {isTranscribing ? (
@@ -558,6 +643,13 @@ export default function CreatePostScreen() {
           )}
         </TouchableOpacity>
       </KeyboardAvoidingView>
+      </Animated.View>
+
+      {/* Success Overlay - outside animated view to cover entire screen */}
+      <SubmitSuccessOverlay
+        visible={showSuccessOverlay}
+        onAnimationComplete={() => setShowSuccessOverlay(false)}
+      />
     </SafeAreaView>
   )
 }
