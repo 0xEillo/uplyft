@@ -57,10 +57,9 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const posthogApiKey = Constants.expoConfig?.extra?.posthogApiKey as
-    | string
-    | undefined
-  const posthogHost =
+  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
+    (Constants.expoConfig?.extra?.posthogApiKey as string | undefined)
+  const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST ||
     (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
     'https://us.i.posthog.com'
 
