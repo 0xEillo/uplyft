@@ -27,7 +27,7 @@ type OnboardingData = {
   height_cm: number | null
   weight_kg: number | null
   age: number | null
-  goal: Goal | null
+  goal: Goal[]
   commitment: string | null
   bio: string | null
 }
@@ -82,7 +82,7 @@ export default function SignupPasswordScreen() {
             height_cm: onboardingData.height_cm,
             weight_kg: onboardingData.weight_kg,
             age: onboardingData.age,
-            goal: onboardingData.goal,
+            goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
             commitment: onboardingData.commitment,
             bio: onboardingData.bio,
           })

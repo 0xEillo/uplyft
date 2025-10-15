@@ -11,6 +11,7 @@ import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,7 +25,7 @@ type OnboardingData = {
   height_cm: number | null
   weight_kg: number | null
   age: number | null
-  goal: Goal | null
+  goal: Goal[]
   commitment: string | null
   bio: string | null
 }
@@ -33,13 +34,69 @@ export default function SignupOptionsScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const { signInWithGoogle, user } = useAuth()
+  const { signInWithGoogle, signInWithApple, user } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isAppleLoading, setIsAppleLoading] = useState(false)
 
   // Parse onboarding data from params
   const onboardingData: OnboardingData | null = params.onboarding_data
     ? JSON.parse(params.onboarding_data as string)
     : null
+
+  const handleAppleSignup = async () => {
+    setIsAppleLoading(true)
+    try {
+      await signInWithApple()
+
+      // After Apple signup, update profile with onboarding data
+      // Get the current user from supabase since it might take a moment to update
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser()
+
+      if (currentUser && onboardingData) {
+        try {
+          // Generate a unique user_tag based on the display name
+          const userTag = await database.profiles.generateUniqueUserTag(
+            onboardingData.name,
+          )
+
+          await database.profiles.update(currentUser.id, {
+            user_tag: userTag,
+            display_name: onboardingData.name,
+            gender: onboardingData.gender,
+            height_cm: onboardingData.height_cm,
+            weight_kg: onboardingData.weight_kg,
+            age: onboardingData.age,
+            goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
+            commitment: onboardingData.commitment,
+            bio: onboardingData.bio,
+          })
+        } catch (profileError) {
+          console.error(
+            'Error updating profile with onboarding data:',
+            profileError,
+          )
+          // Don't fail the signup if profile update fails
+        }
+      }
+
+      // Navigate to congratulations
+      router.replace({
+        pathname: '/(auth)/congratulations',
+        params: {
+          onboarding_data: params.onboarding_data as string,
+        },
+      })
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to sign up with Apple',
+      )
+    } finally {
+      setIsAppleLoading(false)
+    }
+  }
 
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true)
@@ -66,7 +123,7 @@ export default function SignupOptionsScreen() {
             height_cm: onboardingData.height_cm,
             weight_kg: onboardingData.weight_kg,
             age: onboardingData.age,
-            goal: onboardingData.goal,
+            goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
             commitment: onboardingData.commitment,
             bio: onboardingData.bio,
           })
@@ -132,6 +189,29 @@ export default function SignupOptionsScreen() {
 
             <View style={styles.buttonsWrapper}>
               <View style={styles.stepContent}>
+                {Platform.OS === 'ios' && (
+                  <HapticButton
+                    style={[
+                      styles.appleButton,
+                      isAppleLoading && styles.buttonDisabled,
+                    ]}
+                    onPress={handleAppleSignup}
+                    disabled={isAppleLoading}
+                    hapticEnabled={!isAppleLoading}
+                  >
+                    {isAppleLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                        <Text style={styles.appleButtonText}>
+                          Sign up with Apple
+                        </Text>
+                      </>
+                    )}
+                  </HapticButton>
+                )}
+
                 <HapticButton
                   style={[
                     styles.googleButton,
@@ -160,8 +240,8 @@ export default function SignupOptionsScreen() {
                 <HapticButton
                   style={styles.emailButton}
                   onPress={handleEmailSignup}
-                  disabled={isGoogleLoading}
-                  hapticEnabled={!isGoogleLoading}
+                  disabled={isGoogleLoading || isAppleLoading}
+                  hapticEnabled={!isGoogleLoading && !isAppleLoading}
                 >
                   <Ionicons
                     name="mail-outline"
@@ -234,6 +314,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     stepContent: {
       gap: 16,
+    },
+    appleButton: {
+      height: 64,
+      backgroundColor: '#000000',
+      borderRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+    },
+    appleButtonText: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '600',
     },
     googleButton: {
       height: 64,

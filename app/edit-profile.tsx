@@ -31,7 +31,7 @@ export default function EditProfileScreen() {
   const [editedHeight, setEditedHeight] = useState('')
   const [editedWeight, setEditedWeight] = useState('')
   const [editedAge, setEditedAge] = useState('')
-  const [editedGoal, setEditedGoal] = useState<Goal | null>(null)
+  const [editedGoals, setEditedGoals] = useState<Goal[]>([])
   const [editedCommitment, setEditedCommitment] = useState<string | null>(null)
   const [editedBio, setEditedBio] = useState('')
 
@@ -51,7 +51,7 @@ export default function EditProfileScreen() {
           : '',
       )
       setEditedAge(profile?.age?.toString() || '')
-      setEditedGoal(profile?.goal || null)
+      setEditedGoals(profile?.goals || [])
       setEditedCommitment(profile?.commitment || null)
       setEditedBio(profile?.bio || '')
     } catch (error) {
@@ -79,7 +79,7 @@ export default function EditProfileScreen() {
           ? convertInputToKg(parseFloat(editedWeight))
           : null,
         age: editedAge ? parseInt(editedAge) : null,
-        goal: editedGoal,
+        goals: editedGoals.length > 0 ? editedGoals : null,
         commitment: editedCommitment,
         bio: editedBio.trim() || null,
       })
@@ -199,21 +199,26 @@ export default function EditProfileScreen() {
 
         {/* Goal Selection */}
         <View style={styles.section}>
-          <Text style={styles.label}>Goal</Text>
+          <Text style={styles.label}>Goals (select all that apply)</Text>
           <View style={styles.goalOptions}>
             {GOALS.map((goal) => (
               <TouchableOpacity
                 key={goal.value}
                 style={[
                   styles.goalOption,
-                  editedGoal === goal.value && styles.goalOptionSelected,
+                  editedGoals.includes(goal.value) && styles.goalOptionSelected,
                 ]}
-                onPress={() => setEditedGoal(goal.value)}
+                onPress={() => {
+                  const newGoals = editedGoals.includes(goal.value)
+                    ? editedGoals.filter((g) => g !== goal.value)
+                    : [...editedGoals, goal.value]
+                  setEditedGoals(newGoals)
+                }}
               >
                 <Text
                   style={[
                     styles.goalOptionText,
-                    editedGoal === goal.value && styles.goalOptionTextSelected,
+                    editedGoals.includes(goal.value) && styles.goalOptionTextSelected,
                   ]}
                 >
                   {goal.label}

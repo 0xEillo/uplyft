@@ -1,7 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import * as Crypto from 'expo-crypto'
 import * as WebBrowser from 'expo-web-browser'
 import { usePostHog } from 'posthog-react-native'
+import { Platform } from 'react-native'
 import React, {
   createContext,
   ReactNode,
@@ -19,6 +22,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ userId: string }>
   signIn: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
+  signInWithApple: () => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -145,6 +149,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const signInWithApple = async () => {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign-In is only available on iOS')
+    }
+
+    console.log('=== Apple Sign-In Debug ===')
+
+    try {
+      // Generate and hash nonce
+      const nonce = Math.random().toString(36).substring(2, 10)
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        nonce,
+      )
+
+      console.log('Generated nonce for Apple auth')
+
+      // Request Apple authentication
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      })
+
+      console.log('Apple credential received')
+
+      if (!credential.identityToken) {
+        throw new Error('No identity token received from Apple')
+      }
+
+      // Sign in to Supabase with Apple token
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce,
+      })
+
+      if (error) {
+        console.log('Supabase Apple auth error:', error)
+        throw error
+      }
+
+      console.log('Successfully authenticated with Apple')
+
+      posthog?.capture('Auth Login', {
+        method: 'apple',
+      })
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        throw new Error('Sign in cancelled')
+      } else {
+        console.log('Apple Sign-In error:', e)
+        throw e
+      }
+    }
+  }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -164,6 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signIn,
         signInWithGoogle,
+        signInWithApple,
         signOut,
       }}
     >

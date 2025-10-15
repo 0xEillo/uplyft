@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -31,8 +32,9 @@ export function SignInBottomSheet({
 }: SignInBottomSheetProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, signInWithApple } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isAppleLoading, setIsAppleLoading] = useState(false)
 
   const translateY = useSharedValue(400)
   const backdropOpacity = useSharedValue(0)
@@ -57,6 +59,22 @@ export function SignInBottomSheet({
   const animatedBackdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }))
+
+  const handleAppleSignIn = async () => {
+    setIsAppleLoading(true)
+    try {
+      await signInWithApple()
+      onClose()
+      router.replace('/(tabs)')
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to sign in with Apple',
+      )
+    } finally {
+      setIsAppleLoading(false)
+    }
+  }
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
@@ -97,6 +115,29 @@ export function SignInBottomSheet({
 
           {/* Buttons */}
           <View style={styles.buttonsContainer}>
+            {Platform.OS === 'ios' && (
+              <HapticButton
+                style={[
+                  styles.appleButton,
+                  isAppleLoading && styles.buttonDisabled,
+                ]}
+                onPress={handleAppleSignIn}
+                disabled={isAppleLoading}
+                hapticEnabled={!isAppleLoading}
+              >
+                {isAppleLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                    <Text style={styles.appleButtonText}>
+                      Sign in with Apple
+                    </Text>
+                  </>
+                )}
+              </HapticButton>
+            )}
+
             <HapticButton
               style={[
                 styles.googleButton,
@@ -167,6 +208,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     buttonsContainer: {
       gap: 12,
+    },
+    appleButton: {
+      height: 56,
+      backgroundColor: '#000000',
+      borderRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+    },
+    appleButtonText: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '600',
     },
     googleButton: {
       height: 56,
