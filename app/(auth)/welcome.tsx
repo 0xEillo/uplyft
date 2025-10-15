@@ -1,8 +1,9 @@
 import { HapticButton } from '@/components/haptic-button'
+import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { Link, router } from 'expo-router'
-import { useEffect } from 'react'
+import { router } from 'expo-router'
+import { useEffect, useState } from 'react'
 import {
   Image,
   StyleSheet,
@@ -31,6 +32,7 @@ export default function WelcomeScreen() {
   const { isDark } = useTheme()
   const { width } = useWindowDimensions()
   const styles = createStyles(colors)
+  const [showSignInSheet, setShowSignInSheet] = useState(false)
 
   const translateX = useSharedValue(0)
   const savedOffset = useSharedValue(0)
@@ -166,14 +168,17 @@ export default function WelcomeScreen() {
           </HapticButton>
           <View style={styles.signInRow}>
             <Text style={styles.signInPrompt}>Already have an account? </Text>
-            <Link href="/(auth)/login" asChild>
-              <TouchableOpacity>
-                <Text style={styles.signInLink}>Sign in</Text>
-              </TouchableOpacity>
-            </Link>
+            <TouchableOpacity onPress={() => setShowSignInSheet(true)}>
+              <Text style={styles.signInLink}>Sign in</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
+
+      <SignInBottomSheet
+        visible={showSignInSheet}
+        onClose={() => setShowSignInSheet(false)}
+      />
     </SafeAreaView>
   )
 }

@@ -10,10 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to your microphone to record workout notes via voice.",
         "NSCameraUsageDescription": "This app needs access to your camera to take photos of your workout notes.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select workout images."
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select workout images.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.viralstudio.repai"
     },
@@ -61,7 +63,10 @@
     "extra": {
       "router": {},
       "posthogApiKey": "${POSTHOG_API_KEY}",
-      "posthogHost": "${POSTHOG_HOST:-https://us.i.posthog.com}"
+      "posthogHost": "${POSTHOG_HOST:-https://us.i.posthog.com}",
+      "eas": {
+        "projectId": "d92cf9e6-0901-4a68-9f50-741decd5c10f"
+      }
     }
   }
 }

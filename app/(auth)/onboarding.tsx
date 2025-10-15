@@ -152,9 +152,9 @@ export default function OnboardingScreen() {
         heightCm = (feet * 12 + inches) * 2.54
       }
 
-      // Navigate to congratulations screen with onboarding data
+      // Navigate to signup options screen with onboarding data
       router.push({
-        pathname: '/(auth)/congratulations',
+        pathname: '/(auth)/signup-options',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,
