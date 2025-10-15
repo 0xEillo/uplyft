@@ -110,7 +110,7 @@ export default function SignupPasswordScreen() {
           [
             {
               text: 'OK',
-              onPress: () => router.replace('/(auth)/login'),
+              onPress: () => router.replace('/(auth)/welcome'),
             },
           ],
         )

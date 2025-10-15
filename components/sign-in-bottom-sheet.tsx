@@ -63,12 +63,12 @@ export function SignInBottomSheet({
   const handleAppleSignIn = async () => {
     setIsAppleLoading(true)
     try {
-      await signInWithApple()
+      await signInWithApple(true)
       onClose()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Error',
+        'Sign In Failed',
         error instanceof Error ? error.message : 'Failed to sign in with Apple',
       )
     } finally {
@@ -79,12 +79,12 @@ export function SignInBottomSheet({
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
     try {
-      await signInWithGoogle()
+      await signInWithGoogle(true)
       onClose()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Error',
+        'Sign In Failed',
         error instanceof Error
           ? error.message
           : 'Failed to sign in with Google',

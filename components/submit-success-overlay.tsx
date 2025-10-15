@@ -124,6 +124,9 @@ export function SubmitSuccessOverlay({
         styles.overlay,
         {
           opacity: fadeAnim,
+          backgroundColor: isDark
+            ? 'rgba(18, 18, 18, 0.95)'
+            : 'rgba(255, 255, 255, 0.95)',
         },
       ]}
       pointerEvents="none"
@@ -206,7 +209,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       left: 0,
       width: SCREEN_WIDTH,
       height: SCREEN_HEIGHT + 200, // Extra height to cover all areas
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 9999,

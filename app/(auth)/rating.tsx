@@ -13,7 +13,7 @@ export default function RatingScreen() {
 
   const handleNext = () => {
     router.push({
-      pathname: '/(auth)/signup',
+      pathname: '/(auth)/signup-options',
       params: {
         onboarding_data: params.onboarding_data as string,
       },
