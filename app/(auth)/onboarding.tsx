@@ -152,9 +152,9 @@ export default function OnboardingScreen() {
         heightCm = (feet * 12 + inches) * 2.54
       }
 
-      // Navigate to congratulations screen with onboarding data
+      // Navigate to rating screen with onboarding data
       router.push({
-        pathname: '/(auth)/congratulations',
+        pathname: '/(auth)/rating',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,
@@ -272,93 +272,101 @@ export default function OnboardingScreen() {
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>Log workouts in seconds</Text>
               <Text style={styles.stepSubtitle}>
-                Use notes, camera, or voice to log your workouts
+                Use <Text style={styles.stepSubtitleBold}>notes</Text>,{' '}
+                <Text style={styles.stepSubtitleBold}>camera</Text>, or{' '}
+                <Text style={styles.stepSubtitleBold}>voice</Text> to log your
+                workouts
               </Text>
             </View>
 
             <View style={styles.stepContent}>
               <View style={styles.featureExampleContainer}>
-                <View style={styles.featureBubble}>
-                  <Text style={styles.featureBubbleText}>
-                    &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
-                  </Text>
-                </View>
-
-                <View style={styles.featureArrow}>
-                  <Text style={styles.featureArrowText}>↓</Text>
-                </View>
-
-                <View style={styles.workoutGridPreview}>
-                  {/* Table Header */}
-                  <View style={styles.workoutTableHeader}>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutExerciseCol,
-                      ]}
-                    >
-                      Exercise
-                    </Text>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutSetsCol,
-                      ]}
-                    >
-                      Sets
-                    </Text>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutRepsCol,
-                      ]}
-                    >
-                      Reps
-                    </Text>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutWeightCol,
-                      ]}
-                    >
-                      Wt (lb)
+                <View style={styles.featureExampleContent}>
+                  <View style={styles.featureBubble}>
+                    <Text style={styles.featureBubbleText}>
+                      &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
                     </Text>
                   </View>
-                  <View style={styles.workoutHeaderDivider} />
 
-                  {/* Table Row */}
-                  <View style={styles.workoutTableRow}>
-                    <View
-                      style={[
-                        styles.workoutExerciseCol,
-                        styles.workoutExerciseCell,
-                      ]}
-                    >
+                  <View style={styles.featureArrow}>
+                    <Text style={styles.featureArrowText}>↓</Text>
+                  </View>
+
+                  <View style={styles.workoutGridPreview}>
+                    {/* Table Header */}
+                    <View style={styles.workoutTableHeader}>
                       <Text
-                        style={styles.workoutExerciseName}
-                        numberOfLines={1}
+                        style={[
+                          styles.workoutTableHeaderText,
+                          styles.workoutExerciseCol,
+                        ]}
                       >
-                        Bench Press
+                        Exercise
                       </Text>
-                      <View style={styles.workoutPrBadge}>
-                        <Text style={styles.workoutPrBadgeText}>PR</Text>
-                      </View>
+                      <Text
+                        style={[
+                          styles.workoutTableHeaderText,
+                          styles.workoutSetsCol,
+                        ]}
+                      >
+                        Sets
+                      </Text>
+                      <Text
+                        style={[
+                          styles.workoutTableHeaderText,
+                          styles.workoutRepsCol,
+                        ]}
+                      >
+                        Reps
+                      </Text>
+                      <Text
+                        style={[
+                          styles.workoutTableHeaderText,
+                          styles.workoutWeightCol,
+                        ]}
+                      >
+                        Wt (lb)
+                      </Text>
                     </View>
-                    <Text
-                      style={[styles.workoutTableCell, styles.workoutSetsCol]}
-                    >
-                      3
-                    </Text>
-                    <Text
-                      style={[styles.workoutTableCell, styles.workoutRepsCol]}
-                    >
-                      8
-                    </Text>
-                    <Text
-                      style={[styles.workoutTableCell, styles.workoutWeightCol]}
-                    >
-                      185
-                    </Text>
+                    <View style={styles.workoutHeaderDivider} />
+
+                    {/* Table Row */}
+                    <View style={styles.workoutTableRow}>
+                      <View
+                        style={[
+                          styles.workoutExerciseCol,
+                          styles.workoutExerciseCell,
+                        ]}
+                      >
+                        <Text
+                          style={styles.workoutExerciseName}
+                          numberOfLines={1}
+                        >
+                          Bench Press
+                        </Text>
+                        <View style={styles.workoutPrBadge}>
+                          <Text style={styles.workoutPrBadgeText}>PR</Text>
+                        </View>
+                      </View>
+                      <Text
+                        style={[styles.workoutTableCell, styles.workoutSetsCol]}
+                      >
+                        3
+                      </Text>
+                      <Text
+                        style={[styles.workoutTableCell, styles.workoutRepsCol]}
+                      >
+                        8
+                      </Text>
+                      <Text
+                        style={[
+                          styles.workoutTableCell,
+                          styles.workoutWeightCol,
+                        ]}
+                      >
+                        185
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -989,6 +997,10 @@ const createStyles = (
       textAlign: 'left',
       lineHeight: 22,
     },
+    stepSubtitleBold: {
+      fontWeight: '700',
+      color: colors.text,
+    },
     stepContent: {
       flex: 1,
       justifyContent: 'center',
@@ -1234,7 +1246,6 @@ const createStyles = (
     },
     featureExampleContainer: {
       alignItems: 'stretch',
-      marginBottom: 40,
       paddingHorizontal: 0,
     },
     featureBubble: {

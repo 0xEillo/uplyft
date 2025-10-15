@@ -4,7 +4,11 @@ import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { database } from '@/lib/database'
-import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
+import {
+  generateWorkoutMessage,
+  parseCommitment,
+} from '@/lib/utils/workout-messages'
+import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
@@ -84,7 +88,7 @@ export default function CreatePostScreen() {
   const [showExamples, setShowExamples] = useState(true)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
-  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
+  const { showOverlay } = useSuccessOverlay()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
@@ -311,7 +315,7 @@ export default function CreatePostScreen() {
       } catch (error) {
         console.error('Error saving draft:', error)
       }
-    }, 1200) // Wait 1200ms after user stops typing
+    }, 2500) // Wait 2500ms after user stops typing
 
     return () => clearTimeout(timer)
   }, [notes, workoutTitle, trackEvent])
@@ -361,6 +365,9 @@ export default function CreatePostScreen() {
     try {
       setIsLoading(true)
 
+      // Dismiss keyboard before starting animation
+      blurInputs()
+
       // Haptic feedback for button press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
@@ -397,22 +404,51 @@ export default function CreatePostScreen() {
       // Don't clear draft yet - keep it until workout successfully posts
       // This way if submission fails, user can edit and retry
 
-      // Show success overlay
-      setShowSuccessOverlay(true)
+      // Generate motivational message based on weekly progress
+      let message = 'Well done on completing another workout!'
+      let workoutNumber = 1
+      let weeklyTarget = 3
+      try {
+        // Get user profile for commitment/target
+        const profile = await database.profiles.getById(user!.id)
+
+        // Calculate start of week (Sunday)
+        const now = new Date()
+        const startOfWeek = new Date(now)
+        startOfWeek.setDate(now.getDate() - now.getDay())
+        startOfWeek.setHours(0, 0, 0, 0)
+
+        // Count workouts this week (including this one)
+        const workoutsThisWeek = await database.workoutSessions.getThisWeekCount(
+          user!.id,
+          startOfWeek,
+        )
+        workoutNumber = workoutsThisWeek + 1 // +1 for the one being submitted
+
+        // Parse target and generate message
+        weeklyTarget = parseCommitment(profile.commitment)
+        message = generateWorkoutMessage({
+          workoutNumber,
+          weeklyTarget,
+        })
+      } catch (error) {
+        console.error('Error generating workout message:', error)
+        // Fall back to default message
+      }
 
       // Haptic success feedback
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-      // Wait for user to see success, then navigate during page turn
-      setTimeout(() => {
-        setNotes('')
-        setWorkoutTitle('')
-        blurInputs()
-        router.back()
-      }, 1500) // Success visible 1000ms, navigate mid-page-turn for smooth reveal
+      // Clear form and navigate to feed immediately
+      setNotes('')
+      setWorkoutTitle('')
+      blurInputs()
+
+      // Show overlay and navigate to feed
+      showOverlay({ message, workoutNumber, weeklyTarget })
+      router.replace('/(tabs)')
     } catch (error) {
       console.error('Error saving pending post:', error)
-      setShowSuccessOverlay(false)
       Alert.alert(
         'Save Failed',
         'Unable to save your workout. Please try again.',
@@ -644,12 +680,6 @@ export default function CreatePostScreen() {
         </TouchableOpacity>
       </KeyboardAvoidingView>
       </Animated.View>
-
-      {/* Success Overlay - outside animated view to cover entire screen */}
-      <SubmitSuccessOverlay
-        visible={showSuccessOverlay}
-        onAnimationComplete={() => setShowSuccessOverlay(false)}
-      />
     </SafeAreaView>
   )
 }

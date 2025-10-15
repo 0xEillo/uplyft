@@ -1,13 +1,24 @@
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef } from 'react'
-import { Animated, Dimensions, StyleSheet, View } from 'react-native'
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface SubmitSuccessOverlayProps {
   visible: boolean
   onAnimationComplete?: () => void
+  message?: string
+  workoutNumber?: number
+  weeklyTarget?: number
 }
 
 /**
@@ -18,64 +29,94 @@ interface SubmitSuccessOverlayProps {
 export function SubmitSuccessOverlay({
   visible,
   onAnimationComplete,
+  message = 'Well done on completing another workout!',
+  workoutNumber = 1,
+  weeklyTarget = 3,
 }: SubmitSuccessOverlayProps) {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const pageTranslateX = useRef(new Animated.Value(0)).current
+  const progressAnim = useRef(new Animated.Value(0)).current
+  const latestFadeValue = useRef(0)
 
   useEffect(() => {
     if (visible) {
-      // Fade in + scale up animation - slower, more deliberate
+      // Reset progress animation
+      progressAnim.setValue(0)
+
+      // Smooth fade in + scale up animation
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 400,
+          duration: 600,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(scaleAnim, {
+        Animated.timing(scaleAnim, {
           toValue: 1,
-          tension: 40,
-          friction: 8,
+          duration: 600,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start()
 
-      // Wait longer for user to process success, then smooth page turn
+      // Animate progress bar after a short delay
       setTimeout(() => {
-        // Book page turn: slide left while fading - ultra smooth, luxurious
+        Animated.timing(progressAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }).start()
+      }, 400)
+
+      // Wait for user to see success, then smooth fade out
+      setTimeout(() => {
+        // Smooth fade out + scale down animation (mirror of entrance)
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 0,
-            duration: 1000, // Even slower, more elegant fade
-            useNativeDriver: true,
-          }),
-          Animated.timing(pageTranslateX, {
-            toValue: -100,
-            duration: 1000, // Slower slide for graceful page turn
+            duration: 600,
+            easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(scaleAnim, {
-            toValue: 0.95,
-            duration: 1000, // Slower scale for premium feel
+            toValue: 0.8,
+            duration: 600,
+            easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
           }),
         ]).start(() => {
           onAnimationComplete?.()
         })
-      }, 1000) // Show for full second before page turn
+      }, 3700) // Show for 3.5 seconds before fade out
     } else {
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
-      pageTranslateX.setValue(0)
+      progressAnim.setValue(0)
     }
-  }, [visible, fadeAnim, scaleAnim, pageTranslateX, onAnimationComplete])
+  }, [visible, fadeAnim, scaleAnim, progressAnim, onAnimationComplete])
 
-  if (!visible && fadeAnim.__getValue() === 0) {
+  useEffect(() => {
+    const id = fadeAnim.addListener(({ value }) => {
+      latestFadeValue.current = value
+    })
+    return () => {
+      fadeAnim.removeListener(id)
+    }
+  }, [fadeAnim])
+
+  if (!visible && latestFadeValue.current === 0) {
     return null
   }
 
   const styles = createStyles(colors)
+  const progressPercentage = (workoutNumber / weeklyTarget) * 100
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', `${Math.min(progressPercentage, 100)}%`],
+  })
 
   return (
     <Animated.View
@@ -83,7 +124,9 @@ export function SubmitSuccessOverlay({
         styles.overlay,
         {
           opacity: fadeAnim,
-          transform: [{ translateX: pageTranslateX }],
+          backgroundColor: isDark
+            ? 'rgba(18, 18, 18, 0.95)'
+            : 'rgba(255, 255, 255, 0.95)',
         },
       ]}
       pointerEvents="none"
@@ -97,7 +140,61 @@ export function SubmitSuccessOverlay({
         ]}
       >
         <View style={styles.iconContainer}>
-          <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
+          <View
+            style={[styles.iconCircle, { backgroundColor: colors.primary }]}
+          >
+            <Image
+              source={
+                isDark
+                  ? require('../llm/repai-logo-black.png')
+                  : require('../llm/repai-logo-white.png')
+              }
+              style={styles.bicepIcon}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <Text style={styles.workoutCountText}>
+            {workoutNumber}
+            {workoutNumber === 1
+              ? 'st'
+              : workoutNumber === 2
+              ? 'nd'
+              : workoutNumber === 3
+              ? 'rd'
+              : 'th'}{' '}
+            workout logged this week
+          </Text>
+
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBarBackground,
+                { backgroundColor: colors.border },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    backgroundColor: colors.primary,
+                    width: progressWidth,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {workoutNumber} / {weeklyTarget} weekly goal
+            </Text>
+          </View>
+
+          {workoutNumber === weeklyTarget && (
+            <Text style={styles.congratsText}>
+              🎉 Congratulations on reaching your target!
+            </Text>
+          )}
         </View>
       </Animated.View>
     </Animated.View>
@@ -112,7 +209,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       left: 0,
       width: SCREEN_WIDTH,
       height: SCREEN_HEIGHT + 200, // Extra height to cover all areas
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 9999,
@@ -120,18 +216,74 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     successIndicator: {
       justifyContent: 'center',
       alignItems: 'center',
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+      paddingHorizontal: 40,
+      paddingVertical: 36,
+      borderRadius: 28,
       backgroundColor: colors.white,
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 16,
-      elevation: 12,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.2,
+      shadowRadius: 24,
+      elevation: 16,
+      minWidth: 320,
     },
     iconContainer: {
       justifyContent: 'center',
       alignItems: 'center',
+      marginBottom: 28,
+    },
+    iconCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    bicepIcon: {
+      width: 60,
+      height: 60,
+    },
+    statsContainer: {
+      width: '100%',
+      alignItems: 'center',
+      gap: 16,
+    },
+    workoutCountText: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    progressBarContainer: {
+      width: '100%',
+      gap: 8,
+    },
+    progressBarBackground: {
+      width: '100%',
+      height: 8,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 4,
+    },
+    progressText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
+      textAlign: 'center',
+    },
+    congratsText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary,
+      textAlign: 'center',
+      marginTop: 8,
     },
   })

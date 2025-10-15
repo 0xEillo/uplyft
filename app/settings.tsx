@@ -95,7 +95,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           try {
             await signOut()
-            router.replace('/(auth)/login')
+            router.replace('/(auth)/welcome')
           } catch (error) {
             Alert.alert(
               'Error',
@@ -224,7 +224,7 @@ export default function SettingsScreen() {
               if (error) throw error
 
               await signOut()
-              router.replace('/(auth)/login')
+              router.replace('/(auth)/welcome')
               Alert.alert(
                 'Account Deleted',
                 'Your account has been permanently deleted.',

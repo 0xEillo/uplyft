@@ -15,6 +15,11 @@ import { HapticTab } from '@/components/haptic-tab'
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import {
+  SuccessOverlayProvider,
+  useSuccessOverlay,
+} from '@/contexts/success-overlay-context'
+import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 const DRAFT_KEY = '@workout_draft'
@@ -94,9 +99,10 @@ function CreateButton() {
   )
 }
 
-export default function TabLayout() {
+function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const { isVisible, data, hideOverlay } = useSuccessOverlay()
 
   return (
     <>
@@ -175,7 +181,22 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
+      <SubmitSuccessOverlay
+        visible={isVisible}
+        onAnimationComplete={hideOverlay}
+        message={data.message}
+        workoutNumber={data.workoutNumber}
+        weeklyTarget={data.weeklyTarget}
+      />
     </>
+  )
+}
+
+export default function TabLayout() {
+  return (
+    <SuccessOverlayProvider>
+      <TabLayoutContent />
+    </SuccessOverlayProvider>
   )
 }
 

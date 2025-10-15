@@ -12,6 +12,7 @@ module.exports = {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription:

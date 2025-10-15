@@ -100,12 +100,7 @@ export default function CongratulationsScreen() {
   }, [fadeAnim, scaleAnim, sparkles])
 
   const handleContinue = () => {
-    router.push({
-      pathname: '/(auth)/rating',
-      params: {
-        onboarding_data: params.onboarding_data as string,
-      },
-    })
+    router.replace('/(tabs)')
   }
 
   return (

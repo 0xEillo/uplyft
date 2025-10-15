@@ -358,6 +358,18 @@ export const database = {
       return data as WorkoutSessionWithDetails[]
     },
 
+    async getThisWeekCount(userId: string, startOfWeek: Date) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('date', startOfWeek.toISOString())
+        .order('date', { ascending: true })
+
+      if (error) throw error
+      return data?.length || 0
+    },
+
     async getById(id: string) {
       const { data, error } = await supabase
         .from('workout_sessions')

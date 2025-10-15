@@ -3,13 +3,14 @@ import {
   DefaultTheme,
   ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
+import Constants from 'expo-constants'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { PostHogProvider } from 'posthog-react-native'
 import { useEffect } from 'react'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { PostHogProvider } from 'posthog-react-native'
-import Constants from 'expo-constants'
 
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
@@ -58,37 +59,41 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const posthogApiKey = Constants.expoConfig?.extra?.posthogApiKey as
-    | string
-    | undefined
+  const posthogApiKey =
+    process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
+    (Constants.expoConfig?.extra?.posthogApiKey as string | undefined)
   const posthogHost =
+    process.env.EXPO_PUBLIC_POSTHOG_HOST ||
     (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
     'https://us.i.posthog.com'
 
   return (
-    <PostHogProvider
-      apiKey={posthogApiKey || ''}
-      options={{
-        host: posthogHost,
-        // Enable autocapture for automatic event tracking
-        captureMode: 'screen',
-      }}
-    >
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <UnitProvider>
-            <AuthProvider>
-              <SubscriptionProvider>
-                <AnalyticsProvider>
-                  <PostsProvider>
-                    <RootLayoutNav />
-                  </PostsProvider>
-                </AnalyticsProvider>
-              </SubscriptionProvider>
-            </AuthProvider>
-          </UnitProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </PostHogProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PostHogProvider
+        apiKey={posthogApiKey || ''}
+        options={{
+          host: posthogHost,
+        }}
+        autocapture={{
+          captureScreens: true,
+        }}
+      >
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <UnitProvider>
+              <AuthProvider>
+                <SubscriptionProvider>
+                  <AnalyticsProvider>
+                    <PostsProvider>
+                      <RootLayoutNav />
+                    </PostsProvider>
+                  </AnalyticsProvider>
+                </SubscriptionProvider>
+              </AuthProvider>
+            </UnitProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </PostHogProvider>
+    </GestureHandlerRootView>
   )
 }

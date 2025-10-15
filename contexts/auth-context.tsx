@@ -1,7 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import * as Crypto from 'expo-crypto'
 import * as WebBrowser from 'expo-web-browser'
 import { usePostHog } from 'posthog-react-native'
+import { Platform } from 'react-native'
 import React, {
   createContext,
   ReactNode,
@@ -18,7 +21,8 @@ interface AuthContextType {
   isLoading: boolean
   signUp: (email: string, password: string) => Promise<{ userId: string }>
   signIn: (email: string, password: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: (signInOnly?: boolean) => Promise<void>
+  signInWithApple: (signInOnly?: boolean) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -81,13 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const signInWithGoogle = async () => {
-    console.log('=== Google OAuth Debug ===')
-
+  const signInWithGoogle = async (signInOnly = false) => {
     // Use repai:// for standalone builds
     const redirectUrl = 'repai://'
-
-    console.log('Generated redirect URL:', redirectUrl)
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -96,12 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     })
 
-    if (error) {
-      console.log('OAuth error:', error)
-      throw error
-    }
-
-    console.log('OAuth URL:', data.url)
+    if (error) throw error
 
     if (!data.url) {
       throw new Error('No OAuth URL generated')
@@ -110,10 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Open OAuth in browser - works with standalone builds only
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
 
-    console.log('Browser result:', result)
-
     if (result.type === 'success' && result.url) {
-      console.log('Success URL:', result.url)
       // Parse tokens from URL
       const hashParams = new URLSearchParams(result.url.split('#')[1] || '')
       const queryParams = new URLSearchParams(
@@ -125,14 +117,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refreshToken =
         hashParams.get('refresh_token') || queryParams.get('refresh_token')
 
-      console.log('Has access token:', !!accessToken)
-      console.log('Has refresh token:', !!refreshToken)
-
       if (accessToken && refreshToken) {
-        await supabase.auth.setSession({
+        const { data: sessionData } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         })
+
+        // If signInOnly mode, check if this is a new account
+        if (signInOnly && sessionData.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', sessionData.user.id)
+            .single()
+
+          // If no profile exists, this is a new account - reject it
+          if (!profile) {
+            // Sign out the newly created user
+            await supabase.auth.signOut()
+            throw new Error("It looks like you don't have an account yet. Please sign up first.")
+          }
+        }
 
         posthog?.capture('Auth Login', {
           method: 'google',
@@ -142,6 +147,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } else if (result.type === 'cancel' || result.type === 'dismiss') {
       throw new Error('Sign in cancelled')
+    }
+  }
+
+  const signInWithApple = async (signInOnly = false) => {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign-In is only available on iOS')
+    }
+
+    try {
+      // Generate and hash nonce
+      const nonce = Math.random().toString(36).substring(2, 10)
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        nonce,
+      )
+
+      // Request Apple authentication
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      })
+
+      if (!credential.identityToken) {
+        throw new Error('No identity token received from Apple')
+      }
+
+      // Sign in to Supabase with Apple token
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce,
+      })
+
+      if (error) throw error
+
+      // If signInOnly mode, check if this is a new account
+      if (signInOnly && data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', data.user.id)
+          .single()
+
+        // If no profile exists, this is a new account - reject it
+        if (!profile) {
+          // Sign out the newly created user
+          await supabase.auth.signOut()
+          throw new Error("It looks like you don't have an account yet. Please sign up first.")
+        }
+      }
+
+      posthog?.capture('Auth Login', {
+        method: 'apple',
+      })
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        throw new Error('Sign in cancelled')
+      }
+      throw e
     }
   }
 
@@ -164,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signIn,
         signInWithGoogle,
+        signInWithApple,
         signOut,
       }}
     >

@@ -23,11 +23,11 @@ export default function AuthCallback() {
 
           router.replace('/(tabs)')
         } else {
-          router.replace('/(auth)/login')
+          router.replace('/(auth)/welcome')
         }
       } catch (error) {
         console.error('Error handling auth callback:', error)
-        router.replace('/(auth)/login')
+        router.replace('/(auth)/welcome')
       }
     }
 
