@@ -146,8 +146,8 @@ export function SubmitSuccessOverlay({
             <Image
               source={
                 isDark
-                  ? require('@/llm/repai-logo-black.png')
-                  : require('@/llm/repai-logo-white.png')
+                  ? require('../llm/repai-logo-black.png')
+                  : require('../llm/repai-logo-white.png')
               }
               style={styles.bicepIcon}
               resizeMode="contain"
