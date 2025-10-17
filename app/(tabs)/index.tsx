@@ -121,7 +121,7 @@ export default function FeedScreen() {
       const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
       if (!pendingData) return
 
-      const { notes, title } = JSON.parse(pendingData)
+      const { notes, title, imageUrl = null } = JSON.parse(pendingData)
 
       // Get the access token for authenticated API calls
       const { data: { session } } = await supabase.auth.getSession()
@@ -144,6 +144,7 @@ export default function FeedScreen() {
           createWorkout: true,
           userId: user.id,
           workoutTitle: title,
+          imageUrl,
         }),
         signal: controller.signal,
       })

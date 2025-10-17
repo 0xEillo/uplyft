@@ -34,6 +34,7 @@ export interface WorkoutSession {
   raw_text: string | null
   notes: string | null
   type: string | null
+  image_url: string | null
   created_at: string
 }
 

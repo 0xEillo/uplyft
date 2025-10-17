@@ -2,6 +2,14 @@ import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useState } from 'react'
 import { Alert, Platform } from 'react-native'
 
+// Constants
+const IMAGE_QUALITY = 0.8
+const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
+  mediaTypes: [ImagePicker.MediaType.Images],
+  allowsEditing: false,
+  quality: IMAGE_QUALITY,
+}
+
 /**
  * Type definition for image file in FormData.
  * React Native's FormData accepts this shape for file uploads.
@@ -20,6 +28,7 @@ interface ExtractedWorkoutData {
 
 interface UseImageTranscriptionOptions {
   onExtractionComplete?: (data: ExtractedWorkoutData) => void
+  onImageAttached?: (uri: string) => void
   onError?: (error: Error) => void
 }
 
@@ -40,7 +49,7 @@ interface UseImageTranscriptionOptions {
 export function useImageTranscription(
   options: UseImageTranscriptionOptions = {},
 ) {
-  const { onExtractionComplete, onError } = options
+  const { onExtractionComplete, onImageAttached, onError } = options
   const [isProcessing, setIsProcessing] = useState(false)
 
   /**
@@ -80,105 +89,145 @@ export function useImageTranscription(
   }, [])
 
   /**
-   * Pick an image from camera or gallery and extract text
+   * Process the selected image based on the chosen action
    */
-  const pickImage = useCallback(async () => {
-    try {
-      // Request permissions
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync()
-      const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+  const processImage = useCallback(async (uri: string, action: 'scan' | 'attach') => {
+    if (action === 'scan') {
+      // Scan workout - extract text from image
+      setIsProcessing(true)
+      try {
+        const data = await extractTextFromImage(uri)
+        onExtractionComplete?.(data)
+      } catch (error) {
+        const errorObj = error instanceof Error ? error : new Error('Unknown error')
+        onError?.(errorObj)
 
-      if (
-        cameraPermission.status !== 'granted' &&
-        libraryPermission.status !== 'granted'
-      ) {
+        Alert.alert(
+          'Could Not Extract Workout',
+          errorObj.message || 'Unable to extract workout information from the image. Please try again or enter it manually.',
+          [{ text: 'OK' }],
+        )
+      } finally {
+        setIsProcessing(false)
+      }
+    } else {
+      // Attach photo - just pass the URI
+      onImageAttached?.(uri)
+    }
+  }, [extractTextFromImage, onExtractionComplete, onImageAttached, onError])
+
+  /**
+   * Launch camera with the selected action
+   */
+  const launchCamera = useCallback(async (action: 'scan' | 'attach') => {
+    try {
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync()
+
+      if (cameraPermission.status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Please grant camera or photo library permissions to log workouts with images.',
-          [{ text: 'OK' }],
+          'Camera permission is required to take photos.',
         )
         return
       }
 
-      // Show action sheet to choose camera or library
+      const result = await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS)
+
+      if (!result.canceled && result.assets[0]) {
+        await processImage(result.assets[0].uri, action)
+      }
+    } catch (error) {
+      console.error('Error launching camera:', error)
+      Alert.alert('Error', 'Failed to open camera. Please try again.', [
+        { text: 'OK' },
+      ])
+    }
+  }, [processImage])
+
+  /**
+   * Launch library picker with the selected action
+   */
+  const launchLibrary = useCallback(async (action: 'scan' | 'attach') => {
+    try {
+      const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+      if (libraryPermission.status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Photo library permission is required to select photos.',
+        )
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS)
+
+      if (!result.canceled && result.assets[0]) {
+        await processImage(result.assets[0].uri, action)
+      }
+    } catch (error) {
+      console.error('Error launching library:', error)
+      Alert.alert('Error', 'Failed to open photo library. Please try again.', [
+        { text: 'OK' },
+      ])
+    }
+  }, [processImage])
+
+  /**
+   * Show action choice, then camera/library picker
+   */
+  const pickImage = useCallback(async () => {
+    try {
+      // First, ask what they want to do with the image
       Alert.alert(
-        'Add Workout Image',
-        'Choose how you want to add your workout',
+        'Camera',
+        'What would you like to do?',
         [
           {
-            text: 'Take Photo',
-            onPress: async () => {
-              if (cameraPermission.status !== 'granted') {
-                Alert.alert(
-                  'Permission Required',
-                  'Camera permission is required to take photos.',
-                )
-                return
-              }
-
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ['images'],
-                allowsEditing: false,
-                quality: 0.8,
-              })
-
-              if (!result.canceled && result.assets[0]) {
-                setIsProcessing(true)
-                try {
-                  const data = await extractTextFromImage(result.assets[0].uri)
-                  onExtractionComplete?.(data)
-                } catch (error) {
-                  const errorObj =
-                    error instanceof Error ? error : new Error('Unknown error')
-                  onError?.(errorObj)
-
-                  Alert.alert(
-                    'Could Not Extract Workout',
-                    errorObj.message || 'Unable to extract workout information from the image. Please try again or enter it manually.',
-                    [{ text: 'OK' }],
-                  )
-                } finally {
-                  setIsProcessing(false)
-                }
-              }
+            text: 'Scan Workout',
+            onPress: () => {
+              // Then ask camera or library
+              Alert.alert(
+                'Scan Workout',
+                'Choose how to add your workout',
+                [
+                  {
+                    text: 'Take Photo',
+                    onPress: () => launchCamera('scan'),
+                  },
+                  {
+                    text: 'Choose from Library',
+                    onPress: () => launchLibrary('scan'),
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                  },
+                ],
+              )
             },
           },
           {
-            text: 'Choose from Library',
-            onPress: async () => {
-              if (libraryPermission.status !== 'granted') {
-                Alert.alert(
-                  'Permission Required',
-                  'Photo library permission is required to select photos.',
-                )
-                return
-              }
-
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                allowsEditing: false,
-                quality: 0.8,
-              })
-
-              if (!result.canceled && result.assets[0]) {
-                setIsProcessing(true)
-                try {
-                  const data = await extractTextFromImage(result.assets[0].uri)
-                  onExtractionComplete?.(data)
-                } catch (error) {
-                  const errorObj =
-                    error instanceof Error ? error : new Error('Unknown error')
-                  onError?.(errorObj)
-
-                  Alert.alert(
-                    'Could Not Extract Workout',
-                    errorObj.message || 'Unable to extract workout information from the image. Please try again or enter it manually.',
-                    [{ text: 'OK' }],
-                  )
-                } finally {
-                  setIsProcessing(false)
-                }
-              }
+            text: 'Attach Photo',
+            onPress: () => {
+              // Then ask camera or library
+              Alert.alert(
+                'Attach Photo',
+                'Choose how to add your photo',
+                [
+                  {
+                    text: 'Take Photo',
+                    onPress: () => launchCamera('attach'),
+                  },
+                  {
+                    text: 'Choose from Library',
+                    onPress: () => launchLibrary('attach'),
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                  },
+                ],
+              )
             },
           },
           {
@@ -193,7 +242,7 @@ export function useImageTranscription(
         { text: 'OK' },
       ])
     }
-  }, [extractTextFromImage, onExtractionComplete, onError])
+  }, [launchCamera, launchLibrary])
 
   return {
     isProcessing,

@@ -84,6 +84,7 @@ export async function POST(request: Request) {
       createWorkout,
       userId,
       workoutTitle,
+      imageUrl,
     } = await request.json()
 
     if (!notes || typeof notes !== 'string') {
@@ -312,6 +313,7 @@ Return ONLY the title with proper capitalization, nothing else.`,
           userId,
           finalWorkout,
           notes,
+          imageUrl,
         )
 
         // Fetch the complete workout with all details

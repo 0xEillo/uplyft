@@ -132,6 +132,7 @@ export function createServerDatabase(accessToken?: string) {
         userId: string,
         parsedWorkout: ParsedWorkout,
         rawText: string,
+        imageUrl?: string | null,
       ) {
         // Create workout session
         const { data: session, error: sessionError } = await supabase
@@ -141,6 +142,7 @@ export function createServerDatabase(accessToken?: string) {
             raw_text: rawText,
             notes: parsedWorkout.notes,
             type: parsedWorkout.type,
+            image_url: imageUrl || null,
           })
           .select()
           .single()

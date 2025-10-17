@@ -3,6 +3,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Animated,
   Image,
   LayoutAnimation,
@@ -13,6 +14,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+
+// Constants
+const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
+const FULLSCREEN_FADE_DURATION = 300 // Duration for fullscreen image fade-in
 
 interface WorkoutStats {
   exercises: number
@@ -47,6 +52,7 @@ interface FeedCardProps {
   timeAgo: string
   workoutTitle: string
   workoutDescription?: string | null
+  workoutImageUrl?: string | null
   exercises: ExerciseDisplay[]
   stats: WorkoutStats
   userId?: string
@@ -67,6 +73,7 @@ export const FeedCard = memo(function FeedCard({
   timeAgo,
   workoutTitle,
   workoutDescription,
+  workoutImageUrl,
   exercises,
   stats,
   userId,
@@ -82,7 +89,14 @@ export const FeedCard = memo(function FeedCard({
     new Set(),
   )
   const [menuVisible, setMenuVisible] = useState(false)
+
+  // Image loading states and animations
+  const [imageModalVisible, setImageModalVisible] = useState(false)
+  const [imageLoading, setImageLoading] = useState(true)
+  const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
   const rotateAnim = useRef(new Animated.Value(0)).current
+  const imageOpacity = useRef(new Animated.Value(0)).current
+  const fullscreenOpacity = useRef(new Animated.Value(0)).current
 
   const styles = createStyles(colors)
   const { weightUnit } = useWeightUnits()
@@ -159,6 +173,39 @@ export const FeedCard = memo(function FeedCard({
       {/* Workout Description */}
       {workoutDescription && (
         <Text style={styles.workoutDescription}>{workoutDescription}</Text>
+      )}
+
+      {/* Workout Image */}
+      {workoutImageUrl && (
+        <TouchableOpacity
+          style={styles.workoutImageContainer}
+          onPress={() => setImageModalVisible(true)}
+          activeOpacity={0.9}
+        >
+          <Animated.Image
+            source={{ uri: workoutImageUrl }}
+            style={[styles.workoutImage, { opacity: imageOpacity }]}
+            resizeMode="cover"
+            onLoadStart={() => setImageLoading(true)}
+            onLoad={() => {
+              setImageLoading(false)
+              Animated.timing(imageOpacity, {
+                toValue: 1,
+                duration: IMAGE_FADE_DURATION,
+                useNativeDriver: true,
+              }).start()
+            }}
+            onError={(error) => {
+              console.error('Failed to load workout image:', error.nativeEvent.error)
+              setImageLoading(false)
+            }}
+          />
+          {imageLoading && (
+            <View style={styles.imageLoadingOverlay}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          )}
+        </TouchableOpacity>
       )}
 
       {/* Exercises Table */}
@@ -352,6 +399,47 @@ export const FeedCard = memo(function FeedCard({
           </View>
         </Pressable>
       </Modal>
+
+      {/* Image Fullscreen Modal */}
+      {workoutImageUrl && (
+        <Modal
+          visible={imageModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setImageModalVisible(false)}
+        >
+          <Pressable
+            style={styles.imageModalOverlay}
+            onPress={() => setImageModalVisible(false)}
+          >
+            <View style={styles.imageModalContent}>
+              <Animated.Image
+                source={{ uri: workoutImageUrl }}
+                style={[styles.fullscreenImage, { opacity: fullscreenOpacity }]}
+                resizeMode="contain"
+                onLoadStart={() => setFullscreenImageLoading(true)}
+                onLoad={() => {
+                  setFullscreenImageLoading(false)
+                  Animated.timing(fullscreenOpacity, {
+                    toValue: 1,
+                    duration: FULLSCREEN_FADE_DURATION,
+                    useNativeDriver: true,
+                  }).start()
+                }}
+                onError={(error) => {
+                  console.error('Failed to load fullscreen image:', error.nativeEvent.error)
+                  setFullscreenImageLoading(false)
+                }}
+              />
+              {fullscreenImageLoading && (
+                <View style={styles.fullscreenLoadingOverlay}>
+                  <ActivityIndicator size="large" color={colors.white} />
+                </View>
+              )}
+            </View>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   )
 })
@@ -605,5 +693,47 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 16,
       color: colors.error,
       fontWeight: '500',
+    },
+    workoutImageContainer: {
+      width: '100%',
+      aspectRatio: 16 / 9,
+      marginBottom: 12,
+      borderRadius: 8,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundLight,
+      maxHeight: 400,
+    },
+    workoutImage: {
+      width: '100%',
+      height: '100%',
+    },
+    imageLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+    },
+    imageModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.95)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    imageModalContent: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    fullscreenImage: {
+      width: '100%',
+      height: '100%',
+    },
+    fullscreenLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   })
