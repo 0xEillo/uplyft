@@ -13,7 +13,7 @@ export default function RatingScreen() {
 
   const handleNext = () => {
     router.push({
-      pathname: '/(auth)/signup-options',
+      pathname: '/(auth)/trial-offer',
       params: {
         onboarding_data: params.onboarding_data as string,
       },
@@ -25,7 +25,15 @@ export default function RatingScreen() {
     try {
       if (await StoreReview.isAvailableAsync()) {
         await StoreReview.requestReview()
-        setTimeout(() => handleNext(), 500)
+        // Navigate to trial offer after review
+        setTimeout(() => {
+          router.push({
+            pathname: '/(auth)/trial-offer',
+            params: {
+              onboarding_data: params.onboarding_data as string,
+            },
+          })
+        }, 500)
         return
       }
     } catch {
@@ -50,12 +58,32 @@ export default function RatingScreen() {
 
       if (canOpen) {
         await Linking.openURL(storeUrl)
-        setTimeout(() => handleNext(), 500)
+        // Navigate to trial offer after opening store
+        setTimeout(() => {
+          router.push({
+            pathname: '/(auth)/trial-offer',
+            params: {
+              onboarding_data: params.onboarding_data as string,
+            },
+          })
+        }, 500)
       } else {
         Alert.alert(
           'Thank You!',
           'Your support means a lot! Continue to complete setup.',
-          [{ text: 'Continue', onPress: handleNext }],
+          [
+            {
+              text: 'Continue',
+              onPress: () => {
+                router.push({
+                  pathname: '/(auth)/trial-offer',
+                  params: {
+                    onboarding_data: params.onboarding_data as string,
+                  },
+                })
+              },
+            },
+          ],
         )
       }
     } catch (error) {
@@ -63,7 +91,19 @@ export default function RatingScreen() {
       Alert.alert(
         'Thank You!',
         'Your support means a lot! Continue to complete setup.',
-        [{ text: 'Continue', onPress: handleNext }],
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              router.push({
+                pathname: '/(auth)/trial-offer',
+                params: {
+                  onboarding_data: params.onboarding_data as string,
+                },
+              })
+            },
+          },
+        ],
       )
     }
   }

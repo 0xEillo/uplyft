@@ -879,7 +879,7 @@ export default function OnboardingScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 25 : 20}
         >
           <ScrollView
             style={styles.content}
@@ -901,23 +901,23 @@ export default function OnboardingScreen() {
               {renderStep()}
             </Animated.View>
           </ScrollView>
-        </KeyboardAvoidingView>
 
-        {/* Footer - Fixed at bottom */}
-        <View style={styles.footer}>
-          <HapticButton
-            style={[
-              styles.nextButton,
-              !canProceed() && styles.nextButtonDisabled,
-            ]}
-            onPress={handleNext}
-            disabled={!canProceed()}
-            hapticEnabled={canProceed()}
-            hapticStyle="heavy"
-          >
-            <Text style={styles.nextButtonText}>Next</Text>
-          </HapticButton>
-        </View>
+          {/* Footer - Fixed at bottom */}
+          <View style={styles.footer}>
+            <HapticButton
+              style={[
+                styles.nextButton,
+                !canProceed() && styles.nextButtonDisabled,
+              ]}
+              onPress={handleNext}
+              disabled={!canProceed()}
+              hapticEnabled={canProceed()}
+              hapticStyle="heavy"
+            >
+              <Text style={styles.nextButtonText}>Next</Text>
+            </HapticButton>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   )
