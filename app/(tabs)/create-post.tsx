@@ -10,6 +10,7 @@ import {
 } from '@/lib/utils/workout-messages'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
+import { ImagePickerModal } from '@/components/ImagePickerModal'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
@@ -142,7 +143,16 @@ export default function CreatePostScreen() {
   })
 
   // Use image transcription hook
-  const { isProcessing: isProcessingImage, pickImage } = useImageTranscription({
+  const {
+    isProcessing: isProcessingImage,
+    pickImage,
+    showModal,
+    closeModal,
+    handleScanWithCamera,
+    handleScanWithLibrary,
+    handleAttachWithCamera,
+    handleAttachWithLibrary,
+  } = useImageTranscription({
     onExtractionComplete: (data) => {
       // Set title if extracted
       if (data.title) {
@@ -769,6 +779,16 @@ export default function CreatePostScreen() {
             <Ionicons name="camera" size={28} color={colors.white} />
           )}
         </TouchableOpacity>
+
+        {/* Image Picker Modal */}
+        <ImagePickerModal
+          visible={showModal}
+          onClose={closeModal}
+          onScanWithCamera={handleScanWithCamera}
+          onScanWithLibrary={handleScanWithLibrary}
+          onAttachWithCamera={handleAttachWithCamera}
+          onAttachWithLibrary={handleAttachWithLibrary}
+        />
       </KeyboardAvoidingView>
       </Animated.View>
     </SafeAreaView>

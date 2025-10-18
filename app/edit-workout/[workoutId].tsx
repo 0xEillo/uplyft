@@ -38,7 +38,7 @@ if (
 const IMAGE_QUALITY = 0.8
 const IMAGE_FADE_DURATION = 200
 const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
-  mediaTypes: [ImagePicker.MediaType.Images],
+  mediaTypes: 'images' as any,
   allowsEditing: false,
   quality: IMAGE_QUALITY,
 }
@@ -131,12 +131,9 @@ export default function EditWorkoutScreen() {
   }, [handleImageSelected])
 
   const pickImage = useCallback(() => {
-    Alert.alert('Change Photo', 'Choose how to add your photo', [
-      { text: 'Take Photo', onPress: launchCamera },
-      { text: 'Choose from Library', onPress: launchLibrary },
-      { text: 'Cancel', style: 'cancel' },
-    ])
-  }, [launchCamera, launchLibrary])
+    // Directly launch library picker for editing
+    launchLibrary()
+  }, [launchLibrary])
 
   const handleDeleteImage = useCallback(() => {
     Alert.alert(

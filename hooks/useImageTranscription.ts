@@ -5,7 +5,7 @@ import { Alert, Platform } from 'react-native'
 // Constants
 const IMAGE_QUALITY = 0.8
 const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
-  mediaTypes: [ImagePicker.MediaType.Images],
+  mediaTypes: 'images' as any,
   allowsEditing: false,
   quality: IMAGE_QUALITY,
 }
@@ -51,6 +51,7 @@ export function useImageTranscription(
 ) {
   const { onExtractionComplete, onImageAttached, onError } = options
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   /**
    * Extract text from image using the API
@@ -173,79 +174,40 @@ export function useImageTranscription(
   }, [processImage])
 
   /**
-   * Show action choice, then camera/library picker
+   * Show the image picker modal
    */
-  const pickImage = useCallback(async () => {
-    try {
-      // First, ask what they want to do with the image
-      Alert.alert(
-        'Camera',
-        'What would you like to do?',
-        [
-          {
-            text: 'Scan Workout',
-            onPress: () => {
-              // Then ask camera or library
-              Alert.alert(
-                'Scan Workout',
-                'Choose how to add your workout',
-                [
-                  {
-                    text: 'Take Photo',
-                    onPress: () => launchCamera('scan'),
-                  },
-                  {
-                    text: 'Choose from Library',
-                    onPress: () => launchLibrary('scan'),
-                  },
-                  {
-                    text: 'Cancel',
-                    style: 'cancel',
-                  },
-                ],
-              )
-            },
-          },
-          {
-            text: 'Attach Photo',
-            onPress: () => {
-              // Then ask camera or library
-              Alert.alert(
-                'Attach Photo',
-                'Choose how to add your photo',
-                [
-                  {
-                    text: 'Take Photo',
-                    onPress: () => launchCamera('attach'),
-                  },
-                  {
-                    text: 'Choose from Library',
-                    onPress: () => launchLibrary('attach'),
-                  },
-                  {
-                    text: 'Cancel',
-                    style: 'cancel',
-                  },
-                ],
-              )
-            },
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ],
-      )
-    } catch (error) {
-      console.error('Error picking image:', error)
-      Alert.alert('Error', 'Failed to open image picker. Please try again.', [
-        { text: 'OK' },
-      ])
-    }
-  }, [launchCamera, launchLibrary])
+  const pickImage = useCallback(() => {
+    setShowModal(true)
+  }, [])
+
+  const closeModal = useCallback(() => {
+    setShowModal(false)
+  }, [])
+
+  const handleScanWithCamera = useCallback(() => {
+    launchCamera('scan')
+  }, [launchCamera])
+
+  const handleScanWithLibrary = useCallback(() => {
+    launchLibrary('scan')
+  }, [launchLibrary])
+
+  const handleAttachWithCamera = useCallback(() => {
+    launchCamera('attach')
+  }, [launchCamera])
+
+  const handleAttachWithLibrary = useCallback(() => {
+    launchLibrary('attach')
+  }, [launchLibrary])
 
   return {
     isProcessing,
     pickImage,
+    showModal,
+    closeModal,
+    handleScanWithCamera,
+    handleScanWithLibrary,
+    handleAttachWithCamera,
+    handleAttachWithLibrary,
   }
 }
