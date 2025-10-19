@@ -19,6 +19,7 @@ interface BodyLogProcessingModalProps {
   visible: boolean
   imageUri: string | null
   isComplete: boolean
+  hasNoStats?: boolean
   onComplete?: () => void
 }
 
@@ -37,6 +38,7 @@ export function BodyLogProcessingModal({
   visible,
   imageUri,
   isComplete,
+  hasNoStats = false,
   onComplete,
 }: BodyLogProcessingModalProps) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
@@ -72,26 +74,31 @@ export function BodyLogProcessingModal({
     }
   }, [visible, isComplete, scanLinePosition, messageOpacity, successScale, successOpacity, checkmarkScale])
 
-  // Cycle through messages
+  // Cycle through messages (stop at last message, don't loop)
   useEffect(() => {
     if (visible && !isComplete) {
       const interval = setInterval(() => {
-        // Fade out
-        Animated.timing(messageOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start(() => {
-          // Change message
-          setCurrentMessageIndex(
-            (prev) => (prev + 1) % SCANNING_MESSAGES.length,
-          )
-          // Fade in
+        setCurrentMessageIndex((prev) => {
+          // Stop at the last message, don't loop back
+          if (prev >= SCANNING_MESSAGES.length - 1) {
+            return prev
+          }
+
+          // Fade out
           Animated.timing(messageOpacity, {
-            toValue: 1,
-            duration: 300,
+            toValue: 0,
+            duration: 200,
             useNativeDriver: true,
-          }).start()
+          }).start(() => {
+            // Fade in with next message
+            Animated.timing(messageOpacity, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }).start()
+          })
+
+          return prev + 1
         })
       }, 2000)
 
@@ -256,7 +263,7 @@ export function BodyLogProcessingModal({
             </Animated.View>
           )}
 
-          {/* Success state */}
+          {/* Completion state */}
           {showSuccess && (
             <Animated.View
               style={[
@@ -275,11 +282,25 @@ export function BodyLogProcessingModal({
                   },
                 ]}
               >
-                <View style={styles.checkmarkCircle}>
-                  <Ionicons name="checkmark" size={64} color="#FFFFFF" />
-                </View>
+                {hasNoStats ? (
+                  <View style={styles.infoCircle}>
+                    <Ionicons
+                      name="information-circle"
+                      size={80}
+                      color="#3B82F6"
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.checkmarkCircle}>
+                    <Ionicons name="checkmark" size={64} color="#FFFFFF" />
+                  </View>
+                )}
               </Animated.View>
-              <Text style={styles.successText}>Analysis Complete!</Text>
+              <Text style={styles.successText}>
+                {hasNoStats
+                  ? 'Unable to determine your stats'
+                  : 'Analysis Complete!'}
+              </Text>
             </Animated.View>
           )}
         </View>
@@ -410,6 +431,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 30,
     elevation: 10,
+  },
+  infoCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   successText: {
     fontSize: 24,

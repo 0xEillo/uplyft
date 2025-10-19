@@ -2,12 +2,15 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -74,6 +77,11 @@ export default function BodyLogDetailScreen() {
   const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(
     typeof signedUrl === 'string' ? signedUrl : undefined,
   )
+
+  // Image modal state and animations
+  const [imageModalVisible, setImageModalVisible] = useState(false)
+  const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
+  const fullscreenOpacity = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     setMetrics({
@@ -242,7 +250,11 @@ export default function BodyLogDetailScreen() {
         {/* Hero Image Section */}
         <View style={styles.heroContainer}>
           {resolvedUrl ? (
-            <>
+            <TouchableOpacity
+              style={styles.heroTouchable}
+              onPress={() => setImageModalVisible(true)}
+              activeOpacity={0.9}
+            >
               <Image
                 source={{ uri: resolvedUrl }}
                 style={styles.heroImage}
@@ -252,7 +264,7 @@ export default function BodyLogDetailScreen() {
                 colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
                 style={styles.heroGradient}
               />
-            </>
+            </TouchableOpacity>
           ) : (
             <View style={styles.heroPlaceholder}>
               <ActivityIndicator color={colors.primary} size="large" />
@@ -340,6 +352,50 @@ export default function BodyLogDetailScreen() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+
+      {/* Image Fullscreen Modal */}
+      {resolvedUrl && (
+        <Modal
+          visible={imageModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setImageModalVisible(false)}
+        >
+          <Pressable
+            style={styles.imageModalOverlay}
+            onPress={() => setImageModalVisible(false)}
+          >
+            <View style={styles.imageModalContent}>
+              <Animated.Image
+                source={{ uri: resolvedUrl }}
+                style={[styles.fullscreenImage, { opacity: fullscreenOpacity }]}
+                resizeMode="contain"
+                onLoadStart={() => setFullscreenImageLoading(true)}
+                onLoad={() => {
+                  setFullscreenImageLoading(false)
+                  Animated.timing(fullscreenOpacity, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                  }).start()
+                }}
+                onError={(error) => {
+                  console.error(
+                    'Failed to load fullscreen image:',
+                    error.nativeEvent.error,
+                  )
+                  setFullscreenImageLoading(false)
+                }}
+              />
+              {fullscreenImageLoading && (
+                <View style={styles.fullscreenLoadingOverlay}>
+                  <ActivityIndicator size="large" color={colors.white} />
+                </View>
+              )}
+            </View>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   )
 }
@@ -520,5 +576,34 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
+  },
+
+  // Hero Image Touchable
+  heroTouchable: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // Image Modal
+  imageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageModalContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullscreenLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 })

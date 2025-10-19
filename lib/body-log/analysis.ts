@@ -25,8 +25,17 @@ function nonNullNumbers(metrics: BodyLogMetrics) {
 export function parseBodyLogMetrics(
   raw: string | null | undefined,
 ): BodyLogMetrics {
+  // Return all null metrics if content is empty or unparseable
+  const nullMetrics: BodyLogMetrics = {
+    weight_kg: null,
+    body_fat_percentage: null,
+    bmi: null,
+    muscle_mass_kg: null,
+  }
+
   if (!raw) {
-    throw new Error('Body log analysis returned empty content')
+    console.warn('Body log analysis returned empty content, using null metrics')
+    return nullMetrics
   }
 
   const jsonMatch = raw.match(/```json\s*([\s\S]*?)```/i)
@@ -36,13 +45,19 @@ export function parseBodyLogMetrics(
   try {
     parsed = JSON.parse(candidate)
   } catch (error) {
-    throw new Error('Body log analysis response was not valid JSON')
+    console.warn(
+      'Body log analysis response was not valid JSON, using null metrics',
+    )
+    return nullMetrics
   }
 
   const result = metricsSchema.safeParse(parsed)
 
   if (!result.success) {
-    throw new Error('Body log analysis response failed schema validation')
+    console.warn(
+      'Body log analysis response failed schema validation, using null metrics',
+    )
+    return nullMetrics
   }
 
   return nonNullNumbers(result.data)

@@ -546,6 +546,22 @@ export default function BodyLogScreen() {
     })
   }, [analyzeImageMetrics, images, sessionToken])
 
+  // Helper to check if all metrics are null
+  const hasNoStats = useCallback(
+    (imageId: string): boolean => {
+      const image = imageStore[imageId]
+      if (!image) return true
+
+      return (
+        image.weight_kg === null &&
+        image.body_fat_percentage === null &&
+        image.bmi === null &&
+        image.muscle_mass_kg === null
+      )
+    },
+    [imageStore],
+  )
+
   // Watch for analysis completion and navigate to detail page
   useEffect(() => {
     if (!processingImageId || !isProcessing) {
@@ -685,6 +701,7 @@ export default function BodyLogScreen() {
         visible={isProcessing}
         imageUri={processingImageUri}
         isComplete={isAnalysisComplete}
+        hasNoStats={processingImageId ? hasNoStats(processingImageId) : false}
         onComplete={handleProcessingComplete}
       />
     </SafeAreaView>
