@@ -1,9 +1,14 @@
-import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
+import {
+  COMMITMENTS,
+  GENDERS,
+  GOALS,
+  TRAINING_YEARS,
+} from '@/constants/options'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
-import { Gender, Goal } from '@/types/database.types'
+import { Gender, Goal, TrainingYears } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -33,6 +38,8 @@ export default function EditProfileScreen() {
   const [editedAge, setEditedAge] = useState('')
   const [editedGoals, setEditedGoals] = useState<Goal[]>([])
   const [editedCommitment, setEditedCommitment] = useState<string | null>(null)
+  const [editedTrainingYears, setEditedTrainingYears] =
+    useState<TrainingYears | null>(null)
   const [editedBio, setEditedBio] = useState('')
 
   const loadProfile = useCallback(async () => {
@@ -53,6 +60,7 @@ export default function EditProfileScreen() {
       setEditedAge(profile?.age?.toString() || '')
       setEditedGoals(profile?.goals || [])
       setEditedCommitment(profile?.commitment || null)
+      setEditedTrainingYears(profile?.training_years || null)
       setEditedBio(profile?.bio || '')
     } catch (error) {
       console.error('Error loading profile:', error)
@@ -81,6 +89,7 @@ export default function EditProfileScreen() {
         age: editedAge ? parseInt(editedAge) : null,
         goals: editedGoals.length > 0 ? editedGoals : null,
         commitment: editedCommitment,
+        training_years: editedTrainingYears,
         bio: editedBio.trim() || null,
       })
       router.back()
@@ -250,6 +259,34 @@ export default function EditProfileScreen() {
                   ]}
                 >
                   {commitment.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Training Years Selection */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Years of Training</Text>
+          <View style={styles.goalOptions}>
+            {TRAINING_YEARS.map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.goalOption,
+                  editedTrainingYears === item.value &&
+                    styles.goalOptionSelected,
+                ]}
+                onPress={() => setEditedTrainingYears(item.value)}
+              >
+                <Text
+                  style={[
+                    styles.goalOptionText,
+                    editedTrainingYears === item.value &&
+                      styles.goalOptionTextSelected,
+                  ]}
+                >
+                  {item.label}
                 </Text>
               </TouchableOpacity>
             ))}
