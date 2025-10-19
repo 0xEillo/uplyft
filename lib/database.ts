@@ -1033,6 +1033,26 @@ export const database = {
       return data
     },
 
+    async update(
+      imageId: string,
+      metrics: {
+        weight_kg?: number
+        body_fat_percentage?: number
+        bmi?: number
+        muscle_mass_kg?: number
+      },
+    ) {
+      const { data, error } = await supabase
+        .from('body_log_images')
+        .update(metrics)
+        .eq('id', imageId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
     async getAll(userId: string) {
       const { data, error } = await supabase
         .from('body_log_images')

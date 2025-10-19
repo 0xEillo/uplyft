@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -13,12 +14,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { getPlaceholderBodyLogAnalysis } from '@/lib/body-log/metadata'
+import {
+  formatBMI,
+  formatBodyFat,
+  formatBodyLogDate,
+} from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
 import {
   deleteBodyLogImage,
   getBodyLogImageUrl,
@@ -32,34 +38,53 @@ export default function BodyLogDetailScreen() {
     imageId,
     filePath,
     signedUrl,
-    analysisDate,
-    analysisWeight,
-    analysisBodyfat,
-    analysisBmi,
+    createdAt,
+    weightKg,
+    bodyFatPercentage,
+    bmi,
+    muscleMassKg,
   } = useLocalSearchParams<{
     imageId: string
     filePath?: string
     signedUrl?: string
-    analysisDate?: string
-    analysisWeight?: string
-    analysisBodyfat?: string
-    analysisBmi?: string
+    createdAt?: string
+    weightKg?: string
+    bodyFatPercentage?: string
+    bmi?: string
+    muscleMassKg?: string
   }>()
 
   const colors = useThemedColors()
-  const analysis = useMemo(() => {
-    return {
-      ...getPlaceholderBodyLogAnalysis(),
-      ...(analysisDate ? { date: analysisDate } : {}),
-      ...(analysisWeight ? { weight: analysisWeight } : {}),
-      ...(analysisBodyfat ? { bodyfat: analysisBodyfat } : {}),
-      ...(analysisBmi ? { bmi: analysisBmi } : {}),
-    }
-  }, [analysisBodyfat, analysisBmi, analysisDate, analysisWeight])
+  const { formatWeight } = useUnit()
+  const router = useRouter()
+
+  const [accessToken, setAccessToken] = useState<string | null>(null)
+
+  // Parse numeric values from URL params
+  const [metrics, setMetrics] = useState({
+    weight_kg: weightKg ? parseFloat(weightKg) : null,
+    body_fat_percentage: bodyFatPercentage
+      ? parseFloat(bodyFatPercentage)
+      : null,
+    bmi: bmi ? parseFloat(bmi) : null,
+    muscle_mass_kg: muscleMassKg ? parseFloat(muscleMassKg) : null,
+  })
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
   const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(
     typeof signedUrl === 'string' ? signedUrl : undefined,
   )
-  const router = useRouter()
+
+  useEffect(() => {
+    setMetrics({
+      weight_kg: weightKg ? parseFloat(weightKg) : null,
+      body_fat_percentage: bodyFatPercentage
+        ? parseFloat(bodyFatPercentage)
+        : null,
+      bmi: bmi ? parseFloat(bmi) : null,
+      muscle_mass_kg: muscleMassKg ? parseFloat(muscleMassKg) : null,
+    })
+  }, [imageId, weightKg, bodyFatPercentage, bmi, muscleMassKg])
 
   useEffect(() => {
     let ignore = false
@@ -77,6 +102,84 @@ export default function BodyLogDetailScreen() {
       ignore = true
     }
   }, [filePath, resolvedUrl])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const syncAccessToken = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (isMounted) {
+        setAccessToken(data.session?.access_token || null)
+      }
+    }
+
+    syncAccessToken()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        setAccessToken(session?.access_token || null)
+      }
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const shouldFetchMetrics =
+      metrics.weight_kg === null &&
+      metrics.body_fat_percentage === null &&
+      metrics.bmi === null &&
+      metrics.muscle_mass_kg === null &&
+      imageId &&
+      accessToken
+
+    if (!shouldFetchMetrics) {
+      return
+    }
+
+    ;(async () => {
+      try {
+        setIsRefreshing(true)
+        const response = await fetch('/api/body-log/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ imageId }),
+        })
+
+        if (!response.ok) {
+          return
+        }
+
+        const { metrics: fresh } = await response.json()
+        if (!cancelled && fresh) {
+          setMetrics({
+            weight_kg: fresh.weight_kg ?? null,
+            body_fat_percentage: fresh.body_fat_percentage ?? null,
+            bmi: fresh.bmi ?? null,
+            muscle_mass_kg: fresh.muscle_mass_kg ?? null,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to refresh body log metrics:', error)
+      } finally {
+        setIsRefreshing(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [accessToken, imageId, metrics])
 
   const handleDelete = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -172,35 +275,38 @@ export default function BodyLogDetailScreen() {
             Body Composition
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {analysis.date}
+            {createdAt ? formatBodyLogDate(createdAt) : '--'}
           </Text>
 
           {/* Metrics Grid */}
           <View style={styles.metricsGrid}>
             <MetricCard
               label="Weight"
-              value={analysis.weight}
+              value={formatWeight(metrics.weight_kg)}
               icon="barbell"
               colors={colors}
+              isPlaceholder={metrics.weight_kg === null}
             />
             <MetricCard
               label="Body Fat"
-              value={analysis.bodyfat}
+              value={formatBodyFat(metrics.body_fat_percentage)}
               icon="aperture"
               colors={colors}
+              isPlaceholder={metrics.body_fat_percentage === null}
             />
             <MetricCard
               label="BMI"
-              value={analysis.bmi}
+              value={formatBMI(metrics.bmi)}
               icon="analytics"
               colors={colors}
+              isPlaceholder={metrics.bmi === null}
             />
             <MetricCard
               label="Muscle Mass"
-              value="Coming soon"
+              value={formatWeight(metrics.muscle_mass_kg)}
               icon="fitness"
               colors={colors}
-              isPlaceholder
+              isPlaceholder={metrics.muscle_mass_kg === null}
             />
           </View>
         </View>

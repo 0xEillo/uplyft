@@ -1,9 +1,7 @@
+import { BodyLogProcessingModal } from '@/app/components/BodyLogProcessingModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import {
-  getPlaceholderBodyLogAnalysis,
-  type BodyLogAnalysisSnapshot,
-} from '@/lib/body-log/metadata'
+import { type BodyLogRecord } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import {
   getBodyLogImageUrl,
@@ -26,6 +24,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { supabase } from '@/lib/supabase'
+
 const SCREEN_WIDTH = Dimensions.get('window').width
 const IMAGE_SPACING = 4
 const NUM_COLUMNS = 2
@@ -34,12 +34,12 @@ const IMAGE_SIZE =
 
 type BodyLogImageStatus = 'idle' | 'loading' | 'loaded' | 'error'
 
-interface BodyLogImageRecord {
-  id: string
-  filePath: string
+type AnalysisStatus = 'idle' | 'pending' | 'success' | 'error'
+
+interface BodyLogImageRecord extends BodyLogRecord {
   signedUrl: string | null
   status: BodyLogImageStatus
-  analysis: BodyLogAnalysisSnapshot
+  analysisStatus: AnalysisStatus
 }
 
 interface BodyLogImageItemProps {
@@ -67,6 +67,8 @@ const BodyLogImageItem = memo(
       }
     }, [image, onPress])
 
+    const showAnalysisSpinner = image.analysisStatus === 'pending'
+
     return (
       <TouchableOpacity
         style={styles.imageContainer}
@@ -84,7 +86,7 @@ const BodyLogImageItem = memo(
               onLoad={() => onLoadSuccess(image.id)}
               onError={() => onLoadError(image.id)}
             />
-            {image.status !== 'loaded' && (
+            {(image.status !== 'loaded' || showAnalysisSpinner) && (
               <View style={styles.imageLoadingOverlay}>
                 <ActivityIndicator size="small" color={colors.primary} />
               </View>
@@ -103,10 +105,7 @@ const BodyLogImageItem = memo(
       prevProps.image.id === nextProps.image.id &&
       prevProps.image.signedUrl === nextProps.image.signedUrl &&
       prevProps.image.status === nextProps.image.status &&
-      prevProps.image.analysis.date === nextProps.image.analysis.date &&
-      prevProps.image.analysis.weight === nextProps.image.analysis.weight &&
-      prevProps.image.analysis.bodyfat === nextProps.image.analysis.bodyfat &&
-      prevProps.image.analysis.bmi === nextProps.image.analysis.bmi
+      prevProps.image.analysisStatus === nextProps.image.analysisStatus
     )
   },
 )
@@ -125,6 +124,17 @@ export default function BodyLogScreen() {
   >({})
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isOpeningCamera, setIsOpeningCamera] = useState(false)
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
+
+  // Processing modal state
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [processingImageUri, setProcessingImageUri] = useState<string | null>(
+    null,
+  )
+  const [processingImageId, setProcessingImageId] = useState<string | null>(
+    null,
+  )
+  const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
 
   const images = useMemo(() => {
     return imageOrder
@@ -132,27 +142,12 @@ export default function BodyLogScreen() {
       .filter((image): image is BodyLogImageRecord => Boolean(image))
   }, [imageOrder, imageStore])
 
-  const syncImages = useCallback((records: BodyLogImageRecord[]) => {
-    setImageStore((prev) => {
-      const next = { ...prev }
-      records.forEach((record) => {
-        next[record.id] = record
-      })
-      return next
-    })
-    setImageOrder((prev) => {
-      const existing = new Set(prev)
-      const incomingIds = records.map((record) => record.id)
-      const filtered = prev.filter((id) => !incomingIds.includes(id))
-      return [...incomingIds, ...filtered]
-    })
-  }, [])
-
   useEffect(() => {
     if (!user) {
       setImageOrder([])
       setImageStore({})
       setIsInitialLoading(false)
+      setSessionToken(null)
       return
     }
 
@@ -178,10 +173,22 @@ export default function BodyLogScreen() {
         const records: BodyLogImageRecord[] = bodyLogData.map(
           (img: any, index: number) => ({
             id: img.id,
-            filePath: img.file_path,
+            user_id: img.user_id,
+            file_path: img.file_path,
+            created_at: img.created_at,
+            weight_kg: img.weight_kg ?? null,
+            body_fat_percentage: img.body_fat_percentage ?? null,
+            bmi: img.bmi ?? null,
+            muscle_mass_kg: img.muscle_mass_kg ?? null,
             signedUrl: signedUrls[index] ?? null,
             status: signedUrls[index] ? 'idle' : 'error',
-            analysis: getPlaceholderBodyLogAnalysis(),
+            analysisStatus:
+              img.body_fat_percentage !== null ||
+              img.bmi !== null ||
+              img.muscle_mass_kg !== null ||
+              img.weight_kg !== null
+                ? 'success'
+                : 'idle',
           }),
         )
 
@@ -202,10 +209,26 @@ export default function BodyLogScreen() {
       }
     }
 
+    const syncSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      const accessToken = data.session?.access_token || null
+      if (!cancelled) setSessionToken(accessToken)
+    }
+
     loadImages()
+    syncSession()
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        if (!cancelled) {
+          setSessionToken(nextSession?.access_token || null)
+        }
+      },
+    )
 
     return () => {
       cancelled = true
+      subscription.subscription.unsubscribe()
     }
   }, [user])
 
@@ -240,20 +263,31 @@ export default function BodyLogScreen() {
 
   const handleImageOpen = useCallback(
     (image: BodyLogImageRecord) => {
-      const params: Record<string, string> = {
+      const params: { imageId: string; createdAt: string; [key: string]: string } = {
         imageId: image.id,
-        analysisDate: image.analysis.date,
-        analysisWeight: image.analysis.weight,
-        analysisBodyfat: image.analysis.bodyfat,
-        analysisBmi: image.analysis.bmi,
+        createdAt: image.created_at,
       }
 
-      if (image.filePath) {
-        params.filePath = image.filePath
+      if (image.file_path) {
+        params.filePath = image.file_path
       }
 
       if (image.signedUrl) {
         params.signedUrl = image.signedUrl
+      }
+
+      // Add metrics if they exist
+      if (image.weight_kg !== null) {
+        params.weightKg = image.weight_kg.toString()
+      }
+      if (image.body_fat_percentage !== null) {
+        params.bodyFatPercentage = image.body_fat_percentage.toString()
+      }
+      if (image.bmi !== null) {
+        params.bmi = image.bmi.toString()
+      }
+      if (image.muscle_mass_kg !== null) {
+        params.muscleMassKg = image.muscle_mass_kg.toString()
       }
 
       router.push({
@@ -285,6 +319,76 @@ export default function BodyLogScreen() {
     [markImageStatus],
   )
 
+  const analyzeImageMetrics = useCallback(
+    async (imageId: string, accessToken: string | null) => {
+      if (!accessToken) {
+        console.warn('Skipping analysis: missing access token')
+        return
+      }
+
+      setImageStore((prev) => {
+        const current = prev[imageId]
+        if (!current) return prev
+        return {
+          ...prev,
+          [imageId]: {
+            ...current,
+            analysisStatus: 'pending',
+          },
+        }
+      })
+
+      try {
+        const response = await fetch('/api/body-log/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ imageId }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Analysis failed with status ${response.status}`)
+        }
+
+        const { metrics } = await response.json()
+
+        setImageStore((prev) => {
+          const current = prev[imageId]
+          if (!current) return prev
+          return {
+            ...prev,
+            [imageId]: {
+              ...current,
+              weight_kg: metrics.weight_kg ?? current.weight_kg,
+              body_fat_percentage:
+                metrics.body_fat_percentage ?? current.body_fat_percentage,
+              bmi: metrics.bmi ?? current.bmi,
+              muscle_mass_kg:
+                metrics.muscle_mass_kg ?? current.muscle_mass_kg,
+              analysisStatus: 'success',
+            },
+          }
+        })
+      } catch (error) {
+        console.error('Body log analysis failed:', error)
+        setImageStore((prev) => {
+          const current = prev[imageId]
+          if (!current) return prev
+          return {
+            ...prev,
+            [imageId]: {
+              ...current,
+              analysisStatus: 'error',
+            },
+          }
+        })
+      }
+    },
+    [],
+  )
+
   const handleCameraPress = useCallback(async () => {
     if (!user) {
       alert('You must be logged in to add photos')
@@ -299,10 +403,16 @@ export default function BodyLogScreen() {
     const addPlaceholder = () => {
       const placeholder: BodyLogImageRecord = {
         id: placeholderId,
-        filePath: '',
+        user_id: user.id,
+        file_path: '',
+        created_at: new Date().toISOString(),
+        weight_kg: null,
+        body_fat_percentage: null,
+        bmi: null,
+        muscle_mass_kg: null,
         signedUrl: null,
         status: 'loading',
-        analysis: getPlaceholderBodyLogAnalysis(),
+        analysisStatus: 'pending',
       }
 
       setImageStore((prev) => ({
@@ -340,13 +450,22 @@ export default function BodyLogScreen() {
         return
       }
 
+      const localUri = result.assets[0].uri
+
+      // Show processing modal immediately
+      setProcessingImageUri(localUri)
+      setIsProcessing(true)
+      setIsAnalysisComplete(false)
+
       addPlaceholder()
 
       try {
-        const localUri = result.assets[0].uri
         const filePath = await uploadBodyLogImage(localUri, user.id)
         const newImage = await database.bodyLog.create(user.id, filePath)
         const signedUrl = await getBodyLogImageUrl(filePath)
+
+        // Store the image ID for navigation later
+        setProcessingImageId(newImage.id)
 
         setImageStore((prev) => {
           const next = { ...prev }
@@ -354,10 +473,16 @@ export default function BodyLogScreen() {
 
           next[newImage.id] = {
             id: newImage.id,
-            filePath,
+            user_id: newImage.user_id,
+            file_path: filePath,
+            created_at: newImage.created_at,
+            weight_kg: newImage.weight_kg ?? null,
+            body_fat_percentage: newImage.body_fat_percentage ?? null,
+            bmi: newImage.bmi ?? null,
+            muscle_mass_kg: newImage.muscle_mass_kg ?? null,
             signedUrl,
             status: 'idle',
-            analysis: getPlaceholderBodyLogAnalysis(),
+            analysisStatus: 'pending',
           }
 
           return next
@@ -367,19 +492,124 @@ export default function BodyLogScreen() {
           const withoutPlaceholder = prev.filter((id) => id !== placeholderId)
           return [newImage.id, ...withoutPlaceholder]
         })
+
+        analyzeImageMetrics(newImage.id, sessionToken)
       } catch (uploadError) {
         console.error('Error uploading photo:', uploadError)
         alert('Failed to save photo. Please try again.')
         removePlaceholder()
+        // Hide processing modal on error
+        setIsProcessing(false)
+        setProcessingImageUri(null)
+        setProcessingImageId(null)
+        setIsAnalysisComplete(false)
       }
     } catch (error) {
       console.error('Error opening camera:', error)
       alert('Failed to save photo. Please try again.')
       removePlaceholder()
+      // Hide processing modal on error
+      setIsProcessing(false)
+      setProcessingImageUri(null)
+      setProcessingImageId(null)
+      setIsAnalysisComplete(false)
     } finally {
       setIsOpeningCamera(false)
     }
-  }, [user])
+  }, [analyzeImageMetrics, sessionToken, user])
+
+  useEffect(() => {
+    if (!sessionToken) {
+      return
+    }
+
+    images.forEach((image) => {
+      if (image.analysisStatus !== 'idle') {
+        return
+      }
+
+      const hasAnyMetric =
+        image.weight_kg !== null ||
+        image.body_fat_percentage !== null ||
+        image.bmi !== null ||
+        image.muscle_mass_kg !== null
+
+      if (hasAnyMetric) {
+        return
+      }
+
+      if (!image.file_path) {
+        return
+      }
+
+      analyzeImageMetrics(image.id, sessionToken)
+    })
+  }, [analyzeImageMetrics, images, sessionToken])
+
+  // Watch for analysis completion and navigate to detail page
+  useEffect(() => {
+    if (!processingImageId || !isProcessing) {
+      return
+    }
+
+    const processingImage = imageStore[processingImageId]
+    if (!processingImage) {
+      return
+    }
+
+    // When analysis is complete, show success animation then navigate
+    if (processingImage.analysisStatus === 'success') {
+      setIsAnalysisComplete(true)
+    }
+  }, [processingImageId, imageStore, isProcessing])
+
+  // Handle navigation after success animation completes
+  const handleProcessingComplete = useCallback(() => {
+    if (!processingImageId) return
+
+    const image = imageStore[processingImageId]
+    if (!image) return
+
+    // Reset modal state
+    setIsProcessing(false)
+    setProcessingImageUri(null)
+    setProcessingImageId(null)
+    setIsAnalysisComplete(false)
+
+    // Navigate to detail page with all the metrics
+    const params: { imageId: string; createdAt: string; [key: string]: string } =
+      {
+        imageId: image.id,
+        createdAt: image.created_at,
+      }
+
+    if (image.file_path) {
+      params.filePath = image.file_path
+    }
+
+    if (image.signedUrl) {
+      params.signedUrl = image.signedUrl
+    }
+
+    // Add metrics if they exist
+    if (image.weight_kg !== null) {
+      params.weightKg = image.weight_kg.toString()
+    }
+    if (image.body_fat_percentage !== null) {
+      params.bodyFatPercentage = image.body_fat_percentage.toString()
+    }
+    if (image.bmi !== null) {
+      params.bmi = image.bmi.toString()
+    }
+    if (image.muscle_mass_kg !== null) {
+      params.muscleMassKg = image.muscle_mass_kg.toString()
+    }
+
+    router.push({
+      pathname: '/body-log/[imageId]',
+      params,
+    })
+  }, [processingImageId, imageStore, router])
 
   const renderImage = useCallback(
     ({ item }: { item: BodyLogImageRecord }) => (
@@ -449,6 +679,14 @@ export default function BodyLogScreen() {
           <Ionicons name="camera" size={28} color={colors.white} />
         </TouchableOpacity>
       </View>
+
+      {/* Processing Modal */}
+      <BodyLogProcessingModal
+        visible={isProcessing}
+        imageUri={processingImageUri}
+        isComplete={isAnalysisComplete}
+        onComplete={handleProcessingComplete}
+      />
     </SafeAreaView>
   )
 }
