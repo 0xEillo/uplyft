@@ -1016,4 +1016,41 @@ export const database = {
       }
     },
   },
+
+  // Body log operations
+  bodyLog: {
+    async create(userId: string, filePath: string) {
+      const { data, error } = await supabase
+        .from('body_log_images')
+        .insert({
+          user_id: userId,
+          file_path: filePath,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
+    async getAll(userId: string) {
+      const { data, error } = await supabase
+        .from('body_log_images')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data
+    },
+
+    async delete(imageId: string) {
+      const { error } = await supabase
+        .from('body_log_images')
+        .delete()
+        .eq('id', imageId)
+
+      if (error) throw error
+    },
+  },
 }

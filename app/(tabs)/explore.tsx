@@ -7,7 +7,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   RefreshControl,
   ScrollView,
@@ -17,8 +17,15 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { runOnJS } from 'react-native-reanimated'
 
 type TabType = 'progress' | 'chat'
+
+// Swipe gesture thresholds
+const SWIPE_EDGE_THRESHOLD = 50 // Minimum X position to start swipe (avoid edge gestures)
+const SWIPE_DISTANCE_THRESHOLD = -80 // Minimum horizontal distance for swipe
+const SWIPE_VELOCITY_THRESHOLD = -300 // Minimum velocity to trigger navigation
 
 export default function ProfileScreen() {
   const { user } = useAuth()
@@ -27,6 +34,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('chat')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const startX = useRef(0)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -42,6 +50,37 @@ export default function ProfileScreen() {
     })
   }, [trackEvent])
 
+  // Navigation function to be called from gesture handler
+  const handleSwipeNavigation = useCallback(() => {
+    router.push('/(tabs)/body-log')
+  }, [])
+
+  const handleSettingsPress = useCallback(() => {
+    router.push('/settings')
+  }, [])
+
+  // Swipe left to navigate to body-log
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onBegin((event) => {
+          startX.current = event.x
+        })
+        .onEnd((event) => {
+          // Only trigger if swipe didn't start from the left edge (avoid native back gesture)
+          // Detect left swipe (negative translationX and negative velocityX)
+          if (
+            startX.current > SWIPE_EDGE_THRESHOLD &&
+            event.translationX < SWIPE_DISTANCE_THRESHOLD &&
+            event.velocityX < SWIPE_VELOCITY_THRESHOLD
+          ) {
+            // Use runOnJS to execute navigation on the JS thread
+            runOnJS(handleSwipeNavigation)()
+          }
+        }),
+    [handleSwipeNavigation]
+  )
+
   const styles = createStyles(colors)
 
   return (
@@ -49,71 +88,86 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={() => router.push('/settings')}>
+        <TouchableOpacity
+          onPress={handleSettingsPress}
+          accessibilityLabel="Settings"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to settings page"
+        >
           <Ionicons name="settings-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
-          onPress={() => setActiveTab('chat')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'chat' && styles.activeTabText,
-            ]}
-          >
-            Chat
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
-          onPress={() => setActiveTab('progress')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'progress' && styles.activeTabText,
-            ]}
-          >
-            Stats
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <GestureDetector gesture={swipeGesture}>
+        <View style={styles.gestureContainer}>
+          {/* Tabs */}
+          <View style={styles.tabs}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
+              onPress={() => setActiveTab('chat')}
+              accessibilityLabel="Chat tab"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'chat' }}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'chat' && styles.activeTabText,
+                ]}
+              >
+                Chat
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
+              onPress={() => setActiveTab('progress')}
+              accessibilityLabel="Stats tab"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'progress' }}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'progress' && styles.activeTabText,
+                ]}
+              >
+                Stats
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-      {/* Tab Content */}
-      {activeTab === 'progress' ? (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-              progressBackgroundColor={colors.white}
-            />
-          }
-        >
-          {user && (
-            <>
-              <ExerciseLeaderboardCard
-                userId={user.id}
-                refreshTrigger={refreshTrigger}
-              />
-              <StrengthScoreChart userId={user.id} />
-              <MuscleBalanceChart userId={user.id} />
-            </>
+          {/* Tab Content */}
+          {activeTab === 'progress' ? (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollViewContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[colors.primary]}
+                  tintColor={colors.primary}
+                  progressBackgroundColor={colors.white}
+                />
+              }
+            >
+              {user && (
+                <>
+                  <ExerciseLeaderboardCard
+                    userId={user.id}
+                    refreshTrigger={refreshTrigger}
+                  />
+                  <StrengthScoreChart userId={user.id} />
+                  <MuscleBalanceChart userId={user.id} />
+                </>
+              )}
+            </ScrollView>
+          ) : (
+            <WorkoutChat />
           )}
-        </ScrollView>
-      ) : (
-        <WorkoutChat />
-      )}
+        </View>
+      </GestureDetector>
     </SafeAreaView>
   )
 }
@@ -133,6 +187,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.white,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    gestureContainer: {
+      flex: 1,
     },
     headerTitleContainer: {
       flexDirection: 'row',

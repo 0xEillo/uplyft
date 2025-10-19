@@ -180,6 +180,13 @@ function TabLayoutContent() {
             tabBarStyle: { display: 'none' },
           }}
         />
+        <Tabs.Screen
+          name="body-log"
+          options={{
+            href: null,
+            tabBarStyle: { display: 'none' },
+          }}
+        />
       </Tabs>
       <SubmitSuccessOverlay
         visible={isVisible}
