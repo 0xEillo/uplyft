@@ -1,4 +1,4 @@
-import { Gender, Goal } from '@/types/database.types'
+import { Gender, Goal, TrainingYears } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 
 /**
@@ -32,4 +32,14 @@ export const COMMITMENTS: {
   { value: '3_times', label: '3x per week', icon: 'calendar' },
   { value: '4_times', label: '4x per week', icon: 'calendar' },
   { value: '5_plus', label: '5+ per week', icon: 'flame' },
+]
+
+export const TRAINING_YEARS: {
+  value: TrainingYears
+  label: string
+}[] = [
+  { value: 'less_than_1', label: 'Less than 1 year' },
+  { value: '1_to_3', label: '1-3 years' },
+  { value: '3_to_5', label: '3-5 years' },
+  { value: '5_plus', label: '5+ years' },
 ]
