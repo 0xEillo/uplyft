@@ -52,7 +52,7 @@ export default function ProfileScreen() {
 
   // Navigation function to be called from gesture handler
   const handleSwipeNavigation = useCallback(() => {
-    router.push('/(tabs)/body-log')
+    router.push('/body-log')
   }, [])
 
   const handleSettingsPress = useCallback(() => {

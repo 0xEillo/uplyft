@@ -219,7 +219,7 @@ export default function BodyLogDetailScreen() {
               )
 
               // Navigate back to body log listing
-              router.push('/(tabs)/body-log')
+              router.push('/body-log')
             } catch (error) {
               console.error('Error deleting body log image:', error)
               Alert.alert(
@@ -329,7 +329,7 @@ export default function BodyLogDetailScreen() {
         <View style={styles.topActions}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => router.push('/(tabs)/body-log')}
+            onPress={() => router.back()}
             style={[
               styles.topButton,
               { backgroundColor: colors.backgroundWhite + 'E6' },

@@ -176,14 +176,6 @@ function TabLayoutContent() {
           name="create-speech"
           options={{
             href: null,
-            animation: 'fade',
-            tabBarStyle: { display: 'none' },
-          }}
-        />
-        <Tabs.Screen
-          name="body-log"
-          options={{
-            href: null,
             tabBarStyle: { display: 'none' },
           }}
         />

@@ -1,4 +1,4 @@
-import { BodyLogProcessingModal } from '@/app/components/BodyLogProcessingModal'
+import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogRecord } from '@/lib/body-log/metadata'
@@ -19,10 +19,17 @@ import {
   FlatList,
   Image,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 
 import { supabase } from '@/lib/supabase'
 
@@ -117,6 +124,23 @@ export default function BodyLogScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const styles = createStyles(colors)
+
+  // Snapchat-like slide animation
+  const translateX = useSharedValue(SCREEN_WIDTH)
+
+  useEffect(() => {
+    // Slide in from right with smooth Snapchat-like animation
+    translateX.value = withTiming(0, {
+      duration: 300,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty deps - only run on mount. translateX is a stable SharedValue
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+    }
+  })
 
   const [imageOrder, setImageOrder] = useState<string[]>([])
   const [imageStore, setImageStore] = useState<
@@ -257,9 +281,26 @@ export default function BodyLogScreen() {
     [],
   )
 
-  const handleBackPress = useCallback(() => {
+  const navigateToProfile = () => {
     router.push('/(tabs)/explore')
-  }, [router])
+  }
+
+  const handleBackPress = useCallback(() => {
+    // Slide out to right with reverse animation
+    translateX.value = withTiming(
+      SCREEN_WIDTH,
+      {
+        duration: 300,
+      },
+      (finished) => {
+        if (finished) {
+          // Navigate to profile page after animation completes
+          runOnJS(navigateToProfile)()
+        }
+      },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty deps - translateX and router are stable
 
   const handleImageOpen = useCallback(
     (image: BodyLogImageRecord) => {
@@ -646,7 +687,8 @@ export default function BodyLogScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleBackPress}
@@ -657,7 +699,7 @@ export default function BodyLogScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
-          <Ionicons name="body" size={20} color={colors.text} />
+          <Text style={styles.headerTitleText}>Body log</Text>
         </View>
         <View style={styles.placeholder} />
       </View>
@@ -705,6 +747,7 @@ export default function BodyLogScreen() {
         onComplete={handleProcessingComplete}
       />
     </SafeAreaView>
+    </Animated.View>
   )
 }
 
@@ -747,8 +790,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderBottomColor: colors.border,
     },
     headerTitle: {
-      width: 24,
       alignItems: 'center',
+    },
+    headerTitleText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
     },
     placeholder: {
       width: 24,
