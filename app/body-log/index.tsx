@@ -1,22 +1,19 @@
-import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogRecord } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import {
-  getBodyLogImageUrl,
   getBodyLogImageUrls,
-  uploadBodyLogImage,
 } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import {
   ActivityIndicator,
   Dimensions,
-  FlatList,
+  SectionList,
   Image,
   StyleSheet,
   Text,
@@ -31,13 +28,47 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 
-import { supabase } from '@/lib/supabase'
-
 const SCREEN_WIDTH = Dimensions.get('window').width
 const IMAGE_SPACING = 4
 const NUM_COLUMNS = 2
+const GRID_PADDING = 16
 const IMAGE_SIZE =
-  (SCREEN_WIDTH - IMAGE_SPACING * (NUM_COLUMNS + 1)) / NUM_COLUMNS
+  (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_SPACING) / NUM_COLUMNS
+
+// Format date like Google Photos
+function formatSectionDate(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const imageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (imageDate.getTime() === today.getTime()) {
+    return 'Today'
+  } else if (imageDate.getTime() === yesterday.getTime()) {
+    return 'Yesterday'
+  } else {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December']
+    const month = monthNames[date.getMonth()]
+    const day = date.getDate()
+    const year = date.getFullYear()
+
+    // Show year only if not current year
+    if (year === now.getFullYear()) {
+      return `${month} ${day}`
+    } else {
+      return `${month} ${day}, ${year}`
+    }
+  }
+}
+
+// Get date key for grouping (YYYY-MM-DD)
+function getDateKey(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toISOString().split('T')[0]
+}
 
 type BodyLogImageStatus = 'idle' | 'loading' | 'loaded' | 'error'
 
@@ -47,6 +78,12 @@ interface BodyLogImageRecord extends BodyLogRecord {
   signedUrl: string | null
   status: BodyLogImageStatus
   analysisStatus: AnalysisStatus
+}
+
+interface ImageSection {
+  title: string
+  dateKey: string
+  data: BodyLogImageRecord[]
 }
 
 interface BodyLogImageItemProps {
@@ -125,6 +162,8 @@ export default function BodyLogScreen() {
   const router = useRouter()
   const styles = createStyles(colors)
 
+  const [userGender, setUserGender] = useState<'male' | 'female' | null>(null)
+
   // Snapchat-like slide animation
   const translateX = useSharedValue(SCREEN_WIDTH)
 
@@ -147,23 +186,32 @@ export default function BodyLogScreen() {
     Record<string, BodyLogImageRecord>
   >({})
   const [isInitialLoading, setIsInitialLoading] = useState(true)
-  const [isOpeningCamera, setIsOpeningCamera] = useState(false)
-  const [sessionToken, setSessionToken] = useState<string | null>(null)
 
-  // Processing modal state
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingImageUri, setProcessingImageUri] = useState<string | null>(
-    null,
-  )
-  const [processingImageId, setProcessingImageId] = useState<string | null>(
-    null,
-  )
-  const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
-
-  const images = useMemo(() => {
-    return imageOrder
+  const sections = useMemo(() => {
+    const images = imageOrder
       .map((id) => imageStore[id])
       .filter((image): image is BodyLogImageRecord => Boolean(image))
+
+    // Group images by date
+    const grouped = new Map<string, BodyLogImageRecord[]>()
+    images.forEach((image) => {
+      const dateKey = getDateKey(image.created_at)
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, [])
+      }
+      grouped.get(dateKey)!.push(image)
+    })
+
+    // Convert to sections array and sort by date (newest first)
+    const sectionsArray: ImageSection[] = Array.from(grouped.entries())
+      .map(([dateKey, data]) => ({
+        title: formatSectionDate(data[0].created_at),
+        dateKey,
+        data,
+      }))
+      .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
+
+    return sectionsArray
   }, [imageOrder, imageStore])
 
   useEffect(() => {
@@ -171,7 +219,7 @@ export default function BodyLogScreen() {
       setImageOrder([])
       setImageStore({})
       setIsInitialLoading(false)
-      setSessionToken(null)
+      setUserGender(null)
       return
     }
 
@@ -181,6 +229,19 @@ export default function BodyLogScreen() {
       setIsInitialLoading(true)
 
       try {
+        // Fetch user profile for gender
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('gender')
+          .eq('id', user.id)
+          .single()
+
+        if (!cancelled && profile?.gender) {
+          if (profile.gender === 'male' || profile.gender === 'female') {
+            setUserGender(profile.gender)
+          }
+        }
+
         const bodyLogData = await database.bodyLog.getAll(user.id)
         if (cancelled) return
 
@@ -233,26 +294,10 @@ export default function BodyLogScreen() {
       }
     }
 
-    const syncSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      const accessToken = data.session?.access_token || null
-      if (!cancelled) setSessionToken(accessToken)
-    }
-
     loadImages()
-    syncSession()
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (!cancelled) {
-          setSessionToken(nextSession?.access_token || null)
-        }
-      },
-    )
 
     return () => {
       cancelled = true
-      subscription.subscription.unsubscribe()
     }
   }, [user])
 
@@ -360,76 +405,6 @@ export default function BodyLogScreen() {
     [markImageStatus],
   )
 
-  const analyzeImageMetrics = useCallback(
-    async (imageId: string, accessToken: string | null) => {
-      if (!accessToken) {
-        console.warn('Skipping analysis: missing access token')
-        return
-      }
-
-      setImageStore((prev) => {
-        const current = prev[imageId]
-        if (!current) return prev
-        return {
-          ...prev,
-          [imageId]: {
-            ...current,
-            analysisStatus: 'pending',
-          },
-        }
-      })
-
-      try {
-        const response = await fetch('/api/body-log/analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ imageId }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Analysis failed with status ${response.status}`)
-        }
-
-        const { metrics } = await response.json()
-
-        setImageStore((prev) => {
-          const current = prev[imageId]
-          if (!current) return prev
-          return {
-            ...prev,
-            [imageId]: {
-              ...current,
-              weight_kg: metrics.weight_kg ?? current.weight_kg,
-              body_fat_percentage:
-                metrics.body_fat_percentage ?? current.body_fat_percentage,
-              bmi: metrics.bmi ?? current.bmi,
-              muscle_mass_kg:
-                metrics.muscle_mass_kg ?? current.muscle_mass_kg,
-              analysisStatus: 'success',
-            },
-          }
-        })
-      } catch (error) {
-        console.error('Body log analysis failed:', error)
-        setImageStore((prev) => {
-          const current = prev[imageId]
-          if (!current) return prev
-          return {
-            ...prev,
-            [imageId]: {
-              ...current,
-              analysisStatus: 'error',
-            },
-          }
-        })
-      }
-    },
-    [],
-  )
-
   const handleCameraPress = useCallback(async () => {
     if (!user) {
       alert('You must be logged in to add photos')
@@ -437,252 +412,45 @@ export default function BodyLogScreen() {
     }
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    setIsOpeningCamera(true)
 
-    const placeholderId = `temp-${Date.now()}`
-
-    const addPlaceholder = () => {
-      const placeholder: BodyLogImageRecord = {
-        id: placeholderId,
-        user_id: user.id,
-        file_path: '',
-        created_at: new Date().toISOString(),
-        weight_kg: null,
-        body_fat_percentage: null,
-        bmi: null,
-        muscle_mass_kg: null,
-        signedUrl: null,
-        status: 'loading',
-        analysisStatus: 'pending',
-      }
-
-      setImageStore((prev) => ({
-        ...prev,
-        [placeholderId]: placeholder,
-      }))
-      setImageOrder((prev) => [placeholderId, ...prev])
-    }
-
-    const removePlaceholder = () => {
-      setImageStore((prev) => {
-        if (!prev[placeholderId]) return prev
-        const next = { ...prev }
-        delete next[placeholderId]
-        return next
-      })
-      setImageOrder((prev) => prev.filter((id) => id !== placeholderId))
-    }
-
-    try {
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
-
-      if (!permissionResult.granted) {
-        alert('Permission to access camera is required!')
-        return
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-      })
-
-      if (result.canceled || !result.assets?.[0]) {
-        return
-      }
-
-      const localUri = result.assets[0].uri
-
-      // Show processing modal immediately
-      setProcessingImageUri(localUri)
-      setIsProcessing(true)
-      setIsAnalysisComplete(false)
-
-      addPlaceholder()
-
-      try {
-        const filePath = await uploadBodyLogImage(localUri, user.id)
-        const newImage = await database.bodyLog.create(user.id, filePath)
-        const signedUrl = await getBodyLogImageUrl(filePath)
-
-        // Store the image ID for navigation later
-        setProcessingImageId(newImage.id)
-
-        setImageStore((prev) => {
-          const next = { ...prev }
-          delete next[placeholderId]
-
-          next[newImage.id] = {
-            id: newImage.id,
-            user_id: newImage.user_id,
-            file_path: filePath,
-            created_at: newImage.created_at,
-            weight_kg: newImage.weight_kg ?? null,
-            body_fat_percentage: newImage.body_fat_percentage ?? null,
-            bmi: newImage.bmi ?? null,
-            muscle_mass_kg: newImage.muscle_mass_kg ?? null,
-            signedUrl,
-            status: 'idle',
-            analysisStatus: 'pending',
-          }
-
-          return next
-        })
-
-        setImageOrder((prev) => {
-          const withoutPlaceholder = prev.filter((id) => id !== placeholderId)
-          return [newImage.id, ...withoutPlaceholder]
-        })
-
-        analyzeImageMetrics(newImage.id, sessionToken)
-      } catch (uploadError) {
-        console.error('Error uploading photo:', uploadError)
-        alert('Failed to save photo. Please try again.')
-        removePlaceholder()
-        // Hide processing modal on error
-        setIsProcessing(false)
-        setProcessingImageUri(null)
-        setProcessingImageId(null)
-        setIsAnalysisComplete(false)
-      }
-    } catch (error) {
-      console.error('Error opening camera:', error)
-      alert('Failed to save photo. Please try again.')
-      removePlaceholder()
-      // Hide processing modal on error
-      setIsProcessing(false)
-      setProcessingImageUri(null)
-      setProcessingImageId(null)
-      setIsAnalysisComplete(false)
-    } finally {
-      setIsOpeningCamera(false)
-    }
-  }, [analyzeImageMetrics, sessionToken, user])
-
-  useEffect(() => {
-    if (!sessionToken) {
-      return
-    }
-
-    images.forEach((image) => {
-      if (image.analysisStatus !== 'idle') {
-        return
-      }
-
-      const hasAnyMetric =
-        image.weight_kg !== null ||
-        image.body_fat_percentage !== null ||
-        image.bmi !== null ||
-        image.muscle_mass_kg !== null
-
-      if (hasAnyMetric) {
-        return
-      }
-
-      if (!image.file_path) {
-        return
-      }
-
-      analyzeImageMetrics(image.id, sessionToken)
+    // Navigate to intro page with user gender
+    router.push({
+      pathname: '/body-log/intro',
+      params: { userGender: userGender || '' },
     })
-  }, [analyzeImageMetrics, images, sessionToken])
+  }, [user, userGender, router])
 
-  // Helper to check if all metrics are null
-  const hasNoStats = useCallback(
-    (imageId: string): boolean => {
-      const image = imageStore[imageId]
-      if (!image) return true
 
-      return (
-        image.weight_kg === null &&
-        image.body_fat_percentage === null &&
-        image.bmi === null &&
-        image.muscle_mass_kg === null
-      )
-    },
-    [imageStore],
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: ImageSection }) => (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderText}>{section.title}</Text>
+      </View>
+    ),
+    [styles],
   )
 
-  // Watch for analysis completion and navigate to detail page
-  useEffect(() => {
-    if (!processingImageId || !isProcessing) {
-      return
-    }
-
-    const processingImage = imageStore[processingImageId]
-    if (!processingImage) {
-      return
-    }
-
-    // When analysis is complete, show success animation then navigate
-    if (processingImage.analysisStatus === 'success') {
-      setIsAnalysisComplete(true)
-    }
-  }, [processingImageId, imageStore, isProcessing])
-
-  // Handle navigation after success animation completes
-  const handleProcessingComplete = useCallback(() => {
-    if (!processingImageId) return
-
-    const image = imageStore[processingImageId]
-    if (!image) return
-
-    // Reset modal state
-    setIsProcessing(false)
-    setProcessingImageUri(null)
-    setProcessingImageId(null)
-    setIsAnalysisComplete(false)
-
-    // Navigate to detail page with all the metrics
-    const params: { imageId: string; createdAt: string; [key: string]: string } =
-      {
-        imageId: image.id,
-        createdAt: image.created_at,
-      }
-
-    if (image.file_path) {
-      params.filePath = image.file_path
-    }
-
-    if (image.signedUrl) {
-      params.signedUrl = image.signedUrl
-    }
-
-    // Add metrics if they exist
-    if (image.weight_kg !== null) {
-      params.weightKg = image.weight_kg.toString()
-    }
-    if (image.body_fat_percentage !== null) {
-      params.bodyFatPercentage = image.body_fat_percentage.toString()
-    }
-    if (image.bmi !== null) {
-      params.bmi = image.bmi.toString()
-    }
-    if (image.muscle_mass_kg !== null) {
-      params.muscleMassKg = image.muscle_mass_kg.toString()
-    }
-
-    router.push({
-      pathname: '/body-log/[imageId]',
-      params,
-    })
-  }, [processingImageId, imageStore, router])
-
-  const renderImage = useCallback(
-    ({ item }: { item: BodyLogImageRecord }) => (
-      <BodyLogImageItem
-        image={item}
-        onPress={handleImageOpen}
-        onLoadStart={handleImageLoadStart}
-        onLoadSuccess={handleImageLoadSuccess}
-        onLoadError={handleImageLoadError}
-      />
+  const renderSectionContent = useCallback(
+    ({ section }: { section: ImageSection }) => (
+      <View style={styles.sectionContent}>
+        {section.data.map((item) => (
+          <BodyLogImageItem
+            key={item.id}
+            image={item}
+            onPress={handleImageOpen}
+            onLoadStart={handleImageLoadStart}
+            onLoadSuccess={handleImageLoadSuccess}
+            onLoadError={handleImageLoadError}
+          />
+        ))}
+      </View>
     ),
     [
       handleImageLoadError,
       handleImageLoadStart,
       handleImageLoadSuccess,
       handleImageOpen,
+      styles,
     ],
   )
 
@@ -709,13 +477,15 @@ export default function BodyLogScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
-        <FlatList
-          data={images}
-          renderItem={renderImage}
+        <SectionList
+          sections={sections}
+          renderItem={() => null}
+          renderSectionHeader={renderSectionHeader}
+          renderSectionFooter={renderSectionContent}
           keyExtractor={(item) => item.id}
-          numColumns={NUM_COLUMNS}
           contentContainerStyle={styles.gridContent}
           showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={true}
         />
       )}
 
@@ -729,7 +499,6 @@ export default function BodyLogScreen() {
         <TouchableOpacity
           style={styles.cameraFab}
           onPress={handleCameraPress}
-          disabled={isOpeningCamera}
           accessibilityLabel="Take photo"
           accessibilityRole="button"
           accessibilityHint="Open camera to take a body progress photo"
@@ -738,14 +507,6 @@ export default function BodyLogScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Processing Modal */}
-      <BodyLogProcessingModal
-        visible={isProcessing}
-        imageUri={processingImageUri}
-        isComplete={isAnalysisComplete}
-        hasNoStats={processingImageId ? hasNoStats(processingImageId) : false}
-        onComplete={handleProcessingComplete}
-      />
     </SafeAreaView>
     </Animated.View>
   )
@@ -757,9 +518,14 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: IMAGE_SIZE,
       height: IMAGE_SIZE,
       margin: IMAGE_SPACING / 2,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
       backgroundColor: colors.backgroundLight,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 2,
     },
     image: {
       width: '100%',
@@ -784,18 +550,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingVertical: 16,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: 14,
+      backgroundColor: colors.background,
+      borderBottomWidth: 0,
+      gap: 12,
     },
     headerTitle: {
       alignItems: 'center',
+      flex: 1,
     },
     headerTitleText: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 17,
+      fontWeight: '700',
       color: colors.text,
+      letterSpacing: -0.3,
     },
     placeholder: {
       width: 24,
@@ -806,33 +574,53 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     gridContent: {
-      padding: IMAGE_SPACING,
+      paddingHorizontal: GRID_PADDING,
+      paddingVertical: 8,
       paddingBottom: 120,
+    },
+    sectionContent: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginLeft: -IMAGE_SPACING / 2,
+      marginRight: -IMAGE_SPACING / 2,
+    },
+    sectionHeader: {
+      backgroundColor: colors.background,
+      paddingTop: 20,
+      paddingBottom: 12,
+      paddingHorizontal: 0,
+      borderBottomWidth: 0,
+    },
+    sectionHeaderText: {
+      fontSize: 22,
+      fontWeight: '600',
+      color: colors.text,
+      letterSpacing: 0.35,
     },
     cameraFabContainer: {
       position: 'absolute',
-      bottom: 32,
+      bottom: 36,
       alignSelf: 'center',
       justifyContent: 'center',
       alignItems: 'center',
     },
     cameraFabBackground: {
       position: 'absolute',
-      width: 72,
-      height: 72,
-      borderRadius: 36,
+      width: 76,
+      height: 76,
+      borderRadius: 38,
     },
     cameraFab: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 68,
+      height: 68,
+      borderRadius: 34,
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.35,
+      shadowRadius: 16,
+      elevation: 12,
     },
   })

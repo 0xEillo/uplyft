@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 56,
   },
 
   // Hero Section
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: HERO_HEIGHT * 0.6,
+    height: HERO_HEIGHT * 0.65,
   },
   heroPlaceholder: {
     flex: 1,
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   // Content Section
   contentSection: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 28,
   },
 
   // AI Badge
@@ -492,62 +492,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 18,
     backgroundColor: 'rgba(138, 180, 248, 0.12)',
-    gap: 6,
-    marginBottom: 16,
+    gap: 7,
+    marginBottom: 18,
   },
   aiBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
 
   // Title Section
   mainTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    marginBottom: 10,
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    marginBottom: 32,
+    marginBottom: 36,
   },
 
   // Metrics Grid
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 13,
   },
   metricCard: {
-    width: (SCREEN_WIDTH - 40 - 12) / 2,
-    borderRadius: 20,
-    padding: 20,
+    width: (SCREEN_WIDTH - 40 - 13) / 2,
+    borderRadius: 22,
+    padding: 18,
     borderWidth: 1,
-    gap: 12,
+    gap: 13,
   },
   metricIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   metricValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
   metricLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
 
   // Top Actions
@@ -567,15 +568,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
   },
 
   // Hero Image Touchable

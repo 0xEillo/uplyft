@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons'
-import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useRef, useState } from 'react'
@@ -12,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native'
+import { useThemedColors } from '@/hooks/useThemedColors'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -41,6 +41,7 @@ export function BodyLogProcessingModal({
   hasNoStats = false,
   onComplete,
 }: BodyLogProcessingModalProps) {
+  const colors = useThemedColors()
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccess, setShowSuccess] = useState(false)
 
@@ -161,6 +162,8 @@ export function BodyLogProcessingModal({
 
   if (!visible) return null
 
+  const dynamicStyles = createDynamicStyles(colors)
+
   return (
     <Modal
       visible={visible}
@@ -168,34 +171,34 @@ export function BodyLogProcessingModal({
       animationType="fade"
       statusBarTranslucent
     >
-      <View style={styles.container}>
+      <View style={dynamicStyles.container}>
         {/* Background with image preview */}
         {imageUri && (
           <Image
             source={{ uri: imageUri }}
-            style={styles.backgroundImage}
+            style={dynamicStyles.backgroundImage}
             blurRadius={20}
           />
         )}
 
         {/* Dark overlay */}
-        <View style={styles.overlay} />
+        <View style={dynamicStyles.overlay} />
 
         {/* Content */}
-        <View style={styles.content}>
+        <View style={dynamicStyles.content}>
           {/* Image preview with scanning effect */}
           {imageUri && !showSuccess && (
-            <View style={styles.imageContainer}>
+            <View style={dynamicStyles.imageContainer}>
               <Image
                 source={{ uri: imageUri }}
-                style={styles.previewImage}
+                style={dynamicStyles.previewImage}
                 resizeMode="cover"
               />
 
               {/* Scanning lines */}
               <Animated.View
                 style={[
-                  styles.scanLineContainer,
+                  dynamicStyles.scanLineContainer,
                   {
                     transform: [{ translateY: scanLineTranslateY }],
                   },
@@ -203,40 +206,40 @@ export function BodyLogProcessingModal({
               >
                 <LinearGradient
                   colors={[
-                    'rgba(59, 130, 246, 0)',
-                    'rgba(59, 130, 246, 0.8)',
-                    'rgba(59, 130, 246, 0)',
+                    `${colors.primary}00`,
+                    `${colors.primary}CC`,
+                    `${colors.primary}00`,
                   ]}
-                  style={styles.scanLine}
+                  style={dynamicStyles.scanLine}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                 />
                 <LinearGradient
                   colors={[
-                    'rgba(59, 130, 246, 0)',
-                    'rgba(59, 130, 246, 0.6)',
-                    'rgba(59, 130, 246, 0)',
+                    `${colors.primary}00`,
+                    `${colors.primary}99`,
+                    `${colors.primary}00`,
                   ]}
-                  style={[styles.scanLine, styles.scanLineSecondary]}
+                  style={[dynamicStyles.scanLine, dynamicStyles.scanLineSecondary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                 />
               </Animated.View>
 
               {/* Glow effect overlay */}
-              <View style={styles.glowOverlay}>
+              <View style={dynamicStyles.glowOverlay}>
                 <LinearGradient
                   colors={[
-                    'rgba(59, 130, 246, 0.1)',
-                    'rgba(59, 130, 246, 0.05)',
-                    'rgba(59, 130, 246, 0)',
+                    `${colors.primary}1A`,
+                    `${colors.primary}0D`,
+                    `${colors.primary}00`,
                   ]}
-                  style={styles.glowGradient}
+                  style={dynamicStyles.glowGradient}
                 />
               </View>
 
               {/* Border glow */}
-              <View style={styles.borderGlow} />
+              <View style={dynamicStyles.borderGlow} />
             </View>
           )}
 
@@ -244,19 +247,19 @@ export function BodyLogProcessingModal({
           {!showSuccess && (
             <Animated.View
               style={[
-                styles.messageContainer,
+                dynamicStyles.messageContainer,
                 {
                   opacity: messageOpacity,
                 },
               ]}
             >
-              <View style={styles.messageContent}>
-                <View style={styles.scanningIndicator}>
-                  <View style={[styles.dot, styles.dotAnimated]} />
-                  <View style={[styles.dot, styles.dotAnimated, styles.dotDelay1]} />
-                  <View style={[styles.dot, styles.dotAnimated, styles.dotDelay2]} />
+              <View style={dynamicStyles.messageContent}>
+                <View style={dynamicStyles.scanningIndicator}>
+                  <View style={[dynamicStyles.dot, dynamicStyles.dotAnimated]} />
+                  <View style={[dynamicStyles.dot, dynamicStyles.dotAnimated, dynamicStyles.dotDelay1]} />
+                  <View style={[dynamicStyles.dot, dynamicStyles.dotAnimated, dynamicStyles.dotDelay2]} />
                 </View>
-                <Text style={styles.messageText}>
+                <Text style={dynamicStyles.messageText}>
                   {SCANNING_MESSAGES[currentMessageIndex]}
                 </Text>
               </View>
@@ -267,7 +270,7 @@ export function BodyLogProcessingModal({
           {showSuccess && (
             <Animated.View
               style={[
-                styles.successContainer,
+                dynamicStyles.successContainer,
                 {
                   opacity: successOpacity,
                   transform: [{ scale: successScale }],
@@ -276,27 +279,27 @@ export function BodyLogProcessingModal({
             >
               <Animated.View
                 style={[
-                  styles.checkmarkContainer,
+                  dynamicStyles.checkmarkContainer,
                   {
                     transform: [{ scale: checkmarkScale }],
                   },
                 ]}
               >
                 {hasNoStats ? (
-                  <View style={styles.infoCircle}>
+                  <View style={dynamicStyles.infoCircle}>
                     <Ionicons
                       name="information-circle"
                       size={80}
-                      color="#3B82F6"
+                      color={colors.primary}
                     />
                   </View>
                 ) : (
-                  <View style={styles.checkmarkCircle}>
-                    <Ionicons name="checkmark" size={64} color="#FFFFFF" />
+                  <View style={[dynamicStyles.checkmarkCircle, { backgroundColor: colors.success }]}>
+                    <Ionicons name="checkmark" size={64} color={colors.white} />
                   </View>
                 )}
               </Animated.View>
-              <Text style={styles.successText}>
+              <Text style={dynamicStyles.successText}>
                 {hasNoStats
                   ? 'Unable to determine your stats'
                   : 'Analysis Complete!'}
@@ -309,137 +312,143 @@ export function BodyLogProcessingModal({
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backgroundImage: {
-    position: 'absolute',
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    opacity: 0.15,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  imageContainer: {
-    width: SCREEN_WIDTH * 0.75,
-    aspectRatio: 3 / 4,
-    borderRadius: 24,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#000',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    opacity: 0.6,
-  },
-  scanLineContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scanLine: {
-    width: '100%',
-    height: SCANNING_LINE_HEIGHT,
-    position: 'absolute',
-  },
-  scanLineSecondary: {
-    marginTop: 40,
-    opacity: 0.6,
-  },
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  glowGradient: {
-    flex: 1,
-  },
-  borderGlow: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 2,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-    borderRadius: 24,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-  },
-  messageContainer: {
-    marginTop: 48,
-  },
-  messageContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  scanningIndicator: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3B82F6',
-  },
-  dotAnimated: {
-    opacity: 0.3,
-  },
-  dotDelay1: {
-    opacity: 0.6,
-  },
-  dotDelay2: {
-    opacity: 1,
-  },
-  messageText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  successContainer: {
-    alignItems: 'center',
-    gap: 24,
-  },
-  checkmarkContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmarkCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 30,
-    elevation: 10,
-  },
-  infoCircle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-})
+type Colors = ReturnType<typeof useThemedColors>
+
+const createDynamicStyles = (colors: Colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#000000',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    backgroundImage: {
+      position: 'absolute',
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT,
+      opacity: 0.12,
+    },
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: '#000000',
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 28,
+    },
+    imageContainer: {
+      width: SCREEN_WIDTH * 0.78,
+      aspectRatio: 3 / 4,
+      borderRadius: 28,
+      overflow: 'hidden',
+      position: 'relative',
+      backgroundColor: '#000',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 24,
+      elevation: 12,
+    },
+    previewImage: {
+      width: '100%',
+      height: '100%',
+      opacity: 0.65,
+    },
+    scanLineContainer: {
+      position: 'absolute',
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    scanLine: {
+      width: '100%',
+      height: SCANNING_LINE_HEIGHT,
+      position: 'absolute',
+    },
+    scanLineSecondary: {
+      marginTop: 48,
+      opacity: 0.6,
+    },
+    glowOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    glowGradient: {
+      flex: 1,
+    },
+    borderGlow: {
+      ...StyleSheet.absoluteFillObject,
+      borderWidth: 2,
+      borderColor: `${colors.primary}4D`,
+      borderRadius: 28,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 24,
+    },
+    messageContainer: {
+      marginTop: 56,
+    },
+    messageContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+    },
+    scanningIndicator: {
+      flexDirection: 'row',
+      gap: 7,
+    },
+    dot: {
+      width: 9,
+      height: 9,
+      borderRadius: 4.5,
+      backgroundColor: colors.primary,
+    },
+    dotAnimated: {
+      opacity: 0.3,
+    },
+    dotDelay1: {
+      opacity: 0.6,
+    },
+    dotDelay2: {
+      opacity: 1,
+    },
+    messageText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.white,
+      letterSpacing: -0.2,
+      textAlign: 'center',
+    },
+    successContainer: {
+      alignItems: 'center',
+      gap: 28,
+    },
+    checkmarkContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkmarkCircle: {
+      width: 128,
+      height: 128,
+      borderRadius: 64,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.7,
+      shadowRadius: 32,
+      elevation: 12,
+    },
+    infoCircle: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    successText: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.white,
+      letterSpacing: -0.3,
+    },
+  })
