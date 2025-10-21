@@ -153,6 +153,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
         workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
       }
       workoutDescription={workout.notes}
+      workoutImageUrl={workout.image_url}
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,

@@ -1,9 +1,9 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -121,10 +121,12 @@ export default function FeedScreen() {
       const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
       if (!pendingData) return
 
-      const { notes, title } = JSON.parse(pendingData)
+      const { notes, title, imageUrl = null } = JSON.parse(pendingData)
 
       // Get the access token for authenticated API calls
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       const accessToken = session?.access_token
 
       // Parse workout and create it in database with AI-enriched exercises
@@ -144,6 +146,7 @@ export default function FeedScreen() {
           createWorkout: true,
           userId: user.id,
           workoutTitle: title,
+          imageUrl,
         }),
         signal: controller.signal,
       })
@@ -217,8 +220,7 @@ export default function FeedScreen() {
       }
 
       // Provide specific error message for timeout
-      const isTimeout =
-        error instanceof Error && error.name === 'AbortError'
+      const isTimeout = error instanceof Error && error.name === 'AbortError'
       const errorMessage = isTimeout
         ? 'The request took too long. This usually happens with slow internet or large workouts. Your draft has been saved - please try again.'
         : 'Something went wrong while saving your workout. Please try again.'
@@ -247,7 +249,13 @@ export default function FeedScreen() {
         // Only show loading spinner on initial load
         loadWorkouts(isInitialLoad)
       })
-    }, [handlePendingPost, loadWorkouts, isInitialLoad, workouts.length, trackEvent]),
+    }, [
+      handlePendingPost,
+      loadWorkouts,
+      isInitialLoad,
+      workouts.length,
+      trackEvent,
+    ]),
   )
 
   const styles = createStyles(colors)
@@ -359,8 +367,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 0,
     },
     headerIcon: {
-      width: 32,
-      height: 32,
+      width: 27,
+      height: 27,
     },
     headerTitle: {
       fontSize: 20,

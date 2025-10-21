@@ -258,6 +258,7 @@ export const database = {
       userId: string,
       parsedWorkout: ParsedWorkout,
       rawText: string,
+      imageUrl?: string | null,
     ) {
       // Create workout session
       const { data: session, error: sessionError } = await supabase
@@ -267,6 +268,7 @@ export const database = {
           raw_text: rawText,
           notes: parsedWorkout.notes,
           type: parsedWorkout.type,
+          image_url: imageUrl || null,
         })
         .select()
         .single()
@@ -392,7 +394,7 @@ export const database = {
 
     async update(
       sessionId: string,
-      updates: { type?: string; notes?: string },
+      updates: { type?: string; notes?: string; image_url?: string | null },
     ) {
       const { data, error } = await supabase
         .from('workout_sessions')

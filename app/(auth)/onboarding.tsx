@@ -1,10 +1,15 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
-import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
+import {
+  COMMITMENTS,
+  GENDERS,
+  GOALS,
+  TRAINING_YEARS,
+} from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { Gender, Goal } from '@/types/database.types'
+import { Gender, Goal, TrainingYears } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import * as Haptics from 'expo-haptics'
@@ -35,6 +40,7 @@ type OnboardingData = {
   birth_year: string
   goal: Goal[]
   commitment: string | null
+  training_years: TrainingYears | null
   bio: string
 }
 
@@ -52,6 +58,7 @@ export default function OnboardingScreen() {
     birth_year: '2000',
     goal: [],
     commitment: null,
+    training_years: null,
     bio: '',
   })
   const colors = useThemedColors()
@@ -66,7 +73,7 @@ export default function OnboardingScreen() {
 
   // Progress dot animations
   const progressDotAnims = useRef(
-    Array.from({ length: 9 }, () => new Animated.Value(1)),
+    Array.from({ length: 10 }, () => new Animated.Value(1)),
   ).current
 
   // Animate step transitions
@@ -90,7 +97,7 @@ export default function OnboardingScreen() {
       ]).start()
 
       // Animate progress dot
-      if (step >= 1 && step <= 9) {
+      if (step >= 1 && step <= 10) {
         Animated.sequence([
           Animated.spring(progressDotAnims[step - 1], {
             toValue: 1.3,
@@ -116,7 +123,7 @@ export default function OnboardingScreen() {
       step,
     })
 
-    if (step < 9) {
+    if (step < 10) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -166,6 +173,7 @@ export default function OnboardingScreen() {
             age: age,
             goal: data.goal,
             commitment: data.commitment,
+            training_years: data.training_years,
             bio: data.bio.trim() || null,
           }),
         },
@@ -258,6 +266,8 @@ export default function OnboardingScreen() {
       case 8:
         return data.commitment !== null
       case 9:
+        return data.training_years !== null
+      case 10:
         return true // Optional step
       default:
         return false
@@ -814,6 +824,45 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>
+                How long have you been training?
+              </Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                {TRAINING_YEARS.map((item) => (
+                  <HapticButton
+                    key={item.value}
+                    style={[
+                      styles.goalButton,
+                      data.training_years === item.value &&
+                        styles.goalButtonSelected,
+                    ]}
+                    onPress={() =>
+                      setData({ ...data, training_years: item.value })
+                    }
+                    hapticStyle="light"
+                  >
+                    <Text
+                      style={[
+                        styles.goalText,
+                        data.training_years === item.value &&
+                          styles.goalTextSelected,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </HapticButton>
+                ))}
+              </View>
+            </View>
+          </View>
+        )
+      case 10:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>Help train your AI assistant</Text>
               <Text style={styles.stepSubtitle}>
                 <Text style={{ fontWeight: '700' }}>Optional</Text> - Helps
@@ -855,7 +904,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
               <Animated.View
                 key={i}
                 style={[

@@ -1,13 +1,18 @@
+import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { uploadWorkoutImage, deleteWorkoutImage } from '@/lib/utils/image-upload'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Image,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
@@ -29,11 +34,21 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
+// Constants
+const IMAGE_QUALITY = 0.8
+const IMAGE_FADE_DURATION = 200
+const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
+  mediaTypes: 'images' as any,
+  allowsEditing: false,
+  quality: IMAGE_QUALITY,
+}
+
 export default function EditWorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
   const router = useRouter()
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
+  const { user } = useAuth()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -52,6 +67,92 @@ export default function EditWorkoutScreen() {
   const [deletedExerciseIds, setDeletedExerciseIds] = useState<Set<string>>(
     new Set(),
   )
+
+  // Image management states
+  const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
+  const [imageDeleted, setImageDeleted] = useState(false)
+  const [imageLoading, setImageLoading] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const imageOpacity = useRef(new Animated.Value(0)).current
+
+  const handleImageSelected = useCallback(
+    async (uri: string) => {
+      if (!user) return
+
+      try {
+        setIsUploadingImage(true)
+        const url = await uploadWorkoutImage(uri, user.id)
+        imageOpacity.setValue(0)
+        setEditedImageUrl(url)
+        setImageDeleted(false)
+      } catch (error) {
+        console.error('Error uploading image:', error)
+        Alert.alert(
+          'Upload Failed',
+          'Failed to upload image. Please try again.',
+        )
+      } finally {
+        setIsUploadingImage(false)
+      }
+    },
+    [user, imageOpacity],
+  )
+
+  const launchCamera = useCallback(async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (permission.status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Camera permission is required to take photos.',
+      )
+      return
+    }
+
+    const result = await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS)
+    if (!result.canceled && result.assets[0]) {
+      await handleImageSelected(result.assets[0].uri)
+    }
+  }, [handleImageSelected])
+
+  const launchLibrary = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (permission.status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Photo library permission is required to select photos.',
+      )
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS)
+    if (!result.canceled && result.assets[0]) {
+      await handleImageSelected(result.assets[0].uri)
+    }
+  }, [handleImageSelected])
+
+  const pickImage = useCallback(() => {
+    // Directly launch library picker for editing
+    launchLibrary()
+  }, [launchLibrary])
+
+  const handleDeleteImage = useCallback(() => {
+    Alert.alert(
+      'Delete Photo',
+      'Are you sure you want to delete this photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            imageOpacity.setValue(0)
+            setEditedImageUrl(null)
+            setImageDeleted(true)
+          },
+        },
+      ],
+    )
+  }, [imageOpacity])
 
   const loadWorkout = useCallback(async () => {
     if (!workoutId) return
@@ -81,11 +182,34 @@ export default function EditWorkoutScreen() {
     try {
       setIsSaving(true)
 
-      // 1. Update workout session (title and notes)
-      await database.workoutSessions.update(workoutId, {
-        type: editedTitle.trim() || undefined,
-        notes: editedNotes.trim() || undefined,
-      })
+      // 1. Update workout session (title, notes, and image)
+      const updates: Record<string, any> = {}
+
+      const titleValue = editedTitle.trim()
+      const notesValue = editedNotes.trim()
+
+      // Only include fields that are being changed
+      if (titleValue) {
+        updates.type = titleValue
+      }
+
+      if (notesValue) {
+        updates.notes = notesValue
+      }
+
+      // Handle image updates - explicitly set to null if deleted
+      if (imageDeleted) {
+        updates.image_url = null
+      } else if (editedImageUrl) {
+        updates.image_url = editedImageUrl
+      }
+
+      await database.workoutSessions.update(workoutId, updates)
+
+      // Delete old image from storage if it was replaced or deleted
+      if (workout?.image_url && (imageDeleted || (editedImageUrl && editedImageUrl !== workout.image_url))) {
+        await deleteWorkoutImage(workout.image_url)
+      }
 
       // 2. Delete exercises (and their sets will cascade delete)
       const deleteExercisePromises = Array.from(deletedExerciseIds).map((id) =>
@@ -149,7 +273,10 @@ export default function EditWorkoutScreen() {
     editedNotes,
     editedSets,
     editedTitle,
+    editedImageUrl,
+    imageDeleted,
     router,
+    workout,
     workoutId,
   ])
 
@@ -356,6 +483,96 @@ export default function EditWorkoutScreen() {
             />
           </View>
 
+          {/* Photo Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Photo</Text>
+            {!imageDeleted && (editedImageUrl || workout.image_url) ? (
+              <View style={styles.imageContainer}>
+                <View style={styles.imageWrapper}>
+                  <Animated.Image
+                    source={{
+                      uri: editedImageUrl || workout.image_url || undefined,
+                    }}
+                    style={[styles.workoutImage, { opacity: imageOpacity }]}
+                    resizeMode="cover"
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoad={() => {
+                      setImageLoading(false)
+                      Animated.timing(imageOpacity, {
+                        toValue: 1,
+                        duration: IMAGE_FADE_DURATION,
+                        useNativeDriver: true,
+                      }).start()
+                    }}
+                    onError={(error) => {
+                      console.error(
+                        'Failed to load workout image:',
+                        error.nativeEvent.error,
+                      )
+                      setImageLoading(false)
+                    }}
+                  />
+                  {imageLoading && (
+                    <View style={styles.imageLoadingOverlay}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.imageButtons}>
+                  <TouchableOpacity
+                    style={[styles.imageButton, styles.changeButton]}
+                    onPress={pickImage}
+                    disabled={isUploadingImage}
+                  >
+                    {isUploadingImage ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="camera-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.changeButtonText}>Change Photo</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.imageButton, styles.deleteButton]}
+                    onPress={handleDeleteImage}
+                    disabled={isUploadingImage}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={colors.error}
+                    />
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.addPhotoButton}
+                onPress={pickImage}
+                disabled={isUploadingImage}
+              >
+                {isUploadingImage ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="camera-outline"
+                      size={24}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.addPhotoText}>Add Photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Exercises Section */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Exercises</Text>
@@ -557,6 +774,79 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     textArea: {
       minHeight: 100,
       textAlignVertical: 'top',
+    },
+    imageContainer: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    imageWrapper: {
+      width: '100%',
+      aspectRatio: 16 / 9,
+      backgroundColor: colors.backgroundLight,
+    },
+    workoutImage: {
+      width: '100%',
+      height: '100%',
+    },
+    imageLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+    },
+    imageButtons: {
+      flexDirection: 'row',
+      padding: 12,
+      gap: 12,
+    },
+    imageButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+    },
+    changeButton: {
+      backgroundColor: colors.backgroundLight,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    changeButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    deleteButton: {
+      backgroundColor: colors.backgroundLight,
+      borderWidth: 1,
+      borderColor: colors.error,
+    },
+    deleteButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.error,
+    },
+    addPhotoButton: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      paddingVertical: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    addPhotoText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
     },
     exerciseCard: {
       backgroundColor: colors.white,

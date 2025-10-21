@@ -8,7 +8,9 @@ import {
   generateWorkoutMessage,
   parseCommitment,
 } from '@/lib/utils/workout-messages'
+import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
+import { ImagePickerModal } from '@/components/ImagePickerModal'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
@@ -16,9 +18,11 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Easing,
+  Image,
   InteractionManager,
   Keyboard,
   KeyboardAvoidingView,
@@ -36,6 +40,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 const DRAFT_KEY = '@workout_draft'
 const TITLE_DRAFT_KEY = '@workout_title_draft'
 const PENDING_POST_KEY = '@pending_workout_post'
+const IMAGE_FADE_DURATION = 200
 
 const EXAMPLE_WORKOUTS = [
   {
@@ -88,10 +93,17 @@ export default function CreatePostScreen() {
   const [showExamples, setShowExamples] = useState(true)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
+
+  // Image attachment states
+  const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [imageLoading, setImageLoading] = useState(false)
+
   const { showOverlay } = useSuccessOverlay()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
+  const imageOpacity = useRef(new Animated.Value(0)).current
 
   // Page opening animation - like lifting a notepad or opening a book
   const pageSlideAnim = useRef(new Animated.Value(100)).current // Start below screen
@@ -131,7 +143,16 @@ export default function CreatePostScreen() {
   })
 
   // Use image transcription hook
-  const { isProcessing: isProcessingImage, pickImage } = useImageTranscription({
+  const {
+    isProcessing: isProcessingImage,
+    pickImage,
+    showModal,
+    closeModal,
+    handleScanWithCamera,
+    handleScanWithLibrary,
+    handleAttachWithCamera,
+    handleAttachWithLibrary,
+  } = useImageTranscription({
     onExtractionComplete: (data) => {
       // Set title if extracted
       if (data.title) {
@@ -142,6 +163,10 @@ export default function CreatePostScreen() {
         ? `${data.description}\n\n${data.workout}`
         : data.workout
       setNotes((prev) => (prev ? `${prev}\n\n${newNotes}` : newNotes))
+    },
+    onImageAttached: (uri) => {
+      imageOpacity.setValue(0)
+      setAttachedImageUri(uri)
     },
   })
 
@@ -351,6 +376,12 @@ export default function CreatePostScreen() {
     await pickImage()
   }
 
+  const handleRemoveAttachedImage = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    imageOpacity.setValue(0)
+    setAttachedImageUri(null)
+  }
+
   const handleToggleRecording = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     await toggleRecording()
@@ -386,12 +417,42 @@ export default function CreatePostScreen() {
         }),
       ]).start()
 
+      // Upload image if attached
+      let imageUrl: string | null = null
+      if (attachedImageUri) {
+        try {
+          setIsUploadingImage(true)
+          imageUrl = await uploadWorkoutImage(attachedImageUri, user!.id)
+        } catch (error) {
+          console.error('Error uploading image:', error)
+          Alert.alert(
+            'Image Upload Failed',
+            'Unable to upload your workout photo. Would you like to continue without it?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => {
+                setIsLoading(false)
+                setIsUploadingImage(false)
+                return
+              }},
+              { text: 'Continue', onPress: async () => {
+                // Continue without image
+                setAttachedImageUri(null)
+              }},
+            ],
+          )
+          throw error // Stop submission if upload fails
+        } finally {
+          setIsUploadingImage(false)
+        }
+      }
+
       // Store pending post data
       await AsyncStorage.setItem(
         PENDING_POST_KEY,
         JSON.stringify({
           notes: notes.trim(),
           title: workoutTitle.trim(),
+          imageUrl,
         }),
       )
 
@@ -442,6 +503,7 @@ export default function CreatePostScreen() {
       // Clear form and navigate to feed immediately
       setNotes('')
       setWorkoutTitle('')
+      setAttachedImageUri(null)
       blurInputs()
 
       // Show overlay and navigate to feed
@@ -626,6 +688,45 @@ export default function CreatePostScreen() {
             )}
           </View>
 
+          {/* Attached Image Thumbnail */}
+          {attachedImageUri && (
+            <View style={styles.attachedImageContainer}>
+              <View style={styles.attachedImageWrapper}>
+                <Animated.Image
+                  source={{ uri: attachedImageUri }}
+                  style={[styles.attachedImage, { opacity: imageOpacity }]}
+                  resizeMode="cover"
+                  onLoadStart={() => setImageLoading(true)}
+                  onLoad={() => {
+                    setImageLoading(false)
+                    Animated.timing(imageOpacity, {
+                      toValue: 1,
+                      duration: IMAGE_FADE_DURATION,
+                      useNativeDriver: true,
+                    }).start()
+                  }}
+                  onError={(error) => {
+                    console.error('Failed to load attached image:', error.nativeEvent.error)
+                    setImageLoading(false)
+                  }}
+                />
+                {imageLoading && (
+                  <View style={styles.imageLoadingOverlay}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={handleRemoveAttachedImage}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="close-circle" size={28} color={colors.white} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.attachedImageLabel}>Workout Photo</Text>
+            </View>
+          )}
+
           {/* Example Workout - shown when both inputs are empty and preference is enabled */}
           {!notes.trim() && !workoutTitle.trim() && showExamples && (
             <View style={styles.exampleContainer}>
@@ -678,6 +779,16 @@ export default function CreatePostScreen() {
             <Ionicons name="camera" size={28} color={colors.white} />
           )}
         </TouchableOpacity>
+
+        {/* Image Picker Modal */}
+        <ImagePickerModal
+          visible={showModal}
+          onClose={closeModal}
+          onScanWithCamera={handleScanWithCamera}
+          onScanWithLibrary={handleScanWithLibrary}
+          onAttachWithCamera={handleAttachWithCamera}
+          onAttachWithLibrary={handleAttachWithLibrary}
+        />
       </KeyboardAvoidingView>
       </Animated.View>
     </SafeAreaView>
@@ -868,5 +979,49 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 22,
       color: colors.textSecondary,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+    attachedImageContainer: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    attachedImageWrapper: {
+      position: 'relative',
+      width: '100%',
+      aspectRatio: 16 / 9,
+      borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: colors.backgroundLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    attachedImage: {
+      width: '100%',
+      height: '100%',
+    },
+    imageLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+    },
+    removeImageButton: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      borderRadius: 14,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    attachedImageLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 8,
+      textAlign: 'center',
     },
   })

@@ -239,7 +239,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
             <Ionicons name="analytics" size={24} color={colors.primary} />
           </View>
           <View>
-            <Text style={styles.title}>Progressive Overload</Text>
+            <Text style={styles.title}>Strength Progress</Text>
             <Text style={styles.subtitle}>Tracking estimated 1RM</Text>
           </View>
         </View>
