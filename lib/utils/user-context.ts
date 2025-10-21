@@ -1,5 +1,6 @@
 import { createServerDatabase } from '@/lib/database-server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { summarizeBodyLogContext } from '@/lib/utils/body-log-context'
 
 export interface UserContextSummary {
   profile: {
@@ -23,6 +24,18 @@ export interface UserContextSummary {
       estMax?: number
       bestSingle?: number
     }[]
+    latestBodyLog?: {
+      capturedAt: string
+      weightKg: number | null
+      bodyFatPercentage: number | null
+      bmi: number | null
+      muscleMassKg: number | null
+    }
+    bodyLogTrend?: {
+      spanDays: number
+      weightDeltaKg: number | null
+      bodyFatDelta: number | null
+    }
   }
 }
 
@@ -65,6 +78,11 @@ export async function buildUserContextSummary(
     .slice(0, 5)
     .map(([name, bestSingle]) => ({ name, bestSingle }))
 
+  const bodyLogRecords = await db.bodyLog.getRecent(userId, {
+    limit: 12,
+  })
+  const bodyLogSummary = summarizeBodyLogContext(bodyLogRecords)
+
   return {
     profile: {
       userTag: profile.user_tag,
@@ -83,6 +101,8 @@ export async function buildUserContextSummary(
     },
     highlights: {
       topExercisesByMax,
+      latestBodyLog: bodyLogSummary?.latest,
+      bodyLogTrend: bodyLogSummary?.trend,
     },
   }
 }
@@ -99,7 +119,9 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
   if (ctx.profile.weightKg)
     personalInfo.push(`weight=${ctx.profile.weightKg}kg`)
   if (ctx.profile.goals && ctx.profile.goals.length > 0)
-    personalInfo.push(`goals=${ctx.profile.goals.map(g => g.replace('_', ' ')).join(', ')}`)
+    personalInfo.push(
+      `goals=${ctx.profile.goals.map((g) => g.replace('_', ' ')).join(', ')}`,
+    )
   if (ctx.profile.trainingYears)
     personalInfo.push(
       `training_years=${ctx.profile.trainingYears.replace('_', ' ')}`,
@@ -126,6 +148,47 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
           .join('; '),
     )
   }
+
+  if (ctx.highlights.latestBodyLog) {
+    const latest = ctx.highlights.latestBodyLog
+    const metrics: string[] = []
+    if (typeof latest.weightKg === 'number') {
+      metrics.push(`weight=${latest.weightKg.toFixed(1)}kg`)
+    }
+    if (typeof latest.bodyFatPercentage === 'number') {
+      metrics.push(`body_fat=${latest.bodyFatPercentage.toFixed(1)}%`)
+    }
+    if (typeof latest.bmi === 'number') {
+      metrics.push(`bmi=${latest.bmi.toFixed(1)}`)
+    }
+    if (typeof latest.muscleMassKg === 'number') {
+      metrics.push(`muscle_mass=${latest.muscleMassKg.toFixed(1)}kg`)
+    }
+
+    lines.push(
+      `Latest body scan (${new Date(latest.capturedAt).toISOString()}): ${
+        metrics.length > 0 ? metrics.join(', ') : 'metrics unavailable'
+      }`,
+    )
+  }
+
+  if (ctx.highlights.bodyLogTrend) {
+    const trend = ctx.highlights.bodyLogTrend
+    const parts: string[] = []
+    if (typeof trend.weightDeltaKg === 'number') {
+      parts.push(`weight_delta=${trend.weightDeltaKg.toFixed(1)}kg`)
+    }
+    if (typeof trend.bodyFatDelta === 'number') {
+      parts.push(`bodyfat_delta=${trend.bodyFatDelta.toFixed(1)}%`)
+    }
+
+    if (parts.length > 0) {
+      lines.push(
+        `Body scan trend (last ${trend.spanDays}d): ${parts.join(', ')}`,
+      )
+    }
+  }
+
   return lines.join('\n')
 }
 

@@ -1,3 +1,4 @@
+import type { BodyLogRecord } from '@/lib/body-log/metadata'
 import type {
   Exercise,
   ParsedWorkout,
@@ -1071,6 +1072,44 @@ export const database = {
         .eq('id', imageId)
 
       if (error) throw error
+    },
+
+    async getRecent(
+      userId: string,
+      options: { limit?: number; before?: string; after?: string } = {},
+    ): Promise<BodyLogRecord[]> {
+      const limit = Math.min(Math.max(options.limit ?? 5, 1), 25)
+
+      let query = supabase
+        .from('body_log_images')
+        .select(
+          `
+          id,
+          user_id,
+          file_path,
+          created_at,
+          weight_kg,
+          body_fat_percentage,
+          bmi,
+          muscle_mass_kg
+        `,
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (options.before?.trim()) {
+        query = query.lt('created_at', options.before.trim())
+      }
+
+      if (options.after?.trim()) {
+        query = query.gt('created_at', options.after.trim())
+      }
+
+      const { data, error } = await query.limit(limit)
+
+      if (error) throw error
+
+      return (data as BodyLogRecord[]) || []
     },
   },
 }

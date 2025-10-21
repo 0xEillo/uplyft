@@ -189,6 +189,65 @@ export async function POST(request: Request) {
                 return limited
               },
             }),
+            getBodyLogSnapshots: tool({
+              description:
+                'Fetch body scan snapshots (images + metrics). Use pagination (before/after) instead of requesting the entire history at once.',
+              inputSchema: z
+                .object({
+                  limit: z.number().int().min(1).max(15).optional(),
+                  before: z
+                    .string()
+                    .trim()
+                    .min(1)
+                    .max(40)
+                    .describe(
+                      'ISO 8601 timestamp; only scans earlier than this are returned',
+                    )
+                    .optional(),
+                  after: z
+                    .string()
+                    .trim()
+                    .min(1)
+                    .max(40)
+                    .describe(
+                      'ISO 8601 timestamp; only scans later than this are returned',
+                    )
+                    .optional(),
+                  includeUrls: z
+                    .boolean()
+                    .default(false)
+                    .describe(
+                      'For privacy, image URLs are omitted by default. Set true only when the user explicitly requests a link.',
+                    )
+                    .optional(),
+                })
+                .partial(),
+              execute: async ({ limit, before, after, includeUrls } = {}) => {
+                const db = createServerDatabase(accessToken)
+
+                const records = await db.bodyLog.getRecent(userId, {
+                  limit: limit ?? 5,
+                  before,
+                  after,
+                })
+
+                return records.map((record) => ({
+                  id: record.id,
+                  capturedAt: record.created_at,
+                  metrics: {
+                    weightKg: record.weight_kg,
+                    bodyFatPercentage: record.body_fat_percentage,
+                    bmi: record.bmi,
+                    muscleMassKg: record.muscle_mass_kg,
+                  },
+                  image: includeUrls
+                    ? {
+                        filePath: record.file_path,
+                      }
+                    : undefined,
+                }))
+              },
+            }),
           }
         : undefined
 

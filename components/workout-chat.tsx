@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -51,6 +52,20 @@ export function WorkoutChat() {
       scrollToBottom()
     }
   }, [messages.length])
+
+  // Scroll to bottom when keyboard appears
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setTimeout(() => scrollToBottom(), 100)
+      },
+    )
+
+    return () => {
+      keyboardWillShowListener.remove()
+    }
+  }, [])
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -241,8 +256,8 @@ export function WorkoutChat() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
     >
       <ScrollView
         ref={scrollViewRef}
@@ -319,6 +334,10 @@ export function WorkoutChat() {
                           color: colors.text,
                           margin: 0,
                         },
+                        paragraph: {
+                          marginTop: 0,
+                          marginBottom: 0,
+                        },
                         code_inline: {
                           backgroundColor: colors.backgroundLight,
                           paddingHorizontal: 4,
@@ -343,13 +362,16 @@ export function WorkoutChat() {
                           fontStyle: 'italic',
                         },
                         bullet_list: {
-                          marginVertical: 4,
+                          marginTop: 0,
+                          marginBottom: 0,
                         },
                         ordered_list: {
-                          marginVertical: 4,
+                          marginTop: 0,
+                          marginBottom: 0,
                         },
                         list_item: {
-                          marginVertical: 2,
+                          marginTop: 0,
+                          marginBottom: 0,
                         },
                       }}
                     >
@@ -383,12 +405,7 @@ export function WorkoutChat() {
       </ScrollView>
 
       {/* Input Area */}
-      <View
-        style={[
-          styles.inputContainer,
-          { paddingBottom: Math.max(12, insets.bottom || 0) },
-        ]}
-      >
+      <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
@@ -439,6 +456,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     messagesContent: {
       flexGrow: 1,
       padding: 16,
+      paddingBottom: 24,
     },
     emptyState: {
       flex: 1,
@@ -548,8 +566,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopWidth: 1,
       borderTopColor: colors.border,
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      paddingBottom: Platform.OS === 'ios' ? 12 : 12,
+      paddingTop: 12,
+      paddingBottom: 12,
     },
     inputWrapper: {
       flexDirection: 'row',
@@ -561,11 +579,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       borderRadius: 20,
       paddingHorizontal: 16,
-      paddingVertical: 10,
       paddingTop: 10,
+      paddingBottom: 10,
       fontSize: 15,
+      lineHeight: 20,
       color: colors.text,
       maxHeight: 100,
+      textAlignVertical: 'center',
     },
     sendButton: {
       width: 40,
