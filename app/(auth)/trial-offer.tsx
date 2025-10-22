@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useState } from 'react'
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +18,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSubscription } from '@/contexts/subscription-context'
 
 // Animated TouchableOpacity with press animation
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
@@ -67,15 +70,63 @@ export default function TrialOfferScreen() {
   const colors = useThemedColors()
   const styles = createStyles(colors)
   const [step, setStep] = useState(1)
+  const [isPurchasing, setIsPurchasing] = useState(false)
 
-  const handleStartTrial = () => {
-    // Navigate to signup-options to create account
-    router.push({
-      pathname: '/(auth)/signup-options',
-      params: {
-        onboarding_data: params.onboarding_data as string,
-      },
-    })
+  const { offerings, purchasePackage, isLoading: subscriptionLoading } = useSubscription()
+
+  const handleStartTrial = async () => {
+    try {
+      setIsPurchasing(true)
+
+      // Get the monthly package (should have the 7-day trial)
+      if (!offerings) {
+        throw new Error('No subscription packages available. Please try again.')
+      }
+
+      // Find the monthly package - RevenueCat typically uses $rc_monthly identifier
+      const monthlyPackage = offerings.availablePackages.find(
+        (pkg) => pkg.identifier === '$rc_monthly' || pkg.identifier.toLowerCase().includes('monthly')
+      )
+
+      if (!monthlyPackage) {
+        // If no monthly package found, try the first available package
+        const firstPackage = offerings.availablePackages[0]
+        if (!firstPackage) {
+          throw new Error('No subscription packages available. Please try again.')
+        }
+        console.log('[TrialOffer] Using first available package:', firstPackage.identifier)
+        await purchasePackage(firstPackage.identifier)
+      } else {
+        console.log('[TrialOffer] Starting trial with package:', monthlyPackage.identifier)
+        await purchasePackage(monthlyPackage.identifier)
+      }
+
+      // Purchase successful - navigate to signup
+      console.log('[TrialOffer] Trial started successfully')
+      router.push({
+        pathname: '/(auth)/signup-options',
+        params: {
+          onboarding_data: params.onboarding_data as string,
+        },
+      })
+    } catch (error: any) {
+      console.error('[TrialOffer] Purchase error:', error)
+
+      // Handle user cancellation (not an error)
+      if (error?.userCancelled) {
+        console.log('[TrialOffer] User cancelled purchase')
+        return
+      }
+
+      // Show error to user
+      Alert.alert(
+        'Unable to Start Trial',
+        error?.message || 'There was a problem starting your trial. Please try again.',
+        [{ text: 'OK' }]
+      )
+    } finally {
+      setIsPurchasing(false)
+    }
   }
 
   const renderStep1 = () => (
@@ -316,10 +367,23 @@ export default function TrialOfferScreen() {
             <Text style={styles.noPaymentText}>No Payment Due Now</Text>
           </View>
 
-          <AnimatedButton style={styles.startButton} onPress={handleStartTrial}>
-            <Text style={styles.startButtonText}>
-              Start My 7-Day Free Trial
-            </Text>
+          <AnimatedButton
+            style={styles.startButton}
+            onPress={handleStartTrial}
+            disabled={isPurchasing || subscriptionLoading}
+          >
+            {isPurchasing ? (
+              <>
+                <ActivityIndicator color={colors.buttonText} size="small" />
+                <Text style={styles.startButtonText}>
+                  Starting Trial...
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.startButtonText}>
+                Start My 7-Day Free Trial
+              </Text>
+            )}
           </AnimatedButton>
           <Text style={styles.footerSubtext}>
             7 days free, then $5.99 per month

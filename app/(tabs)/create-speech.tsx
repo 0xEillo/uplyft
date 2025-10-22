@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useAnalytics } from '@/contexts/analytics-context'
+import { useSubscription } from '@/contexts/subscription-context'
+import { Paywall } from '@/components/paywall'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -31,7 +33,9 @@ export default function CreateSpeechScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
   const { user } = useAuth()
+  const { isProMember } = useSubscription()
 
   useEffect(() => {
     ;(async () => {
@@ -52,6 +56,15 @@ export default function CreateSpeechScreen() {
   }, [trackEvent])
 
   const startRecording = async () => {
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent('Paywall Shown', {
+        feature: 'voice_logging',
+      })
+      return
+    }
+
     try {
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
@@ -235,6 +248,13 @@ export default function CreateSpeechScreen() {
           </>
         )}
       </View>
+
+      <Paywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        title="Voice Logging is Premium"
+        message="Voice logging is a premium feature. Subscribe to log your workouts with your voice."
+      />
     </SafeAreaView>
   )
 }

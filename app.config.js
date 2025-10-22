@@ -70,6 +70,7 @@ module.exports = {
       posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
       revenueCatAppleApiKey: process.env.REVENUECAT_APPLE_API_KEY,
       revenueCatGoogleApiKey: process.env.REVENUECAT_GOOGLE_API_KEY,
+      revenueCatTestStoreKey: process.env.REVENUECAT_TEST_STORE_KEY,
     },
   },
 }

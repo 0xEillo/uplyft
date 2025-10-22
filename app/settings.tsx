@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
@@ -32,12 +33,14 @@ export default function SettingsScreen() {
   const { isDark, toggleTheme } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit } = useWeightUnits()
+  const { isProMember, customerInfo, restorePurchases } = useSubscription()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditModalVisible, setIsEditModalVisible] = useState(false)
   const [editedName, setEditedName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
 
   // Preferences
   const [showExamples, setShowExamples] = useState(true)
@@ -272,6 +275,95 @@ export default function SettingsScreen() {
     }
   }
 
+  const handleRestorePurchases = async () => {
+    try {
+      setIsRestoring(true)
+      await restorePurchases()
+      Alert.alert('Success', 'Your purchases have been restored.', [
+        { text: 'OK' },
+      ])
+    } catch (error) {
+      Alert.alert(
+        'Restore Failed',
+        'No previous purchases found or restore failed. Please try again.',
+        [{ text: 'OK' }]
+      )
+    } finally {
+      setIsRestoring(false)
+    }
+  }
+
+  const handleManageSubscription = async () => {
+    // Open App Store subscription management
+    const subscriptionUrl = 'https://apps.apple.com/account/subscriptions'
+    try {
+      const canOpen = await Linking.canOpenURL(subscriptionUrl)
+      if (canOpen) {
+        await Linking.openURL(subscriptionUrl)
+      } else {
+        Alert.alert(
+          'Unable to Open',
+          'Please open Settings > [Your Name] > Subscriptions to manage your subscription.',
+          [{ text: 'OK' }]
+        )
+      }
+    } catch (error) {
+      console.error('Error opening subscription management:', error)
+      Alert.alert(
+        'Unable to Open',
+        'Please open Settings > [Your Name] > Subscriptions to manage your subscription.',
+        [{ text: 'OK' }]
+      )
+    }
+  }
+
+  // Get subscription status display
+  const getSubscriptionStatus = () => {
+    if (!customerInfo) return 'Loading...'
+
+    const activeEntitlements = customerInfo.entitlements.active
+    if (Object.keys(activeEntitlements).length === 0) {
+      return 'Free'
+    }
+
+    const proEntitlement = activeEntitlements['Pro']
+    if (proEntitlement) {
+      const expirationDate = proEntitlement.expirationDate
+      if (expirationDate) {
+        const date = new Date(expirationDate)
+        const now = new Date()
+        const isTrialing = proEntitlement.periodType === 'trial'
+
+        if (date > now) {
+          if (isTrialing) {
+            const daysLeft = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            return `Trial (${daysLeft} days left)`
+          } else {
+            return 'Active'
+          }
+        }
+      }
+    }
+
+    return 'Free'
+  }
+
+  const getNextBillingDate = () => {
+    if (!customerInfo) return null
+
+    const proEntitlement = customerInfo.entitlements.active['Pro']
+    if (proEntitlement && proEntitlement.expirationDate) {
+      const date = new Date(proEntitlement.expirationDate)
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    }
+
+    return null
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -389,6 +481,90 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* Subscription Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+
+          <View style={styles.subscriptionCard}>
+            {/* Status */}
+            <View style={styles.subscriptionRow}>
+              <View style={styles.subscriptionLeft}>
+                <Text style={styles.subscriptionLabel}>Status</Text>
+              </View>
+              <View style={styles.subscriptionStatusBadge}>
+                <Text
+                  style={[
+                    styles.subscriptionStatusText,
+                    isProMember && styles.subscriptionStatusTextActive,
+                  ]}
+                >
+                  {getSubscriptionStatus()}
+                </Text>
+              </View>
+            </View>
+
+            {/* Next Billing Date (if subscribed) */}
+            {isProMember && getNextBillingDate() && (
+              <>
+                <View style={styles.subscriptionDivider} />
+                <View style={styles.subscriptionRow}>
+                  <View style={styles.subscriptionLeft}>
+                    <Text style={styles.subscriptionLabel}>
+                      {getSubscriptionStatus().startsWith('Trial') ? 'Trial Ends' : 'Renews'}
+                    </Text>
+                  </View>
+                  <Text style={styles.subscriptionValue}>
+                    {getNextBillingDate()}
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {/* Divider */}
+            <View style={styles.subscriptionDivider} />
+
+            {/* Restore Purchases */}
+            <TouchableOpacity
+              style={styles.subscriptionButton}
+              onPress={handleRestorePurchases}
+              disabled={isRestoring}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={20}
+                color={colors.primary}
+              />
+              {isRestoring ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.subscriptionButtonText}>
+                  Restore Purchases
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Manage Subscription (if subscribed) */}
+            {isProMember && (
+              <>
+                <View style={styles.subscriptionDivider} />
+                <TouchableOpacity
+                  style={styles.subscriptionButton}
+                  onPress={handleManageSubscription}
+                >
+                  <Ionicons
+                    name="settings-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.subscriptionButtonText}>
+                    Manage Subscription
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -940,6 +1116,64 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     preferenceDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 16,
+    },
+    subscriptionCard: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    subscriptionRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    subscriptionLeft: {
+      flex: 1,
+    },
+    subscriptionLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    subscriptionValue: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    subscriptionStatusBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.backgroundLight,
+    },
+    subscriptionStatusText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    subscriptionStatusTextActive: {
+      color: colors.primary,
+    },
+    subscriptionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 4,
+    },
+    subscriptionButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    subscriptionDivider: {
       height: 1,
       backgroundColor: colors.border,
       marginVertical: 16,

@@ -1,8 +1,10 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
+import { Paywall } from '@/components/paywall'
 import { database } from '@/lib/database'
 import {
   generateWorkoutMessage,
@@ -93,6 +95,7 @@ export default function CreatePostScreen() {
   const [showExamples, setShowExamples] = useState(true)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
 
   // Image attachment states
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
@@ -116,6 +119,7 @@ export default function CreatePostScreen() {
   const latestTitle = useRef('')
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
+  const { isProMember } = useSubscription()
 
   const blurInputs = useCallback(() => {
     const textInputState = (TextInput as any)?.State
@@ -522,6 +526,15 @@ export default function CreatePostScreen() {
   }
 
   const handlePost = async () => {
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent('Paywall Shown', {
+        feature: 'workout_logging',
+      })
+      return
+    }
+
     if (!workoutTitle.trim()) {
       Alert.alert(
         'Title Required',
@@ -788,6 +801,14 @@ export default function CreatePostScreen() {
           onScanWithLibrary={handleScanWithLibrary}
           onAttachWithCamera={handleAttachWithCamera}
           onAttachWithLibrary={handleAttachWithLibrary}
+        />
+
+        {/* Paywall Modal */}
+        <Paywall
+          visible={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          title="Workout Logging is Premium"
+          message="Logging workouts is a premium feature. Subscribe to track unlimited workouts and unlock all features."
         />
       </KeyboardAvoidingView>
       </Animated.View>

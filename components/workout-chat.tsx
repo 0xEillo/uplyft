@@ -1,6 +1,9 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
+import { Paywall } from '@/components/paywall'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -36,7 +39,10 @@ export function WorkoutChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
   const { user, session } = useAuth()
+  const { isProMember } = useSubscription()
+  const { trackEvent } = useAnalytics()
   const insets = useSafeAreaInsets()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
@@ -54,6 +60,15 @@ export function WorkoutChat() {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
+
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent('Paywall Shown', {
+        feature: 'ai_chat',
+      })
+      return
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -233,6 +248,15 @@ export function WorkoutChat() {
   }
 
   const handleExampleQuestion = (question: string) => {
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent('Paywall Shown', {
+        feature: 'ai_chat',
+      })
+      return
+    }
+
     setInput(question)
   }
 
@@ -423,6 +447,14 @@ export function WorkoutChat() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Paywall Modal */}
+      <Paywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        title="AI Chat is Premium"
+        message="Chat with your personal AI assistant to analyze your workouts and get insights. Subscribe to unlock this feature."
+      />
     </KeyboardAvoidingView>
   )
 }
