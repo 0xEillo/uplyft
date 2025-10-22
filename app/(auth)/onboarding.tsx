@@ -159,9 +159,9 @@ export default function OnboardingScreen() {
         heightCm = (feet * 12 + inches) * 2.54
       }
 
-      // Navigate to rating screen with onboarding data
+      // Navigate to trial offer screen with onboarding data
       router.push({
-        pathname: '/(auth)/rating',
+        pathname: '/(auth)/trial-offer',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,
