@@ -60,7 +60,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
 
         // Set log level for debugging (set to ERROR in production)
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG)
+        Purchases.setLogLevel(LOG_LEVEL.ERROR)
 
         // Get API keys from config
         const testStoreKey = Constants.expoConfig?.extra
