@@ -1,4 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useSubscription } from '@/contexts/subscription-context'
+import { useAnalytics } from '@/contexts/analytics-context'
+import { Paywall } from '@/components/paywall'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
@@ -13,19 +16,32 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useState } from 'react'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 export default function BodyLogIntroPage() {
   const colors = useThemedColors()
+  const { isProMember } = useSubscription()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { userGender } = useLocalSearchParams<{ userGender?: string }>()
+  const [showPaywall, setShowPaywall] = useState(false)
 
   const gender =
     userGender === 'male' || userGender === 'female' ? userGender : null
 
   const handleTakePhoto = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent('Paywall Shown', {
+        feature: 'body_scan',
+      })
+      return
+    }
 
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
@@ -161,6 +177,13 @@ export default function BodyLogIntroPage() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <Paywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        title="Body Scan is Premium"
+        message="Track your body composition changes with AI-powered analysis. Unlock body scanning to monitor your progress over time."
+      />
     </View>
   )
 }
