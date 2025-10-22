@@ -51,15 +51,13 @@ export function NotificationProvider({
     try {
       // Listener for when notification is received while app is foregrounded
       const notificationListener =
-        Notifications.addNotificationReceivedListener((notification) => {
-          console.log('[Notifications] Received:', notification)
+        Notifications.addNotificationReceivedListener(() => {
           setUnreadCount((prev) => prev + 1)
         })
 
       // Listener for when user taps on notification
       const responseListener =
-        Notifications.addNotificationResponseReceivedListener((response) => {
-          console.log('[Notifications] User tapped notification:', response)
+        Notifications.addNotificationResponseReceivedListener(() => {
           // Navigation will be handled in the notifications screen
         })
 

@@ -282,7 +282,7 @@ export default function SettingsScreen() {
       Alert.alert('Success', 'Your purchases have been restored.', [
         { text: 'OK' },
       ])
-    } catch (error) {
+    } catch {
       Alert.alert(
         'Restore Failed',
         'No previous purchases found or restore failed. Please try again.',

@@ -35,7 +35,7 @@ export default function SignupOptionsScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const { signInWithGoogle, signInWithApple, user } = useAuth()
+  const { signInWithGoogle, signInWithApple } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
 

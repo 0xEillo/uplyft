@@ -50,7 +50,7 @@ export function SignInBottomSheet({
       translateY.value = withTiming(400, { duration: 200 })
       backdropOpacity.value = withTiming(0, { duration: 200 })
     }
-  }, [visible])
+  }, [visible, translateY, backdropOpacity])
 
   const animatedSheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Image,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
@@ -97,22 +96,6 @@ export default function EditWorkoutScreen() {
     },
     [user, imageOpacity],
   )
-
-  const launchCamera = useCallback(async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync()
-    if (permission.status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Camera permission is required to take photos.',
-      )
-      return
-    }
-
-    const result = await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS)
-    if (!result.canceled && result.assets[0]) {
-      await handleImageSelected(result.assets[0].uri)
-    }
-  }, [handleImageSelected])
 
   const launchLibrary = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()

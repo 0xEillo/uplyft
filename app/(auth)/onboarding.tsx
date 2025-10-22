@@ -291,7 +291,6 @@ export default function OnboardingScreen() {
 
             <View style={styles.stepContent}>
               <View style={styles.featureExampleContainer}>
-                <View style={styles.featureExampleContent}>
                   <View style={styles.featureBubble}>
                     <Text style={styles.featureBubbleText}>
                       &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
@@ -378,7 +377,6 @@ export default function OnboardingScreen() {
                       </Text>
                     </View>
                   </View>
-                </View>
               </View>
             </View>
           </View>

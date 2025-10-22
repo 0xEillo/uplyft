@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useRef } from 'react'
 import {
-  Alert,
   Animated,
   Modal,
   Pressable,
@@ -169,13 +168,6 @@ export function ImagePickerModal({
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     onClose()
-  }
-
-  const handleOption = (callback: () => void, action: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    onClose()
-    // Small delay to let the menu close animation finish
-    setTimeout(callback, 200)
   }
 
   const handleScan = () => {

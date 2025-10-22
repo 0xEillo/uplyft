@@ -1,6 +1,5 @@
 import { HapticButton } from '@/components/haptic-button'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
-import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -29,7 +28,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function WelcomeScreen() {
   const colors = useThemedColors()
-  const { isDark } = useTheme()
   const { width } = useWindowDimensions()
   const styles = createStyles(colors)
   const [showSignInSheet, setShowSignInSheet] = useState(false)
@@ -38,7 +36,7 @@ export default function WelcomeScreen() {
   const savedOffset = useSharedValue(0)
   const isAutoPlaying = useSharedValue(true)
 
-  const startAutoAnimation = () => {
+  useEffect(() => {
     translateX.value = withRepeat(
       withSequence(
         withDelay(
@@ -59,11 +57,7 @@ export default function WelcomeScreen() {
       -1,
       false,
     )
-  }
-
-  useEffect(() => {
-    startAutoAnimation()
-  }, [width])
+  }, [width, translateX])
 
   const panGesture = Gesture.Pan()
     .onStart(() => {

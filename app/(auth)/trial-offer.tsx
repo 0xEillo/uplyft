@@ -99,15 +99,10 @@ export default function TrialOfferScreen() {
         if (!firstPackage) {
           throw new Error('No subscription packages available. Please try again.')
         }
-        console.log('[TrialOffer] Using first available package:', firstPackage.identifier)
         await purchasePackage(firstPackage.identifier)
       } else {
-        console.log('[TrialOffer] Starting trial with package:', monthlyPackage.identifier)
         await purchasePackage(monthlyPackage.identifier)
       }
-
-      // Purchase successful
-      console.log('[TrialOffer] Trial started successfully')
 
       // Request notification permission and schedule trial expiration notification
       if (user) {
@@ -120,7 +115,6 @@ export default function TrialOfferScreen() {
           // Schedule the trial expiration notification
           const trialStartDate = new Date()
           await scheduleTrialExpirationNotification(user.id, trialStartDate)
-          console.log('[TrialOffer] Trial expiration notification scheduled')
         } catch (notificationError) {
           // Don't block the flow if notification fails
           console.error('[TrialOffer] Failed to schedule notification:', notificationError)
@@ -135,13 +129,12 @@ export default function TrialOfferScreen() {
         },
       })
     } catch (error: any) {
-      console.error('[TrialOffer] Purchase error:', error)
-
       // Handle user cancellation (not an error)
       if (error?.userCancelled) {
-        console.log('[TrialOffer] User cancelled purchase')
         return
       }
+
+      console.error('[TrialOffer] Purchase error:', error)
 
       // Show error to user
       Alert.alert(
@@ -231,6 +224,18 @@ export default function TrialOfferScreen() {
     </>
   )
 
+  const handleStep2Continue = async () => {
+    // Request notification permission before moving to step 3
+    try {
+      await requestPermission()
+      setStep(3)
+    } catch (error) {
+      console.error('[TrialOffer] Error requesting notification permission:', error)
+      // Still continue even if permission request fails
+      setStep(3)
+    }
+  }
+
   const renderStep2 = () => (
     <>
       {/* Back Button */}
@@ -262,7 +267,7 @@ export default function TrialOfferScreen() {
           style={styles.title}
           entering={FadeInDown.delay(400).duration(600)}
         >
-          We'll send you a reminder before your free trial ends
+          We&apos;ll send you a reminder before your free trial ends
         </Animated.Text>
       </View>
 
@@ -277,7 +282,7 @@ export default function TrialOfferScreen() {
           <Text style={styles.noPaymentText}>No Payment Due Now</Text>
         </View>
 
-        <AnimatedButton style={styles.startButton} onPress={() => setStep(3)}>
+        <AnimatedButton style={styles.startButton} onPress={handleStep2Continue}>
           <Text style={styles.startButtonText}>Continue for FREE</Text>
         </AnimatedButton>
       </Animated.View>

@@ -16,10 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import {
-  uploadBodyLogImage,
-  getBodyLogImageUrl,
-} from '@/lib/utils/body-log-storage'
+import { uploadBodyLogImage } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 

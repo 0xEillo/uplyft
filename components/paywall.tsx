@@ -83,7 +83,7 @@ export function Paywall({
       Alert.alert('Success!', 'Your purchases have been restored.', [
         { text: 'OK', onPress: onClose }
       ])
-    } catch (error: any) {
+    } catch {
       Alert.alert(
         'Restore Failed',
         'No previous purchases found or restore failed. Please try again.',

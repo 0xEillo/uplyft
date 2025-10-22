@@ -39,12 +39,6 @@ export async function scheduleTrialExpirationNotification(
       },
     })
 
-    console.log('[NotificationService] Scheduled trial notification:', {
-      notificationId,
-      scheduledFor: notificationDate.toISOString(),
-      trialStartDate: trialStartDate.toISOString(),
-    })
-
     // Store the notification ID in the database
     await database.profiles.scheduleTrialNotification(
       userId,
@@ -75,10 +69,6 @@ export async function cancelTrialNotification(userId: string): Promise<void> {
         status.trial_notification_id
       )
 
-      console.log('[NotificationService] Cancelled notification:', {
-        notificationId: status.trial_notification_id,
-        userId,
-      })
     }
 
     // Clear the notification ID from the database
@@ -145,13 +135,11 @@ export async function checkAndRescheduleTrialNotification(
 
       // If notification still exists, no need to reschedule
       if (exists) {
-        console.log('[NotificationService] Notification already scheduled')
         return
       }
     }
 
     // Reschedule the notification
-    console.log('[NotificationService] Rescheduling notification')
     await scheduleTrialExpirationNotification(userId, trialStartDate)
   } catch (error) {
     console.error('[NotificationService] Failed to check/reschedule:', error)
@@ -159,9 +147,3 @@ export async function checkAndRescheduleTrialNotification(
   }
 }
 
-/**
- * Get all scheduled notifications (for debugging)
- */
-export async function getAllScheduledNotifications() {
-  return await Notifications.getAllScheduledNotificationsAsync()
-}

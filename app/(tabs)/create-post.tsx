@@ -24,7 +24,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Image,
   InteractionManager,
   Keyboard,
   KeyboardAvoidingView,
@@ -99,7 +98,6 @@ export default function CreatePostScreen() {
 
   // Image attachment states
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
 
   const { showOverlay } = useSuccessOverlay()

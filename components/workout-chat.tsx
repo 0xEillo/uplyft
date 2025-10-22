@@ -19,7 +19,6 @@ import {
   View,
 } from 'react-native'
 import Markdown from 'react-native-markdown-display'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface Message {
   id: string
@@ -44,7 +43,6 @@ export function WorkoutChat() {
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
   const { trackEvent } = useAnalytics()
-  const insets = useSafeAreaInsets()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
 

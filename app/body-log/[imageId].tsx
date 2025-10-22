@@ -72,7 +72,6 @@ export default function BodyLogDetailScreen() {
     bmi: bmi ? parseFloat(bmi) : null,
     muscle_mass_kg: muscleMassKg ? parseFloat(muscleMassKg) : null,
   })
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(
     typeof signedUrl === 'string' ? signedUrl : undefined,
