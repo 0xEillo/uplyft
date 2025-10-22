@@ -153,7 +153,6 @@ export default function BodyLogDetailScreen() {
 
     ;(async () => {
       try {
-        setIsRefreshing(true)
         const response = await fetch('/api/body-log/analyze', {
           method: 'POST',
           headers: {
@@ -178,8 +177,6 @@ export default function BodyLogDetailScreen() {
         }
       } catch (error) {
         console.error('Failed to refresh body log metrics:', error)
-      } finally {
-        setIsRefreshing(false)
       }
     })()
 

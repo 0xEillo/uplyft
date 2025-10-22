@@ -312,7 +312,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
-      whiteSpace: 'nowrap',
     },
     closeButtonContainer: {
       alignSelf: 'center',

@@ -423,7 +423,6 @@ export default function CreatePostScreen() {
       let imageUrl: string | null = null
       if (attachedImageUri) {
         try {
-          setIsUploadingImage(true)
           imageUrl = await uploadWorkoutImage(attachedImageUri, user!.id)
         } catch (error) {
           console.error('Error uploading image:', error)
@@ -433,7 +432,6 @@ export default function CreatePostScreen() {
             [
               { text: 'Cancel', style: 'cancel', onPress: () => {
                 setIsLoading(false)
-                setIsUploadingImage(false)
                 return
               }},
               { text: 'Continue', onPress: async () => {
@@ -443,8 +441,6 @@ export default function CreatePostScreen() {
             ],
           )
           throw error // Stop submission if upload fails
-        } finally {
-          setIsUploadingImage(false)
         }
       }
 

@@ -23,36 +23,58 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   // Identify user when they sign in
   useEffect(() => {
     if (user && posthog) {
-      posthog.identify(user.id, {
-        email: user.email,
-        name: user.user_metadata?.name,
-      })
+      const properties: Record<string, any> = {
+        email: user.email || undefined,
+        name: user.user_metadata?.name || undefined,
+      }
+      // Filter out undefined values
+      const filteredProps = Object.fromEntries(
+        Object.entries(properties).filter(([_, v]) => v !== undefined)
+      )
+      posthog.identify(user.id, filteredProps)
     }
   }, [user, posthog])
 
   // Register super properties for all events
   useEffect(() => {
     if (posthog) {
-      posthog.register({
-        appVersion: Constants.expoConfig?.version,
+      const properties: Record<string, any> = {
+        appVersion: Constants.expoConfig?.version || 'unknown',
         platform: Platform.OS,
         platformVersion: Platform.Version?.toString?.() ?? 'unknown',
-      })
+      }
+      // Filter out undefined values
+      const filteredProps = Object.fromEntries(
+        Object.entries(properties).filter(([_, v]) => v !== undefined)
+      )
+      posthog.register(filteredProps)
     }
   }, [posthog])
 
   const value: AnalyticsContextValue = {
     trackEvent: async (event: string, payload?: Record<string, unknown>) => {
-      if (posthog) {
-        posthog.capture(event, payload)
+      if (posthog && payload) {
+        // Filter out undefined values from payload
+        const filteredPayload = Object.fromEntries(
+          Object.entries(payload).filter(([_, v]) => v !== undefined)
+        ) as any
+        posthog.capture(event, filteredPayload)
+      } else if (posthog) {
+        posthog.capture(event)
       }
     },
     identifyUser: async (
       distinctId: string,
       payload?: Record<string, unknown>,
     ) => {
-      if (posthog) {
-        posthog.identify(distinctId, payload)
+      if (posthog && payload) {
+        // Filter out undefined values from payload
+        const filteredPayload = Object.fromEntries(
+          Object.entries(payload).filter(([_, v]) => v !== undefined)
+        ) as any
+        posthog.identify(distinctId, filteredPayload)
+      } else if (posthog) {
+        posthog.identify(distinctId)
       }
     },
   }
