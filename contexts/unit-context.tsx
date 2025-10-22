@@ -39,7 +39,7 @@ export function formatWeightValue(
   options?: Intl.NumberFormatOptions,
 ): string {
   if (valueKg === null || valueKg === undefined || Number.isNaN(valueKg)) {
-    return 'BW'
+    return '--'
   }
   const converted = kgToPreferred(valueKg, unit)
   const formatter = numberFormatter({

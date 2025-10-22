@@ -176,7 +176,6 @@ function TabLayoutContent() {
           name="create-speech"
           options={{
             href: null,
-            animation: 'fade',
             tabBarStyle: { display: 'none' },
           }}
         />
