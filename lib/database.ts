@@ -133,6 +133,57 @@ export const database = {
 
       throw new Error('Could not generate unique user tag')
     },
+
+    async scheduleTrialNotification(
+      userId: string,
+      notificationId: string,
+      scheduledAt: Date,
+      trialStartDate: Date
+    ) {
+      const { data, error} = await supabase
+        .from('profiles')
+        .update({
+          trial_notification_id: notificationId,
+          trial_notification_scheduled_at: scheduledAt.toISOString(),
+          trial_start_date: trialStartDate.toISOString(),
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Profile
+    },
+
+    async getTrialNotificationStatus(userId: string) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('trial_notification_id, trial_notification_scheduled_at, trial_start_date')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+      return data as {
+        trial_notification_id: string | null
+        trial_notification_scheduled_at: string | null
+        trial_start_date: string | null
+      }
+    },
+
+    async cancelTrialNotification(userId: string) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          trial_notification_id: null,
+          trial_notification_scheduled_at: null,
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Profile
+    },
   },
 
   // Exercise operations

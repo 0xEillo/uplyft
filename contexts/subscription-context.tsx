@@ -13,6 +13,10 @@ import Purchases, {
   PurchasesOffering,
 } from 'react-native-purchases'
 import { useAuth } from './auth-context'
+import {
+  cancelTrialNotification,
+  checkAndRescheduleTrialNotification,
+} from '@/lib/services/notification-service'
 
 type SubscriptionContextValue = {
   customerInfo: CustomerInfo | null
@@ -167,6 +171,28 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // Check if user has Pro entitlement (case-sensitive: must match RevenueCat dashboard)
   const isProMember =
     customerInfo?.entitlements.active['Pro'] !== undefined || false
+
+  // Handle trial notification based on subscription status
+  useEffect(() => {
+    if (!user?.id || isLoading) return
+
+    const handleNotifications = async () => {
+      try {
+        if (isProMember) {
+          // User is pro - cancel any trial notifications
+          await cancelTrialNotification(user.id)
+          console.log('[Subscription] Cancelled trial notification (user is pro)')
+        } else {
+          // User is not pro - check if notification needs rescheduling
+          await checkAndRescheduleTrialNotification(user.id, isProMember)
+        }
+      } catch (error) {
+        console.error('[Subscription] Notification handling error:', error)
+      }
+    }
+
+    handleNotifications()
+  }, [user?.id, isProMember, isLoading])
 
   // Restore purchases
   const restorePurchases = async () => {

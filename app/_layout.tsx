@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
+import { NotificationProvider } from '@/contexts/notification-context'
 import { PostsProvider } from '@/contexts/posts-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
@@ -83,11 +84,13 @@ export default function RootLayout() {
             <UnitProvider>
               <AuthProvider>
                 <SubscriptionProvider>
-                  <AnalyticsProvider>
-                    <PostsProvider>
-                      <RootLayoutNav />
-                    </PostsProvider>
-                  </AnalyticsProvider>
+                  <NotificationProvider>
+                    <AnalyticsProvider>
+                      <PostsProvider>
+                        <RootLayoutNav />
+                      </PostsProvider>
+                    </AnalyticsProvider>
+                  </NotificationProvider>
                 </SubscriptionProvider>
               </AuthProvider>
             </UnitProvider>

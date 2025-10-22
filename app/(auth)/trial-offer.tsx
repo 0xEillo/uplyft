@@ -1,4 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useNotifications } from '@/contexts/notification-context'
+import { useAuth } from '@/contexts/auth-context'
+import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useState } from 'react'
@@ -72,7 +75,9 @@ export default function TrialOfferScreen() {
   const [step, setStep] = useState(1)
   const [isPurchasing, setIsPurchasing] = useState(false)
 
+  const { user } = useAuth()
   const { offerings, purchasePackage, isLoading: subscriptionLoading } = useSubscription()
+  const { requestPermission, hasPermission } = useNotifications()
 
   const handleStartTrial = async () => {
     try {
@@ -101,8 +106,28 @@ export default function TrialOfferScreen() {
         await purchasePackage(monthlyPackage.identifier)
       }
 
-      // Purchase successful - navigate to signup
+      // Purchase successful
       console.log('[TrialOffer] Trial started successfully')
+
+      // Request notification permission and schedule trial expiration notification
+      if (user) {
+        try {
+          // Request permission if not already granted
+          if (!hasPermission) {
+            await requestPermission()
+          }
+
+          // Schedule the trial expiration notification
+          const trialStartDate = new Date()
+          await scheduleTrialExpirationNotification(user.id, trialStartDate)
+          console.log('[TrialOffer] Trial expiration notification scheduled')
+        } catch (notificationError) {
+          // Don't block the flow if notification fails
+          console.error('[TrialOffer] Failed to schedule notification:', notificationError)
+        }
+      }
+
+      // Navigate to signup
       router.push({
         pathname: '/(auth)/signup-options',
         params: {
@@ -499,7 +524,6 @@ function createStyles(colors: any) {
     // Step 1 specific styles
     step1ScrollContent: {
       paddingHorizontal: 32,
-      paddingTop: 48,
       paddingBottom: 24,
       flexGrow: 1,
       justifyContent: 'center',
@@ -526,7 +550,6 @@ function createStyles(colors: any) {
     },
     step3ScrollContent: {
       paddingHorizontal: 24,
-      paddingTop: 24,
       paddingBottom: 20,
     },
     step3Title: {

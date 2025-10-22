@@ -938,17 +938,19 @@ export default function OnboardingScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-            <Animated.View
-              style={[
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateX: slideAnim }],
-                },
-                styles.animatedContent,
-              ]}
-            >
-              {renderStep()}
-            </Animated.View>
+            <View style={styles.contentWrapper}>
+              <Animated.View
+                style={[
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateX: slideAnim }],
+                  },
+                  styles.animatedContent,
+                ]}
+              >
+                {renderStep()}
+              </Animated.View>
+            </View>
           </ScrollView>
 
           {/* Footer - Fixed at bottom */}
@@ -1020,10 +1022,13 @@ const createStyles = (
     contentContainer: {
       flexGrow: 1,
       paddingHorizontal: 32,
-      minHeight: '100%',
+    },
+    contentWrapper: {
+      flex: 1,
+      justifyContent: 'center',
     },
     animatedContent: {
-      flexGrow: 1,
+      flex: 1,
     },
     stepContainer: {
       flex: 1,

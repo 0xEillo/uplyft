@@ -1,6 +1,8 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
+import { NotificationBadge } from '@/components/notification-badge'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useNotifications } from '@/contexts/notification-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -80,6 +82,7 @@ export default function FeedScreen() {
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const { trackEvent } = useAnalytics()
+  const { unreadCount } = useNotifications()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -276,12 +279,16 @@ export default function FeedScreen() {
           />
           <Text style={styles.headerTitle}>Rep AI</Text>
         </View>
-        <TouchableOpacity onPress={() => {}}>
+        <TouchableOpacity
+          onPress={() => router.push('/notifications')}
+          style={{ position: 'relative' }}
+        >
           <Ionicons
-            name="notifications-outline"
+            name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
             size={24}
             color={colors.text}
           />
+          <NotificationBadge count={unreadCount} />
         </TouchableOpacity>
       </View>
 

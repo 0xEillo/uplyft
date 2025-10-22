@@ -217,7 +217,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     actions: {
       gap: 16,
       paddingHorizontal: 32,
-      paddingTop: 64,
+      paddingTop: 32,
       paddingBottom: 48,
     },
     signInRow: {

@@ -130,7 +130,7 @@ export function Paywall({
             {/* Benefits */}
             <View style={styles.benefitsContainer}>
               <Benefit
-                icon="fitness"
+                icon="document-text"
                 text="Unlimited workout logging"
                 colors={colors}
               />
@@ -145,8 +145,8 @@ export function Paywall({
                 colors={colors}
               />
               <Benefit
-                icon="mic"
-                text="Voice logging"
+                icon="body"
+                text="Body scanning & analysis"
                 colors={colors}
               />
             </View>

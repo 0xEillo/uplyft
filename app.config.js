@@ -23,6 +23,8 @@ module.exports = {
           'This app needs access to your camera to take photos of your workout notes.',
         NSPhotoLibraryUsageDescription:
           'This app needs access to your photo library to select workout images.',
+        NSUserNotificationsUsageDescription:
+          'This app needs permission to send you reminders about your trial expiration.',
       },
       bundleIdentifier: 'com.viralstudio.repai',
     },
@@ -36,7 +38,12 @@ module.exports = {
       windowSoftInputMode: 'adjustPan',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      permissions: ['RECORD_AUDIO', 'CAMERA', 'READ_MEDIA_IMAGES'],
+      permissions: [
+        'RECORD_AUDIO',
+        'CAMERA',
+        'READ_MEDIA_IMAGES',
+        'POST_NOTIFICATIONS',
+      ],
       package: 'com.viralstudio.repai',
     },
     web: {
@@ -58,6 +65,14 @@ module.exports = {
         },
       ],
       'expo-localization',
+      [
+        'expo-notifications',
+        {
+          icon: './assets/images/icon.png',
+          color: '#ffffff',
+          sounds: [],
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
