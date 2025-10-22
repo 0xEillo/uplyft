@@ -1,5 +1,7 @@
 require('dotenv').config()
 
+const revenueCatUseTestStoreEnv = process.env.REVENUECAT_USE_TEST_STORE
+
 module.exports = {
   expo: {
     name: 'Rep AI',
@@ -71,6 +73,12 @@ module.exports = {
       revenueCatAppleApiKey: process.env.REVENUECAT_APPLE_API_KEY,
       revenueCatGoogleApiKey: process.env.REVENUECAT_GOOGLE_API_KEY,
       revenueCatTestStoreKey: process.env.REVENUECAT_TEST_STORE_KEY,
+      revenueCatUseTestStore:
+        revenueCatUseTestStoreEnv === 'true'
+          ? true
+          : revenueCatUseTestStoreEnv === 'false'
+          ? false
+          : undefined,
     },
   },
 }

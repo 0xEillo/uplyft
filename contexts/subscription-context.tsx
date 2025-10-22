@@ -65,6 +65,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         const googleApiKey = Constants.expoConfig?.extra
           ?.revenueCatGoogleApiKey as string | undefined
 
+        const shouldUseTestStore = Boolean(
+          Constants.expoConfig?.extra?.revenueCatUseTestStore,
+        )
+
         // Debug: Log API key info (masked for security)
         console.log(
           '[RevenueCat] Test Store Key loaded:',
@@ -79,9 +83,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           googleApiKey ? `${googleApiKey.substring(0, 10)}...` : 'MISSING',
         )
 
+        console.log(
+          '[RevenueCat] Using test store? ',
+          shouldUseTestStore ? 'YES' : 'NO',
+        )
+
         // Prioritize Test Store key for testing
         let apiKeyToUse: string | undefined
-        if (testStoreKey) {
+        if (shouldUseTestStore && testStoreKey) {
           apiKeyToUse = testStoreKey
           console.log('[RevenueCat] Using Test Store key for testing')
         } else if (Platform.OS === 'ios' && appleApiKey) {
