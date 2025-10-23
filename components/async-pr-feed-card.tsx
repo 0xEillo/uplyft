@@ -9,10 +9,18 @@ import { useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 
+interface PrDetailForDisplay {
+  label: string
+  previous?: number
+  current: number
+  isCurrent: boolean
+}
+
 interface PrInfo {
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
+  prDetails: PrDetailForDisplay[]
   hasCurrentPR: boolean
 }
 
@@ -84,6 +92,12 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           exerciseName: exPr.exerciseName,
           prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
           prLabels: exPr.prs.map((pr) => pr.label),
+          prDetails: exPr.prs.map((pr) => ({
+            label: pr.label,
+            previous: pr.previous,
+            current: pr.current,
+            isCurrent: pr.isCurrent,
+          })),
           hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
         }))
         setPrInfo(prData)

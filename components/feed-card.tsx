@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { PrTooltip } from './pr-tooltip'
 
 // Constants
 const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
@@ -39,10 +40,18 @@ interface ExerciseDisplay {
   setDetails?: SetDetail[]
 }
 
+interface PrDetailForDisplay {
+  label: string // e.g., "1RM", "5-rep max"
+  previous?: number
+  current: number
+  isCurrent: boolean // true if this is still the all-time PR
+}
+
 interface ExercisePRInfo {
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
+  prDetails: PrDetailForDisplay[] // Full PR details for tooltip
   hasCurrentPR: boolean // true if at least one PR is still current
 }
 
@@ -89,6 +98,8 @@ export const FeedCard = memo(function FeedCard({
     new Set(),
   )
   const [menuVisible, setMenuVisible] = useState(false)
+  const [tooltipVisible, setTooltipVisible] = useState(false)
+  const [selectedExercisePR, setSelectedExercisePR] = useState<ExercisePRInfo | null>(null)
 
   // Image loading states and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
@@ -259,15 +270,20 @@ export const FeedCard = memo(function FeedCard({
                   >
                     {exercise.name}
                   </Text>
-                  {hasPR && (
-                    <View
+                  {hasPR && exercisePR && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedExercisePR(exercisePR)
+                        setTooltipVisible(true)
+                      }}
+                      activeOpacity={0.7}
                       style={[
                         styles.prBadge,
-                        !exercisePR?.hasCurrentPR && styles.prBadgeHistorical,
+                        !exercisePR.hasCurrentPR && styles.prBadgeHistorical,
                       ]}
                     >
                       <Text style={styles.prBadgeText}>PR</Text>
-                    </View>
+                    </TouchableOpacity>
                   )}
                   {exercise.hasVariedSets && (
                     <Ionicons
@@ -321,16 +337,21 @@ export const FeedCard = memo(function FeedCard({
                             : 'BW'}
                         </Text>
                         <View style={styles.prBadgeContainer}>
-                          {setHasPR && (
-                            <View
+                          {setHasPR && exercisePR && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setSelectedExercisePR(exercisePR)
+                                setTooltipVisible(true)
+                              }}
+                              activeOpacity={0.7}
                               style={[
                                 styles.prBadgeSmall,
-                                !exercisePR?.hasCurrentPR &&
+                                !exercisePR.hasCurrentPR &&
                                   styles.prBadgeSmallHistorical,
                               ]}
                             >
                               <Text style={styles.prBadgeTextSmall}>PR</Text>
-                            </View>
+                            </TouchableOpacity>
                           )}
                         </View>
                       </View>
@@ -439,6 +460,19 @@ export const FeedCard = memo(function FeedCard({
             </View>
           </Pressable>
         </Modal>
+      )}
+
+      {/* PR Tooltip */}
+      {selectedExercisePR && (
+        <PrTooltip
+          visible={tooltipVisible}
+          onClose={() => {
+            setTooltipVisible(false)
+            setSelectedExercisePR(null)
+          }}
+          prDetails={selectedExercisePR.prDetails}
+          exerciseName={selectedExercisePR.exerciseName}
+        />
       )}
     </View>
   )
