@@ -1,6 +1,7 @@
-import { createServerDatabase } from '@/lib/database-server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { summarizeBodyLogContext } from '@/lib/utils/body-log-context'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
+import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
+
+export type SupabaseClient = ReturnType<typeof createClient<'public'>>
 
 export interface UserContextSummary {
   profile: {
@@ -38,49 +39,104 @@ export interface UserContextSummary {
   }
 }
 
-// Build a compact, token-efficient summary for the LLM
 export async function buildUserContextSummary(
   userId: string,
-  accessToken?: string,
+  supabase: SupabaseClient,
 ): Promise<UserContextSummary> {
-  const db = createServerDatabase(accessToken)
-  const profile = await db.profiles.getById(userId)
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
 
-  // recent sessions for date bounds and counts
-  const recent = await db.workoutSessions.getRecent(userId, 50)
-  const sessionsCount = recent?.length || 0
+  if (profileError || !profile) {
+    throw profileError || new Error('Profile not found')
+  }
+
+  const { data: sessionsData, error: sessionsError } = await supabase
+    .from('workout_sessions')
+    .select(
+      `
+      *,
+      workout_exercises (
+        *,
+        exercise:exercises (*),
+        sets (*)
+      )
+    `,
+    )
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(50)
+
+  if (sessionsError) throw sessionsError
+  const sessions = sessionsData || []
+
+  const sessionsCount = sessions.length
   const firstSessionDate =
-    recent.length > 0 ? recent[recent.length - 1].date : undefined
-  const lastSessionDate = recent.length > 0 ? recent[0].date : undefined
+    sessions.length > 0 ? sessions[sessions.length - 1].date : undefined
+  const lastSessionDate = sessions.length > 0 ? sessions[0].date : undefined
 
-  // compute total volume (all time best-effort)
-  const totalVolumeAllTime = await db.stats.getTotalVolume(userId)
+  const { data: totalVolumeData, error: totalVolumeError } = await supabase
+    .from('workout_sessions')
+    .select(
+      `
+      workout_exercises (
+        sets (reps, weight)
+      )
+    `,
+    )
+    .eq('user_id', userId)
 
-  // derive a few top exercises by simple heuristic (presence + weights)
+  if (totalVolumeError) throw totalVolumeError
+
+  let totalVolumeAllTime = 0
+  ;(totalVolumeData as any[])?.forEach((session) => {
+    session.workout_exercises?.forEach((we: any) => {
+      we.sets?.forEach((s: any) => {
+        if (s.reps && s.weight) totalVolumeAllTime += s.reps * s.weight
+      })
+    })
+  })
+
   const exerciseToBest: Record<string, number> = {}
-  for (const session of recent) {
-    for (const we of session.workout_exercises || []) {
+  sessions.forEach((session: any) => {
+    session.workout_exercises?.forEach((we: any) => {
       const name = we.exercise?.name
-      if (!name) continue
-      for (const s of we.sets || []) {
-        if (typeof s.weight === 'number') {
-          if (!exerciseToBest[name] || s.weight > exerciseToBest[name]) {
-            exerciseToBest[name] = s.weight
+      if (!name) return
+      we.sets?.forEach((set: any) => {
+        if (typeof set.weight === 'number') {
+          if (!exerciseToBest[name] || set.weight > exerciseToBest[name]) {
+            exerciseToBest[name] = set.weight
           }
         }
-      }
-    }
-  }
+      })
+    })
+  })
 
   const topExercisesByMax = Object.entries(exerciseToBest)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([name, bestSingle]) => ({ name, bestSingle }))
 
-  const bodyLogRecords = await db.bodyLog.getRecent(userId, {
-    limit: 12,
-  })
-  const bodyLogSummary = summarizeBodyLogContext(bodyLogRecords)
+  const { data: bodyLogData, error: bodyLogError } = await supabase
+    .from('body_log_images')
+    .select(
+      `
+      id,
+      created_at,
+      weight_kg,
+      body_fat_percentage,
+      bmi
+    `,
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(12)
+
+  if (bodyLogError) throw bodyLogError
+
+  const bodyLogSummary = summarizeBodyLogContext(bodyLogData || [])
 
   return {
     profile: {
@@ -110,14 +166,11 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
   const lines: string[] = []
   lines.push(`User: ${ctx.profile.displayName} (@${ctx.profile.userTag})`)
 
-  // Personal information
   const personalInfo: string[] = []
   if (ctx.profile.gender) personalInfo.push(`gender=${ctx.profile.gender}`)
-  if (ctx.profile.heightCm)
-    personalInfo.push(`height=${ctx.profile.heightCm}cm`)
-  if (ctx.profile.weightKg)
-    personalInfo.push(`weight=${ctx.profile.weightKg}kg`)
-  if (ctx.profile.goals && ctx.profile.goals.length > 0)
+  if (ctx.profile.heightCm) personalInfo.push(`height=${ctx.profile.heightCm}cm`)
+  if (ctx.profile.weightKg) personalInfo.push(`weight=${ctx.profile.weightKg}kg`)
+  if (ctx.profile.goals?.length)
     personalInfo.push(
       `goals=${ctx.profile.goals.map((g) => g.replace('_', ' ')).join(', ')}`,
     )
@@ -139,6 +192,7 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
       }`,
     )
   }
+
   if (ctx.highlights.topExercisesByMax?.length) {
     lines.push(
       'Top exercises (best single weight): ' +
@@ -160,7 +214,6 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
     if (typeof latest.bmi === 'number') {
       metrics.push(`bmi=${latest.bmi.toFixed(1)}`)
     }
-
     lines.push(
       `Latest body scan (${new Date(latest.capturedAt).toISOString()}): ${
         metrics.length > 0 ? metrics.join(', ') : 'metrics unavailable'
@@ -179,103 +232,9 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
     }
 
     if (parts.length > 0) {
-      lines.push(
-        `Body scan trend (last ${trend.spanDays}d): ${parts.join(', ')}`,
-      )
+      lines.push(`Body scan trend (last ${trend.spanDays}d): ${parts.join(', ')}`)
     }
   }
 
   return lines.join('\n')
-}
-
-// Build a complete, flattened dump of a user's data for direct LLM context
-// This avoids any context selection/summary heuristics.
-export async function buildUserFullContextDump(
-  userId: string,
-  accessToken?: string,
-  options?: { maxSessions?: number },
-): Promise<string> {
-  const maxSessions = options?.maxSessions ?? 500
-
-  const supabase = createServerSupabaseClient(accessToken)
-
-  const { data: sessions, error } = await supabase
-    .from('workout_sessions')
-    .select(
-      `
-      date,
-      type,
-      workout_exercises (
-        order_index,
-        exercise:exercises (
-          name,
-          muscle_group,
-          type,
-          equipment
-        ),
-        sets (
-          set_number,
-          reps,
-          weight,
-          rpe
-        )
-      )
-    `,
-    )
-    .eq('user_id', userId)
-    .order('date', { ascending: true })
-    .limit(maxSessions)
-
-  if (error) throw error
-
-  type AnySession = any
-  const flatSets: Record<string, any>[] = []
-
-  for (const session of (sessions as AnySession[]) || []) {
-    for (const we of session.workout_exercises || []) {
-      const exercise = we.exercise
-      for (const s of we.sets || []) {
-        flatSets.push({
-          sessionDate: session.date,
-          sessionType: session.type,
-          exerciseName: exercise?.name,
-          exerciseMuscleGroup: exercise?.muscle_group,
-          exerciseType: exercise?.type,
-          exerciseEquipment: exercise?.equipment,
-          exerciseOrderIndex: we.order_index,
-          setNumber: s.set_number,
-          reps: s.reps,
-          weight: s.weight,
-          rpe: s.rpe,
-        })
-      }
-    }
-  }
-
-  const exercisesMap = new Map<string, any>()
-  for (const session of (sessions as AnySession[]) || []) {
-    for (const we of session.workout_exercises || []) {
-      const ex = we.exercise
-      const key = (ex?.name || '').toLowerCase()
-      if (key && !exercisesMap.has(key)) {
-        exercisesMap.set(key, {
-          name: ex?.name,
-          muscle_group: ex?.muscle_group,
-          type: ex?.type,
-          equipment: ex?.equipment,
-        })
-      }
-    }
-  }
-
-  const dump = {
-    sessions: ((sessions as AnySession[]) || []).map((s) => ({
-      date: s.date,
-      type: s.type,
-    })),
-    exercises: Array.from(exercisesMap.values()),
-    sets: flatSets,
-  }
-
-  return JSON.stringify(dump)
 }

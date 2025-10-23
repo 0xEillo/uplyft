@@ -138,9 +138,9 @@ export const database = {
       userId: string,
       notificationId: string,
       scheduledAt: Date,
-      trialStartDate: Date
+      trialStartDate: Date,
     ) {
-      const { data, error} = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           trial_notification_id: notificationId,
@@ -158,7 +158,9 @@ export const database = {
     async getTrialNotificationStatus(userId: string) {
       const { data, error } = await supabase
         .from('profiles')
-        .select('trial_notification_id, trial_notification_scheduled_at, trial_start_date')
+        .select(
+          'trial_notification_id, trial_notification_scheduled_at, trial_start_date',
+        )
         .eq('id', userId)
         .single()
 
@@ -1091,7 +1093,6 @@ export const database = {
         weight_kg?: number
         body_fat_percentage?: number
         bmi?: number
-        muscle_mass_kg?: number
       },
     ) {
       const { data, error } = await supabase
@@ -1142,7 +1143,6 @@ export const database = {
           weight_kg,
           body_fat_percentage,
           bmi,
-          muscle_mass_kg
         `,
         )
         .eq('user_id', userId)

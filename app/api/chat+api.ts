@@ -238,7 +238,6 @@ export async function POST(request: Request) {
                     weightKg: record.weight_kg,
                     bodyFatPercentage: record.body_fat_percentage,
                     bmi: record.bmi,
-                    muscleMassKg: record.muscle_mass_kg,
                   },
                   image: includeUrls
                     ? {

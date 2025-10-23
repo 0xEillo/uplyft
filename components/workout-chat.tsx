@@ -94,7 +94,9 @@ export function WorkoutChat() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/chat', {
+      const { getSupabaseFunctionBaseUrl } = await import('@/lib/supabase-functions-client')
+
+      const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

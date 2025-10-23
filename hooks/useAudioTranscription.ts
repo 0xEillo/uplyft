@@ -64,10 +64,14 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
   }, [])
 
   /**
-   * Transcribe the recorded audio using the API
+   * Transcribe the recorded audio using the Supabase Edge Function
    */
   const transcribeAudio = useCallback(
     async (uri: string): Promise<string> => {
+      // Import at call time to avoid issues with module resolution
+      const { callSupabaseFunctionWithFormData } = await import('@/lib/supabase-functions-client')
+      const { supabase } = await import('@/lib/supabase')
+
       const formData = new FormData()
       const audioFile: AudioFileBlob = {
         uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
@@ -77,13 +81,11 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
       // FormData.append accepts Blob-like objects in React Native
       formData.append('audio', audioFile as unknown as Blob)
 
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      // Get the session token for authentication
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
+      const response = await callSupabaseFunctionWithFormData('transcribe', formData, token)
 
       if (!response.ok) {
         const errorData = await response.json()

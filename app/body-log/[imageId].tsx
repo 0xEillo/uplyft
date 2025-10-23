@@ -45,7 +45,6 @@ export default function BodyLogDetailScreen() {
     weightKg,
     bodyFatPercentage,
     bmi,
-    muscleMassKg,
   } = useLocalSearchParams<{
     imageId: string
     filePath?: string
@@ -54,7 +53,6 @@ export default function BodyLogDetailScreen() {
     weightKg?: string
     bodyFatPercentage?: string
     bmi?: string
-    muscleMassKg?: string
   }>()
 
   const colors = useThemedColors()
@@ -70,7 +68,6 @@ export default function BodyLogDetailScreen() {
       ? parseFloat(bodyFatPercentage)
       : null,
     bmi: bmi ? parseFloat(bmi) : null,
-    muscle_mass_kg: muscleMassKg ? parseFloat(muscleMassKg) : null,
   })
 
   const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(
@@ -89,9 +86,8 @@ export default function BodyLogDetailScreen() {
         ? parseFloat(bodyFatPercentage)
         : null,
       bmi: bmi ? parseFloat(bmi) : null,
-      muscle_mass_kg: muscleMassKg ? parseFloat(muscleMassKg) : null,
     })
-  }, [imageId, weightKg, bodyFatPercentage, bmi, muscleMassKg])
+  }, [imageId, weightKg, bodyFatPercentage, bmi])
 
   useEffect(() => {
     let ignore = false
@@ -143,7 +139,6 @@ export default function BodyLogDetailScreen() {
       metrics.weight_kg === null &&
       metrics.body_fat_percentage === null &&
       metrics.bmi === null &&
-      metrics.muscle_mass_kg === null &&
       imageId &&
       accessToken
 
@@ -172,7 +167,6 @@ export default function BodyLogDetailScreen() {
             weight_kg: fresh.weight_kg ?? null,
             body_fat_percentage: fresh.body_fat_percentage ?? null,
             bmi: fresh.bmi ?? null,
-            muscle_mass_kg: fresh.muscle_mass_kg ?? null,
           })
         }
       } catch (error) {
@@ -309,13 +303,6 @@ export default function BodyLogDetailScreen() {
               colors={colors}
               isPlaceholder={metrics.bmi === null}
             />
-            <MetricCard
-              label="Muscle Mass"
-              value={formatWeight(metrics.muscle_mass_kg)}
-              icon="fitness"
-              colors={colors}
-              isPlaceholder={metrics.muscle_mass_kg === null}
-            />
           </View>
         </View>
       </ScrollView>
@@ -430,19 +417,23 @@ function MetricCard({
           { backgroundColor: colors.primary + '15' },
         ]}
       >
-        <Ionicons name={icon} size={20} color={colors.primary} />
+        <Ionicons name={icon} size={18} color={colors.primary} />
       </View>
-      <Text
-        style={[
-          styles.metricValue,
-          { color: isPlaceholder ? colors.textSecondary : colors.text },
-        ]}
-      >
-        {value}
-      </Text>
-      <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
-        {label}
-      </Text>
+      <View style={styles.metricTextContainer}>
+        <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
+          {label}
+        </Text>
+        <Text
+          style={[
+            styles.metricValue,
+            { color: isPlaceholder ? colors.textSecondary : colors.text },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {value}
+        </Text>
+      </View>
     </View>
   )
 }
@@ -519,32 +510,40 @@ const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 13,
+    gap: 12,
+    marginHorizontal: -5,
   },
   metricCard: {
-    width: (SCREEN_WIDTH - 40 - 13) / 2,
-    borderRadius: 22,
-    padding: 18,
+    flex: 1,
+    minWidth: '30%',
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    gap: 13,
-  },
-  metricIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    gap: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  metricIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metricTextContainer: {
+    alignItems: 'center',
+    gap: 6,
+  },
   metricValue: {
-    fontSize: 26,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   metricLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
 
   // Top Actions

@@ -91,7 +91,12 @@ export default function CreateSpeechScreen() {
         throw new Error('No recording URI')
       }
 
-      // Send to transcription API
+      // Send to transcription API via Supabase Edge Function
+      const { callSupabaseFunctionWithFormData, callSupabaseFunction } = await import(
+        '@/lib/supabase-functions-client'
+      )
+      const { supabase } = await import('@/lib/supabase')
+
       const formData = new FormData()
       formData.append('audio', {
         uri,
@@ -99,10 +104,10 @@ export default function CreateSpeechScreen() {
         name: 'workout.m4a',
       } as any)
 
-      const transcribeResponse = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      })
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
+      const transcribeResponse = await callSupabaseFunctionWithFormData('transcribe', formData, token)
 
       if (!transcribeResponse.ok) {
         throw new Error('Failed to transcribe audio')
@@ -111,13 +116,13 @@ export default function CreateSpeechScreen() {
       const { text } = await transcribeResponse.json()
 
       // Parse the transcription
-      const parseResponse = await fetch('/api/parse-workout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ notes: text, weightUnit }),
-      })
+      const parseResponse = await callSupabaseFunction(
+        'parse-workout',
+        'POST',
+        { notes: text, weightUnit, userId: user?.id },
+        {},
+        token,
+      )
 
       if (!parseResponse.ok) {
         const errorData = await parseResponse.json().catch(() => ({}))

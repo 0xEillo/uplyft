@@ -1,8 +1,10 @@
-import { z } from 'zod'
+import { z } from 'https://esm.sh/zod@3.23.8'
 
-import type { Profile } from '@/types/database.types'
-
-import type { BodyLogMetrics } from './metadata'
+export interface BodyLogMetrics {
+  weight_kg: number | null
+  body_fat_percentage: number | null
+  bmi: number | null
+}
 
 const metricsSchema = z.object({
   weight_kg: z.number().finite().nullable(),
@@ -10,7 +12,7 @@ const metricsSchema = z.object({
   bmi: z.number().finite().nullable(),
 })
 
-function nonNullNumbers(metrics: BodyLogMetrics) {
+function nonNullNumbers(metrics: BodyLogMetrics): BodyLogMetrics {
   return Object.fromEntries(
     Object.entries(metrics).map(([key, value]) => [
       key,
@@ -39,12 +41,14 @@ export function parseBodyLogMetrics(
   const jsonMatch = raw.match(/```json\s*([\s\S]*?)```/i)
   const candidate = jsonMatch ? jsonMatch[1] : raw
 
-  let parsed: unknown
+  // deno-lint-ignore no-explicit-any
+  let parsed: any
   try {
     parsed = JSON.parse(candidate)
   } catch (error) {
     console.warn(
       'Body log analysis response was not valid JSON, using null metrics',
+      error,
     )
     return nullMetrics
   }
@@ -54,6 +58,7 @@ export function parseBodyLogMetrics(
   if (!result.success) {
     console.warn(
       'Body log analysis response failed schema validation, using null metrics',
+      result.error,
     )
     return nullMetrics
   }
@@ -61,13 +66,19 @@ export function parseBodyLogMetrics(
   return nonNullNumbers(result.data)
 }
 
-interface PromptInput {
-  profile: Pick<Profile, 'age' | 'height_cm' | 'weight_kg' | 'display_name'>
+export interface PromptInput {
+  age?: number | null
+  height_cm?: number | null
+  weight_kg?: number | null
+  display_name?: string | null
   createdAt: string
 }
 
 export function buildBodyLogPrompt({
-  profile,
+  display_name,
+  age,
+  height_cm,
+  weight_kg,
   createdAt,
 }: PromptInput): string {
   const lines: string[] = []
@@ -79,12 +90,10 @@ export function buildBodyLogPrompt({
     `captured_at="${new Date(createdAt).toISOString()}"`,
   ]
 
-  if (profile?.display_name) contextParts.push(`name="${profile.display_name}"`)
-  if (typeof profile?.age === 'number') contextParts.push(`age=${profile.age}`)
-  if (typeof profile?.height_cm === 'number')
-    contextParts.push(`height_cm=${profile.height_cm}`)
-  if (typeof profile?.weight_kg === 'number')
-    contextParts.push(`weight_kg=${profile.weight_kg}`)
+  if (display_name) contextParts.push(`name="${display_name}"`)
+  if (typeof age === 'number') contextParts.push(`age=${age}`)
+  if (typeof height_cm === 'number') contextParts.push(`height_cm=${height_cm}`)
+  if (typeof weight_kg === 'number') contextParts.push(`weight_kg=${weight_kg}`)
 
   lines.push(`Known facts: ${contextParts.join(', ')}`)
 

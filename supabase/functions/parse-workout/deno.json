@@ -1,0 +1,8 @@
+{
+  "lock": false,
+  "imports": {
+    "@ai-sdk/openai": "npm:@ai-sdk/openai@2.0.42",
+    "ai": "npm:ai@5.0.60",
+    "zod": "npm:zod@3.25.76"
+  }
+}

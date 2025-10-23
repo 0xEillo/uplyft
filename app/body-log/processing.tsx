@@ -1,29 +1,28 @@
+import { useAuth } from '@/contexts/auth-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
+import { uploadBodyLogImage } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
+  Alert,
   Animated,
   Dimensions,
   Image,
   StyleSheet,
   Text,
   View,
-  Alert,
 } from 'react-native'
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useAuth } from '@/contexts/auth-context'
-import { database } from '@/lib/database'
-import { supabase } from '@/lib/supabase'
-import { uploadBodyLogImage } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 const SCANNING_MESSAGES = [
   'Analyzing body composition...',
   'Detecting body fat percentage...',
-  'Measuring muscle mass...',
   'Computing BMI...',
   'Processing results...',
 ]
@@ -104,14 +103,16 @@ export default function BodyLogProcessingPage() {
         setUploadedFilePath(filePath)
 
         // Start analysis
-        const response = await fetch('/api/body-log/analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${sessionToken}`,
-          },
-          body: JSON.stringify({ imageId: newImage.id }),
-        })
+        const { callSupabaseFunction } = await import(
+          '@/lib/supabase-functions-client'
+        )
+        const response = await callSupabaseFunction(
+          'body-log-analyze',
+          'POST',
+          { imageId: newImage.id },
+          {},
+          sessionToken,
+        )
 
         if (!response.ok) {
           throw new Error(`Analysis failed with status ${response.status}`)
@@ -128,8 +129,7 @@ export default function BodyLogProcessingPage() {
         const hasStats =
           metrics.weight_kg !== null ||
           metrics.body_fat_percentage !== null ||
-          metrics.bmi !== null ||
-          metrics.muscle_mass_kg !== null
+          metrics.bmi !== null
 
         setHasNoStats(!hasStats)
         setIsComplete(true)
@@ -144,7 +144,7 @@ export default function BodyLogProcessingPage() {
                 text: 'OK',
                 onPress: () => router.back(),
               },
-            ]
+            ],
           )
         }
       }
@@ -178,7 +178,14 @@ export default function BodyLogProcessingPage() {
         }),
       ).start()
     }
-  }, [isComplete, scanLinePosition, messageOpacity, successScale, successOpacity, checkmarkScale])
+  }, [
+    isComplete,
+    scanLinePosition,
+    messageOpacity,
+    successScale,
+    successOpacity,
+    checkmarkScale,
+  ])
 
   // Animate dots in sequence
   useEffect(() => {
@@ -225,7 +232,15 @@ export default function BodyLogProcessingPage() {
         ]),
       ).start()
     }
-  }, [isComplete, dot1Opacity, dot2Opacity, dot3Opacity, dot1Scale, dot2Scale, dot3Scale])
+  }, [
+    isComplete,
+    dot1Opacity,
+    dot2Opacity,
+    dot3Opacity,
+    dot1Scale,
+    dot2Scale,
+    dot3Scale,
+  ])
 
   // Cycle through messages
   useEffect(() => {
@@ -302,17 +317,23 @@ export default function BodyLogProcessingPage() {
 
               // Pass metrics if available
               if (analysisMetrics) {
-                if (analysisMetrics.weight_kg !== null && analysisMetrics.weight_kg !== undefined) {
+                if (
+                  analysisMetrics.weight_kg !== null &&
+                  analysisMetrics.weight_kg !== undefined
+                ) {
                   params.weightKg = analysisMetrics.weight_kg.toString()
                 }
-                if (analysisMetrics.body_fat_percentage !== null && analysisMetrics.body_fat_percentage !== undefined) {
+                if (
+                  analysisMetrics.body_fat_percentage !== null &&
+                  analysisMetrics.body_fat_percentage !== undefined
+                ) {
                   params.bodyFatPercentage = analysisMetrics.body_fat_percentage.toString()
                 }
-                if (analysisMetrics.bmi !== null && analysisMetrics.bmi !== undefined) {
+                if (
+                  analysisMetrics.bmi !== null &&
+                  analysisMetrics.bmi !== undefined
+                ) {
                   params.bmi = analysisMetrics.bmi.toString()
-                }
-                if (analysisMetrics.muscle_mass_kg !== null && analysisMetrics.muscle_mass_kg !== undefined) {
-                  params.muscleMassKg = analysisMetrics.muscle_mass_kg.toString()
                 }
               }
 
@@ -325,7 +346,16 @@ export default function BodyLogProcessingPage() {
         })
       })
     }
-  }, [isComplete, successScale, successOpacity, checkmarkScale, uploadedImageId, uploadedFilePath, analysisMetrics, router])
+  }, [
+    isComplete,
+    successScale,
+    successOpacity,
+    checkmarkScale,
+    uploadedImageId,
+    uploadedFilePath,
+    analysisMetrics,
+    router,
+  ])
 
   const scanLineTranslateY = scanLinePosition.interpolate({
     inputRange: [0, 1],
@@ -384,7 +414,10 @@ export default function BodyLogProcessingPage() {
                   `${colors.primary}99`,
                   `${colors.primary}00`,
                 ]}
-                style={[dynamicStyles.scanLine, dynamicStyles.scanLineSecondary]}
+                style={[
+                  dynamicStyles.scanLine,
+                  dynamicStyles.scanLineSecondary,
+                ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
               />
@@ -482,7 +515,12 @@ export default function BodyLogProcessingPage() {
                   />
                 </View>
               ) : (
-                <View style={[dynamicStyles.checkmarkCircle, { backgroundColor: colors.success }]}>
+                <View
+                  style={[
+                    dynamicStyles.checkmarkCircle,
+                    { backgroundColor: colors.success },
+                  ]}
+                >
                   <Ionicons name="checkmark" size={64} color={colors.white} />
                 </View>
               )}

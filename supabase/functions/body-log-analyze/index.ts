@@ -1,41 +1,25 @@
-import OpenAI from 'openai'
-import { z } from 'zod'
+// deno-lint-ignore-file no-explicit-any
+import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
+import OpenAI from 'https://esm.sh/openai@4.55.3'
+import { z } from 'https://esm.sh/zod@3.23.8'
 
 import {
   buildBodyLogPrompt,
   parseBodyLogMetrics,
-} from '@/lib/body-log/analysis'
-import {
-  createServerSupabaseClient,
-  createServiceSupabaseClient,
-} from '@/lib/supabase-server'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+} from '../_shared/body-log-analysis.ts'
+import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
+import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
 const REQUEST_SCHEMA = z.object({
   imageId: z.string().min(1),
 })
 
-function extractAccessToken(request: Request) {
-  const bearer = request.headers.get('Authorization')
-  if (!bearer) return undefined
-  if (!bearer.startsWith('Bearer ')) return undefined
-  const token = bearer.slice('Bearer '.length).trim()
-  return token || undefined
-}
-
 async function downloadImageBase64(
+  serviceClient: ReturnType<typeof createServiceClient>,
   filePath: string,
 ): Promise<{ base64: string; mimeType: string }> {
-  const serviceSupabase = createServiceSupabaseClient()
-
-  const {
-    data: signed,
-    error: signedError,
-  } = await serviceSupabase.storage
+  const { data: signed, error: signedError } = await serviceClient.storage
     .from(BODY_LOG_BUCKET)
     .createSignedUrl(filePath, 60)
 
@@ -55,30 +39,57 @@ async function downloadImageBase64(
 
   const mimeType = response.headers.get('content-type') || 'image/jpeg'
   const arrayBuffer = await response.arrayBuffer()
-  const base64 = Buffer.from(arrayBuffer).toString('base64')
+
+  // Convert ArrayBuffer to base64
+  const bytes = new Uint8Array(arrayBuffer)
+  const chunkSize = 0x8000
+  const chunks: string[] = []
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const slice = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+    chunks.push(String.fromCharCode(...slice))
+  }
+  const base64 = btoa(chunks.join(''))
 
   return { base64, mimeType }
 }
 
-export async function POST(request: Request) {
-  try {
-    const accessToken = extractAccessToken(request)
+serve(async (req) => {
+  const cors = handleCors(req)
+  if (cors) return cors
 
-    if (!accessToken) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (req.method !== 'POST') {
+    return errorResponse(405, 'Method not allowed')
+  }
+
+  try {
+    const apiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!apiKey) {
+      throw new Error('Missing OPENAI_API_KEY environment variable')
     }
 
-    const payload = await request.json()
-    const { imageId } = REQUEST_SCHEMA.parse(payload)
+    const bearer = req.headers.get('Authorization')
+    const accessToken = bearer?.startsWith('Bearer ')
+      ? bearer.slice('Bearer '.length).trim()
+      : undefined
 
-    const supabase = createServerSupabaseClient(accessToken)
+    if (!accessToken) {
+      return errorResponse(401, 'Unauthorized')
+    }
 
+    const payload = REQUEST_SCHEMA.parse(await req.json())
+    const { imageId } = payload
+
+    const supabase = createUserClient(accessToken)
+    const serviceClient = createServiceClient()
+
+    // Verify user is authenticated
     const { data: userData, error: authError } = await supabase.auth.getUser()
 
     if (authError || !userData?.user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+      return errorResponse(401, 'Unauthorized')
     }
 
+    // Get the body log image
     const { data: bodyLog, error: bodyLogError } = await supabase
       .from('body_log_images')
       .select(
@@ -88,16 +99,15 @@ export async function POST(request: Request) {
       .single()
 
     if (bodyLogError || !bodyLog) {
-      return Response.json(
-        { error: 'Body log image not found' },
-        { status: 404 },
-      )
+      return errorResponse(404, 'Body log image not found')
     }
 
+    // Verify ownership
     if (bodyLog.user_id !== userData.user.id) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 })
+      return errorResponse(403, 'Forbidden')
     }
 
+    // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('display_name, age, height_cm, weight_kg')
@@ -105,23 +115,31 @@ export async function POST(request: Request) {
       .single()
 
     if (profileError || !profile) {
-      return Response.json({ error: 'Profile not found' }, { status: 404 })
+      return errorResponse(404, 'Profile not found')
     }
 
     if (!bodyLog.file_path) {
-      return Response.json(
-        { error: 'Body log image missing storage path' },
-        { status: 400 },
-      )
+      return errorResponse(400, 'Body log image missing storage path')
     }
 
-    const { base64, mimeType } = await downloadImageBase64(bodyLog.file_path)
+    // Download image from storage
+    const { base64, mimeType } = await downloadImageBase64(
+      serviceClient,
+      bodyLog.file_path,
+    )
 
+    const openai = new OpenAI({ apiKey })
+
+    // Build the system prompt with user context
     const systemPrompt = buildBodyLogPrompt({
-      profile,
+      display_name: profile.display_name,
+      age: profile.age,
+      height_cm: profile.height_cm,
+      weight_kg: profile.weight_kg,
       createdAt: bodyLog.created_at,
     })
 
+    // Analyze the image with GPT-4o Mini Vision
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -152,8 +170,10 @@ export async function POST(request: Request) {
 
     const content = completion.choices[0]?.message?.content
 
+    // Parse the metrics from the response
     const metrics = parseBodyLogMetrics(content)
 
+    // Update the body log with the metrics
     const { data: updated, error: updateError } = await supabase
       .from('body_log_images')
       .update(metrics)
@@ -165,21 +185,18 @@ export async function POST(request: Request) {
       throw updateError || new Error('Failed to update body log metrics')
     }
 
-    return Response.json({ metrics: updated })
+    return jsonResponse({ metrics: updated })
   } catch (error) {
     console.error('Error analyzing body log image:', error)
 
     if (error instanceof z.ZodError) {
-      return Response.json(
-        { error: 'Invalid request', details: error.message },
-        { status: 400 },
-      )
+      return errorResponse(400, 'Invalid request', error.errors)
     }
 
     if (error instanceof Error) {
-      return Response.json({ error: error.message }, { status: 500 })
+      return errorResponse(500, error.message)
     }
 
-    return Response.json({ error: 'Unknown error' }, { status: 500 })
+    return errorResponse(500, 'Unknown error')
   }
-}
+})

@@ -137,22 +137,22 @@ export default function FeedScreen() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout
 
-      const response = await fetch('/api/parse-workout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({
+      const { callSupabaseFunction } = await import('@/lib/supabase-functions-client')
+
+      const response = await callSupabaseFunction(
+        'parse-workout',
+        'POST',
+        {
           notes,
           weightUnit,
           createWorkout: true,
           userId: user.id,
           workoutTitle: title,
           imageUrl,
-        }),
-        signal: controller.signal,
-      })
+        },
+        {},
+        accessToken,
+      )
 
       clearTimeout(timeoutId)
 

@@ -2,7 +2,6 @@ export interface BodyLogMetrics {
   weight_kg: number | null
   body_fat_percentage: number | null
   bmi: number | null
-  muscle_mass_kg: number | null
 }
 
 export interface BodyLogRecord {
@@ -13,7 +12,6 @@ export interface BodyLogRecord {
   weight_kg: number | null
   body_fat_percentage: number | null
   bmi: number | null
-  muscle_mass_kg: number | null
 }
 
 /**

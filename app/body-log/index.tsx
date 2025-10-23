@@ -2,31 +2,31 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogRecord } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
 import {
-  getBodyLogImageUrls,
+    getBodyLogImageUrls,
 } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import {
-  ActivityIndicator,
-  Dimensions,
-  SectionList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    SectionList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from 'react-native-reanimated'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const IMAGE_SPACING = 4
@@ -264,13 +264,11 @@ export default function BodyLogScreen() {
             weight_kg: img.weight_kg ?? null,
             body_fat_percentage: img.body_fat_percentage ?? null,
             bmi: img.bmi ?? null,
-            muscle_mass_kg: img.muscle_mass_kg ?? null,
             signedUrl: signedUrls[index] ?? null,
             status: signedUrls[index] ? 'idle' : 'error',
             analysisStatus:
               img.body_fat_percentage !== null ||
               img.bmi !== null ||
-              img.muscle_mass_kg !== null ||
               img.weight_kg !== null
                 ? 'success'
                 : 'idle',
@@ -371,9 +369,6 @@ export default function BodyLogScreen() {
       }
       if (image.bmi !== null) {
         params.bmi = image.bmi.toString()
-      }
-      if (image.muscle_mass_kg !== null) {
-        params.muscleMassKg = image.muscle_mass_kg.toString()
       }
 
       router.push({

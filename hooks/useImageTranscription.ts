@@ -54,11 +54,15 @@ export function useImageTranscription(
   const [showModal, setShowModal] = useState(false)
 
   /**
-   * Extract text from image using the API
+   * Extract text from image using the Supabase Edge Function
    */
   const extractTextFromImage = useCallback(async (uri: string): Promise<
     ExtractedWorkoutData
   > => {
+    // Import at call time to avoid issues with module resolution
+    const { callSupabaseFunctionWithFormData } = await import('@/lib/supabase-functions-client')
+    const { supabase } = await import('@/lib/supabase')
+
     const formData = new FormData()
     const imageFile: ImageFileBlob = {
       uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
@@ -68,13 +72,11 @@ export function useImageTranscription(
     // FormData.append accepts Blob-like objects in React Native
     formData.append('image', (imageFile as unknown) as Blob)
 
-    const response = await fetch('/api/extract-image', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
+    // Get the session token for authentication
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+
+    const response = await callSupabaseFunctionWithFormData('extract-image', formData, token)
 
     if (!response.ok) {
       const errorData = await response.json()

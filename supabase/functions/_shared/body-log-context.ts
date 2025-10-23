@@ -1,4 +1,12 @@
-import type { BodyLogRecord } from '@/lib/body-log/metadata'
+export interface BodyLogRecord {
+  id: string
+  user_id: string
+  file_path: string | null
+  created_at: string
+  weight_kg: number | null
+  body_fat_percentage: number | null
+  bmi: number | null
+}
 
 export interface BodyLogContextSummary {
   latest?: {

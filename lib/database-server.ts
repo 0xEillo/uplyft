@@ -255,8 +255,7 @@ export function createServerDatabase(accessToken?: string) {
             created_at,
             weight_kg,
             body_fat_percentage,
-            bmi,
-            muscle_mass_kg
+            bmi
           `,
           )
           .eq('user_id', userId)
