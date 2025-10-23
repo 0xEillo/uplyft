@@ -355,6 +355,78 @@ async function createWorkoutSession(
   return session
 }
 
+async function generateExerciseMetadata(exerciseName: string): Promise<{
+  muscle_group: string
+  type: string
+  equipment: string
+}> {
+  const { generateObject } = await import('ai')
+  const { openai } = await import('@ai-sdk/openai')
+  const { z } = await import('https://esm.sh/zod@3.25.76')
+
+  const exerciseMetadataSchema = z.object({
+    muscle_group: z.enum([
+      'Chest',
+      'Back',
+      'Legs',
+      'Shoulders',
+      'Biceps',
+      'Triceps',
+      'Core',
+      'Glutes',
+      'Cardio',
+      'Full Body',
+    ]),
+    type: z.enum(['compound', 'isolation']),
+    equipment: z.enum([
+      'barbell',
+      'dumbbell',
+      'bodyweight',
+      'cable',
+      'machine',
+      'kettlebell',
+      'resistance band',
+      'other',
+    ]),
+  })
+
+  try {
+    const result = await generateObject({
+      model: openai('gpt-4.1-nano'),
+      schema: exerciseMetadataSchema,
+      prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
+
+Exercise name: "${exerciseName}"
+
+Determine:
+1. Primary muscle group (Chest, Back, Legs, Shoulders, Biceps, Triceps, Core, Glutes, Cardio, Full Body)
+2. Type (compound or isolation)
+   - Compound: works multiple muscle groups/joints (e.g., Bench Press, Squat, Pull-ups)
+   - Isolation: targets single muscle group (e.g., Bicep Curl, Leg Extension, Lateral Raise)
+3. Equipment (barbell, dumbbell, bodyweight, cable, machine, kettlebell, resistance band, other)
+
+Examples:
+- "Bench Press" → muscle_group: Chest, type: compound, equipment: barbell
+- "Dumbbell Curl" → muscle_group: Biceps, type: isolation, equipment: dumbbell
+- "Push-ups" → muscle_group: Chest, type: compound, equipment: bodyweight
+- "Lat Pulldown" → muscle_group: Back, type: compound, equipment: cable
+- "Leg Extension" → muscle_group: Legs, type: isolation, equipment: machine
+
+Return the metadata as JSON.`,
+    })
+
+    return result.object
+  } catch (error) {
+    console.error('Error generating exercise metadata:', error)
+    // Return sensible defaults if AI fails
+    return {
+      muscle_group: 'Full Body',
+      type: 'compound',
+      equipment: 'other',
+    }
+  }
+}
+
 async function getOrCreateExercise(
   supabase: ReturnType<typeof createServiceClient>,
   name: string,
@@ -396,11 +468,17 @@ async function getOrCreateExercise(
     return aliasMatches[0]
   }
 
+  // No match found - create new exercise with AI-generated metadata
+  const metadata = await generateExerciseMetadata(trimmedName)
+
   const { data, error } = await supabase
     .from('exercises')
     .insert({
       name: trimmedName,
       created_by: userId,
+      muscle_group: metadata.muscle_group,
+      type: metadata.type,
+      equipment: metadata.equipment,
     })
     .select()
     .single()

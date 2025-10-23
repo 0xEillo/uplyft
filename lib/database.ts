@@ -6,6 +6,7 @@ import type {
   WorkoutSession,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
+import { generateExerciseMetadata } from './exercise-metadata'
 import { supabase } from './supabase'
 
 /**
@@ -269,13 +270,31 @@ export const database = {
     },
 
     async getOrCreate(name: string, userId: string) {
-      const normalizedName = name.trim().toLowerCase()
+      // Security: Validate and sanitize exercise name
+      const trimmedName = name.trim()
+
+      // Reject empty names
+      if (!trimmedName) {
+        throw new Error('Exercise name cannot be empty')
+      }
+
+      // Reject names that are too long (prevent abuse)
+      if (trimmedName.length > 100) {
+        throw new Error('Exercise name too long (max 100 characters)')
+      }
+
+      // Reject names with suspicious patterns (basic XSS prevention)
+      if (/<script|javascript:|on\w+=/i.test(trimmedName)) {
+        throw new Error('Invalid exercise name')
+      }
+
+      const normalizedName = trimmedName.toLowerCase()
 
       // Try to find existing exercise by exact name match (case-insensitive)
       const { data: exactMatch } = await supabase
         .from('exercises')
         .select('*')
-        .ilike('name', name)
+        .ilike('name', trimmedName)
         .single()
 
       if (exactMatch) return exactMatch as Exercise
@@ -291,12 +310,18 @@ export const database = {
         return aliasMatches[0] as Exercise
       }
 
-      // No match found, create new exercise with proper capitalization
+      // No match found - create new exercise with AI-generated metadata
+      // This uses AI to infer muscle_group, type (compound/isolation), and equipment
+      const metadata = await generateExerciseMetadata(trimmedName)
+
       const { data, error } = await supabase
         .from('exercises')
         .insert({
-          name,
+          name: trimmedName,
           created_by: userId,
+          muscle_group: metadata.muscle_group,
+          type: metadata.type,
+          equipment: metadata.equipment,
         })
         .select()
         .single()
