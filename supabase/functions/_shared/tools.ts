@@ -1,0 +1,400 @@
+import { openai } from '@ai-sdk/openai'
+import { embed, generateObject } from 'ai'
+import { z } from 'https://esm.sh/zod@3.25.76'
+
+import { createServiceClient } from './supabase.ts'
+
+// ============================================================================
+// Tool Input/Output Schemas
+// ============================================================================
+
+export const searchExercisesInput = z.object({
+  query: z.string().describe('The exercise name to search for'),
+  limit: z.number().int().min(1).max(25).optional().default(10),
+})
+
+export const exerciseCandidate = z.object({
+  id: z.string(),
+  name: z.string(),
+  similarity: z.number(),
+  aliases: z.array(z.string()).optional(),
+  muscle_group: z.string().nullable().optional(),
+  type: z.string().nullable().optional(),
+  equipment: z.string().nullable().optional(),
+})
+
+export const searchExercisesOutput = z.object({
+  candidates: z.array(exerciseCandidate),
+})
+
+export const createExerciseInput = z.object({
+  name: z.string().min(1).describe('The exercise name'),
+  muscle_group: z
+    .enum([
+      'Chest',
+      'Back',
+      'Legs',
+      'Shoulders',
+      'Biceps',
+      'Triceps',
+      'Core',
+      'Glutes',
+      'Cardio',
+      'Full Body',
+    ])
+    .nullable()
+    .optional(),
+  type: z.enum(['compound', 'isolation']).nullable().optional(),
+  equipment: z
+    .enum([
+      'barbell',
+      'dumbbell',
+      'bodyweight',
+      'cable',
+      'machine',
+      'kettlebell',
+      'resistance band',
+      'other',
+    ])
+    .nullable()
+    .optional(),
+})
+
+export const createExerciseOutput = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+// ============================================================================
+// OpenAI Tool Definitions
+// ============================================================================
+
+export const searchExercisesTool = {
+  type: 'function' as const,
+  function: {
+    name: 'searchExercises',
+    description:
+      'Search for exercises in the database by name. Returns a list of candidate exercises with similarity scores, aliases, and metadata. Use this to find existing exercises before creating new ones.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The exercise name to search for (e.g., "bench press", "squat")',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results to return (1-25, default 10)',
+          default: 10,
+        },
+      },
+      required: ['query'],
+    },
+  },
+}
+
+export const createExerciseTool = {
+  type: 'function' as const,
+  function: {
+    name: 'createExercise',
+    description:
+      'Create a new exercise in the database. Only use this when searchExercises returns no good matches. You should provide the exercise name and optionally its metadata (muscle_group, type, equipment).',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'The exercise name (e.g., "Barbell Bench Press")',
+        },
+        muscle_group: {
+          type: 'string',
+          enum: [
+            'Chest',
+            'Back',
+            'Legs',
+            'Shoulders',
+            'Biceps',
+            'Triceps',
+            'Core',
+            'Glutes',
+            'Cardio',
+            'Full Body',
+          ],
+          description: 'Primary muscle group targeted',
+        },
+        type: {
+          type: 'string',
+          enum: ['compound', 'isolation'],
+          description: 'Exercise type (compound = multi-joint, isolation = single muscle)',
+        },
+        equipment: {
+          type: 'string',
+          enum: [
+            'barbell',
+            'dumbbell',
+            'bodyweight',
+            'cable',
+            'machine',
+            'kettlebell',
+            'resistance band',
+            'other',
+          ],
+          description: 'Equipment used for the exercise',
+        },
+      },
+      required: ['name'],
+    },
+  },
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function sanitizeExerciseName(text: string): string {
+  return text
+    .normalize('NFKD')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+async function computeQueryEmbedding(query: string): Promise<number[]> {
+  const normalized = sanitizeExerciseName(query)
+  if (!normalized) {
+    throw new Error('Cannot embed empty exercise name')
+  }
+
+  const result = await embed({
+    model: openai.embedding('text-embedding-3-small'),
+    value: normalized,
+  })
+
+  if (!result.embedding || result.embedding.length !== 1536) {
+    throw new Error('Invalid embedding result')
+  }
+
+  return result.embedding
+}
+
+// ============================================================================
+// Tool Handler Functions
+// ============================================================================
+
+export async function handleSearchExercises(
+  args: z.infer<typeof searchExercisesInput>,
+): Promise<z.infer<typeof searchExercisesOutput>> {
+  console.log(`[Tool: searchExercises] query="${args.query}", limit=${args.limit}`)
+
+  const supabase = createServiceClient()
+  const normalized = sanitizeExerciseName(args.query)
+  const limit = args.limit ?? 10
+
+  let candidates: z.infer<typeof exerciseCandidate>[] = []
+
+  // Try vector search first
+  try {
+    const queryEmbedding = await computeQueryEmbedding(args.query)
+
+    const { data, error } = await supabase.rpc('match_exercises', {
+      query_embedding: queryEmbedding,
+      match_count: limit,
+    })
+
+    if (error) throw error
+
+    candidates = (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      similarity: typeof row.similarity === 'number' ? row.similarity : 0,
+      aliases: row.aliases || [],
+      muscle_group: row.muscle_group,
+      type: row.type,
+      equipment: row.equipment,
+    }))
+
+    console.log(`[Tool: searchExercises] Vector search found ${candidates.length} results`)
+  } catch (error) {
+    console.warn('[Tool: searchExercises] Vector search failed, trying alias fallback:', error)
+  }
+
+  // Fallback to text search if vector search fails or returns no results
+  if (candidates.length === 0) {
+    const [nameMatches, aliasMatches] = await Promise.all([
+      supabase.from('exercises').select('*').ilike('name', `%${normalized}%`).limit(limit),
+      supabase.from('exercises').select('*').contains('aliases', [normalized]).limit(limit),
+    ])
+
+    if (nameMatches.error) throw nameMatches.error
+    if (aliasMatches.error) throw aliasMatches.error
+
+    const combined = [...(nameMatches.data || []), ...(aliasMatches.data || [])]
+    const uniqueMap = new Map()
+
+    combined.forEach((exercise: any) => {
+      if (!uniqueMap.has(exercise.id)) {
+        uniqueMap.set(exercise.id, {
+          id: exercise.id,
+          name: exercise.name,
+          similarity: 0.55, // Fallback similarity score
+          aliases: exercise.aliases || [],
+          muscle_group: exercise.muscle_group,
+          type: exercise.type,
+          equipment: exercise.equipment,
+        })
+      }
+    })
+
+    candidates = Array.from(uniqueMap.values()).slice(0, limit)
+    console.log(`[Tool: searchExercises] Alias fallback found ${candidates.length} results`)
+  }
+
+  return { candidates }
+}
+
+export async function handleCreateExercise(
+  args: z.infer<typeof createExerciseInput>,
+  userId: string,
+): Promise<z.infer<typeof createExerciseOutput>> {
+  console.log(`[Tool: createExercise] name="${args.name}"`)
+
+  const trimmedName = args.name.trim()
+
+  if (!trimmedName) {
+    throw new Error('Exercise name cannot be empty')
+  }
+
+  if (trimmedName.length > 100) {
+    throw new Error('Exercise name too long (max 100 characters)')
+  }
+
+  // Security check
+  if (/<script|javascript:|on\w+=/i.test(trimmedName)) {
+    throw new Error('Invalid exercise name')
+  }
+
+  const supabase = createServiceClient()
+
+  // Check for exact match first
+  const { data: exactMatch } = await supabase
+    .from('exercises')
+    .select('*')
+    .ilike('name', trimmedName)
+    .single()
+
+  if (exactMatch) {
+    console.log(`[Tool: createExercise] Found exact match, returning existing: ${exactMatch.id}`)
+    return { id: exactMatch.id, name: exactMatch.name }
+  }
+
+  // Generate metadata if not provided
+  let metadata = {
+    muscle_group: args.muscle_group || null,
+    type: args.type || null,
+    equipment: args.equipment || null,
+  }
+
+  // If any metadata is missing, use AI to fill it in
+  if (!metadata.muscle_group || !metadata.type || !metadata.equipment) {
+    const generated = await generateExerciseMetadata(trimmedName)
+    metadata = {
+      muscle_group: args.muscle_group || generated.muscle_group,
+      type: args.type || generated.type,
+      equipment: args.equipment || generated.equipment,
+    }
+  }
+
+  // Compute embedding
+  const embedding = await computeQueryEmbedding(trimmedName)
+
+  // Insert new exercise
+  const { data, error } = await supabase
+    .from('exercises')
+    .insert({
+      name: trimmedName,
+      created_by: userId,
+      muscle_group: metadata.muscle_group,
+      type: metadata.type,
+      equipment: metadata.equipment,
+      embedding,
+    })
+    .select('id, name')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('Failed to create exercise')
+
+  console.log(`[Tool: createExercise] Created new exercise: ${data.id}`)
+
+  return { id: data.id, name: data.name }
+}
+
+async function generateExerciseMetadata(exerciseName: string): Promise<{
+  muscle_group: string
+  type: string
+  equipment: string
+}> {
+  const exerciseMetadataSchema = z.object({
+    muscle_group: z.enum([
+      'Chest',
+      'Back',
+      'Legs',
+      'Shoulders',
+      'Biceps',
+      'Triceps',
+      'Core',
+      'Glutes',
+      'Cardio',
+      'Full Body',
+    ]),
+    type: z.enum(['compound', 'isolation']),
+    equipment: z.enum([
+      'barbell',
+      'dumbbell',
+      'bodyweight',
+      'cable',
+      'machine',
+      'kettlebell',
+      'resistance band',
+      'other',
+    ]),
+  })
+
+  try {
+    const result = await generateObject({
+      model: openai('gpt-4.1-nano'),
+      schema: exerciseMetadataSchema,
+      prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
+
+Exercise name: "${exerciseName}"
+
+Determine:
+1. Primary muscle group (Chest, Back, Legs, Shoulders, Biceps, Triceps, Core, Glutes, Cardio, Full Body)
+2. Type (compound or isolation)
+   - Compound: works multiple muscle groups/joints (e.g., Bench Press, Squat, Pull-ups)
+   - Isolation: targets single muscle group (e.g., Bicep Curl, Leg Extension, Lateral Raise)
+3. Equipment (barbell, dumbbell, bodyweight, cable, machine, kettlebell, resistance band, other)
+
+Examples:
+- "Bench Press" → muscle_group: Chest, type: compound, equipment: barbell
+- "Dumbbell Curl" → muscle_group: Biceps, type: isolation, equipment: dumbbell
+- "Push-ups" → muscle_group: Chest, type: compound, equipment: bodyweight
+- "Lat Pulldown" → muscle_group: Back, type: compound, equipment: cable
+- "Leg Extension" → muscle_group: Legs, type: isolation, equipment: machine
+
+Return the metadata as JSON.`,
+    })
+
+    return result.object
+  } catch (error) {
+    console.error('[generateExerciseMetadata] Error generating metadata:', error)
+    // Return sensible defaults if AI fails
+    return {
+      muscle_group: 'Full Body',
+      type: 'compound',
+      equipment: 'other',
+    }
+  }
+}

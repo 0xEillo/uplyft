@@ -1,5 +1,9 @@
 export type Gender = 'male' | 'female' | 'prefer_not_to_say'
-export type Goal = 'build_muscle' | 'lose_fat' | 'gain_strength' | 'general_fitness'
+export type Goal =
+  | 'build_muscle'
+  | 'lose_fat'
+  | 'gain_strength'
+  | 'general_fitness'
 export type TrainingYears = 'less_than_1' | '1_to_3' | '3_to_5' | '5_plus'
 
 export interface Profile {
@@ -27,6 +31,8 @@ export interface Exercise {
   equipment: string | null
   created_by: string | null
   created_at: string
+  aliases?: string[] | null
+  embedding?: number[] | null
 }
 
 export interface WorkoutSession {

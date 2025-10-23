@@ -1,4 +1,5 @@
 import type { BodyLogRecord } from '@/lib/body-log/metadata'
+import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import type {
   Exercise,
   ParsedWorkout,
@@ -6,7 +7,6 @@ import type {
   WorkoutSession,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
-import { generateExerciseMetadata } from './exercise-metadata'
 import { supabase } from './supabase'
 
 /**

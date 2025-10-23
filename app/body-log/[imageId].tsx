@@ -148,14 +148,16 @@ export default function BodyLogDetailScreen() {
 
     ;(async () => {
       try {
-        const response = await fetch('/api/body-log/analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ imageId }),
-        })
+        const { callSupabaseFunction } = await import(
+          '@/lib/supabase-functions-client'
+        )
+        const response = await callSupabaseFunction(
+          'body-log-analyze',
+          'POST',
+          { imageId },
+          {},
+          accessToken,
+        )
 
         if (!response.ok) {
           return

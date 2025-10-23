@@ -1,11 +1,20 @@
 // deno-lint-ignore-file no-explicit-any
 import { openai } from '@ai-sdk/openai'
 import { generateObject, generateText } from 'ai'
+import OpenAI from 'https://esm.sh/openai@4.73.1'
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
+import {
+  createExerciseInput,
+  createExerciseTool,
+  handleCreateExercise,
+  handleSearchExercises,
+  searchExercisesInput,
+  searchExercisesTool,
+} from '../_shared/tools.ts'
 
 const workoutSchema = z.object({
   isWorkoutRelated: z.boolean(),
@@ -42,6 +51,11 @@ const requestSchema = z.object({
 })
 
 const openaiClient = openai('gpt-5-mini')
+
+// Initialize OpenAI client for tool calling (using direct SDK)
+const openaiToolClient = new OpenAI({
+  apiKey: Deno.env.get('OPENAI_API_KEY'),
+})
 
 serve(async (req) => {
   const cors = handleCors(req)
@@ -181,7 +195,7 @@ Return ONLY the title with proper capitalization, nothing else.`,
           return errorResponse(401, 'Unauthorized')
         }
 
-        const session = await createWorkoutSession(
+        const { session, metrics } = await createWorkoutSession(
           serviceClient,
           payload.userId,
           finalWorkout,
@@ -206,9 +220,12 @@ Return ONLY the title with proper capitalization, nothing else.`,
 
         if (fetchError) throw fetchError
 
+        console.log(`[Workout Parser] Metrics:`, JSON.stringify(metrics))
+
         return jsonResponse({
           workout: finalWorkout,
           createdWorkout: completeWorkout,
+          _metrics: metrics,
         })
       } catch (dbError) {
         console.error('Error creating workout in database:', dbError)
@@ -251,8 +268,18 @@ function buildParsePrompt(notes: string, weightUnit: 'kg' | 'lb'): string {
 User's Workout Notes:
 "${notes}"
 
-[... shortened instructions omitted for brevity ...]
-` // Use original prompt from app/api/parse-workout+api.ts
+Weight Unit: ${weightUnit}
+
+Instructions:
+1. Extract each exercise with its name, sets, reps, and weight
+2. Preserve the order of exercises as they appear in the notes
+3. If the user mentions warm-up sets or sets without specific reps, include them but mark reps as null
+4. Convert all weights to ${weightUnit}
+5. Extract RPE (Rate of Perceived Exertion) if mentioned
+6. Extract any exercise-specific notes
+7. Try to infer the workout type if possible (e.g., "Push Day", "Pull Day", "Leg Day", "Upper Body", "Full Body")
+
+Return structured data following the schema.`
 }
 
 async function createWorkoutSession(
@@ -280,42 +307,42 @@ async function createWorkoutSession(
     throw new Error('Invalid workout data: exercises must be an array')
   }
 
-  const uniqueExerciseNames = [
-    ...new Set(parsedWorkout.exercises.map((ex: any) => ex.name.toLowerCase())),
-  ]
-
-  const serviceSupabase = supabase
-  const exercises = await Promise.all(
-    uniqueExerciseNames.map((name) =>
-      getOrCreateExercise(
-        serviceSupabase,
-        name,
-        userId,
-        parsedWorkout.exercises,
-      ),
-    ),
+  const exercises = parsedWorkout.exercises
+  console.log(
+    `[Workout Parser] Processing workout ${session.id} with ${exercises.length} exercise(s)`,
   )
 
-  const exerciseMap = new Map<string, any>()
-  uniqueExerciseNames.forEach((name, index) => {
-    exerciseMap.set(name, exercises[index])
+  // Resolve all exercises using the OpenAI agent with tools
+  const exerciseResolutions = await resolveExercisesWithAgent(
+    exercises.map((ex: any) => ex.name),
+    userId,
+  )
+
+  console.log(
+    `[Workout Parser] Agent resolved ${exerciseResolutions.size} exercises (${
+      Array.from(exerciseResolutions.values()).filter((r) => r.wasCreated).length
+    } created, ${
+      Array.from(exerciseResolutions.values()).filter((r) => !r.wasCreated).length
+    } matched)`,
+  )
+
+  // Build workout_exercises to insert
+  const workoutExercisesToInsert = exercises.map((parsedEx: any) => {
+    const resolution = exerciseResolutions.get(parsedEx.name)
+
+    if (!resolution) {
+      throw new Error(
+        `Agent failed to resolve exercise: ${parsedEx.name}. This should not happen.`,
+      )
+    }
+
+    return {
+      session_id: session.id,
+      exercise_id: resolution.exerciseId,
+      order_index: parsedEx.order_index,
+      notes: parsedEx.notes,
+    }
   })
-
-  const workoutExercisesToInsert = parsedWorkout.exercises.map(
-    (parsedEx: any) => {
-      const exercise = exerciseMap.get(parsedEx.name.toLowerCase())
-      if (!exercise) {
-        throw new Error(`Exercise not found: ${parsedEx.name}`)
-      }
-
-      return {
-        session_id: session.id,
-        exercise_id: exercise.id,
-        order_index: parsedEx.order_index,
-        notes: parsedEx.notes,
-      }
-    },
-  )
 
   const { data: workoutExercises, error: weError } = await supabase
     .from('workout_exercises')
@@ -324,26 +351,24 @@ async function createWorkoutSession(
 
   if (weError) throw weError
 
-  const allSetsToInsert = parsedWorkout.exercises.flatMap(
-    (parsedEx: any, index: number) => {
-      const workoutExercise = workoutExercises[index]
-      const validSets = (parsedEx.sets || []).filter(
-        (set: any) =>
-          typeof set.reps === 'number' &&
-          Number.isFinite(set.reps) &&
-          set.reps >= 1,
-      )
+  const allSetsToInsert = exercises.flatMap((parsedEx: any, index: number) => {
+    const workoutExercise = workoutExercises[index]
+    const validSets = (parsedEx.sets || []).filter(
+      (set: any) =>
+        typeof set.reps === 'number' &&
+        Number.isFinite(set.reps) &&
+        set.reps >= 1,
+    )
 
-      return validSets.map((set: any) => ({
-        workout_exercise_id: workoutExercise.id,
-        set_number: set.set_number,
-        reps: set.reps,
-        weight: set.weight ?? null,
-        rpe: set.rpe ?? null,
-        notes: set.notes ?? null,
-      }))
-    },
-  )
+    return validSets.map((set: any, setIndex: number) => ({
+      workout_exercise_id: workoutExercise.id,
+      set_number: set.set_number ?? setIndex + 1,
+      reps: set.reps,
+      weight: set.weight ?? null,
+      rpe: set.rpe ?? null,
+      notes: set.notes ?? null,
+    }))
+  })
 
   if (allSetsToInsert.length > 0) {
     const { error: setsError } = await supabase
@@ -352,137 +377,249 @@ async function createWorkoutSession(
     if (setsError) throw setsError
   }
 
-  return session
+  console.log(
+    `[Workout Parser] Completed workout ${session.id}: ${workoutExercises.length} exercises, ${allSetsToInsert.length} sets`,
+  )
+
+  const metrics = {
+    totalExercises: exercises.length,
+    matchedExercises: Array.from(exerciseResolutions.values()).filter((r) => !r.wasCreated)
+      .length,
+    createdExercises: Array.from(exerciseResolutions.values()).filter((r) => r.wasCreated).length,
+    totalSets: allSetsToInsert.length,
+  }
+
+  return { session, metrics }
 }
 
-async function generateExerciseMetadata(exerciseName: string): Promise<{
-  muscle_group: string
-  type: string
-  equipment: string
-}> {
-  const { generateObject } = await import('ai')
-  const { openai } = await import('@ai-sdk/openai')
-  const { z } = await import('https://esm.sh/zod@3.25.76')
+interface ExerciseResolution {
+  exerciseId: string
+  exerciseName: string
+  wasCreated: boolean
+}
 
-  const exerciseMetadataSchema = z.object({
-    muscle_group: z.enum([
-      'Chest',
-      'Back',
-      'Legs',
-      'Shoulders',
-      'Biceps',
-      'Triceps',
-      'Core',
-      'Glutes',
-      'Cardio',
-      'Full Body',
-    ]),
-    type: z.enum(['compound', 'isolation']),
-    equipment: z.enum([
-      'barbell',
-      'dumbbell',
-      'bodyweight',
-      'cable',
-      'machine',
-      'kettlebell',
-      'resistance band',
-      'other',
-    ]),
-  })
+async function resolveExercisesWithAgent(
+  exerciseNames: string[],
+  userId: string,
+): Promise<Map<string, ExerciseResolution>> {
+  console.log(
+    `[Agent] Starting exercise resolution for ${exerciseNames.length} exercises`,
+  )
+
+  const resolutions = new Map<string, ExerciseResolution>()
+
+  // Build the agent prompt
+  const exerciseList = exerciseNames.map((name, i) => `${i + 1}. ${name}`).join('\n')
+
+  const systemPrompt = `You are a fitness exercise database assistant. Your job is to help resolve exercise names to existing database entries or create new ones when needed.
+
+For each exercise the user provides:
+1. Use searchExercises tool to find potential matches in the database
+2. If you find a good match (similarity >= 0.6), use that exercise ID and tell me which exercise from the list it resolves
+3. If no good match exists, use createExercise tool to create a new exercise entry
+
+Guidelines:
+- Be lenient with variations (e.g., "bench press" = "barbell bench press")
+- Consider equipment variations (e.g., "dumbbell curl" vs "barbell curl" are different)
+- Look at aliases to find alternative names
+- When creating exercises, infer metadata (muscle_group, type, equipment) from the name
+
+After resolving all exercises, provide a summary listing each original exercise name and the exercise ID it was resolved to.
+
+You must resolve ALL exercises provided.`
+
+  const userPrompt = `Please resolve the following exercises:
+
+${exerciseList}
+
+For each exercise, search for it first, then decide whether to use an existing match or create a new one. You MUST provide resolutions for all ${exerciseNames.length} exercises.
+
+After you've resolved all exercises, provide a final summary in this exact format:
+RESOLUTIONS:
+1. [Original Exercise Name] -> [Exercise ID] (matched/created)
+2. [Original Exercise Name] -> [Exercise ID] (matched/created)
+etc.`
 
   try {
-    const result = await generateObject({
-      model: openai('gpt-4.1-nano'),
-      schema: exerciseMetadataSchema,
-      prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]
 
-Exercise name: "${exerciseName}"
+    let iterationCount = 0
+    const maxIterations = 20 // Safety limit
 
-Determine:
-1. Primary muscle group (Chest, Back, Legs, Shoulders, Biceps, Triceps, Core, Glutes, Cardio, Full Body)
-2. Type (compound or isolation)
-   - Compound: works multiple muscle groups/joints (e.g., Bench Press, Squat, Pull-ups)
-   - Isolation: targets single muscle group (e.g., Bicep Curl, Leg Extension, Lateral Raise)
-3. Equipment (barbell, dumbbell, bodyweight, cable, machine, kettlebell, resistance band, other)
+    while (iterationCount < maxIterations) {
+      iterationCount++
 
-Examples:
-- "Bench Press" → muscle_group: Chest, type: compound, equipment: barbell
-- "Dumbbell Curl" → muscle_group: Biceps, type: isolation, equipment: dumbbell
-- "Push-ups" → muscle_group: Chest, type: compound, equipment: bodyweight
-- "Lat Pulldown" → muscle_group: Back, type: compound, equipment: cable
-- "Leg Extension" → muscle_group: Legs, type: isolation, equipment: machine
+      const response = await openaiToolClient.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        tools: [searchExercisesTool, createExerciseTool],
+        tool_choice: 'auto',
+      })
 
-Return the metadata as JSON.`,
-    })
+      const choice = response.choices[0]
 
-    return result.object
+      if (!choice) {
+        throw new Error('No response choice from OpenAI')
+      }
+
+      // Add assistant's response to conversation
+      messages.push(choice.message)
+
+      // Check if agent wants to call tools
+      if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
+        console.log(
+          `[Agent] Iteration ${iterationCount}: Processing ${choice.message.tool_calls.length} tool calls`,
+        )
+
+        // Execute all tool calls
+        for (const toolCall of choice.message.tool_calls) {
+          const toolName = toolCall.function.name
+          const toolArgs = JSON.parse(toolCall.function.arguments)
+
+          console.log(`[Agent] Tool call: ${toolName}(${JSON.stringify(toolArgs)})`)
+
+          let toolResult: any
+
+          try {
+            if (toolName === 'searchExercises') {
+              const validatedArgs = searchExercisesInput.parse(toolArgs)
+              toolResult = await handleSearchExercises(validatedArgs)
+            } else if (toolName === 'createExercise') {
+              const validatedArgs = createExerciseInput.parse(toolArgs)
+              toolResult = await handleCreateExercise(validatedArgs, userId)
+
+              // Track created exercise
+              const originalName = validatedArgs.name
+              if (!resolutions.has(originalName)) {
+                resolutions.set(originalName, {
+                  exerciseId: toolResult.id,
+                  exerciseName: toolResult.name,
+                  wasCreated: true,
+                })
+              }
+            } else {
+              toolResult = { error: `Unknown tool: ${toolName}` }
+            }
+          } catch (error) {
+            console.error(`[Agent] Tool ${toolName} failed:`, error)
+            toolResult = {
+              error: error instanceof Error ? error.message : String(error),
+            }
+          }
+
+          // Add tool result to conversation
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(toolResult),
+          })
+        }
+
+        // Continue loop to let agent process tool results
+        continue
+      }
+
+      // Agent finished (no more tool calls)
+      console.log(`[Agent] Completed after ${iterationCount} iterations`)
+
+      // Parse agent's final response to extract exercise resolutions
+      const finalContent = choice.message.content || ''
+      console.log(`[Agent] Final response: ${finalContent}`)
+
+      // Try to parse the RESOLUTIONS section from the agent's response
+      const resolutionRegex = /(\d+)\.\s+(.+?)\s+->\s+([a-f0-9-]{36})\s+\((matched|created)\)/gi
+      let match: RegExpExecArray | null
+
+      while ((match = resolutionRegex.exec(finalContent)) !== null) {
+        const originalName = match[2].trim()
+        const exerciseId = match[3]
+        const wasCreated = match[4] === 'created'
+
+        // Find the actual exercise name in our list (case-insensitive match)
+        const actualName = exerciseNames.find(
+          (n) => n.toLowerCase() === originalName.toLowerCase(),
+        )
+
+        if (actualName && !resolutions.has(actualName)) {
+          // Try to get the exercise name from the database
+          try {
+            const supabase = createServiceClient()
+            const { data } = await supabase
+              .from('exercises')
+              .select('name')
+              .eq('id', exerciseId)
+              .single()
+
+            resolutions.set(actualName, {
+              exerciseId,
+              exerciseName: data?.name || originalName,
+              wasCreated,
+            })
+          } catch (error) {
+            console.warn(
+              `[Agent] Could not fetch exercise name for ${exerciseId}, using original name`,
+            )
+            resolutions.set(actualName, {
+              exerciseId,
+              exerciseName: originalName,
+              wasCreated,
+            })
+          }
+        }
+      }
+
+      // Fallback: if agent didn't explicitly track everything, try to match based on tool calls
+      for (const name of exerciseNames) {
+        if (!resolutions.has(name)) {
+          // Try searching one more time to find it
+          console.warn(
+            `[Agent] Missing resolution for "${name}", attempting fallback search`,
+          )
+          try {
+            const searchResult = await handleSearchExercises({ query: name, limit: 1 })
+            if (searchResult.candidates.length > 0 && searchResult.candidates[0].similarity >= 0.6) {
+              const match = searchResult.candidates[0]
+              resolutions.set(name, {
+                exerciseId: match.id,
+                exerciseName: match.name,
+                wasCreated: false,
+              })
+            } else {
+              // Create it as last resort
+              const createResult = await handleCreateExercise({ name }, userId)
+              resolutions.set(name, {
+                exerciseId: createResult.id,
+                exerciseName: createResult.name,
+                wasCreated: true,
+              })
+            }
+          } catch (error) {
+            console.error(`[Agent] Fallback failed for "${name}":`, error)
+            throw new Error(`Failed to resolve exercise: ${name}`)
+          }
+        }
+      }
+
+      break
+    }
+
+    if (iterationCount >= maxIterations) {
+      throw new Error('Agent exceeded maximum iterations')
+    }
   } catch (error) {
-    console.error('Error generating exercise metadata:', error)
-    // Return sensible defaults if AI fails
-    return {
-      muscle_group: 'Full Body',
-      type: 'compound',
-      equipment: 'other',
+    console.error('[Agent] Error during exercise resolution:', error)
+    throw error
+  }
+
+  // Validate we got all resolutions
+  for (const name of exerciseNames) {
+    if (!resolutions.has(name)) {
+      throw new Error(`Agent failed to resolve exercise: ${name}`)
     }
   }
-}
 
-async function getOrCreateExercise(
-  supabase: ReturnType<typeof createServiceClient>,
-  name: string,
-  userId: string,
-  exercises: any[],
-) {
-  const originalName = exercises.find(
-    (ex: any) => ex.name.toLowerCase() === name,
-  )?.name
-
-  const trimmedName = (originalName || name).trim()
-
-  if (!trimmedName) {
-    throw new Error('Exercise name cannot be empty')
-  }
-
-  if (trimmedName.length > 100) {
-    throw new Error('Exercise name too long (max 100 characters)')
-  }
-
-  if (/<script|javascript:|on\w+=/i.test(trimmedName)) {
-    throw new Error('Invalid exercise name')
-  }
-
-  const { data: exactMatch } = await supabase
-    .from('exercises')
-    .select('*')
-    .ilike('name', trimmedName)
-    .single()
-
-  if (exactMatch) return exactMatch
-
-  const { data: aliasMatches } = await supabase
-    .from('exercises')
-    .select('*')
-    .contains('aliases', [trimmedName.toLowerCase()])
-
-  if (aliasMatches && aliasMatches.length > 0) {
-    return aliasMatches[0]
-  }
-
-  // No match found - create new exercise with AI-generated metadata
-  const metadata = await generateExerciseMetadata(trimmedName)
-
-  const { data, error } = await supabase
-    .from('exercises')
-    .insert({
-      name: trimmedName,
-      created_by: userId,
-      muscle_group: metadata.muscle_group,
-      type: metadata.type,
-      equipment: metadata.equipment,
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
+  return resolutions
 }
