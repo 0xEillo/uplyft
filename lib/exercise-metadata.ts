@@ -1,6 +1,6 @@
-import { openai } from '@ai-sdk/openai'
-import { generateObject } from 'ai'
 import { z } from 'zod'
+
+import { callSupabaseFunction } from '@/lib/supabase-functions-client'
 
 const exerciseMetadataSchema = z.object({
   muscle_group: z
@@ -44,32 +44,24 @@ export type ExerciseMetadata = z.infer<typeof exerciseMetadataSchema>
 export async function generateExerciseMetadata(
   exerciseName: string,
 ): Promise<ExerciseMetadata> {
+  const trimmedName = exerciseName.trim()
+  if (!trimmedName) {
+    throw new Error('Exercise name cannot be empty')
+  }
+
   try {
-    const result = await generateObject({
-      model: openai('gpt-4.1-nano'),
-      schema: exerciseMetadataSchema,
-      prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
+    const response = await callSupabaseFunction(
+      'generate-exercise-metadata',
+      'POST',
+      { exerciseName: trimmedName },
+    )
 
-Exercise name: "${exerciseName}"
+    if (!response.ok) {
+      throw new Error(`Edge function error (${response.status})`)
+    }
 
-Determine:
-1. Primary muscle group (Chest, Back, Legs, Shoulders, Biceps, Triceps, Core, Glutes, Cardio, Full Body)
-2. Type (compound or isolation)
-   - Compound: works multiple muscle groups/joints (e.g., Bench Press, Squat, Pull-ups)
-   - Isolation: targets single muscle group (e.g., Bicep Curl, Leg Extension, Lateral Raise)
-3. Equipment (barbell, dumbbell, bodyweight, cable, machine, kettlebell, resistance band, other)
-
-Examples:
-- "Bench Press" → muscle_group: Chest, type: compound, equipment: barbell
-- "Dumbbell Curl" → muscle_group: Biceps, type: isolation, equipment: dumbbell
-- "Push-ups" → muscle_group: Chest, type: compound, equipment: bodyweight
-- "Lat Pulldown" → muscle_group: Back, type: compound, equipment: cable
-- "Leg Extension" → muscle_group: Legs, type: isolation, equipment: machine
-
-Return the metadata as JSON.`,
-    })
-
-    return result.object
+    const payload = await response.json()
+    return exerciseMetadataSchema.parse(payload)
   } catch (error) {
     console.error('Error generating exercise metadata:', error)
     // Return sensible defaults if AI fails
