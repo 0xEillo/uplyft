@@ -41,9 +41,10 @@ interface ExerciseDisplay {
 }
 
 interface PrDetailForDisplay {
-  label: string // e.g., "1RM", "5-rep max"
-  previous?: number
-  current: number
+  label: string // e.g., "1RM", "11 reps @ 65kg"
+  weight: number // the weight for this PR
+  previousReps?: number // previous max reps at this weight
+  currentReps: number // current max reps at this weight
   isCurrent: boolean // true if this is still the all-time PR
 }
 

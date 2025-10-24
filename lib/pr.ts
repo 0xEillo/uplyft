@@ -22,10 +22,11 @@ export interface SessionContext {
 }
 
 export interface PrDetail {
-  kind: 'single-rep-max' | 'rep-max'
-  label: string // e.g. "1RM", "5-rep max"
-  previous?: number
-  current: number
+  kind: 'single-rep-max' | 'weight-max'
+  label: string // e.g. "1RM", "11 reps @ 65kg"
+  weight: number // the weight for this PR
+  previousReps?: number // previous max reps at this weight
+  currentReps: number // current max reps at this weight
   setIndices?: number[] // which sets contributed to this PR
   isCurrent: boolean // true if this is still the all-time PR, false if it's been beaten since
 }
@@ -68,7 +69,7 @@ export class PrService {
     return { totalPrs, perExercise: perExerciseResults }
   }
 
-  // Computes PRs for: single (1RM) and rep-specific maxes (e.g., best 5-rep, best 8-rep)
+  // Computes PRs for: single (1RM) and weight-based rep maxes (e.g., most reps at 65kg)
   static async computePrsForExercise(
     userId: UUID,
     exerciseId: UUID,
@@ -89,14 +90,13 @@ export class PrService {
       beforeDateISO,
     )
 
-    // Single 1RM: max weight at reps === 1
+    const prs: PrDetail[] = []
+
+    // Special case: 1RM (max weight at reps === 1)
     const hist1Rm = this.maxWeightForReps(historic, 1)
     const cur1Rm = this.maxWeightForReps(currentSets, 1)
     const future1Rm = this.maxWeightForReps(future, 1)
 
-    const prs: PrDetail[] = []
-
-    // Track which set achieved 1RM PR (only the first one)
     if (cur1Rm && (!hist1Rm || cur1Rm > hist1Rm)) {
       const firstOneRmSetIndex = currentSets.findIndex(
         (s) => s.reps === 1 && s.weight === cur1Rm
@@ -105,44 +105,50 @@ export class PrService {
       prs.push({
         kind: 'single-rep-max',
         label: '1RM',
-        previous: hist1Rm ?? undefined,
-        current: cur1Rm,
+        weight: cur1Rm,
+        previousReps: hist1Rm ? 1 : undefined,
+        currentReps: 1,
         setIndices: oneRmSetIndices,
-        isCurrent: !future1Rm || cur1Rm >= future1Rm,
+        isCurrent: !future1Rm || cur1Rm > future1Rm,
       })
     }
 
-    // Rep-specific maxes: for each reps count present in current sets
-    const repsSet = new Set<number>()
+    // Weight-based rep maxes: for each unique weight in current sets (excluding 1-rep sets)
+    const weightsMap = new Map<number, number>() // weight -> max reps
     currentSets.forEach((s) => {
-      if (s.reps && s.weight) repsSet.add(s.reps)
-    })
-    for (const reps of repsSet) {
-      const cur = this.maxWeightForReps(currentSets, reps)
-      // Check if this is a PR compared to history
-      if (cur && this.isTrueRepMaxPr(historic, cur, reps)) {
-        // Also check if this rep count is beaten by any other set in current session with more reps
-        const isBeatenInCurrentSession = currentSets.some(
-          (s) => s.weight && s.weight >= cur && s.reps > reps
-        )
-
-        if (!isBeatenInCurrentSession) {
-          const hist = this.maxWeightForReps(historic, reps)
-          const futureRepMax = this.maxWeightForReps(future, reps)
-          // Only mark the FIRST set that achieved this PR weight
-          const firstPrSetIndex = currentSets.findIndex(
-            (s) => s.reps === reps && s.weight === cur
-          )
-          const repMaxSetIndices = firstPrSetIndex !== -1 ? [firstPrSetIndex] : []
-          prs.push({
-            kind: 'rep-max',
-            label: `${reps}-rep max`,
-            previous: hist ?? undefined,
-            current: cur,
-            setIndices: repMaxSetIndices,
-            isCurrent: !futureRepMax || cur >= futureRepMax,
-          })
+      if (s.weight && s.reps > 1) {
+        const currentMax = weightsMap.get(s.weight) || 0
+        if (s.reps > currentMax) {
+          weightsMap.set(s.weight, s.reps)
         }
+      }
+    })
+
+    for (const [weight, currentReps] of weightsMap) {
+      // Check historical max reps at this weight
+      const historicalReps = this.maxRepsForWeight(historic, weight)
+
+      // Is this a PR? (more reps than historical max at this weight)
+      if (!historicalReps || currentReps > historicalReps) {
+        // Check if this PR is still current (not beaten by future workouts)
+        const futureReps = this.maxRepsForWeight(future, weight)
+        const isCurrent = !futureReps || currentReps > futureReps
+
+        // Find the first set that achieved this PR
+        const firstPrSetIndex = currentSets.findIndex(
+          (s) => s.weight === weight && s.reps === currentReps
+        )
+        const setIndices = firstPrSetIndex !== -1 ? [firstPrSetIndex] : []
+
+        prs.push({
+          kind: 'weight-max',
+          label: `${weight}kg for ${currentReps} ${currentReps === 1 ? 'rep' : 'reps'}`,
+          weight,
+          previousReps: historicalReps,
+          currentReps,
+          setIndices,
+          isCurrent,
+        })
       }
     }
 
@@ -252,17 +258,17 @@ export class PrService {
     return max
   }
 
-  // Check if weight/reps is a true PR: no historical set with weight >= current weight AND reps >= current reps
-  private static isTrueRepMaxPr(
-    historic: PrContextSet[],
-    currentWeight: number,
-    currentReps: number,
-  ): boolean {
-    for (const h of historic) {
-      if (h.weight && h.weight >= currentWeight && h.reps >= currentReps) {
-        return false // Found a historical set that is equal or better
+  // Get the maximum reps achieved at a specific weight
+  private static maxRepsForWeight(
+    sets: PrContextSet[],
+    weight: number,
+  ): number | undefined {
+    let max: number | undefined
+    sets.forEach((s) => {
+      if (s.weight === weight) {
+        if (!max || s.reps > max) max = s.reps
       }
-    }
-    return true
+    })
+    return max
   }
 }

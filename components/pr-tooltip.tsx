@@ -12,9 +12,10 @@ import {
 } from 'react-native'
 
 export interface PrDetailForTooltip {
-  label: string // e.g., "1RM", "5-rep max"
-  previous?: number
-  current: number
+  label: string // e.g., "1RM", "11 reps @ 65kg"
+  weight: number // the weight for this PR
+  previousReps?: number // previous max reps at this weight
+  currentReps: number // current max reps at this weight
   isCurrent: boolean // true if this is still the all-time PR
 }
 
@@ -115,54 +116,14 @@ export function PrTooltip({
                     !pr.isCurrent && styles.prItemHistorical,
                   ]}
                 >
-                  <View style={styles.prLabelRow}>
-                    <Text
-                      style={[
-                        styles.prLabel,
-                        !pr.isCurrent && styles.prLabelHistorical,
-                      ]}
-                    >
-                      {pr.label}
-                    </Text>
-                    {!pr.isCurrent && (
-                      <Text style={styles.historicalBadge}>Historical</Text>
-                    )}
-                  </View>
-                  <View style={styles.prValueRow}>
-                    {pr.previous !== undefined ? (
-                      <>
-                        <Text style={styles.previousWeight}>
-                          {pr.previous.toFixed(weightUnit === 'kg' ? 1 : 0)}{' '}
-                          {weightUnit}
-                        </Text>
-                        <Ionicons
-                          name="arrow-forward"
-                          size={12}
-                          color={colors.textSecondary}
-                          style={styles.arrow}
-                        />
-                        <Text
-                          style={[
-                            styles.currentWeight,
-                            !pr.isCurrent && styles.currentWeightHistorical,
-                          ]}
-                        >
-                          {pr.current.toFixed(weightUnit === 'kg' ? 1 : 0)}{' '}
-                          {weightUnit}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text
-                        style={[
-                          styles.currentWeight,
-                          !pr.isCurrent && styles.currentWeightHistorical,
-                        ]}
-                      >
-                        New PR: {pr.current.toFixed(weightUnit === 'kg' ? 1 : 0)}{' '}
-                        {weightUnit}
-                      </Text>
-                    )}
-                  </View>
+                  <Text
+                    style={[
+                      styles.prText,
+                      !pr.isCurrent && styles.prTextHistorical,
+                    ]}
+                  >
+                    {pr.isCurrent ? 'PR: ' : 'Old PR: '}{pr.weight.toFixed(weightUnit === 'kg' ? 1 : 0)}{weightUnit} for {pr.currentReps} {pr.currentReps === 1 ? 'rep' : 'reps'}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -231,49 +192,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       borderLeftColor: colors.textPlaceholder,
     },
-    prLabelRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    prLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.primary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    prLabelHistorical: {
-      color: colors.textSecondary,
-    },
-    historicalBadge: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      backgroundColor: colors.white,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    prValueRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    previousWeight: {
+    prText: {
       fontSize: 14,
-      color: colors.textSecondary,
-      textDecorationLine: 'line-through',
-    },
-    arrow: {
-      marginHorizontal: 6,
-    },
-    currentWeight: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontWeight: '500',
       color: colors.primary,
     },
-    currentWeightHistorical: {
+    prTextHistorical: {
       color: colors.textSecondary,
     },
   })

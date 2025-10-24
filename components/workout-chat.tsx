@@ -1,9 +1,9 @@
+import { Paywall } from '@/components/paywall'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
-import { Paywall } from '@/components/paywall'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -29,8 +29,8 @@ interface Message {
 const EXAMPLE_QUESTIONS = [
   "What's my 1 rep max for squat?",
   "What's my strongest exercise?",
-  'Show me my progress on bench press',
-  'How many PRs did I hit this month?',
+  "How's my strength trending?",
+  'Where do I rank on bench?',
   'What muscle groups am I neglecting?',
 ]
 
@@ -94,7 +94,9 @@ export function WorkoutChat() {
     setIsLoading(true)
 
     try {
-      const { getSupabaseFunctionBaseUrl } = await import('@/lib/supabase-functions-client')
+      const { getSupabaseFunctionBaseUrl } = await import(
+        '@/lib/supabase-functions-client'
+      )
 
       const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
         method: 'POST',

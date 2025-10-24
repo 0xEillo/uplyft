@@ -11,8 +11,9 @@ import { Alert } from 'react-native'
 
 interface PrDetailForDisplay {
   label: string
-  previous?: number
-  current: number
+  weight: number
+  previousReps?: number
+  currentReps: number
   isCurrent: boolean
 }
 
@@ -94,8 +95,9 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           prLabels: exPr.prs.map((pr) => pr.label),
           prDetails: exPr.prs.map((pr) => ({
             label: pr.label,
-            previous: pr.previous,
-            current: pr.current,
+            weight: pr.weight,
+            previousReps: pr.previousReps,
+            currentReps: pr.currentReps,
             isCurrent: pr.isCurrent,
           })),
           hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),

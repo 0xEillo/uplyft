@@ -1,24 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { View, StyleSheet, Animated } from 'react-native'
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
+import React, { useRef } from 'react'
+import { View, StyleSheet, Animated, Image } from 'react-native'
 
 export function LoadingScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current
-  const videoRef = useRef<Video>(null)
-  const [videoFinished, setVideoFinished] = useState(false)
-
-  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded && status.didJustFinish) {
-      setVideoFinished(true)
-    }
-  }
-
-  useEffect(() => {
-    // Start playing the video
-    if (videoRef.current) {
-      videoRef.current.playAsync()
-    }
-  }, [])
 
   return (
     <Animated.View
@@ -30,15 +14,11 @@ export function LoadingScreen() {
         },
       ]}
     >
-      <View style={styles.videoContainer}>
-        <Video
-          ref={videoRef}
-          source={require('@/assets/videos/flex-animation.mp4')}
-          style={styles.video}
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay
-          isLooping={false}
-          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('@/llm/repai-logo-white.png')}
+          style={styles.logo}
+          resizeMode="contain"
         />
       </View>
     </Animated.View>
@@ -52,14 +32,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 9999,
   },
-  videoContainer: {
-    width: '100%',
-    height: '100%',
+  logoContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  video: {
-    width: '100%',
-    height: '100%',
+  logo: {
+    width: 200,
+    height: 200,
   },
 })

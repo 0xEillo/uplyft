@@ -1,23 +1,23 @@
+import { ImagePickerModal } from '@/components/ImagePickerModal'
+import { Paywall } from '@/components/paywall'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useAnalytics } from '@/contexts/analytics-context'
-import { Paywall } from '@/components/paywall'
 import { database } from '@/lib/database'
+import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import {
   generateWorkoutMessage,
   parseCommitment,
 } from '@/lib/utils/workout-messages'
-import { uploadWorkoutImage } from '@/lib/utils/image-upload'
-import { useSuccessOverlay } from '@/contexts/success-overlay-context'
-import { ImagePickerModal } from '@/components/ImagePickerModal'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
-import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
+import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -115,6 +115,8 @@ export default function CreatePostScreen() {
   const notesInputRef = useRef<TextInput>(null)
   const latestNotes = useRef('')
   const latestTitle = useRef('')
+  const skipDraftClearRef = useRef(false)
+  const skipTitleDraftClearRef = useRef(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
@@ -305,13 +307,35 @@ export default function CreatePostScreen() {
   useEffect(() => {
     const loadDraft = async () => {
       try {
-        const draft = await AsyncStorage.getItem(DRAFT_KEY)
-        const titleDraft = await AsyncStorage.getItem(TITLE_DRAFT_KEY)
+        const [draft, titleDraft, pendingRaw] = await Promise.all([
+          AsyncStorage.getItem(DRAFT_KEY),
+          AsyncStorage.getItem(TITLE_DRAFT_KEY),
+          AsyncStorage.getItem(PENDING_POST_KEY),
+        ])
+
+        let pending: { notes?: string; title?: string } | null = null
+        if (pendingRaw) {
+          try {
+            pending = JSON.parse(pendingRaw)
+          } catch (parseError) {
+            console.error('Error parsing pending workout data:', parseError)
+          }
+        }
+
         if (draft) {
           setNotes(draft)
+          skipDraftClearRef.current = true
+        } else if (pending?.notes) {
+          setNotes(pending.notes)
+          skipDraftClearRef.current = true
         }
+
         if (titleDraft) {
           setWorkoutTitle(titleDraft)
+          skipTitleDraftClearRef.current = true
+        } else if (pending?.title) {
+          setWorkoutTitle(pending.title)
+          skipTitleDraftClearRef.current = true
         }
       } catch (error) {
         console.error('Error loading draft:', error)
@@ -322,6 +346,11 @@ export default function CreatePostScreen() {
 
   // Auto-save draft whenever notes change with debounce
   useEffect(() => {
+    if (skipDraftClearRef.current) {
+      skipDraftClearRef.current = false
+      return
+    }
+
     const timer = setTimeout(async () => {
       try {
         if (notes.trim()) {
@@ -349,12 +378,19 @@ export default function CreatePostScreen() {
 
   // Auto-save title draft whenever title changes with debounce
   useEffect(() => {
+    if (skipTitleDraftClearRef.current) {
+      skipTitleDraftClearRef.current = false
+      return
+    }
+
     const timer = setTimeout(async () => {
       try {
         if (workoutTitle.trim()) {
           await AsyncStorage.setItem(TITLE_DRAFT_KEY, workoutTitle)
         } else {
-          await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
+          if (!skipTitleDraftClearRef.current) {
+            await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
+          }
         }
       } catch (error) {
         console.error('Error saving title draft:', error)
@@ -430,14 +466,21 @@ export default function CreatePostScreen() {
             'Image Upload Failed',
             'Unable to upload your workout photo. Would you like to continue without it?',
             [
-              { text: 'Cancel', style: 'cancel', onPress: () => {
-                setIsLoading(false)
-                return
-              }},
-              { text: 'Continue', onPress: async () => {
-                // Continue without image
-                setAttachedImageUri(null)
-              }},
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  setIsLoading(false)
+                  return
+                },
+              },
+              {
+                text: 'Continue',
+                onPress: async () => {
+                  // Continue without image
+                  setAttachedImageUri(null)
+                },
+              },
             ],
           )
           throw error // Stop submission if upload fails
@@ -595,10 +638,7 @@ export default function CreatePostScreen() {
       <Animated.View
         style={{
           flex: 1,
-          transform: [
-            { translateY: pageSlideAnim },
-            { scale: pageScaleAnim },
-          ],
+          transform: [{ translateY: pageSlideAnim }, { scale: pageScaleAnim }],
           opacity: pageOpacityAnim,
         }}
       >
@@ -607,204 +647,213 @@ export default function CreatePostScreen() {
           style={styles.keyboardView}
         >
           <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleCancel}
-            style={styles.headerButton}
-            disabled={isLoading}
-          >
-            <Ionicons name="arrow-back" size={28} color={colors.text} />
-          </TouchableOpacity>
-          {showDraftSaved && (
-            <Animated.View
-              style={[styles.draftSavedContainer, { opacity: fadeAnim }]}
+            <TouchableOpacity
+              onPress={handleCancel}
+              style={styles.headerButton}
+              disabled={isLoading}
             >
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={styles.draftSavedText}>Draft saved</Text>
-            </Animated.View>
-          )}
-          <TouchableOpacity
-            onPress={handlePost}
-            style={[styles.headerButton, styles.primaryButton]}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={{
-                transform: [{ scale: buttonScaleAnim }],
-              }}
-            >
-              <Ionicons name="checkmark" size={28} color={colors.white} />
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={styles.inputContainer}
-          contentContainerStyle={styles.scrollContent}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="never"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Title Input */}
-          <TextInput
-            ref={titleInputRef}
-            style={styles.titleInput}
-            placeholder="Workout Title"
-            placeholderTextColor="#999"
-            value={workoutTitle}
-            onChangeText={setWorkoutTitle}
-            editable={!isRecording && !isTranscribing}
-            maxLength={50}
-            autoFocus={false}
-          />
-
-          {/* Divider */}
-          <View style={styles.divider} />
-
-          {/* Workout Notes Input */}
-          <View style={styles.notesInputWrapper}>
-            <TextInput
-              ref={notesInputRef}
-              style={styles.notesInput}
-              placeholder="Input your workout..."
-              placeholderTextColor="#999"
-              multiline
-              value={notes}
-              onChangeText={setNotes}
-              textAlignVertical="top"
-              editable={!isRecording && !isTranscribing}
-              autoFocus={false}
-              onFocus={() => {
-                setIsNotesFocused(true)
-              }}
-              onBlur={() => {
-                setIsNotesFocused(false)
-              }}
-            />
-            {!isNotesFocused && (
-              <Pressable
-                style={styles.notesOverlay}
-                onPress={() => {
-                  notesInputRef.current?.focus()
-                }}
-              />
+              <Ionicons name="arrow-back" size={28} color={colors.text} />
+            </TouchableOpacity>
+            {showDraftSaved && (
+              <Animated.View
+                style={[styles.draftSavedContainer, { opacity: fadeAnim }]}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.primary}
+                />
+                <Text style={styles.draftSavedText}>Draft saved</Text>
+              </Animated.View>
             )}
+            <TouchableOpacity
+              onPress={handlePost}
+              style={[styles.headerButton, styles.primaryButton]}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Animated.View
+                style={{
+                  transform: [{ scale: buttonScaleAnim }],
+                }}
+              >
+                <Ionicons name="checkmark" size={28} color={colors.white} />
+              </Animated.View>
+            </TouchableOpacity>
           </View>
 
-          {/* Attached Image Thumbnail */}
-          {attachedImageUri && (
-            <View style={styles.attachedImageContainer}>
-              <View style={styles.attachedImageWrapper}>
-                <Animated.Image
-                  source={{ uri: attachedImageUri }}
-                  style={[styles.attachedImage, { opacity: imageOpacity }]}
-                  resizeMode="cover"
-                  onLoadStart={() => setImageLoading(true)}
-                  onLoad={() => {
-                    setImageLoading(false)
-                    Animated.timing(imageOpacity, {
-                      toValue: 1,
-                      duration: IMAGE_FADE_DURATION,
-                      useNativeDriver: true,
-                    }).start()
-                  }}
-                  onError={(error) => {
-                    console.error('Failed to load attached image:', error.nativeEvent.error)
-                    setImageLoading(false)
+          <ScrollView
+            style={styles.inputContainer}
+            contentContainerStyle={styles.scrollContent}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="never"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Title Input */}
+            <TextInput
+              ref={titleInputRef}
+              style={styles.titleInput}
+              placeholder="Workout Title"
+              placeholderTextColor="#999"
+              value={workoutTitle}
+              onChangeText={setWorkoutTitle}
+              editable={!isRecording && !isTranscribing}
+              maxLength={50}
+              autoFocus={false}
+            />
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Workout Notes Input */}
+            <View style={styles.notesInputWrapper}>
+              <TextInput
+                ref={notesInputRef}
+                style={styles.notesInput}
+                placeholder="Input your workout..."
+                placeholderTextColor="#999"
+                multiline
+                value={notes}
+                onChangeText={setNotes}
+                textAlignVertical="top"
+                editable={!isRecording && !isTranscribing}
+                autoFocus={false}
+                onFocus={() => {
+                  setIsNotesFocused(true)
+                }}
+                onBlur={() => {
+                  setIsNotesFocused(false)
+                }}
+              />
+              {!isNotesFocused && (
+                <Pressable
+                  style={styles.notesOverlay}
+                  onPress={() => {
+                    notesInputRef.current?.focus()
                   }}
                 />
-                {imageLoading && (
-                  <View style={styles.imageLoadingOverlay}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={handleRemoveAttachedImage}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="close-circle" size={28} color={colors.white} />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.attachedImageLabel}>Workout Photo</Text>
+              )}
             </View>
-          )}
 
-          {/* Example Workout - shown when both inputs are empty and preference is enabled */}
-          {!notes.trim() && !workoutTitle.trim() && showExamples && (
-            <View style={styles.exampleContainer}>
-              <Text style={styles.exampleLabel}>Example:</Text>
-              <View style={styles.exampleCard}>
-                <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
-                <View style={styles.exampleDivider} />
-                <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
+            {/* Attached Image Thumbnail */}
+            {attachedImageUri && (
+              <View style={styles.attachedImageContainer}>
+                <View style={styles.attachedImageWrapper}>
+                  <Animated.Image
+                    source={{ uri: attachedImageUri }}
+                    style={[styles.attachedImage, { opacity: imageOpacity }]}
+                    resizeMode="cover"
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoad={() => {
+                      setImageLoading(false)
+                      Animated.timing(imageOpacity, {
+                        toValue: 1,
+                        duration: IMAGE_FADE_DURATION,
+                        useNativeDriver: true,
+                      }).start()
+                    }}
+                    onError={(error) => {
+                      console.error(
+                        'Failed to load attached image:',
+                        error.nativeEvent.error,
+                      )
+                      setImageLoading(false)
+                    }}
+                  />
+                  {imageLoading && (
+                    <View style={styles.imageLoadingOverlay}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={handleRemoveAttachedImage}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={28}
+                      color={colors.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.attachedImageLabel}>Workout Photo</Text>
               </View>
-            </View>
-          )}
-        </ScrollView>
+            )}
 
-        {/* Floating Microphone Button */}
-        <TouchableOpacity
-          style={[styles.micFab, isRecording && styles.micFabActive]}
-          onPress={handleToggleRecording}
-          disabled={isTranscribing || isLoading || isProcessingImage}
-        >
-          {isTranscribing ? (
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <View style={styles.loaderRing}>
-                <View style={styles.loaderArc} />
+            {/* Example Workout - shown when both inputs are empty and preference is enabled */}
+            {!notes.trim() && !workoutTitle.trim() && showExamples && (
+              <View style={styles.exampleContainer}>
+                <Text style={styles.exampleLabel}>Example:</Text>
+                <View style={styles.exampleCard}>
+                  <Text style={styles.exampleTitle}>
+                    {exampleWorkout.title}
+                  </Text>
+                  <View style={styles.exampleDivider} />
+                  <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
+                </View>
               </View>
-            </Animated.View>
-          ) : (
-            <Ionicons
-              name={isRecording ? 'stop' : 'mic'}
-              size={28}
-              color={colors.white}
-            />
-          )}
-        </TouchableOpacity>
+            )}
+          </ScrollView>
 
-        {/* Floating Camera Button */}
-        <TouchableOpacity
-          style={styles.cameraFab}
-          onPress={handlePickImage}
-          disabled={
-            isProcessingImage || isRecording || isTranscribing || isLoading
-          }
-        >
-          {isProcessingImage ? (
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <View style={styles.loaderRing}>
-                <View style={styles.loaderArc} />
-              </View>
-            </Animated.View>
-          ) : (
-            <Ionicons name="camera" size={28} color={colors.white} />
-          )}
-        </TouchableOpacity>
+          {/* Floating Microphone Button */}
+          <TouchableOpacity
+            style={[styles.micFab, isRecording && styles.micFabActive]}
+            onPress={handleToggleRecording}
+            disabled={isTranscribing || isLoading || isProcessingImage}
+          >
+            {isTranscribing ? (
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <View style={styles.loaderRing}>
+                  <View style={styles.loaderArc} />
+                </View>
+              </Animated.View>
+            ) : (
+              <Ionicons
+                name={isRecording ? 'stop' : 'mic'}
+                size={28}
+                color={colors.white}
+              />
+            )}
+          </TouchableOpacity>
 
-        {/* Image Picker Modal */}
-        <ImagePickerModal
-          visible={showModal}
-          onClose={closeModal}
-          onScanWithCamera={handleScanWithCamera}
-          onScanWithLibrary={handleScanWithLibrary}
-          onAttachWithCamera={handleAttachWithCamera}
-          onAttachWithLibrary={handleAttachWithLibrary}
-        />
+          {/* Floating Camera Button */}
+          <TouchableOpacity
+            style={styles.cameraFab}
+            onPress={handlePickImage}
+            disabled={
+              isProcessingImage || isRecording || isTranscribing || isLoading
+            }
+          >
+            {isProcessingImage ? (
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <View style={styles.loaderRing}>
+                  <View style={styles.loaderArc} />
+                </View>
+              </Animated.View>
+            ) : (
+              <Ionicons name="camera" size={28} color={colors.white} />
+            )}
+          </TouchableOpacity>
 
-        {/* Paywall Modal */}
-        <Paywall
-          visible={showPaywall}
-          onClose={() => setShowPaywall(false)}
-          title="Workout Logging is Premium"
-          message="Logging workouts is a premium feature. Subscribe to track unlimited workouts and unlock all features."
-        />
-      </KeyboardAvoidingView>
+          {/* Image Picker Modal */}
+          <ImagePickerModal
+            visible={showModal}
+            onClose={closeModal}
+            onScanWithCamera={handleScanWithCamera}
+            onScanWithLibrary={handleScanWithLibrary}
+            onAttachWithCamera={handleAttachWithCamera}
+            onAttachWithLibrary={handleAttachWithLibrary}
+          />
+
+          {/* Paywall Modal */}
+          <Paywall
+            visible={showPaywall}
+            onClose={() => setShowPaywall(false)}
+            title="Workout Logging is Premium"
+            message="Logging workouts is a premium feature. Subscribe to track unlimited workouts and unlock all features."
+          />
+        </KeyboardAvoidingView>
       </Animated.View>
     </SafeAreaView>
   )

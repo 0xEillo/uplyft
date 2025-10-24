@@ -137,7 +137,9 @@ export default function FeedScreen() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout
 
-      const { callSupabaseFunction } = await import('@/lib/supabase-functions-client')
+      const { callSupabaseFunction } = await import(
+        '@/lib/supabase-functions-client'
+      )
 
       const response = await callSupabaseFunction(
         'parse-workout',
@@ -162,6 +164,9 @@ export default function FeedScreen() {
 
         // Restore notes to draft for user to retry
         await AsyncStorage.setItem(DRAFT_KEY, notes)
+        if (title) {
+          await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
+        }
         await AsyncStorage.removeItem(PENDING_POST_KEY)
 
         // Show friendly error with actionable options

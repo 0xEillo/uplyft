@@ -5,7 +5,14 @@ import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
-import { createUserClient } from '../_shared/supabase.ts'
+import {
+  getExercisePercentile,
+  getExerciseStrengthProgressByName,
+  getMuscleGroupDistribution,
+  getStrengthScoreProgress,
+  getTopExercisesByEstimated1RM,
+} from '../_shared/stats.ts'
+import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 import { buildUserContextSummary, userContextToPrompt } from './user-context.ts'
 
 const messagesSchema = z.object({
@@ -51,6 +58,9 @@ type BodyLogRecord = {
   bmi: number | null
   file_path?: string | null
 }
+
+const CACHE_TTL_MS = 10 * 60 * 1000
+const CACHE_VERSION = 2
 
 serve(async (req) => {
   const cors = handleCors(req)
@@ -119,7 +129,27 @@ async function buildUserContext(
   tools: Record<string, ReturnType<typeof tool>>
 }> {
   const supabase = createUserClient(accessToken)
-  const summary = await buildUserContextSummary(userId, supabase)
+  const serviceSupabase = createServiceClient()
+
+  let summary: Awaited<ReturnType<typeof buildUserContextSummary>> | undefined
+
+  try {
+    const cached = await loadCachedSummary(serviceSupabase, userId)
+    if (cached) {
+      summary = cached
+    }
+  } catch (cacheError) {
+    console.warn('Failed to load cached chat summary:', cacheError)
+  }
+
+  if (!summary) {
+    summary = await buildUserContextSummary(userId, supabase)
+    try {
+      await upsertCachedSummary(serviceSupabase, userId, summary)
+    } catch (cacheWriteError) {
+      console.warn('Failed to cache chat summary:', cacheWriteError)
+    }
+  }
 
   const tools: Record<string, ReturnType<typeof tool>> = {
     getWorkoutSlice: tool({
@@ -386,6 +416,122 @@ async function buildUserContext(
         }))
       },
     }),
+    getStrengthProgress: tool({
+      description:
+        "Return estimated 1RM progress for the user's lifts. Call with an exercise name or let the tool choose a few top lifts.",
+      inputSchema: z
+        .object({
+          exerciseName: z.string().trim().min(1).max(120).optional(),
+          daysBack: z.number().int().min(7).max(365).optional(),
+          limit: z.number().int().min(1).max(5).optional(),
+        })
+        .passthrough()
+        .partial(),
+      execute: async ({ exerciseName, daysBack, limit } = {}) => {
+        if (exerciseName?.trim()) {
+          const result = await getExerciseStrengthProgressByName(supabase, userId, exerciseName.trim(), {
+            daysBack,
+          })
+          if (!result) {
+            return {
+              exercises: [],
+            }
+          }
+          return {
+            exercises: [result],
+          }
+        }
+
+        const top = await getTopExercisesByEstimated1RM(supabase, userId, {
+          daysBack,
+          limit,
+        })
+        return {
+          exercises: top,
+        }
+      },
+    }),
+    getStrengthScoreProgress: tool({
+      description:
+        "Return the user's cumulative strength score (sum of best estimated 1RMs) over time.",
+      inputSchema: z
+        .object({
+          daysBack: z.number().int().min(7).max(365).optional(),
+        })
+        .partial(),
+      execute: async ({ daysBack } = {}) => {
+        const series = await getStrengthScoreProgress(supabase, userId, {
+          daysBack,
+        })
+        return { series }
+      },
+    }),
+    getMuscleBalance: tool({
+      description:
+        "Summarize training volume by muscle group and flag gaps. Use when asked about balance or neglected muscles.",
+      inputSchema: z
+        .object({
+          daysBack: z.number().int().min(7).max(365).optional(),
+          thresholdPercent: z
+            .number()
+            .min(1)
+            .max(50)
+            .default(10)
+            .optional(),
+        })
+        .partial(),
+      execute: async ({ daysBack, thresholdPercent } = {}) => {
+        const { distribution, totalVolume } = await getMuscleGroupDistribution(
+          supabase,
+          userId,
+          {
+            daysBack,
+          },
+        )
+
+        const threshold = Math.min(Math.max(thresholdPercent ?? 10, 1), 50)
+        const undertrained = distribution
+          .filter((item) => item.percentage < threshold)
+          .map((item) => item.muscleGroup)
+
+        return {
+          totalVolume,
+          distribution,
+          undertrained,
+        }
+      },
+    }),
+    getLeaderboardPercentile: tool({
+      description:
+        'Return the user\'s percentile rank for a given exercise compared to all users.',
+      inputSchema: z.object({
+        exerciseName: z.string().trim().min(1).max(120),
+        includeDetails: z.boolean().optional(),
+      }),
+      execute: async ({ exerciseName, includeDetails = false }) => {
+        const percentile = await getExercisePercentile(
+          serviceSupabase,
+          userId,
+          exerciseName,
+        )
+
+        if (!percentile) {
+          return {
+            found: false,
+            exerciseName,
+          }
+        }
+
+        return {
+          found: true,
+          exerciseName: percentile.exerciseName,
+          percentile: percentile.percentile,
+          totalUsers: percentile.totalUsers,
+          userMax1RM: percentile.userMax1RM,
+          ...(includeDetails ? { exerciseId: percentile.exerciseId } : {}),
+        }
+      },
+    }),
   }
 
   return { summary, tools }
@@ -403,4 +549,50 @@ function buildSystemPrompt(
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
     "When suggesting next steps, keep them actionable, succinct and tied to the metrics you have. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
   ].join('\n\n')
+}
+
+type CachedSummaryPayload = {
+  version: number
+  summary: Awaited<ReturnType<typeof buildUserContextSummary>>
+}
+
+async function loadCachedSummary(
+  supabase = createServiceClient(),
+  userId: string,
+): Promise<Awaited<ReturnType<typeof buildUserContextSummary>> | null> {
+  const { data, error } = await supabase
+    .from('chat_context_cache')
+    .select('summary, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  const updatedAt = new Date(data.updated_at)
+  if (Number.isNaN(updatedAt.getTime())) return null
+  if (Date.now() - updatedAt.getTime() > CACHE_TTL_MS) return null
+
+  const payload = data.summary as CachedSummaryPayload | null
+  if (!payload || payload.version !== CACHE_VERSION || !payload.summary) {
+    return null
+  }
+
+  return payload.summary
+}
+
+async function upsertCachedSummary(
+  supabase = createServiceClient(),
+  userId: string,
+  summary: Awaited<ReturnType<typeof buildUserContextSummary>>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('chat_context_cache')
+    .upsert({
+      user_id: userId,
+      summary: { version: CACHE_VERSION, summary } satisfies CachedSummaryPayload,
+      updated_at: new Date().toISOString(),
+    })
+
+  if (error) throw error
 }

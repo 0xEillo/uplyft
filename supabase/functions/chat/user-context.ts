@@ -1,5 +1,17 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
 import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
+import type {
+  ExercisePercentileResult,
+  MuscleGroupDistribution,
+  StrengthScorePoint,
+  StrengthSeries,
+} from '../_shared/stats.ts'
+import {
+  getExercisePercentile,
+  getMuscleGroupDistribution,
+  getStrengthScoreProgress,
+  getTopExercisesByEstimated1RM,
+} from '../_shared/stats.ts'
 
 export type SupabaseClient = ReturnType<typeof createClient<'public'>>
 
@@ -35,6 +47,23 @@ export interface UserContextSummary {
       spanDays: number
       weightDeltaKg: number | null
       bodyFatDelta: number | null
+    }
+  }
+  strength?: {
+    topByEst1RM?: StrengthSeries[]
+    strengthScore?: StrengthScorePoint[]
+  }
+  balance?: MuscleGroupDistribution | null
+  leaderboard?: {
+    best?: {
+      exerciseName: string
+      percentile: number | null
+      userMax1RM: number | null
+    }
+    weakest?: {
+      exerciseName: string
+      percentile: number | null
+      userMax1RM: number | null
     }
   }
 }
@@ -138,6 +167,30 @@ export async function buildUserContextSummary(
 
   const bodyLogSummary = summarizeBodyLogContext(bodyLogData || [])
 
+  const [topEst1RMSeries, strengthScoreSeries, balanceDistribution] = await Promise.all([
+    getTopExercisesByEstimated1RM(supabase, userId, { limit: 3, daysBack: 120 }),
+    getStrengthScoreProgress(supabase, userId, { daysBack: 120 }),
+    getMuscleGroupDistribution(supabase, userId, { daysBack: 60 }),
+  ])
+
+  const percentileCandidates = topEst1RMSeries.slice(0, 3)
+  const percentileResults: ExercisePercentileResult[] = []
+  for (const series of percentileCandidates) {
+    const result = await getExercisePercentile(supabase, userId, series.exerciseName)
+    if (result && typeof result.percentile === 'number' && result.totalUsers >= 3) {
+      percentileResults.push(result)
+    }
+  }
+
+  const sortedPercentiles = percentileResults
+    .slice()
+    .sort((a, b) => (b.percentile ?? -1) - (a.percentile ?? -1))
+
+  const bestPercentile = sortedPercentiles[0]
+  const weakestPercentile = sortedPercentiles
+    .slice()
+    .sort((a, b) => (a.percentile ?? 101) - (b.percentile ?? 101))[0]
+
   return {
     profile: {
       userTag: profile.user_tag,
@@ -159,6 +212,18 @@ export async function buildUserContextSummary(
       latestBodyLog: bodyLogSummary?.latest,
       bodyLogTrend: bodyLogSummary?.trend,
     },
+    strength: {
+      topByEst1RM: topEst1RMSeries,
+      strengthScore: strengthScoreSeries,
+    },
+    balance: balanceDistribution,
+    leaderboard:
+      bestPercentile || weakestPercentile
+        ? {
+            best: bestPercentile,
+            weakest: weakestPercentile,
+          }
+        : undefined,
   }
 }
 
@@ -200,6 +265,61 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
           .map((e) => `${e.name}: ${e.bestSingle ?? 'N/A'} kg`)
           .join('; '),
     )
+  }
+
+  if (ctx.strength?.topByEst1RM?.length) {
+    const topLiftSummaries = ctx.strength.topByEst1RM.map((lift) => {
+      const lastPoint = lift.series[lift.series.length - 1]
+      if (!lastPoint) return `${lift.exerciseName}: no data`
+      return `${lift.exerciseName}: est1RM=${lastPoint.est1RM.toFixed(1)}kg`
+    })
+    lines.push('Strength (estimated 1RM): ' + topLiftSummaries.join('; '))
+  }
+
+  if (ctx.strength?.strengthScore?.length) {
+    const latestScore = ctx.strength.strengthScore[ctx.strength.strengthScore.length - 1]
+    if (latestScore) {
+      lines.push(`Strength score: ${latestScore.strengthScore} (running sum of best est 1RMs)`)
+    }
+  }
+
+  if (ctx.balance?.distribution?.length) {
+    const topGroups = ctx.balance.distribution.slice(0, 3)
+    const summary = topGroups
+      .map((item) => `${item.muscleGroup}: ${item.percentage}%`)
+      .join('; ')
+    lines.push(`Muscle balance (last 60d): ${summary}`)
+
+    const undertrained = ctx.balance.distribution
+      .filter((item) => item.percentage < 10)
+      .map((item) => item.muscleGroup)
+    if (undertrained.length) {
+      lines.push(`Undertrained groups (<10% volume): ${undertrained.join(', ')}`)
+    }
+  }
+
+  if (ctx.leaderboard?.best) {
+    const best = ctx.leaderboard.best
+    const weakest = ctx.leaderboard.weakest
+    const parts: string[] = []
+    if (best && typeof best.percentile === 'number') {
+      parts.push(
+        `${best.exerciseName}: ${best.percentile.toFixed(1)}th pct (${best.userMax1RM ?? 'N/A'} est 1RM)`,
+      )
+    }
+    if (
+      weakest &&
+      weakest !== best &&
+      typeof weakest.percentile === 'number' &&
+      weakest.percentile < (best?.percentile ?? 101)
+    ) {
+      parts.push(
+        `${weakest.exerciseName}: ${weakest.percentile.toFixed(1)}th pct (${weakest.userMax1RM ?? 'N/A'} est 1RM)`,
+      )
+    }
+    if (parts.length) {
+      lines.push(`Leaderboards: ${parts.join(' | ')}`)
+    }
   }
 
   if (ctx.highlights.latestBodyLog) {
