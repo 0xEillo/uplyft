@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   RefreshControl,
@@ -19,6 +19,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { runOnJS } from 'react-native-reanimated'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import SwipeTutorialOverlay from '@/components/SwipeTutorialOverlay'
 
 type TabType = 'progress' | 'chat'
 
@@ -27,6 +29,11 @@ const SWIPE_EDGE_THRESHOLD = 50 // Minimum X position to start swipe (avoid edge
 const SWIPE_DISTANCE_THRESHOLD = -80 // Minimum horizontal distance for swipe
 const SWIPE_VELOCITY_THRESHOLD = -300 // Minimum velocity to trigger navigation
 
+// Swipe tutorial configuration
+const PROFILE_VISIT_COUNT_KEY = 'profilePageVisitCount'
+const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
+const TUTORIAL_DELAY_MS = 6000
+
 export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
@@ -34,7 +41,9 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('chat')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showTutorial, setShowTutorial] = useState(false)
   const startX = useRef(0)
+  const tutorialTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -49,6 +58,52 @@ export default function ProfileScreen() {
       timestamp: Date.now(),
     })
   }, [trackEvent])
+
+  // Tutorial logic: track visits and show tutorial if needed
+  useFocusEffect(
+    useCallback(() => {
+      const handleTutorialLogic = async () => {
+        try {
+          // Check if user has already visited body log
+          const hasVisitedBodyLog = await AsyncStorage.getItem(HAS_VISITED_BODY_LOG_KEY)
+
+          if (hasVisitedBodyLog === 'true') {
+            return
+          }
+
+          // Get current visit count
+          const visitCountStr = await AsyncStorage.getItem(PROFILE_VISIT_COUNT_KEY)
+          const visitCount = visitCountStr ? parseInt(visitCountStr, 10) : 0
+
+          // Increment visit count
+          const newVisitCount = visitCount + 1
+          await AsyncStorage.setItem(PROFILE_VISIT_COUNT_KEY, newVisitCount.toString())
+
+          // Show tutorial starting from 2nd visit onwards
+          if (newVisitCount >= 2) {
+            tutorialTimerRef.current = setTimeout(() => {
+              setShowTutorial(true)
+            }, TUTORIAL_DELAY_MS)
+          }
+        } catch (error) {
+          console.error('Error handling tutorial logic:', error)
+        }
+      }
+
+      handleTutorialLogic()
+
+      // Cleanup timer when screen loses focus
+      return () => {
+        if (tutorialTimerRef.current) {
+          clearTimeout(tutorialTimerRef.current)
+        }
+      }
+    }, [])
+  )
+
+  const handleTutorialDismiss = useCallback(() => {
+    setShowTutorial(false)
+  }, [])
 
   // Navigation function to be called from gesture handler
   const handleSwipeNavigation = useCallback(() => {
@@ -168,6 +223,9 @@ export default function ProfileScreen() {
           )}
         </View>
       </GestureDetector>
+
+      {/* Tutorial Overlay */}
+      {showTutorial && <SwipeTutorialOverlay onDismiss={handleTutorialDismiss} />}
     </SafeAreaView>
   )
 }

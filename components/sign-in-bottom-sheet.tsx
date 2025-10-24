@@ -212,7 +212,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     appleButton: {
       height: 56,
       backgroundColor: '#000000',
-      borderRadius: 12,
+      borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -228,7 +228,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.inputBackground,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 12,
+      borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -242,7 +242,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     emailButton: {
       height: 56,
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',

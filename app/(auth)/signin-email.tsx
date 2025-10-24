@@ -162,7 +162,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 64,
       borderWidth: 2,
       borderColor: colors.border,
-      borderRadius: 12,
+      borderRadius: 32,
       paddingHorizontal: 20,
       fontSize: 20,
       fontWeight: '600',
@@ -177,7 +177,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     nextButton: {
       height: 56,
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
     },

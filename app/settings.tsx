@@ -1037,10 +1037,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     modalCancelButton: {
       flex: 1,
-      padding: 16,
-      borderRadius: 12,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: colors.backgroundLight,
       alignItems: 'center',
+      justifyContent: 'center',
     },
     modalCancelText: {
       fontSize: 16,
@@ -1049,10 +1050,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     modalSaveButton: {
       flex: 1,
-      padding: 16,
-      borderRadius: 12,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: colors.primary,
       alignItems: 'center',
+      justifyContent: 'center',
     },
     modalSaveButtonDisabled: {
       opacity: 0.5,

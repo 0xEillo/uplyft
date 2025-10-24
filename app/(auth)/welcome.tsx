@@ -231,7 +231,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     getStartedButton: {
       height: 56,
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
     },

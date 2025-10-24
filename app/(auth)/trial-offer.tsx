@@ -825,7 +825,7 @@ function createStyles(colors: any) {
     startButton: {
       height: 56,
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',

@@ -27,6 +27,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const IMAGE_SPACING = 4
@@ -34,6 +35,9 @@ const NUM_COLUMNS = 2
 const GRID_PADDING = 16
 const IMAGE_SIZE =
   (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_SPACING) / NUM_COLUMNS
+
+// Tutorial storage key (must match the one in profile page)
+const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
 
 // Format date like Google Photos
 function formatSectionDate(dateString: string): string {
@@ -174,6 +178,19 @@ export default function BodyLogScreen() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty deps - only run on mount. translateX is a stable SharedValue
+
+  // Mark tutorial as completed when user visits body log for the first time
+  useEffect(() => {
+    const markTutorialCompleted = async () => {
+      try {
+        await AsyncStorage.setItem(HAS_VISITED_BODY_LOG_KEY, 'true')
+      } catch (error) {
+        console.error('Error marking tutorial as completed:', error)
+      }
+    }
+
+    markTutorialCompleted()
+  }, [])
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -471,6 +488,18 @@ export default function BodyLogScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      ) : sections.length === 0 ? (
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyStateContent}>
+            <View style={styles.emptyStateIconContainer}>
+              <Ionicons name="body-outline" size={80} color={colors.textSecondary} />
+            </View>
+            <Text style={styles.emptyStateTitle}>No progress photos yet</Text>
+            <Text style={styles.emptyStateDescription}>
+              Track your fitness journey with progress photos.
+            </Text>
+          </View>
+        </View>
       ) : (
         <SectionList
           sections={sections}
@@ -567,6 +596,42 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 40,
+      paddingBottom: 100,
+    },
+    emptyStateContent: {
+      alignItems: 'center',
+      maxWidth: 320,
+    },
+    emptyStateIconContainer: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: colors.backgroundLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    emptyStateTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 12,
+      textAlign: 'center',
+      letterSpacing: -0.5,
+    },
+    emptyStateDescription: {
+      fontSize: 15,
+      fontWeight: '400',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      letterSpacing: -0.2,
     },
     gridContent: {
       paddingHorizontal: GRID_PADDING,

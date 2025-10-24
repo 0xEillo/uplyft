@@ -392,7 +392,7 @@ const createStyles = (
     genderOption: {
       paddingVertical: 14,
       paddingHorizontal: 16,
-      borderRadius: 12,
+      borderRadius: 24,
       borderWidth: 2,
       borderColor: colors.border,
       backgroundColor: colors.white,
@@ -416,7 +416,7 @@ const createStyles = (
     goalOption: {
       paddingVertical: 14,
       paddingHorizontal: 16,
-      borderRadius: 12,
+      borderRadius: 24,
       borderWidth: 2,
       borderColor: colors.border,
       backgroundColor: colors.white,

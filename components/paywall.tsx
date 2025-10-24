@@ -298,7 +298,7 @@ function createStyles(colors: any) {
     subscribeButton: {
       height: 56,
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -309,6 +309,7 @@ function createStyles(colors: any) {
     },
     restoreButton: {
       height: 48,
+      borderRadius: 24,
       justifyContent: 'center',
       alignItems: 'center',
     },

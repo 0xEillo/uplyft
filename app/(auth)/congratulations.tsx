@@ -228,7 +228,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: '#10B98120',
       paddingHorizontal: 20,
       paddingVertical: 16,
-      borderRadius: 12,
+      borderRadius: 24,
       marginBottom: 32,
       borderLeftWidth: 4,
       borderLeftColor: '#10B981',
@@ -252,7 +252,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.primary + '15',
       paddingHorizontal: 20,
       paddingVertical: 14,
-      borderRadius: 12,
+      borderRadius: 24,
     },
     achievementText: {
       fontSize: 16,
@@ -280,7 +280,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     continueButton: {
       height: 56,
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
