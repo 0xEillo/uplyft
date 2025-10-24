@@ -1003,51 +1003,51 @@ export const database = {
 
     async getExercisePercentile(userId: string, exerciseId: string) {
       try {
-        // Get user's max 1RM for this exercise
-        const userMax1RMs = await this.getUserMax1RMs(userId)
-        const userExercise = userMax1RMs.find(
-          (ex) => ex.exerciseId === exerciseId,
-        )
+        const { data, error } = await supabase.rpc('get_exercise_percentiles', {
+          p_exercise_id: exerciseId,
+          p_user_id: userId,
+        })
 
-        if (!userExercise) {
-          return null // User hasn't performed this exercise
-        }
+        if (error) throw error
 
-        // Get all users' max 1RMs for this exercise
-        const allUserMax1RMs = await this.getAllUsersMax1RMs(exerciseId)
+        const row = Array.isArray(data) ? data[0] : data
 
-        if (allUserMax1RMs.length === 0) {
-          return {
-            percentile: 100,
-            userMax1RM: userExercise.max1RM,
-            totalUsers: 0,
-          }
-        }
+        if (!row) return null
 
-        // If only one user (you), you're at 100th percentile
-        if (allUserMax1RMs.length === 1) {
-          return {
-            percentile: 100,
-            userMax1RM: userExercise.max1RM,
-            totalUsers: 1,
-            exerciseName: userExercise.exerciseName,
-          }
-        }
+        const percentile =
+          typeof row.overall_percentile === 'number'
+            ? Math.round(row.overall_percentile)
+            : null
 
-        // Calculate percentile: percentage of users with lower or equal 1RM
-        const usersWithLowerOrEqual1RM = allUserMax1RMs.filter(
-          (max1RM) => max1RM <= userExercise.max1RM,
-        ).length
-
-        const percentile = Math.round(
-          (usersWithLowerOrEqual1RM / allUserMax1RMs.length) * 100,
-        )
+        const userMax1RM =
+          typeof row.user_est_1rm === 'number'
+            ? Math.round(row.user_est_1rm)
+            : null
 
         return {
           percentile,
-          userMax1RM: userExercise.max1RM,
-          totalUsers: allUserMax1RMs.length,
-          exerciseName: userExercise.exerciseName,
+          userMax1RM,
+          totalUsers:
+            typeof row.overall_total_users === 'number'
+              ? row.overall_total_users
+              : 0,
+          exerciseName: row.exercise_name,
+          genderPercentile:
+            typeof row.gender_percentile === 'number'
+              ? Math.round(row.gender_percentile)
+              : null,
+          genderWeightPercentile:
+            typeof row.gender_weight_percentile === 'number'
+              ? Math.round(row.gender_weight_percentile)
+              : null,
+          weightBucketStart:
+            typeof row.weight_bucket_start === 'number'
+              ? row.weight_bucket_start
+              : null,
+          weightBucketEnd:
+            typeof row.weight_bucket_end === 'number'
+              ? row.weight_bucket_end
+              : null,
         }
       } catch (error) {
         console.error('Error calculating exercise percentile:', error)
@@ -1081,6 +1081,11 @@ export const database = {
               userMax1RM: exercise.max1RM,
               percentile: percentile?.percentile || 0,
               totalUsers: percentile?.totalUsers || 0,
+              genderPercentile: percentile?.genderPercentile ?? null,
+              genderWeightPercentile:
+                percentile?.genderWeightPercentile ?? null,
+              weightBucketStart: percentile?.weightBucketStart ?? null,
+              weightBucketEnd: percentile?.weightBucketEnd ?? null,
             }
           }),
         )

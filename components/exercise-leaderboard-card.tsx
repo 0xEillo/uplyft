@@ -20,6 +20,11 @@ interface LeaderboardRanking {
   userMax1RM: number
   percentile: number
   totalUsers: number
+  gender?: string | null
+  genderPercentile?: number | null
+  genderWeightPercentile?: number | null
+  weightBucketStart?: number | null
+  weightBucketEnd?: number | null
 }
 
 interface ExerciseLeaderboardCardProps {
@@ -97,7 +102,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             <View>
               <Text style={styles.title}>Leaderboard Rankings</Text>
               <Text style={styles.subtitle}>
-                Your percentile among all users
+                Your ranking on key lifts
               </Text>
             </View>
           </View>
@@ -120,7 +125,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             <View>
               <Text style={styles.title}>Leaderboard Rankings</Text>
               <Text style={styles.subtitle}>
-                Your percentile among all users
+                Your ranking on key lifts
               </Text>
             </View>
           </View>
@@ -151,7 +156,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
           </View>
           <View>
             <Text style={styles.title}>Leaderboard Rankings</Text>
-            <Text style={styles.subtitle}>Your percentile among all users</Text>
+            <Text style={styles.subtitle}>Your ranking on key lifts</Text>
           </View>
         </View>
         {shouldShowExpand && (
@@ -241,25 +246,65 @@ function RankingRow({
   isCompact = false,
 }: RankingRowProps) {
   const { formatWeight } = useWeightUnits()
-  const tierInfo = resolveTierInfo(ranking.percentile, colors)
   const styles = createStyles(colors)
 
-  // Format the animated percentile value
-  const [displayPercentile, setDisplayPercentile] = useState(
-    `${ranking.percentile}th`,
+  // Determine which percentile to use as primary (gender first, fallback to overall)
+  const primaryPercentile = ranking.genderPercentile ?? ranking.percentile
+  const hasWeightClass = ranking.genderWeightPercentile != null
+
+  const tierInfo = resolveTierInfo(primaryPercentile, colors)
+
+  // Animation state for primary bar
+  const [displayPrimaryPercentile, setDisplayPrimaryPercentile] = useState(
+    `${primaryPercentile}th`,
   )
 
-  useEffect(() => {
-    // Set initial value
-    setDisplayPercentile(`${ranking.percentile}th`)
+  // Animation state for weight class bar (if available)
+  const [displayWeightPercentile, setDisplayWeightPercentile] = useState(
+    hasWeightClass ? `${ranking.genderWeightPercentile}th` : '',
+  )
 
-    const listener = animatedValue.addListener(({ value }) => {
+  // Weight class expansion state
+  const [isWeightClassExpanded, setIsWeightClassExpanded] = useState(false)
+
+  // Create animated value for weight class bar
+  const [weightAnimatedValue] = useState(() => new Animated.Value(0))
+
+  useEffect(() => {
+    // Set initial values
+    setDisplayPrimaryPercentile(`${primaryPercentile}th`)
+    if (hasWeightClass) {
+      setDisplayWeightPercentile(`${ranking.genderWeightPercentile}th`)
+    }
+
+    // Animate primary bar
+    const primaryListener = animatedValue.addListener(({ value }) => {
       const roundedValue = Math.round(value)
-      setDisplayPercentile(`${roundedValue}th`)
+      setDisplayPrimaryPercentile(`${roundedValue}th`)
     })
 
-    return () => animatedValue.removeListener(listener)
-  }, [animatedValue, ranking.percentile])
+    // Animate weight class bar with slight stagger
+    if (hasWeightClass) {
+      Animated.timing(weightAnimatedValue, {
+        toValue: ranking.genderWeightPercentile!,
+        duration: 1000,
+        delay: 50,
+        useNativeDriver: false,
+      }).start()
+
+      const weightListener = weightAnimatedValue.addListener(({ value }) => {
+        const roundedValue = Math.round(value)
+        setDisplayWeightPercentile(`${roundedValue}th`)
+      })
+
+      return () => {
+        animatedValue.removeListener(primaryListener)
+        weightAnimatedValue.removeListener(weightListener)
+      }
+    }
+
+    return () => animatedValue.removeListener(primaryListener)
+  }, [animatedValue, primaryPercentile, hasWeightClass, ranking.genderWeightPercentile, weightAnimatedValue])
 
   return (
     <View style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}>
@@ -277,7 +322,7 @@ function RankingRow({
           </Text>
         </View>
 
-        {/* Progress Bar */}
+        {/* Primary Progress Bar (Gender or Overall) */}
         <View style={styles.progressContainer}>
           <View style={styles.progressTrack}>
             <Animated.View
@@ -301,9 +346,80 @@ function RankingRow({
               { color: tierInfo.color },
             ]}
           >
-            {displayPercentile}
+            {displayPrimaryPercentile}
           </Text>
         </View>
+
+        {/* Secondary Progress Bar (Weight Class) */}
+        {hasWeightClass && (
+          <View style={[styles.progressContainer, styles.secondaryProgressContainer]}>
+            <View style={[styles.progressTrack, styles.secondaryProgressTrack]}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  styles.secondaryProgressFill,
+                  {
+                    width: weightAnimatedValue.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0%', '100%'],
+                      extrapolate: 'clamp',
+                    }),
+                    backgroundColor: tierInfo.color,
+                  },
+                ]}
+              />
+            </View>
+            <View style={styles.secondaryPercentileContainer}>
+              <Text
+                style={[
+                  styles.percentileText,
+                  styles.secondaryPercentileText,
+                  { color: tierInfo.color },
+                ]}
+              >
+                {displayWeightPercentile}
+              </Text>
+              {ranking.weightBucketStart != null && ranking.weightBucketEnd != null && (
+                <TouchableOpacity
+                  style={styles.weightClassBadge}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    setIsWeightClassExpanded(!isWeightClassExpanded)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="scale-outline"
+                    size={10}
+                    color={colors.textSecondary}
+                    style={styles.weightClassIcon}
+                  />
+                  <Text style={styles.weightBucketText}>
+                    BW
+                  </Text>
+                  <Ionicons
+                    name={isWeightClassExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={10}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Weight Class Details Card */}
+        {hasWeightClass && isWeightClassExpanded && ranking.weightBucketStart != null && ranking.weightBucketEnd != null && (
+          <View style={styles.weightClassDetailsCard}>
+            <Text style={styles.weightClassDetailsLabel}>Body Weight Class</Text>
+            <Text style={styles.weightClassDetailsValue}>
+              {formatWeight(ranking.weightBucketStart, { maximumFractionDigits: 0 })} - {formatWeight(ranking.weightBucketEnd, { maximumFractionDigits: 0 })}
+            </Text>
+            <Text style={styles.weightClassDetailsDescription}>
+              Your ranking among users in this weight range
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -442,12 +558,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       gap: 12,
     },
+    secondaryProgressContainer: {
+      marginTop: 8,
+    },
     progressTrack: {
       flex: 1,
       height: 8,
       backgroundColor: colors.backgroundLight,
       borderRadius: 4,
       overflow: 'hidden',
+    },
+    secondaryProgressTrack: {
+      height: 6,
     },
     progressFill: {
       height: '100%',
@@ -458,11 +580,68 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowRadius: 2,
       position: 'relative',
     },
+    secondaryProgressFill: {
+      opacity: 0.85,
+    },
     percentileText: {
       fontSize: 14,
       fontWeight: '700',
       minWidth: 40,
       textAlign: 'right',
+    },
+    secondaryPercentileText: {
+      fontSize: 13,
+      fontWeight: '600',
+      minWidth: 'auto',
+    },
+    secondaryPercentileContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    weightClassBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 3,
+    },
+    weightClassIcon: {
+      marginTop: 1,
+    },
+    weightBucketText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    weightClassDetailsCard: {
+      marginTop: 8,
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 8,
+      padding: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+    },
+    weightClassDetailsLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    },
+    weightClassDetailsValue: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    weightClassDetailsDescription: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 16,
     },
     firstPercentileText: {
       fontSize: 16,

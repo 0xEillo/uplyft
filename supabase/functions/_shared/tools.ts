@@ -193,80 +193,118 @@ export async function handleSearchExercises(
   )
 
   const supabase = createServiceClient()
-  const normalized = sanitizeExerciseName(args.query)
   const limit = args.limit ?? 10
 
-  let candidates: z.infer<typeof exerciseCandidate>[] = []
+  const candidateMap = new Map<string, z.infer<typeof exerciseCandidate>>()
 
-  // Try vector search first
+  const addCandidates = (rows: any[], source: string) => {
+    for (const row of rows) {
+      const candidate: z.infer<typeof exerciseCandidate> = {
+        id: row.id,
+        name: row.name,
+        similarity: typeof row.similarity === 'number' ? row.similarity : 0,
+        aliases: row.aliases || [],
+        muscle_group: row.muscle_group,
+        type: row.type,
+        equipment: row.equipment,
+      }
+
+      const existing = candidateMap.get(candidate.id)
+      if (!existing || candidate.similarity > existing.similarity) {
+        candidateMap.set(candidate.id, candidate)
+      }
+    }
+
+    if (rows.length > 0) {
+      const best = rows[0]
+      const formattedBest = Number(
+        (best.similarity?.toFixed?.(3) ?? best.similarity) as number,
+      )
+      console.log(
+        `[Tool: searchExercises] ${source} found ${rows.length} results (best=${formattedBest})`,
+      )
+    } else {
+      console.log(`[Tool: searchExercises] ${source} found no results`)
+    }
+  }
+
+  // 1. Trigram search (name + aliases)
+  let needsVectorSearch = true
+  let trigramRows: any[] = []
   try {
-    const queryEmbedding = await computeQueryEmbedding(args.query)
-
-    const { data, error } = await supabase.rpc('match_exercises', {
-      query_embedding: queryEmbedding,
+    const { data, error } = await supabase.rpc('match_exercises_trgm', {
+      search_query: args.query,
       match_count: limit,
+      similarity_threshold: 0.35,
     })
 
     if (error) throw error
 
-    candidates = (data || []).map((row: any) => ({
+    trigramRows = (data || []).map((row: any) => ({
       id: row.id,
       name: row.name,
-      similarity: typeof row.similarity === 'number' ? row.similarity : 0,
       aliases: row.aliases || [],
       muscle_group: row.muscle_group,
       type: row.type,
       equipment: row.equipment,
+      similarity:
+        typeof row.best_similarity === 'number' ? row.best_similarity : 0,
     }))
 
-    console.log(
-      `[Tool: searchExercises] Vector search found ${candidates.length} results`,
-    )
+    addCandidates(trigramRows, 'Trigram search')
+
+    const bestTrigram = trigramRows[0]?.similarity ?? 0
+    if (bestTrigram >= 0.6 || trigramRows.length >= limit) {
+      needsVectorSearch = false
+    }
   } catch (error) {
-    console.warn(
-      '[Tool: searchExercises] Vector search failed, trying alias fallback:',
-      error,
-    )
+    console.warn('[Tool: searchExercises] Trigram search failed:', error)
   }
 
-  // Fallback to text search if vector search fails or returns no results
-  if (candidates.length === 0) {
-    const [nameMatches, aliasMatches] = await Promise.all([
-      supabase
-        .from('exercises')
-        .select('*')
-        .ilike('name', `%${normalized}%`)
-        .limit(limit),
-      supabase
-        .from('exercises')
-        .select('*')
-        .contains('aliases', [normalized])
-        .limit(limit),
-    ])
+  // 2. Vector search fallback when trigram confidence is low
+  if (needsVectorSearch) {
+    try {
+      const queryEmbedding = await computeQueryEmbedding(args.query)
 
-    if (nameMatches.error) throw nameMatches.error
-    if (aliasMatches.error) throw aliasMatches.error
+      const { data, error } = await supabase.rpc('match_exercises', {
+        query_embedding: queryEmbedding,
+        match_count: limit,
+      })
 
-    const combined = [...(nameMatches.data || []), ...(aliasMatches.data || [])]
-    const uniqueMap = new Map()
+      if (error) throw error
 
-    combined.forEach((exercise: any) => {
-      if (!uniqueMap.has(exercise.id)) {
-        uniqueMap.set(exercise.id, {
-          id: exercise.id,
-          name: exercise.name,
-          similarity: 0.55, // Fallback similarity score
-          aliases: exercise.aliases || [],
-          muscle_group: exercise.muscle_group,
-          type: exercise.type,
-          equipment: exercise.equipment,
-        })
-      }
-    })
+      const vectorRows = (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        aliases: row.aliases || [],
+        muscle_group: row.muscle_group,
+        type: row.type,
+        equipment: row.equipment,
+        similarity: typeof row.similarity === 'number' ? row.similarity : 0,
+      }))
 
-    candidates = Array.from(uniqueMap.values()).slice(0, limit)
+      addCandidates(vectorRows, 'Vector search')
+    } catch (error) {
+      console.warn('[Tool: searchExercises] Vector search failed:', error)
+    }
+  }
+
+  const candidates = Array.from(candidateMap.values())
+    .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0))
+    .slice(0, limit)
+
+  if (candidates.length > 0) {
+    const preview = candidates.slice(0, 5).map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      similarity: Number(
+        candidate.similarity?.toFixed?.(3) ?? candidate.similarity,
+      ),
+      aliases: candidate.aliases?.slice(0, 5) ?? [],
+    }))
     console.log(
-      `[Tool: searchExercises] Alias fallback found ${candidates.length} results`,
+      `[Tool: searchExercises] Candidates preview (${candidates.length} total):`,
+      JSON.stringify(preview),
     )
   }
 

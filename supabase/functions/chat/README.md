@@ -11,7 +11,7 @@ Environment variables required:
 
 ## User summary + tooling
 
-- The function builds a cached user summary (10 min TTL) persisted in `chat_context_cache`.
+- The function builds a user summary on demand for each request (no database cache).
 - Summary includes:
   - Profile basics, training volume, session range
   - Top lifts (estimated 1RM + best singles)

@@ -59,11 +59,15 @@ export interface UserContextSummary {
       exerciseName: string
       percentile: number | null
       userMax1RM: number | null
+      genderPercentile?: number | null
+      genderWeightPercentile?: number | null
     }
     weakest?: {
       exerciseName: string
       percentile: number | null
       userMax1RM: number | null
+      genderPercentile?: number | null
+      genderWeightPercentile?: number | null
     }
   }
 }
@@ -220,8 +224,26 @@ export async function buildUserContextSummary(
     leaderboard:
       bestPercentile || weakestPercentile
         ? {
-            best: bestPercentile,
-            weakest: weakestPercentile,
+            best: bestPercentile
+              ? {
+                  exerciseName: bestPercentile.exerciseName,
+                  percentile: bestPercentile.percentile,
+                  userMax1RM: bestPercentile.userMax1RM,
+                  genderPercentile: bestPercentile.genderPercentile ?? null,
+                  genderWeightPercentile:
+                    bestPercentile.genderWeightPercentile ?? null,
+                }
+              : undefined,
+            weakest: weakestPercentile
+              ? {
+                  exerciseName: weakestPercentile.exerciseName,
+                  percentile: weakestPercentile.percentile,
+                  userMax1RM: weakestPercentile.userMax1RM,
+                  genderPercentile: weakestPercentile.genderPercentile ?? null,
+                  genderWeightPercentile:
+                    weakestPercentile.genderWeightPercentile ?? null,
+                }
+              : undefined,
           }
         : undefined,
   }

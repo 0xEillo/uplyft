@@ -519,6 +519,29 @@ etc.`
             }
           }
 
+          if (toolName === 'searchExercises' && toolResult?.candidates) {
+            const preview = toolResult.candidates
+              .slice(0, 5)
+              .map((candidate: any) => ({
+                id: candidate.id,
+                name: candidate.name,
+                similarity: Number(
+                  candidate.similarity?.toFixed?.(3) ?? candidate.similarity,
+                ),
+                muscle_group: candidate.muscle_group,
+                type: candidate.type,
+                equipment: candidate.equipment,
+                aliases: Array.isArray(candidate.aliases)
+                  ? candidate.aliases.slice(0, 5)
+                  : candidate.aliases,
+              }))
+            console.log(
+              `[Agent] searchExercises results preview (${
+                toolResult.candidates.length
+              } total): ${JSON.stringify(preview)}`,
+            )
+          }
+
           // Add tool result to conversation
           messages.push({
             role: 'tool',

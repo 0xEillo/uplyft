@@ -55,6 +55,13 @@ export interface ExercisePercentileResult {
   percentile: number | null
   totalUsers: number
   userMax1RM: number | null
+  gender?: string | null
+  genderPercentile?: number | null
+  genderTotalUsers?: number
+  weightBucketStart?: number | null
+  weightBucketEnd?: number | null
+  genderWeightPercentile?: number | null
+  genderWeightTotalUsers?: number
 }
 
 const DEFAULT_MAX_SESSIONS = 250
@@ -433,31 +440,11 @@ export async function getExercisePercentile(
   if (exerciseError) throw exerciseError
   if (!exercise) return null
 
-  const { data: userRow, error: userRowError } = await supabase
-    .from('exercise_user_1rm')
-    .select('est_1rm')
-    .eq('exercise_id', exercise.id)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (userRowError) throw userRowError
-  const userEst1RM = userRow?.est_1rm ?? null
-
-  if (userEst1RM === null) {
-    return {
-      exerciseId: exercise.id,
-      exerciseName: exercise.name,
-      percentile: null,
-      totalUsers: 0,
-      userMax1RM: null,
-    }
-  }
-
   const { data: percentileData, error: percentileError } = await supabase.rpc(
-    'calculate_exercise_percentile',
+    'get_exercise_percentiles',
     {
       exercise_id: exercise.id,
-      user_est_1rm: userEst1RM,
+      user_id: userId,
     },
   )
 
@@ -467,18 +454,68 @@ export async function getExercisePercentile(
     ? percentileData[0]
     : percentileData
 
+  if (!resultRow) {
+    return {
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      percentile: null,
+      totalUsers: 0,
+      userMax1RM: null,
+      gender: null,
+      genderPercentile: null,
+      genderTotalUsers: 0,
+      weightBucketStart: null,
+      weightBucketEnd: null,
+      genderWeightPercentile: null,
+      genderWeightTotalUsers: 0,
+    }
+  }
+
+  const userEst1RM =
+    typeof resultRow.user_est_1rm === 'number'
+      ? Number(resultRow.user_est_1rm)
+      : null
+
   return {
-    exerciseId: exercise.id,
-    exerciseName: exercise.name,
+    exerciseId: resultRow.exercise_id ?? exercise.id,
+    exerciseName: resultRow.exercise_name ?? exercise.name,
     percentile:
-      resultRow && typeof resultRow.percentile === 'number'
-        ? Number(resultRow.percentile)
+      typeof resultRow.overall_percentile === 'number'
+        ? Number(resultRow.overall_percentile)
         : null,
     totalUsers:
-      resultRow && typeof resultRow.total_users === 'number'
-        ? resultRow.total_users
+      typeof resultRow.overall_total_users === 'number'
+        ? resultRow.overall_total_users
         : 0,
     userMax1RM:
       typeof userEst1RM === 'number' ? Math.round(userEst1RM * 10) / 10 : null,
+    gender:
+      typeof resultRow.gender === 'string' || resultRow.gender === null
+        ? resultRow.gender
+        : null,
+    genderPercentile:
+      typeof resultRow.gender_percentile === 'number'
+        ? Number(resultRow.gender_percentile)
+        : null,
+    genderTotalUsers:
+      typeof resultRow.gender_total_users === 'number'
+        ? resultRow.gender_total_users
+        : 0,
+    weightBucketStart:
+      typeof resultRow.weight_bucket_start === 'number'
+        ? resultRow.weight_bucket_start
+        : null,
+    weightBucketEnd:
+      typeof resultRow.weight_bucket_end === 'number'
+        ? resultRow.weight_bucket_end
+        : null,
+    genderWeightPercentile:
+      typeof resultRow.gender_weight_percentile === 'number'
+        ? Number(resultRow.gender_weight_percentile)
+        : null,
+    genderWeightTotalUsers:
+      typeof resultRow.gender_weight_total_users === 'number'
+        ? resultRow.gender_weight_total_users
+        : 0,
   }
 }
