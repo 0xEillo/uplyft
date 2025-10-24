@@ -19,6 +19,7 @@ import { PostsProvider } from '@/contexts/posts-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
+import { LoadingScreen } from '@/components/loading-screen'
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
@@ -55,6 +56,7 @@ function RootLayoutNav() {
         <Slot />
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      {isLoading && <LoadingScreen />}
     </>
   )
 }
