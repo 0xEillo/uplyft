@@ -55,11 +55,12 @@ module.exports = {
       [
         'expo-splash-screen',
         {
-          image: './llm/repai-logo-white.png',
+          image: './llm/repai-logo-black.png',
           imageWidth: 200,
           resizeMode: 'contain',
           backgroundColor: '#ffffff',
           dark: {
+            image: './llm/repai-logo-white.png',
             backgroundColor: '#000000',
           },
         },
