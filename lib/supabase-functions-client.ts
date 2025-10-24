@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
  * This is constructed from the Supabase project URL.
  */
 export function getSupabaseFunctionBaseUrl(): string {
-  const projectUrl = supabase.supabaseUrl
+  const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
   if (!projectUrl) {
     throw new Error('EXPO_PUBLIC_SUPABASE_URL is not configured')
   }
