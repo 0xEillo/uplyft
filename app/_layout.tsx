@@ -7,11 +7,12 @@ import Constants from 'expo-constants'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { PostHogProvider } from 'posthog-react-native'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { NotificationProvider } from '@/contexts/notification-context'
@@ -28,12 +29,17 @@ function RootLayoutNav() {
   const { isDark } = useTheme()
   const { trackEvent } = useAnalytics()
 
+  const hasTrackedAppOpen = useRef(false)
+
   useEffect(() => {
-    // Track initial app open once when layout mounts
-    trackEvent('App Open', {
-      timestamp: Date.now(),
-      segment: segments[0] ?? 'unknown',
-    })
+    // Track initial app open once per session
+    if (!hasTrackedAppOpen.current) {
+      trackEvent(AnalyticsEvents.APP_OPEN, {
+        timestamp: Date.now(),
+        segment: segments[0] ?? 'unknown',
+      })
+      hasTrackedAppOpen.current = true
+    }
   }, [trackEvent, segments])
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   COMMITMENTS,
   GENDERS,
@@ -119,7 +120,7 @@ export default function OnboardingScreen() {
   }, [step, fadeAnim, slideAnim, progressDotAnims])
 
   const handleNext = () => {
-    trackEvent('Onboarding Step Viewed', {
+    trackEvent(AnalyticsEvents.ONBOARDING_STEP_COMPLETED, {
       step,
     })
 
@@ -179,11 +180,16 @@ export default function OnboardingScreen() {
         },
       })
 
-      trackEvent('Onboarding Completed', {
+      trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED, {
         name: data.name,
         goal: data.goal,
         age,
         gender: data.gender,
+        height: data.height,
+        weight: weightInKg,
+        commitment: data.commitment,
+        training_years: data.training_years,
+        bio: data.bio,
       })
     }
   }

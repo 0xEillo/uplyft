@@ -1,5 +1,6 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { NotificationBadge } from '@/components/notification-badge'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
@@ -248,7 +249,7 @@ export default function FeedScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      trackEvent('Feed Viewed', {
+      trackEvent(AnalyticsEvents.FEED_VIEWED, {
         timestamp: Date.now(),
         workoutCount: workouts.length,
       })
@@ -334,17 +335,15 @@ export default function FeedScreen() {
                     )
                     setDeletingWorkoutId(null)
 
-                    trackEvent('Workout Create Saved', {
-                      workoutId: workout.id,
-                      action: 'delete_confirmed',
+                    trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
+                      workout_id: workout.id,
                     })
                   } else {
                     // Mark for deletion to trigger exit animation
                     setDeletingWorkoutId(workout.id)
 
-                    trackEvent('Workout Create Saved', {
-                      workoutId: workout.id,
-                      action: 'delete_requested',
+                    trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
+                      workout_id: workout.id,
                     })
                   }
                 }}

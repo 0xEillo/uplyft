@@ -1,5 +1,6 @@
 import { ImagePickerModal } from '@/components/ImagePickerModal'
 import { Paywall } from '@/components/paywall'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -249,7 +250,8 @@ export default function CreatePostScreen() {
       // Blur inputs immediately on focus
       blurInputs()
 
-      trackEvent('Workout Create Started', {
+      trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
+        mode: 'text',
         hasDraft: Boolean(latestNotes.current.trim()),
         hasTitle: Boolean(latestTitle.current.trim()),
       })
@@ -360,7 +362,7 @@ export default function CreatePostScreen() {
           // Hide after 2 seconds
           setTimeout(() => setShowDraftSaved(false), 2000)
 
-          trackEvent('Workout Create Saved', {
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED, {
             length: notes.trim().length,
             hasTitle: Boolean(workoutTitle.trim()),
           })
@@ -497,8 +499,7 @@ export default function CreatePostScreen() {
         }),
       )
 
-      trackEvent('Workout Create Saved', {
-        status: 'pending_saved',
+      trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
         hasTitle: Boolean(workoutTitle.trim()),
         length: notes.trim().length,
       })
@@ -566,7 +567,7 @@ export default function CreatePostScreen() {
     // Check if user is pro member
     if (!isProMember) {
       setShowPaywall(true)
-      trackEvent('Paywall Shown', {
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'workout_logging',
       })
       return
@@ -627,7 +628,7 @@ export default function CreatePostScreen() {
     // Not a first-time user, submit directly
     await submitWorkout()
 
-    trackEvent('Workout Create Submitted', {
+    trackEvent(AnalyticsEvents.WORKOUT_CREATE_SUBMITTED, {
       hasTitle: Boolean(workoutTitle.trim()),
       length: notes.trim().length,
     })

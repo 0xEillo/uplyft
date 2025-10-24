@@ -1,4 +1,5 @@
 import { ScreenHeader } from '@/components/screen-header'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -50,7 +51,7 @@ export default function CreateSpeechScreen() {
       })
     })()
 
-    trackEvent('Workout Create Started', {
+    trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
       mode: 'speech',
     })
   }, [trackEvent])
@@ -59,7 +60,7 @@ export default function CreateSpeechScreen() {
     // Check if user is pro member
     if (!isProMember) {
       setShowPaywall(true)
-      trackEvent('Paywall Shown', {
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'voice_logging',
       })
       return
@@ -69,7 +70,7 @@ export default function CreateSpeechScreen() {
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
 
-      trackEvent('Workout Create Started', {
+      trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
         mode: 'speech_recording',
       })
     } catch (error) {
@@ -145,7 +146,7 @@ export default function CreateSpeechScreen() {
         try {
           await database.workoutSessions.create(user.id, workout, text)
 
-          trackEvent('Workout Create Submitted', {
+          trackEvent(AnalyticsEvents.WORKOUT_CREATE_SUBMITTED, {
             mode: 'speech',
             exercises: workout?.exercises?.length ?? 0,
           })
@@ -188,8 +189,8 @@ export default function CreateSpeechScreen() {
     }
     router.back()
 
-    trackEvent('Workout Create Saved', {
-      mode: 'speech_cancelled',
+    trackEvent(AnalyticsEvents.WORKOUT_CREATION_CANCELLED, {
+      mode: 'speech',
       isRecording: recorderState.isRecording,
     })
   }

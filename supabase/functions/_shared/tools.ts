@@ -80,7 +80,8 @@ export const searchExercisesTool = {
       properties: {
         query: {
           type: 'string',
-          description: 'The exercise name to search for (e.g., "bench press", "squat")',
+          description:
+            'The exercise name to search for (e.g., "bench press", "squat")',
         },
         limit: {
           type: 'number',
@@ -125,7 +126,8 @@ export const createExerciseTool = {
         type: {
           type: 'string',
           enum: ['compound', 'isolation'],
-          description: 'Exercise type (compound = multi-joint, isolation = single muscle)',
+          description:
+            'Exercise type (compound = multi-joint, isolation = single muscle)',
         },
         equipment: {
           type: 'string',
@@ -186,7 +188,9 @@ async function computeQueryEmbedding(query: string): Promise<number[]> {
 export async function handleSearchExercises(
   args: z.infer<typeof searchExercisesInput>,
 ): Promise<z.infer<typeof searchExercisesOutput>> {
-  console.log(`[Tool: searchExercises] query="${args.query}", limit=${args.limit}`)
+  console.log(
+    `[Tool: searchExercises] query="${args.query}", limit=${args.limit}`,
+  )
 
   const supabase = createServiceClient()
   const normalized = sanitizeExerciseName(args.query)
@@ -215,16 +219,29 @@ export async function handleSearchExercises(
       equipment: row.equipment,
     }))
 
-    console.log(`[Tool: searchExercises] Vector search found ${candidates.length} results`)
+    console.log(
+      `[Tool: searchExercises] Vector search found ${candidates.length} results`,
+    )
   } catch (error) {
-    console.warn('[Tool: searchExercises] Vector search failed, trying alias fallback:', error)
+    console.warn(
+      '[Tool: searchExercises] Vector search failed, trying alias fallback:',
+      error,
+    )
   }
 
   // Fallback to text search if vector search fails or returns no results
   if (candidates.length === 0) {
     const [nameMatches, aliasMatches] = await Promise.all([
-      supabase.from('exercises').select('*').ilike('name', `%${normalized}%`).limit(limit),
-      supabase.from('exercises').select('*').contains('aliases', [normalized]).limit(limit),
+      supabase
+        .from('exercises')
+        .select('*')
+        .ilike('name', `%${normalized}%`)
+        .limit(limit),
+      supabase
+        .from('exercises')
+        .select('*')
+        .contains('aliases', [normalized])
+        .limit(limit),
     ])
 
     if (nameMatches.error) throw nameMatches.error
@@ -248,7 +265,9 @@ export async function handleSearchExercises(
     })
 
     candidates = Array.from(uniqueMap.values()).slice(0, limit)
-    console.log(`[Tool: searchExercises] Alias fallback found ${candidates.length} results`)
+    console.log(
+      `[Tool: searchExercises] Alias fallback found ${candidates.length} results`,
+    )
   }
 
   return { candidates }
@@ -285,7 +304,9 @@ export async function handleCreateExercise(
     .single()
 
   if (exactMatch) {
-    console.log(`[Tool: createExercise] Found exact match, returning existing: ${exactMatch.id}`)
+    console.log(
+      `[Tool: createExercise] Found exact match, returning existing: ${exactMatch.id}`,
+    )
     return { id: exactMatch.id, name: exactMatch.name }
   }
 
@@ -331,7 +352,9 @@ export async function handleCreateExercise(
   return { id: data.id, name: data.name }
 }
 
-async function generateExerciseMetadata(exerciseName: string): Promise<{
+async function generateExerciseMetadata(
+  exerciseName: string,
+): Promise<{
   muscle_group: string
   type: string
   equipment: string
@@ -364,7 +387,7 @@ async function generateExerciseMetadata(exerciseName: string): Promise<{
 
   try {
     const result = await generateObject({
-      model: openai('gpt-4.1-nano'),
+      model: openai('gpt-4.1-mini'),
       schema: exerciseMetadataSchema,
       prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
 
@@ -389,7 +412,10 @@ Return the metadata as JSON.`,
 
     return result.object
   } catch (error) {
-    console.error('[generateExerciseMetadata] Error generating metadata:', error)
+    console.error(
+      '[generateExerciseMetadata] Error generating metadata:',
+      error,
+    )
     // Return sensible defaults if AI fails
     return {
       muscle_group: 'Full Body',

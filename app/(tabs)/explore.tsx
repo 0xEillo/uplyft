@@ -2,6 +2,7 @@ import { ExerciseLeaderboardCard } from '@/components/exercise-leaderboard-card'
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutChat } from '@/components/workout-chat'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -53,11 +54,13 @@ export default function ProfileScreen() {
     setRefreshing(false)
   }, [])
 
-  useEffect(() => {
-    trackEvent('Explore Viewed', {
-      timestamp: Date.now(),
-    })
-  }, [trackEvent])
+  useFocusEffect(
+    useCallback(() => {
+      trackEvent(AnalyticsEvents.EXPLORE_VIEWED, {
+        timestamp: Date.now(),
+      })
+    }, [trackEvent])
+  )
 
   // Tutorial logic: track visits and show tutorial if needed
   useFocusEffect(

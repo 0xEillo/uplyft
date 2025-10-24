@@ -1,4 +1,5 @@
 import { Paywall } from '@/components/paywall'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -77,7 +78,7 @@ export function WorkoutChat() {
     // Check if user is pro member
     if (!isProMember) {
       setShowPaywall(true)
-      trackEvent('Paywall Shown', {
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'ai_chat',
       })
       return
@@ -268,7 +269,7 @@ export function WorkoutChat() {
     // Check if user is pro member
     if (!isProMember) {
       setShowPaywall(true)
-      trackEvent('Paywall Shown', {
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'ai_chat',
       })
       return

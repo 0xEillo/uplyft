@@ -1,10 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
-import { responses } from 'https://esm.sh/@ai-sdk/openai@2.0.42'
 import { z } from 'https://esm.sh/zod@3.25.76'
 
-import { getOpenAI } from '../_shared/openai.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
+import { getOpenAI } from '../_shared/openai.ts'
 
 const requestSchema = z.object({
   exerciseName: z.string().min(1, 'exerciseName is required'),
@@ -50,7 +49,7 @@ serve(async (req) => {
     const payload = requestSchema.parse(await req.json())
 
     const response = await client.responses.create({
-      model: 'gpt-4.1-nano',
+      model: 'gpt-4.1-mini',
       input: [
         {
           role: 'system',

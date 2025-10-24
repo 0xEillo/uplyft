@@ -1,8 +1,8 @@
 // deno-lint-ignore-file no-explicit-any
 import { openai } from '@ai-sdk/openai'
 import { generateObject, generateText } from 'ai'
-import OpenAI from 'https://esm.sh/openai@4.73.1'
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
+import OpenAI from 'https://esm.sh/openai@4.73.1'
 import { z } from 'https://esm.sh/zod@3.25.76'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
@@ -110,7 +110,7 @@ serve(async (req) => {
         .join(', ')
 
       const titleResult = await generateText({
-        model: openai('gpt-4.1-nano'),
+        model: openai('gpt-4.1-mini'),
         prompt: `You are a fitness expert analyzing workout sessions. Based on the exercises performed, generate a concise workout title (2-3 words max).
 
 Exercises performed: ${exerciseList}
@@ -320,9 +320,11 @@ async function createWorkoutSession(
 
   console.log(
     `[Workout Parser] Agent resolved ${exerciseResolutions.size} exercises (${
-      Array.from(exerciseResolutions.values()).filter((r) => r.wasCreated).length
+      Array.from(exerciseResolutions.values()).filter((r) => r.wasCreated)
+        .length
     } created, ${
-      Array.from(exerciseResolutions.values()).filter((r) => !r.wasCreated).length
+      Array.from(exerciseResolutions.values()).filter((r) => !r.wasCreated)
+        .length
     } matched)`,
   )
 
@@ -383,9 +385,12 @@ async function createWorkoutSession(
 
   const metrics = {
     totalExercises: exercises.length,
-    matchedExercises: Array.from(exerciseResolutions.values()).filter((r) => !r.wasCreated)
-      .length,
-    createdExercises: Array.from(exerciseResolutions.values()).filter((r) => r.wasCreated).length,
+    matchedExercises: Array.from(exerciseResolutions.values()).filter(
+      (r) => !r.wasCreated,
+    ).length,
+    createdExercises: Array.from(exerciseResolutions.values()).filter(
+      (r) => r.wasCreated,
+    ).length,
     totalSets: allSetsToInsert.length,
   }
 
@@ -409,7 +414,9 @@ async function resolveExercisesWithAgent(
   const resolutions = new Map<string, ExerciseResolution>()
 
   // Build the agent prompt
-  const exerciseList = exerciseNames.map((name, i) => `${i + 1}. ${name}`).join('\n')
+  const exerciseList = exerciseNames
+    .map((name, i) => `${i + 1}. ${name}`)
+    .join('\n')
 
   const systemPrompt = `You are a fitness exercise database assistant. Your job is to help resolve exercise names to existing database entries or create new ones when needed.
 
@@ -479,7 +486,9 @@ etc.`
           const toolName = toolCall.function.name
           const toolArgs = JSON.parse(toolCall.function.arguments)
 
-          console.log(`[Agent] Tool call: ${toolName}(${JSON.stringify(toolArgs)})`)
+          console.log(
+            `[Agent] Tool call: ${toolName}(${JSON.stringify(toolArgs)})`,
+          )
 
           let toolResult: any
 
@@ -579,8 +588,14 @@ etc.`
             `[Agent] Missing resolution for "${name}", attempting fallback search`,
           )
           try {
-            const searchResult = await handleSearchExercises({ query: name, limit: 1 })
-            if (searchResult.candidates.length > 0 && searchResult.candidates[0].similarity >= 0.6) {
+            const searchResult = await handleSearchExercises({
+              query: name,
+              limit: 1,
+            })
+            if (
+              searchResult.candidates.length > 0 &&
+              searchResult.candidates[0].similarity >= 0.6
+            ) {
               const match = searchResult.candidates[0]
               resolutions.set(name, {
                 exerciseId: match.id,

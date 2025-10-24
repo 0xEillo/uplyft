@@ -1,10 +1,12 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,7 +20,15 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 export default function SignInEmailScreen() {
   const [email, setEmail] = useState('')
   const colors = useThemedColors()
+  const { trackEvent } = useAnalytics()
   const styles = createStyles(colors)
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.AUTH_SIGNIN_STARTED, {
+      method: 'email',
+      timestamp: Date.now(),
+    })
+  }, [trackEvent])
 
   const handleContinue = () => {
     if (!email.trim()) {

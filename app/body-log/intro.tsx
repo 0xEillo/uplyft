@@ -1,5 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useSubscription } from '@/contexts/subscription-context'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { Paywall } from '@/components/paywall'
 import { Ionicons } from '@expo/vector-icons'
@@ -37,7 +38,7 @@ export default function BodyLogIntroPage() {
     // Check if user is pro member
     if (!isProMember) {
       setShowPaywall(true)
-      trackEvent('Paywall Shown', {
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'body_scan',
       })
       return

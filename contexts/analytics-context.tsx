@@ -3,6 +3,7 @@ import { usePostHog } from 'posthog-react-native'
 import { useAuth } from './auth-context'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
+import { getSessionId } from '@/utils/analytics-helpers'
 
 type AnalyticsContextValue = {
   trackEvent: (event: string, payload?: Record<string, unknown>) => Promise<void>
@@ -53,28 +54,81 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   const value: AnalyticsContextValue = {
     trackEvent: async (event: string, payload?: Record<string, unknown>) => {
-      if (posthog && payload) {
+      try {
+        if (!posthog) {
+          // PostHog not available - fail silently in production
+          if (__DEV__) {
+            console.warn('[Analytics] PostHog not initialized, event not tracked:', event)
+          }
+          return
+        }
+
+        // Add session ID and timestamp to all events
+        const enrichedPayload = {
+          ...payload,
+          session_id: getSessionId(),
+          timestamp: payload?.timestamp || Date.now(),
+        }
+
         // Filter out undefined values from payload
         const filteredPayload = Object.fromEntries(
-          Object.entries(payload).filter(([_, v]) => v !== undefined)
+          Object.entries(enrichedPayload).filter(([_, v]) => v !== undefined)
         ) as any
+
+        // Validate in development
+        if (__DEV__) {
+          if (!event || event.trim() === '') {
+            console.error('[Analytics] Event name cannot be empty')
+            return
+          }
+          if (Object.keys(filteredPayload).length === 0) {
+            console.warn(
+              `[Analytics] Event "${event}" has no properties. Consider adding context.`
+            )
+          }
+        }
+
         posthog.capture(event, filteredPayload)
-      } else if (posthog) {
-        posthog.capture(event)
+      } catch (error) {
+        // Never let analytics errors crash the app
+        if (__DEV__) {
+          console.error('[Analytics] Error tracking event:', event, error)
+        }
       }
     },
     identifyUser: async (
       distinctId: string,
       payload?: Record<string, unknown>,
     ) => {
-      if (posthog && payload) {
-        // Filter out undefined values from payload
-        const filteredPayload = Object.fromEntries(
-          Object.entries(payload).filter(([_, v]) => v !== undefined)
-        ) as any
-        posthog.identify(distinctId, filteredPayload)
-      } else if (posthog) {
-        posthog.identify(distinctId)
+      try {
+        if (!posthog) {
+          if (__DEV__) {
+            console.warn('[Analytics] PostHog not initialized, user not identified')
+          }
+          return
+        }
+
+        if (!distinctId || distinctId.trim() === '') {
+          if (__DEV__) {
+            console.error('[Analytics] distinctId cannot be empty')
+          }
+          return
+        }
+
+        if (payload) {
+          // Filter out undefined values from payload
+          const filteredPayload = Object.fromEntries(
+            Object.entries(payload).filter(([_, v]) => v !== undefined)
+          ) as any
+          posthog.identify(distinctId, filteredPayload)
+        } else {
+          posthog.identify(distinctId)
+        }
+      } catch (error) {
+        // Never let analytics errors crash the app
+        if (__DEV__) {
+          console.error('[Analytics] Error identifying user:', error)
+        }
       }
     },
   }

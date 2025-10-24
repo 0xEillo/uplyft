@@ -1,5 +1,7 @@
 import { HapticButton } from '@/components/haptic-button'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -31,10 +33,17 @@ export default function WelcomeScreen() {
   const { width } = useWindowDimensions()
   const styles = createStyles(colors)
   const [showSignInSheet, setShowSignInSheet] = useState(false)
+  const { trackEvent } = useAnalytics()
 
   const translateX = useSharedValue(0)
   const savedOffset = useSharedValue(0)
   const isAutoPlaying = useSharedValue(true)
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.AUTH_WELCOME_VIEWED, {
+      timestamp: Date.now(),
+    })
+  }, [trackEvent])
 
   useEffect(() => {
     translateX.value = withRepeat(
