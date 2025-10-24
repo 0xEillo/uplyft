@@ -19,8 +19,22 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
+import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import {
+  getBodyFatExplanation,
+  getBodyFatStatus,
+  getBMIExplanation,
+  getBMIStatus,
+  getOverallStatus,
+  getStatusColor,
+  getWeightExplanation,
+  type BodyFatRange,
+  type BMIRange,
+  type Gender,
+} from '@/lib/body-log/composition-analysis'
 import {
   formatBMI,
   formatBodyFat,
@@ -57,9 +71,20 @@ export default function BodyLogDetailScreen() {
 
   const colors = useThemedColors()
   const { formatWeight } = useUnit()
+  const { user } = useAuth()
   const router = useRouter()
 
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [userGender, setUserGender] = useState<Gender>('male')
+
+  // Modal states
+  const [infoModalVisible, setInfoModalVisible] = useState(false)
+  const [selectedMetric, setSelectedMetric] = useState<{
+    type: 'bodyFat' | 'bmi' | 'weight'
+    value: string
+    status: BodyFatRange | BMIRange | null
+    explanation: string
+  } | null>(null)
 
   // Parse numeric values from URL params
   const [metrics, setMetrics] = useState({
@@ -105,6 +130,37 @@ export default function BodyLogDetailScreen() {
       ignore = true
     }
   }, [filePath, resolvedUrl])
+
+  // Fetch user profile for gender
+  useEffect(() => {
+    if (!user) return
+
+    let cancelled = false
+
+    const fetchUserProfile = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('gender')
+          .eq('id', user.id)
+          .single()
+
+        if (!cancelled && profile?.gender) {
+          if (profile.gender === 'male' || profile.gender === 'female') {
+            setUserGender(profile.gender)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error)
+      }
+    }
+
+    fetchUserProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   useEffect(() => {
     let isMounted = true
@@ -180,6 +236,36 @@ export default function BodyLogDetailScreen() {
       cancelled = true
     }
   }, [accessToken, imageId, metrics])
+
+  // Get status for metrics
+  const bodyFatStatus = getBodyFatStatus(metrics.body_fat_percentage, userGender)
+  const bmiStatus = getBMIStatus(metrics.bmi, userGender)
+  const overallStatus = getOverallStatus(
+    metrics.body_fat_percentage,
+    metrics.bmi,
+    userGender,
+  )
+
+  // Handle opening info modal
+  const handleInfoPress = async (
+    type: 'bodyFat' | 'bmi' | 'weight',
+    value: string,
+    status: BodyFatRange | BMIRange | null,
+  ) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+    let explanation = ''
+    if (type === 'bodyFat') {
+      explanation = getBodyFatExplanation(userGender)
+    } else if (type === 'bmi') {
+      explanation = getBMIExplanation(userGender)
+    } else {
+      explanation = getWeightExplanation(userGender)
+    }
+
+    setSelectedMetric({ type, value, status, explanation })
+    setInfoModalVisible(true)
+  }
 
   const handleDelete = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -282,6 +368,34 @@ export default function BodyLogDetailScreen() {
             {createdAt ? formatBodyLogDate(createdAt) : '--'}
           </Text>
 
+          {/* Overall Status Card */}
+          {overallStatus && (
+            <View
+              style={[
+                styles.overallStatusCard,
+                {
+                  backgroundColor: getStatusColor(overallStatus.color)
+                    .background,
+                  borderColor: getStatusColor(overallStatus.color).primary + '30',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.overallStatusTitle,
+                  { color: getStatusColor(overallStatus.color).text },
+                ]}
+              >
+                {overallStatus.title}
+              </Text>
+              <Text
+                style={[styles.overallStatusSummary, { color: colors.text }]}
+              >
+                {overallStatus.summary}
+              </Text>
+            </View>
+          )}
+
           {/* Metrics Grid */}
           <View style={styles.metricsGrid}>
             <MetricCard
@@ -297,6 +411,14 @@ export default function BodyLogDetailScreen() {
               icon="aperture"
               colors={colors}
               isPlaceholder={metrics.body_fat_percentage === null}
+              status={bodyFatStatus}
+              onInfoPress={() =>
+                handleInfoPress(
+                  'bodyFat',
+                  formatBodyFat(metrics.body_fat_percentage),
+                  bodyFatStatus,
+                )
+              }
             />
             <MetricCard
               label="BMI"
@@ -304,6 +426,10 @@ export default function BodyLogDetailScreen() {
               icon="analytics"
               colors={colors}
               isPlaceholder={metrics.bmi === null}
+              status={bmiStatus}
+              onInfoPress={() =>
+                handleInfoPress('bmi', formatBMI(metrics.bmi), bmiStatus)
+              }
             />
           </View>
         </View>
@@ -381,6 +507,19 @@ export default function BodyLogDetailScreen() {
           </Pressable>
         </Modal>
       )}
+
+      {/* Info Modal */}
+      {selectedMetric && (
+        <BodyMetricInfoModal
+          visible={infoModalVisible}
+          onClose={() => setInfoModalVisible(false)}
+          metricType={selectedMetric.type}
+          currentValue={selectedMetric.value}
+          status={selectedMetric.status}
+          explanation={selectedMetric.explanation}
+          gender={userGender}
+        />
+      )}
     </View>
   )
 }
@@ -394,6 +533,8 @@ interface MetricCardProps {
   icon: keyof typeof Ionicons.glyphMap
   colors: Colors
   isPlaceholder?: boolean
+  status?: BodyFatRange | BMIRange | null
+  onInfoPress?: () => void
 }
 
 function MetricCard({
@@ -402,24 +543,28 @@ function MetricCard({
   icon,
   colors,
   isPlaceholder,
+  status,
+  onInfoPress,
 }: MetricCardProps) {
-  return (
-    <View
-      style={[
-        styles.metricCard,
-        {
-          backgroundColor: colors.backgroundWhite,
-          borderColor: colors.border,
-        },
-      ]}
-    >
+  const statusColors = status ? getStatusColor(status.color) : null
+
+  const CardContent = (
+    <>
       <View
         style={[
           styles.metricIconContainer,
-          { backgroundColor: colors.primary + '15' },
+          {
+            backgroundColor: statusColors
+              ? statusColors.background
+              : colors.primary + '15'
+          },
         ]}
       >
-        <Ionicons name={icon} size={18} color={colors.primary} />
+        <Ionicons
+          name={icon}
+          size={24}
+          color={statusColors ? statusColors.primary : colors.primary}
+        />
       </View>
       <View style={styles.metricTextContainer}>
         <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
@@ -436,6 +581,42 @@ function MetricCard({
           {value}
         </Text>
       </View>
+    </>
+  )
+
+  // If there's an info press handler, make the whole card tappable
+  if (onInfoPress) {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.metricCard,
+          {
+            backgroundColor: colors.backgroundWhite,
+            borderColor: statusColors
+              ? statusColors.primary + '30'
+              : colors.border,
+          },
+        ]}
+        onPress={onInfoPress}
+        activeOpacity={0.7}
+      >
+        {CardContent}
+      </TouchableOpacity>
+    )
+  }
+
+  // Otherwise, just a regular view
+  return (
+    <View
+      style={[
+        styles.metricCard,
+        {
+          backgroundColor: colors.backgroundWhite,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      {CardContent}
     </View>
   )
 }
@@ -505,7 +686,26 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    marginBottom: 36,
+    marginBottom: 24,
+  },
+
+  // Overall Status Card
+  overallStatusCard: {
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    marginBottom: 28,
+  },
+  overallStatusTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  overallStatusSummary: {
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: -0.1,
   },
 
   // Metrics Grid
@@ -518,34 +718,39 @@ const styles = StyleSheet.create({
   metricCard: {
     flex: 1,
     minWidth: '30%',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    gap: 10,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    gap: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   metricIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   metricTextContainer: {
     alignItems: 'center',
-    gap: 6,
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+    gap: 8,
   },
   metricLabel: {
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+  },
+  metricValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
 
   // Top Actions
