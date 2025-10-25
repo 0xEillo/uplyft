@@ -422,7 +422,7 @@ async function resolveExercisesWithAgent(
 
 For each exercise the user provides:
 1. Use searchExercises tool to find potential matches in the database
-2. If you find a good match (similarity >= 0.6), use that exercise ID and tell me which exercise from the list it resolves
+2. If you find a good match (similarity >= 0.5), use that exercise ID and tell me which exercise from the list it resolves
 3. If no good match exists, use createExercise tool to create a new exercise entry
 
 Guidelines:
@@ -617,7 +617,7 @@ etc.`
             })
             if (
               searchResult.candidates.length > 0 &&
-              searchResult.candidates[0].similarity >= 0.6
+              searchResult.candidates[0].similarity >= 0.5
             ) {
               const match = searchResult.candidates[0]
               resolutions.set(name, {

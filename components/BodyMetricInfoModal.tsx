@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -71,6 +72,37 @@ export function BodyMetricInfoModal({
     }
   }, [visible, slideAnim, backdropAnim])
 
+  // Pan responder for swipe-to-dismiss
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes
+        return Math.abs(gestureState.dy) > 5
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward swipes
+        if (gestureState.dy > 0) {
+          slideAnim.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 100px or velocity is high, close
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          onClose()
+        } else {
+          // Otherwise, spring back to position
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 25,
+            stiffness: 200,
+          }).start()
+        }
+      },
+    }),
+  ).current
+
   const getMetricTitle = () => {
     switch (metricType) {
       case 'bodyFat':
@@ -111,6 +143,7 @@ export function BodyMetricInfoModal({
               transform: [{ translateY: slideAnim }],
             },
           ]}
+          {...panResponder.panHandlers}
         >
           {/* Handle Bar */}
           <View style={styles.handleContainer}>
@@ -126,9 +159,6 @@ export function BodyMetricInfoModal({
               <Text style={[styles.title, { color: colors.text }]}>
                 {getMetricTitle()}
               </Text>
-              <Pressable onPress={onClose} hitSlop={12}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </Pressable>
             </View>
 
             {/* Current Value Display */}
@@ -280,9 +310,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
   },
   title: {

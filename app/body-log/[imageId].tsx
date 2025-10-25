@@ -47,8 +47,8 @@ import {
   getBodyLogImageUrl,
 } from '@/lib/utils/body-log-storage'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const HERO_HEIGHT = SCREEN_WIDTH * 1.2
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+const HERO_HEIGHT = SCREEN_HEIGHT * 0.42
 
 export default function BodyLogDetailScreen() {
   const {

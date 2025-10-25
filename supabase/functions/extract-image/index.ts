@@ -82,20 +82,20 @@ serve(async (req) => {
           content: [
             {
               type: 'text',
-              text: `You are a workout tracking assistant. Analyze this image and extract any workout-related information you can find.
+              text: `You are a workout tracking assistant. Analyze this image and extract workout information.
 
 The image may contain:
 - Handwritten or typed workout notes
 - Exercise names with sets, reps, and weights
 - Body measurements or progress tracking notes
 
-IMPORTANT: Your response should be ONLY valid JSON in this format, no other text:
+IMPORTANT: Return ONLY valid JSON in this format, no other text:
 {
   "isWorkoutRelated": boolean,
   "content": {
     "title": "string or null - inferred workout title",
-    "description": "string or null - general notes",
-    "exercises": "string or null - detailed exercise information extracted"
+    "description": "string or null - any general notes or comments, formatted cleanly",
+    "exercises": "string or null - formatted exercise data (see format below)"
   }
 }
 
@@ -105,7 +105,26 @@ If the image contains NO workout-related content (e.g., it's a cat photo, random
   "content": null
 }
 
-Extract everything you can about exercises, sets, reps, weights, and any other fitness-related data.`,
+**Formatting rules for the 'description' and 'exercises' fields:**
+- For 'description': Include any general notes, comments, or observations. Keep it clean and readable.
+- For 'exercises': Format each exercise clearly:
+  • Put the exercise name on its own line (no bullets, just the name)
+  • Indent the sets/reps/weight data below it (use 2-4 spaces)
+  • Use consistent format like "weight x reps" or "weight x reps x sets"
+  • Separate different exercises with a blank line
+  • Preserve any relevant notes about the exercise inline
+
+Example of good 'exercises' formatting:
+Bench Press
+  135 x 8
+  155 x 6
+  165 x 4
+
+Incline DB Press
+  50 x 10
+  55 x 8 x 3
+
+Extract everything you can about exercises, sets, reps, weights, and any other fitness-related data. Keep the output clean and consistently formatted.`,
             },
             {
               type: 'image_url',

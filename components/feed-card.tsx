@@ -247,12 +247,8 @@ export const FeedCard = memo(function FeedCard({
             <View key={index}>
               {/* Main exercise row */}
               <TouchableOpacity
-                onPress={
-                  exercise.hasVariedSets
-                    ? () => toggleExerciseExpand(index)
-                    : undefined
-                }
-                activeOpacity={exercise.hasVariedSets ? 0.7 : 1}
+                onPress={() => toggleExerciseExpand(index)}
+                activeOpacity={0.7}
                 style={[
                   styles.tableRow,
                   hasPR && styles.tableRowWithPR,
@@ -262,11 +258,18 @@ export const FeedCard = memo(function FeedCard({
                 ]}
               >
                 <View
-                  style={[styles.exerciseCol, styles.variedCell]}
+                  style={[
+                    isExerciseExpanded ? styles.expandedExerciseCol : styles.exerciseCol,
+                    styles.variedCell,
+                  ]}
                 >
                   <Text
-                    style={[styles.exerciseName, styles.exerciseNameText]}
-                    numberOfLines={1}
+                    key={`${index}-${isExerciseExpanded}`}
+                    style={[
+                      styles.exerciseName,
+                      !isExerciseExpanded && styles.exerciseNameText,
+                    ]}
+                    numberOfLines={isExerciseExpanded ? undefined : 1}
                     ellipsizeMode="tail"
                   >
                     {exercise.name}
@@ -286,29 +289,31 @@ export const FeedCard = memo(function FeedCard({
                       <Text style={styles.prBadgeText}>PR</Text>
                     </TouchableOpacity>
                   )}
-                  {exercise.hasVariedSets && (
-                    <Ionicons
-                      name={isExerciseExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={12}
-                      color={colors.textSecondary}
-                    />
-                  )}
+                  <Ionicons
+                    name={isExerciseExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={12}
+                    color={colors.textSecondary}
+                  />
                 </View>
-                <Text style={[styles.tableCell, styles.setsCol]}>
-                  {exercise.sets}
-                </Text>
-                <Text
-                  style={[styles.tableCell, styles.repsCol]}
-                  numberOfLines={1}
-                >
-                  {exercise.reps}
-                </Text>
-                <Text
-                  style={[styles.tableCell, styles.weightCol]}
-                  numberOfLines={1}
-                >
-                  {exercise.weight}
-                </Text>
+                {!isExerciseExpanded && (
+                  <>
+                    <Text style={[styles.tableCell, styles.setsCol]}>
+                      {exercise.sets}
+                    </Text>
+                    <Text
+                      style={[styles.tableCell, styles.repsCol]}
+                      numberOfLines={1}
+                    >
+                      {exercise.reps}
+                    </Text>
+                    <Text
+                      style={[styles.tableCell, styles.weightCol]}
+                      numberOfLines={1}
+                    >
+                      {exercise.weight}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               {/* Expanded set details */}
@@ -619,6 +624,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseCol: {
       flex: 3,
     },
+    expandedExerciseCol: {
+      flex: 1,
+      maxWidth: '100%',
+    },
     setsCol: {
       flex: 1,
       textAlign: 'center',
@@ -650,6 +659,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    fullExerciseName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 8,
     },
     setDetailRow: {
       flexDirection: 'row',

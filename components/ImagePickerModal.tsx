@@ -1,9 +1,8 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import {
-  Animated,
   Modal,
   Pressable,
   StyleSheet,
@@ -11,6 +10,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated'
 
 interface ImagePickerModalProps {
   visible: boolean
@@ -19,58 +30,6 @@ interface ImagePickerModalProps {
   onScanWithLibrary: () => void
   onAttachWithCamera: () => void
   onAttachWithLibrary: () => void
-}
-
-interface FABButtonProps {
-  icon: string
-  label: string
-  onPress: () => void
-  color: string
-  animation: Animated.Value
-  delay: number
-  styles: ReturnType<typeof createStyles>
-}
-
-function FABButton({ icon, label, onPress, color, animation, delay, styles }: FABButtonProps) {
-  const colors = useThemedColors()
-
-  const scale = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  })
-
-  const opacity = animation.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 0, 1],
-  })
-
-  const translateY = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [20, 0],
-  })
-
-  return (
-    <Animated.View
-      style={[
-        styles.fabButtonContainer,
-        {
-          opacity,
-          transform: [{ scale }, { translateY }],
-        },
-      ]}
-    >
-      <TouchableOpacity
-        style={[styles.fabButton, { backgroundColor: color }]}
-        onPress={onPress}
-        activeOpacity={0.8}
-      >
-        <Ionicons name={icon as any} size={26} color={colors.white} />
-      </TouchableOpacity>
-      <View style={styles.labelContainer}>
-        <Text style={styles.label}>{label}</Text>
-      </View>
-    </Animated.View>
-  )
 }
 
 export function ImagePickerModal({
@@ -82,88 +41,42 @@ export function ImagePickerModal({
   onAttachWithLibrary,
 }: ImagePickerModalProps) {
   const colors = useThemedColors()
-  const backdropAnim = useRef(new Animated.Value(0)).current
-  const button1Anim = useRef(new Animated.Value(0)).current
-  const button2Anim = useRef(new Animated.Value(0)).current
-  const closeButtonAnim = useRef(new Animated.Value(0)).current
-  const mainButtonRotate = useRef(new Animated.Value(0)).current
+  const translateY = useSharedValue(0)
 
   useEffect(() => {
     if (visible) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-
-      // Reset all animations
-      button1Anim.setValue(0)
-      button2Anim.setValue(0)
-      closeButtonAnim.setValue(0)
-
-      Animated.parallel([
-        // Backdrop fade in
-        Animated.timing(backdropAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        // Main button rotate
-        Animated.spring(mainButtonRotate, {
-          toValue: 1,
-          tension: 80,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        // Staggered button animations
-        Animated.stagger(60, [
-          Animated.spring(button1Anim, {
-            toValue: 1,
-            tension: 80,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-          Animated.spring(button2Anim, {
-            toValue: 1,
-            tension: 80,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-          Animated.spring(closeButtonAnim, {
-            toValue: 1,
-            tension: 80,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(backdropAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(mainButtonRotate, {
-          toValue: 0,
-          tension: 80,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.timing(button1Anim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(button2Anim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(closeButtonAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start()
+      translateY.value = 0
     }
-  }, [visible, backdropAnim, button1Anim, button2Anim, closeButtonAnim, mainButtonRotate])
+  }, [visible, translateY])
+
+  const closeSheet = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    onClose()
+  }
+
+  const pan = Gesture.Pan()
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        translateY.value = event.translationY
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > 100 || event.velocityY > 1000) {
+        translateY.value = withTiming(500, { duration: 200 }, () => {
+          runOnJS(closeSheet)()
+        })
+      } else {
+        translateY.value = withSpring(0, {
+          damping: 20,
+          stiffness: 300,
+        })
+      }
+    })
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }))
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -184,82 +97,61 @@ export function ImagePickerModal({
     setTimeout(onAttachWithCamera, 250)
   }
 
-  const closeScale = closeButtonAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  })
-
-  const closeOpacity = closeButtonAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 0, 1],
-  })
-
   const styles = createStyles(colors)
 
-  if (!visible) return null
-
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-      <View style={styles.container}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <GestureHandlerRootView style={styles.container}>
         {/* Backdrop */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
-          <Animated.View
-            style={[
-              styles.backdrop,
-              {
-                opacity: backdropAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.4],
-                }),
-              },
-            ]}
-          />
+          <View style={styles.backdrop} />
         </Pressable>
 
-        {/* FAB Menu - positioned at bottom right */}
-        <View style={styles.fabMenu}>
-          {/* Scan Button */}
-          <FABButton
-            icon="scan"
-            label="Scan Workout"
-            onPress={handleScan}
-            color={colors.primary}
-            animation={button1Anim}
-            delay={0}
-            styles={styles}
-          />
+        {/* Bottom Sheet */}
+        <GestureDetector gesture={pan}>
+          <Animated.View style={[styles.bottomSheet, animatedStyle]}>
+            <View style={styles.sheetHandle}>
+              <View style={styles.handle} />
+            </View>
 
-          {/* Attach Button */}
-          <FABButton
-            icon="image"
-            label="Attach Photo"
-            onPress={handleAttach}
-            color="#6366f1"
-            animation={button2Anim}
-            delay={60}
-            styles={styles}
-          />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Add Photo</Text>
+            </View>
 
-          {/* Close Button */}
-          <Animated.View
-            style={[
-              styles.closeButtonContainer,
-              {
-                opacity: closeOpacity,
-                transform: [{ scale: closeScale }],
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={handleClose}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="close" size={22} color={colors.text} />
-            </TouchableOpacity>
+            <View style={styles.optionsContainer}>
+              {/* Scan Button */}
+              <TouchableOpacity
+                style={styles.optionButton}
+                onPress={handleScan}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="scan" size={28} color={colors.white} />
+                </View>
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionLabel}>Scan Workout</Text>
+                  <Text style={styles.optionDescription}>Extract text from image</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Attach Button */}
+              <TouchableOpacity
+                style={styles.optionButton}
+                onPress={handleAttach}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="image" size={28} color={colors.white} />
+                </View>
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionLabel}>Attach Photo</Text>
+                  <Text style={styles.optionDescription}>Add photo to workout</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
-        </View>
-      </View>
+        </GestureDetector>
+      </GestureHandlerRootView>
     </Modal>
   )
 }
@@ -268,65 +160,86 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
+      justifyContent: 'flex-end',
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 1)',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
-    fabMenu: {
-      position: 'absolute',
-      bottom: 24,
-      right: 24,
-      alignItems: 'flex-end',
-      gap: 16,
+    bottomSheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingBottom: 34,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 12,
     },
-    fabButtonContainer: {
-      flexDirection: 'row',
+    sheetHandle: {
       alignItems: 'center',
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+    },
+    sheetHeader: {
+      alignItems: 'center',
+      paddingTop: 12,
+      paddingBottom: 8,
+      paddingHorizontal: 24,
+    },
+    sheetTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: 0.3,
+    },
+    optionsContainer: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
       gap: 12,
     },
-    fabButton: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+    optionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.white,
+      padding: 18,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    optionIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
     },
-    labelContainer: {
-      backgroundColor: colors.white,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 4,
+    optionTextContainer: {
+      flex: 1,
+      gap: 4,
     },
-    label: {
-      fontSize: 14,
+    optionLabel: {
+      fontSize: 17,
       fontWeight: '600',
       color: colors.text,
+      letterSpacing: 0.1,
     },
-    closeButtonContainer: {
-      alignSelf: 'center',
-    },
-    closeButton: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.white,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 4,
+    optionDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      letterSpacing: 0,
     },
   })

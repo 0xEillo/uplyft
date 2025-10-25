@@ -254,7 +254,7 @@ export async function handleSearchExercises(
     addCandidates(trigramRows, 'Trigram search')
 
     const bestTrigram = trigramRows[0]?.similarity ?? 0
-    if (bestTrigram >= 0.6 || trigramRows.length >= limit) {
+    if (bestTrigram >= 0.5 || trigramRows.length >= limit) {
       needsVectorSearch = false
     }
   } catch (error) {
