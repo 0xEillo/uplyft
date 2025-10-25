@@ -1,6 +1,6 @@
 /**
  * Body Composition Analysis
- * Analyzes body metrics against aesthetic and health guidelines
+ * Analyzes body metrics against athletic and health guidelines
  */
 
 export type Gender = 'male' | 'female'
@@ -52,14 +52,14 @@ export function getBodyFatStatus(
       }
     } else if (bodyFat >= 7 && bodyFat <= 12) {
       return {
-        category: 'Aesthetic Ideal',
+        category: 'Athletic Range',
         label: 'Peak Conditioning',
         description:
-          'Optimal aesthetic appeal with clear ab definition and muscle firmness.',
+          'Athletic physique with clear ab definition and muscle firmness.',
         color: 'optimal',
         icon: 'trophy',
         recommendation:
-          'Maintain through strength training and adequate protein intake.',
+          'You can maintain this through strength training and adequate protein intake.',
       }
     } else if (bodyFat > 12 && bodyFat <= 15) {
       return {
@@ -69,27 +69,27 @@ export function getBodyFatStatus(
         color: 'building',
         icon: 'fitness',
         recommendation:
-          'Mild caloric deficit and increased activity to reach 8-12%.',
+          'A mild caloric deficit and increased activity can help reach 8-12%.',
       }
     } else if (bodyFat > 15 && bodyFat <= 20) {
       return {
         category: 'High',
         label: 'Building Phase',
-        description: 'Minimal definition. Focus on body composition improvement.',
+        description: 'Minimal definition. You can focus on body composition improvement.',
         color: 'moderate',
         icon: 'trending-up',
         recommendation:
-          'Implement caloric deficit and strength training to improve definition.',
+          'A caloric deficit and strength training can help improve definition.',
       }
     } else {
       return {
         category: 'Very High',
         label: 'Early Journey',
-        description: 'Significant opportunity for transformation and improvement.',
+        description: 'Great starting point with opportunity for transformation.',
         color: 'high',
         icon: 'barbell',
         recommendation:
-          'Start with moderate caloric deficit and consistent daily activity.',
+          'Consider starting with a moderate caloric deficit and consistent daily activity.',
       }
     }
   } else {
@@ -107,14 +107,14 @@ export function getBodyFatStatus(
       }
     } else if (bodyFat >= 15 && bodyFat <= 22) {
       return {
-        category: 'Aesthetic Ideal',
+        category: 'Athletic Range',
         label: 'Peak Conditioning',
         description:
-          'Optimal balance of muscle tone, definition, and feminine curves.',
+          'Balanced muscle tone, definition, and healthy body composition.',
         color: 'optimal',
         icon: 'trophy',
         recommendation:
-          'Maintain with strength training and balanced nutrition.',
+          'You can maintain this with strength training and balanced nutrition.',
       }
     } else if (bodyFat > 22 && bodyFat <= 25) {
       return {
@@ -123,27 +123,27 @@ export function getBodyFatStatus(
         description: 'Healthy range with soft muscle definition.',
         color: 'building',
         icon: 'fitness',
-        recommendation: 'Mild caloric deficit to reach 16-22% for more tone.',
+        recommendation: 'A mild caloric deficit can help reach 16-22% for more tone.',
       }
     } else if (bodyFat > 25 && bodyFat <= 30) {
       return {
         category: 'High',
         label: 'Building Phase',
-        description: 'Focus on building muscle and improving body composition.',
+        description: 'You can focus on building muscle and improving body composition.',
         color: 'moderate',
         icon: 'trending-up',
         recommendation:
-          'Combine strength training with moderate caloric deficit.',
+          'Combining strength training with a moderate caloric deficit can help.',
       }
     } else {
       return {
         category: 'Very High',
         label: 'Early Journey',
-        description: 'Great starting point for meaningful transformation.',
+        description: 'Great starting point with opportunity for transformation.',
         color: 'high',
         icon: 'barbell',
         recommendation:
-          'Begin with consistent activity and moderate caloric deficit.',
+          'Consider beginning with consistent activity and a moderate caloric deficit.',
       }
     }
   }
@@ -173,50 +173,50 @@ export function getBMIStatus(
       return {
         category: 'Healthy Low',
         label: 'Foundation',
-        description: 'Healthy but minimal muscle. Room for aesthetic improvement.',
+        description: 'Healthy but minimal muscle. Room for development.',
         color: 'building',
         icon: 'construct',
-        recommendation: 'Build muscle to reach 24-26 BMI for optimal aesthetics.',
+        recommendation: 'Building muscle can help you reach 24-26 BMI for an athletic build.',
       }
     } else if (bmi >= 22 && bmi < 24) {
       return {
-        category: 'Aesthetic Build-Up',
+        category: 'Athletic Build-Up',
         label: 'Progressing',
-        description: 'Good foundation. Continue building toward peak.',
+        description: 'Good foundation. You can continue building toward peak.',
         color: 'building',
         icon: 'trending-up',
-        recommendation: 'Gain 1-2 lbs muscle per month to reach aesthetic peak.',
+        recommendation: 'Gaining 1-2 lbs muscle per month can help reach your athletic peak.',
       }
     } else if (bmi >= 24 && bmi <= 26) {
       return {
-        category: 'Aesthetic Peak',
-        label: 'Ideal Physique',
+        category: 'Athletic Peak',
+        label: 'Strong Physique',
         description:
-          'Optimal muscle mass and proportion. Maintain this range.',
+          'Well-developed muscle mass and proportion.',
         color: 'optimal',
         icon: 'trophy',
         recommendation:
-          'Maintain leanness and strength. This is your peak aesthetic range.',
+          'You can maintain leanness and strength in this range.',
       }
     } else if (bmi > 26 && bmi <= 30) {
       return {
         category: 'Above Peak',
         label: 'Reassess',
-        description: 'May have excess muscle or fat. Check body fat percentage.',
+        description: 'Consider checking body fat percentage for better guidance.',
         color: 'moderate',
         icon: 'analytics',
         recommendation:
-          'If body fat is high (>15%), focus on fat loss to return to 24-26 BMI.',
+          'If body fat is high (>15%), focusing on fat loss can help return to 24-26 BMI.',
       }
     } else {
       return {
         category: 'Overweight',
         label: 'Fat Loss Focus',
-        description: 'Significant fat gain. Prioritize body composition.',
+        description: 'You can prioritize body composition improvement.',
         color: 'high',
         icon: 'flame',
         recommendation:
-          'Implement caloric deficit and daily activity to reach 24-26 BMI.',
+          'A caloric deficit and daily activity can help you reach 24-26 BMI.',
       }
     }
   } else {
@@ -239,47 +239,47 @@ export function getBMIStatus(
         color: 'building',
         icon: 'construct',
         recommendation:
-          'Build muscle tone to reach 22-23 BMI for optimal aesthetics.',
+          'Building muscle tone can help you reach 22-23 BMI for an athletic build.',
       }
     } else if (bmi >= 20 && bmi < 22) {
       return {
-        category: 'Aesthetic Build-Up',
+        category: 'Athletic Build-Up',
         label: 'Progressing',
         description: 'Good foundation with balanced proportions.',
         color: 'building',
         icon: 'trending-up',
         recommendation:
-          'Continue building muscle to reach 22-23 BMI aesthetic peak.',
+          'You can continue building muscle to reach 22-23 BMI athletic peak.',
       }
     } else if (bmi >= 22 && bmi <= 23) {
       return {
-        category: 'Aesthetic Peak',
-        label: 'Ideal Physique',
-        description: 'Optimal balance of muscle tone, curves, and leanness.',
+        category: 'Athletic Peak',
+        label: 'Strong Physique',
+        description: 'Balanced muscle tone and healthy body composition.',
         color: 'optimal',
         icon: 'trophy',
         recommendation:
-          'Maintain this range with strength training and balanced nutrition.',
+          'You can maintain this range with strength training and balanced nutrition.',
       }
     } else if (bmi > 23 && bmi <= 25) {
       return {
         category: 'Above Peak',
         label: 'Reassess',
-        description: 'Check body fat percentage to guide next steps.',
+        description: 'Consider checking body fat percentage for better guidance.',
         color: 'moderate',
         icon: 'analytics',
         recommendation:
-          'If body fat is high (>22%), focus on fat loss to reach 22-23 BMI.',
+          'If body fat is high (>22%), focusing on fat loss can help reach 22-23 BMI.',
       }
     } else {
       return {
         category: 'Overweight',
         label: 'Fat Loss Focus',
-        description: 'Prioritize body composition and activity.',
+        description: 'You can prioritize body composition and activity.',
         color: 'high',
         icon: 'flame',
         recommendation:
-          'Implement moderate caloric deficit and daily movement to reach 22-23 BMI.',
+          'A moderate caloric deficit and daily movement can help you reach 22-23 BMI.',
       }
     }
   }
@@ -309,7 +309,7 @@ export function getOverallStatus(
     return {
       title: 'Peak Conditioning',
       summary:
-        'Your physique is in optimal aesthetic range. Keep up the great work!',
+        'Your physique is in a strong athletic range. Keep up the great work!',
       color: 'optimal',
     }
   } else if (primaryStatus.color === 'building') {
@@ -323,14 +323,14 @@ export function getOverallStatus(
     return {
       title: 'Room for Improvement',
       summary:
-        'Focus on body composition to reach your aesthetic potential.',
+        'You can focus on body composition to reach your athletic potential.',
       color: 'moderate',
     }
   } else {
     return {
       title: 'Early Journey',
       summary:
-        'Great starting point! Consistency with training and nutrition will yield results.',
+        'Great starting point! Consistency with training and nutrition can yield results.',
       color: 'high',
     }
   }
@@ -379,17 +379,17 @@ export function getStatusColor(
  */
 export function getBodyFatExplanation(gender: Gender): string {
   if (gender === 'male') {
-    return 'Body fat percentage measures the proportion of fat relative to total body weight. For men, 8-12% is the aesthetic ideal with clear ab definition and muscle firmness.'
+    return 'Body fat percentage measures the proportion of fat relative to total body weight. For men, 8-12% is often associated with an athletic build featuring clear ab definition and muscle firmness.'
   } else {
-    return 'Body fat percentage measures the proportion of fat relative to total body weight. For women, 16-22% is the aesthetic ideal with visible muscle tone and balanced curves.'
+    return 'Body fat percentage measures the proportion of fat relative to total body weight. For women, 16-22% is often associated with an athletic build featuring visible muscle tone and balanced body composition.'
   }
 }
 
 export function getBMIExplanation(gender: Gender): string {
   if (gender === 'male') {
-    return 'BMI calculates weight relative to height. For aesthetic appeal, men should aim for 24-26 BMI with low body fat (8-12%), indicating optimal muscle mass and proportion.'
+    return 'BMI calculates weight relative to height. For an athletic build, men can aim for 24-26 BMI with low body fat (8-12%), which typically indicates well-developed muscle mass and proportion.'
   } else {
-    return 'BMI calculates weight relative to height. For aesthetic appeal, women should aim for 22-23 BMI with 16-22% body fat, indicating optimal muscle tone and curves.'
+    return 'BMI calculates weight relative to height. For an athletic build, women can aim for 22-23 BMI with 16-22% body fat, which typically indicates strong muscle tone and balanced composition.'
   }
 }
 
