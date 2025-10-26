@@ -167,7 +167,6 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
                   {/* Muscle Group Info */}
                   <View style={styles.barHeader}>
                     <View style={styles.muscleInfo}>
-                      <Ionicons name={icon} size={20} color={color} />
                       <Text style={styles.muscleGroupName}>
                         {item.muscleGroup}
                       </Text>
