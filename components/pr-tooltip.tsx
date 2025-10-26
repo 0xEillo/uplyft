@@ -26,6 +26,8 @@ interface PrTooltipProps {
   exerciseName: string
   /** Position of the badge that was tapped */
   position?: { x: number; y: number }
+  /** Optional override for weight unit (useful for demos/previews) */
+  weightUnitOverride?: 'kg' | 'lb'
 }
 
 /**
@@ -37,9 +39,11 @@ export function PrTooltip({
   onClose,
   prDetails,
   exerciseName,
+  weightUnitOverride,
 }: PrTooltipProps) {
   const colors = useThemedColors()
-  const { weightUnit } = useWeightUnits()
+  const { weightUnit: userWeightUnit } = useWeightUnits()
+  const weightUnit = weightUnitOverride || userWeightUnit
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.9)).current
 

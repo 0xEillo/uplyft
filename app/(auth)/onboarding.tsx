@@ -1,5 +1,6 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
+import { PrTooltip, PrDetailForTooltip } from '@/components/pr-tooltip'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   COMMITMENTS,
@@ -62,6 +63,7 @@ export default function OnboardingScreen() {
     training_years: null,
     bio: '',
   })
+  const [prTooltipVisible, setPrTooltipVisible] = useState(false)
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
   const { trackEvent } = useAnalytics()
@@ -76,6 +78,16 @@ export default function OnboardingScreen() {
   const progressDotAnims = useRef(
     Array.from({ length: 10 }, () => new Animated.Value(1)),
   ).current
+
+  // Mock PR data for the demo (hardcoded to lb to match the demo table)
+  const mockPrDetails: PrDetailForTooltip[] = [
+    {
+      label: '1RM',
+      weight: 185,
+      currentReps: 8,
+      isCurrent: true,
+    },
+  ]
 
   // Animate step transitions
   useEffect(() => {
@@ -160,6 +172,11 @@ export default function OnboardingScreen() {
         heightCm = (feet * 12 + inches) * 2.54
       }
 
+      // Calculate weight in kg
+      const weightKg = data.weight_kg
+        ? convertInputToKg(parseFloat(data.weight_kg))
+        : null
+
       // Navigate to trial offer screen with onboarding data
       router.push({
         pathname: '/(auth)/trial-offer',
@@ -168,9 +185,7 @@ export default function OnboardingScreen() {
             name: data.name,
             gender: data.gender,
             height_cm: heightCm,
-            weight_kg: data.weight_kg
-              ? convertInputToKg(parseFloat(data.weight_kg))
-              : null,
+            weight_kg: weightKg,
             age: age,
             goal: data.goal,
             commitment: data.commitment,
@@ -185,8 +200,8 @@ export default function OnboardingScreen() {
         goal: data.goal,
         age,
         gender: data.gender,
-        height: data.height,
-        weight: weightInKg,
+        height: heightCm,
+        weight: weightKg,
         commitment: data.commitment,
         training_years: data.training_years,
         bio: data.bio,
@@ -359,9 +374,13 @@ export default function OnboardingScreen() {
                         >
                           Bench Press
                         </Text>
-                        <View style={styles.workoutPrBadge}>
+                        <TouchableOpacity
+                          style={styles.workoutPrBadge}
+                          onPress={() => setPrTooltipVisible(true)}
+                          activeOpacity={0.7}
+                        >
                           <Text style={styles.workoutPrBadgeText}>PR</Text>
-                        </View>
+                        </TouchableOpacity>
                       </View>
                       <Text
                         style={[styles.workoutTableCell, styles.workoutSetsCol]}
@@ -867,7 +886,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Help train your AI assistant</Text>
+              <Text style={styles.stepTitle}>How do you like to train?</Text>
               <Text style={styles.stepSubtitle}>
                 <Text style={{ fontWeight: '700' }}>Optional</Text> - Helps
                 personalize your experience
@@ -878,7 +897,7 @@ export default function OnboardingScreen() {
               <View>
                 <AnimatedInput
                   style={styles.bioInput}
-                  placeholder="e.g., I've been lifting for 2 years but took a 6-month break recently. I have an old knee injury so I avoid heavy squats."
+                  placeholder="e.g., I like compound movements with free weights, usually in the 8-12 rep range for hypertrophy."
                   placeholderTextColor={colors.textSecondary}
                   value={data.bio}
                   onChangeText={(text) => setData({ ...data, bio: text })}
@@ -974,6 +993,15 @@ export default function OnboardingScreen() {
           </View>
         </KeyboardAvoidingView>
       </View>
+
+      {/* PR Tooltip for demo */}
+      <PrTooltip
+        visible={prTooltipVisible}
+        onClose={() => setPrTooltipVisible(false)}
+        prDetails={mockPrDetails}
+        exerciseName="Bench Press"
+        weightUnitOverride="lb"
+      />
     </SafeAreaView>
   )
 }

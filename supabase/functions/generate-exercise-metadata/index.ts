@@ -13,12 +13,14 @@ const metadataSchema = z.object({
   muscle_group: z.enum([
     'Chest',
     'Back',
-    'Legs',
     'Shoulders',
     'Biceps',
     'Triceps',
     'Core',
     'Glutes',
+    'Quads',
+    'Hamstrings',
+    'Calves',
     'Cardio',
     'Full Body',
   ]),
@@ -106,7 +108,7 @@ function buildPrompt(exerciseName: string): string {
   return `Exercise name: "${exerciseName}"
 
 Return JSON with properties:
-- muscle_group (Chest|Back|Legs|Shoulders|Biceps|Triceps|Core|Glutes|Cardio|Full Body)
+- muscle_group (Chest|Back|Shoulders|Biceps|Triceps|Core|Glutes|Quads|Hamstrings|Calves|Cardio|Full Body)
 - type (compound|isolation)
 - equipment (barbell|dumbbell|bodyweight|cable|machine|kettlebell|resistance band|other)`
 }
@@ -119,12 +121,14 @@ const jsonSchema = {
       enum: [
         'Chest',
         'Back',
-        'Legs',
         'Shoulders',
         'Biceps',
         'Triceps',
         'Core',
         'Glutes',
+        'Quads',
+        'Hamstrings',
+        'Calves',
         'Cardio',
         'Full Body',
       ],

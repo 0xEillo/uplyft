@@ -26,7 +26,20 @@ export interface Profile {
 export interface Exercise {
   id: string
   name: string
-  muscle_group: string | null
+  muscle_group:
+    | 'Chest'
+    | 'Back'
+    | 'Shoulders'
+    | 'Biceps'
+    | 'Triceps'
+    | 'Core'
+    | 'Glutes'
+    | 'Quads'
+    | 'Hamstrings'
+    | 'Calves'
+    | 'Cardio'
+    | 'Full Body'
+    | null
   type: string | null
   equipment: string | null
   created_by: string | null

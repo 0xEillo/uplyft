@@ -26,24 +26,28 @@ interface MuscleGroupData {
 const MUSCLE_GROUP_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Chest: 'body-outline',
   Back: 'shield-outline',
-  Legs: 'walk-outline',
   Shoulders: 'trending-up-outline',
   Biceps: 'fitness-outline',
   Triceps: 'barbell-outline',
   Core: 'ellipse-outline',
   Glutes: 'square-outline',
+  Quads: 'walk-outline',
+  Hamstrings: 'leaf-outline',
+  Calves: 'footsteps-outline',
   Cardio: 'heart-outline',
 }
 
 const MUSCLE_GROUP_COLORS: Record<string, string> = {
   Chest: '#FF6B6B',
   Back: '#4ECDC4',
-  Legs: '#45B7D1',
   Shoulders: '#FFA07A',
   Biceps: '#98D8C8',
   Triceps: '#F4A460',
   Core: '#F7DC6F',
   Glutes: '#BB8FCE',
+  Quads: '#45B7D1',
+  Hamstrings: '#00B894',
+  Calves: '#74B9FF',
   Cardio: '#EC7063',
 }
 

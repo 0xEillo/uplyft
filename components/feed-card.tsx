@@ -317,7 +317,7 @@ export const FeedCard = memo(function FeedCard({
               </TouchableOpacity>
 
               {/* Expanded set details */}
-              {isExerciseExpanded && exercise.setDetails && (
+              {isExerciseExpanded && exercise.setDetails && exercise.setDetails.length > 0 && (
                 <View style={styles.setDetailsContainer}>
                   {exercise.setDetails.map((set, setIndex) => {
                     const setHasPR = exercisePR?.prSetIndices.has(setIndex)

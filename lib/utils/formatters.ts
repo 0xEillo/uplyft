@@ -84,12 +84,10 @@ export function formatWorkoutForDisplay(
       reps: repsDisplay,
       weight: weightDisplay,
       hasVariedSets,
-      setDetails: hasVariedSets
-        ? sets.map((s) => ({
-            reps: s.reps,
-            weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
-          }))
-        : undefined,
+      setDetails: sets.map((s) => ({
+        reps: s.reps,
+        weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
+      })),
     }
   })
 }

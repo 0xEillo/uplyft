@@ -116,12 +116,12 @@ serve(async (req) => {
 Exercises performed: ${exerciseList}
 
 Guidelines:
-- Use standard workout split terminology: Upper Body, Lower Body, Push, Pull, Legs, Full Body, Core, Cardio, Arms, Shoulders, Back, Chest
-- If it's a specific split, use that (e.g., "Push Session", "Pull Session", "Leg Session")
+- Use standard workout split terminology: Upper Body, Lower Body, Push, Pull, Glutes, Quads, Hamstrings, Calves, Full Body, Core, Cardio, Arms, Shoulders, Back, Chest
+- If it's a specific split, use that (e.g., "Push Session", "Pull Session", "Glute Session")
 - If it's mixed, use broader terms (e.g., "Upper Body", "Full Body")
 - Keep it SHORT and specific (2-3 words maximum)
 - IMPORTANT: Use proper capitalization (Title Case) - capitalize the first letter of each major word
-- Examples: "Upper Body", "Lower Body", "Push Session", "Pull Session", "Leg Session", "Full Body"
+- Examples: "Upper Body", "Lower Body", "Push Session", "Pull Session", "Glute Session", "Full Body"
 
 Return ONLY the title with proper capitalization, nothing else.`,
       })
@@ -278,6 +278,7 @@ Instructions:
 5. Extract RPE (Rate of Perceived Exertion) if mentioned
 6. Extract any exercise-specific notes
 7. Try to infer the workout type if possible (e.g., "Push Day", "Pull Day", "Leg Day", "Upper Body", "Full Body")
+8. IMPORTANT: The 'notes' field should ONLY contain explicit user comments or descriptions about the workout (e.g., "Felt great today!", "New PR!", "Struggled with form"). If the user didn't provide any description or comment about the workout session itself, leave the notes field as null.
 
 Return structured data following the schema.`
 }
@@ -355,11 +356,48 @@ async function createWorkoutSession(
 
   const allSetsToInsert = exercises.flatMap((parsedEx: any, index: number) => {
     const workoutExercise = workoutExercises[index]
-    const validSets = (parsedEx.sets || []).filter(
-      (set: any) =>
-        typeof set.reps === 'number' &&
-        Number.isFinite(set.reps) &&
-        set.reps >= 1,
+    const normalizedSets = (parsedEx.sets || []).map((set: any) => {
+      const repsRaw = set?.reps
+      const weightRaw = set?.weight
+      const rpeRaw = set?.rpe
+
+      const reps =
+        repsRaw === null || repsRaw === undefined
+          ? null
+          : Number(
+              typeof repsRaw === 'string'
+                ? repsRaw.replace(/[^0-9.]/g, '')
+                : repsRaw,
+            )
+
+      const weight =
+        weightRaw === null || weightRaw === undefined
+          ? null
+          : Number(
+              typeof weightRaw === 'string'
+                ? weightRaw.replace(/[^0-9.\-]/g, '')
+                : weightRaw,
+            )
+
+      const rpe =
+        rpeRaw === null || rpeRaw === undefined
+          ? null
+          : Number(
+              typeof rpeRaw === 'string'
+                ? rpeRaw.replace(/[^0-9.]/g, '')
+                : rpeRaw,
+            )
+
+      return {
+        ...set,
+        reps: Number.isFinite(reps) ? reps : null,
+        weight: Number.isFinite(weight) ? weight : null,
+        rpe: Number.isFinite(rpe) ? rpe : null,
+      }
+    })
+
+    const validSets = normalizedSets.filter(
+      (set: any) => typeof set.reps === 'number' && set.reps >= 1,
     )
 
     return validSets.map((set: any, setIndex: number) => ({

@@ -1,6 +1,7 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useNotifications } from '@/contexts/notification-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useNotifications } from '@/contexts/notification-context'
+import { useSubscription } from '@/contexts/subscription-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -21,7 +22,6 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useSubscription } from '@/contexts/subscription-context'
 
 // Animated TouchableOpacity with press animation
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
@@ -76,7 +76,11 @@ export default function TrialOfferScreen() {
   const [isPurchasing, setIsPurchasing] = useState(false)
 
   const { user } = useAuth()
-  const { offerings, purchasePackage, isLoading: subscriptionLoading } = useSubscription()
+  const {
+    offerings,
+    purchasePackage,
+    isLoading: subscriptionLoading,
+  } = useSubscription()
   const { requestPermission, hasPermission } = useNotifications()
 
   const handleStartTrial = async () => {
@@ -90,14 +94,18 @@ export default function TrialOfferScreen() {
 
       // Find the monthly package - RevenueCat typically uses $rc_monthly identifier
       const monthlyPackage = offerings.availablePackages.find(
-        (pkg) => pkg.identifier === '$rc_monthly' || pkg.identifier.toLowerCase().includes('monthly')
+        (pkg) =>
+          pkg.identifier === '$rc_monthly' ||
+          pkg.identifier.toLowerCase().includes('monthly'),
       )
 
       if (!monthlyPackage) {
         // If no monthly package found, try the first available package
         const firstPackage = offerings.availablePackages[0]
         if (!firstPackage) {
-          throw new Error('No subscription packages available. Please try again.')
+          throw new Error(
+            'No subscription packages available. Please try again.',
+          )
         }
         await purchasePackage(firstPackage.identifier)
       } else {
@@ -117,7 +125,10 @@ export default function TrialOfferScreen() {
           await scheduleTrialExpirationNotification(user.id, trialStartDate)
         } catch (notificationError) {
           // Don't block the flow if notification fails
-          console.error('[TrialOffer] Failed to schedule notification:', notificationError)
+          console.error(
+            '[TrialOffer] Failed to schedule notification:',
+            notificationError,
+          )
         }
       }
 
@@ -128,7 +139,7 @@ export default function TrialOfferScreen() {
           onboarding_data: params.onboarding_data as string,
         },
       })
-    } catch (error: any) {
+    } catch (error) {
       // Handle user cancellation (not an error)
       if (error?.userCancelled) {
         return
@@ -139,8 +150,9 @@ export default function TrialOfferScreen() {
       // Show error to user
       Alert.alert(
         'Unable to Start Trial',
-        error?.message || 'There was a problem starting your trial. Please try again.',
-        [{ text: 'OK' }]
+        error?.message ||
+          'There was a problem starting your trial. Please try again.',
+        [{ text: 'OK' }],
       )
     } finally {
       setIsPurchasing(false)
@@ -189,17 +201,17 @@ export default function TrialOfferScreen() {
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(460).duration(600)}>
             <Feature
-              icon="trending-up"
-              title="Track Your PRs"
-              description="Celebrate every personal record"
+              icon="body"
+              title="Body Scan"
+              description="Track your physique with body analysis"
               colors={colors}
             />
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(540).duration(600)}>
             <Feature
-              icon="mic"
-              title="Voice Logging"
-              description="Log workouts faster with your voice"
+              icon="trending-up"
+              title="Track Your Progress"
+              description="View detailed stats and records"
               colors={colors}
             />
           </Animated.View>
@@ -230,7 +242,10 @@ export default function TrialOfferScreen() {
       await requestPermission()
       setStep(3)
     } catch (error) {
-      console.error('[TrialOffer] Error requesting notification permission:', error)
+      console.error(
+        '[TrialOffer] Error requesting notification permission:',
+        error,
+      )
       // Still continue even if permission request fails
       setStep(3)
     }
@@ -282,7 +297,10 @@ export default function TrialOfferScreen() {
           <Text style={styles.noPaymentText}>No Payment Due Now</Text>
         </View>
 
-        <AnimatedButton style={styles.startButton} onPress={handleStep2Continue}>
+        <AnimatedButton
+          style={styles.startButton}
+          onPress={handleStep2Continue}
+        >
           <Text style={styles.startButtonText}>Continue for FREE</Text>
         </AnimatedButton>
       </Animated.View>
@@ -405,9 +423,7 @@ export default function TrialOfferScreen() {
             {isPurchasing ? (
               <>
                 <ActivityIndicator color={colors.buttonText} size="small" />
-                <Text style={styles.startButtonText}>
-                  Starting Trial...
-                </Text>
+                <Text style={styles.startButtonText}>Starting Trial...</Text>
               </>
             ) : (
               <Text style={styles.startButtonText}>

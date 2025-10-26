@@ -1,0 +1,4806 @@
+[
+  {
+    "id": "c51e1682-cdac-4768-9e55-6ad0a4393828",
+    "name": "3/4 sit-up",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "3/4 sit up"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a9439420-9c30-450c-861c-b44169062800",
+    "name": "Ab bicycle",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d912e28d-10b1-4153-8849-31f7f3bfc350",
+    "name": "Ab Wheel",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Ab Roller",
+      "Ab Wheel Rollout",
+      "Rollout"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9878cf59-d1b8-4756-983e-148f2213995c",
+    "name": "Alternate Incline Dumbbell Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Alternating incline dumbbell biceps curl",
+      "Alternate Incline DB Curl"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2000d986-ecbb-46fd-8e6e-4344c0bfdfd3",
+    "name": "Alternating Deltoid Raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "76a90539-3bd3-41ad-81aa-6e00e3ced8ac",
+    "name": "Alternating dumbbell front raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2bef602d-b96b-43fa-91f9-d6f6102d0fef",
+    "name": "Alternating Kettlebell Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "dbd3ea44-305a-4b47-865e-f20fdd48a04e",
+    "name": "Alternating sit-through with crunch",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Alternating sit through with crunch"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c364c865-8e2a-446e-8ef5-46d1a51f0d8a",
+    "name": "Alternating standing shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ec70332e-0e5c-4a16-be3a-4fe5346ba58b",
+    "name": "Arms-crossed jump squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Arms crossed jump squat"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0675d5a6-5362-49ba-b9b2-b924cb64d904",
+    "name": "Arnold Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Arnold press",
+      "Dumbbell Arnold Press",
+      "DB Arnold Press"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "16aee83d-0469-433c-9e2f-7953bd6acc92",
+    "name": "Atlas Stones",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b31f051d-99ad-4dee-aedb-db8359e188e0",
+    "name": "Axle Deadlift",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1c2c37ee-f89d-4a49-abce-536bfb4a0d8d",
+    "name": "Back Extension",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Back extension",
+      "Hyperextension",
+      "Hypers",
+      "Back Extensions"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "614b7fad-7528-44f7-a1ed-5a4cbe3282f4",
+    "name": "Band Good Morning (Pull Through)",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "resistance band",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c72c1520-2d93-4e3f-a9f5-99d0198dd69a",
+    "name": "Band Hip Adductions",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "resistance band",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "63e4b9b7-ebe1-455b-a717-146cd9922729",
+    "name": "Band Skull Crusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "007a6e28-8fab-4fb1-b2d4-33ff51dc861a",
+    "name": "Barbell Ab Rollout - On Knees",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "BB Ab Rollout - On Knees",
+      "Barbell Ab Rollout   On Knees"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1996b3e4-22ad-4c17-90cd-ee25d2129fe5",
+    "name": "Barbell back squat to box",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB back squat to box"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9eba2e0a-0061-4ecc-9e48-26121ba395a6",
+    "name": "Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Bench Press - Medium Grip",
+      "Barbell Bench Press",
+      "BB Bench Press",
+      "Flat Bench Press",
+      "Medium Grip Bench Press"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "52186041-0ad0-4e57-8ca7-aa6d286a69bb",
+    "name": "Bulgarian Split Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Bulgarian split squat",
+      "Barbell Bulgarian Split Squat",
+      "BB Bulgarian Split Squat",
+      "BSS"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1ce72ab4-f5c3-4011-918d-97d2bb30b6d2",
+    "name": "Barbell Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "BB Curl",
+      "Barbell Bicep Curl",
+      "Standing Barbell Curl"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "cffe1785-15a5-498e-9a51-a24881181e4e",
+    "name": "Barbell Curls Lying Against An Incline",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "BB Curls Lying Against An Incline"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ab541c30-b598-48bb-8f85-c851b05d92f1",
+    "name": "Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Deadlift",
+      "BB Deadlift",
+      "Conventional Deadlift"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "dc21c3bd-2e40-4a16-b1e8-ccfb53ebe499",
+    "name": "Barbell deficit deadlift",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB deficit deadlift"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e8d55164-0f49-4d9f-9f88-fa27a768d688",
+    "name": "Barbell forward lunge",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB forward lunge"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ddf3d55c-e305-48cb-9671-64e081331cdd",
+    "name": "Front Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell front squat",
+      "Barbell Front Squat",
+      "BB Front Squat"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8e8ea45f-2a9e-47d5-8b99-410549aab166",
+    "name": "Barbell glute bridge",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "BB glute bridge"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6ec4bbb9-f81b-42e5-9d1a-eb6b0a3f7885",
+    "name": "Barbell hack squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB hack squat"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b1d416d5-605d-47cb-9bc0-5862fc51596f",
+    "name": "Hip Thrust",
+    "muscle_group": "Glutes",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Hip Thrust",
+      "BB Hip Thrust"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "dc3991dc-8c71-4300-a14e-ed1cf2d52554",
+    "name": "Incline Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Incline Bench Press Medium-Grip",
+      "Barbell Incline Bench",
+      "Incline Barbell Bench",
+      "BB Incline Bench"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "39a182d7-62a0-4b42-b652-5fb32270ad82",
+    "name": "Barbell rear delt bent-over row",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB rear delt bent-over row",
+      "Barbell rear delt bent over row"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "09f17a81-c24c-4fa7-b590-f031cdddd4dd",
+    "name": "Barbell roll-out",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB roll-out",
+      "Barbell roll out"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8acddc48-1cee-406a-b31e-8bc455cbb721",
+    "name": "Barbell Shrug",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell shrug",
+      "Shrug",
+      "BB Shrug"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "18d2ea04-fa91-47bd-a511-9ac95807883c",
+    "name": "Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Full Squat",
+      "Barbell Squat",
+      "Back Squat",
+      "BB Squat",
+      "Barbell Back Squat"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "19228888-3c8c-4438-84ca-e8cb86c89acb",
+    "name": "Barbell step-up",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB step-up",
+      "Barbell step up"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "259582e0-df49-4f4a-b02b-932b4b35a3b0",
+    "name": "Stiff-Leg Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell stiff-legged deadlift",
+      "Barbell Stiff-Leg Deadlift",
+      "SLDL",
+      "Straight Leg Deadlift",
+      "BB SLDL",
+      "Stiff Leg Deadlift"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8ea93fa8-14ec-4253-a46a-31c6555a70c3",
+    "name": "Barbell thruster",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "BB thruster"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "466711ba-bfee-4adc-a467-fabe1aba2637",
+    "name": "Upright Row",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell upright row",
+      "Barbell Upright Row",
+      "BB Upright Row"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0da3d2c4-9e01-4d06-b4f6-f1e09278aa24",
+    "name": "Walking Lunge",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell walking lunge",
+      "Barbell Walking Lunge",
+      "BB Walking Lunge"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "88f4a076-5366-4e49-a055-e188db2b98a3",
+    "name": "Battle ropes",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0dead2b1-fc1d-464a-bffe-1fa3ae8bbd7f",
+    "name": "Bear crawl sled drag",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "39edfc37-3951-46ec-80ca-e92568e57c73",
+    "name": "Behind-the-head skullcrusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Behind the head skullcrusher"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "cbb35a9d-1258-45ac-958a-21032e4ffacf",
+    "name": "Powerlifting Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Bench Press - Powerlifting",
+      "Competition Bench Press"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c01f7bc1-7afe-4fa3-85b6-73587f5df0f7",
+    "name": "Barbell Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Bent Over Barbell Row",
+      "BB Row",
+      "Bent Over Row",
+      "Pendlay Row"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "12366883-9311-46c7-8638-4603c36354b6",
+    "name": "Bent Over Two-Arm Long Bar Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Bent Over Two Arm Long Bar Row"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a3289844-e78d-43b3-88ad-986fe27b65ad",
+    "name": "Bent Over Two-Dumbbell Row With Palms In",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Bent Over Two-DB Row With Palms In",
+      "Bent Over Two Dumbbell Row With Palms In"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c10afecb-001a-4a79-86f1-c46ce66aee2f",
+    "name": "Bent-over dumbbell rear delt row",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Bent over dumbbell rear delt row"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "124b2646-95e8-4292-a900-1527d4e98bac",
+    "name": "Biceps curl to shoulder press",
+    "muscle_group": "Biceps",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "20790221-207d-4944-bbe7-743eb8441ece",
+    "name": "Bicycling",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f5ce2591-32ba-4e5c-982f-8a5e0f22d773",
+    "name": "Bodyweight Flyes",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b354116a-6806-4a02-adc4-15915505307c",
+    "name": "Bodyweight Reverse Lunge",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "95b577ce-2a4d-456b-8550-bb39c7ae58d7",
+    "name": "Bodyweight Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Bodyweight squat",
+      "Air Squat",
+      "BW Squat"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e3485274-3f1b-44a8-8913-fa41893ed5e1",
+    "name": "Bosu Ball Cable Crunch With Side Bends",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ec6f1dd7-4623-4bad-ac66-3526418b24d6",
+    "name": "Bottoms Up",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "205f5379-4623-4319-8ef1-e657c3f875c8",
+    "name": "Box jump",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "de554072-d58c-4036-bca5-2ca4d1167e7d",
+    "name": "Box Squat with Bands",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8e30fb07-a2f7-4e8a-899d-4042ff87f787",
+    "name": "Broad jump",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "46d4a99f-20f6-4223-b6bf-4b9c8332c4cf",
+    "name": "Burpee",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Burpees"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "27692756-5e03-4fa1-85db-613f8c5acdc2",
+    "name": "Butt-Ups",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Butt Ups"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "126a82a9-ca9e-460f-8b7a-436b78fecf73",
+    "name": "Pec Deck",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Butterfly",
+      "Pec Deck Fly",
+      "Chest Fly Machine"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "75000f05-04f6-47a8-a0fd-b38422378635",
+    "name": "Cable Chest Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "32e64102-6e73-4968-9a2c-3498e0370b50",
+    "name": "Cable Crossover",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Cable Crossover",
+      "Cable cross-over",
+      "Cable Flyes",
+      "Cable Cross",
+      "Cable Fly",
+      "Cable Chest Fly"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "36db0c60-3f6a-4070-be26-389dc6c4e762",
+    "name": "Cable Internal Rotation",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8901f077-43e7-4abf-9081-f5620fca8b7d",
+    "name": "Cable V-bar push-down",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Cable V bar push down"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ea683625-ad34-42fb-98be-6e5e741c4c9a",
+    "name": "Calf Press",
+    "muscle_group": "Calves",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Calf Press On The Leg Press Machine"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3e7a2598-077a-4a4f-859a-9e194a1f2ecb",
+    "name": "Calf-Machine Shoulder Shrug",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Calf Machine Shoulder Shrug"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bf22e08f-4708-4159-a159-d0410ec0f246",
+    "name": "Captain's chair knee raise",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2f6d5b97-9f2c-40a3-81aa-eee63a49bedd",
+    "name": "Car driver",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8c4fdd72-7b2b-4b40-a315-71cfe9a3f191",
+    "name": "Chain Handle Extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "837f8f13-d3f6-47bf-871d-c6861b9b0f59",
+    "name": "Dips",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Chest dip",
+      "Chest Dips",
+      "Dip",
+      "Weighted Dips"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "92435479-89ae-46df-a235-f7e884c68714",
+    "name": "Clam",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0ae85e7a-f8a9-4b61-b18c-042335689b74",
+    "name": "Clean",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b37db85d-61cf-4601-a439-69f6a14385f8",
+    "name": "Clean and Jerk",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Clean and jerk",
+      "Clean & Jerk",
+      "C&J"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "543799db-859f-4def-a2b3-b4c05130c504",
+    "name": "Clean and Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Clean and press",
+      "Clean & Press"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "80063483-9fe4-4ab8-b3dd-475be4cae615",
+    "name": "Clean Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "974abb4a-788e-4ee1-9cfb-e07bcbf3aebe",
+    "name": "Clean from Blocks",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1368e49b-c220-46cf-b552-497ca142715f",
+    "name": "Clock push-up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Clock push up"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5c2a91d7-da1b-45fd-8ce6-0b8cbda9e410",
+    "name": "Close push-up to wide push-up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Close push up to wide push up"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4ff05250-6e38-4d09-bf6b-0bc75307d633",
+    "name": "Close-grip barbell curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Close grip barbell curl"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "52856bf6-e382-4d99-9040-fdef50a2b454",
+    "name": "Close Grip Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Close-grip bench press",
+      "CGBP",
+      "Close-Grip Bench",
+      "Narrow Grip Bench Press"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bda823cb-7f59-4f2e-bc8c-fd695ae05c69",
+    "name": "Close-grip EZ-bar bench press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Close grip EZ bar bench press"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4d0416bf-f182-49b5-a032-9ae1a7b5d11f",
+    "name": "Close-grip EZ-bar curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Close grip EZ bar curl"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "33e30e55-a38e-42a7-a501-6392dd58ade8",
+    "name": "Close-Grip Front Lat Pulldown",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Close Grip Front Lat Pulldown"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4a05c8f6-adbb-46ad-9899-20fa987a01c0",
+    "name": "Close Grip Pulldown",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Close-grip pull-down",
+      "Close-Grip Pulldown",
+      "Narrow Grip Pulldown"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b0386180-0465-4d67-970f-624326b33a1c",
+    "name": "Cocoons",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e76307e1-1cf5-4121-9f7a-2392ff080b5d",
+    "name": "Concentration Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Concentration curl",
+      "Seated Concentration Curl",
+      "DB Concentration Curl"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7da8c59b-f06f-4d77-887a-2bceb69a7c49",
+    "name": "Cross-Body Crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Cross Body Crunch"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f7bddf53-f49d-436b-98a0-b99acf2bf851",
+    "name": "Cross-body hammer curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Cross body hammer curl"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0c6cc8f5-0b07-45fe-8247-0aeead7ef6f1",
+    "name": "Crunch - Hands Overhead",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Crunch   Hands Overhead"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6d948336-3f48-4b0f-96fc-6aa47954b049",
+    "name": "Crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Crunches",
+      "Ab Crunch",
+      "Abdominal Crunch"
+    ],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b72649fe-1620-4abe-a812-6669532d837c",
+    "name": "Dead bug reach",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fea5b9c9-8a10-41f6-b8a3-a1973c85b0d8",
+    "name": "Deadlift with Bands",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "93c9a509-95a0-48ae-9fdc-aa519e85cc9e",
+    "name": "Deadlift with Chains",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:14.920956+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d2a2b6d1-a792-46a4-9072-71e52944b0b8",
+    "name": "Decline bar press sit-up",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Decline bar press sit up"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3abe5650-2f33-4de3-a713-a9dcea282d10",
+    "name": "Decline Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Decline barbell bench press",
+      "Barbell Decline Bench",
+      "BB Decline Bench"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6bc58413-325a-4941-a1d2-0a03d35d838d",
+    "name": "Decline Close-Grip Bench To Skull Crusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Decline Close Grip Bench To Skull Crusher"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "30cebbe6-803c-4088-b292-55ead8ab6a42",
+    "name": "Decline Crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d3b1ff03-0aad-404c-b769-aa1372043e35",
+    "name": "Decline Dumbbell Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Decline dumbbell bench press",
+      "DB Decline Bench",
+      "Decline DB Bench Press",
+      "Decline DB Press"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0da2f569-9bdd-49be-81d3-a9f9930b8599",
+    "name": "Decline Dumbbell Fly",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Decline Dumbbell Flyes",
+      "Decline DB Flyes",
+      "Decline Flyes",
+      "Decline DB Fly"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "67093209-2147-4dc9-a6bf-cad5a39060eb",
+    "name": "Decline Dumbbell Triceps Extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Decline DB Triceps Extension"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "72149a9a-d3ad-4026-8eba-2e748b273519",
+    "name": "Decline EZ-bar skullcrusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Decline EZ bar skullcrusher"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a0f500de-5203-4fa1-a067-e90bfb9d3918",
+    "name": "Decline oblique crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2a407388-2053-4ee3-a5ca-a2e3ddf3d1e4",
+    "name": "Decline Push-Up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Decline Push Up"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4c71c4cb-d0d8-4a35-98ec-8cecc07f44ac",
+    "name": "Decline reverse crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2620b241-c692-47f2-a402-aad36cc88f5b",
+    "name": "Decline Smith Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "50bf8ecc-4803-458e-ae56-f7a88f10e966",
+    "name": "Dip Machine",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "83f37cc1-7cca-4b4c-a28b-f3415312f808",
+    "name": "Double Leg Butt Kick",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "52a1fe11-6476-4f61-a233-bad7c84b0a76",
+    "name": "Double-arm triceps kick-back",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Double arm triceps kick back"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3b10146e-a3b4-4eff-a205-21b7776e5299",
+    "name": "Drag curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "17248b85-5985-435d-b1bf-407d2eedab7b",
+    "name": "Drop Push",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1bd9353e-cbf8-4ebb-a27a-29d1180f104e",
+    "name": "Dumbbell Alternate Bicep Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB Alternate Bicep Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7927cf04-6d4b-4f01-9cd2-441ad398f214",
+    "name": "Dumbbell Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB Bench Press",
+      "DB Bench",
+      "Dumbbell Flat Bench"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4eee8aab-1e3d-4d1f-9222-0f43424824e7",
+    "name": "Dumbbell Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell bent-over row",
+      "DB Row",
+      "DB Bent Over Row",
+      "One Arm Dumbbell Row"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5bbdbc61-8228-407d-9d51-24629768da40",
+    "name": "Dumbbell Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell Bicep Curl",
+      "DB Curl",
+      "DB Bicep Curl",
+      "Dumbbell Biceps Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "44b2c205-7271-4a5b-8079-52260116af66",
+    "name": "Dumbbell external shoulder rotation",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB external shoulder rotation"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f9b6932b-3e4b-4b5a-a203-b8e01dc5382d",
+    "name": "Dumbbell farmer's walk",
+    "muscle_group": "Biceps",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "DB farmer's walk"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2e49afd8-0606-4595-b428-5a11b22fe5e2",
+    "name": "Dumbbell floor press",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB floor press"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "80a44d4f-fe01-477a-837d-de22d82e4d4a",
+    "name": "Dumbbell Fly",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell Flyes",
+      "DB Flyes",
+      "DB Fly",
+      "Chest Flyes",
+      "Dumbbell Chest Fly"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8422a77c-ae41-4bc5-a1b5-548704c9126a",
+    "name": "Front Raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell front raise",
+      "Dumbbell Front Raise",
+      "DB Front Raise"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fff91512-6761-4d93-9a6e-378607fcf4de",
+    "name": "Dumbbell front raise to lateral raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB front raise to lateral raise"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "07c2bcd1-c975-4454-9450-00c1d7f2d985",
+    "name": "Dumbbell Goblet Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB Goblet Squat"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2e2734c6-72d6-4ee5-8d9e-500488b8f0ef",
+    "name": "Dumbbell Lunge",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell Lunges",
+      "DB Lunge",
+      "Lunges"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "46b50197-1860-462b-afb7-4ebb0c260bca",
+    "name": "Lying Dumbbell Pronation",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Dumbbell Lying Pronation",
+      "DB Lying Pronation"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "04fc241a-f92b-4817-88de-f157bf0b8c55",
+    "name": "Rear Delt Fly",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell Lying Rear Lateral Raise",
+      "Reverse Fly",
+      "Rear Fly",
+      "Bent Over Reverse Fly"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9bfe52d0-d6bd-44dc-b26a-68a5220757ba",
+    "name": "Lying Dumbbell Supination",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Dumbbell Lying Supination",
+      "DB Lying Supination"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9e3d0bae-638b-46a1-ba79-6dbd14569bf3",
+    "name": "Dumbbell preacher curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB preacher curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c3ec2e4b-0988-4025-bc89-66febc4ff25a",
+    "name": "Dumbbell Raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB Raise"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6732dd30-6750-49e0-aa92-b15eae828dd5",
+    "name": "Dumbbell reverse lunge",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB reverse lunge"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "171882fd-e383-41cf-809c-c004daf2b787",
+    "name": "Seated Dumbbell Box Jump",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell seated box jump",
+      "DB seated box jump"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c9037fcc-930e-498f-b2f0-d7f667f47165",
+    "name": "Dumbbell side bend",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB side bend"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "199e3210-6381-4ef2-9eeb-a9de292c0c55",
+    "name": "Dumbbell Skullcrusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Dumbbell skullcrusher",
+      "DB Skullcrusher",
+      "DB Skull Crusher"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "dbe25724-2a35-4814-983f-63234aed9b33",
+    "name": "Dumbbell spell caster",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB spell caster"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "822d8e5b-d571-4660-8429-e1413c77492c",
+    "name": "Dumbbell squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB squat"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "355dbdbd-f3dd-42a7-9556-4bc888934774",
+    "name": "Dumbbell suitcase crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "DB suitcase crunch"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b9bed592-ecbb-4385-886f-b03dceee2ba2",
+    "name": "Dumbbell sumo squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB sumo squat"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "243698c5-5e37-4742-8ca5-6e6cb3255952",
+    "name": "Dumbbell V-Sit Cross Jab",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "DB V-Sit Cross Jab",
+      "Dumbbell V Sit Cross Jab"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5d1b4834-40cc-40f4-9396-1ae6e83c2715",
+    "name": "Elbow plank",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "063b5896-ee24-4aac-971e-03d28550ebd4",
+    "name": "Elbow-to-knee crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Elbow to knee crunch"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7d25dd01-a87d-4aea-88dd-8214a02a1cca",
+    "name": "Elliptical",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Elliptical trainer",
+      "Elliptical Trainer",
+      "Elliptical Machine"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f4865456-aff3-4d32-aeb7-db75049a2739",
+    "name": "Exercise ball crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "166b4728-df13-4caf-9be1-49956563098a",
+    "name": "Exercise ball leg curl",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9a78cc54-645e-431f-aa74-2b2a06ea47c1",
+    "name": "Exercise Ball Pull-In",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Exercise Ball Pull In"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "57a8e8d5-7373-47db-b76e-da39b7cd6767",
+    "name": "External Rotation with Cable",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "422e9bc5-35c4-4692-94f9-0c6d17242a18",
+    "name": "EZ Bar Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "EZ-Bar Curl",
+      "EZ Curl",
+      "EZ Bar Bicep Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1755c4e2-3b77-404b-8f77-650569d2d53f",
+    "name": "Skullcrusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "EZ-Bar Skullcrusher",
+      "EZ Bar Skullcrusher",
+      "Skull Crusher",
+      "Lying Tricep Extension",
+      "EZ Skullcrusher"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0a6aae91-23b7-4862-9ca3-5998cca3d676",
+    "name": "EZ-bar spider curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "EZ bar spider curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fd4e03fa-de12-4519-b5b0-fce852d61a11",
+    "name": "Feet-elevated bench dip",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Feet elevated bench dip"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e900023c-7a5a-40fb-9a8c-9804cf1e5182",
+    "name": "Feet-elevated push-up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Feet elevated push up"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "048d45cf-b843-4a55-be88-5ee6f45f794b",
+    "name": "Flat Bench Lying Leg Raise",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fcadbf5a-727c-460b-9609-7a1a6fc76ebe",
+    "name": "Flexor Incline Dumbbell Curls",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Flexor Incline DB Curls"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "97919990-537d-48f1-8dce-9f6b940265fc",
+    "name": "Flutter Kicks",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0af29734-4e60-4d98-a99c-3e5fabd308a6",
+    "name": "Lunge",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Forward lunge",
+      "Front Lunge",
+      "Bodyweight Lunge"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2e5e86f9-7d56-475d-a901-d7a2d42742a3",
+    "name": "Front Plate Raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f3745ebe-fb37-474f-a895-7be278e4d6a6",
+    "name": "Front Raise And Pullover",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4bb211f2-5ce2-4585-bb20-206f99d245a2",
+    "name": "Front Squats With Two Kettlebells",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "69ff442d-2d9b-4880-93e2-3670f8241655",
+    "name": "Gironda Sternum Chins",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a5a5e361-50ad-4099-a0c3-7f8ded673cae",
+    "name": "Glute Bridge",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Glute bridge",
+      "Hip Bridge",
+      "Bodyweight Glute Bridge"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "91b7417f-e72f-4924-b05b-3665ffc1b297",
+    "name": "Glute Ham Raise",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0a444463-fdeb-4784-bc04-7ab3b2a6e1a2",
+    "name": "Glute Kickback",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1f8f65d6-202a-4259-be4f-7d0bd5db3cc1",
+    "name": "Goblet Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b242a7e2-b403-408e-a913-484409422204",
+    "name": "Good Morning",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Good Morning",
+      "Good Mornings"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "04aec10c-8af7-45e8-850e-9eda2f59c45d",
+    "name": "Gorilla Chin/Crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e91618d4-b39b-430e-a301-4b35e41ef147",
+    "name": "Groiners",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b61bca2e-3854-4bd1-896c-5d857e967c32",
+    "name": "Hack Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "95e9ff59-9c9f-4120-8f52-412e5e7f4e7e",
+    "name": "Hammer Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Alternate Hammer Curl",
+      "Hammer Curls",
+      "Dumbbell Hammer Curl",
+      "DB Hammer Curl",
+      "Neutral Grip Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "49e9d0e4-4d90-4028-b02c-1a242db2d240",
+    "name": "Hammer Grip Incline DB Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a444d4f0-f178-4029-8c48-3078ac7d2b7e",
+    "name": "Hands-elevated push-up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Hands elevated push up"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ee34660b-9e58-4038-9bc9-bc38339ede77",
+    "name": "Handstand Push-Up",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Handstand push-up",
+      "HSPU",
+      "Handstand Pushup",
+      "Handstand Push Up"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "218dac69-397e-41cd-bba9-1233d87b2f5c",
+    "name": "Hang Clean",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Hang Power Clean"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1dd366f9-1a8f-4d29-8a85-ffb16d26e25d",
+    "name": "Hang Clean - Below the Knees",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Hang Clean   Below the Knees"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4ade9a53-f6e5-4bde-b48f-042adc33b937",
+    "name": "Hang Snatch",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "00fbaaa6-b29b-4e7c-982e-78978d2f1d3d",
+    "name": "Hanging Leg Raise",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Hanging leg raise",
+      "HLR",
+      "Hanging Knee Raise",
+      "Hanging Leg Raises"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4baff5cd-1de2-4d0d-8490-0d5c9963e22a",
+    "name": "Hanging Oblique Knee Raise",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "895a6a57-6da0-46c1-8ad9-ac2e37a1c072",
+    "name": "Hanging toes-to-bar",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Hanging toes to bar"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "453f2e03-2d1e-4917-8b6f-5dd23a84e160",
+    "name": "Trap Bar Deadlift",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Hex-bar deadlift",
+      "Hex Bar Deadlift",
+      "Hex Bar DL",
+      "Trap Bar DL"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "53cf6e64-62bd-43c6-9c72-5a45021877fc",
+    "name": "Hip Circles (Prone)",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3ee9e647-0c6c-4517-b29b-ece2ca2308c2",
+    "name": "Hyperextensions With No Hyperextension Bench",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "277bad75-73a9-40f6-b4ba-10a08e8621b7",
+    "name": "Incline cable chest fly",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3a261bba-1ae8-4a58-b22e-549abf26cbdb",
+    "name": "Incline cable chest press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3317751b-e46e-474b-8c9c-179e62b54548",
+    "name": "Incline Dumbbell Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Incline dumbbell bench press",
+      "DB Incline Bench",
+      "Incline DB Bench Press",
+      "Incline DB Press"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "80c6f4db-1f22-40d7-b0cc-b03613a7d472",
+    "name": "Incline Dumbbell Bench With Palms Facing In",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Incline DB Bench With Palms Facing In"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4cdd7395-c2ae-4076-a4be-c4970a71dd6b",
+    "name": "Incline Dumbbell Fly",
+    "muscle_group": "Chest",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Incline Dumbbell Flyes",
+      "Incline DB Flyes",
+      "Incline Flyes",
+      "Incline DB Fly"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ba008dc6-7443-4eb1-8919-17cc20697dce",
+    "name": "Incline dumbbell front raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8b690e77-18b8-4d87-a175-d75d6e7a3f72",
+    "name": "Incline dumbbell reverse fly",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7a419a65-86b7-4956-9e42-208f628ed6f9",
+    "name": "Incline dumbbell row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e9628f28-04fe-458f-80d7-6bc3f2b7b048",
+    "name": "Incline EZ-bar skullcrusher",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Incline EZ bar skullcrusher"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c55aa3bc-803e-40ba-8136-012aeb1c578a",
+    "name": "Incline face-down bar front raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Incline face down bar front raise"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "682cf371-9ce0-45a5-9e29-adfe60ed1647",
+    "name": "Incline Hammer Curls",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4527a099-3542-405e-885e-d905d872486c",
+    "name": "Incline Push-Up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Incline Push Up"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ef16e398-712d-40d9-affc-62e5b070afe2",
+    "name": "Isometric Wipers",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a809b1cf-afc5-48aa-939d-bde686bf3a69",
+    "name": "Jog In Place",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d5349c65-24ed-41b0-8f17-85a94f8d6f0b",
+    "name": "Jumping Jacks",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Jumping jack-",
+      "Jumping Jack",
+      "Star Jumps"
+    ],
+    "created_at": "2025-10-25T18:56:15.460061+00:00",
+    "created_by": null
+  },
+  {
+    "id": "03690fa6-37e4-462f-9de0-1f2cbfa3eb33",
+    "name": "Jumping rope",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "33da6f91-5b0c-49c1-8a5a-729e959663e8",
+    "name": "Kettlebell alternating renegade row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f62ce55a-6222-4f18-b4ce-561361a4d2db",
+    "name": "Kettlebell One-Legged Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Kettlebell One Legged Deadlift"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e36c23c6-68d0-4d86-8fc1-8b5e32ef3b10",
+    "name": "Kettlebell pass-through lunge",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Kettlebell pass through lunge"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "65870626-d215-4d80-8262-8d374b66c0c0",
+    "name": "Kettlebell Pistol Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c4b323dc-84e3-4db6-8da4-a275a8ade6fe",
+    "name": "Kettlebell sumo deadlift high pull",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6d20abbb-84dd-447e-9077-57d9e69f705a",
+    "name": "Kettlebell thruster",
+    "muscle_group": "Glutes",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e00f0e9b-843a-4644-9234-5d3c7133d461",
+    "name": "Kettlebell Turkish Get-Up (Squat style)",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Kettlebell Turkish Get Up (Squat style)"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "69c80a36-18cb-4dae-a1c1-c3c0a194b99f",
+    "name": "Cable Crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Kneeling cable crunch",
+      "Kneeling Cable Crunch",
+      "Cable Crunches"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8e07dd0f-b3f4-4d89-900e-fca9e0cc9fb1",
+    "name": "Kneeling Cable Crunch With Alternating Oblique Twists",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f46f1423-6774-472a-bf00-96ba9b1f5cb1",
+    "name": "Kneeling cable oblique crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9e283976-36e5-4270-b313-a16e7d16277e",
+    "name": "Kneeling cable triceps extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3551bacf-3455-4a33-860e-3089e22e1bdd",
+    "name": "Kneeling Squat",
+    "muscle_group": "Glutes",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "08909340-21a0-4af0-b973-8e5f200c3352",
+    "name": "Knees tucked crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ee2840e6-54a5-4c8a-856b-a9aaa28dfb16",
+    "name": "Landmine twist",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0ea0eae2-ba03-4fb4-8428-187068160e29",
+    "name": "Lat Pulldown",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Lat pull-down",
+      "Lat Pull-Down",
+      "Pull Down",
+      "Wide Grip Pulldown"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1999e854-6a1b-48d1-be3f-31a3f45a1730",
+    "name": "Leg Extension",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Leg Extensions",
+      "Quad Extension",
+      "Leg Extensions Machine"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "eec00b49-9a27-49b8-b009-e2cf9ff46c96",
+    "name": "Leg Press",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [
+      "Leg Press Machine"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8b21d2e0-1d0a-4e5a-a23a-75d1b32997c5",
+    "name": "Leverage Chest Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "58969a58-6204-419a-b2ca-e311a7f8abe7",
+    "name": "Leverage Decline Chest Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d15d2aa1-8cb1-4e73-af65-1c76c7556e43",
+    "name": "Leverage Incline Chest Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f53c660c-a149-43a0-8568-58eb18e3df8b",
+    "name": "Leverage Shrug",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3beb7c74-880f-49fd-a15c-435c6e284243",
+    "name": "Linear Acceleration Wall Drill",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fec8d3e3-ce46-4a76-9200-4f3205cb0502",
+    "name": "Low cable overhead triceps extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "cb0154b5-6c82-4fed-991c-b0ac729979d0",
+    "name": "Low-cable cross-over",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Low cable cross over"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a089a13d-77da-4a59-b32b-d35fae766922",
+    "name": "Lying cable triceps extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2fe28b19-3cc5-4f4f-81b6-4d8e439b7e2f",
+    "name": "Lying Face Down Plate Neck Resistance",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b9fae40b-165f-4089-85c1-89267b51f2ab",
+    "name": "Lying Face Up Plate Neck Resistance",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8ee7237a-18d4-4505-8761-0efa3546087a",
+    "name": "Leg Curl",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Lying Leg Curls",
+      "Hamstring Curl",
+      "Lying Hamstring Curl",
+      "Leg Curls"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "862f6b3f-037e-4ab7-b969-d8afc4b5b3eb",
+    "name": "Machine Bicep Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2bdfb2da-20f2-439d-8e4d-8b5e928a97ba",
+    "name": "Machine seated row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3eeb785a-53d5-499f-84db-46a26829706a",
+    "name": "Machine shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b358f565-281d-47ce-86dd-f731b113da53",
+    "name": "Machine Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "650b4b9e-7854-49bd-b5e0-e15884cf753c",
+    "name": "Man-maker",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Man maker"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1ed33ddf-dfe0-45ae-8dda-5880f3939e24",
+    "name": "Middle Back Shrug",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b735c556-ef67-472a-ad15-8e63bad4ef32",
+    "name": "Overhead Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Shoulder Press",
+      "Military press",
+      "Military Press",
+      "OHP",
+      "BB Shoulder Press",
+      "Standing Barbell Press"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "acf4fc60-db6c-42e3-9c3c-d36e5e3b0709",
+    "name": "Mountain Climber",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Mountain climber",
+      "Mountain Climbers"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "82c8b45e-1791-476a-bb3b-a4ae3ffe46b9",
+    "name": "Muscle Up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d80307d4-cad5-488a-b9a3-f36b5ccfda3b",
+    "name": "Narrow Stance Hack Squats",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "df6b12b9-e919-43dd-939a-fabc0a65acb0",
+    "name": "Narrow-stance leg press",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [
+      "Narrow stance leg press"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3712a379-7610-49f8-8cd4-1a00f19f2af0",
+    "name": "Narrow-stance squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Narrow stance squat"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5d45cc0a-7142-4830-84d2-02abd4e55ba9",
+    "name": "Natural Glute Ham Raise",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d58047af-a86b-4605-bc61-c8b7c378d05a",
+    "name": "Neck Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8e19b07e-87ad-4caa-9809-2698179f07f4",
+    "name": "Neutral-grip dumbbell bench press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Neutral grip dumbbell bench press"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c02020a4-ec19-4895-9aa0-9bfcceb9009e",
+    "name": "Olympic Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6d4b7e14-6225-4ed6-a93c-7c1dba4bf760",
+    "name": "One Arm Pronated Dumbbell Triceps Extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "One Arm Pronated DB Triceps Extension"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a69ec455-e6ec-4783-8e9e-3396023a2d8a",
+    "name": "One Arm Supinated Dumbbell Triceps Extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "One Arm Supinated DB Triceps Extension"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4390deab-d9b8-4454-80da-8cddc9b10053",
+    "name": "One-Arm Dumbbell Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "One-Arm DB Row",
+      "One Arm Dumbbell Row"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "db2f9d97-9561-4a3e-a4bb-dc2ae0d0651b",
+    "name": "One-Arm Long Bar Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "One Arm Long Bar Row"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "db72e3a3-1b8b-404b-88a6-1b2866fb9ffc",
+    "name": "Otis-Up",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Otis Up"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "70961d0e-2bd7-4e78-903e-a95d30ab0805",
+    "name": "Overhead cable curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9f67ccb3-4706-45c7-bf21-5d28f92d151e",
+    "name": "Overhead dumbbell front raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4f6ba55c-b6ae-44ee-95b1-a13b336e9fdd",
+    "name": "Pallof press",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0600a741-e710-4460-8e85-7428628b62be",
+    "name": "Palms-Down Dumbbell Wrist Curl Over A Bench",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Palms-Down DB Wrist Curl Over A Bench",
+      "Palms Down Dumbbell Wrist Curl Over A Bench"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9eccbf12-67b2-4828-ab54-4a171ff644f6",
+    "name": "Palms-down wrist curl over bench",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Palms down wrist curl over bench"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0459cc8c-0baa-4ff7-acd1-08162b6d1f05",
+    "name": "Palms-Up Dumbbell Wrist Curl Over A Bench",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Palms-Up DB Wrist Curl Over A Bench",
+      "Palms Up Dumbbell Wrist Curl Over A Bench"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "06ccf7af-67d9-413f-82ad-a8d5624f7ebc",
+    "name": "Palms-up wrist curl over bench",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Palms up wrist curl over bench"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "31e641c8-a061-4b07-8d31-bfbd0c2992ee",
+    "name": "Tricep Dips",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Parallel Bar Dip",
+      "Bar Dips",
+      "Parallel Bar Dips"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "aa091a58-c0db-4b01-8535-1173376f01ee",
+    "name": "Plate Pinch",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b9dd0602-f1b5-423a-b59f-9c8584fd8e95",
+    "name": "Plate Twist",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "91e09691-aa8a-4fc3-b052-a90cd3e9c7fd",
+    "name": "Power Clean",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Power clean",
+      "Barbell Power Clean",
+      "PC"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "03fbae11-f700-428d-b60b-46c4e89d57ff",
+    "name": "Power Clean from Blocks",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f52f45e6-4ad5-40d7-9777-d97e684cbec8",
+    "name": "Power Partials",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "90cd8fb4-724f-43fa-8b5a-c43c29b37d65",
+    "name": "Power Snatch",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Power snatch"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f173cfe2-fd68-4892-aa87-653982f6bdb1",
+    "name": "Preacher Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Barbell Preacher Curl",
+      "BB Preacher Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4243ce22-c8db-4085-97e5-ce9867923082",
+    "name": "Preacher Hammer Dumbbell Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Preacher Hammer DB Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d0d0adf0-19f0-4fc1-83cf-2fe7819d1803",
+    "name": "Pull-Up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Pullups",
+      "Pull-up",
+      "Pullup",
+      "Pull up",
+      "Wide Grip Pull-Up",
+      "Pull Up"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "42460b41-604a-4e4b-b52c-e1e7dccb4929",
+    "name": "Push-press",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Push press"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0ef6c163-3caa-4dd7-9221-a7f31150c397",
+    "name": "Push-Ups - Close Triceps Position",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Push Ups   Close Triceps Position"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "edcaea0a-4539-41a1-8f9b-54d0196a25f9",
+    "name": "Push-Ups With Feet On An Exercise Ball",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Push Ups With Feet On An Exercise Ball"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8db85092-d4b8-49f6-8258-4e6b75abcd34",
+    "name": "Push-Up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Pushups",
+      "Push Up",
+      "Pushup",
+      "Press-up"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a8dd1614-5f84-43dd-a1b3-29de54355d75",
+    "name": "Rack Pull with Bands",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "506239be-9fbc-45b6-a897-17ea3df5ef4e",
+    "name": "Reverse Band Box Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0a928a23-cd3f-4446-9469-e20ddcca0669",
+    "name": "Reverse Barbell Preacher Curls",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Reverse BB Preacher Curls"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "98d51565-aaa1-4a2e-976f-ffe761f4edf7",
+    "name": "Reverse Cable Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3dcd59bd-4727-40e9-9554-9e2f7e91300b",
+    "name": "Reverse crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "58eb9530-a17d-447a-a8aa-6eaf0614a963",
+    "name": "Reverse Grip Triceps Pushdown",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "39489ae5-b2f6-4468-adfe-0495c9f61d54",
+    "name": "Reverse-grip bench press",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Reverse grip bench press"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "af449716-b8be-49f5-b377-39861bffa985",
+    "name": "Reverse-grip bent-over row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Reverse grip bent over row"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bf956a92-69d8-4653-a617-5b1699bbca31",
+    "name": "Reverse-grip incline dumbbell bench press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Reverse grip incline dumbbell bench press"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4ee690d7-48c6-44b8-ab79-6ee037009d8d",
+    "name": "Reverse-grip lat pull-down",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [
+      "Reverse grip lat pull down"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "366ad460-f8b0-4114-9e74-1309a84c1885",
+    "name": "Rickshaw Carry",
+    "muscle_group": "Biceps",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3998e133-6ad0-49f8-bdd5-4166e435be73",
+    "name": "Ring dip",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3ba85aa0-f80f-4e74-806a-e930765c9760",
+    "name": "Rocking Standing Calf Raise",
+    "muscle_group": "Calves",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bfb34718-4805-4284-adc9-45c47b83598a",
+    "name": "Rocky Pull-Ups/Pulldowns",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Rocky Pull Ups/Pulldowns"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "308d08df-e1e4-465d-b4ae-a9429aad34ae",
+    "name": "Romanian Deadlift from Deficit",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "44ba2a50-a1c9-4cbe-a935-6d837d809188",
+    "name": "Romanian Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Romanian Deadlift With Dumbbells",
+      "Dumbbell RDL",
+      "DB Romanian Deadlift",
+      "RDL",
+      "DB RDL"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "91d10303-c39f-4048-8499-1fc937399bc8",
+    "name": "Rope climb",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b771d67e-41b2-4d5c-9285-a6479d028027",
+    "name": "Rope Crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "15936e81-8558-4daa-948f-3ee150f151f9",
+    "name": "Rowing Machine",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [
+      "Rower",
+      "Rowing",
+      "Erg"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "445cbebe-faa7-46cb-8fe9-a3c7d937c1c3",
+    "name": "Russian Twist",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Russian twist",
+      "Russian Twists"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8ad24dd1-8cb6-41dc-93ac-8f826d08bab2",
+    "name": "Scissors Jump",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4f426279-6487-4bbd-8c40-82ab8ed9b750",
+    "name": "Seated barbell shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1f545906-18ef-4b59-b1f8-93f3efdb7e1e",
+    "name": "Cable Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Seated Cable Rows",
+      "Seated Cable Row",
+      "Seated Row"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6d75e1cc-e3d3-424f-91be-5954b24f7717",
+    "name": "Seated cable shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2030163b-9fc9-4997-850f-84a990b102e9",
+    "name": "Seated Calf Raise",
+    "muscle_group": "Calves",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Seated Calf Raises"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f87538ba-a2b6-4506-b8d7-6baf54a40c6a",
+    "name": "Seated Close-Grip Concentration Barbell Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Seated Close-Grip Concentration BB Curl",
+      "Seated Close Grip Concentration Barbell Curl"
+    ],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b127b7a0-23c5-4868-821c-98d4287ca7fe",
+    "name": "Seated dumbbell biceps curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:15.80992+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f520e0b0-cdbc-487d-ae9b-425d4a33334c",
+    "name": "Seated Dumbbell Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Seated Dumbbell Press",
+      "Seated dumbbell shoulder press",
+      "Seated DB Shoulder Press",
+      "Seated DB Press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0f440cb8-c51f-46fe-8305-3b30380fd499",
+    "name": "Seated face pull",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6689d122-b801-4321-a160-b13495b8c5d5",
+    "name": "Seated finger curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f2ad9dc9-f06d-4e4f-b2d0-67a3f8dcfce2",
+    "name": "Seated Flat Bench Leg Pull-In",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Seated Flat Bench Leg Pull In"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7b0b59da-cfb6-4381-a9bd-a814ac80a8c0",
+    "name": "Seated One-Arm Dumbbell Palms-Down Wrist Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Seated One-Arm DB Palms-Down Wrist Curl",
+      "Seated One Arm Dumbbell Palms Down Wrist Curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ff756e36-d8ed-4e3b-9489-cb7fe3191e2e",
+    "name": "Seated One-Arm Dumbbell Palms-Up Wrist Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Seated One-Arm DB Palms-Up Wrist Curl",
+      "Seated One Arm Dumbbell Palms Up Wrist Curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c4c51746-154b-4493-8465-2f5c5bd25369",
+    "name": "Seated Palms-Down Barbell Wrist Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Seated Palms-Down BB Wrist Curl",
+      "Seated Palms Down Barbell Wrist Curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "459f6218-2d4f-497b-9a4c-a9b52416df7a",
+    "name": "Seated palms-down wrist curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Seated palms down wrist curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b3876c3b-7e43-45b7-94ba-684525806f8a",
+    "name": "Seated palms-up wrist curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Seated palms up wrist curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "58a1aa77-3964-4070-bfd3-1d29f3eba2cc",
+    "name": "Reverse Pec Deck",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Seated rear delt fly",
+      "Rear Delt Flyes",
+      "Reverse Flyes"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9bac94eb-3492-4b42-9d40-c9dffeaf1237",
+    "name": "Seated Side Lateral Raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "82e10771-b624-42ab-8112-43e83add6403",
+    "name": "Seated triceps press",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "85e3404a-4193-4670-ace0-8dc44e4a4a2b",
+    "name": "Seated Two-Arm Palms-Up Low-Pulley Wrist Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Seated Two Arm Palms Up Low Pulley Wrist Curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9618a412-c84d-4a3a-a8ce-225e315ebc34",
+    "name": "Shotgun row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f5dc623f-60f1-4d68-9a0f-c6c2046c9d3e",
+    "name": "Lateral Raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Side Lateral Raise",
+      "Side Raise",
+      "Dumbbell Lateral Raise",
+      "DB Lateral Raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bb4277ea-1f56-478c-8e99-c40a66d95591",
+    "name": "Side To Side Chins",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b1715281-6940-4f5e-a3e9-828cf41b22bb",
+    "name": "Side Wrist Pull",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0b0013e6-5303-4d2e-ab86-932c5a9fda62",
+    "name": "Side-to-side box skip",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Side to side box skip"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c9b68905-dcb4-4c8e-87d7-3fce7463b55a",
+    "name": "Single Leg Push-off",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Single Leg Push off"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0d91ae09-7f89-4b07-922f-7ccafa9d1141",
+    "name": "Single-arm bent-over cable rear delt fly",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Single arm bent over cable rear delt fly"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f0a64848-2557-4806-9370-91d5df5ffe53",
+    "name": "Single-arm cable cross-over",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Single arm cable cross over"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7b82425d-9a07-4f82-babf-199446a99854",
+    "name": "Single-arm cable front raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Single arm cable front raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "20330c60-e5ba-4013-a4df-4a1b42381b79",
+    "name": "Single-arm cable seated row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Single arm cable seated row"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "76dbc43c-b670-465c-9933-63bf3a97a32c",
+    "name": "Single-arm cable triceps extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Single arm cable triceps extension"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a66f0325-8b83-46b5-971d-88e6009f2e62",
+    "name": "Single-arm dumbbell preacher curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm dumbbell preacher curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "69c0c363-d0d4-417b-b215-67c763575a44",
+    "name": "Single-arm dumbbell triceps extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm dumbbell triceps extension"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "12e915ca-60cc-4ecc-9123-37e4926d0e49",
+    "name": "Single-arm high-cable side bend",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Single arm high cable side bend"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "02c9da45-eb5f-4820-ab0b-f7f5f39b895a",
+    "name": "Single-arm incline lateral raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm incline lateral raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "576b36d9-7d63-4cb9-84d5-b786b3a8f472",
+    "name": "Single-arm incline rear delt raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm incline rear delt raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a84d24da-1a2b-4824-958f-60d8e08552f7",
+    "name": "Single-arm kettlebell clean",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Single arm kettlebell clean"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c5efd40c-c4a5-400f-a49e-18f0ad62b301",
+    "name": "Single-arm kettlebell clean and jerk",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Single arm kettlebell clean and jerk"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e5fcf527-32ed-4a3b-bea0-965fb8eb2c36",
+    "name": "Single-arm kettlebell push-press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Single arm kettlebell push press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "42370469-527f-4ef0-8d79-eac780c61425",
+    "name": "Single-arm kettlebell row",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm kettlebell row"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "e1169a5e-bec7-4453-8701-a8133d10dd9b",
+    "name": "Single-arm kettlebell snatch",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Single arm kettlebell snatch"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a19a3a5e-737d-43e5-931d-5d432f9e6e9e",
+    "name": "Single-arm lateral raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm lateral raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "0fcd8826-c631-4625-b4a1-f158adb52147",
+    "name": "Single-arm palm-in dumbbell shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm palm in dumbbell shoulder press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bf2ab746-881b-49b6-9584-a6645d2f807f",
+    "name": "Single-Arm Push-Up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Single Arm Push Up"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4b0c492e-1598-496e-8d2b-f65d5fdcbb60",
+    "name": "Single-arm standing shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single arm standing shoulder press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8b50ff94-16a3-4e6a-9304-478ca1dc5d53",
+    "name": "Single-dumbbell front raise",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Single dumbbell front raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "862fa5e1-8076-4412-b990-dcfcdc20530b",
+    "name": "Single-leg cable hip extension",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Single leg cable hip extension"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d6e51e2b-b615-47a2-a78f-5b60ab5ae883",
+    "name": "Single-leg depth squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "resistance band",
+    "aliases": [
+      "Single leg depth squat"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7fa36131-6104-4481-bde9-53782a0546fb",
+    "name": "Single-leg glute bridge",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Single leg glute bridge"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "439ba0f2-b158-408e-8f51-ab28114b34e3",
+    "name": "Single-Leg Press",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [
+      "Single Leg Press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b9b005cd-cb6a-4071-89a4-18e6c96f50e8",
+    "name": "Skating",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c13fd412-d7ea-4a79-b2ab-2ed6d2802a9e",
+    "name": "Sledgehammer swing",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f51188f4-9716-461d-beae-3e5226929554",
+    "name": "Smith machine back squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "07efa6b4-408d-4646-bc1b-947fcbb291a1",
+    "name": "Smith machine bench press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4a2f6f15-2333-46bd-b64c-ee471e577588",
+    "name": "Smith machine box squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "846feeee-1b11-46c0-afae-3bff90659f76",
+    "name": "Smith Machine Calf Raise",
+    "muscle_group": "Calves",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "81392ec6-26ca-42be-a6c9-9f38fd9a8ee3",
+    "name": "Smith machine shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c1bc9b08-d350-4e0d-af47-90f564796aa1",
+    "name": "Smith machine shrug",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3bb19f2f-959a-4339-a439-4a02ebede17d",
+    "name": "Snatch Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "488afb90-902a-4b66-b05e-17a2594e96ff",
+    "name": "Snatch-Grip Behind-The-Neck Overhead Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Snatch Grip Behind The Neck Overhead Press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "83b4f547-9783-467d-85af-12a00f04e2f2",
+    "name": "Spider crawl",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "8d804c51-cb1c-4d4d-892c-0ce96c3fd593",
+    "name": "Split Squat with Dumbbells",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Split Squat with DBs"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4e59aeaf-989d-4853-a87d-c8d9beaa74e7",
+    "name": "Squat with Chains",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a777272c-7d42-4f43-924c-6b99db5e6f35",
+    "name": "Stair climber",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Stairmaster"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ac89e126-527a-4cad-b9e7-4865b98e9fd4",
+    "name": "Standing barbell overhead triceps extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d262fc22-7bb0-4113-b29c-ac1da7ec5e60",
+    "name": "Standing behind-the-back wrist curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Standing behind the back wrist curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "498e5147-1ade-4b4f-bc45-3b0d2ccd9c45",
+    "name": "Standing Biceps Cable Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f3038b88-4fb5-4cf8-88c2-34a91da64186",
+    "name": "Standing Bradford press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "23573c51-e638-4910-b110-0434cf28fb23",
+    "name": "Standing cable crunch",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "85d1dbbb-0bb1-44d2-aaea-3780e5ecf183",
+    "name": "Standing cable low-to-high twist",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Standing cable low to high twist"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bbc9c95f-4e03-429b-b08b-7c032bd32393",
+    "name": "Standing cable rear delt row",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a95f6b29-8939-49bd-8aa4-85fb04cc51a7",
+    "name": "Calf Raise",
+    "muscle_group": "Calves",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Standing Calf Raises",
+      "Standing Calf Raise",
+      "Calf Raises"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "33503529-91f6-4da5-9883-cede521eb727",
+    "name": "Standing concentration curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "74c54074-ee4f-471c-a515-b9389125931b",
+    "name": "Dumbbell Shoulder Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Standing dumbbell shoulder press",
+      "DB Shoulder Press",
+      "Standing DB Shoulder Press",
+      "DB OHP"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b69dc5ca-2f4e-49e1-9e2d-459f063d94c5",
+    "name": "Dumbbell Shrug",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Standing dumbbell shrug",
+      "DB Shrug",
+      "Standing DB Shrug"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "2519e279-c720-40e0-a003-567c0ba97e05",
+    "name": "Standing Dumbbell Triceps Extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Standing DB Triceps Extension"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "33eb8afd-2749-4ef8-9eb8-fd0fe1b380b0",
+    "name": "Standing dumbbell upright row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ddb23728-ff87-4ab3-b17a-d18126366e70",
+    "name": "Standing face pull",
+    "muscle_group": "Shoulders",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f377d875-a3dc-4de4-82af-e6e4cc494580",
+    "name": "Standing Hip Circles",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b9290eb3-c6ac-47aa-aa45-2fe1b79259c0",
+    "name": "Standing leg swing",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "3b72bd63-2190-42f8-a5d7-6f52f492505d",
+    "name": "Standing Olympic Plate Hand Squeeze",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1991beda-4cfe-40ad-8ac8-faa469a2ccb7",
+    "name": "Standing One-Arm Cable Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Standing One Arm Cable Curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "37f14a7c-9607-44e8-ae81-8360971f20ba",
+    "name": "Standing One-Arm Dumbbell Curl Over Incline Bench",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Standing One-Arm DB Curl Over Incline Bench",
+      "Standing One Arm Dumbbell Curl Over Incline Bench"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "af7d294f-dc55-49ab-847a-6a40c1d55ecc",
+    "name": "Standing One-Arm Dumbbell Triceps Extension",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Standing One-Arm DB Triceps Extension",
+      "Standing One Arm Dumbbell Triceps Extension"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a35f5114-45f2-4ddd-a391-e8c882a98351",
+    "name": "Standing palms-in shoulder press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Standing palms in shoulder press"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "6ad47d4a-fd98-48d2-924b-20c0fa21ffd8",
+    "name": "Bike",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Stationary bike",
+      "Stationary Bike",
+      "Exercise Bike",
+      "Cycling"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "290bb405-edd5-44b1-b9c8-a942e00e2358",
+    "name": "Step-up with knee raise",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Step up with knee raise"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5181f280-edd8-48a7-aa64-cbff791cd0cf",
+    "name": "Dumbbell Stiff-Leg Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Stiff-Legged Dumbbell Deadlift",
+      "DB Stiff Leg Deadlift",
+      "DB SLDL",
+      "Dumbbell SLDL",
+      "DB Stiff-Leg Deadlift",
+      "Dumbbell Stiff Leg Deadlift"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1265f0d9-a04d-45a8-acaa-e6f5428c408a",
+    "name": "Stomach Vacuum",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a7f117fb-8016-45ae-a46b-cb1682683c07",
+    "name": "Straight-arm dumbbell pull-over",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Straight arm dumbbell pull over"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "78b4e6c3-d2d2-490f-8443-1e60d6961166",
+    "name": "Straight-Arm Pulldown",
+    "muscle_group": "Back",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Straight Arm Pulldown"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "7a71d35c-5653-49de-8f55-3a1a01e84af0",
+    "name": "Straight-arm rope pull-down",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "cable",
+    "aliases": [
+      "Straight arm rope pull down"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d65a054f-3c50-4a53-a56a-7653b7d417a5",
+    "name": "Straight-bar wrist roll-up",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [
+      "Straight bar wrist roll up"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a7d9355a-3037-4d5e-a446-ca805f0f7de4",
+    "name": "Sumo Deadlift",
+    "muscle_group": "Hamstrings",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Sumo deadlift",
+      "Sumo DL"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "76bf0c80-4dc6-487a-a9a4-9803464036cd",
+    "name": "Superman",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bfd136ba-75b1-424e-949d-22ac493ccb83",
+    "name": "Suspended ab fall-out",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Suspended ab fall out"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "689ebbe7-4e51-40d3-b801-dad12ceb4503",
+    "name": "T-Bar Row",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "T-Bar Row with Handle",
+      "T Bar Row",
+      "Tbar Row"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "df27e796-7541-42b2-b8fc-7e8ed1f72658",
+    "name": "Thigh adductor",
+    "muscle_group": "Glutes",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "a9166623-065a-48ed-83fe-f5f7c43aa521",
+    "name": "Tire flip",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "16cd7bd2-d3ad-4cc9-aff1-455c6d4879b5",
+    "name": "Trail Running/Walking",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "b46468c1-d3c3-446a-8df4-876eb78ae8da",
+    "name": "Treadmill jogging",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "4aea3505-daa4-4f01-847c-6b2b47a6bbfb",
+    "name": "Treadmill",
+    "muscle_group": "Quads",
+    "type": "isolation",
+    "equipment": "machine",
+    "aliases": [
+      "Treadmill running",
+      "Running",
+      "Treadmill Run",
+      "Treadmill Running"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d224a914-2a56-4b85-959f-0fc010cbd158",
+    "name": "Dumbbell Kickback",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "dumbbell",
+    "aliases": [
+      "Tricep Dumbbell Kickback",
+      "DB Kickback",
+      "Tricep Kickback"
+    ],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1c10c6b6-d353-4239-8d32-9025b0ac13dc",
+    "name": "Triceps dip",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.197434+00:00",
+    "created_by": null
+  },
+  {
+    "id": "30993054-3375-41b4-aafa-a0e741ea8703",
+    "name": "Tricep Pushdown",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Triceps Pushdown",
+      "Cable Pushdown"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f864c27d-d998-434a-8cfa-ef4e4df61900",
+    "name": "Rope Pushdown",
+    "muscle_group": "Triceps",
+    "type": "isolation",
+    "equipment": "cable",
+    "aliases": [
+      "Triceps Pushdown - Rope Attachment",
+      "Rope Tricep Pushdown",
+      "Cable Rope Pushdown",
+      "Tricep Rope Pushdown"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d7a06f9e-c8cb-4671-9c6c-ec926c9ae9d6",
+    "name": "Two-Arm Kettlebell Military Press",
+    "muscle_group": "Shoulders",
+    "type": "compound",
+    "equipment": "kettlebell",
+    "aliases": [
+      "Two Arm Kettlebell Military Press"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c9306896-bb09-41d1-bb6c-6223715be5a6",
+    "name": "Upside-down pull-up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Upside down pull up"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "c909fea5-8438-4b33-bb99-18cfa3af8cc2",
+    "name": "V-bar pull-up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "V bar pull up"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "48958195-6689-486d-8f09-0b0c3369a6bc",
+    "name": "V-up",
+    "muscle_group": "Core",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "V up"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ddcac02f-54af-4d10-a6d6-dcfea3c9c92b",
+    "name": "Weighted bench dip",
+    "muscle_group": "Triceps",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "32042b2c-5f30-4f12-88ad-0da606540c12",
+    "name": "Weighted Crunches",
+    "muscle_group": "Core",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "9fa2a97b-3e9b-44ec-94c6-37e834dae3a2",
+    "name": "Weighted Jump Squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5110b0d4-4952-45aa-a57f-6a03c8105090",
+    "name": "Weighted Pull-Up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [
+      "Weighted pull-up",
+      "Weighted Pullup",
+      "Weighted Pull-ups",
+      "Weighted Pull Up"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fa06400d-c06c-48c6-925a-63ba899c2cc7",
+    "name": "Weighted sissy squat",
+    "muscle_group": "Quads",
+    "type": "compound",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "81316a3f-38cb-4ca3-90ba-e098260f19e4",
+    "name": "Wide Stance Stiff Legs",
+    "muscle_group": "Hamstrings",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "5e886725-4b0e-4b2b-9b6d-fe3641b08e4c",
+    "name": "Wide-grip barbell curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "barbell",
+    "aliases": [
+      "Wide grip barbell curl"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "db041b23-8b59-4f77-91e3-5da6d46b97f3",
+    "name": "Wide-grip bench press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Wide grip bench press"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "bde25d2a-989d-435b-849f-df8e0ef594b1",
+    "name": "Wide-Grip Decline Barbell Bench Press",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [
+      "Wide-Grip Decline BB Bench Press",
+      "Wide Grip Decline Barbell Bench Press"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "d06ee97f-7f9c-45ef-a939-46a34104288d",
+    "name": "Wide-grip hands-elevated push-up",
+    "muscle_group": "Chest",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Wide grip hands elevated push up"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "f86add4f-cc3a-4b62-83b5-70e7d942c52c",
+    "name": "Wide-Grip Rear Pull-Up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Wide Grip Rear Pull Up"
+    ],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "1e9dfa7e-ca44-4121-a6ce-cbd2214fd63a",
+    "name": "Wrist Roller",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "ce4b2ba2-2f04-4631-b59c-7597d4c67cec",
+    "name": "Yates Row Reverse Grip",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "barbell",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "79475f81-c5a2-4037-8536-369ff9ede5f6",
+    "name": "Zottman Curl",
+    "muscle_group": "Biceps",
+    "type": "isolation",
+    "equipment": "other",
+    "aliases": [],
+    "created_at": "2025-10-25T18:56:16.481186+00:00",
+    "created_by": null
+  },
+  {
+    "id": "fea6c98e-37e1-42dc-9189-ce4b3e38caeb",
+    "name": "Chin-Up",
+    "muscle_group": "Back",
+    "type": "compound",
+    "equipment": "bodyweight",
+    "aliases": [
+      "Chinup",
+      "Chin Up",
+      "Underhand Pull-Up",
+      "Supinated Pull-Up",
+      "Reverse Grip Pull-Up"
+    ],
+    "created_at": "2025-10-25T20:08:10.309Z",
+    "created_by": null
+  }
+]

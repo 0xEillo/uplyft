@@ -7,12 +7,14 @@ const exerciseMetadataSchema = z.object({
     .enum([
       'Chest',
       'Back',
-      'Legs',
       'Shoulders',
       'Biceps',
       'Triceps',
       'Core',
       'Glutes',
+      'Quads',
+      'Hamstrings',
+      'Calves',
       'Cardio',
       'Full Body',
     ])
