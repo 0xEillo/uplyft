@@ -443,8 +443,8 @@ export async function getExercisePercentile(
   const { data: percentileData, error: percentileError } = await supabase.rpc(
     'get_exercise_percentiles',
     {
-      exercise_id: exercise.id,
-      user_id: userId,
+      p_exercise_id: exercise.id,
+      p_user_id: userId,
     },
   )
 

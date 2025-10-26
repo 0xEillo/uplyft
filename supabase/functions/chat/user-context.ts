@@ -24,6 +24,7 @@ export interface UserContextSummary {
     weightKg?: number | null
     goals?: string[] | null
     trainingYears?: string | null
+    bio?: string | null
   }
   totals: {
     totalVolumeAllTime: number
@@ -204,6 +205,7 @@ export async function buildUserContextSummary(
       weightKg: profile.weight_kg,
       goals: profile.goals,
       trainingYears: profile.training_years,
+      bio: profile.bio,
     },
     totals: {
       totalVolumeAllTime: Math.round(totalVolumeAllTime || 0),
@@ -267,6 +269,10 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
     )
   if (personalInfo.length > 0) {
     lines.push(`Personal info: ${personalInfo.join(', ')}`)
+  }
+
+  if (ctx.profile.bio?.trim()) {
+    lines.push(`AI Context: ${ctx.profile.bio.trim()}`)
   }
 
   lines.push(
