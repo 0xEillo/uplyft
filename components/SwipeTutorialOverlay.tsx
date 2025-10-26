@@ -56,7 +56,7 @@ export default function SwipeTutorialOverlay({ onDismiss }: SwipeTutorialOverlay
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [handTranslateX, onDismiss, overlayOpacity]);
 
   const overlayAnimatedStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,

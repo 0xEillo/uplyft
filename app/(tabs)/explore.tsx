@@ -8,7 +8,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useFocusEffect } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   RefreshControl,
   ScrollView,

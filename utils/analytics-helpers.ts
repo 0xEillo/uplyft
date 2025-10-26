@@ -334,7 +334,7 @@ export async function withPerformanceTracking<T>(
  */
 export function useDebouncedTracking(eventName: string, delay: number = 2000) {
   const { trackEvent } = useAnalytics()
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   return (properties?: Record<string, unknown>) => {
     if (timeoutRef.current) {

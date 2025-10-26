@@ -23,20 +23,6 @@ interface MuscleGroupData {
   percentage: number
 }
 
-const MUSCLE_GROUP_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  Chest: 'body-outline',
-  Back: 'shield-outline',
-  Shoulders: 'trending-up-outline',
-  Biceps: 'fitness-outline',
-  Triceps: 'barbell-outline',
-  Core: 'ellipse-outline',
-  Glutes: 'square-outline',
-  Quads: 'walk-outline',
-  Hamstrings: 'leaf-outline',
-  Calves: 'footsteps-outline',
-  Cardio: 'heart-outline',
-}
-
 const MUSCLE_GROUP_COLORS: Record<string, string> = {
   Chest: '#FF6B6B',
   Back: '#4ECDC4',
@@ -159,8 +145,6 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
             {distributionData.map((item, index) => {
               const color =
                 MUSCLE_GROUP_COLORS[item.muscleGroup] || colors.primary
-              const icon =
-                MUSCLE_GROUP_ICONS[item.muscleGroup] || 'barbell-outline'
 
               return (
                 <View key={index} style={styles.barRow}>

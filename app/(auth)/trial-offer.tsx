@@ -141,7 +141,8 @@ export default function TrialOfferScreen() {
       })
     } catch (error) {
       // Handle user cancellation (not an error)
-      if (error?.userCancelled) {
+      const errorObj = error as any
+      if (errorObj?.userCancelled) {
         return
       }
 
@@ -150,7 +151,7 @@ export default function TrialOfferScreen() {
       // Show error to user
       Alert.alert(
         'Unable to Start Trial',
-        error?.message ||
+        errorObj?.message ||
           'There was a problem starting your trial. Please try again.',
         [{ text: 'OK' }],
       )

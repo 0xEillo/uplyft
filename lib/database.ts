@@ -1190,7 +1190,7 @@ export const database = {
 
       if (error) throw error
 
-      return (data as BodyLogRecord[]) || []
+      return (data as unknown as BodyLogRecord[]) || []
     },
   },
 }
