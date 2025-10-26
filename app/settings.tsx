@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/auth-context'
-import { useTheme } from '@/contexts/theme-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
@@ -286,7 +286,7 @@ export default function SettingsScreen() {
       Alert.alert(
         'Restore Failed',
         'No previous purchases found or restore failed. Please try again.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
     } finally {
       setIsRestoring(false)
@@ -304,7 +304,7 @@ export default function SettingsScreen() {
         Alert.alert(
           'Unable to Open',
           'Please open Settings > [Your Name] > Subscriptions to manage your subscription.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
         )
       }
     } catch (error) {
@@ -312,40 +312,25 @@ export default function SettingsScreen() {
       Alert.alert(
         'Unable to Open',
         'Please open Settings > [Your Name] > Subscriptions to manage your subscription.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
     }
   }
 
   // Get subscription status display
   const getSubscriptionStatus = () => {
-    if (!customerInfo) return 'Loading...'
+    if (!customerInfo) return 'loading'
 
-    const activeEntitlements = customerInfo.entitlements.active
-    if (Object.keys(activeEntitlements).length === 0) {
-      return 'Free'
+    const proEntitlement = customerInfo.entitlements.active['Pro']
+    if (!proEntitlement) {
+      return 'free'
     }
 
-    const proEntitlement = activeEntitlements['Pro']
-    if (proEntitlement) {
-      const expirationDate = proEntitlement.expirationDate
-      if (expirationDate) {
-        const date = new Date(expirationDate)
-        const now = new Date()
-        const isTrialing = proEntitlement.periodType === 'trial'
-
-        if (date > now) {
-          if (isTrialing) {
-            const daysLeft = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-            return `Trial (${daysLeft} days left)`
-          } else {
-            return 'Active'
-          }
-        }
-      }
+    if (proEntitlement.periodType === 'trial') {
+      return 'trial'
     }
 
-    return 'Free'
+    return 'active'
   }
 
   const getNextBillingDate = () => {
@@ -513,7 +498,9 @@ export default function SettingsScreen() {
                 <View style={styles.subscriptionRow}>
                   <View style={styles.subscriptionLeft}>
                     <Text style={styles.subscriptionLabel}>
-                      {getSubscriptionStatus().startsWith('Trial') ? 'Trial Ends' : 'Renews'}
+                      {getSubscriptionStatus() === 'trial'
+                        ? 'Trial Ends'
+                        : 'Renews'}
                     </Text>
                   </View>
                   <Text style={styles.subscriptionValue}>

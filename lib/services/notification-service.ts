@@ -1,5 +1,5 @@
-import * as Notifications from 'expo-notifications'
 import { database } from '@/lib/database'
+import * as Notifications from 'expo-notifications'
 
 const TRIAL_DURATION_DAYS = 7
 const NOTIFICATION_ADVANCE_DAYS = 1 // Notify 1 day before expiration (on day 6)
@@ -12,20 +12,23 @@ const NOTIFICATION_ADVANCE_DAYS = 1 // Notify 1 day before expiration (on day 6)
  */
 export async function scheduleTrialExpirationNotification(
   userId: string,
-  trialStartDate: Date = new Date()
+  trialStartDate: Date = new Date(),
 ): Promise<string> {
   try {
     // Calculate when to send the notification (6 days after trial start)
     const notificationDate = new Date(trialStartDate)
     notificationDate.setDate(
-      notificationDate.getDate() + TRIAL_DURATION_DAYS - NOTIFICATION_ADVANCE_DAYS
+      notificationDate.getDate() +
+        TRIAL_DURATION_DAYS -
+        NOTIFICATION_ADVANCE_DAYS,
     )
 
     // Schedule the notification
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Your trial ends tomorrow',
-        body: 'Your 7-day free trial of Rep AI ends in 24 hours. Continue tracking your fitness journey!',
+        body:
+          'Your 7-day free trial of Rep AI ends in 24 hours. Continue tracking your fitness journey!',
         data: {
           type: 'trial_expiration',
           userId,
@@ -44,12 +47,15 @@ export async function scheduleTrialExpirationNotification(
       userId,
       notificationId,
       notificationDate,
-      trialStartDate
+      trialStartDate,
     )
 
     return notificationId
   } catch (error) {
-    console.error('[NotificationService] Failed to schedule notification:', error)
+    console.error(
+      '[NotificationService] Failed to schedule notification:',
+      error,
+    )
     throw error
   }
 }
@@ -66,9 +72,8 @@ export async function cancelTrialNotification(userId: string): Promise<void> {
     if (status.trial_notification_id) {
       // Cancel the notification
       await Notifications.cancelScheduledNotificationAsync(
-        status.trial_notification_id
+        status.trial_notification_id,
       )
-
     }
 
     // Clear the notification ID from the database
@@ -87,11 +92,12 @@ export async function cancelTrialNotification(userId: string): Promise<void> {
  */
 export async function checkAndRescheduleTrialNotification(
   userId: string,
-  isProMember: boolean
+  hasPaidEntitlement: boolean,
+  trialAnchorDate?: string,
 ): Promise<void> {
   try {
     // Don't reschedule if user is already pro
-    if (isProMember) {
+    if (hasPaidEntitlement) {
       await cancelTrialNotification(userId)
       return
     }
@@ -100,11 +106,15 @@ export async function checkAndRescheduleTrialNotification(
     const status = await database.profiles.getTrialNotificationStatus(userId)
 
     // If no trial start date, nothing to reschedule
-    if (!status.trial_start_date) {
+    if (!status.trial_start_date && !trialAnchorDate) {
       return
     }
 
-    const trialStartDate = new Date(status.trial_start_date)
+    const trialStartDate = status.trial_start_date
+      ? new Date(status.trial_start_date)
+      : trialAnchorDate
+      ? new Date(trialAnchorDate)
+      : new Date()
     const now = new Date()
     const trialEndDate = new Date(trialStartDate)
     trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DURATION_DAYS)
@@ -118,7 +128,9 @@ export async function checkAndRescheduleTrialNotification(
     // Calculate when notification should be sent
     const notificationDate = new Date(trialStartDate)
     notificationDate.setDate(
-      notificationDate.getDate() + TRIAL_DURATION_DAYS - NOTIFICATION_ADVANCE_DAYS
+      notificationDate.getDate() +
+        TRIAL_DURATION_DAYS -
+        NOTIFICATION_ADVANCE_DAYS,
     )
 
     // If we're past the notification time, don't reschedule
@@ -126,24 +138,21 @@ export async function checkAndRescheduleTrialNotification(
       return
     }
 
-    // If notification ID exists, check if it's still scheduled
+    // If notification ID exists, check if it's still scheduled and valid
     if (status.trial_notification_id) {
       const scheduled = await Notifications.getAllScheduledNotificationsAsync()
       const exists = scheduled.some(
-        (n) => n.identifier === status.trial_notification_id
+        (n) => n.identifier === status.trial_notification_id,
       )
 
-      // If notification still exists, no need to reschedule
       if (exists) {
         return
       }
     }
 
-    // Reschedule the notification
     await scheduleTrialExpirationNotification(userId, trialStartDate)
   } catch (error) {
     console.error('[NotificationService] Failed to check/reschedule:', error)
     // Don't throw - rescheduling failures shouldn't block app functionality
   }
 }
-

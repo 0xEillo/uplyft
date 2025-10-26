@@ -177,8 +177,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [user?.id, isLoading, hasConfigured]) // Run when user ID changes or initialization completes
 
   // Check if user has Pro entitlement (case-sensitive: must match RevenueCat dashboard)
-  const isProMember =
-    customerInfo?.entitlements.active['Pro'] !== undefined || false
+  const proEntitlement = customerInfo?.entitlements.active['Pro']
+  const isTrialing = proEntitlement?.periodType === 'trial'
+  const hasPaidEntitlement = Boolean(proEntitlement && !isTrialing)
+  const isProMember = Boolean(proEntitlement)
 
   // Handle trial notification based on subscription status
   useEffect(() => {
@@ -186,20 +188,34 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
     const handleNotifications = async () => {
       try {
-        if (isProMember) {
-          // User is pro - cancel any trial notifications
+        if (hasPaidEntitlement) {
+          // User converted to a paid subscription - clear any trial reminders
           await cancelTrialNotification(user.id)
-        } else {
-          // User is not pro - check if notification needs rescheduling
-          await checkAndRescheduleTrialNotification(user.id, isProMember)
+          return
         }
+
+        // Trial or free user - ensure the reminder is scheduled if applicable
+        await checkAndRescheduleTrialNotification(
+          user.id,
+          hasPaidEntitlement,
+          proEntitlement?.latestPurchaseDate ||
+            proEntitlement?.originalPurchaseDate ||
+            undefined,
+        )
       } catch (error) {
         console.error('[Subscription] Notification handling error:', error)
       }
     }
 
     handleNotifications()
-  }, [user?.id, isProMember, isLoading])
+  }, [
+    user?.id,
+    isLoading,
+    hasPaidEntitlement,
+    proEntitlement?.periodType,
+    proEntitlement?.expirationDate,
+    proEntitlement?.latestPurchaseDate,
+  ])
 
   // Restore purchases
   const restorePurchases = async () => {
