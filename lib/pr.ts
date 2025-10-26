@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 type UUID = string
 
 export interface PrContextSet {
-  reps: number
+  reps: number | null
   weight: number | null
 }
 
@@ -84,11 +84,7 @@ export class PrService {
     )
 
     // Fetch future sets to determine if PRs are still current
-    const future = await this.fetchFutureSets(
-      userId,
-      exerciseId,
-      beforeDateISO,
-    )
+    const future = await this.fetchFutureSets(userId, exerciseId, beforeDateISO)
 
     const prs: PrDetail[] = []
 
@@ -99,9 +95,10 @@ export class PrService {
 
     if (cur1Rm && (!hist1Rm || cur1Rm > hist1Rm)) {
       const firstOneRmSetIndex = currentSets.findIndex(
-        (s) => s.reps === 1 && s.weight === cur1Rm
+        (s) => s.reps === 1 && s.weight === cur1Rm,
       )
-      const oneRmSetIndices = firstOneRmSetIndex !== -1 ? [firstOneRmSetIndex] : []
+      const oneRmSetIndices =
+        firstOneRmSetIndex !== -1 ? [firstOneRmSetIndex] : []
       prs.push({
         kind: 'single-rep-max',
         label: '1RM',
@@ -116,7 +113,7 @@ export class PrService {
     // Weight-based rep maxes: for each unique weight in current sets (excluding 1-rep sets)
     const weightsMap = new Map<number, number>() // weight -> max reps
     currentSets.forEach((s) => {
-      if (s.weight && s.reps > 1) {
+      if (s.weight && s.reps && s.reps > 1) {
         const currentMax = weightsMap.get(s.weight) || 0
         if (s.reps > currentMax) {
           weightsMap.set(s.weight, s.reps)
@@ -136,13 +133,15 @@ export class PrService {
 
         // Find the first set that achieved this PR
         const firstPrSetIndex = currentSets.findIndex(
-          (s) => s.weight === weight && s.reps === currentReps
+          (s) => s.weight === weight && s.reps === currentReps,
         )
         const setIndices = firstPrSetIndex !== -1 ? [firstPrSetIndex] : []
 
         prs.push({
           kind: 'weight-max',
-          label: `${weight}kg for ${currentReps} ${currentReps === 1 ? 'rep' : 'reps'}`,
+          label: `${weight}kg for ${currentReps} ${
+            currentReps === 1 ? 'rep' : 'reps'
+          }`,
           weight,
           previousReps: historicalReps,
           currentReps,
@@ -178,13 +177,13 @@ export class PrService {
     if (error) throw error
 
     interface HistoricSetsRow {
-      workout_exercises?: Array<{
+      workout_exercises?: {
         exercise_id: string
-        sets?: Array<{
-          reps: number
+        sets?: {
+          reps: number | null
           weight: number | null
-        }>
-      }>
+        }[]
+      }[]
     }
 
     const sets: PrContextSet[] = []
@@ -223,13 +222,13 @@ export class PrService {
     if (error) throw error
 
     interface FutureSetsRow {
-      workout_exercises?: Array<{
+      workout_exercises?: {
         exercise_id: string
-        sets?: Array<{
-          reps: number
+        sets?: {
+          reps: number | null
           weight: number | null
-        }>
-      }>
+        }[]
+      }[]
     }
 
     const sets: PrContextSet[] = []
@@ -265,7 +264,7 @@ export class PrService {
   ): number | undefined {
     let max: number | undefined
     sets.forEach((s) => {
-      if (s.weight === weight) {
+      if (s.weight === weight && s.reps != null) {
         if (!max || s.reps > max) max = s.reps
       }
     })

@@ -8,7 +8,7 @@ export interface ExerciseDisplay {
   weight: string
   hasVariedSets: boolean
   setDetails?: {
-    reps: number
+    reps: number | null
     weight: number | null
   }[]
 }
@@ -62,9 +62,9 @@ export function formatWorkoutForDisplay(
     // Format reps
     let repsDisplay: string
     if (allSameReps) {
-      repsDisplay = `${sets[0].reps}` // e.g., "10"
+      repsDisplay = sets[0].reps != null ? `${sets[0].reps}` : '--'
     } else {
-      repsDisplay = '...'
+      repsDisplay = sets.some((s) => s.reps == null) ? '--' : '...'
     }
 
     // Format weight

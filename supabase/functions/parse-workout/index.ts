@@ -136,41 +136,25 @@ Return ONLY the title with proper capitalization, nothing else.`,
       type: workoutType,
       notes: workoutData.notes ?? undefined,
       exercises: workoutData.exercises.map((ex) => {
-        const sets = Array.isArray(ex.sets) ? ex.sets : []
-
-        const validSets = sets
-          .filter(
-            (set) =>
-              typeof set.reps === 'number' &&
-              Number.isFinite(set.reps) &&
-              set.reps >= 1,
-          )
-          .map((set) => ({
-            ...set,
-            reps: set.reps as number,
-            weight: set.weight ?? undefined,
-            rpe: set.rpe ?? undefined,
-            notes: set.notes ?? undefined,
-          }))
-
-        const warmupSets = sets.filter((set) => set.reps == null)
-        const warmupNotes = warmupSets
-          .map((s) => s?.notes)
-          .filter((n): n is string => Boolean(n && n.trim()))
-        const mergedNotes =
-          [
-            ex.notes,
-            warmupNotes.length
-              ? `Warm-up: ${warmupNotes.join('; ')}`
-              : undefined,
-          ]
-            .filter(Boolean)
-            .join('\n') || undefined
+        const sets = Array.isArray(ex.sets)
+          ? ex.sets.map((set) => ({
+              ...set,
+              reps:
+                typeof set.reps === 'number' &&
+                Number.isFinite(set.reps) &&
+                set.reps >= 1
+                  ? set.reps
+                  : null,
+              weight: set.weight ?? undefined,
+              rpe: set.rpe ?? undefined,
+              notes: set.notes ?? undefined,
+            }))
+          : []
 
         return {
           ...ex,
-          notes: mergedNotes,
-          sets: validSets,
+          hasRepGaps: sets.some((set) => set.reps == null),
+          sets,
         }
       }),
     }
@@ -356,56 +340,55 @@ async function createWorkoutSession(
 
   const allSetsToInsert = exercises.flatMap((parsedEx: any, index: number) => {
     const workoutExercise = workoutExercises[index]
-    const normalizedSets = (parsedEx.sets || []).map((set: any) => {
-      const repsRaw = set?.reps
-      const weightRaw = set?.weight
-      const rpeRaw = set?.rpe
+    const normalizedSets = (parsedEx.sets || []).map(
+      (set: any, setIndex: number) => {
+        const repsRaw = set?.reps
+        const weightRaw = set?.weight
+        const rpeRaw = set?.rpe
 
-      const reps =
-        repsRaw === null || repsRaw === undefined
-          ? null
-          : Number(
-              typeof repsRaw === 'string'
-                ? repsRaw.replace(/[^0-9.]/g, '')
-                : repsRaw,
-            )
+        const reps =
+          repsRaw === null || repsRaw === undefined
+            ? null
+            : Number(
+                typeof repsRaw === 'string'
+                  ? repsRaw.replace(/[^0-9.]/g, '')
+                  : repsRaw,
+              )
 
-      const weight =
-        weightRaw === null || weightRaw === undefined
-          ? null
-          : Number(
-              typeof weightRaw === 'string'
-                ? weightRaw.replace(/[^0-9.\-]/g, '')
-                : weightRaw,
-            )
+        const weight =
+          weightRaw === null || weightRaw === undefined
+            ? null
+            : Number(
+                typeof weightRaw === 'string'
+                  ? weightRaw.replace(/[^0-9.\-]/g, '')
+                  : weightRaw,
+              )
 
-      const rpe =
-        rpeRaw === null || rpeRaw === undefined
-          ? null
-          : Number(
-              typeof rpeRaw === 'string'
-                ? rpeRaw.replace(/[^0-9.]/g, '')
-                : rpeRaw,
-            )
+        const rpe =
+          rpeRaw === null || rpeRaw === undefined
+            ? null
+            : Number(
+                typeof rpeRaw === 'string'
+                  ? rpeRaw.replace(/[^0-9.]/g, '')
+                  : rpeRaw,
+              )
 
-      return {
-        ...set,
-        reps: Number.isFinite(reps) ? reps : null,
-        weight: Number.isFinite(weight) ? weight : null,
-        rpe: Number.isFinite(rpe) ? rpe : null,
-      }
-    })
-
-    const validSets = normalizedSets.filter(
-      (set: any) => typeof set.reps === 'number' && set.reps >= 1,
+        return {
+          ...set,
+          reps: Number.isFinite(reps) ? reps : null,
+          weight: Number.isFinite(weight) ? weight : null,
+          rpe: Number.isFinite(rpe) ? rpe : null,
+          set_number: set.set_number ?? setIndex + 1,
+        }
+      },
     )
 
-    return validSets.map((set: any, setIndex: number) => ({
+    return normalizedSets.map((set: any) => ({
       workout_exercise_id: workoutExercise.id,
-      set_number: set.set_number ?? setIndex + 1,
+      set_number: set.set_number,
       reps: set.reps,
-      weight: set.weight ?? null,
-      rpe: set.rpe ?? null,
+      weight: set.weight,
+      rpe: set.rpe,
       notes: set.notes ?? null,
     }))
   })

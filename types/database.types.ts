@@ -72,7 +72,7 @@ export interface Set {
   id: string
   workout_exercise_id: string
   set_number: number
-  reps: number
+  reps: number | null
   weight: number | null
   rpe: number | null
   notes: string | null
@@ -100,12 +100,13 @@ export interface ParsedExercise {
   name: string
   order_index: number
   notes?: string
+  hasRepGaps?: boolean
   sets: ParsedSet[]
 }
 
 export interface ParsedSet {
   set_number: number
-  reps: number
+  reps: number | null
   weight?: number
   rpe?: number
   notes?: string

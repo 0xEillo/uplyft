@@ -27,7 +27,7 @@ interface WorkoutStats {
 }
 
 interface SetDetail {
-  reps: number
+  reps: number | null
   weight: number | null
 }
 
@@ -100,7 +100,10 @@ export const FeedCard = memo(function FeedCard({
   )
   const [menuVisible, setMenuVisible] = useState(false)
   const [tooltipVisible, setTooltipVisible] = useState(false)
-  const [selectedExercisePR, setSelectedExercisePR] = useState<ExercisePRInfo | null>(null)
+  const [
+    selectedExercisePR,
+    setSelectedExercisePR,
+  ] = useState<ExercisePRInfo | null>(null)
 
   // Image loading states and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
@@ -208,7 +211,10 @@ export const FeedCard = memo(function FeedCard({
               }).start()
             }}
             onError={(error) => {
-              console.error('Failed to load workout image:', error.nativeEvent.error)
+              console.error(
+                'Failed to load workout image:',
+                error.nativeEvent.error,
+              )
               setImageLoading(false)
             }}
           />
@@ -259,7 +265,9 @@ export const FeedCard = memo(function FeedCard({
               >
                 <View
                   style={[
-                    isExerciseExpanded ? styles.expandedExerciseCol : styles.exerciseCol,
+                    isExerciseExpanded
+                      ? styles.expandedExerciseCol
+                      : styles.exerciseCol,
                     styles.variedCell,
                   ]}
                 >
@@ -317,54 +325,56 @@ export const FeedCard = memo(function FeedCard({
               </TouchableOpacity>
 
               {/* Expanded set details */}
-              {isExerciseExpanded && exercise.setDetails && exercise.setDetails.length > 0 && (
-                <View style={styles.setDetailsContainer}>
-                  {exercise.setDetails.map((set, setIndex) => {
-                    const setHasPR = exercisePR?.prSetIndices.has(setIndex)
-                    return (
-                      <View
-                        key={setIndex}
-                        style={[
-                          styles.setDetailRow,
-                          setHasPR && styles.setDetailRowWithPR,
-                        ]}
-                      >
-                        <Text style={styles.setDetailLabel}>
-                          Set {setIndex + 1}
-                        </Text>
-                        <Text style={styles.setDetailReps}>
-                          {set.reps} reps
-                        </Text>
-                        <Text style={styles.setDetailWeight}>
-                          {set.weight
-                            ? `${set.weight.toFixed(
-                                weightUnit === 'kg' ? 1 : 0,
-                              )}`
-                            : 'BW'}
-                        </Text>
-                        <View style={styles.prBadgeContainer}>
-                          {setHasPR && exercisePR && (
-                            <TouchableOpacity
-                              onPress={() => {
-                                setSelectedExercisePR(exercisePR)
-                                setTooltipVisible(true)
-                              }}
-                              activeOpacity={0.7}
-                              style={[
-                                styles.prBadgeSmall,
-                                !exercisePR.hasCurrentPR &&
-                                  styles.prBadgeSmallHistorical,
-                              ]}
-                            >
-                              <Text style={styles.prBadgeTextSmall}>PR</Text>
-                            </TouchableOpacity>
-                          )}
+              {isExerciseExpanded &&
+                exercise.setDetails &&
+                exercise.setDetails.length > 0 && (
+                  <View style={styles.setDetailsContainer}>
+                    {exercise.setDetails.map((set, setIndex) => {
+                      const setHasPR = exercisePR?.prSetIndices.has(setIndex)
+                      return (
+                        <View
+                          key={setIndex}
+                          style={[
+                            styles.setDetailRow,
+                            setHasPR && styles.setDetailRowWithPR,
+                          ]}
+                        >
+                          <Text style={styles.setDetailLabel}>
+                            Set {setIndex + 1}
+                          </Text>
+                          <Text style={styles.setDetailReps}>
+                            {set.reps != null ? `${set.reps} reps` : '--'}
+                          </Text>
+                          <Text style={styles.setDetailWeight}>
+                            {set.weight
+                              ? `${set.weight.toFixed(
+                                  weightUnit === 'kg' ? 1 : 0,
+                                )}`
+                              : 'BW'}
+                          </Text>
+                          <View style={styles.prBadgeContainer}>
+                            {setHasPR && exercisePR && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setSelectedExercisePR(exercisePR)
+                                  setTooltipVisible(true)
+                                }}
+                                activeOpacity={0.7}
+                                style={[
+                                  styles.prBadgeSmall,
+                                  !exercisePR.hasCurrentPR &&
+                                    styles.prBadgeSmallHistorical,
+                                ]}
+                              >
+                                <Text style={styles.prBadgeTextSmall}>PR</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
                         </View>
-                      </View>
-                    )
-                  })}
-                </View>
-              )}
+                      )
+                    })}
+                  </View>
+                )}
             </View>
           )
         })}
@@ -454,7 +464,10 @@ export const FeedCard = memo(function FeedCard({
                   }).start()
                 }}
                 onError={(error) => {
-                  console.error('Failed to load fullscreen image:', error.nativeEvent.error)
+                  console.error(
+                    'Failed to load fullscreen image:',
+                    error.nativeEvent.error,
+                  )
                   setFullscreenImageLoading(false)
                 }}
               />

@@ -399,10 +399,10 @@ export const database = {
           return (parsedEx.sets || []).map((set) => ({
             workout_exercise_id: workoutExercise.id,
             set_number: set.set_number,
-            reps: set.reps,
-            weight: set.weight,
-            rpe: set.rpe,
-            notes: set.notes,
+            reps: set.reps ?? null,
+            weight: set.weight ?? null,
+            rpe: set.rpe ?? null,
+            notes: set.notes ?? null,
           }))
         },
       )
@@ -503,15 +503,19 @@ export const database = {
   sets: {
     async create(
       workoutExerciseId: string,
-      setData: { set_number: number; reps: number; weight?: number | null },
+      setData: {
+        set_number: number
+        reps?: number | null
+        weight?: number | null
+      },
     ) {
       const { data, error } = await supabase
         .from('sets')
         .insert({
           workout_exercise_id: workoutExerciseId,
           set_number: setData.set_number,
-          reps: setData.reps,
-          weight: setData.weight || null,
+          reps: setData.reps ?? null,
+          weight: setData.weight ?? null,
         })
         .select()
         .single()
@@ -522,7 +526,7 @@ export const database = {
 
     async update(
       setId: string,
-      updates: { reps?: number; weight?: number | null },
+      updates: { reps?: number | null; weight?: number | null },
     ) {
       const { data, error } = await supabase
         .from('sets')
@@ -1190,7 +1194,7 @@ export const database = {
 
       if (error) throw error
 
-      return (data as unknown as BodyLogRecord[]) || []
+      return ((data as unknown) as BodyLogRecord[]) || []
     },
   },
 }

@@ -2,7 +2,10 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
-import { uploadWorkoutImage, deleteWorkoutImage } from '@/lib/utils/image-upload'
+import {
+  deleteWorkoutImage,
+  uploadWorkoutImage,
+} from '@/lib/utils/image-upload'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -107,7 +110,9 @@ export default function EditWorkoutScreen() {
       return
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS)
+    const result = await ImagePicker.launchImageLibraryAsync(
+      IMAGE_PICKER_OPTIONS,
+    )
     if (!result.canceled && result.assets[0]) {
       await handleImageSelected(result.assets[0].uri)
     }
@@ -119,22 +124,18 @@ export default function EditWorkoutScreen() {
   }, [launchLibrary])
 
   const handleDeleteImage = useCallback(() => {
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to delete this photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            imageOpacity.setValue(0)
-            setEditedImageUrl(null)
-            setImageDeleted(true)
-          },
+    Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          imageOpacity.setValue(0)
+          setEditedImageUrl(null)
+          setImageDeleted(true)
         },
-      ],
-    )
+      },
+    ])
   }, [imageOpacity])
 
   const loadWorkout = useCallback(async () => {
@@ -190,7 +191,11 @@ export default function EditWorkoutScreen() {
       await database.workoutSessions.update(workoutId, updates)
 
       // Delete old image from storage if it was replaced or deleted
-      if (workout?.image_url && (imageDeleted || (editedImageUrl && editedImageUrl !== workout.image_url))) {
+      if (
+        workout?.image_url &&
+        (imageDeleted ||
+          (editedImageUrl && editedImageUrl !== workout.image_url))
+      ) {
         await deleteWorkoutImage(workout.image_url)
       }
 
@@ -215,9 +220,14 @@ export default function EditWorkoutScreen() {
 
             // Parse reps if it was edited
             if (values.reps !== undefined) {
-              const reps = values.reps === '' ? 0 : parseFloat(values.reps)
-              if (!isNaN(reps)) {
-                updates.reps = reps
+              const parsed = values.reps.trim()
+              if (parsed === '') {
+                updates.reps = null
+              } else {
+                const reps = parseFloat(parsed)
+                if (!isNaN(reps)) {
+                  updates.reps = reps
+                }
               }
             }
 
@@ -355,13 +365,13 @@ export default function EditWorkoutScreen() {
 
       // Use last set's values as defaults, or use sensible defaults
       const lastSet = activeSets[activeSets.length - 1]
-      const defaultReps = lastSet?.reps || 8
+      const defaultReps = lastSet?.reps ?? null
       const defaultWeight = lastSet?.weight || null
 
       // Create the new set
       const newSet = await database.sets.create(workoutExerciseId, {
         set_number: nextSetNumber,
-        reps: defaultReps,
+        reps: defaultReps ?? undefined,
         weight: defaultWeight,
       })
 
@@ -516,7 +526,9 @@ export default function EditWorkoutScreen() {
                           size={18}
                           color={colors.primary}
                         />
-                        <Text style={styles.changeButtonText}>Change Photo</Text>
+                        <Text style={styles.changeButtonText}>
+                          Change Photo
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -637,8 +649,8 @@ export default function EditWorkoutScreen() {
                                 onChangeText={(val) =>
                                   updateSet(set.id, 'reps', val)
                                 }
-                                keyboardType="number-pad"
-                                placeholder="-"
+                                keyboardType="decimal-pad"
+                                placeholder="--"
                                 placeholderTextColor={colors.textPlaceholder}
                               />
                               <TextInput
