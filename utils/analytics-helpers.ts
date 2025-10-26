@@ -4,13 +4,13 @@
  * Provides type-safe wrappers and utilities for analytics tracking.
  */
 
-import { useEffect, useRef } from 'react'
-import { useAnalytics } from '@/contexts/analytics-context'
 import {
   AnalyticsEvents,
-  type EventPropertiesMap,
   type BaseEventProperties,
+  type EventPropertiesMap,
 } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
+import { useEffect, useRef } from 'react'
 
 // ============================================================================
 // TYPED TRACKING FUNCTIONS
@@ -348,15 +348,6 @@ export function useDebouncedTracking(eventName: string, delay: number = 2000) {
       })
     }, delay)
   }
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-      }
-    }
-  }, [])
 }
 
 // ============================================================================
