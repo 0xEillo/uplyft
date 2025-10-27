@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -91,6 +91,7 @@ export default function FeedScreen() {
   const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
     null,
   )
+  const isProcessingPendingPost = useRef(false)
 
   const loadWorkouts = useCallback(
     async (showLoading = false) => {
@@ -121,7 +122,15 @@ export default function FeedScreen() {
   const handlePendingPost = useCallback(async () => {
     if (!user) return
 
+    // Prevent concurrent processing of the same pending post
+    if (isProcessingPendingPost.current) {
+      console.log('[Feed] Pending post already processing, skipping')
+      return
+    }
+
     try {
+      isProcessingPendingPost.current = true
+
       const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
       if (!pendingData) return
 
@@ -244,6 +253,8 @@ export default function FeedScreen() {
           style: 'cancel',
         },
       ])
+    } finally {
+      isProcessingPendingPost.current = false
     }
   }, [user, router, weightUnit])
 
@@ -254,10 +265,12 @@ export default function FeedScreen() {
         workoutCount: workouts.length,
       })
 
-      handlePendingPost().then(() => {
-        // Only show loading spinner on initial load
-        loadWorkouts(isInitialLoad)
-      })
+      // Load existing workouts immediately (non-blocking)
+      loadWorkouts(isInitialLoad)
+
+      // Process pending post in background (non-blocking)
+      // CreateButton spinner in tab bar shows progress via PENDING_POST_KEY polling
+      handlePendingPost()
     }, [
       handlePendingPost,
       loadWorkouts,
