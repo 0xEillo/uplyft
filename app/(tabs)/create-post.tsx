@@ -5,6 +5,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
+import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -102,6 +103,7 @@ export default function CreatePostScreen() {
   const [imageLoading, setImageLoading] = useState(false)
 
   const { showOverlay } = useSuccessOverlay()
+  const { showPrompt } = useRatingPrompt()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
@@ -551,6 +553,11 @@ export default function CreatePostScreen() {
       // Show overlay and navigate to feed
       showOverlay({ message, workoutNumber, weeklyTarget })
       router.replace('/(tabs)')
+
+      // Schedule rating prompt to show after success overlay completes (3.7s)
+      setTimeout(() => {
+        showPrompt(workoutNumber)
+      }, 3700)
     } catch (error) {
       console.error('Error saving pending post:', error)
       Alert.alert(
@@ -637,6 +644,7 @@ export default function CreatePostScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Animated.View
+        needsOffscreenAlphaCompositing={true}
         style={{
           flex: 1,
           transform: [{ translateY: pageSlideAnim }, { scale: pageScaleAnim }],

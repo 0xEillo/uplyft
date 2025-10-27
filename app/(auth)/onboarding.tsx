@@ -177,9 +177,9 @@ export default function OnboardingScreen() {
         ? convertInputToKg(parseFloat(data.weight_kg))
         : null
 
-      // Navigate to trial offer screen with onboarding data
+      // Navigate to congratulations screen with onboarding data
       router.push({
-        pathname: '/(auth)/trial-offer',
+        pathname: '/(auth)/congratulations',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,

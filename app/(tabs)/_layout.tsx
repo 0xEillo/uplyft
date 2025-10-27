@@ -20,6 +20,8 @@ import {
   useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
+import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
+import { RatingPromptModal } from '@/components/rating-prompt-modal'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 const DRAFT_KEY = '@workout_draft'
@@ -187,6 +189,7 @@ function TabLayoutContent() {
         workoutNumber={data.workoutNumber}
         weeklyTarget={data.weeklyTarget}
       />
+      <RatingPromptModal />
     </>
   )
 }
@@ -194,7 +197,9 @@ function TabLayoutContent() {
 export default function TabLayout() {
   return (
     <SuccessOverlayProvider>
-      <TabLayoutContent />
+      <RatingPromptProvider>
+        <TabLayoutContent />
+      </RatingPromptProvider>
     </SuccessOverlayProvider>
   )
 }

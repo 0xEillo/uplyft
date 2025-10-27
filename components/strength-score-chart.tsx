@@ -3,11 +3,14 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Modal,
+  PanResponder,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +19,8 @@ import {
   View,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
+
+const SCREEN_HEIGHT = Dimensions.get('window').height
 
 interface StrengthScoreChartProps {
   userId: string
@@ -43,6 +48,10 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   const [isLoading, setIsLoading] = useState(false)
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
+
+  // Animation refs for modal
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const backdropAnim = useRef(new Animated.Value(0)).current
 
   const loadExercises = useCallback(async () => {
     try {
@@ -85,6 +94,71 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   useEffect(() => {
     loadProgressData()
   }, [loadProgressData])
+
+  // Handle modal animations
+  useEffect(() => {
+    if (showExercisePicker) {
+      // Slide up
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 25,
+          stiffness: 200,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      // Slide down
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [showExercisePicker, slideAnim, backdropAnim])
+
+  // Pan responder for swipe-to-dismiss
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes
+        return Math.abs(gestureState.dy) > 5
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward swipes
+        if (gestureState.dy > 0) {
+          slideAnim.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 100px or velocity is high, close
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          setShowExercisePicker(false)
+        } else {
+          // Otherwise, spring back to position
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 25,
+            stiffness: 200,
+          }).start()
+        }
+      },
+    }),
+  ).current
 
   const filteredExercises = exercises.filter((ex) =>
     ex.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -427,16 +501,42 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
       <Modal
         visible={showExercisePicker}
         transparent
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setShowExercisePicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <Animated.View
+            style={[
+              styles.backdrop,
+              {
+                opacity: backdropAnim,
+              },
+            ]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowExercisePicker(false)}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+            {...panResponder.panHandlers}
+          >
+            {/* Handle Bar */}
+            <View style={styles.handleContainer}>
+              <View
+                style={[styles.handle, { backgroundColor: colors.textSecondary }]}
+              />
+            </View>
+
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Exercise</Text>
-              <TouchableOpacity onPress={() => setShowExercisePicker(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
             </View>
 
             <TextInput
@@ -507,7 +607,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>
@@ -684,28 +784,44 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'flex-end',
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
       backgroundColor: colors.white,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      maxHeight: '80%',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: SCREEN_HEIGHT * 0.75,
       paddingBottom: 34,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+      elevation: 20,
+    },
+    handleContainer: {
+      alignItems: 'center',
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      opacity: 0.3,
     },
     modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingHorizontal: 20,
+      paddingBottom: 16,
     },
     modalTitle: {
-      fontSize: 18,
+      fontSize: 24,
       fontWeight: '700',
       color: colors.text,
+      letterSpacing: -0.5,
     },
     searchInput: {
       margin: 16,
