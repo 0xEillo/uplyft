@@ -50,7 +50,7 @@ const requestSchema = z.object({
   imageUrl: z.string().nullable().optional(),
 })
 
-const openaiClient = openai('gpt-5-mini')
+const openaiClient = openai('gpt-4.1-mini')
 
 // Initialize OpenAI client for tool calling (using direct SDK)
 const openaiToolClient = new OpenAI({
@@ -110,7 +110,7 @@ serve(async (req) => {
         .join(', ')
 
       const titleResult = await generateText({
-        model: openai('gpt-4.1-mini'),
+        model: openai('gpt-4.1-nano'),
         prompt: `You are a fitness expert analyzing workout sessions. Based on the exercises performed, generate a concise workout title (2-3 words max).
 
 Exercises performed: ${exerciseList}
@@ -481,7 +481,7 @@ etc.`
       iterationCount++
 
       const response = await openaiToolClient.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-mini',
         messages,
         tools: [searchExercisesTool, createExerciseTool],
         tool_choice: 'auto',

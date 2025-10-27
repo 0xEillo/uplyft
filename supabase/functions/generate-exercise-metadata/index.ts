@@ -51,7 +51,7 @@ serve(async (req) => {
     const payload = requestSchema.parse(await req.json())
 
     const response = await client.responses.create({
-      model: 'gpt-4.1-mini',
+      model: 'gpt-4.1-nano',
       input: [
         {
           role: 'system',

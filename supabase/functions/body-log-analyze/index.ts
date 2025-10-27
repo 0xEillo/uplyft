@@ -141,7 +141,7 @@ serve(async (req) => {
 
     // Analyze the image with GPT-4o Mini Vision
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-mini',
       messages: [
         {
           role: 'system',
