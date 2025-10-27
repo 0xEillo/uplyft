@@ -278,14 +278,26 @@ export default function SettingsScreen() {
   const handleRestorePurchases = async () => {
     try {
       setIsRestoring(true)
-      await restorePurchases()
-      Alert.alert('Success', 'Your purchases have been restored.', [
-        { text: 'OK' },
-      ])
+      const restoredCustomerInfo = await restorePurchases()
+
+      // Check if Pro entitlement was restored
+      const hasProEntitlement = Boolean(restoredCustomerInfo?.entitlements.active['Pro'])
+
+      if (hasProEntitlement) {
+        Alert.alert('Success', 'Your purchases have been restored.', [
+          { text: 'OK' },
+        ])
+      } else {
+        Alert.alert(
+          'No Purchases Found',
+          'No previous purchases were found for this account.',
+          [{ text: 'OK' }],
+        )
+      }
     } catch {
       Alert.alert(
         'Restore Failed',
-        'No previous purchases found or restore failed. Please try again.',
+        'Unable to restore purchases. Please try again.',
         [{ text: 'OK' }],
       )
     } finally {

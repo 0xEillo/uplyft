@@ -25,8 +25,8 @@ type SubscriptionContextValue = {
   offerings: PurchasesOffering | null
   isProMember: boolean
   isLoading: boolean
-  restorePurchases: () => Promise<void>
-  purchasePackage: (packageId: string) => Promise<void>
+  restorePurchases: () => Promise<CustomerInfo>
+  purchasePackage: (packageId: string) => Promise<CustomerInfo>
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
@@ -218,10 +218,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   ])
 
   // Restore purchases
-  const restorePurchases = async () => {
+  const restorePurchases = async (): Promise<CustomerInfo> => {
     try {
       const info = await Purchases.restorePurchases()
       setCustomerInfo(info)
+      return info
     } catch (error) {
       console.error('[RevenueCat] Restore error:', error)
       throw error
@@ -229,7 +230,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }
 
   // Purchase a package
-  const purchasePackage = async (packageId: string) => {
+  const purchasePackage = async (packageId: string): Promise<CustomerInfo> => {
     try {
       if (!offerings) {
         throw new Error('No offerings available')
@@ -250,6 +251,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         selectedPackage,
       )
       setCustomerInfo(info)
+      return info
     } catch (error) {
       console.error('[RevenueCat] Purchase error:', error)
       throw error

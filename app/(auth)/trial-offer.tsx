@@ -99,6 +99,7 @@ export default function TrialOfferScreen() {
           pkg.identifier.toLowerCase().includes('monthly'),
       )
 
+      let updatedCustomerInfo
       if (!monthlyPackage) {
         // If no monthly package found, try the first available package
         const firstPackage = offerings.availablePackages[0]
@@ -107,9 +108,22 @@ export default function TrialOfferScreen() {
             'No subscription packages available. Please try again.',
           )
         }
-        await purchasePackage(firstPackage.identifier)
+        updatedCustomerInfo = await purchasePackage(firstPackage.identifier)
       } else {
-        await purchasePackage(monthlyPackage.identifier)
+        updatedCustomerInfo = await purchasePackage(monthlyPackage.identifier)
+      }
+
+      // Verify the Pro entitlement was actually granted
+      const hasProEntitlement = Boolean(updatedCustomerInfo?.entitlements.active['Pro'])
+
+      if (!hasProEntitlement) {
+        // Purchase succeeded but entitlement not granted - this is rare but possible
+        Alert.alert(
+          'Subscription Pending',
+          'Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don\'t have access.',
+          [{ text: 'OK' }],
+        )
+        // Continue with the flow anyway
       }
 
       // Request notification permission and schedule trial expiration notification

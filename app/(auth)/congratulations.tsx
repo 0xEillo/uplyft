@@ -153,7 +153,11 @@ export default function CongratulationsScreen() {
             ]}
           >
             <View style={styles.iconWrapper}>
-              <Ionicons name="checkmark-circle" size={56} color={colors.primary} />
+              <Ionicons
+                name="checkmark-circle"
+                size={56}
+                color={colors.primary}
+              />
             </View>
           </Animated.View>
 
@@ -205,7 +209,9 @@ export default function CongratulationsScreen() {
                 <View style={styles.goalsContainer}>
                   {userGoals.map((goal: string, index: number) => (
                     <View key={index} style={styles.goalChip}>
-                      <Text style={styles.goalChipText}>{getGoalShort(goal)}</Text>
+                      <Text style={styles.goalChipText}>
+                        {getGoalShort(goal)}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -270,13 +276,21 @@ export default function CongratulationsScreen() {
             <View style={styles.flowContainer}>
               <View style={styles.flowStep}>
                 <View style={styles.flowIcon}>
-                  <Ionicons name="chatbubble-ellipses" size={24} color={colors.primary} />
+                  <Ionicons
+                    name="chatbubble-ellipses"
+                    size={24}
+                    color={colors.primary}
+                  />
                 </View>
                 <Text style={styles.flowLabel}>Chat with AI Coach</Text>
               </View>
 
               <View style={styles.flowArrow}>
-                <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} />
+                <Ionicons
+                  name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </View>
 
               <View style={styles.flowStep}>
@@ -287,7 +301,11 @@ export default function CongratulationsScreen() {
               </View>
 
               <View style={styles.flowArrow}>
-                <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} />
+                <Ionicons
+                  name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </View>
 
               <View style={styles.flowStep}>
@@ -308,7 +326,9 @@ export default function CongratulationsScreen() {
             hapticEnabled={true}
             hapticStyle="heavy"
           >
-            <Text style={styles.continueButtonText}>Let&apos;s get started!</Text>
+            <Text style={styles.continueButtonText}>
+              Let&apos;s get started!
+            </Text>
           </HapticButton>
         </View>
       </View>
@@ -349,8 +369,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     iconContainer: {
       alignItems: 'center',
-      marginTop: 24,
-      marginBottom: 20,
+      marginTop: 8,
+      marginBottom: 12,
     },
     iconWrapper: {
       width: 88,
@@ -365,7 +385,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 32,
+      marginBottom: 20,
       lineHeight: 38,
     },
     sectionLabel: {
@@ -376,7 +396,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 12,
     },
     profileSection: {
-      marginBottom: 32,
+      marginBottom: 20,
     },
     statsGrid: {
       gap: 12,

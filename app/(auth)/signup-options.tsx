@@ -187,7 +187,7 @@ export default function SignupOptionsScreen() {
         <View style={styles.content}>
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Create your account</Text>
+              <Text style={styles.stepTitle}>Save your progress</Text>
             </View>
 
             <View style={styles.buttonsWrapper}>
@@ -206,7 +206,7 @@ export default function SignupOptionsScreen() {
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
                       <>
-                        <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                        <Ionicons name="logo-apple" size={30} color="#FFFFFF" />
                         <Text style={styles.appleButtonText}>
                           Sign up with Apple
                         </Text>
@@ -230,7 +230,7 @@ export default function SignupOptionsScreen() {
                     <>
                       <Ionicons
                         name="logo-google"
-                        size={20}
+                        size={30}
                         color={colors.text}
                       />
                       <Text style={styles.googleButtonText}>
@@ -238,20 +238,6 @@ export default function SignupOptionsScreen() {
                       </Text>
                     </>
                   )}
-                </HapticButton>
-
-                <HapticButton
-                  style={styles.emailButton}
-                  onPress={handleEmailSignup}
-                  disabled={isGoogleLoading || isAppleLoading}
-                  hapticEnabled={!isGoogleLoading && !isAppleLoading}
-                >
-                  <Ionicons
-                    name="mail-outline"
-                    size={20}
-                    color={colors.buttonText}
-                  />
-                  <Text style={styles.emailButtonText}>Sign up with Email</Text>
                 </HapticButton>
               </View>
             </View>

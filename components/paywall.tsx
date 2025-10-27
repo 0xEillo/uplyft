@@ -27,7 +27,7 @@ export function Paywall({
 }: PaywallProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const { purchasePackage, restorePurchases, offerings, isLoading } =
+  const { purchasePackage, restorePurchases, offerings, isLoading, customerInfo } =
     useSubscription()
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
@@ -53,12 +53,24 @@ export function Paywall({
         return
       }
 
-      await purchasePackage(packageToUse.identifier)
+      const updatedCustomerInfo = await purchasePackage(packageToUse.identifier)
 
-      // Purchase successful - close the paywall
-      Alert.alert('Success!', 'Your subscription is now active. Enjoy all premium features!', [
-        { text: 'OK', onPress: onClose }
-      ])
+      // Verify the Pro entitlement was actually granted
+      const hasProEntitlement = Boolean(updatedCustomerInfo?.entitlements.active['Pro'])
+
+      if (hasProEntitlement) {
+        // Purchase successful and entitlement verified - close the paywall
+        Alert.alert('Success!', 'Your subscription is now active. Enjoy all premium features!', [
+          { text: 'OK', onPress: onClose }
+        ])
+      } else {
+        // Purchase succeeded but entitlement not granted - this is rare but possible
+        Alert.alert(
+          'Subscription Pending',
+          'Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don\'t have access.',
+          [{ text: 'OK' }]
+        )
+      }
     } catch (error: any) {
       // Handle user cancellation
       if (error?.userCancelled) {
@@ -79,14 +91,26 @@ export function Paywall({
   const handleRestore = async () => {
     try {
       setIsRestoring(true)
-      await restorePurchases()
-      Alert.alert('Success!', 'Your purchases have been restored.', [
-        { text: 'OK', onPress: onClose }
-      ])
+      const restoredCustomerInfo = await restorePurchases()
+
+      // Check if Pro entitlement was restored
+      const hasProEntitlement = Boolean(restoredCustomerInfo?.entitlements.active['Pro'])
+
+      if (hasProEntitlement) {
+        Alert.alert('Success!', 'Your purchases have been restored.', [
+          { text: 'OK', onPress: onClose }
+        ])
+      } else {
+        Alert.alert(
+          'No Purchases Found',
+          'No previous purchases were found for this account.',
+          [{ text: 'OK' }]
+        )
+      }
     } catch {
       Alert.alert(
         'Restore Failed',
-        'No previous purchases found or restore failed. Please try again.',
+        'Unable to restore purchases. Please try again.',
         [{ text: 'OK' }]
       )
     } finally {
