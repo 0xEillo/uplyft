@@ -208,7 +208,7 @@ export default function SignupOptionsScreen() {
                       <>
                         <Ionicons name="logo-apple" size={30} color="#FFFFFF" />
                         <Text style={styles.appleButtonText}>
-                          Sign up with Apple
+                          Sign in with Apple
                         </Text>
                       </>
                     )}
@@ -228,13 +228,9 @@ export default function SignupOptionsScreen() {
                     <ActivityIndicator color={colors.text} />
                   ) : (
                     <>
-                      <Ionicons
-                        name="logo-google"
-                        size={30}
-                        color={colors.text}
-                      />
+                      <Ionicons name="logo-google" size={30} />
                       <Text style={styles.googleButtonText}>
-                        Sign up with Google
+                        Sign in with Google
                       </Text>
                     </>
                   )}
