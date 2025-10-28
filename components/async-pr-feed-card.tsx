@@ -160,16 +160,23 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     )
   }, [workout.id, onDelete])
 
+  // Check if this is a pending placeholder workout
+  const isPending = workout.isPending === true
+
   return (
     <FeedCard
       userName="You"
       userAvatar={avatarUrl || ''}
-      timeAgo={formatTimeAgo(workout.created_at)}
+      timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
-        workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
+        isPending
+          ? (workout as any).title || 'Workout'
+          : workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
       }
-      workoutDescription={workout.notes}
-      workoutImageUrl={workout.image_url}
+      workoutDescription={isPending ? null : workout.notes}
+      workoutImageUrl={
+        isPending ? (workout as any).imageUrl || null : workout.image_url
+      }
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,
@@ -183,9 +190,10 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       userId={workout.user_id}
       workoutId={workout.id}
       onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
+      onEdit={isPending ? undefined : handleEdit}
+      onDelete={isPending ? undefined : handleDelete}
       prInfo={prInfo}
+      isPending={isPending}
     />
   )
 })

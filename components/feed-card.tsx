@@ -1,7 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
@@ -71,6 +71,7 @@ interface FeedCardProps {
   onEdit?: () => void
   onDelete?: () => void
   prInfo?: ExercisePRInfo[]
+  isPending?: boolean // Flag to show skeleton while workout is being parsed
 }
 
 /**
@@ -92,6 +93,7 @@ export const FeedCard = memo(function FeedCard({
   onEdit,
   onDelete,
   prInfo = [],
+  isPending = false,
 }: FeedCardProps) {
   const colors = useThemedColors()
   const [isExpanded, setIsExpanded] = useState(false)
@@ -113,6 +115,12 @@ export const FeedCard = memo(function FeedCard({
   const imageOpacity = useRef(new Animated.Value(0)).current
   const fullscreenOpacity = useRef(new Animated.Value(0)).current
 
+  // Skeleton shimmer animation for pending state
+  const shimmerAnim = useRef(new Animated.Value(0)).current
+  const pulseAnim = useRef(new Animated.Value(0)).current
+  const exercisesFadeAnim = useRef(new Animated.Value(isPending ? 0 : 1)).current
+  const [analyzingDots, setAnalyzingDots] = useState('')
+
   const styles = createStyles(colors)
   const { weightUnit } = useWeightUnits()
 
@@ -121,6 +129,91 @@ export const FeedCard = memo(function FeedCard({
   const displayedExercises = isExpanded
     ? exercises
     : exercises.slice(0, PREVIEW_LIMIT)
+
+  // Shimmer animation for skeleton rows
+  useEffect(() => {
+    if (isPending) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start()
+    } else {
+      shimmerAnim.setValue(0)
+    }
+  }, [isPending, shimmerAnim])
+
+  // Pulse animation for analyzing badge
+  useEffect(() => {
+    if (isPending) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start()
+    } else {
+      pulseAnim.setValue(0)
+    }
+  }, [isPending, pulseAnim])
+
+  // Animated dots for "Analyzing..." text
+  useEffect(() => {
+    if (!isPending) {
+      setAnalyzingDots('')
+      return
+    }
+
+    const dots = ['', '.', '..', '...']
+    let currentIndex = 0
+
+    const interval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % dots.length
+      setAnalyzingDots(dots[currentIndex])
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [isPending])
+
+  // Fade in exercises when data loads
+  useEffect(() => {
+    if (!isPending && exercises.length > 0) {
+      Animated.timing(exercisesFadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start()
+    } else if (isPending) {
+      exercisesFadeAnim.setValue(0)
+    }
+  }, [isPending, exercises.length, exercisesFadeAnim])
+
+  const shimmerOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  })
+
+  const pulseOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.6, 1],
+  })
 
   const toggleExerciseExpand = (index: number) => {
     setExpandedExercises((prev) => {
@@ -173,13 +266,21 @@ export const FeedCard = memo(function FeedCard({
             <Text style={styles.timeAgo}>{timeAgo}</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMenuVisible(true)}>
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+        {isPending ? (
+          <Animated.View
+            style={[styles.analyzingBadge, { opacity: pulseOpacity }]}
+          >
+            <Text style={styles.analyzingText}>Analyzing{analyzingDots}</Text>
+          </Animated.View>
+        ) : (
+          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Workout Title */}
@@ -241,8 +342,48 @@ export const FeedCard = memo(function FeedCard({
         </View>
         <View style={styles.headerDivider} />
 
-        {/* Table Rows */}
-        {displayedExercises.map((exercise, index) => {
+        {/* Skeleton Rows (when pending) */}
+        {isPending && (
+          <>
+            {[60, 80, 70].map((width, index) => (
+              <View key={`skeleton-${index}`} style={styles.skeletonRow}>
+                <Animated.View
+                  style={[
+                    styles.skeletonBar,
+                    styles.skeletonBarLong,
+                    { opacity: shimmerOpacity, width: `${width}%` },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.skeletonBar,
+                    styles.skeletonBarShort,
+                    { opacity: shimmerOpacity },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.skeletonBar,
+                    styles.skeletonBarShort,
+                    { opacity: shimmerOpacity },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.skeletonBar,
+                    styles.skeletonBarShort,
+                    { opacity: shimmerOpacity },
+                  ]}
+                />
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Real Exercise Rows (fade in when loaded) */}
+        {!isPending && (
+          <Animated.View style={{ opacity: exercisesFadeAnim }}>
+            {displayedExercises.map((exercise, index) => {
           const isExerciseExpanded = expandedExercises.has(index)
           const exercisePR = prInfo.find(
             (pr) => pr.exerciseName === exercise.name,
@@ -378,10 +519,21 @@ export const FeedCard = memo(function FeedCard({
             </View>
           )
         })}
+          </Animated.View>
+        )}
       </View>
 
+      {/* Footer message for pending state */}
+      {isPending && (
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Parsing your workout and identifying exercises...
+          </Text>
+        </View>
+      )}
+
       {/* Actions */}
-      {hasMoreExercises && (
+      {!isPending && hasMoreExercises && (
         <View style={styles.actions}>
           <TouchableOpacity
             onPress={toggleExpand}
@@ -800,5 +952,47 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       ...StyleSheet.absoluteFillObject,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    analyzingBadge: {
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+    },
+    analyzingText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    skeletonRow: {
+      flexDirection: 'row',
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      backgroundColor: colors.backgroundLight,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      alignItems: 'center',
+      gap: 8,
+    },
+    skeletonBar: {
+      height: 12,
+      backgroundColor: colors.border,
+      borderRadius: 6,
+    },
+    skeletonBarLong: {
+      flex: 3,
+    },
+    skeletonBarShort: {
+      flex: 1,
+      minWidth: 30,
+    },
+    footer: {
+      paddingTop: 8,
+      alignItems: 'center',
+    },
+    footerText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
     },
   })

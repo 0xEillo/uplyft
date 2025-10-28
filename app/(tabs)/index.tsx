@@ -1,4 +1,5 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
+import { EmptyFeedState } from '@/components/empty-feed-state'
 import { NotificationBadge } from '@/components/notification-badge'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -73,6 +74,7 @@ const CardDeleteAnimation = {
 }
 
 const PENDING_POST_KEY = '@pending_workout_post'
+const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
 const DRAFT_KEY = '@workout_draft'
 const TITLE_DRAFT_KEY = '@workout_title_draft'
 
@@ -103,12 +105,30 @@ export default function FeedScreen() {
         }
         const data = await database.workoutSessions.getRecent(user.id, 20)
 
+        // Load placeholder workout if it exists
+        const placeholderData = await AsyncStorage.getItem(
+          PLACEHOLDER_WORKOUT_KEY,
+        )
+        let placeholder = null
+        if (placeholderData) {
+          try {
+            placeholder = JSON.parse(placeholderData)
+          } catch (parseError) {
+            console.error('Error parsing placeholder workout:', parseError)
+          }
+        }
+
         // Use animation when updating existing list
         if (!isInitialLoad && workouts.length > 0) {
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
         }
 
-        setWorkouts(data)
+        // Add placeholder at the top if it exists
+        const workoutsWithPlaceholder = placeholder
+          ? [placeholder as WorkoutSessionWithDetails, ...data]
+          : data
+
+        setWorkouts(workoutsWithPlaceholder)
         setIsInitialLoad(false)
       } catch (error) {
         console.error('Error loading workouts:', error)
@@ -178,6 +198,10 @@ export default function FeedScreen() {
           await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
         }
         await AsyncStorage.removeItem(PENDING_POST_KEY)
+        await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
+
+        // Remove placeholder from state
+        setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
 
         // Show friendly error with actionable options
         Alert.alert('Unable to Parse Workout', errorMessage, [
@@ -203,19 +227,27 @@ export default function FeedScreen() {
       // Get the created workout (with AI-enriched exercises)
       const newWorkout = data.createdWorkout
 
-      // Clear pending post and draft on success
+      // Clear pending post, placeholder, and draft on success
       await AsyncStorage.removeItem(PENDING_POST_KEY)
+      await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
       await AsyncStorage.removeItem(DRAFT_KEY)
       await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
 
       // Mark this workout as new for animation
       setNewWorkoutId(newWorkout.id)
 
-      // Smooth layout animation for existing cards sliding down
+      // Smooth layout animation for morphing placeholder to real workout
       LayoutAnimation.configureNext(CustomSlideAnimation)
 
-      // Add new workout to the top of the list
-      setWorkouts((prev) => [newWorkout, ...prev])
+      // Replace placeholder with real workout (smooth morph)
+      setWorkouts((prev) => {
+        // Check if first workout is placeholder
+        if (prev.length > 0 && (prev[0] as any).isPending) {
+          return [newWorkout, ...prev.slice(1)]
+        }
+        // Fallback: just add to top if no placeholder found
+        return [newWorkout, ...prev]
+      })
 
       // Clear new workout flag after animation completes
       setTimeout(() => setNewWorkoutId(null), 1000)
@@ -232,6 +264,10 @@ export default function FeedScreen() {
             await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
           }
           await AsyncStorage.removeItem(PENDING_POST_KEY)
+          await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
+
+          // Remove placeholder from state
+          setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
         }
       } catch (restoreError) {
         console.error('Error restoring draft:', restoreError)
@@ -311,27 +347,17 @@ export default function FeedScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Feed Posts */}
-        <View style={styles.feed}>
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : workouts.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name="barbell-outline"
-                size={64}
-                color={colors.textPlaceholder}
-              />
-              <Text style={styles.emptyText}>No workouts yet</Text>
-              <Text style={styles.emptySubtext}>
-                Tap the + button to log your first workout
-              </Text>
-            </View>
-          ) : (
-            workouts.map((workout, index) => (
+{isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : workouts.length === 0 ? (
+        <EmptyFeedState />
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Feed Posts */}
+          <View style={styles.feed}>
+            {workouts.map((workout, index) => (
               <AnimatedFeedCard
                 key={workout.id}
                 workout={workout}
@@ -361,10 +387,10 @@ export default function FeedScreen() {
                   }
                 }}
               />
-            ))
-          )}
-        </View>
-      </ScrollView>
+            ))}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   )
 }
@@ -406,26 +432,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 16,
     },
     loadingContainer: {
-      paddingVertical: 64,
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    emptyContainer: {
-      paddingVertical: 64,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    emptyText: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.textTertiary,
-      marginTop: 16,
-    },
-    emptySubtext: {
-      fontSize: 15,
-      color: colors.textLight,
-      marginTop: 8,
-      textAlign: 'center',
-      paddingHorizontal: 32,
     },
   })

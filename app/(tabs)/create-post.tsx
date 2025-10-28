@@ -43,6 +43,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 const DRAFT_KEY = '@workout_draft'
 const TITLE_DRAFT_KEY = '@workout_title_draft'
 const PENDING_POST_KEY = '@pending_workout_post'
+const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
 const IMAGE_FADE_DURATION = 200
 
 const EXAMPLE_WORKOUTS = [
@@ -521,6 +522,18 @@ export default function CreatePostScreen() {
           notes: notes.trim(),
           title: workoutTitle.trim(),
           imageUrl,
+        }),
+      )
+
+      // Store placeholder workout for immediate feed display
+      await AsyncStorage.setItem(
+        PLACEHOLDER_WORKOUT_KEY,
+        JSON.stringify({
+          id: `temp-${Date.now()}`,
+          title: workoutTitle.trim(),
+          imageUrl,
+          created_at: new Date().toISOString(),
+          isPending: true,
         }),
       )
 

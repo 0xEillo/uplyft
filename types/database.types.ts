@@ -87,6 +87,7 @@ export interface WorkoutExerciseWithDetails extends WorkoutExercise {
 
 export interface WorkoutSessionWithDetails extends WorkoutSession {
   workout_exercises: WorkoutExerciseWithDetails[]
+  isPending?: boolean // Flag for placeholder workouts being processed
 }
 
 // Parsed workout data structure (from LLM) - matches database schema
