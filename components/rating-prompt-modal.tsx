@@ -65,7 +65,7 @@ export function RatingPromptModal() {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    handleDismiss(0); // Will use stored workout count from context
+    handleDismiss();
   };
 
   return (

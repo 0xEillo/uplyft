@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
+import { Linking } from 'react-native';
 
 // AsyncStorage keys
 const HAS_RATED_KEY = '@has_rated_app';
@@ -98,8 +99,8 @@ export async function requestReview(): Promise<void> {
       // Fallback: open the store page if native review isn't available
       const url = await StoreReview.storeUrl();
       if (url) {
-        // This will open in external browser
-        await StoreReview.requestReview();
+        // Open the App Store/Play Store directly
+        await Linking.openURL(url);
         await markUserAsRated();
       }
     }

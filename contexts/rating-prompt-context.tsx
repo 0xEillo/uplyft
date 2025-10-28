@@ -10,7 +10,7 @@ interface RatingPromptContextType {
   showPrompt: (workoutCount: number) => Promise<void>;
   hidePrompt: () => void;
   handleRate: () => Promise<void>;
-  handleDismiss: (workoutCount: number) => Promise<void>;
+  handleDismiss: () => Promise<void>;
 }
 
 const RatingPromptContext = createContext<RatingPromptContextType | undefined>(
@@ -52,7 +52,7 @@ export function RatingPromptProvider({
     }, 400);
   };
 
-  const handleDismiss = async (workoutCount: number) => {
+  const handleDismiss = async () => {
     // Just hide the prompt - we already saved the workout count
     // when we showed it, so it will re-appear after 10 more workouts
     hidePrompt();
