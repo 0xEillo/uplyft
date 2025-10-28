@@ -1,3 +1,5 @@
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -5,7 +7,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -72,6 +74,7 @@ export default function TrialOfferScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const { trackEvent } = useAnalytics()
   const [step, setStep] = useState(1)
   const [isPurchasing, setIsPurchasing] = useState(false)
 
@@ -83,9 +86,34 @@ export default function TrialOfferScreen() {
   } = useSubscription()
   const { requestPermission, hasPermission } = useNotifications()
 
+  // Track trial offer view on mount
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.TRIAL_OFFER_VIEWED, {})
+  }, [trackEvent])
+
+  // Track trial offer step views
+  useEffect(() => {
+    const stepNames: { [key: number]: 'intro' | 'benefits' | 'payment_setup' } = {
+      1: 'intro',
+      2: 'benefits',
+      3: 'payment_setup',
+    }
+
+    trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_VIEWED, {
+      step,
+      step_name: stepNames[step],
+    })
+  }, [step, trackEvent])
+
   const handleStartTrial = async () => {
     try {
       setIsPurchasing(true)
+
+      // Track trial offer step completed before purchase
+      trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
+        step: 3,
+        step_name: 'payment_setup',
+      })
 
       // Get the monthly package (should have the 7-day trial)
       if (!offerings) {
@@ -145,6 +173,9 @@ export default function TrialOfferScreen() {
           )
         }
       }
+
+      // Track trial offer accepted
+      trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
 
       // Navigate to signup
       router.push({
@@ -244,7 +275,16 @@ export default function TrialOfferScreen() {
           <Text style={styles.noPaymentText}>No Payment Due Now</Text>
         </View>
 
-        <AnimatedButton style={styles.startButton} onPress={() => setStep(2)}>
+        <AnimatedButton
+          style={styles.startButton}
+          onPress={() => {
+            trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
+              step: 1,
+              step_name: 'intro',
+            })
+            setStep(2)
+          }}
+        >
           <Text style={styles.startButtonText}>Try for FREE</Text>
         </AnimatedButton>
       </Animated.View>
@@ -255,6 +295,10 @@ export default function TrialOfferScreen() {
     // Request notification permission before moving to step 3
     try {
       await requestPermission()
+      trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
+        step: 2,
+        step_name: 'benefits',
+      })
       setStep(3)
     } catch (error) {
       console.error(
@@ -262,6 +306,10 @@ export default function TrialOfferScreen() {
         error,
       )
       // Still continue even if permission request fails
+      trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
+        step: 2,
+        step_name: 'benefits',
+      })
       setStep(3)
     }
   }
@@ -270,7 +318,13 @@ export default function TrialOfferScreen() {
     <>
       {/* Back Button */}
       <View style={styles.backButtonContainer}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setStep(1)}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            trackEvent(AnalyticsEvents.TRIAL_OFFER_DISMISSED, {})
+            setStep(1)
+          }}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
@@ -337,7 +391,10 @@ export default function TrialOfferScreen() {
         <View style={styles.backButtonContainer}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => setStep(2)}
+            onPress={() => {
+              trackEvent(AnalyticsEvents.TRIAL_OFFER_DISMISSED, {})
+              setStep(2)
+            }}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>

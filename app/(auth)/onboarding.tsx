@@ -85,6 +85,20 @@ const CHART_HORIZONTAL_PADDING = 16
 const CHART_VERTICAL_PADDING = 6
 const CHART_SPACING_TIGHTENING = 0.85
 
+// Map step numbers to their human-readable names
+const STEP_NAMES: { [key: number]: string } = {
+  1: 'feature_demo',
+  2: 'name_entry',
+  3: 'gender_selection',
+  4: 'height_weight',
+  5: 'birth_date',
+  6: 'progress_tracking',
+  7: 'goals_selection',
+  8: 'commitment_level',
+  9: 'experience_level',
+  10: 'training_bio',
+}
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1)
   const [data, setData] = useState<OnboardingData>({
@@ -252,9 +266,18 @@ export default function OnboardingScreen() {
     }
   }, [step, slideAnim])
 
+  // Track step views
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.ONBOARDING_STEP_VIEWED, {
+      step,
+      step_name: STEP_NAMES[step],
+    })
+  }, [step, trackEvent])
+
   const handleNext = () => {
     trackEvent(AnalyticsEvents.ONBOARDING_STEP_COMPLETED, {
       step,
+      step_name: STEP_NAMES[step],
     })
 
     if (step < 10) {
@@ -896,8 +919,6 @@ export default function OnboardingScreen() {
                     dataPointsColor={colors.primary}
                     dataPointsRadius={5}
                     hideDataPoints={false}
-                    dataPointTextColor={undefined}
-                    hideDataPointText
                     yAxisColor={colors.border}
                     xAxisColor={colors.border}
                     rulesType="solid"
@@ -909,9 +930,8 @@ export default function OnboardingScreen() {
                       fontWeight: '600',
                     }}
                     yAxisLabelWidth={0}
-                    xAxisLabelTextNumberOfLines={1}
+                    xAxisTextNumberOfLines={1}
                     hideYAxisText
-                    hideXAxisText={false}
                     noOfSections={4}
                     yAxisOffset={chartBounds.paddedMin}
                     stepValue={chartBounds.stepValue}

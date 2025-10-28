@@ -1,3 +1,5 @@
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -24,7 +26,9 @@ export default function ProcessingScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const { trackEvent } = useAnalytics()
   const onboardingData = useRef(params.onboarding_data as string).current
+  const processingStartTime = useRef(Date.now()).current
 
   // Animation refs
   const rotationAnim = useRef(new Animated.Value(0)).current
@@ -34,6 +38,9 @@ export default function ProcessingScreen() {
   const [progressPercentage, setProgressPercentage] = useState(0)
 
   useEffect(() => {
+    // Track processing started
+    trackEvent(AnalyticsEvents.PROCESSING_STARTED, {})
+
     // Success haptic when screen appears
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
@@ -70,11 +77,17 @@ export default function ProcessingScreen() {
       clearInterval(progressInterval)
       clearInterval(messageInterval)
     }
-  }, [onboardingData, fadeAnim, rotationAnim])
+  }, [onboardingData, fadeAnim, rotationAnim, trackEvent])
 
   // Navigate when progress reaches 100%
   useEffect(() => {
     if (progressPercentage >= 100) {
+      const processingDuration = Date.now() - processingStartTime
+
+      trackEvent(AnalyticsEvents.PROCESSING_COMPLETED, {
+        duration: processingDuration,
+      })
+
       router.push({
         pathname: '/(auth)/congratulations',
         params: {
@@ -82,7 +95,7 @@ export default function ProcessingScreen() {
         },
       })
     }
-  }, [progressPercentage, onboardingData])
+  }, [progressPercentage, onboardingData, processingStartTime, trackEvent])
 
   const rotation = rotationAnim.interpolate({
     inputRange: [0, 1],

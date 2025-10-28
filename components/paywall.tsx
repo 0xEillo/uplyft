@@ -27,7 +27,7 @@ export function Paywall({
 }: PaywallProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const { purchasePackage, restorePurchases, offerings, isLoading, customerInfo } =
+  const { purchasePackage, restorePurchases, offerings, isLoading } =
     useSubscription()
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)

@@ -52,7 +52,7 @@ export function RatingPromptModal() {
         }),
       ]).start();
     }
-  }, [isVisible]);
+  }, [isVisible, fadeAnim, scaleAnim]);
 
   const handleRatePress = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {

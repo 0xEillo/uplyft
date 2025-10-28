@@ -158,15 +158,6 @@ export default function SignupOptionsScreen() {
     }
   }
 
-  const handleEmailSignup = () => {
-    router.push({
-      pathname: '/(auth)/signup-email',
-      params: {
-        onboarding_data: params.onboarding_data as string,
-      },
-    })
-  }
-
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
     router.back()

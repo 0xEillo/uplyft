@@ -222,7 +222,7 @@ export default function EditWorkoutScreen() {
             if (values.reps !== undefined) {
               const parsed = values.reps.trim()
               if (parsed === '') {
-                updates.reps = null
+                updates.reps = undefined
               } else {
                 const reps = parseFloat(parsed)
                 if (!isNaN(reps)) {

@@ -41,6 +41,7 @@ export default function WelcomeScreen() {
 
   useEffect(() => {
     trackEvent(AnalyticsEvents.AUTH_WELCOME_VIEWED, {
+      step_name: 'welcome',
       timestamp: Date.now(),
     })
   }, [trackEvent])

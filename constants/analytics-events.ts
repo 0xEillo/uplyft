@@ -32,6 +32,13 @@ export const AnalyticsEvents = {
   ONBOARDING_STEP_COMPLETED: 'Onboarding Step Completed',
   ONBOARDING_STEP_SKIPPED: 'Onboarding Step Skipped',
   ONBOARDING_COMPLETED: 'Onboarding Completed',
+  PROCESSING_STARTED: 'Processing Started',
+  PROCESSING_COMPLETED: 'Processing Completed',
+  TRIAL_OFFER_VIEWED: 'Trial Offer Viewed',
+  TRIAL_OFFER_STEP_VIEWED: 'Trial Offer Step Viewed',
+  TRIAL_OFFER_STEP_COMPLETED: 'Trial Offer Step Completed',
+  TRIAL_OFFER_ACCEPTED: 'Trial Offer Accepted',
+  TRIAL_OFFER_DISMISSED: 'Trial Offer Dismissed',
 
   // Feed & Navigation
   FEED_VIEWED: 'Feed Viewed',
@@ -172,6 +179,19 @@ export interface OnboardingCompletedProperties extends BaseEventProperties {
   commitment?: string | null
   training_years?: number | null
   bio?: string | null
+}
+
+export interface ProcessingProperties extends BaseEventProperties {
+  duration?: number
+}
+
+export interface TrialOfferStepProperties extends BaseEventProperties {
+  step: number
+  step_name?: 'intro' | 'benefits' | 'payment_setup'
+}
+
+export interface TrialOfferProperties extends BaseEventProperties {
+  action?: 'viewed' | 'step_viewed' | 'step_completed' | 'accepted' | 'dismissed'
 }
 
 export interface FeedViewedProperties extends BaseEventProperties {
@@ -318,6 +338,13 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.ONBOARDING_STEP_VIEWED]: OnboardingStepProperties
   [AnalyticsEvents.ONBOARDING_STEP_COMPLETED]: OnboardingStepProperties
   [AnalyticsEvents.ONBOARDING_COMPLETED]: OnboardingCompletedProperties
+  [AnalyticsEvents.PROCESSING_STARTED]: ProcessingProperties
+  [AnalyticsEvents.PROCESSING_COMPLETED]: ProcessingProperties
+  [AnalyticsEvents.TRIAL_OFFER_VIEWED]: TrialOfferProperties
+  [AnalyticsEvents.TRIAL_OFFER_STEP_VIEWED]: TrialOfferStepProperties
+  [AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED]: TrialOfferStepProperties
+  [AnalyticsEvents.TRIAL_OFFER_ACCEPTED]: TrialOfferProperties
+  [AnalyticsEvents.TRIAL_OFFER_DISMISSED]: TrialOfferProperties
   [AnalyticsEvents.FEED_VIEWED]: FeedViewedProperties
   [AnalyticsEvents.WORKOUT_CREATE_STARTED]: WorkoutCreateStartedProperties
   [AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED]: WorkoutDraftProperties

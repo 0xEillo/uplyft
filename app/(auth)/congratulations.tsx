@@ -38,10 +38,8 @@ export default function CongratulationsScreen() {
 
   const userName = onboardingData?.name || 'there'
   const userGoals = onboardingData?.goal || []
-  const userAge = onboardingData?.age
   const trainingYears = onboardingData?.training_years
   const commitment = onboardingData?.commitment
-  const gender = onboardingData?.gender
 
   // Format goals for compact display
   const getGoalShort = (goal: string) => {
@@ -71,7 +69,8 @@ export default function CongratulationsScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
     trackEvent(AnalyticsEvents.ONBOARDING_STEP_COMPLETED, {
-      step: 'congratulations',
+      step: 11,
+      step_name: 'congratulations',
     })
 
     // Animate header and icon
