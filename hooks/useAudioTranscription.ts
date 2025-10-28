@@ -5,9 +5,8 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio'
-import { Platform } from 'react-native'
+import { Platform, Alert, Linking } from 'react-native'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert } from 'react-native'
 
 /**
  * Type definition for audio file in FormData.
@@ -42,15 +41,10 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isTranscribing, setIsTranscribing] = useState(false)
 
-  // Setup audio permissions and mode
+  // Setup audio mode on mount
   useEffect(() => {
     const setupAudio = async () => {
       try {
-        const status = await AudioModule.requestRecordingPermissionsAsync()
-        if (!status.granted) {
-          console.log('Microphone permission not granted')
-        }
-
         await setAudioModeAsync({
           playsInSilentMode: true,
           allowsRecording: true,
@@ -129,16 +123,62 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
         setIsTranscribing(false)
       }
     } else {
-      // Start recording
+      // Start recording - request permission on first use
       try {
+        // Check current permission status
+        const currentStatus = await AudioModule.getRecordingPermissionsAsync()
+
+        // If permission was previously denied, guide user to settings
+        if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+          Alert.alert(
+            'Microphone Access Needed',
+            Platform.select({
+              ios: 'To record audio, please enable microphone access in Settings > Rep AI > Microphone.',
+              android: 'To record audio, please enable microphone access in Settings > Apps > Rep AI > Permissions.',
+            }),
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => Linking.openSettings(),
+              },
+            ],
+          )
+          return
+        }
+
+        // Request permission
+        const status = await AudioModule.requestRecordingPermissionsAsync()
+        if (!status.granted) {
+          // User just denied - offer to open settings
+          Alert.alert(
+            'Microphone Permission Required',
+            'Rep AI needs microphone access to record your workout notes. You can enable this in your device settings.',
+            [
+              { text: 'Not Now', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => Linking.openSettings(),
+              },
+            ],
+          )
+          return
+        }
+
         await audioRecorder.prepareToRecordAsync()
         audioRecorder.record()
       } catch (error) {
         console.error('Failed to start recording:', error)
         Alert.alert(
           'Recording Issue',
-          'Unable to start recording. Check your microphone permissions.',
-          [{ text: 'OK' }],
+          'Unable to start recording. Please check your microphone permissions in device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
         )
       }
     }

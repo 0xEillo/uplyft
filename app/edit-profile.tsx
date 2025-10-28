@@ -15,6 +15,8 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -135,11 +137,16 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Gender Selection */}
         <View style={styles.section}>
           <Text style={styles.label}>Gender</Text>
@@ -314,6 +321,7 @@ export default function EditProfileScreen() {
           <Text style={styles.characterCount}>{editedBio.length}/500</Text>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -354,6 +362,9 @@ const createStyles = (
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    keyboardAvoid: {
+      flex: 1,
     },
     content: {
       flex: 1,

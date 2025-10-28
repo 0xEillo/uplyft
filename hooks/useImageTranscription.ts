@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useState } from 'react'
-import { Alert, Platform } from 'react-native'
+import { Alert, Platform, Linking } from 'react-native'
 
 // Constants
 const IMAGE_QUALITY = 0.8
@@ -124,12 +124,42 @@ export function useImageTranscription(
    */
   const launchCamera = useCallback(async (action: 'scan' | 'attach') => {
     try {
+      // Check current permission status
+      const currentStatus = await ImagePicker.getCameraPermissionsAsync()
+
+      // If permission was previously denied, guide user to settings
+      if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+        Alert.alert(
+          'Camera Access Needed',
+          Platform.select({
+            ios: 'To take photos, please enable camera access in Settings > Rep AI > Camera.',
+            android: 'To take photos, please enable camera access in Settings > Apps > Rep AI > Permissions.',
+          }),
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      // Request permission
       const cameraPermission = await ImagePicker.requestCameraPermissionsAsync()
 
       if (cameraPermission.status !== 'granted') {
         Alert.alert(
-          'Permission Required',
-          'Camera permission is required to take photos.',
+          'Camera Permission Required',
+          'Rep AI needs camera access to take photos of your workouts. You can enable this in your device settings.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
         )
         return
       }
@@ -141,9 +171,17 @@ export function useImageTranscription(
       }
     } catch (error) {
       console.error('Error launching camera:', error)
-      Alert.alert('Error', 'Failed to open camera. Please try again.', [
-        { text: 'OK' },
-      ])
+      Alert.alert(
+        'Camera Error',
+        'Failed to open camera. Please check your camera permissions in device settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      )
     }
   }, [processImage])
 
@@ -152,12 +190,42 @@ export function useImageTranscription(
    */
   const launchLibrary = useCallback(async (action: 'scan' | 'attach') => {
     try {
+      // Check current permission status
+      const currentStatus = await ImagePicker.getMediaLibraryPermissionsAsync()
+
+      // If permission was previously denied, guide user to settings
+      if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+        Alert.alert(
+          'Photo Library Access Needed',
+          Platform.select({
+            ios: 'To select photos, please enable photo library access in Settings > Rep AI > Photos.',
+            android: 'To select photos, please enable storage access in Settings > Apps > Rep AI > Permissions.',
+          }),
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      // Request permission
       const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync()
 
       if (libraryPermission.status !== 'granted') {
         Alert.alert(
-          'Permission Required',
-          'Photo library permission is required to select photos.',
+          'Photo Library Permission Required',
+          'Rep AI needs photo library access to select photos of your workouts. You can enable this in your device settings.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
         )
         return
       }
@@ -169,9 +237,17 @@ export function useImageTranscription(
       }
     } catch (error) {
       console.error('Error launching library:', error)
-      Alert.alert('Error', 'Failed to open photo library. Please try again.', [
-        { text: 'OK' },
-      ])
+      Alert.alert(
+        'Photo Library Error',
+        'Failed to open photo library. Please check your photo library permissions in device settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      )
     }
   }, [processImage])
 

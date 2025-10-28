@@ -162,7 +162,10 @@ export default function WelcomeScreen() {
 
         {/* Hook & CTA */}
         <View style={styles.actions}>
-          <Text style={styles.subtitle}>Workout tracking made easy</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.subtitle}>Workout tracking</Text>
+            <Text style={[styles.subtitle, styles.highlightedText]}>made easy</Text>
+          </View>
           <HapticButton
             style={styles.getStartedButton}
             onPress={() => router.push('/(auth)/onboarding')}
@@ -209,13 +212,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     heroImage: {
       height: '100%',
     },
+    titleContainer: {
+      marginTop: 20,
+      marginBottom: 10,
+      alignItems: 'center',
+    },
     subtitle: {
       fontSize: 30,
       color: colors.text,
       fontWeight: '700',
-      marginTop: 20,
-      marginBottom: 10,
       textAlign: 'center',
+    },
+    highlightedText: {
+      color: colors.primary,
     },
     actions: {
       gap: 16,

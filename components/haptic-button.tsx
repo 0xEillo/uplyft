@@ -58,7 +58,7 @@ export function HapticButton({
       toValue: 0.96,
       useNativeDriver: true,
       tension: 300,
-      friction: 10,
+      friction: 16,
     }).start()
   }
 
@@ -70,7 +70,7 @@ export function HapticButton({
       toValue: 1,
       useNativeDriver: true,
       tension: 300,
-      friction: 10,
+      friction: 16,
     }).start()
   }
 

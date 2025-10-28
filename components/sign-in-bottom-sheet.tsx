@@ -42,7 +42,7 @@ export function SignInBottomSheet({
   useEffect(() => {
     if (visible) {
       translateY.value = withSpring(0, {
-        damping: 20,
+        damping: 40,
         stiffness: 300,
       })
       backdropOpacity.value = withTiming(1, { duration: 200 })

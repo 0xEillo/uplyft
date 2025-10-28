@@ -15,6 +15,8 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Platform,
+  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useState } from 'react'
@@ -45,13 +47,42 @@ export default function BodyLogIntroPage() {
     }
 
     try {
+      // Check current permission status
+      const currentStatus = await ImagePicker.getCameraPermissionsAsync()
+
+      // If permission was previously denied, guide user to settings
+      if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+        Alert.alert(
+          'Camera Access Needed',
+          Platform.select({
+            ios: 'To take body scan photos, please enable camera access in Settings > Rep AI > Camera.',
+            android: 'To take body scan photos, please enable camera access in Settings > Apps > Rep AI > Permissions.',
+          }),
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      // Request permission
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
 
       if (!permissionResult.granted) {
         Alert.alert(
-          'Permission Required',
-          'Camera permission is required to take body scan photos.',
-          [{ text: 'OK' }]
+          'Camera Permission Required',
+          'Rep AI needs camera access to take body scan photos. You can enable this in your device settings.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
         )
         return
       }
@@ -78,8 +109,14 @@ export default function BodyLogIntroPage() {
       console.error('Error opening camera:', error)
       Alert.alert(
         'Camera Error',
-        'Failed to open camera. Please try again.',
-        [{ text: 'OK' }]
+        'Failed to open camera. Please check your camera permissions in device settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => Linking.openSettings(),
+          },
+        ],
       )
     }
   }

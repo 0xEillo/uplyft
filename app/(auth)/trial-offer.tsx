@@ -282,7 +282,7 @@ export default function TrialOfferScreen() {
           entering={FadeInDown.delay(100).duration(600)}
         >
           <View style={styles.bellIconWrapper}>
-            <Ionicons name="notifications" size={120} color={colors.border} />
+            <Ionicons name="notifications" size={120} color={colors.text} />
             <Animated.View
               style={styles.notificationBadge}
               entering={FadeInDown.delay(300).duration(600)}
@@ -406,13 +406,6 @@ export default function TrialOfferScreen() {
                 <View style={styles.pricingOptionContent}>
                   <Text style={styles.pricingOptionLabel}>Monthly</Text>
                   <Text style={styles.pricingOptionPrice}>$5.99 /mo</Text>
-                </View>
-                <View style={[styles.radioButton, styles.radioButtonSelected]}>
-                  <Ionicons
-                    name="checkmark"
-                    size={20}
-                    color={colors.buttonText}
-                  />
                 </View>
               </View>
             </View>

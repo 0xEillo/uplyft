@@ -38,7 +38,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const DRAFT_KEY = '@workout_draft'
 const TITLE_DRAFT_KEY = '@workout_title_draft'
@@ -89,6 +89,7 @@ Finished with 10min cardio. Shoulder felt great today!`,
 
 export default function CreatePostScreen() {
   const colors = useThemedColors()
+  const insets = useSafeAreaInsets()
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [workoutTitle, setWorkoutTitle] = useState('')
@@ -97,6 +98,7 @@ export default function CreatePostScreen() {
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   // Image attachment states
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
@@ -298,6 +300,27 @@ export default function CreatePostScreen() {
       blurInputs()
     }
   }, [blurInputs])
+
+  // Track keyboard height for button positioning
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height)
+      },
+    )
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0)
+      },
+    )
+
+    return () => {
+      keyboardWillShowListener.remove()
+      keyboardWillHideListener.remove()
+    }
+  }, [])
 
   useEffect(() => {
     latestNotes.current = notes
@@ -666,7 +689,7 @@ export default function CreatePostScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <View style={styles.header}>
+          <Pressable style={styles.header} onPress={blurInputs}>
             <TouchableOpacity
               onPress={handleCancel}
               style={styles.headerButton}
@@ -700,14 +723,16 @@ export default function CreatePostScreen() {
                 <Ionicons name="checkmark" size={28} color={colors.white} />
               </Animated.View>
             </TouchableOpacity>
-          </View>
+          </Pressable>
 
           <ScrollView
             style={styles.inputContainer}
             contentContainerStyle={styles.scrollContent}
-            keyboardDismissMode="interactive"
+            keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="never"
             showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            bounces={true}
           >
             {/* Title Input */}
             <TextInput
@@ -818,7 +843,16 @@ export default function CreatePostScreen() {
 
           {/* Floating Microphone Button */}
           <TouchableOpacity
-            style={[styles.micFab, isRecording && styles.micFabActive]}
+            style={[
+              styles.micFab,
+              isRecording && styles.micFabActive,
+              {
+                bottom:
+                  keyboardHeight > 0
+                    ? keyboardHeight + 64
+                    : 64 + insets.bottom,
+              },
+            ]}
             onPress={handleToggleRecording}
             disabled={isTranscribing || isLoading || isProcessingImage}
           >
@@ -839,7 +873,15 @@ export default function CreatePostScreen() {
 
           {/* Floating Camera Button */}
           <TouchableOpacity
-            style={styles.cameraFab}
+            style={[
+              styles.cameraFab,
+              {
+                bottom:
+                  keyboardHeight > 0
+                    ? keyboardHeight - 16
+                    : -16 + insets.bottom,
+              },
+            ]}
             onPress={handlePickImage}
             disabled={
               isProcessingImage || isRecording || isTranscribing || isLoading
@@ -1025,7 +1067,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     exampleContainer: {
       position: 'absolute',
-      top: '35%',
+      top: '20%',
       left: 0,
       right: 0,
       alignItems: 'center',

@@ -445,7 +445,10 @@ export default function OnboardingScreen() {
                       data.gender === gender.value &&
                         styles.optionButtonSelected,
                     ]}
-                    onPress={() => setData({ ...data, gender: gender.value })}
+                    onPress={() => {
+                      setData({ ...data, gender: gender.value })
+                      setTimeout(() => setStep(step + 1), 300)
+                    }}
                     hapticStyle="light"
                   >
                     <Text
@@ -823,9 +826,10 @@ export default function OnboardingScreen() {
                       data.commitment === commitment.value &&
                         styles.goalButtonSelected,
                     ]}
-                    onPress={() =>
+                    onPress={() => {
                       setData({ ...data, commitment: commitment.value })
-                    }
+                      setTimeout(() => setStep(step + 1), 300)
+                    }}
                     hapticStyle="light"
                   >
                     <Text
@@ -862,9 +866,10 @@ export default function OnboardingScreen() {
                       data.training_years === item.value &&
                         styles.goalButtonSelected,
                     ]}
-                    onPress={() =>
+                    onPress={() => {
                       setData({ ...data, training_years: item.value })
-                    }
+                      setTimeout(() => setStep(step + 1), 300)
+                    }}
                     hapticStyle="light"
                   >
                     <Text
@@ -1176,7 +1181,7 @@ const createStyles = (
     footer: {
       paddingHorizontal: 32,
       paddingVertical: 16,
-      paddingBottom: 32,
+      paddingBottom: 45,
     },
     nextButton: {
       height: 56,
