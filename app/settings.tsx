@@ -329,6 +329,29 @@ export default function SettingsScreen() {
     }
   }
 
+  const handleOpenPrivacyPolicy = async () => {
+    const privacyUrl = 'https://www.repaifit.app/legal/privacy'
+    try {
+      const canOpen = await Linking.canOpenURL(privacyUrl)
+      if (canOpen) {
+        await Linking.openURL(privacyUrl)
+      } else {
+        Alert.alert(
+          'Unable to Open',
+          'Could not open privacy policy. Please visit repaifit.app/legal/privacy',
+          [{ text: 'OK' }],
+        )
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error)
+      Alert.alert(
+        'Unable to Open',
+        'Could not open privacy policy. Please visit repaifit.app/legal/privacy',
+        [{ text: 'OK' }],
+      )
+    }
+  }
+
   // Get subscription status display
   const getSubscriptionStatus = () => {
     if (!customerInfo) return 'loading'
@@ -703,6 +726,32 @@ export default function SettingsScreen() {
                 </Text>
                 <Text style={styles.supportEmail}>support@repaifit.app</Text>
               </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textLight}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Legal Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleOpenPrivacyPolicy}
+          >
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="shield-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.actionButtonTextNeutral}>
+                Privacy Policy
+              </Text>
             </View>
             <Ionicons
               name="chevron-forward"

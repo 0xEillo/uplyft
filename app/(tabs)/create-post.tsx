@@ -571,8 +571,12 @@ export default function CreatePostScreen() {
   }
 
   const handlePost = async () => {
+    // Prevent multiple submissions by disabling button immediately
+    setIsLoading(true)
+
     // Check if user is pro member
     if (!isProMember) {
+      setIsLoading(false)
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'workout_logging',
@@ -581,6 +585,7 @@ export default function CreatePostScreen() {
     }
 
     if (!workoutTitle.trim()) {
+      setIsLoading(false)
       Alert.alert(
         'Title Required',
         'Give your workout a title so you can find it later.',
@@ -590,6 +595,7 @@ export default function CreatePostScreen() {
     }
 
     if (!notes.trim()) {
+      setIsLoading(false)
       Alert.alert(
         'Workout Details Missing',
         'Add your exercises, sets, and reps to track your progress.',
@@ -599,6 +605,7 @@ export default function CreatePostScreen() {
     }
 
     if (!user) {
+      setIsLoading(false)
       Alert.alert('Not Logged In', 'Sign in to save and track your workouts.', [
         { text: 'OK' },
       ])
@@ -618,6 +625,10 @@ export default function CreatePostScreen() {
             {
               text: 'Cancel',
               style: 'cancel',
+              onPress: () => {
+                // User cancelled - re-enable button
+                setIsLoading(false)
+              },
             },
             {
               text: 'Submit',
