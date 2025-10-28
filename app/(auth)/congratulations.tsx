@@ -11,7 +11,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -121,20 +120,9 @@ export default function CongratulationsScreen() {
     })
   }
 
-  const handleBack = () => {
-    router.back()
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.wrapper}>
-        {/* Header with back button */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.placeholder} />
-        </View>
 
         {/* Content */}
         <ScrollView
@@ -364,7 +352,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     contentContainer: {
       paddingHorizontal: 24,
-      paddingTop: 8,
+      paddingTop: 64,
       paddingBottom: 24,
     },
     iconContainer: {

@@ -1,6 +1,6 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
-import { PrTooltip, PrDetailForTooltip } from '@/components/pr-tooltip'
+import { PrDetailForTooltip, PrTooltip } from '@/components/pr-tooltip'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   COMMITMENTS,
@@ -16,10 +16,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Platform,
   ScrollView,
   StyleSheet,
@@ -28,6 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { LineChart } from 'react-native-gifted-charts'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 type OnboardingData = {
@@ -45,6 +47,43 @@ type OnboardingData = {
   training_years: TrainingYears | null
   bio: string
 }
+
+// Generate wavy upward-trending data for the line chart
+const generateChartData = () => {
+  const baseValue = 120
+  const increments = [0, 14, 32, 54, 82, 115]
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
+  const now = new Date()
+  const points = increments.length
+
+  return increments.map((increment, index) => {
+    const monthsAgo = points - 1 - index
+    const date = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
+    const label = monthNames[date.getMonth()]
+
+    return {
+      value: baseValue + increment,
+      label,
+    }
+  })
+}
+
+const CHART_HORIZONTAL_PADDING = 16
+const CHART_VERTICAL_PADDING = 6
+const CHART_SPACING_TIGHTENING = 0.85
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1)
@@ -68,6 +107,78 @@ export default function OnboardingScreen() {
   const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
   const { trackEvent } = useAnalytics()
   const styles = createStyles(colors, weightUnit)
+
+  const chartDataPoints = useMemo(() => generateChartData(), [])
+  const chartValues = useMemo(
+    () => chartDataPoints.map((point) => point.value),
+    [chartDataPoints],
+  )
+  const chartLabels = useMemo(
+    () => chartDataPoints.map((point) => point.label),
+    [chartDataPoints],
+  )
+
+  const chartBounds = useMemo(() => {
+    if (chartValues.length === 0) {
+      return {
+        min: 0,
+        max: 0,
+        paddedMin: 0,
+        paddedMax: 0,
+        stepValue: 10,
+      }
+    }
+
+    const minValue = Math.min(...chartValues)
+    const maxValue = Math.max(...chartValues)
+    const range = Math.max(1, maxValue - minValue)
+    const padding = Math.max(10, Math.round(range * 0.12))
+    const paddedMin = Math.max(0, Math.floor((minValue - padding) / 10) * 10)
+    const paddedMax = Math.ceil((maxValue + padding) / 10) * 10
+    const stepValue = Math.max(
+      5,
+      Math.round((paddedMax - paddedMin) / 4 / 5) * 5,
+    )
+
+    return {
+      min: minValue,
+      max: maxValue,
+      paddedMin,
+      paddedMax,
+      stepValue,
+    }
+  }, [chartValues])
+
+  const [chartWidth, setChartWidth] = useState(0)
+
+  const handleChartLayout = (event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout
+    setChartWidth(width)
+  }
+
+  const chartInnerWidth = useMemo(() => {
+    if (chartWidth === 0) return 0
+    const innerWidth = chartWidth - CHART_HORIZONTAL_PADDING * 2
+    return innerWidth > 0 ? innerWidth : 0
+  }, [chartWidth])
+
+  useEffect(() => {
+    if (step !== 6 && chartWidth !== 0) {
+      setChartWidth(0)
+    }
+  }, [step, chartWidth, setChartWidth])
+
+  const chartSpacing = useMemo(() => {
+    if (chartInnerWidth === 0) return undefined
+    const points = chartValues.length
+    if (points <= 1) return undefined
+    return (chartInnerWidth / (points - 1)) * CHART_SPACING_TIGHTENING
+  }, [chartInnerWidth, chartValues.length])
+
+  const chartEdgeSpacing = useMemo(() => {
+    if (!chartSpacing) return 12
+    return Math.max(8, chartSpacing * 0.35)
+  }, [chartSpacing])
 
   // Animation refs for step transitions
   const fadeAnim = useRef(new Animated.Value(1)).current
@@ -131,6 +242,16 @@ export default function OnboardingScreen() {
     }
   }, [step, fadeAnim, slideAnim, progressDotAnims])
 
+  // Avoid transform animations on steps with native Picker to prevent layout glitches (iOS)
+  const stepHasNativePicker = step === 4 || step === 5
+
+  // Reset slide animation for step 5 only to prevent shift when coming from step 6
+  useEffect(() => {
+    if (step === 5) {
+      slideAnim.setValue(0)
+    }
+  }, [step, slideAnim])
+
   const handleNext = () => {
     trackEvent(AnalyticsEvents.ONBOARDING_STEP_COMPLETED, {
       step,
@@ -177,9 +298,9 @@ export default function OnboardingScreen() {
         ? convertInputToKg(parseFloat(data.weight_kg))
         : null
 
-      // Navigate to congratulations screen with onboarding data
+      // Navigate to processing screen with onboarding data
       router.push({
-        pathname: '/(auth)/congratulations',
+        pathname: '/(auth)/processing',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,
@@ -218,6 +339,11 @@ export default function OnboardingScreen() {
     } else {
       router.back()
     }
+  }
+
+  const hasAutoSwipe = () => {
+    // Steps 3, 8, and 9 auto-swipe when an option is selected
+    return step === 3 || step === 8 || step === 9
   }
 
   const canProceed = () => {
@@ -312,96 +438,93 @@ export default function OnboardingScreen() {
 
             <View style={styles.stepContent}>
               <View style={styles.featureExampleContainer}>
-                  <View style={styles.featureBubble}>
-                    <Text style={styles.featureBubbleText}>
-                      &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
+                <View style={styles.featureBubble}>
+                  <Text style={styles.featureBubbleText}>
+                    &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
+                  </Text>
+                </View>
+
+                <View style={styles.featureArrow}>
+                  <Text style={styles.featureArrowText}>↓</Text>
+                </View>
+
+                <View style={styles.workoutGridPreview}>
+                  {/* Table Header */}
+                  <View style={styles.workoutTableHeader}>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutExerciseCol,
+                      ]}
+                    >
+                      Exercise
+                    </Text>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutSetsCol,
+                      ]}
+                    >
+                      Sets
+                    </Text>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutRepsCol,
+                      ]}
+                    >
+                      Reps
+                    </Text>
+                    <Text
+                      style={[
+                        styles.workoutTableHeaderText,
+                        styles.workoutWeightCol,
+                      ]}
+                    >
+                      Wt (lb)
                     </Text>
                   </View>
+                  <View style={styles.workoutHeaderDivider} />
 
-                  <View style={styles.featureArrow}>
-                    <Text style={styles.featureArrowText}>↓</Text>
-                  </View>
-
-                  <View style={styles.workoutGridPreview}>
-                    {/* Table Header */}
-                    <View style={styles.workoutTableHeader}>
+                  {/* Table Row */}
+                  <View style={styles.workoutTableRow}>
+                    <View
+                      style={[
+                        styles.workoutExerciseCol,
+                        styles.workoutExerciseCell,
+                      ]}
+                    >
                       <Text
-                        style={[
-                          styles.workoutTableHeaderText,
-                          styles.workoutExerciseCol,
-                        ]}
+                        style={styles.workoutExerciseName}
+                        numberOfLines={1}
                       >
-                        Exercise
+                        Bench Press
                       </Text>
-                      <Text
-                        style={[
-                          styles.workoutTableHeaderText,
-                          styles.workoutSetsCol,
-                        ]}
+                      <TouchableOpacity
+                        style={styles.workoutPrBadge}
+                        onPress={() => setPrTooltipVisible(true)}
+                        activeOpacity={0.7}
                       >
-                        Sets
-                      </Text>
-                      <Text
-                        style={[
-                          styles.workoutTableHeaderText,
-                          styles.workoutRepsCol,
-                        ]}
-                      >
-                        Reps
-                      </Text>
-                      <Text
-                        style={[
-                          styles.workoutTableHeaderText,
-                          styles.workoutWeightCol,
-                        ]}
-                      >
-                        Wt (lb)
-                      </Text>
+                        <Text style={styles.workoutPrBadgeText}>PR</Text>
+                      </TouchableOpacity>
                     </View>
-                    <View style={styles.workoutHeaderDivider} />
-
-                    {/* Table Row */}
-                    <View style={styles.workoutTableRow}>
-                      <View
-                        style={[
-                          styles.workoutExerciseCol,
-                          styles.workoutExerciseCell,
-                        ]}
-                      >
-                        <Text
-                          style={styles.workoutExerciseName}
-                          numberOfLines={1}
-                        >
-                          Bench Press
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.workoutPrBadge}
-                          onPress={() => setPrTooltipVisible(true)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.workoutPrBadgeText}>PR</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text
-                        style={[styles.workoutTableCell, styles.workoutSetsCol]}
-                      >
-                        3
-                      </Text>
-                      <Text
-                        style={[styles.workoutTableCell, styles.workoutRepsCol]}
-                      >
-                        8
-                      </Text>
-                      <Text
-                        style={[
-                          styles.workoutTableCell,
-                          styles.workoutWeightCol,
-                        ]}
-                      >
-                        185
-                      </Text>
-                    </View>
+                    <Text
+                      style={[styles.workoutTableCell, styles.workoutSetsCol]}
+                    >
+                      3
+                    </Text>
+                    <Text
+                      style={[styles.workoutTableCell, styles.workoutRepsCol]}
+                    >
+                      8
+                    </Text>
+                    <Text
+                      style={[styles.workoutTableCell, styles.workoutWeightCol]}
+                    >
+                      185
+                    </Text>
                   </View>
+                </View>
               </View>
             </View>
           </View>
@@ -651,7 +774,7 @@ export default function OnboardingScreen() {
             </View>
 
             <View style={styles.stepContent}>
-              <View style={styles.birthDateRow}>
+              <View key={`birthdate-${step}`} style={styles.birthDateRow}>
                 <View style={styles.birthDateColumnSmall}>
                   <Text style={styles.pickerLabel}>Day</Text>
                   <View style={styles.pickerContainer}>
@@ -741,28 +864,122 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Thank you for trusting us!</Text>
+              <Text style={styles.stepTitle}>Track your progress</Text>
               <Text style={styles.stepSubtitle}>
-                Now let&rsquo;s personalize Rep AI for you...
+                Consistency beats everything. Here&rsquo;s why.
               </Text>
             </View>
 
             <View style={styles.stepContent}>
-              <View style={styles.privacyFooter}>
-                <View style={styles.privacyIconBadge}>
-                  <Ionicons
-                    name="lock-closed"
-                    size={22}
+              <View style={styles.trackingBenefitsContainer}>
+                {/* Animated Progress Chart */}
+                <View
+                  style={styles.chartContainer}
+                  onLayout={handleChartLayout}
+                >
+                  <LineChart
+                    data={chartValues.map((value) => ({
+                      value,
+                    }))}
+                    xAxisLabelTexts={chartLabels}
+                    isAnimated
+                    animationDuration={2500}
+                    curved
+                    curvature={0.25}
+                    thickness={3}
                     color={colors.primary}
+                    areaChart
+                    startFillColor={colors.primary + '25'}
+                    endFillColor={colors.primary + '02'}
+                    startOpacity={0.6}
+                    endOpacity={0.05}
+                    dataPointsColor={colors.primary}
+                    dataPointsRadius={5}
+                    hideDataPoints={false}
+                    dataPointTextColor={undefined}
+                    hideDataPointText
+                    yAxisColor={colors.border}
+                    xAxisColor={colors.border}
+                    rulesType="solid"
+                    rulesColor={colors.border}
+                    rulesThickness={1}
+                    xAxisLabelTextStyle={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      fontWeight: '600',
+                    }}
+                    yAxisLabelWidth={0}
+                    xAxisLabelTextNumberOfLines={1}
+                    hideYAxisText
+                    hideXAxisText={false}
+                    noOfSections={4}
+                    yAxisOffset={chartBounds.paddedMin}
+                    stepValue={chartBounds.stepValue}
+                    maxValue={chartBounds.paddedMax}
+                    pointerConfig={{
+                      pointerStripColor: colors.primary + '24',
+                      pointerStripHeight: 120,
+                      pointerColor: colors.primary,
+                      radius: 6,
+                      shiftPointerLabelX: -12,
+                      pointerLabelComponent: (items: any[]) => {
+                        const item = items[0]
+                        if (!item) return null
+                        const pointIndex = item.index ?? 0
+                        const label = chartLabels[pointIndex] || ''
+                        return (
+                          <View
+                            style={{
+                              backgroundColor: colors.background,
+                              borderColor: colors.primary,
+                              borderWidth: 1,
+                              paddingVertical: 4,
+                              paddingHorizontal: 8,
+                              borderRadius: 8,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: colors.primary,
+                                fontWeight: '700',
+                                fontSize: 12,
+                              }}
+                            >
+                              {`${label} · ${item.value}`}
+                            </Text>
+                          </View>
+                        )
+                      },
+                    }}
+                    disableScroll
+                    adjustToWidth
+                    initialSpacing={chartEdgeSpacing}
+                    endSpacing={chartEdgeSpacing}
+                    spacing={chartSpacing}
+                    width={chartInnerWidth > 0 ? chartInnerWidth : undefined}
+                    height={
+                      chartInnerWidth > 0
+                        ? Math.max(130, chartInnerWidth * 0.45)
+                        : 150
+                    }
                   />
                 </View>
-                <Text style={styles.privacyTitle}>
-                  Your privacy and security matter to us.
-                </Text>
-                <Text style={styles.privacySubtitle}>
-                  We promise to always keep your personal information safe and
-                  secure.
-                </Text>
+
+                {/* Key Statistic */}
+                <View style={styles.statContainer}>
+                  <Text style={styles.statNumber}>25%</Text>
+                  <Text style={styles.statDescription}>
+                    Greater strength gains in just 6 months
+                  </Text>
+                </View>
+
+                {/* Subtext */}
+                <View style={styles.trackingFooter}>
+                  <Text style={styles.trackingFooterText}>
+                    Studies show that lifters who log their workouts build more
+                    muscle and increase their lifts by 25%.
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -774,10 +991,13 @@ export default function OnboardingScreen() {
               <Text style={styles.stepTitle}>
                 What would you like to accomplish?
               </Text>
+              <Text style={styles.stepSubtitle}>
+                Select as many as you&rsquo;d like
+              </Text>
             </View>
 
             <View style={styles.stepContent}>
-              <View style={styles.optionsContainer}>
+              <View style={styles.multiSelectContainer}>
                 {GOALS.map((goal) => (
                   <HapticButton
                     key={goal.value}
@@ -794,15 +1014,26 @@ export default function OnboardingScreen() {
                     }}
                     hapticStyle="light"
                   >
-                    <Text
-                      style={[
-                        styles.goalText,
-                        data.goal.includes(goal.value) &&
-                          styles.goalTextSelected,
-                      ]}
-                    >
-                      {goal.label}
-                    </Text>
+                    <View style={styles.goalButtonContent}>
+                      <View style={styles.checkmarkContainer}>
+                        {data.goal.includes(goal.value) && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={colors.buttonText}
+                          />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.goalText,
+                          data.goal.includes(goal.value) &&
+                            styles.goalTextSelected,
+                        ]}
+                      >
+                        {goal.label}
+                      </Text>
+                    </View>
                   </HapticButton>
                 ))}
               </View>
@@ -834,9 +1065,9 @@ export default function OnboardingScreen() {
                   >
                     <Text
                       style={[
-                        styles.goalText,
+                        styles.simpleOptionText,
                         data.commitment === commitment.value &&
-                          styles.goalTextSelected,
+                          styles.simpleOptionTextSelected,
                       ]}
                     >
                       {commitment.label}
@@ -874,9 +1105,9 @@ export default function OnboardingScreen() {
                   >
                     <Text
                       style={[
-                        styles.goalText,
+                        styles.simpleOptionText,
                         data.training_years === item.value &&
-                          styles.goalTextSelected,
+                          styles.simpleOptionTextSelected,
                       ]}
                     >
                       {item.label}
@@ -969,10 +1200,12 @@ export default function OnboardingScreen() {
             <View style={styles.contentWrapper}>
               <Animated.View
                 style={[
-                  {
-                    opacity: fadeAnim,
-                    transform: [{ translateX: slideAnim }],
-                  },
+                  stepHasNativePicker
+                    ? { opacity: fadeAnim }
+                    : {
+                        opacity: fadeAnim,
+                        transform: [{ translateX: slideAnim }],
+                      },
                   styles.animatedContent,
                 ]}
               >
@@ -982,20 +1215,22 @@ export default function OnboardingScreen() {
           </ScrollView>
 
           {/* Footer - Fixed at bottom */}
-          <View style={styles.footer}>
-            <HapticButton
-              style={[
-                styles.nextButton,
-                !canProceed() && styles.nextButtonDisabled,
-              ]}
-              onPress={handleNext}
-              disabled={!canProceed()}
-              hapticEnabled={canProceed()}
-              hapticStyle="heavy"
-            >
-              <Text style={styles.nextButtonText}>Next</Text>
-            </HapticButton>
-          </View>
+          {!hasAutoSwipe() && (
+            <View style={styles.footer}>
+              <HapticButton
+                style={[
+                  styles.nextButton,
+                  !canProceed() && styles.nextButtonDisabled,
+                ]}
+                onPress={handleNext}
+                disabled={!canProceed()}
+                hapticEnabled={canProceed()}
+                hapticStyle="heavy"
+              >
+                <Text style={styles.nextButtonText}>Next</Text>
+              </HapticButton>
+            </View>
+          )}
         </KeyboardAvoidingView>
       </View>
 
@@ -1103,6 +1338,10 @@ const createStyles = (
     optionsContainer: {
       gap: 12,
     },
+    multiSelectContainer: {
+      gap: 12,
+      flexDirection: 'column',
+    },
     optionButton: {
       height: 56,
       borderWidth: 2,
@@ -1165,6 +1404,7 @@ const createStyles = (
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.background,
+      paddingHorizontal: 20,
     },
     goalButtonSelected: {
       borderColor: colors.primary,
@@ -1174,9 +1414,35 @@ const createStyles = (
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
+      textAlign: 'center',
+      flex: 1,
     },
     goalTextSelected: {
       color: colors.buttonText,
+    },
+    simpleOptionText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    simpleOptionTextSelected: {
+      color: colors.buttonText,
+    },
+    goalButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      justifyContent: 'center',
+    },
+    checkmarkContainer: {
+      position: 'absolute',
+      left: 16,
+      width: 24,
+      height: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexShrink: 0,
     },
     footer: {
       paddingHorizontal: 32,
@@ -1428,16 +1694,19 @@ const createStyles = (
       gap: 6,
       justifyContent: 'center',
       paddingHorizontal: 4,
+      alignSelf: 'center',
+      width: '100%',
+      maxWidth: 360,
     },
     birthDateColumnSmall: {
       flex: 1,
       alignItems: 'center',
-      minWidth: 90,
+      minWidth: 100,
     },
     birthDateColumnYear: {
       flex: 1.3,
       alignItems: 'center',
-      minWidth: 120,
+      minWidth: 130,
     },
     thankYouHeader: {
       flex: 1,
@@ -1612,5 +1881,56 @@ const createStyles = (
       fontWeight: '700',
       color: colors.white,
       letterSpacing: 0.5,
+    },
+    trackingBenefitsContainer: {
+      flex: 1,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    chartContainer: {
+      width: '100%',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: CHART_VERTICAL_PADDING,
+      paddingHorizontal: CHART_HORIZONTAL_PADDING,
+      marginBottom: 32,
+      overflow: 'hidden',
+    },
+    statContainer: {
+      alignItems: 'center',
+      marginVertical: 24,
+    },
+    statNumber: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: colors.primary,
+      marginBottom: 8,
+    },
+    statDescription: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+      lineHeight: 24,
+      paddingHorizontal: 12,
+    },
+    trackingFooter: {
+      backgroundColor: colors.primary + '08',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.primary + '20',
+      padding: 18,
+      marginHorizontal: 8,
+    },
+    trackingFooterText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
     },
   })
