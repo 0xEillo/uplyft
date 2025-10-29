@@ -17,6 +17,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -281,7 +282,9 @@ export default function SettingsScreen() {
       const restoredCustomerInfo = await restorePurchases()
 
       // Check if Pro entitlement was restored
-      const hasProEntitlement = Boolean(restoredCustomerInfo?.entitlements.active['Pro'])
+      const hasProEntitlement = Boolean(
+        restoredCustomerInfo?.entitlements.active['Pro'],
+      )
 
       if (hasProEntitlement) {
         Alert.alert('Success', 'Your purchases have been restored.', [
@@ -306,8 +309,12 @@ export default function SettingsScreen() {
   }
 
   const handleManageSubscription = async () => {
-    // Open App Store subscription management
-    const subscriptionUrl = 'https://apps.apple.com/account/subscriptions'
+    // Platform-specific subscription management
+    const subscriptionUrl =
+      Platform.OS === 'ios'
+        ? 'https://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions'
+
     try {
       const canOpen = await Linking.canOpenURL(subscriptionUrl)
       if (canOpen) {
@@ -315,7 +322,9 @@ export default function SettingsScreen() {
       } else {
         Alert.alert(
           'Unable to Open',
-          'Please open Settings > [Your Name] > Subscriptions to manage your subscription.',
+          Platform.OS === 'ios'
+            ? 'Please open Settings > [Your Name] > Subscriptions to manage your subscription.'
+            : 'Open Google Play > Profile > Payments & subscriptions to manage your subscription.',
           [{ text: 'OK' }],
         )
       }
@@ -323,7 +332,9 @@ export default function SettingsScreen() {
       console.error('Error opening subscription management:', error)
       Alert.alert(
         'Unable to Open',
-        'Please open Settings > [Your Name] > Subscriptions to manage your subscription.',
+        Platform.OS === 'ios'
+          ? 'Please open Settings > [Your Name] > Subscriptions to manage your subscription.'
+          : 'Open Google Play > Profile > Payments & subscriptions to manage your subscription.',
         [{ text: 'OK' }],
       )
     }
@@ -749,9 +760,7 @@ export default function SettingsScreen() {
                 size={22}
                 color={colors.textSecondary}
               />
-              <Text style={styles.actionButtonTextNeutral}>
-                Privacy Policy
-              </Text>
+              <Text style={styles.actionButtonTextNeutral}>Privacy Policy</Text>
             </View>
             <Ionicons
               name="chevron-forward"

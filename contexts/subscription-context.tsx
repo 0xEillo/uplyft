@@ -2,6 +2,7 @@ import {
   cancelTrialNotification,
   checkAndRescheduleTrialNotification,
 } from '@/lib/services/notification-service'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import React, {
   createContext,
@@ -11,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import { Platform } from 'react-native'
+import { Alert, Platform } from 'react-native'
 import type { CustomerInfoUpdateListener } from 'react-native-purchases'
 import Purchases, {
   CustomerInfo,
@@ -208,14 +209,68 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     handleNotifications()
-  }, [
-    user?.id,
-    isLoading,
-    hasPaidEntitlement,
-    proEntitlement?.periodType,
-    proEntitlement?.expirationDate,
-    proEntitlement?.latestPurchaseDate,
-  ])
+  }, [user?.id, isLoading, hasPaidEntitlement, proEntitlement])
+
+  // In-app reminder the day before trial ends (no OS push)
+  useEffect(() => {
+    const maybeShowInAppTrialReminder = async () => {
+      try {
+        if (!user?.id || isLoading) return
+        if (!proEntitlement) return
+        if (hasPaidEntitlement) return
+
+        // Only relevant during trial period
+        const isTrial = proEntitlement?.periodType === 'trial'
+        if (!isTrial) return
+
+        // Determine expiration date
+        let expiration: Date | null = null
+        if (proEntitlement?.expirationDate) {
+          expiration = new Date(proEntitlement.expirationDate)
+        }
+
+        // Fallback: if no expiration provided, derive from latest purchase/original purchase + 7 days
+        if (!expiration) {
+          const anchorStr =
+            proEntitlement?.latestPurchaseDate ||
+            proEntitlement?.originalPurchaseDate ||
+            null
+          if (!anchorStr) return
+          const anchor = new Date(anchorStr)
+          const exp = new Date(anchor)
+          exp.setDate(exp.getDate() + 7)
+          expiration = exp
+        }
+
+        if (!expiration) return
+
+        const now = new Date()
+        const reminder = new Date(expiration)
+        reminder.setDate(reminder.getDate() - 1)
+
+        // Only show on the reminder day window (>= reminder and < expiration)
+        if (!(now >= reminder && now < expiration)) return
+
+        // Prevent duplicate alerts per user per expiration date
+        const expKeyDate = expiration.toISOString().slice(0, 10)
+        const shownKey = `@trial_reminder_shown_${user.id}_${expKeyDate}`
+        const alreadyShown = await AsyncStorage.getItem(shownKey)
+        if (alreadyShown === '1') return
+
+        Alert.alert(
+          'Trial ends tomorrow',
+          'Your 7-day free trial ends in 24 hours. You can cancel anytime in Settings.',
+          [{ text: 'OK' }],
+        )
+        await AsyncStorage.setItem(shownKey, '1')
+      } catch (err) {
+        // Non-fatal
+        console.warn('[Subscription] In-app trial reminder error:', err)
+      }
+    }
+
+    maybeShowInAppTrialReminder()
+  }, [user?.id, isLoading, hasPaidEntitlement, proEntitlement])
 
   // Restore purchases
   const restorePurchases = async (): Promise<CustomerInfo> => {
