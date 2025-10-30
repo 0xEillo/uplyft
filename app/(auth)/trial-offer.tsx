@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -287,6 +288,11 @@ export default function TrialOfferScreen() {
         >
           <Text style={styles.startButtonText}>Try for FREE</Text>
         </AnimatedButton>
+
+        {/* Terms of Service Link */}
+        <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
+          <Text style={styles.termsText}>Terms of Service</Text>
+        </TouchableOpacity>
       </Animated.View>
     </>
   )
@@ -311,6 +317,18 @@ export default function TrialOfferScreen() {
         step_name: 'benefits',
       })
       setStep(3)
+    }
+  }
+
+  const handleOpenTerms = async () => {
+    const termsUrl = 'https://www.repaifit.app/terms'
+    try {
+      const canOpen = await Linking.canOpenURL(termsUrl)
+      if (canOpen) {
+        await Linking.openURL(termsUrl)
+      }
+    } catch (error) {
+      console.error('[TrialOffer] Failed to open terms:', error)
     }
   }
 
@@ -372,6 +390,11 @@ export default function TrialOfferScreen() {
         >
           <Text style={styles.startButtonText}>Continue for FREE</Text>
         </AnimatedButton>
+
+        {/* Terms of Service Link */}
+        <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
+          <Text style={styles.termsText}>Terms of Service</Text>
+        </TouchableOpacity>
       </Animated.View>
     </>
   )
@@ -499,6 +522,11 @@ export default function TrialOfferScreen() {
           <Text style={styles.footerSubtext}>
             7 days free, then $5.99 per month
           </Text>
+
+          {/* Terms of Service Link */}
+          <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
+            <Text style={styles.termsText}>Terms of Service</Text>
+          </TouchableOpacity>
         </Animated.View>
       </>
     )
@@ -926,6 +954,17 @@ function createStyles(colors: any) {
       color: colors.textSecondary,
       fontSize: 16,
       fontWeight: '600',
+    },
+    termsLink: {
+      marginTop: -8,
+      paddingVertical: 0,
+      alignItems: 'center',
+    },
+    termsText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
+      opacity: 0.7,
     },
   })
 }

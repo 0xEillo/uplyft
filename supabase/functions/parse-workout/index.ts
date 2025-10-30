@@ -52,6 +52,40 @@ const requestSchema = z.object({
 
 const openaiClient = openai('gpt-4.1-mini')
 
+const KG_TO_LB = 2.20462
+
+function coerceNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.\-]/g, '')
+    if (!cleaned) return null
+    const parsed = Number(cleaned)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function normalizeWeightToKg(
+  weight: unknown,
+  sourceUnit: 'kg' | 'lb',
+): number | null {
+  const numeric = coerceNumber(weight)
+  if (numeric === null) return null
+
+  if (sourceUnit === 'kg') {
+    return numeric
+  }
+
+  const converted = numeric / KG_TO_LB
+  return Number.isFinite(converted) ? converted : null
+}
+
 // Initialize OpenAI client for tool calling (using direct SDK)
 const openaiToolClient = new OpenAI({
   apiKey: Deno.env.get('OPENAI_API_KEY'),
@@ -145,7 +179,9 @@ Return ONLY the title with proper capitalization, nothing else.`,
                 set.reps >= 1
                   ? set.reps
                   : null,
-              weight: set.weight ?? undefined,
+              weight:
+                normalizeWeightToKg(set.weight, payload.weightUnit) ??
+                undefined,
               rpe: set.rpe ?? undefined,
               notes: set.notes ?? undefined,
             }))
@@ -247,6 +283,11 @@ Return ONLY the title with proper capitalization, nothing else.`,
 })
 
 function buildParsePrompt(notes: string, weightUnit: 'kg' | 'lb'): string {
+  const conversionInstructions =
+    weightUnit === 'lb'
+      ? 'If weights are in kg, convert to lbs using this formula: weight_in_lbs = weight_in_kg × 2.20462'
+      : 'If weights are in lbs, convert to kg using this formula: weight_in_kg = weight_in_lbs ÷ 2.20462'
+
   return `You are a workout tracking assistant. Parse the following workout notes and extract structured data that matches our database schema.
 
 User's Workout Notes:
@@ -258,7 +299,7 @@ Instructions:
 1. Extract each exercise with its name, sets, reps, and weight
 2. Preserve the order of exercises as they appear in the notes
 3. If the user mentions warm-up sets or sets without specific reps, include them but mark reps as null
-4. Convert all weights to ${weightUnit}
+4. Convert all weights to ${weightUnit}. ${conversionInstructions}
 5. Extract RPE (Rate of Perceived Exertion) if mentioned
 6. Extract any exercise-specific notes
 7. Try to infer the workout type if possible (e.g., "Push Day", "Pull Day", "Leg Day", "Upper Body", "Full Body")

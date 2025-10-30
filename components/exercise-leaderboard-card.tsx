@@ -3,10 +3,14 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -44,7 +48,83 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   const [isLoading, setIsLoading] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
   const [animatedValues] = useState(() => new Map<string, Animated.Value>())
+  const [showInfoModal, setShowInfoModal] = useState(false)
   const colors = useThemedColors()
+
+  // Animation refs for info modal
+  const infoSlideAnim = useRef(
+    new Animated.Value(Dimensions.get('window').height),
+  ).current
+  const infoBackdropAnim = useRef(new Animated.Value(0)).current
+
+  // ScrollView ref for swipe-to-dismiss detection
+  const scrollViewRef = useRef<ScrollView>(null)
+  const scrollOffsetRef = useRef(0)
+
+  // Info modal pan responder - allows swipe-to-dismiss from handle/header area
+  const infoModalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only intercept downward swipes
+        return (
+          gestureState.dy > 5 && gestureState.dy > Math.abs(gestureState.dx)
+        )
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          infoSlideAnim.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          setShowInfoModal(false)
+        } else {
+          Animated.spring(infoSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 25,
+            stiffness: 200,
+          }).start()
+        }
+      },
+    }),
+  ).current
+
+  // Handle info modal animations
+  useEffect(() => {
+    if (showInfoModal) {
+      Animated.parallel([
+        Animated.spring(infoSlideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 25,
+          stiffness: 200,
+        }),
+        Animated.timing(infoBackdropAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(infoSlideAnim, {
+          toValue: Dimensions.get('window').height,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(infoBackdropAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start()
+      // Reset scroll offset when modal closes
+      scrollOffsetRef.current = 0
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false })
+    }
+  }, [showInfoModal, infoSlideAnim, infoBackdropAnim])
 
   const loadRankings = useCallback(async () => {
     setIsLoading(true)
@@ -102,7 +182,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             <View>
               <Text style={styles.title}>Leaderboard Rankings</Text>
               <Text style={styles.subtitle}>
-                Your ranking on key lifts
+                Your percentile ranking on key lifts
               </Text>
             </View>
           </View>
@@ -125,7 +205,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             <View>
               <Text style={styles.title}>Leaderboard Rankings</Text>
               <Text style={styles.subtitle}>
-                Your ranking on key lifts
+                Your percentile ranking on key lifts
               </Text>
             </View>
           </View>
@@ -156,24 +236,38 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
           </View>
           <View>
             <Text style={styles.title}>Leaderboard Rankings</Text>
-            <Text style={styles.subtitle}>Your ranking on key lifts</Text>
+            <Text style={styles.subtitle}>
+              Your percentile ranking on key lifts
+            </Text>
           </View>
         </View>
-        {shouldShowExpand && (
+        <View style={styles.headerRightButtons}>
           <TouchableOpacity
-            style={styles.expandButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              setIsExpanded(!isExpanded)
-            }}
+            style={styles.infoButton}
+            onPress={() => setShowInfoModal(true)}
           >
             <Ionicons
-              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              name="information-circle-outline"
               size={20}
               color={colors.textSecondary}
             />
           </TouchableOpacity>
-        )}
+          {shouldShowExpand && (
+            <TouchableOpacity
+              style={styles.expandButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                setIsExpanded(!isExpanded)
+              }}
+            >
+              <Ionicons
+                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Top Rankings */}
@@ -226,6 +320,118 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
           <Ionicons name="chevron-down" size={16} color={colors.primary} />
         </TouchableOpacity>
       )}
+
+      {/* Info Modal - Bottom Sheet */}
+      <Modal
+        visible={showInfoModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowInfoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.backdrop,
+              {
+                opacity: infoBackdropAnim,
+              },
+            ]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowInfoModal(false)}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ translateY: infoSlideAnim }],
+              },
+            ]}
+          >
+            {/* Handle Bar */}
+            <View
+              style={styles.handleContainer}
+              {...infoModalPanResponder.panHandlers}
+            >
+              <View
+                style={[
+                  styles.handle,
+                  { backgroundColor: colors.textSecondary },
+                ]}
+              />
+            </View>
+
+            <View
+              style={styles.modalHeader}
+              {...infoModalPanResponder.panHandlers}
+            >
+              <Text style={styles.modalTitle}>Leaderboard Rankings</Text>
+            </View>
+
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.modalBody}
+              contentContainerStyle={styles.modalBodyContent}
+              showsVerticalScrollIndicator={true}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
+              bounces={true}
+              onScroll={(event) => {
+                scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+              }}
+              scrollEventThrottle={16}
+            >
+              <Text style={styles.sectionTitle}>
+                What are percentile rankings?
+              </Text>
+              <Text style={styles.sectionText}>
+                Your percentile ranking shows how your strength compares to
+                other users. A 75th percentile ranking means you&apos;re
+                stronger than 75% of users on that exercise.
+              </Text>
+
+              <Text style={styles.sectionTitle}>
+                How are rankings calculated?
+              </Text>
+              <Text style={styles.sectionText}>
+                Rankings are based on your estimated one-rep max (1RM) for each
+                exercise. If available, we calculate gender-specific rankings so
+                you can see how you compare within your demographic. For
+                compound lifts, we also show weight class rankings based on your
+                body weight.
+              </Text>
+
+              <Text style={styles.sectionTitle}>Understanding the tiers</Text>
+              <Text style={styles.sectionText}>
+                <Text style={styles.sectionBold}>Elite (95th+):</Text> Top 5% of
+                all users{'\n'}
+                <Text style={styles.sectionBold}>Top 10% (90-95th):</Text>{' '}
+                Exceptional strength{'\n'}
+                <Text style={styles.sectionBold}>Top 25% (75-90th):</Text> Well
+                above average{'\n'}
+                <Text style={styles.sectionBold}>Top 50% (50-75th):</Text> Above
+                average{'\n'}
+                <Text style={styles.sectionBold}>
+                  Developing (below 50th):
+                </Text>{' '}
+                Room to grow
+              </Text>
+
+              <Text style={styles.sectionTitle}>
+                How to improve your ranking
+              </Text>
+              <Text style={styles.sectionText}>
+                Focus on progressive overload - gradually increase the weight
+                you lift over time. Consistent training and proper recovery are
+                key. Your ranking will update as your estimated 1RM improves.
+              </Text>
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   )
 })
@@ -304,7 +510,13 @@ function RankingRow({
     }
 
     return () => animatedValue.removeListener(primaryListener)
-  }, [animatedValue, primaryPercentile, hasWeightClass, ranking.genderWeightPercentile, weightAnimatedValue])
+  }, [
+    animatedValue,
+    primaryPercentile,
+    hasWeightClass,
+    ranking.genderWeightPercentile,
+    weightAnimatedValue,
+  ])
 
   return (
     <View style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}>
@@ -352,7 +564,12 @@ function RankingRow({
 
         {/* Secondary Progress Bar (Weight Class) */}
         {hasWeightClass && (
-          <View style={[styles.progressContainer, styles.secondaryProgressContainer]}>
+          <View
+            style={[
+              styles.progressContainer,
+              styles.secondaryProgressContainer,
+            ]}
+          >
             <View style={[styles.progressTrack, styles.secondaryProgressTrack]}>
               <Animated.View
                 style={[
@@ -379,47 +596,59 @@ function RankingRow({
               >
                 {displayWeightPercentile}
               </Text>
-              {ranking.weightBucketStart != null && ranking.weightBucketEnd != null && (
-                <TouchableOpacity
-                  style={styles.weightClassBadge}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    setIsWeightClassExpanded(!isWeightClassExpanded)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="scale-outline"
-                    size={10}
-                    color={colors.textSecondary}
-                    style={styles.weightClassIcon}
-                  />
-                  <Text style={styles.weightBucketText}>
-                    BW
-                  </Text>
-                  <Ionicons
-                    name={isWeightClassExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={10}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              )}
+              {ranking.weightBucketStart != null &&
+                ranking.weightBucketEnd != null && (
+                  <TouchableOpacity
+                    style={styles.weightClassBadge}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setIsWeightClassExpanded(!isWeightClassExpanded)
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="scale-outline"
+                      size={10}
+                      color={colors.textSecondary}
+                      style={styles.weightClassIcon}
+                    />
+                    <Text style={styles.weightBucketText}>BW</Text>
+                    <Ionicons
+                      name={
+                        isWeightClassExpanded ? 'chevron-up' : 'chevron-down'
+                      }
+                      size={10}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                )}
             </View>
           </View>
         )}
 
         {/* Weight Class Details Card */}
-        {hasWeightClass && isWeightClassExpanded && ranking.weightBucketStart != null && ranking.weightBucketEnd != null && (
-          <View style={styles.weightClassDetailsCard}>
-            <Text style={styles.weightClassDetailsLabel}>Body Weight Class</Text>
-            <Text style={styles.weightClassDetailsValue}>
-              {formatWeight(ranking.weightBucketStart, { maximumFractionDigits: 0 })} - {formatWeight(ranking.weightBucketEnd, { maximumFractionDigits: 0 })}
-            </Text>
-            <Text style={styles.weightClassDetailsDescription}>
-              Your ranking among users in this weight range
-            </Text>
-          </View>
-        )}
+        {hasWeightClass &&
+          isWeightClassExpanded &&
+          ranking.weightBucketStart != null &&
+          ranking.weightBucketEnd != null && (
+            <View style={styles.weightClassDetailsCard}>
+              <Text style={styles.weightClassDetailsLabel}>
+                Body Weight Class
+              </Text>
+              <Text style={styles.weightClassDetailsValue}>
+                {formatWeight(ranking.weightBucketStart, {
+                  maximumFractionDigits: 0,
+                })}{' '}
+                -{' '}
+                {formatWeight(ranking.weightBucketEnd, {
+                  maximumFractionDigits: 0,
+                })}
+              </Text>
+              <Text style={styles.weightClassDetailsDescription}>
+                Your ranking among users in this weight range
+              </Text>
+            </View>
+          )}
       </View>
     </View>
   )
@@ -465,7 +694,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       marginBottom: 16,
     },
     headerLeft: {
@@ -496,6 +725,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 8,
       borderRadius: 8,
       backgroundColor: colors.backgroundLight,
+      marginTop: -8,
+      marginRight: -4,
     },
     loadingContainer: {
       height: 120,
@@ -668,5 +899,82 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       fontWeight: '600',
       color: colors.primary,
+    },
+    headerRightButtons: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    infoButton: {
+      padding: 4,
+      marginTop: -2,
+      marginRight: -4,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+      backgroundColor: colors.white,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: Dimensions.get('window').height * 0.75,
+      paddingBottom: 34,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+      elevation: 20,
+      flex: 1,
+      flexDirection: 'column',
+    },
+    handleContainer: {
+      alignItems: 'center',
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      opacity: 0.3,
+    },
+    modalHeader: {
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+    },
+    modalTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    modalBody: {
+      flex: 1,
+    },
+    modalBodyContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    sectionText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 8,
+    },
+    sectionBold: {
+      fontWeight: '700',
+      color: colors.text,
     },
   })

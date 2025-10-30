@@ -3,9 +3,9 @@ import { Paywall } from '@/components/paywall'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
-import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -861,9 +861,7 @@ export default function CreatePostScreen() {
               isRecording && styles.micFabActive,
               {
                 bottom:
-                  keyboardHeight > 0
-                    ? keyboardHeight + 64
-                    : 64 + insets.bottom,
+                  keyboardHeight > 0 ? keyboardHeight + 32 : 32 + insets.bottom,
               },
             ]}
             onPress={handleToggleRecording}
@@ -891,8 +889,8 @@ export default function CreatePostScreen() {
               {
                 bottom:
                   keyboardHeight > 0
-                    ? keyboardHeight - 16
-                    : -16 + insets.bottom,
+                    ? keyboardHeight - 48
+                    : -48 + insets.bottom,
               },
             ]}
             onPress={handlePickImage}

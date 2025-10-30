@@ -363,6 +363,29 @@ export default function SettingsScreen() {
     }
   }
 
+  const handleOpenTermsOfUse = async () => {
+    const termsUrl = 'https://www.repaifit.app/terms'
+    try {
+      const canOpen = await Linking.canOpenURL(termsUrl)
+      if (canOpen) {
+        await Linking.openURL(termsUrl)
+      } else {
+        Alert.alert(
+          'Unable to Open',
+          'Could not open terms of use. Please visit repaifit.app/terms',
+          [{ text: 'OK' }],
+        )
+      }
+    } catch (error) {
+      console.error('Error opening terms of use:', error)
+      Alert.alert(
+        'Unable to Open',
+        'Could not open terms of use. Please visit repaifit.app/terms',
+        [{ text: 'OK' }],
+      )
+    }
+  }
+
   // Get subscription status display
   const getSubscriptionStatus = () => {
     if (!customerInfo) return 'loading'
@@ -761,6 +784,25 @@ export default function SettingsScreen() {
                 color={colors.textSecondary}
               />
               <Text style={styles.actionButtonTextNeutral}>Privacy Policy</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textLight}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleOpenTermsOfUse}
+          >
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="document-text-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.actionButtonTextNeutral}>Terms of Use</Text>
             </View>
             <Ionicons
               name="chevron-forward"

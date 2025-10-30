@@ -7,6 +7,8 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Linking,
+  ScrollView,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -118,6 +120,18 @@ export function Paywall({
     }
   }
 
+  const handleOpenTerms = async () => {
+    const termsUrl = 'https://www.repaifit.app/terms'
+    try {
+      const canOpen = await Linking.canOpenURL(termsUrl)
+      if (canOpen) {
+        await Linking.openURL(termsUrl)
+      }
+    } catch (error) {
+      console.error('[Paywall] Failed to open terms:', error)
+    }
+  }
+
   const monthlyPrice = offerings?.availablePackages.find(
     (pkg) => pkg.identifier === '$rc_monthly' || pkg.identifier.toLowerCase().includes('monthly')
   )?.product.priceString || '$5.99'
@@ -138,8 +152,12 @@ export function Paywall({
             </TouchableOpacity>
           </View>
 
-          {/* Content */}
-          <View style={styles.content}>
+          {/* Scrollable Content */}
+          <ScrollView
+            style={styles.scrollableContent}
+            contentContainerStyle={styles.scrollContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Icon */}
             <View style={styles.iconContainer}>
               <Ionicons name="lock-closed" size={64} color={colors.primary} />
@@ -182,7 +200,7 @@ export function Paywall({
               </Text>
               <Text style={styles.pricingSubtext}>Cancel anytime</Text>
             </View>
-          </View>
+          </ScrollView>
 
           {/* Actions */}
           <View style={styles.actions}>
@@ -208,6 +226,11 @@ export function Paywall({
               ) : (
                 <Text style={styles.restoreButtonText}>Restore Purchases</Text>
               )}
+            </TouchableOpacity>
+
+            {/* Terms of Service Link */}
+            <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
+              <Text style={styles.termsText}>Terms of Service</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -243,11 +266,12 @@ function createStyles(colors: any) {
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     container: {
+      flex: 1,
       backgroundColor: colors.background,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      paddingBottom: 40,
       maxHeight: '90%',
+      flexDirection: 'column',
     },
     header: {
       flexDirection: 'row',
@@ -262,7 +286,10 @@ function createStyles(colors: any) {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    content: {
+    scrollableContent: {
+      flex: 1,
+    },
+    scrollContentContainer: {
       paddingHorizontal: 24,
       paddingBottom: 24,
     },
@@ -317,6 +344,8 @@ function createStyles(colors: any) {
     },
     actions: {
       paddingHorizontal: 24,
+      paddingBottom: 24,
+      paddingTop: 8,
       gap: 12,
     },
     subscribeButton: {
@@ -341,6 +370,17 @@ function createStyles(colors: any) {
       color: colors.primary,
       fontSize: 16,
       fontWeight: '600',
+    },
+    termsLink: {
+      marginTop: -8,
+      paddingVertical: 0,
+      alignItems: 'center',
+    },
+    termsText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
+      opacity: 0.7,
     },
   })
 }

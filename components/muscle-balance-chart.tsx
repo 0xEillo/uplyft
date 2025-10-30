@@ -2,9 +2,15 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -49,8 +55,82 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
     [],
   )
   const [isLoading, setIsLoading] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
   const colors = useThemedColors()
   const { formatWeight } = useWeightUnits()
+
+  // Animation refs for info modal
+  const infoSlideAnim = useRef(
+    new Animated.Value(Dimensions.get('window').height),
+  ).current
+  const infoBackdropAnim = useRef(new Animated.Value(0)).current
+  const scrollViewRef = useRef<ScrollView>(null)
+  const scrollOffsetRef = useRef(0)
+
+  // Info modal pan responder - allows swipe-to-dismiss from handle/header area
+  const infoModalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only intercept downward swipes
+        return (
+          gestureState.dy > 5 && gestureState.dy > Math.abs(gestureState.dx)
+        )
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          infoSlideAnim.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          setShowInfoModal(false)
+        } else {
+          Animated.spring(infoSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 25,
+            stiffness: 200,
+          }).start()
+        }
+      },
+    }),
+  ).current
+
+  // Handle info modal animations
+  useEffect(() => {
+    if (showInfoModal) {
+      Animated.parallel([
+        Animated.spring(infoSlideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 25,
+          stiffness: 200,
+        }),
+        Animated.timing(infoBackdropAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(infoSlideAnim, {
+          toValue: Dimensions.get('window').height,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(infoBackdropAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start()
+      // Reset scroll offset when modal closes
+      scrollOffsetRef.current = 0
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false })
+    }
+  }, [showInfoModal, infoSlideAnim, infoBackdropAnim])
 
   const loadDistributionData = useCallback(async () => {
     setIsLoading(true)
@@ -98,6 +178,16 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
             </Text>
           </View>
         </View>
+        <TouchableOpacity
+          style={styles.infoButton}
+          onPress={() => setShowInfoModal(true)}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={20}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Time Range Selector */}
@@ -186,6 +276,96 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
           </View>
         )}
       </View>
+
+      {/* Info Modal - Bottom Sheet */}
+      <Modal
+        visible={showInfoModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowInfoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.backdrop,
+              {
+                opacity: infoBackdropAnim,
+              },
+            ]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowInfoModal(false)}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ translateY: infoSlideAnim }],
+              },
+            ]}
+          >
+            {/* Handle Bar */}
+            <View
+              style={styles.handleContainer}
+              {...infoModalPanResponder.panHandlers}
+            >
+              <View
+                style={[
+                  styles.handle,
+                  { backgroundColor: colors.textSecondary },
+                ]}
+              />
+            </View>
+
+            <View
+              style={styles.modalHeader}
+              {...infoModalPanResponder.panHandlers}
+            >
+              <Text style={styles.modalTitle}>Muscle Balance</Text>
+            </View>
+
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.modalBody}
+              contentContainerStyle={styles.modalBodyContent}
+              showsVerticalScrollIndicator={true}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
+              bounces={true}
+              onScroll={(event) => {
+                scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+              }}
+              scrollEventThrottle={16}
+            >
+              <Text style={styles.sectionTitle}>
+                Understanding muscle balance
+              </Text>
+              <Text style={styles.sectionText}>
+                Muscle balance is how evenly you distribute training volume
+                across muscle groups. Unbalanced training can lead to injuries
+                and postural issues. Aim for variety across all major muscle
+                groups.
+              </Text>
+
+              <Text style={styles.sectionTitle}>Your aim</Text>
+              <Text style={styles.sectionText}>
+                Aim for variety. If a muscle group is significantly higher
+                (&gt;30%), consider adding more variety. The chart shows
+                training volume (sets × reps × weight) grouped by muscle.
+              </Text>
+
+              <Text style={styles.sectionTitle}>Tips</Text>
+              <Text style={styles.sectionText}>
+                Ensure workouts include upper body, lower body, and core work.
+                Use the time range selector to spot trends over time.
+              </Text>
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   )
 })
@@ -207,13 +387,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       marginBottom: 16,
     },
     headerLeft: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       flex: 1,
+      gap: 12,
     },
     iconContainer: {
       width: 44,
@@ -222,18 +403,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.primaryLight,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 12,
+      marginTop: 2,
+      flexShrink: 0,
     },
     title: {
       fontSize: 18,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 2,
+      marginBottom: 4,
     },
     subtitle: {
       fontSize: 13,
       color: colors.textSecondary,
-      marginBottom: 16,
     },
     timeRangeContainer: {
       flexDirection: 'row',
@@ -321,5 +502,73 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     volumeText: {
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    infoButton: {
+      padding: 4,
+      marginTop: -2,
+      marginRight: -4,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+      backgroundColor: colors.white,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: Dimensions.get('window').height * 0.75,
+      paddingBottom: 34,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+      elevation: 20,
+      flex: 1,
+      flexDirection: 'column',
+    },
+    handleContainer: {
+      alignItems: 'center',
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      opacity: 0.3,
+    },
+    modalHeader: {
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+    },
+    modalTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    modalBody: {
+      flex: 1,
+    },
+    modalBodyContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    sectionText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 8,
     },
   })
