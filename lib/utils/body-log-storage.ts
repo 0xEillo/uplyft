@@ -10,12 +10,16 @@ const SIGNED_URL_EXPIRY = 60 * 60 * 24 * 365 // 1 year in seconds
  *
  * @param uri - Local URI of the image to upload
  * @param userId - User ID for organizing uploads
+ * @param entryId - Optional entry ID for organizing images within an entry
+ * @param sequence - Optional sequence number (1, 2, or 3) for multi-image entries
  * @returns Promise<string> - Storage path of the uploaded image
  * @throws Error if upload fails
  */
 export async function uploadBodyLogImage(
   uri: string,
   userId: string,
+  entryId?: string,
+  sequence?: number,
 ): Promise<string> {
   try {
     // Fetch the image as array buffer
@@ -25,7 +29,13 @@ export async function uploadBodyLogImage(
 
     // Create unique file name
     const fileExt = uri.split('.').pop()?.split('?')[0] || 'jpg'
-    const fileName = `${Date.now()}.${fileExt}`
+
+    // If we have entry ID and sequence, use that naming convention
+    // Otherwise, use timestamp-based naming for legacy compatibility
+    const fileName = entryId && sequence !== undefined
+      ? `${entryId}_${sequence}.${fileExt}`
+      : `${Date.now()}.${fileExt}`
+
     const filePath = `${userId}/${fileName}`
 
     // Upload to Supabase storage
@@ -45,6 +55,48 @@ export async function uploadBodyLogImage(
       throw error
     }
     throw new Error('Failed to upload body log image. Please try again.')
+  }
+}
+
+/**
+ * Uploads multiple body log images for an entry
+ *
+ * @param uris - Array of local URIs to upload
+ * @param userId - User ID for organizing uploads
+ * @param entryId - Entry ID for organizing images
+ * @returns Promise<string[]> - Array of storage paths
+ * @throws Error if any upload fails
+ */
+export async function uploadBodyLogImages(
+  uris: string[],
+  userId: string,
+  entryId: string,
+): Promise<string[]> {
+  try {
+    console.log('[BODY_LOG] 📦 Storage: Starting batch upload', {
+      imageCount: uris.length,
+      entryId: entryId.substring(0, 8),
+    })
+
+    const uploadPromises = uris.map((uri, index) => {
+      console.log(`[BODY_LOG] 📦 Storage: Uploading image ${index + 1}/${uris.length}`)
+      return uploadBodyLogImage(uri, userId, entryId, index + 1)
+    })
+
+    const filePaths = await Promise.all(uploadPromises)
+
+    console.log('[BODY_LOG] ✅ Storage: Batch upload complete', {
+      uploadedCount: filePaths.length,
+      paths: filePaths.map((p) => p.substring(0, 40) + '...'),
+    })
+
+    return filePaths
+  } catch (error) {
+    console.error('[BODY_LOG] ❌ Storage: Batch upload failed', error)
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Failed to upload body log images. Please try again.')
   }
 }
 

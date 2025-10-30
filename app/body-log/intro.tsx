@@ -1,12 +1,12 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useSubscription } from '@/contexts/subscription-context'
+import { Paywall } from '@/components/paywall'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { Paywall } from '@/components/paywall'
+import { useSubscription } from '@/contexts/subscription-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import * as ImagePicker from 'expo-image-picker'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useState } from 'react'
 import {
   Dimensions,
   Image,
@@ -14,12 +14,8 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
-  Platform,
-  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useState } from 'react'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -46,79 +42,11 @@ export default function BodyLogIntroPage() {
       return
     }
 
-    try {
-      // Check current permission status
-      const currentStatus = await ImagePicker.getCameraPermissionsAsync()
-
-      // If permission was previously denied, guide user to settings
-      if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
-        Alert.alert(
-          'Camera Access Needed',
-          Platform.select({
-            ios: 'To take body scan photos, please enable camera access in Settings > Rep AI > Camera.',
-            android: 'To take body scan photos, please enable camera access in Settings > Apps > Rep AI > Permissions.',
-          }),
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open Settings',
-              onPress: () => Linking.openSettings(),
-            },
-          ],
-        )
-        return
-      }
-
-      // Request permission
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
-
-      if (!permissionResult.granted) {
-        Alert.alert(
-          'Camera Permission Required',
-          'Rep AI needs camera access to take body scan photos. You can enable this in your device settings.',
-          [
-            { text: 'Not Now', style: 'cancel' },
-            {
-              text: 'Open Settings',
-              onPress: () => Linking.openSettings(),
-            },
-          ],
-        )
-        return
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: 'images' as any,
-        allowsEditing: false,
-        quality: 0.8,
-      })
-
-      if (result.canceled || !result.assets?.[0]) {
-        // User cancelled, stay on intro page
-        return
-      }
-
-      const localUri = result.assets[0].uri
-
-      // Navigate to processing page with image URI
-      router.replace({
-        pathname: '/body-log/processing',
-        params: { imageUri: localUri },
-      })
-    } catch (error) {
-      console.error('Error opening camera:', error)
-      Alert.alert(
-        'Camera Error',
-        'Failed to open camera. Please check your camera permissions in device settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Open Settings',
-            onPress: () => Linking.openSettings(),
-          },
-        ],
-      )
-    }
+    // Navigate to capture screen with user gender
+    router.push({
+      pathname: '/body-log/capture',
+      params: { userGender: userGender || '' },
+    })
   }
 
   const handleClose = async () => {
@@ -270,6 +198,7 @@ const createDynamicStyles = (colors: Colors) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingVertical: 4,
+      paddingTop: 48,
       maxHeight: SCREEN_HEIGHT * 0.75,
     },
     imagesContainer: {
@@ -312,12 +241,12 @@ const createDynamicStyles = (colors: Colors) =>
       paddingHorizontal: 8,
     },
     imageCaption: {
-      fontSize: 12,
+      fontSize: 15,
       color: 'rgba(255, 255, 255, 0.65)',
       textAlign: 'center',
       fontStyle: 'italic',
       fontWeight: '500',
-      lineHeight: 18,
+      lineHeight: 22,
     },
     bottomSection: {
       paddingBottom: 32,
@@ -328,17 +257,17 @@ const createDynamicStyles = (colors: Colors) =>
       marginBottom: 16,
     },
     title: {
-      fontSize: 28,
+      fontSize: 34,
       fontWeight: '700',
       color: '#FFFFFF',
       letterSpacing: -0.5,
       marginBottom: 6,
     },
     description: {
-      fontSize: 13,
+      fontSize: 16,
       color: 'rgba(255, 255, 255, 0.85)',
       textAlign: 'center',
-      lineHeight: 19,
+      lineHeight: 23,
       fontWeight: '500',
     },
     takePhotoButton: {

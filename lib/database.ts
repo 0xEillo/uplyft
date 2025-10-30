@@ -1109,94 +1109,193 @@ export const database = {
 
   // Body log operations
   bodyLog: {
-    async create(userId: string, filePath: string) {
+    /**
+     * Create a new body log entry
+     */
+    async createEntry(userId: string) {
+      console.log('[BODY_LOG] 🗄️ Database: Creating entry', {
+        userId: userId.substring(0, 8),
+      })
+
       const { data, error } = await supabase
-        .from('body_log_images')
+        .from('body_log_entries')
         .insert({
           user_id: userId,
-          file_path: filePath,
         })
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('[BODY_LOG] ❌ Database: Failed to create entry', error)
+        throw error
+      }
+
+      console.log('[BODY_LOG] ✅ Database: Entry created successfully', {
+        entryId: data?.id?.substring(0, 8),
+      })
       return data
     },
 
-    async update(
-      imageId: string,
-      metrics: {
-        weight_kg?: number
-        body_fat_percentage?: number
-        bmi?: number
-      },
+    /**
+     * Add an image to an existing entry
+     */
+    async addImage(
+      entryId: string,
+      userId: string,
+      filePath: string,
+      sequence: number,
     ) {
+      console.log('[BODY_LOG] 🗄️ Database: Adding image to entry', {
+        entryId: entryId.substring(0, 8),
+        sequence,
+        filePath: filePath.substring(0, 40) + '...',
+      })
+
       const { data, error } = await supabase
         .from('body_log_images')
-        .update(metrics)
-        .eq('id', imageId)
+        .insert({
+          entry_id: entryId,
+          user_id: userId,
+          file_path: filePath,
+          sequence,
+        })
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('[BODY_LOG] ❌ Database: Failed to add image', error)
+        throw error
+      }
+
+      console.log('[BODY_LOG] ✅ Database: Image added successfully', {
+        imageId: data?.id?.substring(0, 8),
+        sequence,
+      })
       return data
     },
 
-    async getAll(userId: string) {
+    /**
+     * Get an entry with all its images
+     */
+    async getEntry(entryId: string) {
       const { data, error } = await supabase
-        .from('body_log_images')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      return data
-    },
-
-    async delete(imageId: string) {
-      const { error } = await supabase
-        .from('body_log_images')
-        .delete()
-        .eq('id', imageId)
-
-      if (error) throw error
-    },
-
-    async getRecent(
-      userId: string,
-      options: { limit?: number; before?: string; after?: string } = {},
-    ): Promise<BodyLogRecord[]> {
-      const limit = Math.min(Math.max(options.limit ?? 5, 1), 25)
-
-      let query = supabase
-        .from('body_log_images')
+        .from('body_log_entries')
         .select(
           `
           id,
           user_id,
-          file_path,
           created_at,
           weight_kg,
           body_fat_percentage,
           bmi,
+          muscle_mass_kg,
+          body_log_images (
+            id,
+            entry_id,
+            user_id,
+            file_path,
+            sequence,
+            created_at
+          )
+        `,
+        )
+        .eq('id', entryId)
+        .single()
+
+      if (error) throw error
+
+      // Transform body_log_images to images for consistency
+      return {
+        ...data,
+        images: data?.body_log_images || [],
+      }
+    },
+
+    /**
+     * Get all entries for a user with their images
+     */
+    async getAllEntries(userId: string) {
+      const { data, error } = await supabase
+        .from('body_log_entries')
+        .select(
+          `
+          id,
+          user_id,
+          created_at,
+          weight_kg,
+          body_fat_percentage,
+          bmi,
+          muscle_mass_kg,
+          body_log_images (
+            id,
+            entry_id,
+            user_id,
+            file_path,
+            sequence,
+            created_at
+          )
         `,
         )
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
-      if (options.before?.trim()) {
-        query = query.lt('created_at', options.before.trim())
-      }
-
-      if (options.after?.trim()) {
-        query = query.gt('created_at', options.after.trim())
-      }
-
-      const { data, error } = await query.limit(limit)
-
       if (error) throw error
 
-      return ((data as unknown) as BodyLogRecord[]) || []
+      // Transform body_log_images to images for consistency
+      const transformedData = data?.map((entry: any) => ({
+        ...entry,
+        images: entry.body_log_images || [],
+      }))
+
+      return transformedData
+    },
+
+    /**
+     * Update entry metrics (weight, body fat %, BMI)
+     */
+    async updateEntryMetrics(
+      entryId: string,
+      metrics: {
+        weight_kg?: number | null
+        body_fat_percentage?: number | null
+        bmi?: number | null
+        muscle_mass_kg?: number | null
+      },
+    ) {
+      console.log('[BODY_LOG] 🗄️ Database: Updating entry metrics', {
+        entryId: entryId.substring(0, 8),
+        metrics,
+      })
+
+      const { data, error } = await supabase
+        .from('body_log_entries')
+        .update(metrics)
+        .eq('id', entryId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[BODY_LOG] ❌ Database: Failed to update metrics', error)
+        throw error
+      }
+
+      console.log('[BODY_LOG] ✅ Database: Entry metrics updated successfully', {
+        entryId: entryId.substring(0, 8),
+      })
+      return data
+    },
+
+    /**
+     * Delete an entry and all its images
+     */
+    async deleteEntry(entryId: string) {
+      // CASCADE delete will handle removing images
+      const { error } = await supabase
+        .from('body_log_entries')
+        .delete()
+        .eq('id', entryId)
+
+      if (error) throw error
     },
   },
 }

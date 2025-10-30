@@ -1,13 +1,14 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { uploadBodyLogImage } from '@/lib/utils/body-log-storage'
+import { uploadBodyLogImages } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
@@ -32,18 +33,34 @@ const SCANNING_DURATION = 3000
 
 export default function BodyLogProcessingPage() {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const router = useRouter()
   const { user } = useAuth()
-  const { imageUri } = useLocalSearchParams<{ imageUri: string }>()
+  const { imageUris, imageCount } = useLocalSearchParams<{
+    imageUris?: string
+    imageCount?: string
+  }>()
 
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccess, setShowSuccess] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [hasNoStats, setHasNoStats] = useState(false)
-  const [uploadedImageId, setUploadedImageId] = useState<string | null>(null)
-  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null)
+  const [uploadedEntryId, setUploadedEntryId] = useState<string | null>(null)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [analysisMetrics, setAnalysisMetrics] = useState<any>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [hasStartedProcessing, setHasStartedProcessing] = useState(false)
+
+  // Parse image URIs with useMemo to prevent re-creation on every render
+  const imageUriArray = useMemo(() => {
+    const uris = imageUris ? imageUris.split('|||') : []
+    console.log('[BODY_LOG] 📥 Processing: Parsed image URIs', {
+      count: uris.length,
+    })
+    return uris
+  }, [imageUris])
+
+  const photoCount = parseInt(imageCount || '1', 10)
 
   // Animated values
   const scanLinePosition = useRef(new Animated.Value(0)).current
@@ -85,31 +102,75 @@ export default function BodyLogProcessingPage() {
     }
   }, [])
 
-  // Upload image and start analysis
+  // Upload images and start analysis
   useEffect(() => {
-    if (!user || !imageUri || !sessionToken) return
+    if (!user || imageUriArray.length === 0 || !sessionToken) return
+    if (hasStartedProcessing) return // Prevent running multiple times
+
+    // Set flag immediately to prevent multiple runs
+    setHasStartedProcessing(true)
 
     let cancelled = false
 
-    const processImage = async () => {
+    const processImages = async () => {
       try {
-        // Upload image
-        const filePath = await uploadBodyLogImage(imageUri, user.id)
-        const newImage = await database.bodyLog.create(user.id, filePath)
+        console.log('[BODY_LOG] 🚀 Processing: Starting image processing', {
+          imageCount: imageUriArray.length,
+          userId: user?.id?.substring(0, 8),
+        })
 
+        // Step 1: Create entry
+        console.log('[BODY_LOG] 📝 Processing: Creating entry')
+        const entry = await database.bodyLog.createEntry(user.id)
         if (cancelled) return
 
-        setUploadedImageId(newImage.id)
-        setUploadedFilePath(filePath)
+        console.log('[BODY_LOG] ✅ Processing: Entry created', {
+          entryId: entry.id?.substring(0, 8),
+        })
+        setUploadedEntryId(entry.id)
 
-        // Start analysis
+        // Step 2: Upload all images and create image records
+        console.log('[BODY_LOG] 📤 Processing: Uploading images to storage', {
+          imageCount: imageUriArray.length,
+        })
+        const filePaths = await uploadBodyLogImages(
+          imageUriArray,
+          user.id,
+          entry.id,
+        )
+        if (cancelled) return
+
+        console.log('[BODY_LOG] ✅ Processing: Images uploaded', {
+          pathCount: filePaths.length,
+          paths: filePaths.map((p) => p.substring(0, 40) + '...'),
+        })
+
+        // Step 3: Add images to entry
+        console.log('[BODY_LOG] 🔗 Processing: Linking images to entry')
+        for (let i = 0; i < filePaths.length; i++) {
+          await database.bodyLog.addImage(
+            entry.id,
+            user.id,
+            filePaths[i],
+            i + 1,
+          )
+        }
+        if (cancelled) return
+
+        console.log('[BODY_LOG] ✅ Processing: All images linked to entry')
+
+        // Step 4: Start analysis with entryId
+        console.log('[BODY_LOG] 🤖 Processing: Calling AI analysis function', {
+          entryId: entry.id?.substring(0, 8),
+          imageCount: imageUriArray.length,
+        })
         const { callSupabaseFunction } = await import(
           '@/lib/supabase-functions-client'
         )
         const response = await callSupabaseFunction(
           'body-log-analyze',
           'POST',
-          { imageId: newImage.id },
+          { entryId: entry.id },
           {},
           sessionToken,
         )
@@ -122,6 +183,14 @@ export default function BodyLogProcessingPage() {
 
         if (cancelled) return
 
+        console.log('[BODY_LOG] ✅ Processing: AI analysis complete', {
+          metrics: {
+            weight_kg: metrics.weight_kg,
+            body_fat_percentage: metrics.body_fat_percentage,
+            bmi: metrics.bmi,
+          },
+        })
+
         // Store metrics for navigation
         setAnalysisMetrics(metrics)
 
@@ -130,6 +199,11 @@ export default function BodyLogProcessingPage() {
           metrics.weight_kg !== null ||
           metrics.body_fat_percentage !== null ||
           metrics.bmi !== null
+
+        console.log('[BODY_LOG] 📊 Processing: Analysis result', {
+          hasStats,
+          willShowStats: hasStats,
+        })
 
         setHasNoStats(!hasStats)
         setIsComplete(true)
@@ -150,12 +224,12 @@ export default function BodyLogProcessingPage() {
       }
     }
 
-    processImage()
+    processImages()
 
     return () => {
       cancelled = true
     }
-  }, [user, imageUri, sessionToken, router])
+  }, [user, imageUriArray, sessionToken, router])
 
   // Start scanning animation
   useEffect(() => {
@@ -168,6 +242,7 @@ export default function BodyLogProcessingPage() {
       checkmarkScale.setValue(0)
       setShowSuccess(false)
       setCurrentMessageIndex(0)
+      setCurrentImageIndex(0)
 
       // Start continuous scanning animation
       Animated.loop(
@@ -271,6 +346,17 @@ export default function BodyLogProcessingPage() {
     }
   }, [isComplete, messageOpacity])
 
+  // Cycle through images (if multiple)
+  useEffect(() => {
+    if (!isComplete && imageUriArray.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % imageUriArray.length)
+      }, 3000)
+
+      return () => clearInterval(interval)
+    }
+  }, [isComplete, imageUriArray.length])
+
   // Handle completion animation
   useEffect(() => {
     if (isComplete) {
@@ -307,13 +393,8 @@ export default function BodyLogProcessingPage() {
         ]).start(() => {
           // Navigate to detail page after animation
           setTimeout(() => {
-            if (uploadedImageId) {
-              const params: any = { imageId: uploadedImageId }
-
-              // Pass file path for image loading
-              if (uploadedFilePath) {
-                params.filePath = uploadedFilePath
-              }
+            if (uploadedEntryId) {
+              const params: any = { entryId: uploadedEntryId }
 
               // Pass metrics if available
               if (analysisMetrics) {
@@ -338,7 +419,7 @@ export default function BodyLogProcessingPage() {
               }
 
               router.replace({
-                pathname: '/body-log/[imageId]',
+                pathname: '/body-log/[entryId]',
                 params,
               })
             }
@@ -351,8 +432,7 @@ export default function BodyLogProcessingPage() {
     successScale,
     successOpacity,
     checkmarkScale,
-    uploadedImageId,
-    uploadedFilePath,
+    uploadedEntryId,
     analysisMetrics,
     router,
   ])
@@ -362,14 +442,14 @@ export default function BodyLogProcessingPage() {
     outputRange: [-SCREEN_HEIGHT * 0.6, SCREEN_HEIGHT * 0.6],
   })
 
-  const dynamicStyles = createDynamicStyles(colors)
+  const dynamicStyles = createDynamicStyles(colors, isDark)
 
   return (
     <View style={dynamicStyles.container}>
-      {/* Background with image preview */}
-      {imageUri && (
+      {/* Background with current image preview */}
+      {imageUriArray[currentImageIndex] && (
         <Image
-          source={{ uri: imageUri }}
+          source={{ uri: imageUriArray[currentImageIndex] }}
           style={dynamicStyles.backgroundImage}
           blurRadius={20}
         />
@@ -381,10 +461,10 @@ export default function BodyLogProcessingPage() {
       {/* Content */}
       <View style={dynamicStyles.content}>
         {/* Image preview with scanning effect */}
-        {imageUri && !showSuccess && (
+        {imageUriArray[currentImageIndex] && !showSuccess && (
           <View style={dynamicStyles.imageContainer}>
             <Image
-              source={{ uri: imageUri }}
+              source={{ uri: imageUriArray[currentImageIndex] }}
               style={dynamicStyles.previewImage}
               resizeMode="cover"
             />
@@ -437,6 +517,15 @@ export default function BodyLogProcessingPage() {
 
             {/* Border glow */}
             <View style={dynamicStyles.borderGlow} />
+
+            {/* Image counter (if multiple) */}
+            {imageUriArray.length > 1 && (
+              <View style={dynamicStyles.imageCounter}>
+                <Text style={dynamicStyles.imageCounterText}>
+                  {currentImageIndex + 1}/{imageUriArray.length}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -521,7 +610,11 @@ export default function BodyLogProcessingPage() {
                     { backgroundColor: colors.success },
                   ]}
                 >
-                  <Ionicons name="checkmark" size={64} color={colors.white} />
+                  <Ionicons
+                    name="checkmark"
+                    size={64}
+                    color={colors.buttonText}
+                  />
                 </View>
               )}
             </Animated.View>
@@ -541,7 +634,7 @@ export default function BodyLogProcessingPage() {
 
 type Colors = ReturnType<typeof useThemedColors>
 
-const createDynamicStyles = (colors: Colors) =>
+const createDynamicStyles = (colors: Colors, isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -615,6 +708,22 @@ const createDynamicStyles = (colors: Colors) =>
       shadowOpacity: 0.5,
       shadowRadius: 24,
     },
+    imageCounter: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    imageCounterText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
     messageContainer: {
       marginTop: 56,
       backgroundColor: 'rgba(255, 255, 255, 0.10)',
@@ -654,7 +763,7 @@ const createDynamicStyles = (colors: Colors) =>
     messageText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.white,
+      color: isDark ? '#fff' : colors.text,
       letterSpacing: -0.1,
       textAlign: 'center',
     },
@@ -697,7 +806,7 @@ const createDynamicStyles = (colors: Colors) =>
     successText: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.white,
+      color: isDark ? '#fff' : colors.text,
       letterSpacing: -0.3,
     },
   })

@@ -1,3 +1,5 @@
+import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -11,7 +13,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { useThemedColors } from '@/hooks/useThemedColors'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -42,6 +43,7 @@ export function BodyLogProcessingModal({
   onComplete,
 }: BodyLogProcessingModalProps) {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccess, setShowSuccess] = useState(false)
 
@@ -73,7 +75,15 @@ export function BodyLogProcessingModal({
         }),
       ).start()
     }
-  }, [visible, isComplete, scanLinePosition, messageOpacity, successScale, successOpacity, checkmarkScale])
+  }, [
+    visible,
+    isComplete,
+    scanLinePosition,
+    messageOpacity,
+    successScale,
+    successOpacity,
+    checkmarkScale,
+  ])
 
   // Cycle through messages (stop at last message, don't loop)
   useEffect(() => {
@@ -153,7 +163,14 @@ export function BodyLogProcessingModal({
         })
       })
     }
-  }, [isComplete, visible, successScale, successOpacity, checkmarkScale, onComplete])
+  }, [
+    isComplete,
+    visible,
+    successScale,
+    successOpacity,
+    checkmarkScale,
+    onComplete,
+  ])
 
   const scanLineTranslateY = scanLinePosition.interpolate({
     inputRange: [0, 1],
@@ -162,7 +179,7 @@ export function BodyLogProcessingModal({
 
   if (!visible) return null
 
-  const dynamicStyles = createDynamicStyles(colors)
+  const dynamicStyles = createDynamicStyles(colors, isDark)
 
   return (
     <Modal
@@ -220,7 +237,10 @@ export function BodyLogProcessingModal({
                     `${colors.primary}99`,
                     `${colors.primary}00`,
                   ]}
-                  style={[dynamicStyles.scanLine, dynamicStyles.scanLineSecondary]}
+                  style={[
+                    dynamicStyles.scanLine,
+                    dynamicStyles.scanLineSecondary,
+                  ]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                 />
@@ -255,9 +275,23 @@ export function BodyLogProcessingModal({
             >
               <View style={dynamicStyles.messageContent}>
                 <View style={dynamicStyles.scanningIndicator}>
-                  <View style={[dynamicStyles.dot, dynamicStyles.dotAnimated]} />
-                  <View style={[dynamicStyles.dot, dynamicStyles.dotAnimated, dynamicStyles.dotDelay1]} />
-                  <View style={[dynamicStyles.dot, dynamicStyles.dotAnimated, dynamicStyles.dotDelay2]} />
+                  <View
+                    style={[dynamicStyles.dot, dynamicStyles.dotAnimated]}
+                  />
+                  <View
+                    style={[
+                      dynamicStyles.dot,
+                      dynamicStyles.dotAnimated,
+                      dynamicStyles.dotDelay1,
+                    ]}
+                  />
+                  <View
+                    style={[
+                      dynamicStyles.dot,
+                      dynamicStyles.dotAnimated,
+                      dynamicStyles.dotDelay2,
+                    ]}
+                  />
                 </View>
                 <Text style={dynamicStyles.messageText}>
                   {SCANNING_MESSAGES[currentMessageIndex]}
@@ -294,8 +328,17 @@ export function BodyLogProcessingModal({
                     />
                   </View>
                 ) : (
-                  <View style={[dynamicStyles.checkmarkCircle, { backgroundColor: colors.success }]}>
-                    <Ionicons name="checkmark" size={64} color={colors.white} />
+                  <View
+                    style={[
+                      dynamicStyles.checkmarkCircle,
+                      { backgroundColor: colors.success },
+                    ]}
+                  >
+                    <Ionicons
+                      name="checkmark"
+                      size={64}
+                      color={colors.buttonText}
+                    />
                   </View>
                 )}
               </Animated.View>
@@ -314,7 +357,7 @@ export function BodyLogProcessingModal({
 
 type Colors = ReturnType<typeof useThemedColors>
 
-const createDynamicStyles = (colors: Colors) =>
+const createDynamicStyles = (colors: Colors, isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -418,7 +461,7 @@ const createDynamicStyles = (colors: Colors) =>
     messageText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.white,
+      color: isDark ? '#fff' : colors.text,
       letterSpacing: -0.2,
       textAlign: 'center',
     },
@@ -448,7 +491,7 @@ const createDynamicStyles = (colors: Colors) =>
     successText: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.white,
+      color: isDark ? '#fff' : colors.text,
       letterSpacing: -0.3,
     },
   })

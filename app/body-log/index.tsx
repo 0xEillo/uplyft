@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { type BodyLogRecord } from '@/lib/body-log/metadata'
+import { type BodyLogEntryWithImages, type BodyLogEntry } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
@@ -74,69 +74,72 @@ function getDateKey(dateString: string): string {
   return date.toISOString().split('T')[0]
 }
 
-type BodyLogImageStatus = 'idle' | 'loading' | 'loaded' | 'error'
+type ImageLoadStatus = 'idle' | 'loading' | 'loaded' | 'error'
 
-type AnalysisStatus = 'idle' | 'pending' | 'success' | 'error'
-
-interface BodyLogImageRecord extends BodyLogRecord {
-  signedUrl: string | null
-  status: BodyLogImageStatus
-  analysisStatus: AnalysisStatus
+interface EntryWithSignedUrls extends BodyLogEntryWithImages {
+  signedUrls: (string | null)[]
+  imageLoadStatus: ImageLoadStatus
 }
 
-interface ImageSection {
+interface EntrySection {
   title: string
   dateKey: string
-  data: BodyLogImageRecord[]
+  data: EntryWithSignedUrls[]
 }
 
-interface BodyLogImageItemProps {
-  image: BodyLogImageRecord
-  onPress: (image: BodyLogImageRecord) => void
-  onLoadStart: (imageId: string) => void
-  onLoadSuccess: (imageId: string) => void
-  onLoadError: (imageId: string) => void
+interface BodyLogEntryItemProps {
+  entry: EntryWithSignedUrls
+  onPress: (entry: EntryWithSignedUrls) => void
+  onLoadStart: (entryId: string) => void
+  onLoadSuccess: (entryId: string) => void
+  onLoadError: (entryId: string) => void
 }
 
-const BodyLogImageItem = memo(
+const BodyLogEntryItem = memo(
   ({
-    image,
+    entry,
     onPress,
     onLoadStart,
     onLoadSuccess,
     onLoadError,
-  }: BodyLogImageItemProps) => {
+  }: BodyLogEntryItemProps) => {
     const colors = useThemedColors()
     const styles = useMemo(() => createImageItemStyles(colors), [colors])
 
     const handlePress = useCallback(() => {
-      if (image.signedUrl) {
-        onPress(image)
+      if (entry.signedUrls[0]) {
+        onPress(entry)
       }
-    }, [image, onPress])
+    }, [entry, onPress])
 
-    const showAnalysisSpinner = image.analysisStatus === 'pending'
+    const primaryImageUrl = entry.signedUrls[0]
+    const imageCount = entry.images.length
 
     return (
       <TouchableOpacity
         style={styles.imageContainer}
         onPress={handlePress}
-        activeOpacity={image.signedUrl ? 0.9 : 1}
-        disabled={!image.signedUrl}
+        activeOpacity={primaryImageUrl ? 0.9 : 1}
+        disabled={!primaryImageUrl}
       >
-        {image.signedUrl ? (
+        {primaryImageUrl ? (
           <>
             <Image
-              source={{ uri: image.signedUrl }}
+              source={{ uri: primaryImageUrl }}
               style={styles.image}
               resizeMode="cover"
-              onLoadStart={() => onLoadStart(image.id)}
-              onLoad={() => onLoadSuccess(image.id)}
-              onError={() => onLoadError(image.id)}
+              onLoadStart={() => onLoadStart(entry.id)}
+              onLoad={() => onLoadSuccess(entry.id)}
+              onError={() => onLoadError(entry.id)}
             />
-            {(image.status !== 'loaded' || showAnalysisSpinner) && (
+            {entry.imageLoadStatus !== 'loaded' && (
               <View style={styles.imageLoadingOverlay}>
                 <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            )}
+            {imageCount > 1 && (
+              <View style={[styles.imageBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.imageBadgeText}>{imageCount}</Text>
               </View>
             )}
           </>
@@ -150,15 +153,14 @@ const BodyLogImageItem = memo(
   },
   (prevProps, nextProps) => {
     return (
-      prevProps.image.id === nextProps.image.id &&
-      prevProps.image.signedUrl === nextProps.image.signedUrl &&
-      prevProps.image.status === nextProps.image.status &&
-      prevProps.image.analysisStatus === nextProps.image.analysisStatus
+      prevProps.entry.id === nextProps.entry.id &&
+      prevProps.entry.signedUrls[0] === nextProps.entry.signedUrls[0] &&
+      prevProps.entry.imageLoadStatus === nextProps.entry.imageLoadStatus
     )
   },
 )
 
-BodyLogImageItem.displayName = 'BodyLogImageItem'
+BodyLogEntryItem.displayName = 'BodyLogEntryItem'
 
 export default function BodyLogScreen() {
   const colors = useThemedColors()
@@ -198,29 +200,29 @@ export default function BodyLogScreen() {
     }
   })
 
-  const [imageOrder, setImageOrder] = useState<string[]>([])
-  const [imageStore, setImageStore] = useState<
-    Record<string, BodyLogImageRecord>
+  const [entryOrder, setEntryOrder] = useState<string[]>([])
+  const [entryStore, setEntryStore] = useState<
+    Record<string, EntryWithSignedUrls>
   >({})
   const [isInitialLoading, setIsInitialLoading] = useState(true)
 
   const sections = useMemo(() => {
-    const images = imageOrder
-      .map((id) => imageStore[id])
-      .filter((image): image is BodyLogImageRecord => Boolean(image))
+    const entries = entryOrder
+      .map((id) => entryStore[id])
+      .filter((entry): entry is EntryWithSignedUrls => Boolean(entry))
 
-    // Group images by date
-    const grouped = new Map<string, BodyLogImageRecord[]>()
-    images.forEach((image) => {
-      const dateKey = getDateKey(image.created_at)
+    // Group entries by date
+    const grouped = new Map<string, EntryWithSignedUrls[]>()
+    entries.forEach((entry) => {
+      const dateKey = getDateKey(entry.created_at)
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, [])
       }
-      grouped.get(dateKey)!.push(image)
+      grouped.get(dateKey)!.push(entry)
     })
 
     // Convert to sections array and sort by date (newest first)
-    const sectionsArray: ImageSection[] = Array.from(grouped.entries())
+    const sectionsArray: EntrySection[] = Array.from(grouped.entries())
       .map(([dateKey, data]) => ({
         title: formatSectionDate(data[0].created_at),
         dateKey,
@@ -229,12 +231,12 @@ export default function BodyLogScreen() {
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
 
     return sectionsArray
-  }, [imageOrder, imageStore])
+  }, [entryOrder, entryStore])
 
   useEffect(() => {
     if (!user) {
-      setImageOrder([])
-      setImageStore({})
+      setEntryOrder([])
+      setEntryStore({})
       setIsInitialLoading(false)
       setUserGender(null)
       return
@@ -242,7 +244,7 @@ export default function BodyLogScreen() {
 
     let cancelled = false
 
-    const loadImages = async () => {
+    const loadEntries = async () => {
       setIsInitialLoading(true)
 
       try {
@@ -259,49 +261,59 @@ export default function BodyLogScreen() {
           }
         }
 
-        const bodyLogData = await database.bodyLog.getAll(user.id)
+        const entries = await database.bodyLog.getAllEntries(user.id)
         if (cancelled) return
 
-        if (!bodyLogData || bodyLogData.length === 0) {
-          setImageOrder([])
-          setImageStore({})
+        if (!entries || entries.length === 0) {
+          setEntryOrder([])
+          setEntryStore({})
           return
         }
 
-        const filePaths = bodyLogData.map((img: any) => img.file_path)
-        const signedUrls = await getBodyLogImageUrls(filePaths)
+        // Collect all image file paths from all entries
+        const allFilePaths: string[] = []
+        const filePathToEntryMap: Record<string, { entryId: string; imageIndex: number }> = {}
+
+        entries.forEach((entry: any) => {
+          const images = entry.images || []
+          if (Array.isArray(images)) {
+            images.forEach((image, imageIndex) => {
+              allFilePaths.push(image.file_path)
+              filePathToEntryMap[image.file_path] = { entryId: entry.id, imageIndex }
+            })
+          }
+        })
+
+        // Get all signed URLs in one call
+        const signedUrls = allFilePaths.length > 0 ? await getBodyLogImageUrls(allFilePaths) : []
         if (cancelled) return
 
-        const records: BodyLogImageRecord[] = bodyLogData.map(
-          (img: any, index: number) => ({
-            id: img.id,
-            user_id: img.user_id,
-            file_path: img.file_path,
-            created_at: img.created_at,
-            weight_kg: img.weight_kg ?? null,
-            body_fat_percentage: img.body_fat_percentage ?? null,
-            bmi: img.bmi ?? null,
-            signedUrl: signedUrls[index] ?? null,
-            status: signedUrls[index] ? 'idle' : 'error',
-            analysisStatus:
-              img.body_fat_percentage !== null ||
-              img.bmi !== null ||
-              img.weight_kg !== null
-                ? 'success'
-                : 'idle',
-          }),
-        )
+        // Build entries with signed URLs
+        const entriesWithUrls: EntryWithSignedUrls[] = entries.map((entry: any) => {
+          const images = entry.images || []
+          return {
+            ...entry,
+            images: Array.isArray(images) ? images : [],
+            signedUrls: Array.isArray(images)
+              ? images.map((image) => {
+                  const filePathIndex = allFilePaths.indexOf(image.file_path)
+                  return filePathIndex >= 0 ? signedUrls[filePathIndex] ?? null : null
+                })
+              : [],
+            imageLoadStatus: 'idle' as ImageLoadStatus,
+          }
+        })
 
-        setImageStore(() => {
-          const next: Record<string, BodyLogImageRecord> = {}
-          records.forEach((record) => {
-            next[record.id] = record
+        setEntryStore(() => {
+          const next: Record<string, EntryWithSignedUrls> = {}
+          entriesWithUrls.forEach((entry) => {
+            next[entry.id] = entry
           })
           return next
         })
-        setImageOrder(records.map((record) => record.id))
+        setEntryOrder(entriesWithUrls.map((entry) => entry.id))
       } catch (error) {
-        console.error('Error loading body log images:', error)
+        console.error('Error loading body log entries:', error)
       } finally {
         if (!cancelled) {
           setIsInitialLoading(false)
@@ -309,31 +321,31 @@ export default function BodyLogScreen() {
       }
     }
 
-    loadImages()
+    loadEntries()
 
     return () => {
       cancelled = true
     }
   }, [user])
 
-  const markImageStatus = useCallback(
-    (imageId: string, status: BodyLogImageStatus) => {
-      setImageStore((prev) => {
-        const current = prev[imageId]
-        if (!current || current.status === status) {
+  const markEntryImageStatus = useCallback(
+    (entryId: string, status: ImageLoadStatus) => {
+      setEntryStore((prev) => {
+        const current = prev[entryId]
+        if (!current || current.imageLoadStatus === status) {
           return prev
         }
 
-        if (current.status === 'loaded' && status === 'loading') {
+        if (current.imageLoadStatus === 'loaded' && status === 'loading') {
           // Keep loaded thumbnails from regressing when FlatList re-renders.
           return prev
         }
 
         return {
           ...prev,
-          [imageId]: {
+          [entryId]: {
             ...current,
-            status,
+            imageLoadStatus: status,
           },
         }
       })
@@ -362,34 +374,26 @@ export default function BodyLogScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty deps - translateX and router are stable
 
-  const handleImageOpen = useCallback(
-    (image: BodyLogImageRecord) => {
-      const params: { imageId: string; createdAt: string; [key: string]: string } = {
-        imageId: image.id,
-        createdAt: image.created_at,
-      }
-
-      if (image.file_path) {
-        params.filePath = image.file_path
-      }
-
-      if (image.signedUrl) {
-        params.signedUrl = image.signedUrl
+  const handleEntryOpen = useCallback(
+    (entry: EntryWithSignedUrls) => {
+      const params: { entryId: string; createdAt: string; [key: string]: string } = {
+        entryId: entry.id,
+        createdAt: entry.created_at,
       }
 
       // Add metrics if they exist
-      if (image.weight_kg !== null) {
-        params.weightKg = image.weight_kg.toString()
+      if (entry.weight_kg !== null) {
+        params.weightKg = entry.weight_kg.toString()
       }
-      if (image.body_fat_percentage !== null) {
-        params.bodyFatPercentage = image.body_fat_percentage.toString()
+      if (entry.body_fat_percentage !== null) {
+        params.bodyFatPercentage = entry.body_fat_percentage.toString()
       }
-      if (image.bmi !== null) {
-        params.bmi = image.bmi.toString()
+      if (entry.bmi !== null) {
+        params.bmi = entry.bmi.toString()
       }
 
       router.push({
-        pathname: '/body-log/[imageId]',
+        pathname: '/body-log/[entryId]',
         params,
       })
     },
@@ -397,24 +401,24 @@ export default function BodyLogScreen() {
   )
 
   const handleImageLoadStart = useCallback(
-    (imageId: string) => {
-      markImageStatus(imageId, 'loading')
+    (entryId: string) => {
+      markEntryImageStatus(entryId, 'loading')
     },
-    [markImageStatus],
+    [markEntryImageStatus],
   )
 
   const handleImageLoadSuccess = useCallback(
-    (imageId: string) => {
-      markImageStatus(imageId, 'loaded')
+    (entryId: string) => {
+      markEntryImageStatus(entryId, 'loaded')
     },
-    [markImageStatus],
+    [markEntryImageStatus],
   )
 
   const handleImageLoadError = useCallback(
-    (imageId: string) => {
-      markImageStatus(imageId, 'error')
+    (entryId: string) => {
+      markEntryImageStatus(entryId, 'error')
     },
-    [markImageStatus],
+    [markEntryImageStatus],
   )
 
   const handleCameraPress = useCallback(async () => {
@@ -434,7 +438,7 @@ export default function BodyLogScreen() {
 
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: ImageSection }) => (
+    ({ section }: { section: EntrySection }) => (
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionHeaderText}>{section.title}</Text>
       </View>
@@ -443,13 +447,13 @@ export default function BodyLogScreen() {
   )
 
   const renderSectionContent = useCallback(
-    ({ section }: { section: ImageSection }) => (
+    ({ section }: { section: EntrySection }) => (
       <View style={styles.sectionContent}>
         {section.data.map((item) => (
-          <BodyLogImageItem
+          <BodyLogEntryItem
             key={item.id}
-            image={item}
-            onPress={handleImageOpen}
+            entry={item}
+            onPress={handleEntryOpen}
             onLoadStart={handleImageLoadStart}
             onLoadSuccess={handleImageLoadSuccess}
             onLoadError={handleImageLoadError}
@@ -461,7 +465,7 @@ export default function BodyLogScreen() {
       handleImageLoadError,
       handleImageLoadStart,
       handleImageLoadSuccess,
-      handleImageOpen,
+      handleEntryOpen,
       styles,
     ],
   )
@@ -560,6 +564,27 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.backgroundLight,
+    },
+    imageBadge: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    imageBadgeText: {
+      color: colors.white,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: -0.2,
     },
   })
 

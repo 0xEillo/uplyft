@@ -12,7 +12,7 @@ import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
 const REQUEST_SCHEMA = z.object({
-  imageId: z.string().min(1),
+  entryId: z.string().min(1),
 })
 
 async function downloadImageBase64(
@@ -77,7 +77,12 @@ serve(async (req) => {
     }
 
     const payload = REQUEST_SCHEMA.parse(await req.json())
-    const { imageId } = payload
+    const { entryId } = payload
+
+    console.log('[BODY_LOG] 🤖 EdgeFunction: Starting analysis', {
+      entryId: entryId.substring(0, 8),
+      timestamp: new Date().toISOString(),
+    })
 
     const supabase = createUserClient(accessToken)
     const serviceClient = createServiceClient()
@@ -86,60 +91,95 @@ serve(async (req) => {
     const { data: userData, error: authError } = await supabase.auth.getUser()
 
     if (authError || !userData?.user) {
+      console.error('[BODY_LOG] ❌ EdgeFunction: Authentication failed')
       return errorResponse(401, 'Unauthorized')
     }
 
-    // Get the body log image
-    const { data: bodyLog, error: bodyLogError } = await supabase
-      .from('body_log_images')
-      .select(
-        'id, user_id, file_path, created_at, weight_kg, body_fat_percentage, bmi',
-      )
-      .eq('id', imageId)
-      .single()
-
-    if (bodyLogError || !bodyLog) {
-      return errorResponse(404, 'Body log image not found')
-    }
-
-    // Verify ownership
-    if (bodyLog.user_id !== userData.user.id) {
-      return errorResponse(403, 'Forbidden')
-    }
+    console.log('[BODY_LOG] ✅ EdgeFunction: User authenticated')
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('display_name, age, height_cm, weight_kg')
-      .eq('id', bodyLog.user_id)
+      .eq('id', userData.user.id)
       .single()
 
     if (profileError || !profile) {
       return errorResponse(404, 'Profile not found')
     }
 
-    if (!bodyLog.file_path) {
-      return errorResponse(400, 'Body log image missing storage path')
+    // Get the body log entry
+    const { data: entry, error: entryError } = await supabase
+      .from('body_log_entries')
+      .select('*')
+      .eq('id', entryId)
+      .single()
+
+    if (entryError || !entry) {
+      return errorResponse(404, 'Body log entry not found')
     }
 
-    // Download image from storage
-    const { base64, mimeType } = await downloadImageBase64(
-      serviceClient,
-      bodyLog.file_path,
+    // Verify ownership
+    if (entry.user_id !== userData.user.id) {
+      return errorResponse(403, 'Forbidden')
+    }
+
+    // Get all images for this entry
+    const { data: images, error: imagesError } = await supabase
+      .from('body_log_images')
+      .select('*')
+      .eq('entry_id', entryId)
+      .order('sequence', { ascending: true })
+
+    if (imagesError || !images || images.length === 0) {
+      return errorResponse(404, 'No images found for this entry')
+    }
+
+    // Download all images from storage
+    const imageDownloads = await Promise.all(
+      images.map((img) => downloadImageBase64(serviceClient, img.file_path)),
     )
 
     const openai = new OpenAI({ apiKey })
 
     // Build the system prompt with user context
-    const systemPrompt = buildBodyLogPrompt({
+    let systemPrompt = buildBodyLogPrompt({
       display_name: profile.display_name,
       age: profile.age,
       height_cm: profile.height_cm,
       weight_kg: profile.weight_kg,
-      createdAt: bodyLog.created_at,
+      createdAt: entry.created_at,
     })
 
-    // Analyze the image with GPT-4o Mini Vision
+    // Add multi-image instruction if applicable
+    if (imageDownloads.length > 1) {
+      systemPrompt +=
+        '\n\nIMPORTANT: You are analyzing MULTIPLE photos of the same person from different angles. Combine information from all photos to provide a SINGLE, more accurate assessment. Use triangulation between photos to improve accuracy of body fat %, BMI, and weight estimates.'
+    }
+
+    // Build user message with all images
+    const userContent: any[] = [
+      {
+        type: 'text',
+        text:
+          imageDownloads.length > 1
+            ? 'Analyze these body composition photos from multiple angles and return combined JSON metrics.'
+            : 'Analyze this body composition photo and return JSON metrics.',
+      },
+    ]
+
+    // Add all images to the message
+    for (const { base64, mimeType } of imageDownloads) {
+      userContent.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${mimeType};base64,${base64}`,
+          detail: 'high',
+        },
+      })
+    }
+
+    // Analyze with GPT-4o Mini Vision
     const completion = await openai.chat.completions.create({
       model: 'gpt-4.1-mini',
       messages: [
@@ -149,20 +189,7 @@ serve(async (req) => {
         },
         {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text:
-                'Analyze this body composition photo and return JSON metrics.',
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${base64}`,
-                detail: 'high',
-              },
-            },
-          ],
+          content: userContent,
         },
       ],
       max_completion_tokens: 400,
@@ -173,16 +200,16 @@ serve(async (req) => {
     // Parse the metrics from the response
     const metrics = parseBodyLogMetrics(content)
 
-    // Update the body log with the metrics
+    // Update entry metrics
     const { data: updated, error: updateError } = await supabase
-      .from('body_log_images')
+      .from('body_log_entries')
       .update(metrics)
-      .eq('id', imageId)
-      .select('id, weight_kg, body_fat_percentage, bmi')
+      .eq('id', entryId)
+      .select('id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg')
       .single()
 
     if (updateError || !updated) {
-      throw updateError || new Error('Failed to update body log metrics')
+      throw updateError || new Error('Failed to update body log entry metrics')
     }
 
     return jsonResponse({ metrics: updated })

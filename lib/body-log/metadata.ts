@@ -2,16 +2,30 @@ export interface BodyLogMetrics {
   weight_kg: number | null
   body_fat_percentage: number | null
   bmi: number | null
+  muscle_mass_kg?: number | null
 }
 
-export interface BodyLogRecord {
+export interface BodyLogImage {
   id: string
+  entry_id: string
   user_id: string
   file_path: string
+  sequence: number
+  created_at: string
+}
+
+export interface BodyLogEntry {
+  id: string
+  user_id: string
   created_at: string
   weight_kg: number | null
   body_fat_percentage: number | null
   bmi: number | null
+  muscle_mass_kg?: number | null
+}
+
+export interface BodyLogEntryWithImages extends BodyLogEntry {
+  images: BodyLogImage[]
 }
 
 /**

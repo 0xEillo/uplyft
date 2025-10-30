@@ -8,6 +8,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  FlatList,
   Image,
   Modal,
   Pressable,
@@ -17,53 +18,40 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  getBodyFatExplanation,
-  getBodyFatStatus,
   getBMIExplanation,
   getBMIStatus,
+  getBodyFatExplanation,
+  getBodyFatStatus,
   getOverallStatus,
   getStatusColor,
   getWeightExplanation,
-  type BodyFatRange,
   type BMIRange,
+  type BodyFatRange,
   type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
   formatBMI,
   formatBodyFat,
   formatBodyLogDate,
+  type BodyLogEntryWithImages,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import {
-  deleteBodyLogImage,
-  getBodyLogImageUrl,
-} from '@/lib/utils/body-log-storage'
+import { getBodyLogImageUrls } from '@/lib/utils/body-log-storage'
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.42
 
 export default function BodyLogDetailScreen() {
-  const {
-    imageId,
-    filePath,
-    signedUrl,
-    createdAt,
-    weightKg,
-    bodyFatPercentage,
-    bmi,
-  } = useLocalSearchParams<{
-    imageId: string
-    filePath?: string
-    signedUrl?: string
-    createdAt?: string
+  const { entryId, weightKg, bodyFatPercentage, bmi } = useLocalSearchParams<{
+    entryId: string
     weightKg?: string
     bodyFatPercentage?: string
     bmi?: string
@@ -73,8 +61,12 @@ export default function BodyLogDetailScreen() {
   const { formatWeight } = useUnit()
   const { user } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
 
-  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [entry, setEntry] = useState<BodyLogEntryWithImages | null>(null)
+  const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [userGender, setUserGender] = useState<Gender>('male')
 
   // Modal states
@@ -86,7 +78,7 @@ export default function BodyLogDetailScreen() {
     explanation: string
   } | null>(null)
 
-  // Parse numeric values from URL params
+  // Parse numeric values from URL params (for initial display)
   const [metrics, setMetrics] = useState({
     weight_kg: weightKg ? parseFloat(weightKg) : null,
     body_fat_percentage: bodyFatPercentage
@@ -95,41 +87,112 @@ export default function BodyLogDetailScreen() {
     bmi: bmi ? parseFloat(bmi) : null,
   })
 
-  const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(
-    typeof signedUrl === 'string' ? signedUrl : undefined,
-  )
-
   // Image modal state and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
   const fullscreenOpacity = useRef(new Animated.Value(0)).current
+  const scrollX = useRef(new Animated.Value(0)).current
 
+  // Fetch entry data
   useEffect(() => {
-    setMetrics({
-      weight_kg: weightKg ? parseFloat(weightKg) : null,
-      body_fat_percentage: bodyFatPercentage
-        ? parseFloat(bodyFatPercentage)
-        : null,
-      bmi: bmi ? parseFloat(bmi) : null,
-    })
-  }, [imageId, weightKg, bodyFatPercentage, bmi])
+    if (!user || !entryId) return
 
-  useEffect(() => {
-    let ignore = false
-    const path = typeof filePath === 'string' ? filePath : undefined
+    let cancelled = false
 
-    if (!resolvedUrl && path) {
-      getBodyLogImageUrl(path).then((url) => {
-        if (!ignore) {
-          setResolvedUrl(url)
+    const fetchEntry = async () => {
+      try {
+        setLoading(true)
+
+        const { data: entryData, error: entryError } = await supabase
+          .from('body_log_entries')
+          .select(
+            `
+            id,
+            user_id,
+            created_at,
+            weight_kg,
+            body_fat_percentage,
+            bmi,
+            muscle_mass_kg,
+            body_log_images!inner (
+              id,
+              entry_id,
+              user_id,
+              file_path,
+              sequence,
+              created_at
+            )
+          `,
+          )
+          .eq('id', entryId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (cancelled) return
+
+        if (entryError || !entryData) {
+          console.error('Error fetching entry:', entryError)
+          Alert.alert(
+            'Error',
+            'Failed to load body log entry.',
+            [{ text: 'OK', onPress: () => router.back() }],
+          )
+          return
         }
-      })
+
+        // Transform the data to match our type
+        const transformedEntry: BodyLogEntryWithImages = {
+          id: entryData.id,
+          user_id: entryData.user_id,
+          created_at: entryData.created_at,
+          weight_kg: entryData.weight_kg,
+          body_fat_percentage: entryData.body_fat_percentage,
+          bmi: entryData.bmi,
+          muscle_mass_kg: entryData.muscle_mass_kg,
+          images: (entryData.body_log_images || []).sort(
+            (a: any, b: any) => a.sequence - b.sequence,
+          ),
+        }
+
+        setEntry(transformedEntry)
+
+        // Update metrics from entry data
+        setMetrics({
+          weight_kg: entryData.weight_kg,
+          body_fat_percentage: entryData.body_fat_percentage,
+          bmi: entryData.bmi,
+        })
+
+        // Fetch signed URLs for all images
+        if (transformedEntry.images.length > 0) {
+          const filePaths = transformedEntry.images.map((img) => img.file_path)
+          const urls = await getBodyLogImageUrls(filePaths)
+          if (!cancelled) {
+            setImageUrls(urls)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching entry:', error)
+        if (!cancelled) {
+          Alert.alert(
+            'Error',
+            'Failed to load body log entry.',
+            [{ text: 'OK', onPress: () => router.back() }],
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
     }
+
+    fetchEntry()
 
     return () => {
-      ignore = true
+      cancelled = true
     }
-  }, [filePath, resolvedUrl])
+  }, [user, entryId, router])
 
   // Fetch user profile for gender
   useEffect(() => {
@@ -161,81 +224,6 @@ export default function BodyLogDetailScreen() {
       cancelled = true
     }
   }, [user])
-
-  useEffect(() => {
-    let isMounted = true
-
-    const syncAccessToken = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (isMounted) {
-        setAccessToken(data.session?.access_token || null)
-      }
-    }
-
-    syncAccessToken()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) {
-        setAccessToken(session?.access_token || null)
-      }
-    })
-
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const shouldFetchMetrics =
-      metrics.weight_kg === null &&
-      metrics.body_fat_percentage === null &&
-      metrics.bmi === null &&
-      imageId &&
-      accessToken
-
-    if (!shouldFetchMetrics) {
-      return
-    }
-
-    ;(async () => {
-      try {
-        const { callSupabaseFunction } = await import(
-          '@/lib/supabase-functions-client'
-        )
-        const response = await callSupabaseFunction(
-          'body-log-analyze',
-          'POST',
-          { imageId },
-          {},
-          accessToken,
-        )
-
-        if (!response.ok) {
-          return
-        }
-
-        const { metrics: fresh } = await response.json()
-        if (!cancelled && fresh) {
-          setMetrics({
-            weight_kg: fresh.weight_kg ?? null,
-            body_fat_percentage: fresh.body_fat_percentage ?? null,
-            bmi: fresh.bmi ?? null,
-          })
-        }
-      } catch (error) {
-        console.error('Failed to refresh body log metrics:', error)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [accessToken, imageId, metrics])
 
   // Get status for metrics
   const bodyFatStatus = getBodyFatStatus(metrics.body_fat_percentage, userGender)
@@ -270,82 +258,178 @@ export default function BodyLogDetailScreen() {
   const handleDelete = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
-    Alert.alert(
-      'Delete Photo?',
-      'This body log photo will be permanently deleted.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    const imageCount = entry?.images?.length || 0
+    const message =
+      imageCount > 1
+        ? `This entry and all ${imageCount} photos will be permanently deleted.`
+        : 'This entry and its photo will be permanently deleted.'
+
+    Alert.alert('Delete Entry?', message, [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (!entryId) return
+
+            // Delete from database (CASCADE will delete images too)
+            await database.bodyLog.deleteEntry(entryId)
+
+            // Haptic feedback for success
+            await Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Success,
+            )
+
+            // Navigate back to body log listing
+            router.push('/body-log')
+          } catch (error) {
+            console.error('Error deleting body log entry:', error)
+            Alert.alert(
+              'Delete Failed',
+              'Failed to delete entry. Please try again.',
+              [{ text: 'OK' }],
+            )
+          }
         },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Delete from database
-              await database.bodyLog.delete(imageId)
+      },
+    ])
+  }
 
-              // Delete from storage (non-critical, don't throw on error)
-              if (filePath) {
-                await deleteBodyLogImage(filePath)
-              }
+  const renderImageItem = ({ item, index }: { item: string; index: number }) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => {
+        setCurrentImageIndex(index)
+        setImageModalVisible(true)
+      }}
+      style={styles.carouselImageContainer}
+    >
+      <Image
+        source={{ uri: item }}
+        style={styles.heroImage}
+        resizeMode="cover"
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
+        style={styles.heroGradient}
+      />
+    </TouchableOpacity>
+  )
 
-              // Haptic feedback for success
-              await Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Success,
-              )
-
-              // Navigate back to body log listing
-              router.push('/body-log')
-            } catch (error) {
-              console.error('Error deleting body log image:', error)
-              Alert.alert(
-                'Delete Failed',
-                'Failed to delete photo. Please try again.',
-                [{ text: 'OK' }],
-              )
-            }
-          },
-        },
-      ],
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
     )
   }
 
+  if (!entry) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+            Entry not found
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
+  const imageCount = imageUrls.length
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Hero Image Section */}
+        {/* Hero Image Section with Carousel */}
         <View style={styles.heroContainer}>
-          {resolvedUrl ? (
-            <TouchableOpacity
-              style={styles.heroTouchable}
-              onPress={() => setImageModalVisible(true)}
-              activeOpacity={0.9}
-            >
-              <Image
-                source={{ uri: resolvedUrl }}
-                style={styles.heroImage}
-                resizeMode="cover"
+          {imageUrls.length > 0 ? (
+            <>
+              <FlatList
+                data={imageUrls}
+                renderItem={renderImageItem}
+                keyExtractor={(item, index) => `image-${index}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={Animated.event(
+                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                  { useNativeDriver: false },
+                )}
+                scrollEventThrottle={16}
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(
+                    event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+                  )
+                  setCurrentImageIndex(index)
+                }}
               />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
-                style={styles.heroGradient}
-              />
-            </TouchableOpacity>
+
+              {/* Pagination dots */}
+              {imageCount > 1 && (
+                <View style={styles.paginationWrapper}>
+                  <View style={styles.paginationContainer}>
+                    {imageUrls.map((_, index) => {
+                      const inputRange = [
+                        (index - 1) * SCREEN_WIDTH,
+                        index * SCREEN_WIDTH,
+                        (index + 1) * SCREEN_WIDTH,
+                      ]
+
+                      const opacity = scrollX.interpolate({
+                        inputRange,
+                        outputRange: [0.6, 1, 0.6],
+                        extrapolate: 'clamp',
+                      })
+
+                      const scale = scrollX.interpolate({
+                        inputRange,
+                        outputRange: [0.8, 1.2, 0.8],
+                        extrapolate: 'clamp',
+                      })
+
+                      return (
+                        <Animated.View
+                          key={`dot-${index}`}
+                          style={[
+                            styles.paginationDot,
+                            {
+                              backgroundColor: '#FFFFFF',
+                              opacity,
+                              transform: [{ scale }],
+                            },
+                          ]}
+                        />
+                      )
+                    })}
+                  </View>
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.heroPlaceholder}>
-              <ActivityIndicator color={colors.primary} size="large" />
+              <Ionicons
+                name="images-outline"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
+                No images available
+              </Text>
             </View>
           )}
         </View>
@@ -365,7 +449,7 @@ export default function BodyLogDetailScreen() {
             Body Composition
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {createdAt ? formatBodyLogDate(createdAt) : '--'}
+            {entry.created_at ? formatBodyLogDate(entry.created_at) : '--'}
           </Text>
 
           {/* Overall Status Card */}
@@ -374,8 +458,7 @@ export default function BodyLogDetailScreen() {
               style={[
                 styles.overallStatusCard,
                 {
-                  backgroundColor: getStatusColor(overallStatus.color)
-                    .background,
+                  backgroundColor: getStatusColor(overallStatus.color).background,
                   borderColor: getStatusColor(overallStatus.color).primary + '30',
                 },
               ]}
@@ -388,9 +471,7 @@ export default function BodyLogDetailScreen() {
               >
                 {overallStatus.title}
               </Text>
-              <Text
-                style={[styles.overallStatusSummary, { color: colors.text }]}
-              >
+              <Text style={[styles.overallStatusSummary, { color: colors.text }]}>
                 {overallStatus.summary}
               </Text>
             </View>
@@ -465,46 +546,89 @@ export default function BodyLogDetailScreen() {
       </SafeAreaView>
 
       {/* Image Fullscreen Modal */}
-      {resolvedUrl && (
+      {imageUrls.length > 0 && (
         <Modal
           visible={imageModalVisible}
           transparent
           animationType="fade"
           onRequestClose={() => setImageModalVisible(false)}
         >
-          <Pressable
-            style={styles.imageModalOverlay}
-            onPress={() => setImageModalVisible(false)}
-          >
-            <View style={styles.imageModalContent}>
-              <Animated.Image
-                source={{ uri: resolvedUrl }}
-                style={[styles.fullscreenImage, { opacity: fullscreenOpacity }]}
-                resizeMode="contain"
-                onLoadStart={() => setFullscreenImageLoading(true)}
-                onLoad={() => {
-                  setFullscreenImageLoading(false)
-                  Animated.timing(fullscreenOpacity, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                  }).start()
-                }}
-                onError={(error) => {
-                  console.error(
-                    'Failed to load fullscreen image:',
-                    error.nativeEvent.error,
-                  )
-                  setFullscreenImageLoading(false)
-                }}
-              />
-              {fullscreenImageLoading && (
-                <View style={styles.fullscreenLoadingOverlay}>
-                  <ActivityIndicator size="large" color={colors.white} />
+          <View style={styles.imageModalOverlay}>
+            <View style={[styles.fullscreenSafeArea, { paddingTop: insets.top }]}>
+              {/* Close button */}
+              <TouchableOpacity
+                style={styles.fullscreenCloseButton}
+                onPress={() => setImageModalVisible(false)}
+              >
+                <Ionicons name="close" size={28} color={colors.white} />
+              </TouchableOpacity>
+
+              {/* Image counter */}
+              {imageCount > 1 && (
+                <View style={styles.fullscreenCounter}>
+                  <Text style={styles.fullscreenCounterText}>
+                    {currentImageIndex + 1} / {imageCount}
+                  </Text>
                 </View>
               )}
             </View>
-          </Pressable>
+
+            <FlatList
+              data={imageUrls}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.fullscreenImageWrapper}
+                  onPress={() => setImageModalVisible(false)}
+                >
+                  <Animated.Image
+                    source={{ uri: item }}
+                    style={[
+                      styles.fullscreenImage,
+                      { opacity: fullscreenOpacity },
+                    ]}
+                    resizeMode="contain"
+                    onLoadStart={() => setFullscreenImageLoading(true)}
+                    onLoad={() => {
+                      setFullscreenImageLoading(false)
+                      Animated.timing(fullscreenOpacity, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                      }).start()
+                    }}
+                    onError={(error) => {
+                      console.error(
+                        'Failed to load fullscreen image:',
+                        error.nativeEvent.error,
+                      )
+                      setFullscreenImageLoading(false)
+                    }}
+                  />
+                  {fullscreenImageLoading && (
+                    <View style={styles.fullscreenLoadingOverlay}>
+                      <ActivityIndicator size="large" color={colors.white} />
+                    </View>
+                  )}
+                </Pressable>
+              )}
+              keyExtractor={(item, index) => `fullscreen-${index}`}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={currentImageIndex}
+              getItemLayout={(data, index) => ({
+                length: SCREEN_WIDTH,
+                offset: SCREEN_WIDTH * index,
+                index,
+              })}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+                )
+                setCurrentImageIndex(index)
+              }}
+            />
+          </View>
         </Modal>
       )}
 
@@ -556,7 +680,7 @@ function MetricCard({
           {
             backgroundColor: statusColors
               ? statusColors.background
-              : colors.primary + '15'
+              : colors.primary + '15',
           },
         ]}
       >
@@ -628,11 +752,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 56,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
 
   // Hero Section
   heroContainer: {
     height: HERO_HEIGHT,
     position: 'relative',
+  },
+  carouselImageContainer: {
+    width: SCREEN_WIDTH,
+    height: HERO_HEIGHT,
   },
   heroImage: {
     width: '100%',
@@ -649,6 +786,40 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+  },
+  placeholderText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Pagination
+  paginationWrapper: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backdropFilter: 'blur(10px)',
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 3,
   },
 
   // Content Section
@@ -781,28 +952,56 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
 
-  // Hero Image Touchable
-  heroTouchable: {
-    width: '100%',
-    height: '100%',
-  },
-
   // Image Modal
   imageModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  fullscreenSafeArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  fullscreenCloseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  fullscreenCounter: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  fullscreenCounterText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   imageModalContent: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImageWrapper: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },
   fullscreenImage: {
-    width: '100%',
-    height: '100%',
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
   },
   fullscreenLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
