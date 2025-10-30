@@ -80,6 +80,26 @@ function normaliseName(name: string): string {
   return name.trim().toLowerCase()
 }
 
+function coerceNumber(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function coerceInteger(value: unknown): number {
+  const coerced = coerceNumber(value)
+  if (coerced === null) return 0
+  const rounded = Math.trunc(coerced)
+  return Number.isFinite(rounded) ? rounded : 0
+}
+
 export async function getExerciseStrengthProgressByName(
   supabase: SupabaseClient,
   userId: string,
@@ -471,51 +491,37 @@ export async function getExercisePercentile(
     }
   }
 
-  const userEst1RM =
-    typeof resultRow.user_est_1rm === 'number'
-      ? Number(resultRow.user_est_1rm)
-      : null
+  const userEst1RM = coerceNumber(resultRow.user_est_1rm)
+
+  const parsedOverallPercentile = coerceNumber(resultRow.overall_percentile)
+  const parsedOverallTotalUsers = coerceInteger(resultRow.overall_total_users)
+  const parsedGenderPercentile = coerceNumber(resultRow.gender_percentile)
+  const parsedGenderTotalUsers = coerceInteger(resultRow.gender_total_users)
+  const parsedWeightBucketStart = coerceNumber(resultRow.weight_bucket_start)
+  const parsedWeightBucketEnd = coerceNumber(resultRow.weight_bucket_end)
+  const parsedGenderWeightPercentile = coerceNumber(
+    resultRow.gender_weight_percentile,
+  )
+  const parsedGenderWeightTotalUsers = coerceInteger(
+    resultRow.gender_weight_total_users,
+  )
 
   return {
     exerciseId: resultRow.exercise_id ?? exercise.id,
     exerciseName: resultRow.exercise_name ?? exercise.name,
-    percentile:
-      typeof resultRow.overall_percentile === 'number'
-        ? Number(resultRow.overall_percentile)
-        : null,
-    totalUsers:
-      typeof resultRow.overall_total_users === 'number'
-        ? resultRow.overall_total_users
-        : 0,
+    percentile: parsedOverallPercentile,
+    totalUsers: parsedOverallTotalUsers,
     userMax1RM:
       typeof userEst1RM === 'number' ? Math.round(userEst1RM * 10) / 10 : null,
     gender:
       typeof resultRow.gender === 'string' || resultRow.gender === null
         ? resultRow.gender
         : null,
-    genderPercentile:
-      typeof resultRow.gender_percentile === 'number'
-        ? Number(resultRow.gender_percentile)
-        : null,
-    genderTotalUsers:
-      typeof resultRow.gender_total_users === 'number'
-        ? resultRow.gender_total_users
-        : 0,
-    weightBucketStart:
-      typeof resultRow.weight_bucket_start === 'number'
-        ? resultRow.weight_bucket_start
-        : null,
-    weightBucketEnd:
-      typeof resultRow.weight_bucket_end === 'number'
-        ? resultRow.weight_bucket_end
-        : null,
-    genderWeightPercentile:
-      typeof resultRow.gender_weight_percentile === 'number'
-        ? Number(resultRow.gender_weight_percentile)
-        : null,
-    genderWeightTotalUsers:
-      typeof resultRow.gender_weight_total_users === 'number'
-        ? resultRow.gender_weight_total_users
-        : 0,
+    genderPercentile: parsedGenderPercentile,
+    genderTotalUsers: parsedGenderTotalUsers,
+    weightBucketStart: parsedWeightBucketStart,
+    weightBucketEnd: parsedWeightBucketEnd,
+    genderWeightPercentile: parsedGenderWeightPercentile,
+    genderWeightTotalUsers: parsedGenderWeightTotalUsers,
   }
 }
