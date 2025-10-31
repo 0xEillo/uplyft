@@ -189,6 +189,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       }}
       userId={workout.user_id}
       workoutId={workout.id}
+      workout={isPending ? undefined : workout}
       onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
       onEdit={isPending ? undefined : handleEdit}
       onDelete={isPending ? undefined : handleDelete}

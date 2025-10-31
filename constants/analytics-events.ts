@@ -63,6 +63,9 @@ export const AnalyticsEvents = {
   WORKOUT_DELETE_REQUESTED: 'Workout Delete Requested',
   WORKOUT_DELETE_CONFIRMED: 'Workout Delete Confirmed',
   WORKOUT_DELETE_CANCELLED: 'Workout Delete Cancelled',
+  WORKOUT_SHARE_INITIATED: 'Workout Share Initiated',
+  WORKOUT_SHARE_COMPLETED: 'Workout Share Completed',
+  WORKOUT_SHARE_FAILED: 'Workout Share Failed',
 
   // AI Chat
   AI_CHAT_OPENED: 'AI Chat Opened',
@@ -240,6 +243,15 @@ export interface WorkoutDeleteProperties extends BaseEventProperties {
   action?: 'requested' | 'confirmed' | 'cancelled'
 }
 
+export interface WorkoutShareProperties extends BaseEventProperties {
+  workout_id: string
+  exercise_count?: number
+  has_image?: boolean
+  share_platform?: string
+  generation_time?: number
+  error_message?: string
+}
+
 export interface AIChatProperties extends BaseEventProperties {
   workout_id?: string
   message_length?: number
@@ -357,6 +369,9 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.WORKOUT_EDIT_COMPLETED]: WorkoutEditProperties
   [AnalyticsEvents.WORKOUT_DELETE_REQUESTED]: WorkoutDeleteProperties
   [AnalyticsEvents.WORKOUT_DELETE_CONFIRMED]: WorkoutDeleteProperties
+  [AnalyticsEvents.WORKOUT_SHARE_INITIATED]: WorkoutShareProperties
+  [AnalyticsEvents.WORKOUT_SHARE_COMPLETED]: WorkoutShareProperties
+  [AnalyticsEvents.WORKOUT_SHARE_FAILED]: WorkoutShareProperties
   [AnalyticsEvents.AI_CHAT_MESSAGE_SENT]: AIChatProperties
   [AnalyticsEvents.AI_CHAT_RESPONSE_RECEIVED]: AIChatProperties
   [AnalyticsEvents.AI_CHAT_ERROR]: AIChatProperties

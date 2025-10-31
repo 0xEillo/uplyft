@@ -1,5 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useRef, useState } from 'react'
 import {
@@ -15,6 +17,7 @@ import {
   View,
 } from 'react-native'
 import { PrTooltip } from './pr-tooltip'
+import { ShareWorkoutCard } from './share-workout-card'
 
 // Constants
 const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
@@ -48,7 +51,7 @@ interface PrDetailForDisplay {
   isCurrent: boolean // true if this is still the all-time PR
 }
 
-interface ExercisePRInfo {
+export interface ExercisePRInfo {
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
@@ -56,7 +59,7 @@ interface ExercisePRInfo {
   hasCurrentPR: boolean // true if at least one PR is still current
 }
 
-interface FeedCardProps {
+export interface FeedCardProps {
   userName: string
   userAvatar: string
   timeAgo: string
@@ -67,6 +70,7 @@ interface FeedCardProps {
   stats: WorkoutStats
   userId?: string
   workoutId?: string
+  workout?: WorkoutSessionWithDetails // Full workout object for sharing
   onUserPress?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -89,6 +93,7 @@ export const FeedCard = memo(function FeedCard({
   stats,
   userId,
   workoutId,
+  workout,
   onUserPress,
   onEdit,
   onDelete,
@@ -96,6 +101,10 @@ export const FeedCard = memo(function FeedCard({
   isPending = false,
 }: FeedCardProps) {
   const colors = useThemedColors()
+  const { weightUnit } = useWeightUnits()
+  const { shareWorkout, isSharing } = useWorkoutShare()
+  const shareCardRef = useRef<View>(null)
+
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
     new Set(),
@@ -122,7 +131,6 @@ export const FeedCard = memo(function FeedCard({
   const [analyzingDots, setAnalyzingDots] = useState('')
 
   const styles = createStyles(colors)
-  const { weightUnit } = useWeightUnits()
 
   const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
@@ -237,6 +245,13 @@ export const FeedCard = memo(function FeedCard({
     }).start()
 
     setIsExpanded(!isExpanded)
+  }
+
+  const handleShare = async () => {
+    setMenuVisible(false)
+    if (workout && shareCardRef.current) {
+      await shareWorkout(workout, workoutTitle, shareCardRef.current)
+    }
   }
 
   const rotateInterpolate = rotateAnim.interpolate({
@@ -563,6 +578,22 @@ export const FeedCard = memo(function FeedCard({
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.menuContainer}>
+            {workout && !isPending && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleShare}
+                disabled={isSharing}
+              >
+                {isSharing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="share-outline" size={20} color={colors.text} />
+                )}
+                <Text style={styles.menuItemText}>
+                  {isSharing ? 'Sharing...' : 'Share Workout'}
+                </Text>
+              </TouchableOpacity>
+            )}
             {onEdit && (
               <TouchableOpacity
                 style={styles.menuItem}
@@ -644,6 +675,33 @@ export const FeedCard = memo(function FeedCard({
           prDetails={selectedExercisePR.prDetails}
           exerciseName={selectedExercisePR.exerciseName}
         />
+      )}
+
+      {/* Hidden Share Card for Image Capture - Must be rendered but hidden */}
+      {workout && !isPending && (
+        <View
+          style={{
+            position: 'absolute',
+            left: -50000,
+            top: 0,
+          }}
+        >
+          <View
+            ref={shareCardRef}
+            collapsable={false}
+          >
+            <ShareWorkoutCard
+              workout={workout}
+              userName={userName}
+              userAvatar={userAvatar}
+              workoutTitle={workoutTitle}
+              workoutDescription={workoutDescription || null}
+              timeAgo={timeAgo}
+              weightUnit={weightUnit}
+              prInfo={prInfo}
+            />
+          </View>
+        </View>
       )}
     </View>
   )
