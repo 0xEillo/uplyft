@@ -956,7 +956,7 @@ function createStyles(colors: any) {
       fontWeight: '600',
     },
     termsLink: {
-      marginTop: -8,
+      marginTop: 4,
       paddingVertical: 0,
       alignItems: 'center',
     },
