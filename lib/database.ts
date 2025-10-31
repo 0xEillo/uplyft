@@ -1,4 +1,3 @@
-import type { BodyLogRecord } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import type {
   Exercise,
@@ -1189,6 +1188,7 @@ export const database = {
           body_fat_percentage,
           bmi,
           muscle_mass_kg,
+          analysis_summary,
           body_log_images (
             id,
             entry_id,
@@ -1226,6 +1226,7 @@ export const database = {
           body_fat_percentage,
           bmi,
           muscle_mass_kg,
+          analysis_summary,
           body_log_images (
             id,
             entry_id,
@@ -1279,9 +1280,12 @@ export const database = {
         throw error
       }
 
-      console.log('[BODY_LOG] ✅ Database: Entry metrics updated successfully', {
-        entryId: entryId.substring(0, 8),
-      })
+      console.log(
+        '[BODY_LOG] ✅ Database: Entry metrics updated successfully',
+        {
+          entryId: entryId.substring(0, 8),
+        },
+      )
       return data
     },
 

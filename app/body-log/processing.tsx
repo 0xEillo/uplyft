@@ -763,7 +763,7 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
     messageText: {
       fontSize: 15,
       fontWeight: '600',
-      color: isDark ? '#fff' : colors.text,
+      color: '#fff',
       letterSpacing: -0.1,
       textAlign: 'center',
     },
@@ -806,7 +806,7 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
     successText: {
       fontSize: 22,
       fontWeight: '700',
-      color: isDark ? '#fff' : colors.text,
+      color: '#fff',
       letterSpacing: -0.3,
     },
   })

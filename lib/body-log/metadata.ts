@@ -1,8 +1,9 @@
 export interface BodyLogMetrics {
-  weight_kg: number | null
+  weight_kg?: number | null
   body_fat_percentage: number | null
   bmi: number | null
   muscle_mass_kg?: number | null
+  analysis_summary?: string | null
 }
 
 export interface BodyLogImage {
@@ -22,6 +23,7 @@ export interface BodyLogEntry {
   body_fat_percentage: number | null
   bmi: number | null
   muscle_mass_kg?: number | null
+  analysis_summary: string | null
 }
 
 export interface BodyLogEntryWithImages extends BodyLogEntry {

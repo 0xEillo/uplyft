@@ -1,6 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
+// @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
+// eslint-disable-next-line import/no-unresolved
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
+// @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
+// eslint-disable-next-line import/no-unresolved
 import OpenAI from 'https://esm.sh/openai@4.55.3'
+// @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
+// eslint-disable-next-line import/no-unresolved
 import { z } from 'https://esm.sh/zod@3.23.8'
 
 import {
@@ -14,6 +20,27 @@ const BODY_LOG_BUCKET = 'body-log'
 const REQUEST_SCHEMA = z.object({
   entryId: z.string().min(1),
 })
+
+const BODY_LOG_RESPONSE_FORMAT = {
+  type: 'json_schema' as const,
+  json_schema: {
+    name: 'BodyLogAnalysis',
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['body_fat_percentage', 'bmi', 'analysis_summary'],
+      properties: {
+        body_fat_percentage: { type: ['number', 'null'] },
+        bmi: { type: ['number', 'null'] },
+        analysis_summary: {
+          type: 'string',
+          minLength: 8,
+          maxLength: 400,
+        },
+      },
+    },
+  },
+}
 
 async function downloadImageBase64(
   serviceClient: ReturnType<typeof createServiceClient>,
@@ -62,7 +89,12 @@ serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('OPENAI_API_KEY')
+    const apiKey =
+      'Deno' in globalThis
+        ? (globalThis as typeof globalThis & {
+            Deno: { env: { get(key: string): string | undefined } }
+          }).Deno.env.get('OPENAI_API_KEY')
+        : undefined
     if (!apiKey) {
       throw new Error('Missing OPENAI_API_KEY environment variable')
     }
@@ -193,19 +225,31 @@ serve(async (req) => {
         },
       ],
       max_completion_tokens: 400,
+      response_format: BODY_LOG_RESPONSE_FORMAT,
     })
 
     const content = completion.choices[0]?.message?.content
 
     // Parse the metrics from the response
     const metrics = parseBodyLogMetrics(content)
+    const updatePayload = {
+      ...metrics,
+      weight_kg:
+        typeof profile.weight_kg === 'number'
+          ? profile.weight_kg
+          : typeof entry.weight_kg === 'number'
+          ? entry.weight_kg
+          : null,
+    }
 
     // Update entry metrics
     const { data: updated, error: updateError } = await supabase
       .from('body_log_entries')
-      .update(metrics)
+      .update(updatePayload)
       .eq('id', entryId)
-      .select('id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg')
+      .select(
+        'id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg, analysis_summary',
+      )
       .single()
 
     if (updateError || !updated) {

@@ -4,19 +4,19 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -25,22 +25,22 @@ import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  getBMIExplanation,
-  getBMIStatus,
-  getBodyFatExplanation,
-  getBodyFatStatus,
-  getOverallStatus,
-  getStatusColor,
-  getWeightExplanation,
-  type BMIRange,
-  type BodyFatRange,
-  type Gender,
+    getBMIExplanation,
+    getBMIStatus,
+    getBodyFatExplanation,
+    getBodyFatStatus,
+    getOverallStatus,
+    getStatusColor,
+    getWeightExplanation,
+    type BMIRange,
+    type BodyFatRange,
+    type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-  formatBMI,
-  formatBodyFat,
-  formatBodyLogDate,
-  type BodyLogEntryWithImages,
+    formatBMI,
+    formatBodyFat,
+    formatBodyLogDate,
+    type BodyLogEntryWithImages,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -116,6 +116,7 @@ export default function BodyLogDetailScreen() {
             body_fat_percentage,
             bmi,
             muscle_mass_kg,
+            analysis_summary,
             body_log_images!inner (
               id,
               entry_id,
@@ -150,6 +151,7 @@ export default function BodyLogDetailScreen() {
           weight_kg: entryData.weight_kg,
           body_fat_percentage: entryData.body_fat_percentage,
           bmi: entryData.bmi,
+          analysis_summary: entryData.analysis_summary,
           muscle_mass_kg: entryData.muscle_mass_kg,
           images: (entryData.body_log_images || []).sort(
             (a: any, b: any) => a.sequence - b.sequence,
@@ -235,6 +237,15 @@ export default function BodyLogDetailScreen() {
     metrics.bmi,
     userGender,
   )
+
+  const analysisSummary = entry?.analysis_summary?.trim()
+  const summaryText = analysisSummary && analysisSummary.length > 0
+    ? analysisSummary
+    : overallStatus?.summary ?? null
+  const summaryStatusColors = overallStatus
+    ? getStatusColor(overallStatus.color)
+    : null
+  const summaryTitle = overallStatus?.title ?? 'AI Summary'
 
   // Handle opening info modal
   const handleInfoPress = async (
@@ -426,14 +437,18 @@ export default function BodyLogDetailScreen() {
             </Text>
           </View>
 
-          {/* Overall Status Card */}
-          {overallStatus && (
+          {/* AI Summary Card */}
+          {summaryText && (
             <View
               style={[
                 styles.overallStatusCard,
                 {
-                  backgroundColor: getStatusColor(overallStatus.color).background,
-                  borderColor: getStatusColor(overallStatus.color).primary + '25',
+                  backgroundColor:
+                    summaryStatusColors?.background ?? colors.backgroundWhite,
+                  borderColor:
+                    summaryStatusColors?.primary
+                      ? summaryStatusColors.primary + '25'
+                      : colors.border,
                 },
               ]}
             >
@@ -441,19 +456,21 @@ export default function BodyLogDetailScreen() {
                 <Ionicons
                   name="checkmark-circle"
                   size={24}
-                  color={getStatusColor(overallStatus.color).primary}
+                  color={summaryStatusColors?.primary ?? colors.primary}
                 />
                 <Text
                   style={[
                     styles.overallStatusTitle,
-                    { color: getStatusColor(overallStatus.color).text },
+                    {
+                      color: summaryStatusColors?.text ?? colors.text,
+                    },
                   ]}
                 >
-                  {overallStatus.title}
+                  {summaryTitle}
                 </Text>
               </View>
               <Text style={[styles.overallStatusSummary, { color: colors.text }]}>
-                {overallStatus.summary}
+                {summaryText}
               </Text>
             </View>
           )}
