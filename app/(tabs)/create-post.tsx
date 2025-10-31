@@ -28,7 +28,6 @@ import {
   Easing,
   InteractionManager,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -696,10 +695,7 @@ export default function CreatePostScreen() {
           opacity: pageOpacityAnim,
         }}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
+        <View style={styles.keyboardView}>
           <Pressable style={styles.header} onPress={blurInputs}>
             <TouchableOpacity
               onPress={handleCancel}
@@ -739,8 +735,8 @@ export default function CreatePostScreen() {
           <ScrollView
             style={styles.inputContainer}
             contentContainerStyle={styles.scrollContent}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="never"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             bounces={true}
@@ -756,6 +752,8 @@ export default function CreatePostScreen() {
               editable={!isRecording && !isTranscribing}
               maxLength={50}
               autoFocus={false}
+              cursorColor={colors.primary}
+              selectionColor={Platform.OS === 'ios' ? colors.primary : undefined}
             />
 
             {/* Divider */}
@@ -774,6 +772,8 @@ export default function CreatePostScreen() {
                 textAlignVertical="top"
                 editable={!isRecording && !isTranscribing}
                 autoFocus={false}
+                cursorColor={colors.primary}
+                selectionColor={Platform.OS === 'ios' ? colors.primary : undefined}
                 onFocus={() => {
                   setIsNotesFocused(true)
                 }}
@@ -924,7 +924,7 @@ export default function CreatePostScreen() {
             title="Workout Logging is Premium"
             message="Logging workouts is a premium feature. Subscribe to track unlimited workouts and unlock all features."
           />
-        </KeyboardAvoidingView>
+        </View>
       </Animated.View>
     </SafeAreaView>
   )
@@ -1077,6 +1077,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exampleContainer: {
       position: 'absolute',
       top: '20%',
+      marginTop: 16,
       left: 0,
       right: 0,
       alignItems: 'center',
