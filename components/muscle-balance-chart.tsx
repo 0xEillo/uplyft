@@ -340,27 +340,35 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
               }}
               scrollEventThrottle={16}
             >
-              <Text style={styles.sectionTitle}>
-                Understanding muscle balance
-              </Text>
+              <Text style={styles.sectionTitle}>What this shows</Text>
               <Text style={styles.sectionText}>
-                Muscle balance is how evenly you distribute training volume
-                across muscle groups. Unbalanced training can lead to injuries
-                and postural issues. Aim for variety across all major muscle
-                groups.
+                This breakdown shows where your training volume is landing, so
+                you can catch overused and neglected muscle groups at a glance.
               </Text>
 
-              <Text style={styles.sectionTitle}>Your aim</Text>
+              <Text style={styles.sectionTitle}>How it&apos;s calculated</Text>
               <Text style={styles.sectionText}>
-                Aim for variety. If a muscle group is significantly higher
-                (&gt;30%), consider adding more variety. The chart shows
-                training volume (sets × reps × weight) grouped by muscle.
+                We total the sets × reps × weight you log for each muscle group
+                and normalise it over the time range you select. Switch ranges
+                to contrast short-term cycles against longer trends.
               </Text>
 
-              <Text style={styles.sectionTitle}>Tips</Text>
+              <Text style={styles.sectionTitle}>What good looks like</Text>
               <Text style={styles.sectionText}>
-                Ensure workouts include upper body, lower body, and core work.
-                Use the time range selector to spot trends over time.
+                <Text style={styles.sectionBold}>Balanced spread:</Text> Keep
+                major muscle groups within ~15-25% of each other to stay
+                structurally sound
+                {'\n'}
+                <Text style={styles.sectionBold}>Controlled focus:</Text>
+                Temporary spikes are fine during a block, just avoid letting one
+                area dominate for months
+              </Text>
+
+              <Text style={styles.sectionTitle}>How to improve it</Text>
+              <Text style={styles.sectionText}>
+                Rotate primary lifts through upper, lower, and posterior chain
+                days, and plug gaps with accessory work that targets muscles you
+                rarely hit directly.
               </Text>
             </ScrollView>
           </Animated.View>
@@ -570,5 +578,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       lineHeight: 20,
       marginBottom: 8,
+    },
+    sectionBold: {
+      fontWeight: '700',
+      color: colors.text,
     },
   })

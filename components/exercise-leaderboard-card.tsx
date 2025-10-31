@@ -384,49 +384,38 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
               }}
               scrollEventThrottle={16}
             >
-              <Text style={styles.sectionTitle}>
-                What are percentile rankings?
-              </Text>
+              <Text style={styles.sectionTitle}>What this shows</Text>
               <Text style={styles.sectionText}>
-                Your percentile ranking shows how your strength compares to
-                other users. A 75th percentile ranking means you&apos;re
-                stronger than 75% of users on that exercise.
+                These percentiles stack your estimated one-rep max (1RM) against
+                the Rep AI community, so you can see exactly where each lift
+                stands competitively.
               </Text>
 
-              <Text style={styles.sectionTitle}>
-                How are rankings calculated?
-              </Text>
+              <Text style={styles.sectionTitle}>How it&apos;s calculated</Text>
               <Text style={styles.sectionText}>
-                Rankings are based on your estimated one-rep max (1RM) for each
-                exercise. If available, we calculate gender-specific rankings so
-                you can see how you compare within your demographic. For
-                compound lifts, we also show weight class rankings based on your
-                body weight.
+                We convert your best logged sets into fresh 1RM estimates, then
+                compare them with lifters who match your gender and your
+                body-weight bracket. Your rankings are udpated every time you
+                log a new workout.
               </Text>
 
-              <Text style={styles.sectionTitle}>Understanding the tiers</Text>
+              <Text style={styles.sectionTitle}>What good looks like</Text>
               <Text style={styles.sectionText}>
-                <Text style={styles.sectionBold}>Elite (95th+):</Text> Top 5% of
-                all users{'\n'}
-                <Text style={styles.sectionBold}>Top 10% (90-95th):</Text>{' '}
-                Exceptional strength{'\n'}
-                <Text style={styles.sectionBold}>Top 25% (75-90th):</Text> Well
-                above average{'\n'}
-                <Text style={styles.sectionBold}>Top 50% (50-75th):</Text> Above
-                average{'\n'}
-                <Text style={styles.sectionBold}>
-                  Developing (below 50th):
-                </Text>{' '}
-                Room to grow
+                <Text style={styles.sectionBold}>95th+ (Elite):</Text>{' '}
+                You&apos;re pacing with top-tier lifters{'\n'}
+                <Text style={styles.sectionBold}>90-95th:</Text> Ready to hang
+                at advanced meets{'\n'}
+                <Text style={styles.sectionBold}>75-90th:</Text> Stronger than
+                most dedicated gym-goers{'\n'}
+                <Text style={styles.sectionBold}>50-75th:</Text> Rock-solid base
+                with plenty of upside
               </Text>
 
-              <Text style={styles.sectionTitle}>
-                How to improve your ranking
-              </Text>
+              <Text style={styles.sectionTitle}>How to improve it</Text>
               <Text style={styles.sectionText}>
-                Focus on progressive overload - gradually increase the weight
-                you lift over time. Consistent training and proper recovery are
-                key. Your ranking will update as your estimated 1RM improves.
+                Run progressive overload blocks, log every heavy set, tighten
+                form so reps stay clean, and guard recovery so your nervous
+                system stays sharp.
               </Text>
             </ScrollView>
           </Animated.View>

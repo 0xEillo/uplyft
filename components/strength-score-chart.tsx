@@ -755,25 +755,37 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
               }}
               scrollEventThrottle={16}
             >
-              <Text style={styles.infoSectionTitle}>Understanding 1RM</Text>
+              <Text style={styles.infoSectionTitle}>What this shows</Text>
               <Text style={styles.infoSectionText}>
-                1RM (one-rep max) is the maximum weight you can lift for one
-                repetition. We estimate yours from your workout data using the
-                popular Epley formula. The more data you log, the more accurate
-                the estimate becomes.
+                This chart surfaces your estimated one-rep max (1RM) peaks over
+                the selected range, so you can spot how your strength is
+                trending session to session.
               </Text>
 
-              <Text style={styles.infoSectionTitle}>Your aim</Text>
+              <Text style={styles.infoSectionTitle}>
+                How it&apos;s calculated
+              </Text>
               <Text style={styles.infoSectionText}>
-                Aim for an upward trend. Each point represents a new peak
-                strength level. An upward trend means you&apos;re getting
-                stronger!
+                We derive 1RM estimates from your logged sets using the Epley
+                formula, prioritise the heaviest quality sets each session, and
+                smooth the trend to remove noisy outliers.
               </Text>
 
-              <Text style={styles.infoSectionTitle}>Tips</Text>
+              <Text style={styles.infoSectionTitle}>What good looks like</Text>
               <Text style={styles.infoSectionText}>
-                Log weights and reps consistently. Focus on progressive overload
-                by gradually increasing weight over time.
+                <Text style={styles.infoSectionBold}>Steady climb: </Text>
+                Fresh highs every few weeks show that your training is working
+                {'\n'}
+                <Text style={styles.infoSectionBold}>Controlled dips: </Text>
+                Short plateaus or dips after deloads are normal, just make sure
+                they rebound quickly
+              </Text>
+
+              <Text style={styles.infoSectionTitle}>How to improve it</Text>
+              <Text style={styles.infoSectionText}>
+                Log every heavy set, cycle intensity with planned deloads, and
+                chase small weekly weight or rep increases rather than big
+                jumps.
               </Text>
             </ScrollView>
           </Animated.View>
