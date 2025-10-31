@@ -861,7 +861,7 @@ export default function CreatePostScreen() {
               isRecording && styles.micFabActive,
               {
                 bottom:
-                  keyboardHeight > 0 ? keyboardHeight + 32 : 32 + insets.bottom,
+                  keyboardHeight > 0 ? keyboardHeight + 56 : 32 + insets.bottom,
               },
             ]}
             onPress={handleToggleRecording}
@@ -889,7 +889,7 @@ export default function CreatePostScreen() {
               {
                 bottom:
                   keyboardHeight > 0
-                    ? keyboardHeight - 48
+                    ? keyboardHeight - 24
                     : -48 + insets.bottom,
               },
             ]}
