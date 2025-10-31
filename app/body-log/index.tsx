@@ -138,7 +138,7 @@ const BodyLogEntryItem = memo(
               </View>
             )}
             {imageCount > 1 && (
-              <View style={[styles.imageBadge, { backgroundColor: colors.primary }]}>
+              <View style={[styles.imageBadge, { backgroundColor: `${colors.primary}E6` }]}>
                 <Text style={styles.imageBadgeText}>{imageCount}</Text>
               </View>
             )}
@@ -569,22 +569,25 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       top: 8,
       right: 8,
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      minWidth: 26,
+      height: 26,
+      paddingHorizontal: 8,
+      borderRadius: 13,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 2,
     },
     imageBadgeText: {
       color: colors.white,
-      fontSize: 13,
-      fontWeight: '700',
-      letterSpacing: -0.2,
+      fontSize: 12,
+      fontWeight: '600',
+      letterSpacing: -0.1,
     },
   })
 

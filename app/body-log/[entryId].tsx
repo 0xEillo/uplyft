@@ -47,7 +47,9 @@ import { supabase } from '@/lib/supabase'
 import { getBodyLogImageUrls } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
-const HERO_HEIGHT = SCREEN_HEIGHT * 0.42
+const HERO_HEIGHT = SCREEN_HEIGHT * 0.5
+const CARD_RADIUS = 24
+const METRIC_CARD_RADIUS = 20
 
 export default function BodyLogDetailScreen() {
   const { entryId, weightKg, bodyFatPercentage, bmi } = useLocalSearchParams<{
@@ -301,7 +303,7 @@ export default function BodyLogDetailScreen() {
 
   const renderImageItem = ({ item, index }: { item: string; index: number }) => (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.95}
       onPress={() => {
         setCurrentImageIndex(index)
         setImageModalVisible(true)
@@ -314,7 +316,7 @@ export default function BodyLogDetailScreen() {
         resizeMode="cover"
       />
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
+        colors={['transparent', 'transparent', 'rgba(0,0,0,0.6)']}
         style={styles.heroGradient}
       />
     </TouchableOpacity>
@@ -379,54 +381,70 @@ export default function BodyLogDetailScreen() {
                 }}
               />
 
-              {/* Pagination dots */}
-              {imageCount > 1 && (
-                <View style={styles.paginationWrapper}>
-                  <View style={styles.paginationContainer}>
-                    {imageUrls.map((_, index) => {
-                      const inputRange = [
-                        (index - 1) * SCREEN_WIDTH,
-                        index * SCREEN_WIDTH,
-                        (index + 1) * SCREEN_WIDTH,
-                      ]
+              {/* Pagination dots and date */}
+              <View style={styles.bottomOverlay}>
+                {imageCount > 1 && (
+                  <View style={styles.paginationWrapper}>
+                    <View style={styles.paginationContainer}>
+                      {imageUrls.map((_, index) => {
+                        const inputRange = [
+                          (index - 1) * SCREEN_WIDTH,
+                          index * SCREEN_WIDTH,
+                          (index + 1) * SCREEN_WIDTH,
+                        ]
 
-                      const opacity = scrollX.interpolate({
-                        inputRange,
-                        outputRange: [0.6, 1, 0.6],
-                        extrapolate: 'clamp',
-                      })
+                        const opacity = scrollX.interpolate({
+                          inputRange,
+                          outputRange: [0.4, 1, 0.4],
+                          extrapolate: 'clamp',
+                        })
 
-                      const scale = scrollX.interpolate({
-                        inputRange,
-                        outputRange: [0.8, 1.2, 0.8],
-                        extrapolate: 'clamp',
-                      })
+                        const scale = scrollX.interpolate({
+                          inputRange,
+                          outputRange: [0.85, 1.15, 0.85],
+                          extrapolate: 'clamp',
+                        })
 
-                      return (
-                        <Animated.View
-                          key={`dot-${index}`}
-                          style={[
-                            styles.paginationDot,
-                            {
-                              backgroundColor: '#FFFFFF',
-                              opacity,
-                              transform: [{ scale }],
-                            },
-                          ]}
-                        />
-                      )
-                    })}
+                        const width = scrollX.interpolate({
+                          inputRange,
+                          outputRange: [6, 24, 6],
+                          extrapolate: 'clamp',
+                        })
+
+                        return (
+                          <Animated.View
+                            key={`dot-${index}`}
+                            style={[
+                              styles.paginationDot,
+                              {
+                                backgroundColor: '#FFFFFF',
+                                opacity,
+                                transform: [{ scale }],
+                                width,
+                              },
+                            ]}
+                          />
+                        )
+                      })}
+                    </View>
                   </View>
+                )}
+                <View style={styles.dateOverlay}>
+                  <Text style={styles.dateOverlayText}>
+                    {entry.created_at ? formatBodyLogDate(entry.created_at) : '--'}
+                  </Text>
                 </View>
-              )}
+              </View>
             </>
           ) : (
             <View style={styles.heroPlaceholder}>
-              <Ionicons
-                name="images-outline"
-                size={48}
-                color={colors.textSecondary}
-              />
+              <View style={[styles.placeholderIconContainer, { backgroundColor: colors.backgroundWhite }]}>
+                <Ionicons
+                  name="images-outline"
+                  size={56}
+                  color={colors.textSecondary}
+                />
+              </View>
               <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
                 No images available
               </Text>
@@ -436,21 +454,22 @@ export default function BodyLogDetailScreen() {
 
         {/* Content Section */}
         <View style={styles.contentSection}>
-          {/* AI Badge */}
-          <View style={styles.aiBadge}>
-            <Ionicons name="sparkles" size={14} color={colors.primary} />
-            <Text style={[styles.aiBadgeText, { color: colors.primary }]}>
-              AI Analysis
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <View style={styles.headerTop}>
+              <View style={styles.headerLeft}>
+                <View style={[styles.aiBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="sparkles" size={16} color={colors.primary} />
+                  <Text style={[styles.aiBadgeText, { color: colors.primary }]}>
+                    AI Analysis
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <Text style={[styles.mainTitle, { color: colors.text }]}>
+              Body Composition
             </Text>
           </View>
-
-          {/* Title */}
-          <Text style={[styles.mainTitle, { color: colors.text }]}>
-            Body Composition
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {entry.created_at ? formatBodyLogDate(entry.created_at) : '--'}
-          </Text>
 
           {/* Overall Status Card */}
           {overallStatus && (
@@ -459,18 +478,25 @@ export default function BodyLogDetailScreen() {
                 styles.overallStatusCard,
                 {
                   backgroundColor: getStatusColor(overallStatus.color).background,
-                  borderColor: getStatusColor(overallStatus.color).primary + '30',
+                  borderColor: getStatusColor(overallStatus.color).primary + '25',
                 },
               ]}
             >
-              <Text
-                style={[
-                  styles.overallStatusTitle,
-                  { color: getStatusColor(overallStatus.color).text },
-                ]}
-              >
-                {overallStatus.title}
-              </Text>
+              <View style={styles.statusHeader}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={24}
+                  color={getStatusColor(overallStatus.color).primary}
+                />
+                <Text
+                  style={[
+                    styles.overallStatusTitle,
+                    { color: getStatusColor(overallStatus.color).text },
+                  ]}
+                >
+                  {overallStatus.title}
+                </Text>
+              </View>
               <Text style={[styles.overallStatusSummary, { color: colors.text }]}>
                 {overallStatus.summary}
               </Text>
@@ -520,11 +546,14 @@ export default function BodyLogDetailScreen() {
       <SafeAreaView edges={['top']} style={styles.topActionsContainer}>
         <View style={styles.topActions}>
           <TouchableOpacity
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             onPress={() => router.back()}
             style={[
               styles.topButton,
-              { backgroundColor: colors.backgroundWhite + 'E6' },
+              {
+                backgroundColor: colors.backgroundWhite,
+                shadowColor: colors.shadow,
+              },
             ]}
           >
             <Ionicons name="arrow-back" size={22} color={colors.text} />
@@ -533,11 +562,14 @@ export default function BodyLogDetailScreen() {
           <View style={styles.topActionsSpacer} />
 
           <TouchableOpacity
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             onPress={handleDelete}
             style={[
               styles.topButton,
-              { backgroundColor: colors.backgroundWhite + 'E6' },
+              {
+                backgroundColor: colors.backgroundWhite,
+                shadowColor: colors.shadow,
+              },
             ]}
           >
             <Ionicons name="trash-outline" size={22} color={colors.error} />
@@ -680,13 +712,13 @@ function MetricCard({
           {
             backgroundColor: statusColors
               ? statusColors.background
-              : colors.primary + '15',
+              : colors.primaryLight,
           },
         ]}
       >
         <Ionicons
           name={icon}
-          size={24}
+          size={26}
           color={statusColors ? statusColors.primary : colors.primary}
         />
       </View>
@@ -705,6 +737,15 @@ function MetricCard({
           {value}
         </Text>
       </View>
+      {onInfoPress && (
+        <View style={styles.metricInfoButton}>
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color={colors.textTertiary}
+          />
+        </View>
+      )}
     </>
   )
 
@@ -717,12 +758,13 @@ function MetricCard({
           {
             backgroundColor: colors.backgroundWhite,
             borderColor: statusColors
-              ? statusColors.primary + '30'
+              ? statusColors.primary + '20'
               : colors.border,
+            shadowColor: colors.shadow,
           },
         ]}
         onPress={onInfoPress}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         {CardContent}
       </TouchableOpacity>
@@ -737,6 +779,7 @@ function MetricCard({
         {
           backgroundColor: colors.backgroundWhite,
           borderColor: colors.border,
+          shadowColor: colors.shadow,
         },
       ]}
     >
@@ -750,7 +793,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 56,
+    paddingBottom: 80,
   },
   loadingContainer: {
     flex: 1,
@@ -766,6 +809,7 @@ const styles = StyleSheet.create({
   heroContainer: {
     height: HERO_HEIGHT,
     position: 'relative',
+    backgroundColor: '#000',
   },
   carouselImageContainer: {
     width: SCREEN_WIDTH,
@@ -780,148 +824,189 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: HERO_HEIGHT * 0.65,
+    height: HERO_HEIGHT * 0.5,
+  },
+  dateOverlay: {
+    paddingHorizontal: 20,
+    alignItems: 'flex-start',
+  },
+  dateOverlayText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   heroPlaceholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
+  },
+  placeholderIconContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
   },
 
-  // Pagination
-  paginationWrapper: {
+  // Pagination and Date Overlay
+  bottomOverlay: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 0,
     left: 0,
     right: 0,
+    paddingBottom: 24,
+    gap: 16,
+  },
+  paginationWrapper: {
     alignItems: 'center',
   },
   paginationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 20,
     backdropFilter: 'blur(10px)',
   },
   paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 3,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
   },
 
   // Content Section
   contentSection: {
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 32,
   },
 
-  // AI Badge
+  // Header Section
+  headerSection: {
+    marginBottom: 28,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  headerLeft: {
+    flex: 1,
+  },
   aiBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 18,
-    backgroundColor: 'rgba(138, 180, 248, 0.12)',
-    gap: 7,
-    marginBottom: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   aiBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-
-  // Title Section
   mainTitle: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '800',
-    letterSpacing: -0.6,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 24,
+    letterSpacing: -1,
+    lineHeight: 42,
   },
 
   // Overall Status Card
   overallStatusCard: {
-    padding: 18,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    marginBottom: 28,
+    padding: 22,
+    borderRadius: CARD_RADIUS,
+    borderWidth: 2,
+    marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
   },
   overallStatusTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: -0.3,
-    marginBottom: 8,
+    letterSpacing: -0.4,
+    flex: 1,
   },
   overallStatusSummary: {
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: -0.1,
+    fontSize: 15,
+    lineHeight: 22,
+    letterSpacing: -0.2,
   },
 
   // Metrics Grid
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginHorizontal: -5,
+    gap: 14,
+    marginHorizontal: -2,
   },
   metricCard: {
     flex: 1,
     minWidth: '30%',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: METRIC_CARD_RADIUS,
+    padding: 22,
     borderWidth: 1.5,
-    gap: 12,
+    gap: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    position: 'relative',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 3,
   },
   metricIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   metricTextContainer: {
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
   },
   metricLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   metricValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
+    minHeight: 32,
+  },
+  metricInfoButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 4,
   },
 
   // Top Actions
@@ -941,21 +1026,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   // Image Modal
   imageModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    backgroundColor: 'rgba(0, 0, 0, 0.98)',
   },
   fullscreenSafeArea: {
     position: 'absolute',
@@ -966,27 +1051,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
   fullscreenCloseButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    backdropFilter: 'blur(10px)',
   },
   fullscreenCounter: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+    backdropFilter: 'blur(10px)',
   },
   fullscreenCounterText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   imageModalContent: {
     flex: 1,
