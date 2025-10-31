@@ -154,7 +154,7 @@ export async function buildUserContextSummary(
     .map(([name, bestSingle]) => ({ name, bestSingle }))
 
   const { data: bodyLogData, error: bodyLogError } = await supabase
-    .from('body_log_images')
+    .from('body_log_entries')
     .select(
       `
       id,
