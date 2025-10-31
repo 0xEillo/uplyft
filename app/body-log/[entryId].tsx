@@ -368,10 +368,14 @@ export default function BodyLogDetailScreen() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                onScroll={Animated.event(
-                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                  { useNativeDriver: false },
-                )}
+                onScroll={(event) => {
+                  const offsetX = event.nativeEvent.contentOffset.x
+                  scrollX.setValue(offsetX)
+                  const index = Math.round(offsetX / SCREEN_WIDTH)
+                  if (index !== currentImageIndex && index >= 0 && index < imageCount) {
+                    setCurrentImageIndex(index)
+                  }
+                }}
                 scrollEventThrottle={16}
                 onMomentumScrollEnd={(event) => {
                   const index = Math.round(
@@ -381,59 +385,20 @@ export default function BodyLogDetailScreen() {
                 }}
               />
 
-              {/* Pagination dots and date */}
+              {/* Pagination indicator and date */}
               <View style={styles.bottomOverlay}>
-                {imageCount > 1 && (
-                  <View style={styles.paginationWrapper}>
-                    <View style={styles.paginationContainer}>
-                      {imageUrls.map((_, index) => {
-                        const inputRange = [
-                          (index - 1) * SCREEN_WIDTH,
-                          index * SCREEN_WIDTH,
-                          (index + 1) * SCREEN_WIDTH,
-                        ]
-
-                        const opacity = scrollX.interpolate({
-                          inputRange,
-                          outputRange: [0.4, 1, 0.4],
-                          extrapolate: 'clamp',
-                        })
-
-                        const scale = scrollX.interpolate({
-                          inputRange,
-                          outputRange: [0.85, 1.15, 0.85],
-                          extrapolate: 'clamp',
-                        })
-
-                        const width = scrollX.interpolate({
-                          inputRange,
-                          outputRange: [6, 24, 6],
-                          extrapolate: 'clamp',
-                        })
-
-                        return (
-                          <Animated.View
-                            key={`dot-${index}`}
-                            style={[
-                              styles.paginationDot,
-                              {
-                                backgroundColor: '#FFFFFF',
-                                opacity,
-                                transform: [{ scale }],
-                                width,
-                              },
-                            ]}
-                          />
-                        )
-                      })}
-                    </View>
-                  </View>
-                )}
                 <View style={styles.dateOverlay}>
                   <Text style={styles.dateOverlayText}>
                     {entry.created_at ? formatBodyLogDate(entry.created_at) : '--'}
                   </Text>
                 </View>
+                {imageCount > 1 && (
+                  <View style={styles.paginationCounter}>
+                    <Text style={styles.paginationCounterText}>
+                      {currentImageIndex + 1} / {imageCount}
+                    </Text>
+                  </View>
+                )}
               </View>
             </>
           ) : (
@@ -456,16 +421,6 @@ export default function BodyLogDetailScreen() {
         <View style={styles.contentSection}>
           {/* Header Section */}
           <View style={styles.headerSection}>
-            <View style={styles.headerTop}>
-              <View style={styles.headerLeft}>
-                <View style={[styles.aiBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Ionicons name="sparkles" size={16} color={colors.primary} />
-                  <Text style={[styles.aiBadgeText, { color: colors.primary }]}>
-                    AI Analysis
-                  </Text>
-                </View>
-              </View>
-            </View>
             <Text style={[styles.mainTitle, { color: colors.text }]}>
               Body Composition
             </Text>
@@ -738,13 +693,18 @@ function MetricCard({
         </Text>
       </View>
       {onInfoPress && (
-        <View style={styles.metricInfoButton}>
+        <TouchableOpacity
+          style={styles.metricInfoButton}
+          onPress={onInfoPress}
+          activeOpacity={0.6}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Ionicons
             name="information-circle-outline"
-            size={18}
-            color={colors.textTertiary}
+            size={20}
+            color={statusColors ? statusColors.primary : colors.textSecondary}
           />
-        </View>
+        </TouchableOpacity>
       )}
     </>
   )
@@ -863,25 +823,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingBottom: 24,
+    paddingHorizontal: 20,
     gap: 16,
-  },
-  paginationWrapper: {
-    alignItems: 'center',
-  },
-  paginationContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backdropFilter: 'blur(10px)',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
-  paginationDot: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
+  paginationCounter: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  paginationCounterText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  dateOverlay: {
+    alignItems: 'flex-start',
   },
 
   // Content Section
@@ -1004,9 +964,11 @@ const styles = StyleSheet.create({
   },
   metricInfoButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 6,
+    right: 6,
     padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
 
   // Top Actions
