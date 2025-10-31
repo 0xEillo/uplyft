@@ -460,29 +460,6 @@ export default function CreatePostScreen() {
 
   const submitWorkout = async () => {
     try {
-      setIsLoading(true)
-
-      // Dismiss keyboard before starting animation
-      blurInputs()
-
-      // Haptic feedback for button press
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-
-      // Animate button press
-      Animated.sequence([
-        Animated.timing(buttonScaleAnim, {
-          toValue: 0.92,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.spring(buttonScaleAnim, {
-          toValue: 1,
-          tension: 100,
-          friction: 5,
-          useNativeDriver: true,
-        }),
-      ]).start()
-
       // Upload image if attached
       let imageUrl: string | null = null
       if (attachedImageUri) {
@@ -607,8 +584,29 @@ export default function CreatePostScreen() {
   }
 
   const handlePost = async () => {
+    // Immediate haptic feedback for responsive feel
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+    // Immediate button animation
+    Animated.sequence([
+      Animated.timing(buttonScaleAnim, {
+        toValue: 0.92,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonScaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+    ]).start()
+
     // Prevent multiple submissions by disabling button immediately
     setIsLoading(true)
+
+    // Dismiss keyboard
+    blurInputs()
 
     // Check if user is pro member
     if (!isProMember) {
