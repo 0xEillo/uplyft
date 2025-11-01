@@ -4,7 +4,7 @@ import { type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    getBodyLogImageUrls,
+  getBodyLogImageUrls,
 } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -12,20 +12,20 @@ import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    SectionList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  SectionList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Animated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -546,7 +546,7 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: IMAGE_SIZE,
       height: IMAGE_SIZE,
       margin: IMAGE_SPACING / 2,
-      borderRadius: 12,
+      borderRadius: 2,
       overflow: 'hidden',
       backgroundColor: colors.backgroundLight,
       shadowColor: colors.shadow,
