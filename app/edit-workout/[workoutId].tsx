@@ -1,3 +1,4 @@
+import { ExerciseSearchModal } from '@/components/exercise-search-modal'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -6,7 +7,7 @@ import {
   deleteWorkoutImage,
   uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -68,6 +69,14 @@ export default function EditWorkoutScreen() {
   const [deletedSetIds, setDeletedSetIds] = useState<Set<string>>(new Set())
   const [deletedExerciseIds, setDeletedExerciseIds] = useState<Set<string>>(
     new Set(),
+  )
+  const [editedExercises, setEditedExercises] = useState<
+    Record<string, string>
+  >({}) // workoutExerciseId -> new exerciseId
+  const [exerciseSearchModalVisible, setExerciseSearchModalVisible] =
+    useState(false)
+  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
+    null,
   )
 
   // Image management states
@@ -160,6 +169,49 @@ export default function EditWorkoutScreen() {
     loadWorkout()
   }, [loadWorkout])
 
+  const handleEditExercise = useCallback((workoutExerciseId: string) => {
+    setEditingExerciseId(workoutExerciseId)
+    setExerciseSearchModalVisible(true)
+  }, [])
+
+  const handleSelectExercise = useCallback(
+    async (selectedExercise: Exercise) => {
+      if (!editingExerciseId) return
+
+      try {
+        // Update local state
+        setEditedExercises((prev) => ({
+          ...prev,
+          [editingExerciseId]: selectedExercise.id,
+        }))
+
+        // Update workout state optimistically
+        setWorkout((prevWorkout) => {
+          if (!prevWorkout) return prevWorkout
+
+          return {
+            ...prevWorkout,
+            workout_exercises: prevWorkout.workout_exercises?.map((we) =>
+              we.id === editingExerciseId
+                ? {
+                    ...we,
+                    exercise_id: selectedExercise.id,
+                    exercise: selectedExercise,
+                  }
+                : we,
+            ),
+          }
+        })
+
+        setEditingExerciseId(null)
+      } catch (error) {
+        console.error('Error selecting exercise:', error)
+        Alert.alert('Error', 'Failed to update exercise. Please try again.')
+      }
+    },
+    [editingExerciseId],
+  )
+
   const handleSave = useCallback(async () => {
     if (!workoutId) return
 
@@ -211,7 +263,22 @@ export default function EditWorkoutScreen() {
       )
       await Promise.all(deleteSetPromises)
 
-      // 4. Update edited sets
+      // 4. Update edited exercises
+      const updateExercisePromises = Object.entries(editedExercises).map(
+        ([workoutExerciseId, newExerciseId]) => {
+          // Only update if the exercise hasn't been deleted
+          if (!deletedExerciseIds.has(workoutExerciseId)) {
+            return database.workoutExercises.update(
+              workoutExerciseId,
+              newExerciseId,
+            )
+          }
+          return Promise.resolve()
+        },
+      )
+      await Promise.all(updateExercisePromises)
+
+      // 5. Update edited sets
       const updateSetPromises = Object.entries(editedSets).map(
         ([setId, values]) => {
           // Only update if the set hasn't been deleted
@@ -263,6 +330,7 @@ export default function EditWorkoutScreen() {
     convertInputToKg,
     deletedExerciseIds,
     deletedSetIds,
+    editedExercises,
     editedNotes,
     editedSets,
     editedTitle,
@@ -595,7 +663,23 @@ export default function EditWorkoutScreen() {
                       </View>
                       <View style={styles.exerciseHeaderRight}>
                         <TouchableOpacity
-                          onPress={() => deleteExercise(workoutExercise.id)}
+                          onPress={(e) => {
+                            e.stopPropagation()
+                            handleEditExercise(workoutExercise.id)
+                          }}
+                          style={styles.editExerciseButton}
+                        >
+                          <Ionicons
+                            name="create-outline"
+                            size={18}
+                            color={colors.primary}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation()
+                            deleteExercise(workoutExercise.id)
+                          }}
                           style={styles.deleteExerciseButton}
                         >
                           <Ionicons
@@ -697,6 +781,22 @@ export default function EditWorkoutScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Exercise Search Modal */}
+      <ExerciseSearchModal
+        visible={exerciseSearchModalVisible}
+        onClose={() => {
+          setExerciseSearchModalVisible(false)
+          setEditingExerciseId(null)
+        }}
+        onSelectExercise={handleSelectExercise}
+        currentExerciseName={
+          editingExerciseId
+            ? workout?.workout_exercises?.find((we) => we.id === editingExerciseId)
+                ?.exercise?.name
+            : undefined
+        }
+      />
     </SafeAreaView>
   )
 }
@@ -874,6 +974,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setCount: {
       fontSize: 13,
       color: colors.textSecondary,
+    },
+    editExerciseButton: {
+      padding: 4,
     },
     deleteExerciseButton: {
       padding: 4,

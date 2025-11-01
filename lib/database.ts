@@ -547,6 +547,18 @@ export const database = {
 
   // Workout Exercise operations
   workoutExercises: {
+    async update(workoutExerciseId: string, exerciseId: string) {
+      const { data, error } = await supabase
+        .from('workout_exercises')
+        .update({ exercise_id: exerciseId })
+        .eq('id', workoutExerciseId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
     async delete(workoutExerciseId: string) {
       const { error } = await supabase
         .from('workout_exercises')
