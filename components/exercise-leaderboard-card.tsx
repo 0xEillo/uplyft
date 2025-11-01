@@ -55,6 +55,10 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   const colors = useThemedColors()
   const { formatWeight } = useWeightUnits()
 
+  // Animated value for toggle indicator position
+  const toggleIndicatorAnim = useRef(new Animated.Value(0)).current
+  const [segmentedControlWidth, setSegmentedControlWidth] = useState(0)
+
   // Get weight range from rankings (should be consistent across all exercises for the user)
   const weightRange =
     rankings.length > 0 &&
@@ -177,6 +181,16 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
     loadRankings()
   }, [loadRankings, refreshTrigger])
 
+  // Animate toggle indicator when mode changes
+  useEffect(() => {
+    Animated.spring(toggleIndicatorAnim, {
+      toValue: rankingMode === 'weight' ? 0 : 1,
+      useNativeDriver: true,
+      damping: 20,
+      stiffness: 300,
+    }).start()
+  }, [rankingMode, toggleIndicatorAnim])
+
   const topRankings = rankings.slice(0, 3)
   const remainingRankings = rankings.slice(3)
   const shouldShowExpand = remainingRankings.length > 0
@@ -267,18 +281,42 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
 
       {/* Ranking Mode Toggle */}
       <View style={styles.toggleContainer}>
-        <View style={styles.segmentedControl}>
-          <TouchableOpacity
+        <View
+          style={styles.segmentedControl}
+          onLayout={(event) => {
+            const { width } = event.nativeEvent.layout
+            if (width > 0) {
+              setSegmentedControlWidth(width)
+            }
+          }}
+        >
+          {segmentedControlWidth > 0 && (
+            <Animated.View
             style={[
-              styles.segmentButton,
-              styles.segmentButtonLeft,
-              rankingMode === 'weight' && styles.segmentButtonActive,
-            ]}
+                styles.toggleIndicator,
+                {
+                  transform: [
+                    {
+                      translateX: toggleIndicatorAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [
+                          0,
+                          segmentedControlWidth * 0.5 - 4,
+                        ],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          )}
+          <TouchableOpacity
+            style={styles.segmentButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
               setRankingMode('weight')
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -290,16 +328,12 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.segmentButton,
-              styles.segmentButtonRight,
-              rankingMode === 'overall' && styles.segmentButtonActive,
-            ]}
+            style={styles.segmentButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
               setRankingMode('overall')
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -518,9 +552,6 @@ function RankingRow({
     `${displayPercentile}th`,
   )
 
-  // Weight class expansion state (only for weight mode)
-  const [isWeightClassExpanded, setIsWeightClassExpanded] = useState(false)
-
   useEffect(() => {
     // Update displayed percentile when ranking mode changes
     setDisplayPercentileText(`${displayPercentile}th`)
@@ -575,68 +606,16 @@ function RankingRow({
               ]}
             />
           </View>
-          <View style={styles.percentileContainer}>
-            <Text
-              style={[
-                styles.percentileText,
-                isFirst && styles.firstPercentileText,
-                { color: tierInfo.color },
-              ]}
-            >
-              {displayPercentileText}
-            </Text>
-            {rankingMode === 'weight' &&
-              hasWeightClass &&
-              ranking.weightBucketStart != null &&
-              ranking.weightBucketEnd != null && (
-                <TouchableOpacity
-                  style={styles.weightClassBadge}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    setIsWeightClassExpanded(!isWeightClassExpanded)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="scale-outline"
-                    size={10}
-                    color={colors.textSecondary}
-                    style={styles.weightClassIcon}
-                  />
-                  <Text style={styles.weightBucketText}>BW</Text>
-                  <Ionicons
-                    name={isWeightClassExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={10}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              )}
-          </View>
+          <Text
+            style={[
+              styles.percentileText,
+              isFirst && styles.firstPercentileText,
+              { color: tierInfo.color },
+            ]}
+          >
+            {displayPercentileText}
+          </Text>
         </View>
-
-        {/* Weight Class Details Card */}
-        {hasWeightClass &&
-          isWeightClassExpanded &&
-          ranking.weightBucketStart != null &&
-          ranking.weightBucketEnd != null && (
-            <View style={styles.weightClassDetailsCard}>
-              <Text style={styles.weightClassDetailsLabel}>
-                Body Weight Class
-              </Text>
-              <Text style={styles.weightClassDetailsValue}>
-                {formatWeight(ranking.weightBucketStart, {
-                  maximumFractionDigits: 0,
-                })}{' '}
-                -{' '}
-                {formatWeight(ranking.weightBucketEnd, {
-                  maximumFractionDigits: 0,
-                })}
-              </Text>
-              <Text style={styles.weightClassDetailsDescription}>
-                Your ranking among users in this weight range
-              </Text>
-            </View>
-          )}
       </View>
     </View>
   )
@@ -715,40 +694,53 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginRight: -4,
     },
     toggleContainer: {
-      marginBottom: 16,
+      marginBottom: 20,
       alignItems: 'center',
     },
     segmentedControl: {
       flexDirection: 'row',
       backgroundColor: colors.backgroundLight,
-      borderRadius: 10,
-      padding: 2,
+      borderRadius: 9999,
+      padding: 4,
+      position: 'relative',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    toggleIndicator: {
+      position: 'absolute',
+      top: 4,
+      bottom: 4,
+      left: 4,
+      width: '48%',
+      backgroundColor: colors.primary,
+      borderRadius: 9999,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
     },
     segmentButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-    },
-    segmentButtonLeft: {
-      borderTopLeftRadius: 8,
-      borderBottomLeftRadius: 8,
-    },
-    segmentButtonRight: {
-      borderTopRightRadius: 8,
-      borderBottomRightRadius: 8,
-    },
-    segmentButtonActive: {
-      backgroundColor: colors.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 18,
+      zIndex: 1,
     },
     segmentText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.textSecondary,
+      letterSpacing: 0.2,
     },
     segmentTextActive: {
       color: colors.white,
+      fontWeight: '700',
     },
     loadingContainer: {
       height: 120,
@@ -815,72 +807,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       height: 8,
       backgroundColor: colors.backgroundLight,
-      borderRadius: 4,
+      borderRadius: 9999,
       overflow: 'hidden',
     },
     progressFill: {
       height: '100%',
-      borderRadius: 4,
+      borderRadius: 9999,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.2,
       shadowRadius: 2,
       position: 'relative',
     },
-    percentileContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
     percentileText: {
       fontSize: 14,
       fontWeight: '700',
       minWidth: 40,
       textAlign: 'right',
-    },
-    weightClassBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 6,
-      gap: 3,
-    },
-    weightClassIcon: {
-      marginTop: 1,
-    },
-    weightBucketText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    weightClassDetailsCard: {
-      marginTop: 8,
-      backgroundColor: colors.backgroundLight,
-      borderRadius: 8,
-      padding: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
-    },
-    weightClassDetailsLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: 4,
-    },
-    weightClassDetailsValue: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    weightClassDetailsDescription: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      lineHeight: 16,
     },
     firstPercentileText: {
       fontSize: 16,

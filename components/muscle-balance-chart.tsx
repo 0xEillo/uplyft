@@ -433,7 +433,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       paddingVertical: 10,
       paddingHorizontal: 16,
-      borderRadius: 8,
+      borderRadius: 9999,
       backgroundColor: colors.backgroundLight,
       alignItems: 'center',
     },
@@ -500,12 +500,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     barBackground: {
       height: 12,
       backgroundColor: colors.backgroundLight,
-      borderRadius: 6,
+      borderRadius: 9999,
       overflow: 'hidden',
     },
     barFill: {
       height: '100%',
-      borderRadius: 6,
+      borderRadius: 9999,
     },
     volumeText: {
       fontSize: 12,

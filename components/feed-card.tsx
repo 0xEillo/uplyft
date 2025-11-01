@@ -808,7 +808,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.primary,
       paddingHorizontal: 6,
       paddingVertical: 2,
-      borderRadius: 4,
+      borderRadius: 9999,
       marginLeft: 6,
     },
     prBadgeHistorical: {
@@ -824,7 +824,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.primary,
       paddingHorizontal: 4,
       paddingVertical: 1,
-      borderRadius: 3,
+      borderRadius: 9999,
     },
     prBadgeSmallHistorical: {
       backgroundColor: colors.textPlaceholder,

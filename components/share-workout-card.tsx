@@ -339,7 +339,7 @@ const createStyles = (
       backgroundColor: colors.primary,
       paddingHorizontal: 6 * scale,
       paddingVertical: 2 * scale,
-      borderRadius: 4 * scale,
+      borderRadius: 9999,
     },
     prBadgeHistorical: {
       backgroundColor: colors.textPlaceholder,
@@ -354,7 +354,7 @@ const createStyles = (
       backgroundColor: colors.primary,
       paddingHorizontal: 4 * scale,
       paddingVertical: 1 * scale,
-      borderRadius: 3 * scale,
+      borderRadius: 9999,
     },
     prBadgeSmallHistorical: {
       backgroundColor: colors.textPlaceholder,

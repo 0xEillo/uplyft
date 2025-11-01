@@ -536,7 +536,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       backgroundColor: colors.white,
       padding: 16,
-      borderRadius: 12,
+      borderRadius: 9999,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -576,17 +576,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     messageContent: {
       maxWidth: '80%',
       padding: 12,
-      borderRadius: 16,
+      borderRadius: 9999,
     },
     userMessageContent: {
       backgroundColor: colors.primary,
-      borderBottomRightRadius: 4,
     },
     assistantMessageContent: {
       backgroundColor: colors.white,
       borderWidth: 1,
       borderColor: colors.border,
-      borderBottomLeftRadius: 4,
     },
     messageText: {
       fontSize: 15,
@@ -612,7 +610,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     input: {
       flex: 1,
       backgroundColor: colors.backgroundLight,
-      borderRadius: 20,
+      borderRadius: 9999,
       paddingHorizontal: 16,
       paddingTop: 10,
       paddingBottom: 10,
@@ -625,7 +623,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sendButton: {
       width: 40,
       height: 40,
-      borderRadius: 20,
+      borderRadius: 9999,
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -645,8 +643,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.white,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 16,
-      borderBottomLeftRadius: 4,
+      borderRadius: 9999,
       paddingHorizontal: 12,
       paddingVertical: 10,
     },
