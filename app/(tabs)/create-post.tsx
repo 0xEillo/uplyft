@@ -21,7 +21,6 @@ import {
   parseCommitment,
 } from '@/lib/utils/workout-messages'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
@@ -270,7 +269,10 @@ export default function CreatePostScreen() {
       const loadWorkoutCount = async () => {
         try {
           if (user?.id) {
-            const workouts = await database.workoutSessions.getRecent(user.id, 1)
+            const workouts = await database.workoutSessions.getRecent(
+              user.id,
+              1,
+            )
             setUserWorkoutCount(workouts.length)
           }
         } catch (error) {
@@ -725,21 +727,23 @@ export default function CreatePostScreen() {
             bounces={true}
           >
             {/* Title Input */}
-            <TextInput
-              ref={titleInputRef}
-              style={styles.titleInput}
-              placeholder="Workout Title"
-              placeholderTextColor="#999"
-              value={workoutTitle}
-              onChangeText={setWorkoutTitle}
-              editable={!isRecording && !isTranscribing}
-              maxLength={50}
-              autoFocus={false}
-              cursorColor={colors.primary}
-              selectionColor={
-                Platform.OS === 'ios' ? colors.primary : undefined
-              }
-            />
+            <View style={styles.titleInputContainer}>
+              <TextInput
+                ref={titleInputRef}
+                style={styles.titleInput}
+                placeholder="Workout Title"
+                placeholderTextColor="#999"
+                value={workoutTitle}
+                onChangeText={setWorkoutTitle}
+                editable={!isRecording && !isTranscribing}
+                maxLength={50}
+                autoFocus={false}
+                cursorColor={colors.primary}
+                selectionColor={
+                  Platform.OS === 'ios' ? colors.primary : undefined
+                }
+              />
+            </View>
 
             {/* Divider */}
             <View style={styles.divider} />
@@ -1028,13 +1032,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexGrow: 1,
       position: 'relative',
     },
-    titleInput: {
+    titleInputContainer: {
       paddingHorizontal: 20,
       paddingTop: 20,
       paddingBottom: 12,
+    },
+    titleInput: {
       fontSize: 28,
       fontWeight: '600',
       color: colors.text,
+      minHeight: 36,
     },
     divider: {
       height: 1,
