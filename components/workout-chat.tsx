@@ -576,15 +576,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     messageContent: {
       maxWidth: '80%',
       padding: 12,
-      borderRadius: 9999,
+      borderRadius: 16,
     },
     userMessageContent: {
       backgroundColor: colors.primary,
+      borderBottomRightRadius: 4,
     },
     assistantMessageContent: {
       backgroundColor: colors.white,
       borderWidth: 1,
       borderColor: colors.border,
+      borderBottomLeftRadius: 4,
     },
     messageText: {
       fontSize: 15,
@@ -643,7 +645,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.white,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 9999,
+      borderRadius: 16,
+      borderBottomLeftRadius: 4,
       paddingHorizontal: 12,
       paddingVertical: 10,
     },
