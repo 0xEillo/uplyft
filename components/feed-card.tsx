@@ -711,9 +711,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.white,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
+      borderRadius: 4,
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+      marginBottom: 2,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,

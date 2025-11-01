@@ -385,7 +385,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 16,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: 'rgba(0, 0, 0, 0.08)',
     },
     headerTitleContainer: {
       flexDirection: 'row',
@@ -405,7 +405,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     feed: {
-      padding: 16,
+      paddingTop: 2,
+      paddingBottom: 2,
     },
     loadingContainer: {
       flex: 1,

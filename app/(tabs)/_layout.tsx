@@ -118,7 +118,7 @@ function TabLayoutContent() {
           tabBarStyle: {
             backgroundColor: colors.white,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
+            borderTopColor: 'rgba(0, 0, 0, 0.08)',
             height: 90,
             paddingBottom: 30,
             paddingTop: 8,
