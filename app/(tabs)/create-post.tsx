@@ -114,7 +114,6 @@ export default function CreatePostScreen() {
 
   // Page opening animation - like lifting a notepad or opening a book
   const pageSlideAnim = useRef(new Animated.Value(100)).current // Start below screen
-  const pageScaleAnim = useRef(new Animated.Value(0.94)).current // Start slightly smaller
   const pageOpacityAnim = useRef(new Animated.Value(0)).current // Start transparent
 
   const titleInputRef = useRef<TextInput>(null)
@@ -223,7 +222,6 @@ export default function CreatePostScreen() {
     useCallback(() => {
       // Reset animation values
       pageSlideAnim.setValue(100)
-      pageScaleAnim.setValue(0.94)
       pageOpacityAnim.setValue(0)
 
       // Light haptic feedback when page opens
@@ -234,13 +232,6 @@ export default function CreatePostScreen() {
         // Slide up from below
         Animated.spring(pageSlideAnim, {
           toValue: 0,
-          tension: 50,
-          friction: 9,
-          useNativeDriver: true,
-        }),
-        // Scale up to full size
-        Animated.spring(pageScaleAnim, {
-          toValue: 1,
           tension: 50,
           friction: 9,
           useNativeDriver: true,
@@ -293,7 +284,7 @@ export default function CreatePostScreen() {
         interactionHandle.cancel?.()
         blurInputs()
       }
-    }, [blurInputs, trackEvent, pageSlideAnim, pageScaleAnim, pageOpacityAnim]),
+    }, [blurInputs, trackEvent, pageSlideAnim, pageOpacityAnim]),
   )
 
   // Blur inputs when component unmounts
@@ -679,10 +670,9 @@ export default function CreatePostScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Animated.View
-        needsOffscreenAlphaCompositing={true}
         style={{
           flex: 1,
-          transform: [{ translateY: pageSlideAnim }, { scale: pageScaleAnim }],
+          transform: [{ translateY: pageSlideAnim }],
           opacity: pageOpacityAnim,
         }}
       >
