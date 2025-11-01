@@ -1,12 +1,14 @@
 import { ExerciseLeaderboardCard } from '@/components/exercise-leaderboard-card'
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
+import SwipeTutorialOverlay from '@/components/SwipeTutorialOverlay'
 import { WorkoutChat } from '@/components/workout-chat'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router, useFocusEffect } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
@@ -17,11 +19,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { runOnJS } from 'react-native-reanimated'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import SwipeTutorialOverlay from '@/components/SwipeTutorialOverlay'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type TabType = 'progress' | 'chat'
 
@@ -39,6 +39,7 @@ export default function ProfileScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
+  const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<TabType>('chat')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -59,7 +60,7 @@ export default function ProfileScreen() {
       trackEvent(AnalyticsEvents.EXPLORE_VIEWED, {
         timestamp: Date.now(),
       })
-    }, [trackEvent])
+    }, [trackEvent]),
   )
 
   // Tutorial logic: track visits and show tutorial if needed
@@ -68,19 +69,26 @@ export default function ProfileScreen() {
       const handleTutorialLogic = async () => {
         try {
           // Check if user has already visited body log
-          const hasVisitedBodyLog = await AsyncStorage.getItem(HAS_VISITED_BODY_LOG_KEY)
+          const hasVisitedBodyLog = await AsyncStorage.getItem(
+            HAS_VISITED_BODY_LOG_KEY,
+          )
 
           if (hasVisitedBodyLog === 'true') {
             return
           }
 
           // Get current visit count
-          const visitCountStr = await AsyncStorage.getItem(PROFILE_VISIT_COUNT_KEY)
+          const visitCountStr = await AsyncStorage.getItem(
+            PROFILE_VISIT_COUNT_KEY,
+          )
           const visitCount = visitCountStr ? parseInt(visitCountStr, 10) : 0
 
           // Increment visit count
           const newVisitCount = visitCount + 1
-          await AsyncStorage.setItem(PROFILE_VISIT_COUNT_KEY, newVisitCount.toString())
+          await AsyncStorage.setItem(
+            PROFILE_VISIT_COUNT_KEY,
+            newVisitCount.toString(),
+          )
 
           // Show tutorial starting from 2nd visit onwards
           if (newVisitCount >= 2) {
@@ -101,7 +109,7 @@ export default function ProfileScreen() {
           clearTimeout(tutorialTimerRef.current)
         }
       }
-    }, [])
+    }, []),
   )
 
   const handleTutorialDismiss = useCallback(() => {
@@ -136,13 +144,15 @@ export default function ProfileScreen() {
             runOnJS(handleSwipeNavigation)()
           }
         }),
-    [handleSwipeNavigation]
+    [handleSwipeNavigation],
   )
 
   const styles = createStyles(colors)
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Status bar background to match navbar */}
+      <View style={[styles.statusBarBackground, { height: insets.top }]} />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
@@ -228,7 +238,9 @@ export default function ProfileScreen() {
       </GestureDetector>
 
       {/* Tutorial Overlay */}
-      {showTutorial && <SwipeTutorialOverlay onDismiss={handleTutorialDismiss} />}
+      {showTutorial && (
+        <SwipeTutorialOverlay onDismiss={handleTutorialDismiss} />
+      )}
     </SafeAreaView>
   )
 }
@@ -238,6 +250,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    statusBarBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.white,
+      zIndex: 0,
     },
     header: {
       flexDirection: 'row',

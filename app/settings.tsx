@@ -26,7 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
@@ -35,6 +35,7 @@ export default function SettingsScreen() {
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit } = useWeightUnits()
   const { isProMember, customerInfo, restorePurchases } = useSubscription()
+  const insets = useSafeAreaInsets()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditModalVisible, setIsEditModalVisible] = useState(false)
@@ -397,6 +398,8 @@ export default function SettingsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Status bar background to match navbar */}
+        <View style={[styles.statusBarBackground, { height: insets.top }]} />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -413,6 +416,8 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Status bar background to match navbar */}
+      <View style={[styles.statusBarBackground, { height: insets.top }]} />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -871,6 +876,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    statusBarBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.white,
+      zIndex: 0,
     },
     header: {
       flexDirection: 'row',

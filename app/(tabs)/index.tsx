@@ -29,7 +29,7 @@ import {
   UIManager,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Enable LayoutAnimation on Android
 if (
@@ -80,6 +80,7 @@ export default function FeedScreen() {
   const { isDark } = useTheme()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
+  const insets = useSafeAreaInsets()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -262,7 +263,13 @@ export default function FeedScreen() {
   const styles = createStyles(colors)
 
   const renderWorkoutItem = useCallback(
-    ({ item: workout, index }: { item: WorkoutSessionWithDetails; index: number }) => (
+    ({
+      item: workout,
+      index,
+    }: {
+      item: WorkoutSessionWithDetails
+      index: number
+    }) => (
       <AnimatedFeedCard
         key={workout.id}
         workout={workout}
@@ -305,6 +312,8 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Status bar background to match navbar */}
+      <View style={[styles.statusBarBackground, { height: insets.top }]} />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
@@ -340,15 +349,15 @@ export default function FeedScreen() {
         <EmptyFeedState />
       ) : (
         <FlatList
-            data={workouts}
-            renderItem={renderWorkoutItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.feed}
-            showsVerticalScrollIndicator={false}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={renderFooter}
-          />
+          data={workouts}
+          renderItem={renderWorkoutItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.feed}
+          showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+        />
       )}
     </SafeAreaView>
   )
@@ -359,6 +368,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    statusBarBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.white,
+      zIndex: 0,
     },
     header: {
       flexDirection: 'row',
