@@ -19,10 +19,10 @@ import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
   LayoutAnimation,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -87,43 +87,84 @@ export default function FeedScreen() {
   const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
     null,
   )
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
 
   const loadWorkouts = useCallback(
-    async (showLoading = false) => {
+    async (showLoading = false, loadMore = false) => {
       if (!user) return
 
+      // Prevent concurrent load-more operations (but allow initial loads)
+      if (loadMore && isLoadingMore) {
+        return
+      }
+
       try {
-        if (showLoading) {
+        if (loadMore) {
+          setIsLoadingMore(true)
+        } else if (showLoading) {
           setIsLoading(true)
         }
-        const data = await database.workoutSessions.getRecent(user.id, 20)
 
-        // Load placeholder workout if it exists
-        const placeholder = await loadPlaceholderWorkout()
+        const currentOffset = loadMore ? offset : 0
+        const limit = 10
+        const data = await database.workoutSessions.getRecent(
+          user.id,
+          limit,
+          currentOffset,
+        )
 
-        // Use animation when updating existing list
-        if (!isInitialLoad && workouts.length > 0) {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+        // Check if we have more workouts to load
+        const hasMoreWorkouts = data.length === limit
+
+        if (loadMore) {
+          // Append new workouts to existing list
+          setWorkouts((prev) => {
+            // Filter out placeholder before appending
+            const filtered = prev.filter((w: any) => !w.isPending)
+
+            // Deduplicate: only add workouts that aren't already in the list
+            const existingIds = new Set(filtered.map((w) => w.id))
+            const newWorkouts = data.filter((w) => !existingIds.has(w.id))
+
+            return [...filtered, ...newWorkouts]
+          })
+          const nextOffset = currentOffset + data.length
+          setOffset(nextOffset)
+          setHasMore(hasMoreWorkouts)
+        } else {
+          // Initial load or refresh
+          // Load placeholder workout if it exists
+          const placeholder = await loadPlaceholderWorkout()
+
+          // Use animation when updating existing list
+          if (!isInitialLoad && workouts.length > 0) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+          }
+
+          // Add placeholder at the top if it exists
+          const workoutsWithPlaceholder: WorkoutSessionWithDetails[] = placeholder
+            ? ([
+                (placeholder as unknown) as WorkoutSessionWithDetails,
+                ...data,
+              ] as WorkoutSessionWithDetails[])
+            : data
+
+          setWorkouts(workoutsWithPlaceholder)
+          setOffset(data.length)
+          setHasMore(hasMoreWorkouts)
+          setIsInitialLoad(false)
         }
-
-        // Add placeholder at the top if it exists
-        const workoutsWithPlaceholder: WorkoutSessionWithDetails[] = placeholder
-          ? ([
-              (placeholder as unknown) as WorkoutSessionWithDetails,
-              ...data,
-            ] as WorkoutSessionWithDetails[])
-          : data
-
-        setWorkouts(workoutsWithPlaceholder)
-        setIsInitialLoad(false)
       } catch (error) {
         console.error('Error loading workouts:', error)
       } finally {
         setIsLoading(false)
+        setIsLoadingMore(false)
       }
     },
-    [user, isInitialLoad, workouts.length],
+    [user, isInitialLoad, offset],
   )
 
   const handlePendingPost = useCallback(async () => {
@@ -137,27 +178,16 @@ export default function FeedScreen() {
       }
 
       if (result.status === 'success') {
-        const { workout, placeholder } = result
+        const { workout } = result
 
         setNewWorkoutId(workout.id)
         LayoutAnimation.configureNext(CustomSlideAnimation)
 
-        setWorkouts((prev) => {
-          if (placeholder) {
-            const index = prev.findIndex((item) => item.id === placeholder.id)
-            if (index >= 0) {
-              const clone = [...prev]
-              clone.splice(index, 1, workout)
-              return clone
-            }
-          }
-
-          if (prev.length > 0 && (prev[0] as any).isPending) {
-            return [workout, ...prev.slice(1)]
-          }
-
-          return [workout, ...prev]
-        })
+        // Reload the feed from scratch to ensure consistency with pagination
+        // Reset pagination state
+        setOffset(0)
+        setHasMore(true)
+        loadWorkouts(false, false)
 
         setTimeout(() => setNewWorkoutId(null), 1000)
         return
@@ -204,6 +234,12 @@ export default function FeedScreen() {
     }
   }, [user, isProcessingPending, processPendingWorkout, router])
 
+  const handleLoadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      loadWorkouts(false, true)
+    }
+  }, [isLoadingMore, hasMore, isLoading, loadWorkouts])
+
   useFocusEffect(
     useCallback(() => {
       trackEvent(AnalyticsEvents.FEED_VIEWED, {
@@ -211,22 +247,61 @@ export default function FeedScreen() {
         workoutCount: workouts.length,
       })
 
-      // Load existing workouts immediately (non-blocking)
-      loadWorkouts(isInitialLoad)
+      // Only load on initial mount, don't reload on every focus
+      if (isInitialLoad) {
+        loadWorkouts(true)
+      }
 
       // Process pending post in background (non-blocking)
       // CreateButton spinner in tab bar responds via shared pending status
       handlePendingPost()
-    }, [
-      handlePendingPost,
-      loadWorkouts,
-      isInitialLoad,
-      workouts.length,
-      trackEvent,
-    ]),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [handlePendingPost, loadWorkouts, isInitialLoad, trackEvent]),
   )
 
   const styles = createStyles(colors)
+
+  const renderWorkoutItem = useCallback(
+    ({ item: workout, index }: { item: WorkoutSessionWithDetails; index: number }) => (
+      <AnimatedFeedCard
+        key={workout.id}
+        workout={workout}
+        index={index}
+        isNew={workout.id === newWorkoutId}
+        isDeleting={workout.id === deletingWorkoutId}
+        onDelete={() => {
+          // If already marked for deletion, actually remove from state
+          if (workout.id === deletingWorkoutId) {
+            // Smooth layout animation for remaining cards sliding up
+            LayoutAnimation.configureNext(CardDeleteAnimation)
+            setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
+            setDeletingWorkoutId(null)
+
+            trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
+              workout_id: workout.id,
+            })
+          } else {
+            // Mark for deletion to trigger exit animation
+            setDeletingWorkoutId(workout.id)
+
+            trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
+              workout_id: workout.id,
+            })
+          }
+        }}
+      />
+    ),
+    [newWorkoutId, deletingWorkoutId, trackEvent],
+  )
+
+  const renderFooter = useCallback(() => {
+    if (!isLoadingMore) return null
+    return (
+      <View style={styles.loadingMoreContainer}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    )
+  }, [isLoadingMore, colors.primary, styles.loadingMoreContainer])
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -264,42 +339,16 @@ export default function FeedScreen() {
       ) : workouts.length === 0 ? (
         <EmptyFeedState />
       ) : (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Feed Posts */}
-          <View style={styles.feed}>
-            {workouts.map((workout, index) => (
-              <AnimatedFeedCard
-                key={workout.id}
-                workout={workout}
-                index={index}
-                isNew={workout.id === newWorkoutId}
-                isDeleting={workout.id === deletingWorkoutId}
-                onDelete={() => {
-                  // If already marked for deletion, actually remove from state
-                  if (workout.id === deletingWorkoutId) {
-                    // Smooth layout animation for remaining cards sliding up
-                    LayoutAnimation.configureNext(CardDeleteAnimation)
-                    setWorkouts((prev) =>
-                      prev.filter((w) => w.id !== workout.id),
-                    )
-                    setDeletingWorkoutId(null)
-
-                    trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
-                      workout_id: workout.id,
-                    })
-                  } else {
-                    // Mark for deletion to trigger exit animation
-                    setDeletingWorkoutId(workout.id)
-
-                    trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
-                      workout_id: workout.id,
-                    })
-                  }
-                }}
-              />
-            ))}
-          </View>
-        </ScrollView>
+        <FlatList
+            data={workouts}
+            renderItem={renderWorkoutItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.feed}
+            showsVerticalScrollIndicator={false}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+          />
       )}
     </SafeAreaView>
   )
@@ -343,6 +392,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     loadingContainer: {
       flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingMoreContainer: {
+      paddingVertical: 20,
       alignItems: 'center',
       justifyContent: 'center',
     },

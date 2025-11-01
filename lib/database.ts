@@ -417,7 +417,7 @@ export const database = {
       return session as WorkoutSession
     },
 
-    async getRecent(userId: string, limit = 20) {
+    async getRecent(userId: string, limit = 10, offset = 0) {
       const { data, error } = await supabase
         .from('workout_sessions')
         .select(
@@ -432,7 +432,7 @@ export const database = {
         )
         .eq('user_id', userId)
         .order('date', { ascending: false })
-        .limit(limit)
+        .range(offset, offset + limit - 1)
 
       if (error) throw error
       return data as WorkoutSessionWithDetails[]
