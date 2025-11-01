@@ -40,6 +40,8 @@ interface ExerciseLeaderboardCardProps {
  * Exercise leaderboard card showing user's percentile rankings.
  * Features sleek modern design with animated progress bars and tier badges.
  */
+type RankingMode = 'weight' | 'overall'
+
 export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   userId,
   refreshTrigger = 0,
@@ -49,7 +51,17 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [animatedValues] = useState(() => new Map<string, Animated.Value>())
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [rankingMode, setRankingMode] = useState<RankingMode>('weight')
   const colors = useThemedColors()
+  const { formatWeight } = useWeightUnits()
+
+  // Get weight range from rankings (should be consistent across all exercises for the user)
+  const weightRange =
+    rankings.length > 0 &&
+    rankings[0].weightBucketStart != null &&
+    rankings[0].weightBucketEnd != null
+      ? `${formatWeight(rankings[0].weightBucketStart, { maximumFractionDigits: 0 })}-${formatWeight(rankings[0].weightBucketEnd, { maximumFractionDigits: 0 })}`
+      : 'By Weight'
 
   // Animation refs for info modal
   const infoSlideAnim = useRef(
@@ -241,32 +253,63 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             </Text>
           </View>
         </View>
-        <View style={styles.headerRightButtons}>
+        <TouchableOpacity
+          style={styles.infoButton}
+          onPress={() => setShowInfoModal(true)}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={20}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Ranking Mode Toggle */}
+      <View style={styles.toggleContainer}>
+        <View style={styles.segmentedControl}>
           <TouchableOpacity
-            style={styles.infoButton}
-            onPress={() => setShowInfoModal(true)}
+            style={[
+              styles.segmentButton,
+              styles.segmentButtonLeft,
+              rankingMode === 'weight' && styles.segmentButtonActive,
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              setRankingMode('weight')
+            }}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-          {shouldShowExpand && (
-            <TouchableOpacity
-              style={styles.expandButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                setIsExpanded(!isExpanded)
-              }}
+            <Text
+              style={[
+                styles.segmentText,
+                rankingMode === 'weight' && styles.segmentTextActive,
+              ]}
             >
-              <Ionicons
-                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          )}
+              {weightRange}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              styles.segmentButtonRight,
+              rankingMode === 'overall' && styles.segmentButtonActive,
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              setRankingMode('overall')
+            }}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                rankingMode === 'overall' && styles.segmentTextActive,
+              ]}
+            >
+              Overall
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -279,6 +322,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             animatedValue={animatedValues.get(ranking.exerciseId)!}
             colors={colors}
             isFirst={index === 0}
+            rankingMode={rankingMode}
           />
         ))}
       </View>
@@ -298,6 +342,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
                 animatedValue={animatedValues.get(ranking.exerciseId)!}
                 colors={colors}
                 isCompact
+                rankingMode={rankingMode}
               />
             ))}
           </ScrollView>
@@ -318,6 +363,20 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             {remainingRankings.length !== 1 ? 's' : ''}
           </Text>
           <Ionicons name="chevron-down" size={16} color={colors.primary} />
+        </TouchableOpacity>
+      )}
+
+      {/* Show Less Button */}
+      {shouldShowExpand && isExpanded && (
+        <TouchableOpacity
+          style={styles.showMoreButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            setIsExpanded(false)
+          }}
+        >
+          <Text style={styles.showMoreText}>Show less</Text>
+          <Ionicons name="chevron-up" size={16} color={colors.primary} />
         </TouchableOpacity>
       )}
 
@@ -431,6 +490,7 @@ interface RankingRowProps {
   colors: ReturnType<typeof useThemedColors>
   isFirst?: boolean
   isCompact?: boolean
+  rankingMode: RankingMode
 }
 
 function RankingRow({
@@ -439,73 +499,48 @@ function RankingRow({
   colors,
   isFirst = false,
   isCompact = false,
+  rankingMode,
 }: RankingRowProps) {
   const { formatWeight } = useWeightUnits()
   const styles = createStyles(colors)
 
-  // Determine which percentile to use as primary (gender first, fallback to overall)
-  const primaryPercentile = ranking.genderPercentile ?? ranking.percentile
+  // Determine which percentile to display based on ranking mode
   const hasWeightClass = ranking.genderWeightPercentile != null
+  const displayPercentile =
+    rankingMode === 'weight' && hasWeightClass
+      ? ranking.genderWeightPercentile!
+      : ranking.genderPercentile ?? ranking.percentile
 
-  const tierInfo = resolveTierInfo(primaryPercentile, colors)
+  const tierInfo = resolveTierInfo(displayPercentile, colors)
 
-  // Animation state for primary bar
-  const [displayPrimaryPercentile, setDisplayPrimaryPercentile] = useState(
-    `${primaryPercentile}th`,
+  // Animation state for displayed percentile
+  const [displayPercentileText, setDisplayPercentileText] = useState(
+    `${displayPercentile}th`,
   )
 
-  // Animation state for weight class bar (if available)
-  const [displayWeightPercentile, setDisplayWeightPercentile] = useState(
-    hasWeightClass ? `${ranking.genderWeightPercentile}th` : '',
-  )
-
-  // Weight class expansion state
+  // Weight class expansion state (only for weight mode)
   const [isWeightClassExpanded, setIsWeightClassExpanded] = useState(false)
 
-  // Create animated value for weight class bar
-  const [weightAnimatedValue] = useState(() => new Animated.Value(0))
-
   useEffect(() => {
-    // Set initial values
-    setDisplayPrimaryPercentile(`${primaryPercentile}th`)
-    if (hasWeightClass) {
-      setDisplayWeightPercentile(`${ranking.genderWeightPercentile}th`)
-    }
+    // Update displayed percentile when ranking mode changes
+    setDisplayPercentileText(`${displayPercentile}th`)
 
-    // Animate primary bar
-    const primaryListener = animatedValue.addListener(({ value }) => {
+    // Reset animated value to 0 and animate to new percentile
+    animatedValue.setValue(0)
+    Animated.timing(animatedValue, {
+      toValue: displayPercentile,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start()
+
+    // Add listener for animation updates
+    const listener = animatedValue.addListener(({ value }) => {
       const roundedValue = Math.round(value)
-      setDisplayPrimaryPercentile(`${roundedValue}th`)
+      setDisplayPercentileText(`${roundedValue}th`)
     })
 
-    // Animate weight class bar with slight stagger
-    if (hasWeightClass) {
-      Animated.timing(weightAnimatedValue, {
-        toValue: ranking.genderWeightPercentile!,
-        duration: 1000,
-        delay: 50,
-        useNativeDriver: false,
-      }).start()
-
-      const weightListener = weightAnimatedValue.addListener(({ value }) => {
-        const roundedValue = Math.round(value)
-        setDisplayWeightPercentile(`${roundedValue}th`)
-      })
-
-      return () => {
-        animatedValue.removeListener(primaryListener)
-        weightAnimatedValue.removeListener(weightListener)
-      }
-    }
-
-    return () => animatedValue.removeListener(primaryListener)
-  }, [
-    animatedValue,
-    primaryPercentile,
-    hasWeightClass,
-    ranking.genderWeightPercentile,
-    weightAnimatedValue,
-  ])
+    return () => animatedValue.removeListener(listener)
+  }, [animatedValue, displayPercentile, rankingMode])
 
   return (
     <View style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}>
@@ -523,7 +558,7 @@ function RankingRow({
           </Text>
         </View>
 
-        {/* Primary Progress Bar (Gender or Overall) */}
+        {/* Progress Bar */}
         <View style={styles.progressContainer}>
           <View style={styles.progressTrack}>
             <Animated.View
@@ -540,80 +575,44 @@ function RankingRow({
               ]}
             />
           </View>
-          <Text
-            style={[
-              styles.percentileText,
-              isFirst && styles.firstPercentileText,
-              { color: tierInfo.color },
-            ]}
-          >
-            {displayPrimaryPercentile}
-          </Text>
-        </View>
-
-        {/* Secondary Progress Bar (Weight Class) */}
-        {hasWeightClass && (
-          <View
-            style={[
-              styles.progressContainer,
-              styles.secondaryProgressContainer,
-            ]}
-          >
-            <View style={[styles.progressTrack, styles.secondaryProgressTrack]}>
-              <Animated.View
-                style={[
-                  styles.progressFill,
-                  styles.secondaryProgressFill,
-                  {
-                    width: weightAnimatedValue.interpolate({
-                      inputRange: [0, 100],
-                      outputRange: ['0%', '100%'],
-                      extrapolate: 'clamp',
-                    }),
-                    backgroundColor: tierInfo.color,
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.secondaryPercentileContainer}>
-              <Text
-                style={[
-                  styles.percentileText,
-                  styles.secondaryPercentileText,
-                  { color: tierInfo.color },
-                ]}
-              >
-                {displayWeightPercentile}
-              </Text>
-              {ranking.weightBucketStart != null &&
-                ranking.weightBucketEnd != null && (
-                  <TouchableOpacity
-                    style={styles.weightClassBadge}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                      setIsWeightClassExpanded(!isWeightClassExpanded)
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="scale-outline"
-                      size={10}
-                      color={colors.textSecondary}
-                      style={styles.weightClassIcon}
-                    />
-                    <Text style={styles.weightBucketText}>BW</Text>
-                    <Ionicons
-                      name={
-                        isWeightClassExpanded ? 'chevron-up' : 'chevron-down'
-                      }
-                      size={10}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                )}
-            </View>
+          <View style={styles.percentileContainer}>
+            <Text
+              style={[
+                styles.percentileText,
+                isFirst && styles.firstPercentileText,
+                { color: tierInfo.color },
+              ]}
+            >
+              {displayPercentileText}
+            </Text>
+            {rankingMode === 'weight' &&
+              hasWeightClass &&
+              ranking.weightBucketStart != null &&
+              ranking.weightBucketEnd != null && (
+                <TouchableOpacity
+                  style={styles.weightClassBadge}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    setIsWeightClassExpanded(!isWeightClassExpanded)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="scale-outline"
+                    size={10}
+                    color={colors.textSecondary}
+                    style={styles.weightClassIcon}
+                  />
+                  <Text style={styles.weightBucketText}>BW</Text>
+                  <Ionicons
+                    name={isWeightClassExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={10}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              )}
           </View>
-        )}
+        </View>
 
         {/* Weight Class Details Card */}
         {hasWeightClass &&
@@ -710,12 +709,46 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 13,
       color: colors.textSecondary,
     },
-    expandButton: {
-      padding: 8,
-      borderRadius: 8,
-      backgroundColor: colors.backgroundLight,
-      marginTop: -8,
+    infoButton: {
+      padding: 4,
+      marginTop: -2,
       marginRight: -4,
+    },
+    toggleContainer: {
+      marginBottom: 16,
+      alignItems: 'center',
+    },
+    segmentedControl: {
+      flexDirection: 'row',
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 10,
+      padding: 2,
+    },
+    segmentButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    segmentButtonLeft: {
+      borderTopLeftRadius: 8,
+      borderBottomLeftRadius: 8,
+    },
+    segmentButtonRight: {
+      borderTopRightRadius: 8,
+      borderBottomRightRadius: 8,
+    },
+    segmentButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    segmentText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    segmentTextActive: {
+      color: colors.white,
     },
     loadingContainer: {
       height: 120,
@@ -778,18 +811,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       gap: 12,
     },
-    secondaryProgressContainer: {
-      marginTop: 8,
-    },
     progressTrack: {
       flex: 1,
       height: 8,
       backgroundColor: colors.backgroundLight,
       borderRadius: 4,
       overflow: 'hidden',
-    },
-    secondaryProgressTrack: {
-      height: 6,
     },
     progressFill: {
       height: '100%',
@@ -800,24 +827,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowRadius: 2,
       position: 'relative',
     },
-    secondaryProgressFill: {
-      opacity: 0.85,
+    percentileContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     percentileText: {
       fontSize: 14,
       fontWeight: '700',
       minWidth: 40,
       textAlign: 'right',
-    },
-    secondaryPercentileText: {
-      fontSize: 13,
-      fontWeight: '600',
-      minWidth: 'auto',
-    },
-    secondaryPercentileContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
     },
     weightClassBadge: {
       flexDirection: 'row',
@@ -888,16 +907,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       fontWeight: '600',
       color: colors.primary,
-    },
-    headerRightButtons: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-    },
-    infoButton: {
-      padding: 4,
-      marginTop: -2,
-      marginRight: -4,
     },
     modalOverlay: {
       flex: 1,
