@@ -6,16 +6,16 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { isApiError, mapApiErrorToMessage } from '@/lib/api/errors'
 import { database } from '@/lib/database'
-import { supabase } from '@/lib/supabase'
+import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -73,17 +73,11 @@ const CardDeleteAnimation = {
   },
 }
 
-const PENDING_POST_KEY = '@pending_workout_post'
-const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
-const DRAFT_KEY = '@workout_draft'
-const TITLE_DRAFT_KEY = '@workout_title_draft'
-
 export default function FeedScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const { weightUnit } = useWeightUnits()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
@@ -93,7 +87,7 @@ export default function FeedScreen() {
   const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
     null,
   )
-  const isProcessingPendingPost = useRef(false)
+  const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
 
   const loadWorkouts = useCallback(
     async (showLoading = false) => {
@@ -106,17 +100,7 @@ export default function FeedScreen() {
         const data = await database.workoutSessions.getRecent(user.id, 20)
 
         // Load placeholder workout if it exists
-        const placeholderData = await AsyncStorage.getItem(
-          PLACEHOLDER_WORKOUT_KEY,
-        )
-        let placeholder = null
-        if (placeholderData) {
-          try {
-            placeholder = JSON.parse(placeholderData)
-          } catch (parseError) {
-            console.error('Error parsing placeholder workout:', parseError)
-          }
-        }
+        const placeholder = await loadPlaceholderWorkout()
 
         // Use animation when updating existing list
         if (!isInitialLoad && workouts.length > 0) {
@@ -124,8 +108,11 @@ export default function FeedScreen() {
         }
 
         // Add placeholder at the top if it exists
-        const workoutsWithPlaceholder = placeholder
-          ? [placeholder as WorkoutSessionWithDetails, ...data]
+        const workoutsWithPlaceholder: WorkoutSessionWithDetails[] = placeholder
+          ? ([
+              (placeholder as unknown) as WorkoutSessionWithDetails,
+              ...data,
+            ] as WorkoutSessionWithDetails[])
           : data
 
         setWorkouts(workoutsWithPlaceholder)
@@ -140,148 +127,71 @@ export default function FeedScreen() {
   )
 
   const handlePendingPost = useCallback(async () => {
-    if (!user) return
-
-    // Prevent concurrent processing of the same pending post
-    if (isProcessingPendingPost.current) {
-      console.log('[Feed] Pending post already processing, skipping')
-      return
-    }
+    if (!user || isProcessingPending) return
 
     try {
-      isProcessingPendingPost.current = true
+      const result = await processPendingWorkout()
 
-      const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
-      if (!pendingData) return
-
-      const { notes, title, imageUrl = null } = JSON.parse(pendingData)
-
-      // Get the access token for authenticated API calls
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const accessToken = session?.access_token
-
-      // Parse workout and create it in database with AI-enriched exercises
-      // Use AbortController to set a generous timeout for AI processing
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout
-
-      const { callSupabaseFunction } = await import(
-        '@/lib/supabase-functions-client'
-      )
-
-      const response = await callSupabaseFunction(
-        'parse-workout',
-        'POST',
-        {
-          notes,
-          weightUnit,
-          createWorkout: true,
-          userId: user.id,
-          workoutTitle: title,
-          imageUrl,
-        },
-        {},
-        accessToken,
-      )
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.error || 'Failed to parse workout'
-
-        // Restore notes to draft for user to retry
-        await AsyncStorage.setItem(DRAFT_KEY, notes)
-        if (title) {
-          await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
-        }
-        await AsyncStorage.removeItem(PENDING_POST_KEY)
-        await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
-
-        // Remove placeholder from state
-        setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
-
-        // Show friendly error with actionable options
-        Alert.alert('Unable to Parse Workout', errorMessage, [
-          {
-            text: 'Edit & Try Again',
-            onPress: () => router.push('/(tabs)/create-post'),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ])
+      if (result.status === 'none' || result.status === 'skipped') {
         return
       }
 
-      const data = await response.json()
+      if (result.status === 'success') {
+        const { workout, placeholder } = result
 
-      // Check if there was a DB error during workout creation
-      if (data.error) {
-        throw new Error(data.details || data.error)
+        setNewWorkoutId(workout.id)
+        LayoutAnimation.configureNext(CustomSlideAnimation)
+
+        setWorkouts((prev) => {
+          if (placeholder) {
+            const index = prev.findIndex((item) => item.id === placeholder.id)
+            if (index >= 0) {
+              const clone = [...prev]
+              clone.splice(index, 1, workout)
+              return clone
+            }
+          }
+
+          if (prev.length > 0 && (prev[0] as any).isPending) {
+            return [workout, ...prev.slice(1)]
+          }
+
+          return [workout, ...prev]
+        })
+
+        setTimeout(() => setNewWorkoutId(null), 1000)
+        return
       }
 
-      // Get the created workout (with AI-enriched exercises)
-      const newWorkout = data.createdWorkout
-
-      // Clear pending post, placeholder, and draft on success
-      await AsyncStorage.removeItem(PENDING_POST_KEY)
-      await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
-      await AsyncStorage.removeItem(DRAFT_KEY)
-      await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
-
-      // Mark this workout as new for animation
-      setNewWorkoutId(newWorkout.id)
-
-      // Smooth layout animation for morphing placeholder to real workout
-      LayoutAnimation.configureNext(CustomSlideAnimation)
-
-      // Replace placeholder with real workout (smooth morph)
-      setWorkouts((prev) => {
-        // Check if first workout is placeholder
-        if (prev.length > 0 && (prev[0] as any).isPending) {
-          return [newWorkout, ...prev.slice(1)]
-        }
-        // Fallback: just add to top if no placeholder found
-        return [newWorkout, ...prev]
-      })
-
-      // Clear new workout flag after animation completes
-      setTimeout(() => setNewWorkoutId(null), 1000)
-    } catch (error) {
+      const { error, placeholder } = result
       console.error('Error creating post:', error)
 
-      // Restore notes and title to draft for user to retry
-      try {
-        const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
-        if (pendingData) {
-          const { notes, title } = JSON.parse(pendingData)
-          await AsyncStorage.setItem(DRAFT_KEY, notes)
-          if (title) {
-            await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
-          }
-          await AsyncStorage.removeItem(PENDING_POST_KEY)
-          await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
-
-          // Remove placeholder from state
-          setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
-        }
-      } catch (restoreError) {
-        console.error('Error restoring draft:', restoreError)
-      }
-
-      // Provide specific error message for timeout
       const isTimeout = error instanceof Error && error.name === 'AbortError'
-      const errorMessage = isTimeout
+      const isKnownApiError = isApiError(error)
+
+      const message = isKnownApiError
+        ? mapApiErrorToMessage(error)
+        : isTimeout
         ? 'The request took too long. This usually happens with slow internet or large workouts. Your draft has been saved - please try again.'
         : 'Something went wrong while saving your workout. Please try again.'
 
-      Alert.alert('Error', errorMessage, [
+      const title =
+        isKnownApiError &&
+        (error.code === 'CONTENT_REFUSED' || error.code === 'ZOD_INVALID')
+          ? 'Unable to Parse Workout'
+          : 'Error'
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      setWorkouts((prev) => {
+        if (placeholder) {
+          return prev.filter((item) => item.id !== placeholder.id)
+        }
+        return prev.filter((item: any) => !item.isPending)
+      })
+
+      Alert.alert(title, message, [
         {
-          text: 'Try Again',
+          text: 'Edit & Try Again',
           onPress: () => router.push('/(tabs)/create-post'),
         },
         {
@@ -289,10 +199,10 @@ export default function FeedScreen() {
           style: 'cancel',
         },
       ])
-    } finally {
-      isProcessingPendingPost.current = false
+    } catch (error) {
+      console.error('Error processing pending post:', error)
     }
-  }, [user, router, weightUnit])
+  }, [user, isProcessingPending, processPendingWorkout, router])
 
   useFocusEffect(
     useCallback(() => {
@@ -305,7 +215,7 @@ export default function FeedScreen() {
       loadWorkouts(isInitialLoad)
 
       // Process pending post in background (non-blocking)
-      // CreateButton spinner in tab bar shows progress via PENDING_POST_KEY polling
+      // CreateButton spinner in tab bar responds via shared pending status
       handlePendingPost()
     }, [
       handlePendingPost,
@@ -347,7 +257,7 @@ export default function FeedScreen() {
         </TouchableOpacity>
       </View>
 
-{isLoading ? (
+      {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>

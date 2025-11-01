@@ -43,9 +43,6 @@ export default function SettingsScreen() {
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
 
-  // Preferences
-  const [showExamples, setShowExamples] = useState(true)
-
   const loadProfile = useCallback(async () => {
     if (!user?.email) return
 
@@ -60,32 +57,11 @@ export default function SettingsScreen() {
     }
   }, [user?.email, user?.id])
 
-  const loadPreferences = useCallback(async () => {
-    try {
-      const value = await AsyncStorage.getItem('@show_workout_examples')
-      if (value !== null) {
-        setShowExamples(value === 'true')
-      }
-    } catch (error) {
-      console.error('Error loading preferences:', error)
-    }
-  }, [])
-
   useEffect(() => {
     loadProfile()
-    loadPreferences()
-  }, [loadPreferences, loadProfile])
+  }, [loadProfile])
 
   const styles = createStyles(colors)
-
-  const handleToggleExamples = async (value: boolean) => {
-    try {
-      setShowExamples(value)
-      await AsyncStorage.setItem('@show_workout_examples', value.toString())
-    } catch (error) {
-      console.error('Error saving preference:', error)
-    }
-  }
 
   const handleSignOut = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -718,25 +694,6 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {/* Divider */}
-            <View style={styles.preferenceDivider} />
-
-            {/* Show Examples Toggle */}
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <View>
-                  <Text style={styles.preferenceTitle}>
-                    Show Workout Examples
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={showExamples}
-                onValueChange={handleToggleExamples}
-                trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
-                thumbColor={showExamples ? colors.primary : '#F3F4F6'}
-              />
-            </View>
           </View>
         </View>
 

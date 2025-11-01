@@ -8,9 +8,14 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
+import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
-import { uploadWorkoutImage } from '@/lib/utils/image-upload'
+import {
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
+} from '@/lib/utils/workout-draft'
 import {
   generateWorkoutMessage,
   parseCommitment,
@@ -39,10 +44,6 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const DRAFT_KEY = '@workout_draft'
-const TITLE_DRAFT_KEY = '@workout_title_draft'
-const PENDING_POST_KEY = '@pending_workout_post'
-const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
 const IMAGE_FADE_DURATION = 200
 
 const EXAMPLE_WORKOUTS = [
@@ -94,7 +95,7 @@ export default function CreatePostScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [workoutTitle, setWorkoutTitle] = useState('')
   const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
-  const [showExamples, setShowExamples] = useState(true)
+  const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -125,6 +126,7 @@ export default function CreatePostScreen() {
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
+  const { submitWorkout: queueWorkout } = useSubmitWorkout()
 
   const blurInputs = useCallback(() => {
     const textInputState = (TextInput as any)?.State
@@ -273,18 +275,18 @@ export default function CreatePostScreen() {
         EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
       setExampleWorkout(randomExample)
 
-      // Load user preference for showing examples
-      const loadPreference = async () => {
+      // Load user's workout count to determine if examples should be shown
+      const loadWorkoutCount = async () => {
         try {
-          const value = await AsyncStorage.getItem('@show_workout_examples')
-          if (value !== null) {
-            setShowExamples(value === 'true')
+          if (user?.id) {
+            const workouts = await database.workoutSessions.getRecent(user.id, 1)
+            setUserWorkoutCount(workouts.length)
           }
         } catch (error) {
-          console.error('Error loading preference:', error)
+          console.error('Error loading workout count:', error)
         }
       }
-      loadPreference()
+      loadWorkoutCount()
 
       return () => {
         clearTimeout(timeoutId)
@@ -332,33 +334,23 @@ export default function CreatePostScreen() {
 
   // Load saved draft on mount
   useEffect(() => {
-    const loadDraft = async () => {
+    const hydrateDraft = async () => {
       try {
-        const [draft, titleDraft, pendingRaw] = await Promise.all([
-          AsyncStorage.getItem(DRAFT_KEY),
-          AsyncStorage.getItem(TITLE_DRAFT_KEY),
-          AsyncStorage.getItem(PENDING_POST_KEY),
+        const [draft, pending] = await Promise.all([
+          loadWorkoutDraft(),
+          loadPendingWorkout(),
         ])
 
-        let pending: { notes?: string; title?: string } | null = null
-        if (pendingRaw) {
-          try {
-            pending = JSON.parse(pendingRaw)
-          } catch (parseError) {
-            console.error('Error parsing pending workout data:', parseError)
-          }
-        }
-
-        if (draft) {
-          setNotes(draft)
+        if (draft?.notes?.trim()) {
+          setNotes(draft.notes)
           skipDraftClearRef.current = true
         } else if (pending?.notes) {
           setNotes(pending.notes)
           skipDraftClearRef.current = true
         }
 
-        if (titleDraft) {
-          setWorkoutTitle(titleDraft)
+        if (draft?.title?.trim()) {
+          setWorkoutTitle(draft.title)
           skipTitleDraftClearRef.current = true
         } else if (pending?.title) {
           setWorkoutTitle(pending.title)
@@ -368,7 +360,8 @@ export default function CreatePostScreen() {
         console.error('Error loading draft:', error)
       }
     }
-    loadDraft()
+
+    hydrateDraft()
   }, [])
 
   // Auto-save draft whenever notes change with debounce
@@ -380,9 +373,12 @@ export default function CreatePostScreen() {
 
     const timer = setTimeout(async () => {
       try {
+        await saveWorkoutDraft({
+          notes,
+          title: latestTitle.current,
+        })
+
         if (notes.trim()) {
-          await AsyncStorage.setItem(DRAFT_KEY, notes)
-          // Show "Draft saved" indicator
           setShowDraftSaved(true)
           // Hide after 2 seconds
           setTimeout(() => setShowDraftSaved(false), 2000)
@@ -392,7 +388,6 @@ export default function CreatePostScreen() {
             hasTitle: Boolean(workoutTitle.trim()),
           })
         } else {
-          await AsyncStorage.removeItem(DRAFT_KEY)
           setShowDraftSaved(false)
         }
       } catch (error) {
@@ -401,7 +396,7 @@ export default function CreatePostScreen() {
     }, 2500) // Wait 2500ms after user stops typing
 
     return () => clearTimeout(timer)
-  }, [notes, workoutTitle, trackEvent])
+  }, [notes, trackEvent, workoutTitle])
 
   // Auto-save title draft whenever title changes with debounce
   useEffect(() => {
@@ -412,13 +407,10 @@ export default function CreatePostScreen() {
 
     const timer = setTimeout(async () => {
       try {
-        if (workoutTitle.trim()) {
-          await AsyncStorage.setItem(TITLE_DRAFT_KEY, workoutTitle)
-        } else {
-          if (!skipTitleDraftClearRef.current) {
-            await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
-          }
-        }
+        await saveWorkoutDraft({
+          notes: latestNotes.current,
+          title: workoutTitle,
+        })
       } catch (error) {
         console.error('Error saving title draft:', error)
       }
@@ -457,92 +449,48 @@ export default function CreatePostScreen() {
     outputRange: ['0deg', '360deg'],
   })
 
-  const submitWorkout = async () => {
-    try {
-      // Upload image if attached
-      let imageUrl: string | null = null
-      if (attachedImageUri) {
-        try {
-          imageUrl = await uploadWorkoutImage(attachedImageUri, user!.id)
-        } catch (error) {
-          console.error('Error uploading image:', error)
-          Alert.alert(
-            'Image Upload Failed',
-            'Unable to upload your workout photo. Would you like to continue without it?',
-            [
-              {
-                text: 'Cancel',
-                style: 'cancel',
-                onPress: () => {
-                  setIsLoading(false)
-                  return
-                },
-              },
-              {
-                text: 'Continue',
-                onPress: async () => {
-                  // Continue without image
-                  setAttachedImageUri(null)
-                },
-              },
-            ],
-          )
-          throw error // Stop submission if upload fails
-        }
+  const performSubmission = useCallback(
+    async (
+      notesValue: string,
+      titleValue: string,
+      imageUriValue: string | null,
+    ) => {
+      if (!user) {
+        throw new Error('User must be authenticated to submit workouts')
       }
 
-      // Store pending post data
-      await AsyncStorage.setItem(
-        PENDING_POST_KEY,
-        JSON.stringify({
-          notes: notes.trim(),
-          title: workoutTitle.trim(),
-          imageUrl,
-        }),
-      )
+      const trimmedNotes = notesValue.trim()
+      const trimmedTitle = titleValue.trim()
 
-      // Store placeholder workout for immediate feed display
-      await AsyncStorage.setItem(
-        PLACEHOLDER_WORKOUT_KEY,
-        JSON.stringify({
-          id: `temp-${Date.now()}`,
-          title: workoutTitle.trim(),
-          imageUrl,
-          created_at: new Date().toISOString(),
-          isPending: true,
-        }),
-      )
-
-      trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
-        hasTitle: Boolean(workoutTitle.trim()),
-        length: notes.trim().length,
+      await queueWorkout({
+        notes: trimmedNotes,
+        title: trimmedTitle,
+        imageUri: imageUriValue,
       })
 
-      // Don't clear draft yet - keep it until workout successfully posts
-      // This way if submission fails, user can edit and retry
+      trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
+        hasTitle: Boolean(trimmedTitle),
+        length: trimmedNotes.length,
+      })
 
-      // Generate motivational message based on weekly progress
       let message = 'Well done on completing another workout!'
       let workoutNumber = 1
       let weeklyTarget = 3
-      try {
-        // Get user profile for commitment/target
-        const profile = await database.profiles.getById(user!.id)
 
-        // Calculate start of week (Sunday)
+      try {
+        const profile = await database.profiles.getById(user.id)
+
         const now = new Date()
         const startOfWeek = new Date(now)
         startOfWeek.setDate(now.getDate() - now.getDay())
         startOfWeek.setHours(0, 0, 0, 0)
 
-        // Count workouts this week (including this one)
         const workoutsThisWeek = await database.workoutSessions.getThisWeekCount(
-          user!.id,
+          user.id,
           startOfWeek,
         )
-        workoutNumber = workoutsThisWeek + 1 // +1 for the one being submitted
+        workoutNumber = workoutsThisWeek + 1
 
-        // Parse target and generate message
         weeklyTarget = parseCommitment(profile.commitment)
         message = generateWorkoutMessage({
           workoutNumber,
@@ -550,27 +498,70 @@ export default function CreatePostScreen() {
         })
       } catch (error) {
         console.error('Error generating workout message:', error)
-        // Fall back to default message
       }
 
-      // Haptic success feedback
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-      // Clear form and navigate to feed immediately
+      skipDraftClearRef.current = true
+      skipTitleDraftClearRef.current = true
+
       setNotes('')
       setWorkoutTitle('')
       setAttachedImageUri(null)
       blurInputs()
 
-      // Show overlay and navigate to feed
       showOverlay({ message, workoutNumber, weeklyTarget })
       router.replace('/(tabs)')
 
-      // Schedule rating prompt to show after success overlay completes (3.7s)
       setTimeout(() => {
         showPrompt(workoutNumber)
       }, 3700)
+    },
+    [user, queueWorkout, trackEvent, blurInputs, showOverlay, showPrompt],
+  )
+
+  const submitWorkout = async () => {
+    try {
+      await performSubmission(notes, workoutTitle, attachedImageUri)
     } catch (error) {
+      if (
+        error instanceof SubmitWorkoutError &&
+        error.code === 'IMAGE_UPLOAD'
+      ) {
+        console.error('Error uploading image:', error.originalError ?? error)
+        setIsLoading(false)
+        Alert.alert(
+          'Image Upload Failed',
+          'Unable to upload your workout photo. Would you like to continue without it?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Continue',
+              onPress: async () => {
+                setIsLoading(true)
+                setAttachedImageUri(null)
+                try {
+                  await performSubmission(notes, workoutTitle, null)
+                } catch (retryError) {
+                  console.error('Error saving pending post:', retryError)
+                  Alert.alert(
+                    'Save Failed',
+                    'Unable to save your workout. Please try again.',
+                    [{ text: 'OK' }],
+                  )
+                } finally {
+                  setIsLoading(false)
+                }
+              },
+            },
+          ],
+        )
+        return
+      }
+
       console.error('Error saving pending post:', error)
       Alert.alert(
         'Save Failed',
@@ -735,7 +726,9 @@ export default function CreatePostScreen() {
           <ScrollView
             style={styles.inputContainer}
             contentContainerStyle={styles.scrollContent}
-            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardDismissMode={
+              Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+            }
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
@@ -753,7 +746,9 @@ export default function CreatePostScreen() {
               maxLength={50}
               autoFocus={false}
               cursorColor={colors.primary}
-              selectionColor={Platform.OS === 'ios' ? colors.primary : undefined}
+              selectionColor={
+                Platform.OS === 'ios' ? colors.primary : undefined
+              }
             />
 
             {/* Divider */}
@@ -773,7 +768,9 @@ export default function CreatePostScreen() {
                 editable={!isRecording && !isTranscribing}
                 autoFocus={false}
                 cursorColor={colors.primary}
-                selectionColor={Platform.OS === 'ios' ? colors.primary : undefined}
+                selectionColor={
+                  Platform.OS === 'ios' ? colors.primary : undefined
+                }
                 onFocus={() => {
                   setIsNotesFocused(true)
                 }}
@@ -837,8 +834,8 @@ export default function CreatePostScreen() {
               </View>
             )}
 
-            {/* Example Workout - shown when both inputs are empty and preference is enabled */}
-            {!notes.trim() && !workoutTitle.trim() && showExamples && (
+            {/* Example Workout - shown when user has no workouts and inputs are empty */}
+            {!notes.trim() && !workoutTitle.trim() && userWorkoutCount === 0 && (
               <View style={styles.exampleContainer}>
                 <Text style={styles.exampleLabel}>Example:</Text>
                 <View style={styles.exampleCard}>
