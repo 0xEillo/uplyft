@@ -469,27 +469,6 @@ export default function TrialOfferScreen() {
               </Animated.View>
             </View>
           </ScrollView>
-
-          {/* Pricing Section - Fixed at bottom */}
-          <Animated.View
-            style={styles.step3PricingSection}
-            entering={FadeInDown.delay(500).duration(600)}
-          >
-            {/* Pricing Card */}
-            <View style={styles.pricingCardsContainer}>
-              <View
-                style={[styles.pricingOption, styles.pricingOptionSelected]}
-              >
-                <View style={styles.freeBadge}>
-                  <Text style={styles.freeBadgeText}>7 DAYS FREE</Text>
-                </View>
-                <View style={styles.pricingOptionContent}>
-                  <Text style={styles.pricingOptionLabel}>Monthly</Text>
-                  <Text style={styles.pricingOptionPrice}>$5.99 /mo</Text>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
         </View>
 
         {/* Button */}
@@ -665,6 +644,7 @@ function createStyles(colors: any) {
     step3ScrollContent: {
       paddingHorizontal: 24,
       paddingBottom: 20,
+      flexGrow: 1,
     },
     step3Title: {
       fontSize: 26,
@@ -774,12 +754,12 @@ function createStyles(colors: any) {
     // Step 3 Timeline Styles
     timelineContainer: {
       paddingHorizontal: 8,
-      paddingTop: 24,
+      paddingTop: 64,
       marginBottom: 16,
     },
     timelineItem: {
       flexDirection: 'row',
-      marginBottom: 4,
+      marginBottom: 12,
     },
     timelineIconContainer: {
       alignItems: 'center',
@@ -804,15 +784,15 @@ function createStyles(colors: any) {
       paddingBottom: 18,
     },
     timelineTitle: {
-      fontSize: 16,
+      fontSize: 17,
       fontWeight: '700',
       color: colors.text,
       marginBottom: 4,
     },
     timelineDescription: {
-      fontSize: 14,
+      fontSize: 15,
       color: colors.textSecondary,
-      lineHeight: 20,
+      lineHeight: 22,
     },
     // Pricing Cards
     pricingCardsContainer: {
@@ -928,7 +908,7 @@ function createStyles(colors: any) {
     },
     footerSubtext: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: colors.text,
       textAlign: 'center',
     },
     startButton: {
