@@ -357,48 +357,35 @@ export default function CreatePostScreen() {
     hydrateDraft()
   }, [])
 
-  // Auto-save draft whenever notes change with debounce
+  // Auto-save draft immediately whenever notes change
   useEffect(() => {
     if (skipDraftClearRef.current) {
       skipDraftClearRef.current = false
       return
     }
 
-    const timer = setTimeout(async () => {
+    const saveDraft = async () => {
       try {
         await saveWorkoutDraft({
           notes,
           title: latestTitle.current,
         })
-
-        if (notes.trim()) {
-          setShowDraftSaved(true)
-          // Hide after 2 seconds
-          setTimeout(() => setShowDraftSaved(false), 2000)
-
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED, {
-            length: notes.trim().length,
-            hasTitle: Boolean(workoutTitle.trim()),
-          })
-        } else {
-          setShowDraftSaved(false)
-        }
       } catch (error) {
         console.error('Error saving draft:', error)
       }
-    }, 2500) // Wait 2500ms after user stops typing
+    }
 
-    return () => clearTimeout(timer)
-  }, [notes, trackEvent, workoutTitle])
+    saveDraft()
+  }, [notes, workoutTitle])
 
-  // Auto-save title draft whenever title changes with debounce
+  // Auto-save title draft immediately whenever title changes
   useEffect(() => {
     if (skipTitleDraftClearRef.current) {
       skipTitleDraftClearRef.current = false
       return
     }
 
-    const timer = setTimeout(async () => {
+    const saveDraft = async () => {
       try {
         await saveWorkoutDraft({
           notes: latestNotes.current,
@@ -407,10 +394,35 @@ export default function CreatePostScreen() {
       } catch (error) {
         console.error('Error saving title draft:', error)
       }
-    }, 1200) // Wait 1200ms after user stops typing
+    }
+
+    saveDraft()
+  }, [workoutTitle])
+
+  // Show "Draft saved" indicator with debounce (UI only)
+  useEffect(() => {
+    if (skipDraftClearRef.current) {
+      skipDraftClearRef.current = false
+      return
+    }
+
+    const timer = setTimeout(() => {
+      if (notes.trim()) {
+        setShowDraftSaved(true)
+        // Hide after 2 seconds
+        setTimeout(() => setShowDraftSaved(false), 2000)
+
+        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED, {
+          length: notes.trim().length,
+          hasTitle: Boolean(workoutTitle.trim()),
+        })
+      } else {
+        setShowDraftSaved(false)
+      }
+    }, 2500) // Wait 2500ms after user stops typing before showing indicator
 
     return () => clearTimeout(timer)
-  }, [workoutTitle])
+  }, [notes, trackEvent, workoutTitle])
 
   const handleCancel = async () => {
     if (isRecording) {
