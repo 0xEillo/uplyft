@@ -1041,7 +1041,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 28,
       fontWeight: '600',
       color: colors.text,
-      minHeight: 36,
+      lineHeight: Platform.OS === 'ios' ? 34 : 32,
+      paddingVertical: Platform.OS === 'ios' ? 6 : 4,
     },
     divider: {
       height: 1,
