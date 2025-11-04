@@ -217,22 +217,32 @@ export default function OnboardingScreen() {
   // Animate step transitions
   useEffect(() => {
     if (prevStep.current !== step) {
-      // Start from right, slide and fade in
-      fadeAnim.setValue(0)
-      slideAnim.setValue(30)
+      const targetHasNativePicker = step === 4 || step === 5
 
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start()
+      // Start from right, slide and fade in
+      fadeAnim.stopAnimation()
+      slideAnim.stopAnimation()
+
+      if (targetHasNativePicker) {
+        fadeAnim.setValue(1)
+        slideAnim.setValue(0)
+      } else {
+        fadeAnim.setValue(0)
+        slideAnim.setValue(30)
+
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start()
+      }
 
       // Animate progress dot
       if (step >= 1 && step <= 10) {
