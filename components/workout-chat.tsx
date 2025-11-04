@@ -77,6 +77,7 @@ const IMAGE_EXAMPLES: ExamplePrompt[] = [
   { text: 'Should I add this to my routine?', requiresImage: true },
   { text: 'Which muscles does this exercise target?', requiresImage: true },
   { text: 'Is my setup safe for this exercise?', requiresImage: true },
+  { text: 'Suggest a workout using these machines', requiresImage: true },
 ]
 
 const ALL_EXAMPLES = [...TEXT_EXAMPLES, ...IMAGE_EXAMPLES]

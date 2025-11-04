@@ -6,7 +6,9 @@ import { Ionicons } from '@expo/vector-icons'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -45,6 +47,7 @@ export function ExerciseSearchModal({
   const [searchQuery, setSearchQuery] = useState('')
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const translateY = useSharedValue(0)
 
   const styles = createStyles(colors)
@@ -56,11 +59,34 @@ export function ExerciseSearchModal({
     }
   }, [visible, translateY])
 
+  // Handle keyboard events
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height)
+      },
+    )
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0)
+      },
+    )
+
+    return () => {
+      keyboardWillShow.remove()
+      keyboardWillHide.remove()
+    }
+  }, [])
+
   // Load exercises when modal opens or search query changes
   useEffect(() => {
     if (!visible) {
       setSearchQuery('')
       setExercises([])
+      setKeyboardHeight(0)
+      Keyboard.dismiss()
       return
     }
 
@@ -143,7 +169,13 @@ export function ExerciseSearchModal({
 
         {/* Bottom Sheet */}
         <GestureDetector gesture={pan}>
-          <Animated.View style={[styles.bottomSheet, animatedStyle]}>
+          <Animated.View
+            style={[
+              styles.bottomSheet,
+              animatedStyle,
+              { paddingBottom: keyboardHeight > 0 ? keyboardHeight : 34 },
+            ]}
+          >
             {/* Handle */}
             <View style={styles.sheetHandle}>
               <View style={styles.handle} />
@@ -164,65 +196,68 @@ export function ExerciseSearchModal({
               autoCapitalize="words"
             />
 
-          {/* Results */}
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : exercises.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name="barbell-outline"
-                size={48}
-                color={colors.textTertiary}
-              />
-              <Text style={styles.emptyText}>
-                {searchQuery.trim()
-                  ? 'No exercises found'
-                  : 'Start typing to search'}
-              </Text>
-            </View>
-          ) : (
-            <ScrollView style={styles.exerciseList}>
-              {exercises.map((exercise) => {
-                const isCurrentExercise = exercise.name === currentExerciseName
-                return (
-                  <TouchableOpacity
-                    key={exercise.id}
-                    style={[
-                      styles.exerciseItem,
-                      isCurrentExercise && styles.exerciseItemSelected,
-                    ]}
-                    onPress={() => handleSelectExercise(exercise)}
-                    disabled={isCurrentExercise}
-                  >
-                    <View style={styles.exerciseItemContent}>
-                      <Text
-                        style={[
-                          styles.exerciseItemText,
-                          isCurrentExercise && styles.exerciseItemTextSelected,
-                        ]}
-                      >
-                        {exercise.name}
-                      </Text>
-                      {exercise.muscle_group && (
-                        <Text style={styles.exerciseMuscleGroup}>
-                          {exercise.muscle_group}
+            {/* Results */}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : exercises.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="barbell-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                />
+                <Text style={styles.emptyText}>
+                  {searchQuery.trim()
+                    ? 'No exercises found'
+                    : 'Start typing to search'}
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.exerciseList}
+                keyboardShouldPersistTaps="handled"
+              >
+                {exercises.map((exercise) => {
+                  const isCurrentExercise = exercise.name === currentExerciseName
+                  return (
+                    <TouchableOpacity
+                      key={exercise.id}
+                      style={[
+                        styles.exerciseItem,
+                        isCurrentExercise && styles.exerciseItemSelected,
+                      ]}
+                      onPress={() => handleSelectExercise(exercise)}
+                      disabled={isCurrentExercise}
+                    >
+                      <View style={styles.exerciseItemContent}>
+                        <Text
+                          style={[
+                            styles.exerciseItemText,
+                            isCurrentExercise && styles.exerciseItemTextSelected,
+                          ]}
+                        >
+                          {exercise.name}
                         </Text>
+                        {exercise.muscle_group && (
+                          <Text style={styles.exerciseMuscleGroup}>
+                            {exercise.muscle_group}
+                          </Text>
+                        )}
+                      </View>
+                      {isCurrentExercise && (
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color={colors.primary}
+                        />
                       )}
-                    </View>
-                    {isCurrentExercise && (
-                      <Ionicons
-                        name="checkmark"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    )}
-                  </TouchableOpacity>
-                )
-              })}
-            </ScrollView>
-          )}
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            )}
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -244,7 +279,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      paddingBottom: 34,
       maxHeight: '80%',
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: -4 },
