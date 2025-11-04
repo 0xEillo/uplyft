@@ -7,7 +7,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -87,6 +87,18 @@ export default function TrialOfferScreen() {
   } = useSubscription()
   const { requestPermission, hasPermission } = useNotifications()
 
+  const monthlyPackage = useMemo(() => {
+    return offerings?.availablePackages.find(
+      (pkg) =>
+        pkg.identifier === '$rc_monthly' ||
+        pkg.identifier.toLowerCase().includes('monthly'),
+    )
+  }, [offerings])
+
+  const monthlyPriceText = monthlyPackage?.product.priceString
+    ? `${monthlyPackage.product.priceString} per month`
+    : 'your local monthly rate'
+
   // Track trial offer view on mount
   useEffect(() => {
     trackEvent(AnalyticsEvents.TRIAL_OFFER_VIEWED, {})
@@ -94,7 +106,9 @@ export default function TrialOfferScreen() {
 
   // Track trial offer step views
   useEffect(() => {
-    const stepNames: { [key: number]: 'intro' | 'benefits' | 'payment_setup' } = {
+    const stepNames: {
+      [key: number]: 'intro' | 'benefits' | 'payment_setup'
+    } = {
       1: 'intro',
       2: 'benefits',
       3: 'payment_setup',
@@ -121,13 +135,6 @@ export default function TrialOfferScreen() {
         throw new Error('No subscription packages available. Please try again.')
       }
 
-      // Find the monthly package - RevenueCat typically uses $rc_monthly identifier
-      const monthlyPackage = offerings.availablePackages.find(
-        (pkg) =>
-          pkg.identifier === '$rc_monthly' ||
-          pkg.identifier.toLowerCase().includes('monthly'),
-      )
-
       let updatedCustomerInfo
       if (!monthlyPackage) {
         // If no monthly package found, try the first available package
@@ -143,13 +150,15 @@ export default function TrialOfferScreen() {
       }
 
       // Verify the Pro entitlement was actually granted
-      const hasProEntitlement = Boolean(updatedCustomerInfo?.entitlements.active['Pro'])
+      const hasProEntitlement = Boolean(
+        updatedCustomerInfo?.entitlements.active['Pro'],
+      )
 
       if (!hasProEntitlement) {
         // Purchase succeeded but entitlement not granted - this is rare but possible
         Alert.alert(
           'Subscription Pending',
-          'Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don\'t have access.',
+          "Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don't have access.",
           [{ text: 'OK' }],
         )
         // Continue with the flow anyway
@@ -499,7 +508,7 @@ export default function TrialOfferScreen() {
             )}
           </AnimatedButton>
           <Text style={styles.footerSubtext}>
-            7 days free, then $5.99 per month
+            7 days free, then {monthlyPriceText}
           </Text>
 
           {/* Terms of Service Link */}

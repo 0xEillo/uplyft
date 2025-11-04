@@ -1,18 +1,18 @@
-import React, { useState } from 'react'
+import { useSubscription } from '@/contexts/subscription-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { Ionicons } from '@expo/vector-icons'
+import React, { useMemo, useState } from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useSubscription } from '@/contexts/subscription-context'
 
 type PaywallProps = {
   visible: boolean
@@ -29,8 +29,12 @@ export function Paywall({
 }: PaywallProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
-  const { purchasePackage, restorePurchases, offerings, isLoading } =
-    useSubscription()
+  const {
+    purchasePackage,
+    restorePurchases,
+    offerings,
+    isLoading,
+  } = useSubscription()
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
 
@@ -39,41 +43,53 @@ export function Paywall({
       setIsPurchasing(true)
 
       if (!offerings) {
-        Alert.alert('Error', 'Unable to load subscription options. Please try again.')
+        Alert.alert(
+          'Error',
+          'Unable to load subscription options. Please try again.',
+        )
         return
       }
 
       // Find the monthly package
       const monthlyPackage = offerings.availablePackages.find(
-        (pkg) => pkg.identifier === '$rc_monthly' || pkg.identifier.toLowerCase().includes('monthly')
+        (pkg) =>
+          pkg.identifier === '$rc_monthly' ||
+          pkg.identifier.toLowerCase().includes('monthly'),
       )
 
       const packageToUse = monthlyPackage || offerings.availablePackages[0]
 
       if (!packageToUse) {
-        Alert.alert('Error', 'No subscription packages available. Please try again.')
+        Alert.alert(
+          'Error',
+          'No subscription packages available. Please try again.',
+        )
         return
       }
 
       const updatedCustomerInfo = await purchasePackage(packageToUse.identifier)
 
       // Verify the Pro entitlement was actually granted
-      const hasProEntitlement = Boolean(updatedCustomerInfo?.entitlements.active['Pro'])
+      const hasProEntitlement = Boolean(
+        updatedCustomerInfo?.entitlements.active['Pro'],
+      )
 
       if (hasProEntitlement) {
         // Purchase successful and entitlement verified - close the paywall
-        Alert.alert('Success!', 'Your subscription is now active. Enjoy all premium features!', [
-          { text: 'OK', onPress: onClose }
-        ])
+        Alert.alert(
+          'Success!',
+          'Your subscription is now active. Enjoy all premium features!',
+          [{ text: 'OK', onPress: onClose }],
+        )
       } else {
         // Purchase succeeded but entitlement not granted - this is rare but possible
         Alert.alert(
           'Subscription Pending',
-          'Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don\'t have access.',
-          [{ text: 'OK' }]
+          "Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don't have access.",
+          [{ text: 'OK' }],
         )
       }
-    } catch (error: any) {
+    } catch (error) {
       // Handle user cancellation
       if (error?.userCancelled) {
         console.log('[Paywall] User cancelled purchase')
@@ -83,7 +99,7 @@ export function Paywall({
       Alert.alert(
         'Purchase Failed',
         error?.message || 'Unable to complete purchase. Please try again.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
     } finally {
       setIsPurchasing(false)
@@ -96,24 +112,26 @@ export function Paywall({
       const restoredCustomerInfo = await restorePurchases()
 
       // Check if Pro entitlement was restored
-      const hasProEntitlement = Boolean(restoredCustomerInfo?.entitlements.active['Pro'])
+      const hasProEntitlement = Boolean(
+        restoredCustomerInfo?.entitlements.active['Pro'],
+      )
 
       if (hasProEntitlement) {
         Alert.alert('Success!', 'Your purchases have been restored.', [
-          { text: 'OK', onPress: onClose }
+          { text: 'OK', onPress: onClose },
         ])
       } else {
         Alert.alert(
           'No Purchases Found',
           'No previous purchases were found for this account.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
         )
       }
     } catch {
       Alert.alert(
         'Restore Failed',
         'Unable to restore purchases. Please try again.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       )
     } finally {
       setIsRestoring(false)
@@ -132,9 +150,19 @@ export function Paywall({
     }
   }
 
-  const monthlyPrice = offerings?.availablePackages.find(
-    (pkg) => pkg.identifier === '$rc_monthly' || pkg.identifier.toLowerCase().includes('monthly')
-  )?.product.priceString || '$5.99'
+  const monthlyPriceString = useMemo(() => {
+    const monthlyPackage = offerings?.availablePackages.find(
+      (pkg) =>
+        pkg.identifier === '$rc_monthly' ||
+        pkg.identifier.toLowerCase().includes('monthly'),
+    )
+
+    return monthlyPackage?.product.priceString ?? null
+  }, [offerings])
+
+  const monthlyPriceText = monthlyPriceString
+    ? `${monthlyPriceString} per month`
+    : 'your local monthly rate'
 
   return (
     <Modal
@@ -196,7 +224,7 @@ export function Paywall({
             {/* Pricing */}
             <View style={styles.pricingContainer}>
               <Text style={styles.pricingText}>
-                7 days free, then {monthlyPrice}/month
+                7 days free, then {monthlyPriceText}
               </Text>
               <Text style={styles.pricingSubtext}>Cancel anytime</Text>
             </View>
@@ -229,7 +257,10 @@ export function Paywall({
             </TouchableOpacity>
 
             {/* Terms of Service Link */}
-            <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
+            <TouchableOpacity
+              onPress={handleOpenTerms}
+              style={styles.termsLink}
+            >
               <Text style={styles.termsText}>Terms of Service</Text>
             </TouchableOpacity>
           </View>
