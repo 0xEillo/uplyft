@@ -22,10 +22,18 @@ const messagesSchema = z.object({
 
 type Message = z.infer<typeof messagesSchema>
 
+const imageSchema = z.object({
+  type: z.literal('image_url'),
+  image_url: z.object({
+    url: z.string(),
+  }),
+})
+
 const requestSchema = z.object({
   messages: z.array(messagesSchema),
   userId: z.string().optional(),
   weightUnit: z.enum(['kg', 'lb']).optional(),
+  images: z.array(imageSchema).optional(),
 })
 
 type WorkoutSessionWithDetails = {
@@ -91,9 +99,44 @@ serve(async (req) => {
       }
     }
 
+    // Transform messages to include images in AI SDK format
+    const transformedMessages: any[] = payload.messages.map((msg, index) => {
+      // Only add images to the last user message
+      if (
+        msg.role === 'user' &&
+        index === payload.messages.length - 1 &&
+        payload.images &&
+        payload.images.length > 0
+      ) {
+        // Convert to AI SDK format: { type: 'image', image: URL }
+        const imageParts = payload.images.map((img) => ({
+          type: 'image',
+          image: img.image_url.url, // Extract the actual URL from the nested object
+        }))
+
+        return {
+          role: msg.role,
+          content: [
+            { type: 'text', text: msg.content },
+            ...imageParts,
+          ],
+        }
+      }
+      // Return message with string content wrapped properly
+      return {
+        role: msg.role,
+        content: msg.content,
+      }
+    })
+
+    // Use vision model if images are present
+    const modelToUse = payload.images && payload.images.length > 0
+      ? openai('gpt-4o')
+      : openai('gpt-4.1-mini')
+
     const result = streamText({
-      model: openai('gpt-4.1-mini'),
-      messages: payload.messages,
+      model: modelToUse,
+      messages: transformedMessages as any,
       ...(systemPrompt ? { system: systemPrompt } : {}),
       ...(tools ? { tools } : {}),
       stopWhen: ({ steps }) =>
