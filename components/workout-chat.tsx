@@ -607,7 +607,7 @@ export function WorkoutChat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 20}
     >
       <ScrollView
         ref={scrollViewRef}
@@ -993,7 +993,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     messagesContent: {
       flexGrow: 1,
       padding: 16,
-      paddingBottom: 24,
+      paddingBottom: 32,
     },
     emptyState: {
       flex: 1,
@@ -1115,7 +1115,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopColor: colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 12,
+      paddingBottom: 20,
     },
     inputWrapper: {
       flexDirection: 'row',
