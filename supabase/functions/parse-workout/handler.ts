@@ -67,6 +67,12 @@ export async function handleRequest(req: Request): Promise<Response> {
       type: workoutTitle ?? normalizedWorkout.type ?? undefined,
     }
 
+    logErrorWithCorrelation(correlationId, 'Workout finalized', {
+      routineId: payload.routineId,
+      workoutTitle: finalWorkout.type,
+      exerciseCount: finalWorkout.exercises?.length,
+    })
+
     if (!payload.createWorkout || !payload.userId) {
       return jsonResponse({
         workout: finalWorkout,
@@ -86,6 +92,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         finalWorkout,
         payload.notes,
         payload.imageUrl,
+        payload.routineId,
         correlationId,
       )
 

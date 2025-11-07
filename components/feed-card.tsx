@@ -74,6 +74,7 @@ export interface FeedCardProps {
   onUserPress?: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onCreateRoutine?: () => void
   prInfo?: ExercisePRInfo[]
   isPending?: boolean // Flag to show skeleton while workout is being parsed
 }
@@ -97,6 +98,7 @@ export const FeedCard = memo(function FeedCard({
   onUserPress,
   onEdit,
   onDelete,
+  onCreateRoutine,
   prInfo = [],
   isPending = false,
 }: FeedCardProps) {
@@ -592,6 +594,18 @@ export const FeedCard = memo(function FeedCard({
                 <Text style={styles.menuItemText}>
                   {isSharing ? 'Sharing...' : 'Share Workout'}
                 </Text>
+              </TouchableOpacity>
+            )}
+            {onCreateRoutine && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onCreateRoutine()
+                }}
+              >
+                <Ionicons name="copy-outline" size={20} color={colors.text} />
+                <Text style={styles.menuItemText}>Create Routine</Text>
               </TouchableOpacity>
             )}
             {onEdit && (

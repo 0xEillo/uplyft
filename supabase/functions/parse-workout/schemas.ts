@@ -31,6 +31,7 @@ export const requestSchema = z.object({
   userId: z.string().optional(),
   workoutTitle: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
+  routineId: z.string().nullable().optional(),
 })
 
 export type WorkoutRequest = z.infer<typeof requestSchema>

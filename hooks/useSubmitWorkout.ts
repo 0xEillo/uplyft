@@ -23,6 +23,7 @@ interface SubmitWorkoutArgs {
   notes: string
   title: string
   imageUri: string | null
+  routineId?: string | null
 }
 
 export type SubmitWorkoutErrorCode = 'IMAGE_UPLOAD'
@@ -65,7 +66,9 @@ export function useSubmitWorkout() {
   const isProcessingRef = useRef(false)
 
   const submitWorkout = useCallback(
-    async ({ notes, title, imageUri }: SubmitWorkoutArgs) => {
+    async ({ notes, title, imageUri, routineId }: SubmitWorkoutArgs) => {
+      console.log('[submitWorkout] Called with:', { title, routineId, hasImageUri: !!imageUri })
+
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
       }
@@ -92,7 +95,10 @@ export function useSubmitWorkout() {
         imageUrl,
         weightUnit,
         userId: user.id,
+        routineId: routineId || null,
       }
+
+      console.log('[submitWorkout] Saving pending workout with routineId:', routineId)
 
       const placeholder = createPlaceholderWorkout(trimmedTitle, imageUrl)
 
@@ -124,6 +130,12 @@ export function useSubmitWorkout() {
     const placeholder = await loadPlaceholderWorkout()
 
     try {
+      console.log('[processPendingWorkout] Processing with pending data:', {
+        title: pending.title,
+        routineId: pending.routineId,
+        userId: pending.userId,
+      })
+
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -138,9 +150,12 @@ export function useSubmitWorkout() {
           userId: pending.userId,
           workoutTitle: pending.title,
           imageUrl: pending.imageUrl,
+          routineId: pending.routineId,
         },
         accessToken,
       )
+
+      console.log('[processPendingWorkout] API response received with workoutId:', response.createdWorkout?.id)
 
       if (!response.createdWorkout) {
         throw new Error('Workout created without session payload')

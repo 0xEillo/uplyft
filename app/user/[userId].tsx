@@ -155,6 +155,7 @@ function AsyncPrFeedCard({
   const [prInfo, setPrInfo] = useState<any[]>([])
   const [isComputed, setIsComputed] = useState(false)
   const { weightUnit } = useWeightUnits()
+  const router = useRouter()
 
   const compute = useCallback(async () => {
     if (isComputed) return
@@ -199,6 +200,10 @@ function AsyncPrFeedCard({
 
   const exercises = formatWorkoutForDisplay(workout, weightUnit)
 
+  const handleCreateRoutine = useCallback(() => {
+    router.push(`/create-routine?from=${workout.id}`)
+  }, [workout.id, router])
+
   return (
     <FeedCard
       userName={userName}
@@ -218,6 +223,8 @@ function AsyncPrFeedCard({
           ) || 0,
         prs,
       }}
+      workout={workout}
+      onCreateRoutine={handleCreateRoutine}
       prInfo={prInfo}
     />
   )

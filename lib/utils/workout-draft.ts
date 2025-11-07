@@ -19,6 +19,7 @@ export interface PendingWorkout {
   weightUnit: WeightUnit
   userId: string
   idempotencyKey?: string
+  routineId?: string | null
 }
 
 export interface PlaceholderWorkout {

@@ -3,6 +3,8 @@ import type {
   Exercise,
   ParsedWorkout,
   Profile,
+  WorkoutRoutine,
+  WorkoutRoutineWithDetails,
   WorkoutSession,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
@@ -495,6 +497,51 @@ export const database = {
         .eq('id', sessionId)
 
       if (error) throw error
+    },
+
+    async getLastForRoutine(
+      userId: string,
+      routineId: string,
+    ): Promise<WorkoutSessionWithDetails | null> {
+      console.log('[database.getLastForRoutine] Querying:', { userId, routineId })
+
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          *,
+          workout_exercises (
+            *,
+            exercise:exercises (*),
+            sets (*)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .eq('routine_id', routineId)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error) {
+        console.log('[database.getLastForRoutine] Error:', {
+          code: error.code,
+          message: error.message,
+        })
+        // If no workout found, return null instead of throwing
+        if (error.code === 'PGRST116') {
+          console.log('[database.getLastForRoutine] No workout found for this routine')
+          return null
+        }
+        throw error
+      }
+
+      console.log('[database.getLastForRoutine] Found workout:', {
+        id: data?.id,
+        exercises: data?.workout_exercises?.length,
+      })
+
+      return data as WorkoutSessionWithDetails
     },
   },
 
@@ -1310,6 +1357,163 @@ export const database = {
         .from('body_log_entries')
         .delete()
         .eq('id', entryId)
+
+      if (error) throw error
+    },
+  },
+
+  // Workout Routine operations
+  workoutRoutines: {
+    /**
+     * Create a new workout routine from scratch
+     */
+    async create(userId: string, name: string, notes?: string) {
+      const { data, error } = await supabase
+        .from('workout_routines')
+        .insert({
+          user_id: userId,
+          name,
+          notes: notes ?? null,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutRoutine
+    },
+
+    /**
+     * Create a routine from an existing workout session
+     * Copies exercises and set counts, but not weight/reps/RPE (template only)
+     */
+    async createFromWorkout(workoutId: string, userId: string) {
+      // Get the workout with all details
+      const workout = await database.workoutSessions.getById(workoutId)
+
+      // Create the routine using workout notes/type as the name
+      const routineName = workout.notes || workout.type || 'New Routine'
+      const { data: routine, error: routineError } = await supabase
+        .from('workout_routines')
+        .insert({
+          user_id: userId,
+          name: routineName,
+          notes: workout.notes,
+        })
+        .select()
+        .single()
+
+      if (routineError) throw routineError
+
+      // Insert routine exercises
+      const routineExercises = workout.workout_exercises.map((we, index) => ({
+        routine_id: routine.id,
+        exercise_id: we.exercise_id,
+        order_index: we.order_index ?? index,
+        notes: we.notes,
+      }))
+
+      const { data: insertedExercises, error: exercisesError } = await supabase
+        .from('workout_routine_exercises')
+        .insert(routineExercises)
+        .select()
+
+      if (exercisesError) throw exercisesError
+
+      // Insert routine sets (template only - no reps/weight)
+      const routineSets = workout.workout_exercises.flatMap((we, weIndex) => {
+        const routineExerciseId = insertedExercises[weIndex].id
+        return we.sets.map((set) => ({
+          routine_exercise_id: routineExerciseId,
+          set_number: set.set_number,
+          reps_min: null,
+          reps_max: null,
+        }))
+      })
+
+      if (routineSets.length > 0) {
+        const { error: setsError } = await supabase
+          .from('workout_routine_sets')
+          .insert(routineSets)
+
+        if (setsError) throw setsError
+      }
+
+      return routine as WorkoutRoutine
+    },
+
+    /**
+     * Get a routine by ID with all details
+     */
+    async getById(routineId: string) {
+      const { data, error } = await supabase
+        .from('workout_routines')
+        .select(
+          `
+          *,
+          workout_routine_exercises (
+            *,
+            exercise:exercises (*),
+            sets:workout_routine_sets (*)
+          )
+        `,
+        )
+        .eq('id', routineId)
+        .single()
+
+      if (error) throw error
+      return data as WorkoutRoutineWithDetails
+    },
+
+    /**
+     * Get all routines for a user
+     */
+    async getAll(userId: string) {
+      const { data, error } = await supabase
+        .from('workout_routines')
+        .select(
+          `
+          *,
+          workout_routine_exercises (
+            *,
+            exercise:exercises (*),
+            sets:workout_routine_sets (*)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .eq('is_archived', false)
+        .order('updated_at', { ascending: false })
+
+      if (error) throw error
+      return data as WorkoutRoutineWithDetails[]
+    },
+
+    /**
+     * Update routine details
+     */
+    async update(
+      routineId: string,
+      updates: { name?: string; notes?: string; is_archived?: boolean },
+    ) {
+      const { data, error } = await supabase
+        .from('workout_routines')
+        .update(updates)
+        .eq('id', routineId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutRoutine
+    },
+
+    /**
+     * Delete a routine
+     */
+    async delete(routineId: string) {
+      const { error } = await supabase
+        .from('workout_routines')
+        .delete()
+        .eq('id', routineId)
 
       if (error) throw error
     },

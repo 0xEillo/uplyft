@@ -56,6 +56,7 @@ export interface WorkoutSession {
   notes: string | null
   type: string | null
   image_url: string | null
+  routine_id: string | null
   created_at: string
 }
 
@@ -79,6 +80,36 @@ export interface Set {
   created_at: string
 }
 
+export interface WorkoutRoutine {
+  id: string
+  user_id: string
+  name: string
+  notes: string | null
+  is_archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkoutRoutineExercise {
+  id: string
+  routine_id: string
+  exercise_id: string
+  order_index: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkoutRoutineSet {
+  id: string
+  routine_exercise_id: string
+  set_number: number
+  reps_min: number | null
+  reps_max: number | null
+  created_at: string
+  updated_at: string
+}
+
 // Extended types with relations
 export interface WorkoutExerciseWithDetails extends WorkoutExercise {
   exercise: Exercise
@@ -88,6 +119,16 @@ export interface WorkoutExerciseWithDetails extends WorkoutExercise {
 export interface WorkoutSessionWithDetails extends WorkoutSession {
   workout_exercises: WorkoutExerciseWithDetails[]
   isPending?: boolean // Flag for placeholder workouts being processed
+}
+
+export interface WorkoutRoutineExerciseWithDetails
+  extends WorkoutRoutineExercise {
+  exercise: Exercise
+  sets: WorkoutRoutineSet[]
+}
+
+export interface WorkoutRoutineWithDetails extends WorkoutRoutine {
+  workout_routine_exercises: WorkoutRoutineExerciseWithDetails[]
 }
 
 // Parsed workout data structure (from LLM) - matches database schema

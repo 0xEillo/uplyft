@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import OpenAI from 'https://esm.sh/openai@4.55.3'
 import { z } from 'https://esm.sh/zod@3.23.8'
 
-import { corsHeaders, handleCors, errorResponse, jsonResponse } from '../_shared/cors.ts'
+import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB (Whisper API limit)
 const ALLOWED_AUDIO_TYPES = [
@@ -52,7 +52,9 @@ serve(async (req) => {
     if (audioFile.size > MAX_FILE_SIZE) {
       return errorResponse(
         400,
-        `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        `File size exceeds maximum allowed size of ${
+          MAX_FILE_SIZE / 1024 / 1024
+        }MB`,
       )
     }
 
@@ -76,7 +78,10 @@ serve(async (req) => {
       language: 'en',
     })
 
-    console.log('Transcription successful:', transcription.text.substring(0, 50))
+    console.log(
+      'Transcription successful:',
+      transcription.text.substring(0, 50),
+    )
 
     return jsonResponse({
       text: transcription.text,

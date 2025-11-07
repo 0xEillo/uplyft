@@ -160,6 +160,10 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     )
   }, [workout.id, onDelete])
 
+  const handleCreateRoutine = useCallback(() => {
+    router.push(`/create-routine?from=${workout.id}`)
+  }, [workout.id, router])
+
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
 
@@ -193,6 +197,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
       onEdit={isPending ? undefined : handleEdit}
       onDelete={isPending ? undefined : handleDelete}
+      onCreateRoutine={isPending ? undefined : handleCreateRoutine}
       prInfo={prInfo}
       isPending={isPending}
     />

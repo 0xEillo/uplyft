@@ -14,8 +14,15 @@ export async function createWorkoutSession(
   workout: NormalizedWorkout,
   rawText: string,
   imageUrl: string | null | undefined,
+  routineId: string | null | undefined,
   correlationId: string,
 ): Promise<CreatedWorkoutResult> {
+  logWithCorrelation(correlationId, 'Creating workout session', {
+    userId,
+    routineId,
+    workoutType: workout.type,
+  })
+
   const { data: session, error: sessionError } = await supabase
     .from('workout_sessions')
     .insert({
@@ -24,6 +31,7 @@ export async function createWorkoutSession(
       notes: workout.notes ?? null,
       type: workout.type ?? null,
       image_url: imageUrl ?? null,
+      routine_id: routineId ?? null,
     })
     .select()
     .single()
