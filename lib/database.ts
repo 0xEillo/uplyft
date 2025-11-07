@@ -635,8 +635,9 @@ export const database = {
       'Dumbbell Shoulder Press',
       'Bent Over Row',
       'Pull-ups',
-      'Weighted Pull-Up',
-      'Dip',
+      'Weighted Pull-Ups',
+      'Dips',
+      'Weighted Dips',
     ] as string[],
 
     async getExerciseMaxWeight(

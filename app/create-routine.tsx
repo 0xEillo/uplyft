@@ -815,21 +815,6 @@ export default function CreateRoutineScreen() {
             />
           </View>
 
-          {/* Notes Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Notes (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={routineNotes}
-              onChangeText={setRoutineNotes}
-              placeholder="Add any notes about this routine..."
-              placeholderTextColor={colors.textPlaceholder}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-
           {/* Exercises */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
