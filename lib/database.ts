@@ -503,7 +503,10 @@ export const database = {
       userId: string,
       routineId: string,
     ): Promise<WorkoutSessionWithDetails | null> {
-      console.log('[database.getLastForRoutine] Querying:', { userId, routineId })
+      console.log('[database.getLastForRoutine] Querying:', {
+        userId,
+        routineId,
+      })
 
       const { data, error } = await supabase
         .from('workout_sessions')
@@ -530,7 +533,9 @@ export const database = {
         })
         // If no workout found, return null instead of throwing
         if (error.code === 'PGRST116') {
-          console.log('[database.getLastForRoutine] No workout found for this routine')
+          console.log(
+            '[database.getLastForRoutine] No workout found for this routine',
+          )
           return null
         }
         throw error
@@ -1404,25 +1409,65 @@ export const database = {
 
       if (routineError) throw routineError
 
-      // Insert routine exercises
-      const routineExercises = workout.workout_exercises.map((we, index) => ({
-        routine_id: routine.id,
-        exercise_id: we.exercise_id,
-        order_index: we.order_index ?? index,
-        notes: we.notes,
-      }))
+      const workoutExercises = workout.workout_exercises || []
 
-      const { data: insertedExercises, error: exercisesError } = await supabase
+      // Insert routine exercises
+      const routineExercises = workoutExercises.map((we, index) => {
+        const orderIndex =
+          typeof we.order_index === 'number' && !Number.isNaN(we.order_index)
+            ? we.order_index
+            : index
+
+        return {
+          routine_id: routine.id,
+          exercise_id: we.exercise_id,
+          order_index: orderIndex,
+          notes: we.notes,
+        }
+      })
+
+      const {
+        data: insertedExercises,
+        error: exercisesError,
+      } = await supabase
         .from('workout_routine_exercises')
         .insert(routineExercises)
         .select()
 
       if (exercisesError) throw exercisesError
 
+      const insertedExerciseByOrder = new Map<number, string>()
+      insertedExercises?.forEach((exercise: any) => {
+        if (
+          typeof exercise.order_index === 'number' &&
+          !Number.isNaN(exercise.order_index)
+        ) {
+          insertedExerciseByOrder.set(exercise.order_index, exercise.id)
+        }
+      })
+
       // Insert routine sets (template only - no reps/weight)
-      const routineSets = workout.workout_exercises.flatMap((we, weIndex) => {
-        const routineExerciseId = insertedExercises[weIndex].id
-        return we.sets.map((set) => ({
+      const routineSets = workoutExercises.flatMap((we, weIndex) => {
+        const orderIndex =
+          typeof we.order_index === 'number' && !Number.isNaN(we.order_index)
+            ? we.order_index
+            : weIndex
+        const routineExerciseId = insertedExerciseByOrder.get(orderIndex)
+        if (!routineExerciseId) {
+          console.warn(
+            '[database.workoutRoutines.createFromWorkout] Missing inserted exercise for order index',
+            {
+              routineId: routine.id,
+              orderIndex,
+              workoutExerciseId: we.id,
+            },
+          )
+          return []
+        }
+
+        const sets = we.sets || []
+
+        return sets.map((set) => ({
           routine_exercise_id: routineExerciseId,
           set_number: set.set_number,
           reps_min: null,

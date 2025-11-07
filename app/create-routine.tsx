@@ -44,7 +44,10 @@ interface ExerciseTemplate {
 }
 
 export default function CreateRoutineScreen() {
-  const { from, routineId } = useLocalSearchParams<{ from?: string; routineId?: string }>()
+  const { from, routineId } = useLocalSearchParams<{
+    from?: string
+    routineId?: string
+  }>()
   const router = useRouter()
   const colors = useThemedColors()
   const { user } = useAuth()
@@ -59,8 +62,9 @@ export default function CreateRoutineScreen() {
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
     new Set(),
   )
-  const [exerciseSearchModalVisible, setExerciseSearchModalVisible] =
-    useState(false)
+  const [exerciseSearchModalVisible, setExerciseSearchModalVisible] = useState(
+    false,
+  )
 
   useEffect(() => {
     if (!user) {
@@ -79,10 +83,14 @@ export default function CreateRoutineScreen() {
           setRoutineNotes(routine.notes || '')
 
           // Build exercise templates from routine exercises
-          const templates: ExerciseTemplate[] = (routine.workout_routine_exercises || [])
+          const templates: ExerciseTemplate[] = (
+            routine.workout_routine_exercises || []
+          )
             .sort((a, b) => a.order_index - b.order_index)
             .map((re) => {
-              const sets = (re.sets || []).sort((a, b) => a.set_number - b.set_number)
+              const sets = (re.sets || []).sort(
+                (a, b) => a.set_number - b.set_number,
+              )
               return {
                 exerciseId: re.exercise_id,
                 exerciseName: re.exercise?.name || 'Exercise',
@@ -119,14 +127,14 @@ export default function CreateRoutineScreen() {
           setRoutineNotes(workout.notes || '')
 
           // Build exercise templates
-          const templates: ExerciseTemplate[] = workout.workout_exercises.map(
-            (we) => ({
-              exerciseId: we.exercise_id,
-              exerciseName: we.exercise?.name || 'Exercise',
-              sets: we.sets.map(() => ({ repsMin: '', repsMax: '' })),
-              notes: we.notes,
-            }),
-          )
+          const templates: ExerciseTemplate[] = (
+            workout.workout_exercises || []
+          ).map((we) => ({
+            exerciseId: we.exercise_id,
+            exerciseName: we.exercise?.name || 'Exercise',
+            sets: (we.sets || []).map(() => ({ repsMin: '', repsMax: '' })),
+            notes: we.notes,
+          }))
           setExercises(templates)
         } catch (error) {
           console.error('Error loading workout:', error)
@@ -161,14 +169,20 @@ export default function CreateRoutineScreen() {
       const exercise = exercises[i]
       for (let j = 0; j < exercise.sets.length; j++) {
         const set = exercise.sets[j]
-        const repsMin = set.repsMin.trim() ? parseInt(set.repsMin.trim(), 10) : null
-        const repsMax = set.repsMax.trim() ? parseInt(set.repsMax.trim(), 10) : null
+        const repsMin = set.repsMin.trim()
+          ? parseInt(set.repsMin.trim(), 10)
+          : null
+        const repsMax = set.repsMax.trim()
+          ? parseInt(set.repsMax.trim(), 10)
+          : null
 
         // If both values are provided, min must be <= max
         if (repsMin !== null && repsMax !== null && repsMin > repsMax) {
           Alert.alert(
             'Invalid Rep Range',
-            `${exercise.exerciseName}, Set ${j + 1}: Minimum reps (${repsMin}) cannot be greater than maximum reps (${repsMax}).`,
+            `${exercise.exerciseName}, Set ${
+              j + 1
+            }: Minimum reps (${repsMin}) cannot be greater than maximum reps (${repsMax}).`,
           )
           return
         }
@@ -187,7 +201,7 @@ export default function CreateRoutineScreen() {
         (r) =>
           r.name.toLowerCase() === routineName.trim().toLowerCase() &&
           // When editing, exclude the current routine from the duplicate check
-          (!isEditMode || r.id !== routineId)
+          (!isEditMode || r.id !== routineId),
       )
 
       if (duplicateName) {
@@ -239,16 +253,33 @@ export default function CreateRoutineScreen() {
         notes: ex.notes,
       }))
 
-      const { data: insertedExercises, error: exercisesError } = await supabase
+      const {
+        data: insertedExercises,
+        error: exercisesError,
+      } = await supabase
         .from('workout_routine_exercises')
         .insert(routineExercises)
         .select()
 
       if (exercisesError) throw exercisesError
 
+      const insertedExerciseByOrder = new Map<number, string>()
+      insertedExercises?.forEach((exercise: any) => {
+        if (typeof exercise.order_index === 'number') {
+          insertedExerciseByOrder.set(exercise.order_index, exercise.id)
+        }
+      })
+
       // Insert routine sets with optional rep ranges
       const routineSets = exercises.flatMap((ex, exIndex) => {
-        const routineExerciseId = insertedExercises[exIndex].id
+        const routineExerciseId = insertedExerciseByOrder.get(exIndex)
+        if (!routineExerciseId) {
+          console.warn('[create-routine] Missing routine exercise for index', {
+            routineId: routineIdToUse,
+            exerciseIndex: exIndex,
+          })
+          return []
+        }
         return ex.sets.map((set, setIndex) => {
           const repsMin = set.repsMin.trim()
             ? parseInt(set.repsMin.trim(), 10)
@@ -280,7 +311,9 @@ export default function CreateRoutineScreen() {
 
       Alert.alert(
         'Success',
-        isEditMode ? 'Routine updated successfully!' : 'Routine created successfully!',
+        isEditMode
+          ? 'Routine updated successfully!'
+          : 'Routine created successfully!',
         [
           {
             text: 'OK',
@@ -294,7 +327,15 @@ export default function CreateRoutineScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [routineName, routineNotes, exercises, user, router, isEditMode, routineId])
+  }, [
+    routineName,
+    routineNotes,
+    exercises,
+    user,
+    router,
+    isEditMode,
+    routineId,
+  ])
 
   const handleCancel = useCallback(() => {
     Alert.alert(
@@ -526,17 +567,24 @@ export default function CreateRoutineScreen() {
                     <View style={styles.setsContainer}>
                       {/* Sets Table Header */}
                       <View style={styles.setsTableHeader}>
-                        <Text style={[styles.setHeaderText, styles.setHeaderNumber]}>
+                        <Text
+                          style={[styles.setHeaderText, styles.setHeaderNumber]}
+                        >
                           Set
                         </Text>
-                        <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
+                        <Text
+                          style={[styles.setHeaderText, styles.setHeaderInput]}
+                        >
                           Min Reps
                         </Text>
-                        <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
+                        <Text
+                          style={[styles.setHeaderText, styles.setHeaderInput]}
+                        >
                           Max Reps
                         </Text>
-                        <Text style={[styles.setHeaderText, styles.setHeaderDelete]}>
-                        </Text>
+                        <Text
+                          style={[styles.setHeaderText, styles.setHeaderDelete]}
+                        ></Text>
                       </View>
 
                       {/* Sets Rows */}
@@ -576,7 +624,9 @@ export default function CreateRoutineScreen() {
                             maxLength={3}
                           />
                           <TouchableOpacity
-                            onPress={() => handleRemoveSet(exerciseIndex, setIndex)}
+                            onPress={() =>
+                              handleRemoveSet(exerciseIndex, setIndex)
+                            }
                             style={styles.deleteSetButton}
                           >
                             <Ionicons
