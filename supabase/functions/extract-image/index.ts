@@ -94,7 +94,7 @@ IMPORTANT: Return ONLY valid JSON in this format, no other text:
   "isWorkoutRelated": boolean,
   "content": {
     "title": "string or null - inferred workout title",
-    "description": "string or null - any general notes or comments, formatted cleanly",
+    "description": "string or null - ONLY if there are actual notes/comments in the image. DO NOT CREATE descriptions. Return null if no description exists.",
     "exercises": "string or null - formatted exercise data (see format below)"
   }
 }
@@ -106,7 +106,7 @@ If the image contains NO workout-related content (e.g., it's a cat photo, random
 }
 
 **Formatting rules for the 'description' and 'exercises' fields:**
-- For 'description': Include any general notes, comments, or observations. Keep it clean and readable.
+- For 'description': ONLY include this if the image contains actual notes, comments, or observations written in the image. DO NOT make up descriptions. If there are no notes/comments in the image, set this to null.
 - For 'exercises': Format each exercise clearly:
   • Put the exercise name on its own line (no bullets, just the name)
   • Indent the sets/reps/weight data below it (use 2-4 spaces)
