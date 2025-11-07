@@ -6,7 +6,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -27,8 +27,6 @@ import {
   View,
 } from 'react-native'
 import Markdown from 'react-native-markdown-display'
-import SyntaxHighlighter from 'react-native-syntax-highlighter'
-import { github } from 'react-syntax-highlighter/styles/hljs'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import {
@@ -98,6 +96,7 @@ function getRandomExamples(count: number): ExamplePrompt[] {
 
 export function WorkoutChat() {
   const scrollViewRef = useRef<ScrollView>(null)
+  const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [displayedExamples] = useState<ExamplePrompt[]>(() => getRandomExamples(5))
   const [input, setInput] = useState('')
@@ -361,18 +360,24 @@ export function WorkoutChat() {
       return
     }
 
-    // Store current images before clearing
+    // Store input and images before clearing
+    const messageContent = input.trim()
     const imagesToSend = [...selectedImages]
+
+    // Clear input immediately after validation
+    setInput('')
+    setSelectedImages([])
+
+    // Force blur and clear the TextInput to prevent race conditions
+    inputRef.current?.clear()
+    Keyboard.dismiss()
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: messageContent,
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
     }
-
-    setInput('')
-    setSelectedImages([])
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
 
@@ -605,200 +610,6 @@ export function WorkoutChat() {
 
   const styles = createStyles(colors)
 
-  const markdownStyles = useMemo(
-    () => ({
-      body: {
-        fontSize: 15,
-        lineHeight: 22,
-        color: colors.text,
-        margin: 0,
-      },
-      paragraph: {
-        marginTop: 0,
-        marginBottom: 12,
-      },
-      heading1: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: colors.text,
-        marginTop: 16,
-        marginBottom: 8,
-      },
-      heading2: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: colors.text,
-        marginTop: 16,
-        marginBottom: 8,
-      },
-      heading3: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.text,
-        marginTop: 12,
-        marginBottom: 6,
-      },
-      strong: {
-        fontWeight: '600',
-        color: colors.text,
-      },
-      em: {
-        fontStyle: 'italic',
-      },
-      link: {
-        color: colors.primary,
-        textDecorationLine: 'underline',
-      },
-      bullet_list: {
-        marginTop: 0,
-        marginBottom: 12,
-      },
-      ordered_list: {
-        marginTop: 0,
-        marginBottom: 12,
-      },
-      list_item: {
-        marginTop: 4,
-        marginBottom: 4,
-      },
-      hr: {
-        backgroundColor: colors.border,
-        height: 1,
-        marginVertical: 16,
-      },
-      blockquote: {
-        borderLeftWidth: 4,
-        borderLeftColor: colors.primary,
-        paddingLeft: 12,
-        marginVertical: 8,
-        backgroundColor: colors.backgroundLight,
-        paddingVertical: 8,
-        paddingRight: 8,
-      },
-      table: {
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginVertical: 12,
-      },
-      thead: {
-        backgroundColor: colors.backgroundLight,
-      },
-      th: {
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRightWidth: 1,
-        borderRightColor: colors.border,
-        fontWeight: '600',
-        color: colors.text,
-      },
-      tr: {
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      },
-      td: {
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRightWidth: 1,
-        borderRightColor: colors.border,
-        color: colors.text,
-      },
-    }),
-    [colors],
-  )
-
-  const markdownRules = useMemo(
-    () => ({
-      code_inline: (node: any) => (
-        <Text
-          key={node.key}
-          style={{
-            backgroundColor: colors.backgroundLight,
-            color: colors.text,
-            borderRadius: 6,
-            paddingHorizontal: 6,
-            paddingVertical: 3,
-            fontSize: 14,
-            fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-          }}
-        >
-          {node.content}
-        </Text>
-      ),
-      fence: (node: any) => {
-        const language = node.info
-          ? node.info.trim().split(' ')[0] || 'plaintext'
-          : 'plaintext'
-        const content = node.content.replace(/\n$/, '')
-
-        return (
-          <ScrollView
-            key={node.key}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{
-              marginTop: 8,
-              marginBottom: 16,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.backgroundLight,
-              overflow: 'hidden',
-            }}
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
-            <SyntaxHighlighter
-              language={language}
-              style={github}
-              customStyle={{
-                padding: 16,
-                backgroundColor: 'transparent',
-                minWidth: '100%',
-              }}
-            >
-              {content}
-            </SyntaxHighlighter>
-          </ScrollView>
-        )
-      },
-      code_block: (node: any) => {
-        const content = node.content.replace(/\n$/, '')
-
-        return (
-          <ScrollView
-            key={node.key}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{
-              marginTop: 8,
-              marginBottom: 16,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.backgroundLight,
-              overflow: 'hidden',
-            }}
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
-            <SyntaxHighlighter
-              language="plaintext"
-              style={github}
-              customStyle={{
-                padding: 16,
-                backgroundColor: 'transparent',
-                minWidth: '100%',
-              }}
-            >
-              {content}
-            </SyntaxHighlighter>
-          </ScrollView>
-        )
-      },
-    }),
-    [colors],
-  )
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -857,11 +668,19 @@ export function WorkoutChat() {
           </View>
         ) : (
           <View style={styles.chatMessages}>
-            {messages.map((message) => {
-              if (message.role === 'user') {
-                return (
-                  <View key={message.id} style={styles.userMessageContainer}>
+            {messages.map((message) => (
+              <View
+                key={message.id}
+                style={[
+                  message.role === 'user'
+                    ? styles.userMessageContainer
+                    : styles.assistantMessageContainer,
+                ]}
+              >
+                {message.role === 'user' ? (
+                  <View style={styles.userMessageBubble}>
                     <View style={styles.userMessageContent}>
+                      {/* Display images for user messages */}
                       {message.images && message.images.length > 0 && (
                         <View style={styles.messageImagesGrid}>
                           {message.images.map((imageUri, index) => (
@@ -880,40 +699,124 @@ export function WorkoutChat() {
                         </View>
                       )}
                       <Text style={styles.userMessageText}>
-                        {message.content.trim()}
+                        {message.content}
                       </Text>
                     </View>
                   </View>
-                )
-              }
-
-              return (
-                <View key={message.id} style={styles.assistantMessageContainer}>
-                  <View style={styles.assistantMessageHeader}>
-                    <View style={styles.assistantAvatar}>
-                      <Ionicons name="sparkles" size={16} color={colors.primary} />
-                    </View>
-                    <Text style={styles.assistantMessageLabel}>repAI</Text>
-                  </View>
-                  <View style={styles.assistantMessageBody}>
-                    <Markdown style={markdownStyles} rules={markdownRules}>
-                      {message.content.trim()}
+                ) : (
+                  <View style={styles.assistantMessageContent}>
+                    <Markdown
+                      style={{
+                        body: {
+                          fontSize: 15,
+                          lineHeight: 22,
+                          color: colors.text,
+                          margin: 0,
+                        },
+                        paragraph: {
+                          marginTop: 0,
+                          marginBottom: 12,
+                        },
+                        heading1: {
+                          fontSize: 20,
+                          fontWeight: '700',
+                          color: colors.text,
+                          marginTop: 16,
+                          marginBottom: 8,
+                        },
+                        heading2: {
+                          fontSize: 18,
+                          fontWeight: '700',
+                          color: colors.text,
+                          marginTop: 14,
+                          marginBottom: 6,
+                        },
+                        heading3: {
+                          fontSize: 16,
+                          fontWeight: '600',
+                          color: colors.text,
+                          marginTop: 12,
+                          marginBottom: 6,
+                        },
+                        code_inline: {
+                          backgroundColor: colors.backgroundLight,
+                          paddingHorizontal: 4,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                          fontSize: 14,
+                          fontFamily:
+                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                          color: colors.text,
+                        },
+                        code_block: {
+                          backgroundColor: colors.backgroundLight,
+                          padding: 12,
+                          borderRadius: 8,
+                          fontSize: 14,
+                          fontFamily:
+                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                          color: colors.text,
+                          marginVertical: 8,
+                          overflow: 'hidden',
+                        },
+                        fence: {
+                          backgroundColor: colors.backgroundLight,
+                          padding: 12,
+                          borderRadius: 8,
+                          fontSize: 14,
+                          fontFamily:
+                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                          color: colors.text,
+                          marginVertical: 8,
+                        },
+                        strong: {
+                          fontWeight: '600',
+                          color: colors.text,
+                        },
+                        em: {
+                          fontStyle: 'italic',
+                        },
+                        bullet_list: {
+                          marginTop: 0,
+                          marginBottom: 12,
+                        },
+                        ordered_list: {
+                          marginTop: 0,
+                          marginBottom: 12,
+                        },
+                        list_item: {
+                          marginTop: 4,
+                          marginBottom: 4,
+                        },
+                        hr: {
+                          backgroundColor: colors.border,
+                          height: 1,
+                          marginVertical: 16,
+                        },
+                        blockquote: {
+                          borderLeftWidth: 3,
+                          borderLeftColor: colors.primary,
+                          paddingLeft: 12,
+                          marginVertical: 8,
+                          backgroundColor: colors.backgroundLight,
+                          paddingVertical: 8,
+                          paddingRight: 8,
+                        },
+                        link: {
+                          color: colors.primary,
+                          textDecorationLine: 'underline',
+                        },
+                      }}
+                    >
+                      {message.content}
                     </Markdown>
                   </View>
-                </View>
-              )
-            })}
+                )}
+              </View>
+            ))}
             {isLoading && (
-              <View style={styles.assistantMessageContainer}>
-                <View style={styles.assistantMessageHeader}>
-                  <View style={styles.assistantAvatar}>
-                    <Ionicons name="sparkles" size={16} color={colors.primary} />
-                  </View>
-                  <Text style={styles.assistantMessageLabel}>repAI</Text>
-                </View>
-                <View style={styles.loadingIndicator}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                </View>
+              <View style={styles.loadingMessageContainer}>
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             )}
           </View>
@@ -970,6 +873,7 @@ export function WorkoutChat() {
 
           {/* Text Input */}
           <TextInput
+            ref={inputRef}
             style={styles.input}
             placeholder="Ask about your workouts..."
             placeholderTextColor={colors.textPlaceholder}
@@ -1202,64 +1106,35 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginRight: 12,
     },
     chatMessages: {
-      gap: 20,
+      gap: 24,
     },
     userMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
+      alignItems: 'flex-start',
+    },
+    assistantMessageContainer: {
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      alignItems: 'flex-start',
+    },
+    userMessageBubble: {
+      maxWidth: '80%',
     },
     userMessageContent: {
-      maxWidth: '80%',
       backgroundColor: colors.primary,
       padding: 12,
       borderRadius: 16,
       borderBottomRightRadius: 4,
-      gap: 8,
     },
     userMessageText: {
       fontSize: 15,
       lineHeight: 20,
       color: colors.white,
     },
-    assistantMessageContainer: {
-      width: '100%',
-      alignItems: 'flex-start',
-      gap: 12,
-    },
-    assistantMessageHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    assistantAvatar: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.primaryLight
-        ? `${colors.primaryLight}30`
-        : `${colors.primary}20`,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    assistantMessageLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    assistantMessageBody: {
-      width: '100%',
-      maxWidth: '94%',
-      gap: 12,
-    },
-    loadingIndicator: {
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.backgroundLight,
+    assistantMessageContent: {
+      flex: 1,
+      paddingVertical: 4,
     },
     inputContainer: {
       backgroundColor: colors.white,
@@ -1297,6 +1172,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     sendButtonDisabled: {
       backgroundColor: colors.backgroundLight,
+    },
+    loadingMessageContainer: {
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
     },
     // Image preview in input area
     imagePreviewContainer: {

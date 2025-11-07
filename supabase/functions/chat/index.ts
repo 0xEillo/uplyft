@@ -261,24 +261,25 @@ async function buildUserContext(
     }),
     getWorkoutRoutines: tool({
       description:
-        "List the user's workout routines or load a specific routine with details.",
+        "List the user's workout routines or load a specific routine with details. You can search by routine name or routine ID.",
       inputSchema: z
         .object({
           routineId: z.string().uuid().optional(),
+          routineName: z.string().trim().min(1).max(200).optional(),
           limit: z.number().int().min(1).max(20).optional(),
           includeExercises: z.boolean().optional(),
         })
         .partial(),
-      execute: async ({ routineId, limit, includeExercises } = {}) => {
+      execute: async ({ routineId, routineName, limit, includeExercises } = {}) => {
         const toIso = (value?: string | null) => {
           if (!value) return undefined
           const date = new Date(value)
           return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
         }
 
-        if (routineId?.trim()) {
-          const routineIdTrimmed = routineId.trim()
-          const { data: routine, error } = await supabase
+        // Handle fetching a single routine by ID or name
+        if (routineId?.trim() || routineName?.trim()) {
+          let query = supabase
             .from('workout_routines')
             .select(
               `
@@ -298,8 +299,14 @@ async function buildUserContext(
             `,
             )
             .eq('user_id', userId)
-            .eq('id', routineIdTrimmed)
-            .single()
+
+          if (routineId?.trim()) {
+            query = query.eq('id', routineId.trim())
+          } else if (routineName?.trim()) {
+            query = query.ilike('name', routineName.trim())
+          }
+
+          const { data: routine, error } = await query.single()
 
           if (error || !routine) {
             throw error || new Error('Routine not found')
@@ -312,7 +319,7 @@ async function buildUserContext(
             .from('workout_sessions')
             .select('id, date, created_at, type, notes')
             .eq('user_id', userId)
-            .eq('routine_id', routineIdTrimmed)
+            .eq('routine_id', routine.id)
             .order('date', { ascending: false })
             .limit(1)
             .maybeSingle()
@@ -792,6 +799,6 @@ function buildSystemPrompt(
       weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
     "When suggesting next steps, keep them actionable, succinct and tied to the metrics you have. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
-    'If the user asks about saved routines or templates, call the getWorkoutRoutines tool before answering.',
+    'If the user asks about saved routines or templates by name, call the getWorkoutRoutines tool with the routineName parameter. The user context above shows available routine names.',
   ].join('\n\n')
 }
