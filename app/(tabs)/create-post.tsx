@@ -1305,20 +1305,18 @@ export default function CreatePostScreen() {
                 cursorColor={colors.primary}
                 selectionColor={colors.primary}
               />
-              {routines.length > 0 && (
-                <TouchableOpacity
-                  style={styles.routineSelectorButton}
-                  onPress={handleOpenRoutineSelector}
-                  disabled={isLoading || isRecording || isTranscribing}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons
-                    name="albums-outline"
-                    size={24}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.routineSelectorButton}
+                onPress={handleOpenRoutineSelector}
+                disabled={isLoading || isRecording || isTranscribing}
+                activeOpacity={0.6}
+              >
+                <Ionicons
+                  name="albums-outline"
+                  size={24}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
             </View>
 
             {/* Divider */}

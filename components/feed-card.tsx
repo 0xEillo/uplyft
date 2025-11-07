@@ -604,7 +604,7 @@ export const FeedCard = memo(function FeedCard({
                   onCreateRoutine()
                 }}
               >
-                <Ionicons name="copy-outline" size={20} color={colors.text} />
+                <Ionicons name="albums-outline" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Create Routine</Text>
               </TouchableOpacity>
             )}

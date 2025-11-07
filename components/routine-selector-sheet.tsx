@@ -166,10 +166,6 @@ export function RoutineSelectorSheet({
                   color={colors.textPlaceholder}
                 />
                 <Text style={styles.emptyTitle}>No Routines Yet</Text>
-                <Text style={styles.emptyMessage}>
-                  Create a routine from any workout to quickly log future
-                  sessions
-                </Text>
               </View>
             ) : (
               routines.map((routine) => {
@@ -346,20 +342,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     createRoutineContainer: {
       paddingHorizontal: 16,
-      paddingVertical: 16,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      marginTop: 8,
+      paddingTop: 8,
+      paddingBottom: 16,
     },
     createRoutineButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 12,
+      paddingVertical: 8,
       paddingHorizontal: 16,
-      borderRadius: 12,
-      backgroundColor: colors.backgroundLight,
-      gap: 8,
+      borderRadius: 20,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 6,
     },
     createRoutineText: {
       fontSize: 16,

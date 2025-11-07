@@ -224,14 +224,9 @@ export default function EditWorkoutScreen() {
       const titleValue = editedTitle.trim()
       const notesValue = editedNotes.trim()
 
-      // Only include fields that are being changed
-      if (titleValue) {
-        updates.type = titleValue
-      }
-
-      if (notesValue) {
-        updates.notes = notesValue
-      }
+      // Always update title and notes (including setting to null if cleared)
+      updates.type = titleValue || null
+      updates.notes = notesValue || null
 
       // Handle image updates - explicitly set to null if deleted
       if (imageDeleted) {
