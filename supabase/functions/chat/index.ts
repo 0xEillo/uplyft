@@ -41,6 +41,8 @@ type WorkoutSessionWithDetails = {
   date: string | null
   type: string | null
   notes: string | null
+  created_at?: string | null
+  routine_id?: string | null
   workout_exercises?:
     | {
         exercise?: { name?: string | null } | null
@@ -116,10 +118,7 @@ serve(async (req) => {
 
         return {
           role: msg.role,
-          content: [
-            { type: 'text', text: msg.content },
-            ...imageParts,
-          ],
+          content: [{ type: 'text', text: msg.content }, ...imageParts],
         }
       }
       // Return message with string content wrapped properly
@@ -130,9 +129,10 @@ serve(async (req) => {
     })
 
     // Use vision model if images are present
-    const modelToUse = payload.images && payload.images.length > 0
-      ? openai('gpt-4o')
-      : openai('gpt-4.1-mini')
+    const modelToUse =
+      payload.images && payload.images.length > 0
+        ? openai('gpt-4o')
+        : openai('gpt-4.1-mini')
 
     const result = streamText({
       model: modelToUse,
@@ -244,6 +244,7 @@ async function buildUserContext(
           date: session.date,
           type: session.type,
           notes: session.notes,
+          routineId: session.routine_id ?? null,
           exercises: (session.workout_exercises || []).map((we) => ({
             name: we.exercise?.name,
             order: we.order_index,
@@ -256,6 +257,221 @@ async function buildUserContext(
             })),
           })),
         }))
+      },
+    }),
+    getWorkoutRoutines: tool({
+      description:
+        "List the user's workout routines or load a specific routine with details.",
+      inputSchema: z
+        .object({
+          routineId: z.string().uuid().optional(),
+          limit: z.number().int().min(1).max(20).optional(),
+          includeExercises: z.boolean().optional(),
+        })
+        .partial(),
+      execute: async ({ routineId, limit, includeExercises } = {}) => {
+        const toIso = (value?: string | null) => {
+          if (!value) return undefined
+          const date = new Date(value)
+          return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
+        }
+
+        if (routineId?.trim()) {
+          const routineIdTrimmed = routineId.trim()
+          const { data: routine, error } = await supabase
+            .from('workout_routines')
+            .select(
+              `
+              id,
+              name,
+              notes,
+              is_archived,
+              created_at,
+              updated_at,
+              workout_routine_exercises (
+                id,
+                order_index,
+                notes,
+                exercise:exercises (*),
+                sets:workout_routine_sets (*)
+              )
+            `,
+            )
+            .eq('user_id', userId)
+            .eq('id', routineIdTrimmed)
+            .single()
+
+          if (error || !routine) {
+            throw error || new Error('Routine not found')
+          }
+
+          const {
+            data: lastSession,
+            error: lastSessionError,
+          } = await supabase
+            .from('workout_sessions')
+            .select('id, date, created_at, type, notes')
+            .eq('user_id', userId)
+            .eq('routine_id', routineIdTrimmed)
+            .order('date', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (lastSessionError && lastSessionError.code !== 'PGRST116') {
+            throw lastSessionError
+          }
+
+          const sortedExercises = (routine.workout_routine_exercises || [])
+            .slice()
+            .sort(
+              (a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0),
+            )
+
+          const formattedExercises = sortedExercises.map((exercise: any) => {
+            const sortedSets = (exercise.sets || [])
+              .slice()
+              .sort(
+                (a: any, b: any) => (a.set_number ?? 0) - (b.set_number ?? 0),
+              )
+
+            return {
+              id: exercise.id,
+              name: exercise.exercise?.name,
+              order: exercise.order_index,
+              notes: exercise.notes,
+              setCount: sortedSets.length,
+              sets:
+                includeExercises === false
+                  ? undefined
+                  : sortedSets.map((set: any) => ({
+                      id: set.id,
+                      setNumber: set.set_number,
+                      repsMin: set.reps_min,
+                      repsMax: set.reps_max,
+                    })),
+            }
+          })
+
+          return {
+            routine: {
+              id: routine.id,
+              name: routine.name,
+              notes: routine.notes,
+              isArchived: routine.is_archived,
+              createdAt: routine.created_at,
+              updatedAt: routine.updated_at,
+              exerciseCount: formattedExercises.length,
+              lastUsedAt: toIso(lastSession?.date ?? lastSession?.created_at),
+              lastSessionId: lastSession?.id ?? undefined,
+              exercises: formattedExercises,
+            },
+          }
+        }
+
+        const resolvedLimit = Math.min(Math.max(limit ?? 5, 1), 20)
+
+        const { data: routines, error } = await supabase
+          .from('workout_routines')
+          .select(
+            `
+            id,
+            name,
+            notes,
+            is_archived,
+            created_at,
+            updated_at,
+            workout_routine_exercises (
+              id,
+              order_index,
+              notes,
+              exercise:exercises (name),
+              sets:workout_routine_sets (id, set_number, reps_min, reps_max)
+            )
+          `,
+          )
+          .eq('user_id', userId)
+          .eq('is_archived', false)
+          .order('updated_at', { ascending: false })
+          .limit(resolvedLimit)
+
+        if (error) throw error
+
+        const routineList = routines || []
+        const routineIds = routineList.map((routine: any) => routine.id)
+
+        const usageByRoutine = new Map<
+          string,
+          { lastUsedAt?: string; lastSessionId?: string }
+        >()
+
+        if (routineIds.length > 0) {
+          const { data: usageRows, error: usageError } = await supabase
+            .from('workout_sessions')
+            .select('id, date, created_at, routine_id')
+            .eq('user_id', userId)
+            .in('routine_id', routineIds)
+            .order('date', { ascending: false })
+            .limit(routineIds.length * 3)
+
+          if (usageError && usageError.code !== 'PGRST103') {
+            throw usageError
+          }
+
+          for (const row of usageRows || []) {
+            const rId = row.routine_id
+            if (!rId || usageByRoutine.has(rId)) continue
+            usageByRoutine.set(rId, {
+              lastUsedAt: toIso(row.date ?? row.created_at),
+              lastSessionId: row.id,
+            })
+          }
+        }
+
+        const shouldIncludeExercises = includeExercises === true
+
+        return {
+          routines: routineList.map((routine: any) => {
+            const usage = usageByRoutine.get(routine.id)
+            const sortedExercises = (routine.workout_routine_exercises || [])
+              .slice()
+              .sort(
+                (a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0),
+              )
+
+            return {
+              id: routine.id,
+              name: routine.name,
+              notes: routine.notes,
+              isArchived: routine.is_archived,
+              createdAt: routine.created_at,
+              updatedAt: routine.updated_at,
+              exerciseCount: sortedExercises.length,
+              lastUsedAt: usage?.lastUsedAt,
+              lastSessionId: usage?.lastSessionId,
+              exercises: shouldIncludeExercises
+                ? sortedExercises.map((exercise: any) => ({
+                    id: exercise.id,
+                    name: exercise.exercise?.name,
+                    order: exercise.order_index,
+                    notes: exercise.notes,
+                    setCount: (exercise.sets || []).length,
+                    sets: (exercise.sets || [])
+                      .slice()
+                      .sort(
+                        (a: any, b: any) =>
+                          (a.set_number ?? 0) - (b.set_number ?? 0),
+                      )
+                      .map((set: any) => ({
+                        id: set.id,
+                        setNumber: set.set_number,
+                        repsMin: set.reps_min,
+                        repsMax: set.reps_max,
+                      })),
+                  }))
+                : undefined,
+            }
+          }),
+        }
       },
     }),
     getPersonalRecords: tool({
@@ -296,10 +512,12 @@ async function buildUserContext(
             sessionDate: string | null
             sessionType: string | null
             sessionId: string
+            routineId: string | null
           }
         >()
 
         for (const session of sessions) {
+          const sessionRoutineId = session.routine_id ?? null
           for (const we of session.workout_exercises || []) {
             const name = we.exercise?.name
             if (!name) continue
@@ -321,6 +539,7 @@ async function buildUserContext(
                   sessionDate: session.date ?? null,
                   sessionType: session.type,
                   sessionId: session.id,
+                  routineId: sessionRoutineId,
                 })
               }
             }
@@ -335,6 +554,7 @@ async function buildUserContext(
             sessionDate: record.sessionDate,
             sessionType: record.sessionType,
             sessionId: record.sessionId,
+            routineId: record.routineId,
           }))
           .sort((a, b) => b.bestWeight - a.bestWeight)
 
@@ -572,5 +792,6 @@ function buildSystemPrompt(
       weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
     "When suggesting next steps, keep them actionable, succinct and tied to the metrics you have. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
+    'If the user asks about saved routines or templates, call the getWorkoutRoutines tool before answering.',
   ].join('\n\n')
 }

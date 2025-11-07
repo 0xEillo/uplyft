@@ -71,6 +71,14 @@ export interface UserContextSummary {
       genderWeightPercentile?: number | null
     }
   }
+  routines?: {
+    id: string
+    name: string
+    notes?: string | null
+    exerciseCount: number
+    lastUsedAt?: string
+    lastSessionId?: string
+  }[]
 }
 
 export async function buildUserContextSummary(
@@ -105,6 +113,73 @@ export async function buildUserContextSummary(
 
   if (sessionsError) throw sessionsError
   const sessions = sessionsData || []
+
+  const routineUsage = new Map<
+    string,
+    {
+      lastUsedAt?: string
+      lastSessionId?: string
+    }
+  >()
+
+  const normalizeDate = (value: string | null | undefined) => {
+    if (!value) return undefined
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
+  }
+
+  sessions.forEach((session: any) => {
+    const routineId = session.routine_id
+    if (!routineId) return
+
+    const sessionDate = normalizeDate(session.date ?? session.created_at)
+    const existing = routineUsage.get(routineId)
+
+    if (!existing) {
+      routineUsage.set(routineId, {
+        lastUsedAt: sessionDate,
+        lastSessionId: session.id,
+      })
+      return
+    }
+
+    if (sessionDate && (!existing.lastUsedAt || sessionDate > existing.lastUsedAt)) {
+      routineUsage.set(routineId, {
+        lastUsedAt: sessionDate,
+        lastSessionId: session.id,
+      })
+    }
+  })
+
+  const { data: routinesData, error: routinesError } = await supabase
+    .from('workout_routines')
+    .select(
+      `
+      id,
+      name,
+      notes,
+      updated_at,
+      workout_routine_exercises (id)
+    `,
+    )
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('updated_at', { ascending: false })
+    .limit(10)
+
+  if (routinesError) throw routinesError
+
+  const routinesSummary = (routinesData || []).map((routine: any) => {
+    const usage = routineUsage.get(routine.id)
+    return {
+      id: routine.id,
+      name: routine.name,
+      notes: routine.notes,
+      exerciseCount: routine.workout_routine_exercises?.length ?? 0,
+      lastUsedAt: usage?.lastUsedAt,
+      lastSessionId: usage?.lastSessionId,
+    }
+  })
 
   const sessionsCount = sessions.length
   const firstSessionDate =
@@ -223,6 +298,7 @@ export async function buildUserContextSummary(
       strengthScore: strengthScoreSeries,
     },
     balance: balanceDistribution,
+    routines: routinesSummary.length ? routinesSummary : undefined,
     leaderboard:
       bestPercentile || weakestPercentile
         ? {
@@ -324,6 +400,18 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
     if (undertrained.length) {
       lines.push(`Undertrained groups (<10% volume): ${undertrained.join(', ')}`)
     }
+  }
+
+  if (ctx.routines?.length) {
+    const routineSummaries = ctx.routines.slice(0, 5).map((routine) => {
+      const parts = [`${routine.name} (${routine.exerciseCount} exercises)`]
+      if (routine.lastUsedAt) {
+        parts.push(`last used ${new Date(routine.lastUsedAt).toISOString()}`)
+      }
+      return parts.join('; ')
+    })
+
+    lines.push(`Routines: ${routineSummaries.join(' | ')}`)
   }
 
   if (ctx.leaderboard?.best) {

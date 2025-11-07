@@ -6,7 +6,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,8 @@ import {
   View,
 } from 'react-native'
 import Markdown from 'react-native-markdown-display'
+import SyntaxHighlighter from 'react-native-syntax-highlighter'
+import { github } from 'react-syntax-highlighter/styles/hljs'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import {
@@ -603,6 +605,200 @@ export function WorkoutChat() {
 
   const styles = createStyles(colors)
 
+  const markdownStyles = useMemo(
+    () => ({
+      body: {
+        fontSize: 15,
+        lineHeight: 22,
+        color: colors.text,
+        margin: 0,
+      },
+      paragraph: {
+        marginTop: 0,
+        marginBottom: 12,
+      },
+      heading1: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: colors.text,
+        marginTop: 16,
+        marginBottom: 8,
+      },
+      heading2: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+        marginTop: 16,
+        marginBottom: 8,
+      },
+      heading3: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: colors.text,
+        marginTop: 12,
+        marginBottom: 6,
+      },
+      strong: {
+        fontWeight: '600',
+        color: colors.text,
+      },
+      em: {
+        fontStyle: 'italic',
+      },
+      link: {
+        color: colors.primary,
+        textDecorationLine: 'underline',
+      },
+      bullet_list: {
+        marginTop: 0,
+        marginBottom: 12,
+      },
+      ordered_list: {
+        marginTop: 0,
+        marginBottom: 12,
+      },
+      list_item: {
+        marginTop: 4,
+        marginBottom: 4,
+      },
+      hr: {
+        backgroundColor: colors.border,
+        height: 1,
+        marginVertical: 16,
+      },
+      blockquote: {
+        borderLeftWidth: 4,
+        borderLeftColor: colors.primary,
+        paddingLeft: 12,
+        marginVertical: 8,
+        backgroundColor: colors.backgroundLight,
+        paddingVertical: 8,
+        paddingRight: 8,
+      },
+      table: {
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginVertical: 12,
+      },
+      thead: {
+        backgroundColor: colors.backgroundLight,
+      },
+      th: {
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRightWidth: 1,
+        borderRightColor: colors.border,
+        fontWeight: '600',
+        color: colors.text,
+      },
+      tr: {
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      },
+      td: {
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRightWidth: 1,
+        borderRightColor: colors.border,
+        color: colors.text,
+      },
+    }),
+    [colors],
+  )
+
+  const markdownRules = useMemo(
+    () => ({
+      code_inline: (node: any) => (
+        <Text
+          key={node.key}
+          style={{
+            backgroundColor: colors.backgroundLight,
+            color: colors.text,
+            borderRadius: 6,
+            paddingHorizontal: 6,
+            paddingVertical: 3,
+            fontSize: 14,
+            fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+          }}
+        >
+          {node.content}
+        </Text>
+      ),
+      fence: (node: any) => {
+        const language = node.info
+          ? node.info.trim().split(' ')[0] || 'plaintext'
+          : 'plaintext'
+        const content = node.content.replace(/\n$/, '')
+
+        return (
+          <ScrollView
+            key={node.key}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{
+              marginTop: 8,
+              marginBottom: 16,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.backgroundLight,
+              overflow: 'hidden',
+            }}
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            <SyntaxHighlighter
+              language={language}
+              style={github}
+              customStyle={{
+                padding: 16,
+                backgroundColor: 'transparent',
+                minWidth: '100%',
+              }}
+            >
+              {content}
+            </SyntaxHighlighter>
+          </ScrollView>
+        )
+      },
+      code_block: (node: any) => {
+        const content = node.content.replace(/\n$/, '')
+
+        return (
+          <ScrollView
+            key={node.key}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{
+              marginTop: 8,
+              marginBottom: 16,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.backgroundLight,
+              overflow: 'hidden',
+            }}
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            <SyntaxHighlighter
+              language="plaintext"
+              style={github}
+              customStyle={{
+                padding: 16,
+                backgroundColor: 'transparent',
+                minWidth: '100%',
+              }}
+            >
+              {content}
+            </SyntaxHighlighter>
+          </ScrollView>
+        )
+      },
+    }),
+    [colors],
+  )
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -661,120 +857,61 @@ export function WorkoutChat() {
           </View>
         ) : (
           <View style={styles.chatMessages}>
-            {messages.map((message) => (
-              <View
-                key={message.id}
-                style={[
-                  styles.messageBubble,
-                  message.role === 'user'
-                    ? styles.userMessage
-                    : styles.assistantMessage,
-                ]}
-              >
-                {message.role === 'assistant' && (
-                  <View style={styles.aiAvatar}>
-                    <Ionicons name="flash" size={16} color={colors.white} />
-                  </View>
-                )}
-                <View
-                  style={[
-                    styles.messageContent,
-                    message.role === 'user'
-                      ? styles.userMessageContent
-                      : styles.assistantMessageContent,
-                  ]}
-                >
-                  {/* Display images for user messages */}
-                  {message.role === 'user' && message.images && message.images.length > 0 && (
-                    <View style={styles.messageImagesGrid}>
-                      {message.images.map((imageUri, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.messageImageThumbnail}
-                          onPress={() => openImageViewer(message.images!, index)}
-                        >
-                          <Image
-                            source={{ uri: imageUri }}
-                            style={styles.messageImage}
-                            resizeMode="cover"
-                          />
-                        </TouchableOpacity>
-                      ))}
+            {messages.map((message) => {
+              if (message.role === 'user') {
+                return (
+                  <View key={message.id} style={styles.userMessageContainer}>
+                    <View style={styles.userMessageContent}>
+                      {message.images && message.images.length > 0 && (
+                        <View style={styles.messageImagesGrid}>
+                          {message.images.map((imageUri, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.messageImageThumbnail}
+                              onPress={() => openImageViewer(message.images!, index)}
+                            >
+                              <Image
+                                source={{ uri: imageUri }}
+                                style={styles.messageImage}
+                                resizeMode="cover"
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                      <Text style={styles.userMessageText}>
+                        {message.content.trim()}
+                      </Text>
                     </View>
-                  )}
+                  </View>
+                )
+              }
 
-                  {/* Display message text */}
-                  {message.role === 'assistant' ? (
-                    <Markdown
-                      style={{
-                        body: {
-                          fontSize: 15,
-                          lineHeight: 20,
-                          color: colors.text,
-                          margin: 0,
-                        },
-                        paragraph: {
-                          marginTop: 0,
-                          marginBottom: 0,
-                        },
-                        code_inline: {
-                          backgroundColor: colors.backgroundLight,
-                          paddingHorizontal: 4,
-                          paddingVertical: 2,
-                          borderRadius: 4,
-                          fontSize: 14,
-                          fontFamily:
-                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                        },
-                        code_block: {
-                          backgroundColor: colors.backgroundLight,
-                          padding: 12,
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontFamily:
-                            Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                        },
-                        strong: {
-                          fontWeight: '600',
-                        },
-                        em: {
-                          fontStyle: 'italic',
-                        },
-                        bullet_list: {
-                          marginTop: 0,
-                          marginBottom: 0,
-                        },
-                        ordered_list: {
-                          marginTop: 0,
-                          marginBottom: 0,
-                        },
-                        list_item: {
-                          marginTop: 0,
-                          marginBottom: 0,
-                        },
-                      }}
-                    >
-                      {message.content}
+              return (
+                <View key={message.id} style={styles.assistantMessageContainer}>
+                  <View style={styles.assistantMessageHeader}>
+                    <View style={styles.assistantAvatar}>
+                      <Ionicons name="sparkles" size={16} color={colors.primary} />
+                    </View>
+                    <Text style={styles.assistantMessageLabel}>repAI</Text>
+                  </View>
+                  <View style={styles.assistantMessageBody}>
+                    <Markdown style={markdownStyles} rules={markdownRules}>
+                      {message.content.trim()}
                     </Markdown>
-                  ) : (
-                    <Text
-                      style={[
-                        styles.messageText,
-                        message.role === 'user' && styles.userMessageText,
-                      ]}
-                    >
-                      {message.content}
-                    </Text>
-                  )}
+                  </View>
                 </View>
-              </View>
-            ))}
+              )
+            })}
             {isLoading && (
-              <View style={styles.loadingMessageContainer}>
-                <View style={styles.aiAvatar}>
-                  <Ionicons name="flash" size={16} color={colors.white} />
+              <View style={styles.assistantMessageContainer}>
+                <View style={styles.assistantMessageHeader}>
+                  <View style={styles.assistantAvatar}>
+                    <Ionicons name="sparkles" size={16} color={colors.primary} />
+                  </View>
+                  <Text style={styles.assistantMessageLabel}>repAI</Text>
                 </View>
-                <View style={styles.loadingBubble}>
+                <View style={styles.loadingIndicator}>
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               </View>
@@ -1065,49 +1202,64 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginRight: 12,
     },
     chatMessages: {
-      gap: 16,
+      gap: 20,
     },
-    messageBubble: {
+    userMessageContainer: {
       flexDirection: 'row',
-      gap: 8,
-    },
-    userMessage: {
       justifyContent: 'flex-end',
     },
-    assistantMessage: {
-      justifyContent: 'flex-start',
-    },
-    aiAvatar: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      alignSelf: 'flex-end',
-    },
-    messageContent: {
+    userMessageContent: {
       maxWidth: '80%',
+      backgroundColor: colors.primary,
       padding: 12,
       borderRadius: 16,
-    },
-    userMessageContent: {
-      backgroundColor: colors.primary,
       borderBottomRightRadius: 4,
-    },
-    assistantMessageContent: {
-      backgroundColor: colors.white,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderBottomLeftRadius: 4,
-    },
-    messageText: {
-      fontSize: 15,
-      lineHeight: 20,
-      color: colors.text,
+      gap: 8,
     },
     userMessageText: {
+      fontSize: 15,
+      lineHeight: 20,
       color: colors.white,
+    },
+    assistantMessageContainer: {
+      width: '100%',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    assistantMessageHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    assistantAvatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.primaryLight
+        ? `${colors.primaryLight}30`
+        : `${colors.primary}20`,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    assistantMessageLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    assistantMessageBody: {
+      width: '100%',
+      maxWidth: '94%',
+      gap: 12,
+    },
+    loadingIndicator: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundLight,
     },
     inputContainer: {
       backgroundColor: colors.white,
@@ -1145,28 +1297,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     sendButtonDisabled: {
       backgroundColor: colors.backgroundLight,
-    },
-    loadingMessageContainer: {
-      flexDirection: 'row',
-      gap: 8,
-      marginTop: 16,
-    },
-    loadingBubble: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: colors.white,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderBottomLeftRadius: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    loadingText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontStyle: 'italic',
     },
     // Image preview in input area
     imagePreviewContainer: {
