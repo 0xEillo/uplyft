@@ -67,8 +67,6 @@ export function useSubmitWorkout() {
 
   const submitWorkout = useCallback(
     async ({ notes, title, imageUri, routineId }: SubmitWorkoutArgs) => {
-      console.log('[submitWorkout] Called with:', { title, routineId, hasImageUri: !!imageUri })
-
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
       }
@@ -97,8 +95,6 @@ export function useSubmitWorkout() {
         userId: user.id,
         routineId: routineId || null,
       }
-
-      console.log('[submitWorkout] Saving pending workout with routineId:', routineId)
 
       const placeholder = createPlaceholderWorkout(trimmedTitle, imageUrl)
 
@@ -130,12 +126,6 @@ export function useSubmitWorkout() {
     const placeholder = await loadPlaceholderWorkout()
 
     try {
-      console.log('[processPendingWorkout] Processing with pending data:', {
-        title: pending.title,
-        routineId: pending.routineId,
-        userId: pending.userId,
-      })
-
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -154,8 +144,6 @@ export function useSubmitWorkout() {
         },
         accessToken,
       )
-
-      console.log('[processPendingWorkout] API response received with workoutId:', response.createdWorkout?.id)
 
       if (!response.createdWorkout) {
         throw new Error('Workout created without session payload')

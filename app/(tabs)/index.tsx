@@ -248,9 +248,26 @@ export default function FeedScreen() {
         workoutCount: workouts.length,
       })
 
+      // Check for placeholder and load it before processing
+      const checkAndLoadPlaceholder = async () => {
+        const placeholder = await loadPlaceholderWorkout()
+        if (placeholder) {
+          // Add placeholder to top of feed immediately
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+          setWorkouts((prev) => {
+            // Remove any existing placeholder first
+            const filtered = prev.filter((w: any) => !w.isPending)
+            return [(placeholder as unknown) as WorkoutSessionWithDetails, ...filtered]
+          })
+        }
+      }
+
       // Only load on initial mount, don't reload on every focus
       if (isInitialLoad) {
         loadWorkouts(true)
+      } else {
+        // When returning from create-post, check for placeholder
+        checkAndLoadPlaceholder()
       }
 
       // Process pending post in background (non-blocking)
