@@ -566,6 +566,21 @@ export default function CreateRoutineScreen() {
         if (setsError) throw setsError
       }
 
+      // If routine was created from an existing workout, link that workout to this routine
+      // This ensures the workout will be found by getLastForRoutine() and shown as placeholders
+      if (from && !isEditMode) {
+        const { error: linkError } = await supabase
+          .from('workout_sessions')
+          .update({ routine_id: routineIdToUse })
+          .eq('id', from)
+          .eq('user_id', user.id)
+
+        if (linkError) {
+          console.error('[create-routine] Failed to link workout to routine:', linkError)
+          // Don't throw - routine was created successfully, this is just a nice-to-have
+        }
+      }
+
       Alert.alert(
         'Success',
         isEditMode

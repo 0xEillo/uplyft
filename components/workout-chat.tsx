@@ -42,6 +42,7 @@ import AnimatedReanimated, {
   withTiming,
 } from 'react-native-reanimated'
 import * as Haptics from 'expo-haptics'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface Message {
   id: string
@@ -112,6 +113,7 @@ export function WorkoutChat() {
   const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
+  const insets = useSafeAreaInsets()
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
@@ -614,7 +616,7 @@ export function WorkoutChat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 35 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
     >
       <ScrollView
         ref={scrollViewRef}
@@ -623,7 +625,7 @@ export function WorkoutChat() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}
-        automaticallyAdjustKeyboardInsets={true}
+        automaticallyAdjustKeyboardInsets={false}
         onContentSizeChange={() => messages.length > 0 && scrollToBottom()}
       >
         {messages.length === 0 ? (
@@ -1143,7 +1145,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopColor: colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 16,
+      paddingBottom: 12,
     },
     inputWrapper: {
       flexDirection: 'row',

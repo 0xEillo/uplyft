@@ -1,3 +1,4 @@
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
@@ -103,6 +104,7 @@ export const FeedCard = memo(function FeedCard({
   isPending = false,
 }: FeedCardProps) {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const { shareWorkout, isSharing } = useWorkoutShare()
   const shareCardRef = useRef<View>(null)
@@ -132,7 +134,7 @@ export const FeedCard = memo(function FeedCard({
   const exercisesFadeAnim = useRef(new Animated.Value(isPending ? 0 : 1)).current
   const [analyzingDots, setAnalyzingDots] = useState('')
 
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, isDark)
 
   const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
@@ -721,7 +723,7 @@ export const FeedCard = memo(function FeedCard({
   )
 })
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolean) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.white,
@@ -1041,15 +1043,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       paddingVertical: 12,
       paddingHorizontal: 4,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: isDark ? '#2C2C2C' : '#ffffff',
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       alignItems: 'center',
       gap: 8,
     },
     skeletonBar: {
-      height: 12,
-      backgroundColor: colors.border,
+      height: 14,
+      backgroundColor: isDark ? '#555555' : '#999999',
       borderRadius: 6,
     },
     skeletonBarLong: {
