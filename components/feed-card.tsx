@@ -136,7 +136,7 @@ export const FeedCard = memo(function FeedCard({
 
   const styles = createStyles(colors, isDark)
 
-  const PREVIEW_LIMIT = 3 // Show first 3 exercises when collapsed
+  const PREVIEW_LIMIT = 6 // Show first 6 exercises when collapsed
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = isExpanded
     ? exercises
@@ -420,6 +420,7 @@ export const FeedCard = memo(function FeedCard({
                   hasPR && styles.tableRowWithPR,
                   !isExerciseExpanded &&
                     index === displayedExercises.length - 1 &&
+                    !isExpanded &&
                     styles.lastRow,
                 ]}
               >
@@ -542,31 +543,34 @@ export const FeedCard = memo(function FeedCard({
         )}
       </View>
 
+      {/* Expand/Collapse Button */}
+      {!isPending && hasMoreExercises && (
+        <TouchableOpacity
+          onPress={toggleExpand}
+          activeOpacity={0.7}
+          style={styles.expandButton}
+        >
+          <Text style={styles.expandButtonText}>
+            {isExpanded ? 'Show Less' : `${exercises.length - PREVIEW_LIMIT} more`}
+          </Text>
+          <Animated.View
+            style={{ transform: [{ rotate: rotateInterpolate }] }}
+          >
+            <Ionicons
+              name="chevron-down"
+              size={14}
+              color={colors.textSecondary}
+            />
+          </Animated.View>
+        </TouchableOpacity>
+      )}
+
       {/* Footer message for pending state */}
       {isPending && (
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Parsing your workout and identifying exercises...
           </Text>
-        </View>
-      )}
-
-      {/* Actions */}
-      {!isPending && hasMoreExercises && (
-        <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={toggleExpand}
-            style={styles.viewDetailsButton}
-          >
-            <Text style={styles.viewDetails}>
-              {isExpanded ? 'Show Less' : 'View Details'}
-            </Text>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateInterpolate }] }}
-            >
-              <Ionicons name="chevron-down" size={16} color={colors.link} />
-            </Animated.View>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -772,13 +776,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       marginTop: 2,
     },
     workoutTitle: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '600',
       color: colors.text,
       marginBottom: 8,
     },
     workoutDescription: {
-      fontSize: 14,
+      fontSize: 16,
       lineHeight: 20,
       color: colors.text,
       marginBottom: 12,
@@ -789,12 +793,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
+      position: 'relative',
     },
     tableHeader: {
       flexDirection: 'row',
       paddingVertical: 8,
       paddingHorizontal: 4,
       backgroundColor: colors.backgroundLight,
+      alignItems: 'center',
     },
     tableHeaderText: {
       fontSize: 11,
@@ -880,6 +886,21 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       flex: 1.5,
       textAlign: 'right',
     },
+    expandButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 6,
+      paddingTop: 0,
+      paddingBottom: 0,
+      marginTop: 0,
+    },
+    expandButtonText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      letterSpacing: -0.2,
+    },
     exerciseName: {
       fontWeight: '600',
       color: colors.text,
@@ -935,21 +956,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       color: colors.text,
       flex: 1,
       textAlign: 'right',
-    },
-    actions: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-    },
-    viewDetailsButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    viewDetails: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.link,
     },
     modalOverlay: {
       flex: 1,

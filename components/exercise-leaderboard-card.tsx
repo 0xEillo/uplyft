@@ -729,35 +729,45 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             >
               {selectedRanking && (
                 <>
-                  {/* Current Status */}
-                  <View style={styles.currentStatusContainer}>
-                    <Text style={styles.currentStatusLabel}>Current</Text>
-                    <Text style={styles.currentStatusValue}>
-                      {(() => {
-                        const hasWeightClass =
-                          selectedRanking.genderWeightPercentile != null
-                        const displayPercentile =
-                          rankingMode === 'weight' && hasWeightClass
-                            ? selectedRanking.genderWeightPercentile!
-                            : selectedRanking.genderPercentile ??
-                              selectedRanking.percentile
-                        return `${displayPercentile}th percentile`
-                      })()}
-                    </Text>
-                    <Text style={styles.currentWeightValue}>
-                      {formatWeight(selectedRanking.userMax1RM, {
-                        maximumFractionDigits: 0,
-                      })}
-                    </Text>
-                  </View>
-
-                  {/* Next Bracket */}
+                  {/* Current & Target Stats */}
                   {nextPercentileData && (
-                    <View style={styles.nextBracketContainer}>
-                      <Text style={styles.sectionTitle}>Next Bracket</Text>
-                      <View style={styles.bracketInfo}>
-                        <Text style={styles.bracketPercentile}>
-                          {nextPercentileData.targetPercentile}th percentile
+                    <View style={styles.statsComparisonContainer}>
+                      {/* Current Stats */}
+                      <View style={styles.statBlock}>
+                        <Text style={styles.statLabel}>Current</Text>
+                        <Text style={styles.statPercentile}>
+                          {(() => {
+                            const hasWeightClass =
+                              selectedRanking.genderWeightPercentile != null
+                            const displayPercentile =
+                              rankingMode === 'weight' && hasWeightClass
+                                ? selectedRanking.genderWeightPercentile!
+                                : selectedRanking.genderPercentile ??
+                                  selectedRanking.percentile
+                            return `${displayPercentile}th`
+                          })()}
+                        </Text>
+                        <Text style={styles.statWeight}>
+                          {formatWeight(selectedRanking.userMax1RM, {
+                            maximumFractionDigits: 0,
+                          })}
+                        </Text>
+                      </View>
+
+                      {/* Divider with Arrow */}
+                      <View style={styles.statDivider}>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={20}
+                          color={colors.textTertiary}
+                        />
+                      </View>
+
+                      {/* Target Stats */}
+                      <View style={styles.statBlock}>
+                        <Text style={styles.statLabel}>Target</Text>
+                        <Text style={[styles.statPercentile, styles.statPercentileTarget]}>
+                          {nextPercentileData.targetPercentile}th
                         </Text>
                         {nextPercentileData.isLoading ? (
                           <View style={styles.loadingWeight}>
@@ -765,105 +775,98 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
                               size="small"
                               color={colors.primary}
                             />
-                            <Text style={styles.loadingText}>
-                              Calculating...
-                            </Text>
                           </View>
                         ) : nextPercentileData.weightNeeded ? (
                           (() => {
                             const weightDifference =
                               nextPercentileData.weightNeeded -
                               selectedRanking.userMax1RM
-                            const isAlreadyThere = weightDifference <= 0
-                            const isTopPercentile =
-                              (() => {
-                                const hasWeightClass =
-                                  selectedRanking.genderWeightPercentile != null
-                                const displayPercentile =
-                                  rankingMode === 'weight' && hasWeightClass
-                                    ? selectedRanking.genderWeightPercentile!
-                                    : selectedRanking.genderPercentile ??
-                                      selectedRanking.percentile
-                                return displayPercentile >= 95
-                              })()
+                            const hasWeightClass =
+                              selectedRanking.genderWeightPercentile != null
+                            const currentPercentile =
+                              rankingMode === 'weight' && hasWeightClass
+                                ? selectedRanking.genderWeightPercentile!
+                                : selectedRanking.genderPercentile ??
+                                  selectedRanking.percentile
+                            const isTopPercentile = currentPercentile >= 95
 
                             if (isTopPercentile) {
                               return (
-                                <>
-                                  <View style={styles.celebrationContainer}>
-                                    <Ionicons
-                                      name="trophy"
-                                      size={32}
-                                      color="#FFD700"
-                                    />
-                                    <Text style={styles.celebrationText}>
-                                      Elite Status! 🎉
-                                    </Text>
-                                    <Text style={styles.celebrationSubtext}>
-                                      You're in the top tier of lifters
-                                    </Text>
-                                  </View>
-                                  {nextPercentileData.targetPercentile === 100 && (
-                                    <Text style={styles.weightNeededValue}>
-                                      {formatWeight(
-                                        nextPercentileData.weightNeeded,
-                                        {
-                                          maximumFractionDigits: 0,
-                                        },
-                                      )}
-                                    </Text>
-                                  )}
-                                </>
-                              )
-                            }
-
-                            if (isAlreadyThere) {
-                              return (
-                                <>
-                                  <View style={styles.alreadyThereContainer}>
-                                    <Ionicons
-                                      name="checkmark-circle"
-                                      size={32}
-                                      color={colors.primary}
-                                    />
-                                    <Text style={styles.alreadyThereText}>
-                                      You're already there! 🎯
-                                    </Text>
-                                    <Text style={styles.alreadyThereSubtext}>
-                                      Keep pushing to maintain your position
-                                    </Text>
-                                  </View>
-                                </>
+                                <View style={styles.eliteInlineContainer}>
+                                  <Ionicons
+                                    name="trophy"
+                                    size={18}
+                                    color="#FFD700"
+                                  />
+                                  <Text style={styles.eliteInlineText}>Elite</Text>
+                                </View>
                               )
                             }
 
                             return (
-                              <>
-                                <Text style={styles.weightNeededLabel}>
-                                  You need to lift:
-                                </Text>
-                                <Text style={styles.weightNeededValue}>
-                                  {formatWeight(nextPercentileData.weightNeeded, {
-                                    maximumFractionDigits: 0,
-                                  })}
-                                </Text>
-                                <Text style={styles.weightDifference}>
-                                  +{formatWeight(weightDifference, {
-                                    maximumFractionDigits: 0,
-                                  })}{' '}
-                                  more
-                                </Text>
-                              </>
+                              <Text style={[styles.statWeight, styles.statWeightTarget]}>
+                                {formatWeight(nextPercentileData.weightNeeded, {
+                                  maximumFractionDigits: 0,
+                                })}
+                              </Text>
                             )
                           })()
                         ) : (
-                          <Text style={styles.errorText}>
-                            Unable to calculate weight needed
-                          </Text>
+                          <Text style={styles.errorTextSmall}>N/A</Text>
                         )}
                       </View>
                     </View>
                   )}
+
+                  {/* Weight Difference Badge */}
+                  {nextPercentileData &&
+                   nextPercentileData.weightNeeded &&
+                   !nextPercentileData.isLoading &&
+                   (() => {
+                     const hasWeightClass =
+                       selectedRanking.genderWeightPercentile != null
+                     const currentPercentile =
+                       rankingMode === 'weight' && hasWeightClass
+                         ? selectedRanking.genderWeightPercentile!
+                         : selectedRanking.genderPercentile ??
+                           selectedRanking.percentile
+                     const isTopPercentile = currentPercentile >= 95
+                     const weightDifference =
+                       nextPercentileData.weightNeeded -
+                       selectedRanking.userMax1RM
+
+                     if (isTopPercentile) {
+                       return (
+                         <View style={styles.eliteBadge}>
+                           <Ionicons
+                             name="trophy"
+                             size={24}
+                             color="#FFD700"
+                           />
+                           <Text style={styles.eliteBadgeText}>
+                             Elite Status!
+                           </Text>
+                           <Text style={styles.eliteBadgeSubtext}>
+                             You're in the top tier of lifters
+                           </Text>
+                         </View>
+                       )
+                     }
+
+                     return (
+                       <View style={styles.weightDifferenceBadge}>
+                         <Text style={styles.weightDifferenceBadgeLabel}>
+                           To reach next bracket
+                         </Text>
+                         <Text style={styles.weightDifferenceBadgeValue}>
+                           +{formatWeight(Math.max(0, weightDifference), {
+                             maximumFractionDigits: 0,
+                           })}
+                         </Text>
+                       </View>
+                     )
+                   })()
+                  }
 
                   {/* Tier Breakdown */}
                   {(() => {
@@ -985,17 +988,9 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
                         : selectedRanking.genderPercentile ??
                           selectedRanking.percentile
                     const isTopPercentile = displayPercentile >= 95
-                    const weightDifference =
-                      nextPercentileData.weightNeeded &&
-                      selectedRanking.userMax1RM
-                        ? nextPercentileData.weightNeeded -
-                          selectedRanking.userMax1RM
-                        : null
-                    const isAlreadyThere =
-                      weightDifference !== null && weightDifference <= 0
 
-                    // Don't show tips if already at top percentile or already there
-                    if (isTopPercentile || isAlreadyThere) {
+                    // Don't show tips if already at top percentile
+                    if (isTopPercentile) {
                       return null
                     }
 
@@ -1446,113 +1441,114 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
       color: colors.text,
     },
-    currentStatusContainer: {
+    statsComparisonContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+      paddingVertical: 20,
+      paddingHorizontal: 16,
       backgroundColor: colors.backgroundLight,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 20,
+      borderRadius: 16,
+    },
+    statBlock: {
+      flex: 1,
       alignItems: 'center',
     },
-    currentStatusLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
+    statLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textTertiary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 8,
+    },
+    statPercentile: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
       marginBottom: 4,
+    },
+    statPercentileTarget: {
+      color: colors.primary,
+    },
+    statWeight: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    statWeightTarget: {
+      color: colors.primary,
+    },
+    statDivider: {
+      marginHorizontal: 16,
+      opacity: 0.5,
+    },
+    eliteInlineContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    eliteInlineText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#FFD700',
+    },
+    weightDifferenceBadge: {
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      backgroundColor: colors.primaryLight + '15',
+      borderRadius: 12,
+      marginBottom: 0,
+    },
+    weightDifferenceBadgeLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 6,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
-    currentStatusValue: {
+    weightDifferenceBadgeValue: {
       fontSize: 24,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    currentWeightValue: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.primary,
-    },
-    nextBracketContainer: {
-      marginBottom: 20,
-    },
-    bracketInfo: {
-      backgroundColor: colors.primaryLight + '20',
-      borderRadius: 12,
-      padding: 16,
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: colors.primaryLight,
-    },
-    bracketPercentile: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.primary,
-      marginBottom: 12,
-    },
-    weightNeededLabel: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginBottom: 8,
-    },
-    weightNeededValue: {
-      fontSize: 32,
       fontWeight: '800',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    weightDifference: {
-      fontSize: 16,
-      fontWeight: '600',
       color: colors.primary,
     },
-    loadingWeight: {
-      flexDirection: 'row',
+    eliteBadge: {
       alignItems: 'center',
-      gap: 8,
-      paddingVertical: 12,
+      paddingVertical: 20,
+      paddingHorizontal: 20,
+      backgroundColor: '#FFD70015',
+      borderRadius: 12,
+      marginBottom: 20,
+      borderLeftWidth: 4,
+      borderLeftColor: '#FFD700',
     },
-    loadingText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-    },
-    errorText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontStyle: 'italic',
-    },
-    tipsContainer: {
-      marginTop: 8,
-    },
-    celebrationContainer: {
-      alignItems: 'center',
-      paddingVertical: 12,
-    },
-    celebrationText: {
-      fontSize: 20,
+    eliteBadgeText: {
+      fontSize: 18,
       fontWeight: '700',
       color: '#FFD700',
       marginTop: 8,
       marginBottom: 4,
     },
-    celebrationSubtext: {
-      fontSize: 14,
+    eliteBadgeSubtext: {
+      fontSize: 13,
+      fontWeight: '500',
       color: colors.textSecondary,
       textAlign: 'center',
     },
-    alreadyThereContainer: {
+    loadingWeight: {
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: 8,
     },
-    alreadyThereText: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.primary,
-      marginTop: 8,
-      marginBottom: 4,
-    },
-    alreadyThereSubtext: {
-      fontSize: 14,
+    errorTextSmall: {
+      fontSize: 13,
       color: colors.textSecondary,
-      textAlign: 'center',
+      fontStyle: 'italic',
+    },
+    tipsContainer: {
+      marginTop: 8,
     },
     tierBreakdownContainer: {
       marginTop: 24,
