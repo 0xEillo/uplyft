@@ -1,5 +1,4 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -57,7 +56,6 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
   const [isLoading, setIsLoading] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
   const colors = useThemedColors()
-  const { formatWeight } = useWeightUnits()
 
   // Animation refs for info modal
   const infoSlideAnim = useRef(
@@ -265,10 +263,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
 
                   {/* Volume */}
                   <Text style={styles.volumeText}>
-                    {formatWeight(item.volume, {
-                      maximumFractionDigits: 0,
-                    })}{' '}
-                    total
+                    {item.volume.toLocaleString()} total reps
                   </Text>
                 </View>
               )
@@ -348,9 +343,9 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
 
               <Text style={styles.sectionTitle}>How it&apos;s calculated</Text>
               <Text style={styles.sectionText}>
-                We total the sets × reps × weight you log for each muscle group
-                and normalise it over the time range you select. Switch ranges
-                to contrast short-term cycles against longer trends.
+                We total the sets × reps you log for each muscle group and
+                normalise it over the time range you select. Switch ranges to
+                contrast short-term cycles against longer trends.
               </Text>
 
               <Text style={styles.sectionTitle}>What good looks like</Text>

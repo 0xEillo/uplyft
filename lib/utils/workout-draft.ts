@@ -2,14 +2,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export const DRAFT_KEY = '@workout_draft'
 export const TITLE_DRAFT_KEY = '@workout_title_draft'
+export const STRUCTURED_DRAFT_KEY = '@workout_structured_draft'
+const WORKOUT_DRAFT_V2_KEY = '@workout_draft_v2'
 export const PENDING_POST_KEY = '@pending_workout_post'
 export const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
 
 export type WeightUnit = 'kg' | 'lb'
 
+export interface StructuredSetDraft {
+  weight: string
+  reps: string
+  lastWorkoutWeight?: string | null
+  lastWorkoutReps?: string | null
+  targetRepsMin?: number | null
+  targetRepsMax?: number | null
+}
+
+export interface StructuredExerciseDraft {
+  id: string
+  name: string
+  sets: StructuredSetDraft[]
+}
+
 export interface WorkoutDraft {
   notes: string
   title: string
+  structuredData?: StructuredExerciseDraft[]
+  isStructuredMode?: boolean
+  selectedRoutineId?: string | null
 }
 
 export interface PendingWorkout {
@@ -30,42 +50,197 @@ export interface PlaceholderWorkout {
   isPending: boolean
 }
 
-export async function loadDraft(): Promise<WorkoutDraft | null> {
-  const [notes, title] = await Promise.all([
+export function draftHasContent(draft?: WorkoutDraft | null): boolean {
+  if (!draft) return false
+
+  const notesLength = draft.notes?.trim().length ?? 0
+  const titleLength = draft.title?.trim().length ?? 0
+  const structuredLength = Array.isArray(draft.structuredData)
+    ? draft.structuredData.length
+    : 0
+
+  // Only consider isStructuredMode as content if there's actual structured data
+  // Only consider selectedRoutineId as content if there's actual structured data or a routine is selected
+  return (
+    notesLength > 0 ||
+    titleLength > 0 ||
+    structuredLength > 0 ||
+    Boolean(draft.selectedRoutineId)
+  )
+}
+
+export async function hasStoredDraft(): Promise<boolean> {
+  const stored = await AsyncStorage.getItem(WORKOUT_DRAFT_V2_KEY)
+
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as WorkoutDraft
+      const hasContent = draftHasContent(parsed)
+      if (hasContent) {
+        return true
+      }
+    } catch {
+      await AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY)
+    }
+  }
+
+  const [notes, title, structuredPayload] = await Promise.all([
     AsyncStorage.getItem(DRAFT_KEY),
     AsyncStorage.getItem(TITLE_DRAFT_KEY),
+    AsyncStorage.getItem(STRUCTURED_DRAFT_KEY),
   ])
 
-  if (!notes && !title) {
+  if (
+    (notes && notes.trim().length > 0) ||
+    (title && title.trim().length > 0)
+  ) {
+    return true
+  }
+
+  if (structuredPayload) {
+    try {
+      const parsed = JSON.parse(structuredPayload) as {
+        structuredData?: StructuredExerciseDraft[]
+        isStructuredMode?: boolean
+        selectedRoutineId?: string | null
+      }
+
+      const combinedDraft: WorkoutDraft = {
+        notes: notes ?? '',
+        title: title ?? '',
+        structuredData: parsed.structuredData ?? [],
+        isStructuredMode: parsed.isStructuredMode,
+        selectedRoutineId: parsed.selectedRoutineId,
+      }
+      return draftHasContent(combinedDraft)
+    } catch {
+      await AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY)
+    }
+  }
+
+  return false
+}
+
+export async function loadDraft(): Promise<WorkoutDraft | null> {
+  const stored = await AsyncStorage.getItem(WORKOUT_DRAFT_V2_KEY)
+
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as WorkoutDraft
+      const normalized: WorkoutDraft = {
+        notes: parsed.notes ?? '',
+        title: parsed.title ?? '',
+        structuredData: Array.isArray(parsed.structuredData)
+          ? parsed.structuredData
+          : [],
+        isStructuredMode: Boolean(parsed.isStructuredMode),
+        selectedRoutineId:
+          typeof parsed.selectedRoutineId === 'string'
+            ? parsed.selectedRoutineId
+            : null,
+      }
+
+      return draftHasContent(normalized) ? normalized : null
+    } catch {
+      await AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY)
+    }
+  }
+
+  const [notes, title, structuredPayload] = await Promise.all([
+    AsyncStorage.getItem(DRAFT_KEY),
+    AsyncStorage.getItem(TITLE_DRAFT_KEY),
+    AsyncStorage.getItem(STRUCTURED_DRAFT_KEY),
+  ])
+
+  if (!notes && !title && !structuredPayload) {
     return null
   }
 
-  return {
+  let structuredData: StructuredExerciseDraft[] = []
+  let isStructuredMode = false
+  let selectedRoutineId: string | null = null
+
+  if (structuredPayload) {
+    try {
+      const parsed = JSON.parse(structuredPayload) as {
+        structuredData?: StructuredExerciseDraft[]
+        isStructuredMode?: boolean
+        selectedRoutineId?: string | null
+      }
+
+      if (Array.isArray(parsed.structuredData)) {
+        structuredData = parsed.structuredData
+      }
+
+      if (typeof parsed.isStructuredMode === 'boolean') {
+        isStructuredMode = parsed.isStructuredMode
+      }
+
+      if (
+        typeof parsed.selectedRoutineId === 'string' ||
+        parsed.selectedRoutineId === null
+      ) {
+        selectedRoutineId = parsed.selectedRoutineId ?? null
+      }
+    } catch {
+      await AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY)
+    }
+  }
+
+  const fallbackDraft: WorkoutDraft = {
     notes: notes ?? '',
     title: title ?? '',
+    structuredData,
+    isStructuredMode,
+    selectedRoutineId,
   }
+
+  if (!draftHasContent(fallbackDraft)) {
+    await clearDraft()
+    return null
+  }
+
+  await saveDraft(fallbackDraft)
+  return fallbackDraft
 }
 
 export async function saveDraft(draft: WorkoutDraft): Promise<void> {
-  const { notes, title } = draft
+  const {
+    notes,
+    title,
+    structuredData = [],
+    isStructuredMode = false,
+    selectedRoutineId = null,
+  } = draft
 
-  if (notes.trim()) {
-    await AsyncStorage.setItem(DRAFT_KEY, notes)
-  } else {
-    await AsyncStorage.removeItem(DRAFT_KEY)
+  const normalized: WorkoutDraft = {
+    notes: notes ?? '',
+    title: title ?? '',
+    structuredData: Array.isArray(structuredData) ? structuredData : [],
+    isStructuredMode,
+    selectedRoutineId,
   }
 
-  if (title.trim()) {
-    await AsyncStorage.setItem(TITLE_DRAFT_KEY, title)
-  } else {
-    await AsyncStorage.removeItem(TITLE_DRAFT_KEY)
+  if (!draftHasContent(normalized)) {
+    await clearDraft()
+    return
   }
+
+  await AsyncStorage.setItem(WORKOUT_DRAFT_V2_KEY, JSON.stringify(normalized))
+
+  await Promise.all([
+    AsyncStorage.removeItem(DRAFT_KEY),
+    AsyncStorage.removeItem(TITLE_DRAFT_KEY),
+    AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY),
+  ])
 }
 
 export async function clearDraft(): Promise<void> {
   await Promise.all([
+    AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY),
     AsyncStorage.removeItem(DRAFT_KEY),
     AsyncStorage.removeItem(TITLE_DRAFT_KEY),
+    AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY),
   ])
 }
 

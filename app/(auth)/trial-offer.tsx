@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Linking,
   ScrollView,
   StyleSheet,
@@ -74,7 +75,8 @@ function AnimatedButton({
 export default function TrialOfferScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
-  const styles = createStyles(colors)
+  const screenHeight = Dimensions.get('window').height
+  const styles = createStyles(colors, screenHeight)
   const { trackEvent } = useAnalytics()
   const [step, setStep] = useState(1)
   const [isPurchasing, setIsPurchasing] = useState(false)
@@ -215,31 +217,44 @@ export default function TrialOfferScreen() {
     }
   }
 
+  const handleSkipTrial = () => {
+    // Track that user skipped the trial
+    trackEvent(AnalyticsEvents.TRIAL_OFFER_SKIPPED, {})
+
+    // Navigate to signup without subscription
+    router.push({
+      pathname: '/(auth)/signup-options',
+      params: {
+        onboarding_data: params.onboarding_data as string,
+      },
+    })
+  }
+
   const renderStep1 = () => (
     <>
+      {/* Header with Close Button */}
+      <View style={styles.step1HeaderContainer}>
+        <View style={styles.step1HeaderSpacer} />
+        <TouchableOpacity style={styles.closeButton} onPress={handleSkipTrial}>
+          <Ionicons name="close" size={28} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.step1ScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Icon */}
-        <Animated.View
-          style={styles.step1IconContainer}
-          entering={FadeInDown.delay(100).duration(600)}
-        >
-          <Ionicons name="barbell" size={80} color={colors.primary} />
-        </Animated.View>
-
         {/* Title */}
         <Animated.Text
           style={styles.step1Title}
-          entering={FadeInDown.delay(200).duration(600)}
+          entering={FadeInDown.delay(100).duration(600)}
         >
-          We want you to try Rep AI for FREE.
+          We want you to try Pro for FREE.
         </Animated.Text>
 
         {/* Features */}
         <View style={styles.step1FeaturesContainer}>
-          <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+          <Animated.View entering={FadeInDown.delay(200).duration(600)}>
             <Feature
               icon="infinite"
               title="Unlimited Workouts"
@@ -247,7 +262,7 @@ export default function TrialOfferScreen() {
               colors={colors}
             />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(380).duration(600)}>
+          <Animated.View entering={FadeInDown.delay(280).duration(600)}>
             <Feature
               icon="analytics"
               title="AI-Powered Chat"
@@ -255,7 +270,7 @@ export default function TrialOfferScreen() {
               colors={colors}
             />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(460).duration(600)}>
+          <Animated.View entering={FadeInDown.delay(360).duration(600)}>
             <Feature
               icon="body"
               title="Body Scan"
@@ -263,7 +278,7 @@ export default function TrialOfferScreen() {
               colors={colors}
             />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(540).duration(600)}>
+          <Animated.View entering={FadeInDown.delay(440).duration(600)}>
             <Feature
               icon="trending-up"
               title="Track Your Progress"
@@ -277,7 +292,7 @@ export default function TrialOfferScreen() {
       {/* Button */}
       <Animated.View
         style={styles.footer}
-        entering={FadeInDown.delay(620).duration(600)}
+        entering={FadeInDown.delay(520).duration(600)}
       >
         {/* No Payment Due */}
         <View style={styles.noPaymentContainer}>
@@ -343,8 +358,8 @@ export default function TrialOfferScreen() {
 
   const renderStep2 = () => (
     <>
-      {/* Back Button */}
-      <View style={styles.backButtonContainer}>
+      {/* Header with Back and Close Buttons */}
+      <View style={styles.step2HeaderContainer}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
@@ -353,6 +368,10 @@ export default function TrialOfferScreen() {
           }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.closeButton} onPress={handleSkipTrial}>
+          <Ionicons name="close" size={28} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -419,8 +438,8 @@ export default function TrialOfferScreen() {
 
     return (
       <>
-        {/* Back Button */}
-        <View style={styles.backButtonContainer}>
+        {/* Header with Back and Close Buttons */}
+        <View style={styles.step3HeaderContainer}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => {
@@ -429,6 +448,14 @@ export default function TrialOfferScreen() {
             }}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleSkipTrial}
+            disabled={isPurchasing || subscriptionLoading}
+          >
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -442,7 +469,7 @@ export default function TrialOfferScreen() {
               style={styles.step3Title}
               entering={FadeInDown.delay(100).duration(600)}
             >
-              Start your 7-day FREE trial to continue.
+              Start your 7-day FREE trial
             </Animated.Text>
 
             {/* Timeline */}
@@ -601,7 +628,11 @@ function TimelineItem({
   )
 }
 
-function createStyles(colors: any) {
+function createStyles(colors: any, screenHeight: number = 800) {
+  // Calculate dynamic spacing based on screen height
+  // Use ~12% of screen height for title margin, but cap between 64-120px
+  const titleMarginBottom = Math.max(64, Math.min(120, screenHeight * 0.12))
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -618,6 +649,39 @@ function createStyles(colors: any) {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    step1HeaderContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    step1HeaderSpacer: {
+      width: 40,
+    },
+    step2HeaderContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    step3HeaderContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 20,
+    },
+    closeButton: {
+      width: 40,
+      height: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     scrollContent: {
       paddingHorizontal: 24,
       paddingTop: 32,
@@ -626,25 +690,23 @@ function createStyles(colors: any) {
     // Step 1 specific styles
     step1ScrollContent: {
       paddingHorizontal: 32,
+      paddingTop: 32,
       paddingBottom: 24,
       flexGrow: 1,
       justifyContent: 'center',
-    },
-    step1IconContainer: {
-      alignItems: 'center',
-      marginBottom: 32,
     },
     step1Title: {
       fontSize: 34,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 48,
+      marginBottom: 64,
       paddingHorizontal: 8,
       lineHeight: 40,
     },
     step1FeaturesContainer: {
       gap: 24,
+      paddingTop: 8,
     },
     // Step 3 specific styles
     step3ContentWrapper: {
@@ -652,8 +714,10 @@ function createStyles(colors: any) {
     },
     step3ScrollContent: {
       paddingHorizontal: 24,
+      paddingTop: 24,
       paddingBottom: 20,
       flexGrow: 1,
+      justifyContent: 'center',
     },
     step3Title: {
       fontSize: 26,
@@ -662,7 +726,8 @@ function createStyles(colors: any) {
       textAlign: 'center',
       paddingHorizontal: 16,
       lineHeight: 32,
-      marginBottom: 32,
+      marginTop: 8,
+      marginBottom: titleMarginBottom,
     },
     step3PricingSection: {
       paddingHorizontal: 24,
@@ -763,8 +828,8 @@ function createStyles(colors: any) {
     // Step 3 Timeline Styles
     timelineContainer: {
       paddingHorizontal: 8,
-      paddingTop: 64,
-      marginBottom: 16,
+      paddingTop: 0,
+      marginBottom: 24,
     },
     timelineItem: {
       flexDirection: 'row',

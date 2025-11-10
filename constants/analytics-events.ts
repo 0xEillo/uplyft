@@ -42,6 +42,7 @@ export const AnalyticsEvents = {
   TRIAL_OFFER_STEP_COMPLETED: 'Trial Offer Step Completed',
   TRIAL_OFFER_ACCEPTED: 'Trial Offer Accepted',
   TRIAL_OFFER_DISMISSED: 'Trial Offer Dismissed',
+  TRIAL_OFFER_SKIPPED: 'Trial Offer Skipped',
 
   // Feed & Navigation
   FEED_VIEWED: 'Feed Viewed',
@@ -360,6 +361,7 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED]: TrialOfferStepProperties
   [AnalyticsEvents.TRIAL_OFFER_ACCEPTED]: TrialOfferProperties
   [AnalyticsEvents.TRIAL_OFFER_DISMISSED]: TrialOfferProperties
+  [AnalyticsEvents.TRIAL_OFFER_SKIPPED]: TrialOfferProperties
   [AnalyticsEvents.FEED_VIEWED]: FeedViewedProperties
   [AnalyticsEvents.WORKOUT_CREATE_STARTED]: WorkoutCreateStartedProperties
   [AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED]: WorkoutDraftProperties

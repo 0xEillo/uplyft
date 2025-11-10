@@ -147,8 +147,8 @@ export default function BodyLogIntroPage() {
       <Paywall
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title="Body Scan is Premium"
-        message="Track your body composition changes with AI-powered analysis. Unlock body scanning to monitor your progress over time."
+        title="Try Pro for FREE!"
+        message="Body scanning is a Pro feature"
       />
     </View>
   )

@@ -1,7 +1,7 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { markUserAsRated, requestReview } from '@/lib/rating'
+import { requestReview } from '@/lib/rating'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -17,7 +17,7 @@ import {
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const NATIVE_DIALOG_DELAY = 1500 // 1.5 seconds before auto-opening native dialog
+const NATIVE_DIALOG_DELAY = 1000 // 1 second before auto-opening native dialog
 
 export default function ReviewScreen() {
   const params = useLocalSearchParams()
@@ -94,9 +94,6 @@ export default function ReviewScreen() {
 
         // Show native review dialog
         await requestReview()
-
-        // Mark user as rated so they don't see the prompt after first workout
-        await markUserAsRated()
 
         setHasShownReview(true)
       }

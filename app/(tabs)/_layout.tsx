@@ -12,19 +12,19 @@ import {
 } from 'react-native'
 
 import { HapticTab } from '@/components/haptic-tab'
+import { RatingPromptModal } from '@/components/rating-prompt-modal'
+import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { IconSymbol } from '@/components/ui/icon-symbol'
-import { useTheme } from '@/contexts/theme-context'
-import { useThemedColors } from '@/hooks/useThemedColors'
+import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
   SuccessOverlayProvider,
   useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
-import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
-import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
-import { RatingPromptModal } from '@/components/rating-prompt-modal'
+import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
-const DRAFT_KEY = '@workout_draft'
 
 function CreateButton() {
   const router = useRouter()
@@ -34,13 +34,35 @@ function CreateButton() {
   const spinValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    // Check for pending post and draft every 300ms
-    const interval = setInterval(async () => {
-      const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
-      const draftData = await AsyncStorage.getItem(DRAFT_KEY)
-      setIsCreatingPost(!!pendingData)
-      setHasDraft(!!draftData && draftData.trim().length > 0)
-    }, 300)
+    // Check for pending post and draft every 500ms
+    let isChecking = false
+
+    const checkState = async () => {
+      if (isChecking) {
+        return
+      }
+
+      isChecking = true
+      try {
+        const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
+        const hasPending = Boolean(pendingData)
+        const draftExists = await hasStoredDraft()
+
+        // Only update state if it actually changed to avoid unnecessary re-renders
+        setIsCreatingPost((prev) => (prev !== hasPending ? hasPending : prev))
+        setHasDraft((prev) => (prev !== draftExists ? draftExists : prev))
+      } catch (error) {
+        console.error('[CreateButton] checkState - error:', error)
+      } finally {
+        isChecking = false
+      }
+    }
+
+    const interval = setInterval(() => {
+      void checkState()
+    }, 500)
+
+    void checkState()
 
     return () => clearInterval(interval)
   }, [])
@@ -54,7 +76,7 @@ function CreateButton() {
           duration: 1200,
           easing: Easing.linear,
           useNativeDriver: true,
-        })
+        }),
       ).start()
     } else {
       // Reset

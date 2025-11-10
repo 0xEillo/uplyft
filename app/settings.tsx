@@ -7,7 +7,6 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -698,7 +697,6 @@ export default function SettingsScreen() {
                 thumbColor={isDark ? colors.primary : '#F3F4F6'}
               />
             </View>
-
           </View>
         </View>
 
@@ -755,7 +753,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.legalButtonSpacing]}
             onPress={handleOpenTermsOfUse}
           >
             <View style={styles.actionButtonContent}>
@@ -1023,6 +1021,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 2,
+    },
+    legalButtonSpacing: {
+      marginTop: 6,
     },
     actionButtonContent: {
       flexDirection: 'row',

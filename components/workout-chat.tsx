@@ -614,7 +614,7 @@ export function WorkoutChat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 35 : 20}
     >
       <ScrollView
         ref={scrollViewRef}
@@ -623,6 +623,7 @@ export function WorkoutChat() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={true}
         onContentSizeChange={() => messages.length > 0 && scrollToBottom()}
       >
         {messages.length === 0 ? (
@@ -913,8 +914,8 @@ export function WorkoutChat() {
       <Paywall
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title="AI Chat is Premium"
-        message="Chat with your personal AI assistant to analyze your workouts and get insights. Subscribe to unlock this feature."
+        title="Try Pro for FREE!"
+        message="AI chat is a Pro feature"
       />
 
       {/* Image Picker Bottom Sheet */}
@@ -1142,7 +1143,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopColor: colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 20,
+      paddingBottom: 16,
     },
     inputWrapper: {
       flexDirection: 'row',

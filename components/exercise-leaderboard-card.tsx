@@ -51,6 +51,13 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [animatedValues] = useState(() => new Map<string, Animated.Value>())
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [showNextPercentileModal, setShowNextPercentileModal] = useState(false)
+  const [selectedRanking, setSelectedRanking] = useState<LeaderboardRanking | null>(null)
+  const [nextPercentileData, setNextPercentileData] = useState<{
+    targetPercentile: number
+    weightNeeded: number | null
+    isLoading: boolean
+  } | null>(null)
   const [rankingMode, setRankingMode] = useState<RankingMode>('weight')
   const colors = useThemedColors()
   const { formatWeight } = useWeightUnits()
@@ -73,9 +80,17 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
   ).current
   const infoBackdropAnim = useRef(new Animated.Value(0)).current
 
-  // ScrollView ref for swipe-to-dismiss detection
+  // Animation refs for next percentile modal
+  const nextPercentileSlideAnim = useRef(
+    new Animated.Value(Dimensions.get('window').height),
+  ).current
+  const nextPercentileBackdropAnim = useRef(new Animated.Value(0)).current
+
+  // ScrollView refs for swipe-to-dismiss detection
   const scrollViewRef = useRef<ScrollView>(null)
   const scrollOffsetRef = useRef(0)
+  const nextPercentileScrollViewRef = useRef<ScrollView>(null)
+  const nextPercentileScrollOffsetRef = useRef(0)
 
   // Info modal pan responder - allows swipe-to-dismiss from handle/header area
   const infoModalPanResponder = useRef(
@@ -97,6 +112,35 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
           setShowInfoModal(false)
         } else {
           Animated.spring(infoSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 25,
+            stiffness: 200,
+          }).start()
+        }
+      },
+    }),
+  ).current
+
+  // Next percentile modal pan responder
+  const nextPercentileModalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return (
+          gestureState.dy > 5 && gestureState.dy > Math.abs(gestureState.dx)
+        )
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          nextPercentileSlideAnim.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          setShowNextPercentileModal(false)
+        } else {
+          Animated.spring(nextPercentileSlideAnim, {
             toValue: 0,
             useNativeDriver: true,
             damping: 25,
@@ -141,6 +185,106 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
       scrollViewRef.current?.scrollTo({ y: 0, animated: false })
     }
   }, [showInfoModal, infoSlideAnim, infoBackdropAnim])
+
+  // Handle next percentile modal animations
+  useEffect(() => {
+    if (showNextPercentileModal) {
+      Animated.parallel([
+        Animated.spring(nextPercentileSlideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 25,
+          stiffness: 200,
+        }),
+        Animated.timing(nextPercentileBackdropAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(nextPercentileSlideAnim, {
+          toValue: Dimensions.get('window').height,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nextPercentileBackdropAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start()
+      nextPercentileScrollOffsetRef.current = 0
+      nextPercentileScrollViewRef.current?.scrollTo({ y: 0, animated: false })
+      setSelectedRanking(null)
+      setNextPercentileData(null)
+    }
+  }, [showNextPercentileModal, nextPercentileSlideAnim, nextPercentileBackdropAnim])
+
+  // Calculate next percentile bracket
+  const getNextPercentileBracket = (currentPercentile: number): number => {
+    if (currentPercentile >= 95) return 100 // Already at elite, show 100th
+    if (currentPercentile >= 90) return 95
+    if (currentPercentile >= 75) return 90
+    if (currentPercentile >= 50) return 75
+    return 50
+  }
+
+  // Handle exercise click
+  const handleExerciseClick = useCallback(
+    async (ranking: LeaderboardRanking) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      setSelectedRanking(ranking)
+      setShowNextPercentileModal(true)
+
+      // Determine which percentile to use based on ranking mode
+      const hasWeightClass = ranking.genderWeightPercentile != null
+      const currentPercentile =
+        rankingMode === 'weight' && hasWeightClass
+          ? ranking.genderWeightPercentile!
+          : ranking.genderPercentile ?? ranking.percentile
+
+      const targetPercentile = getNextPercentileBracket(currentPercentile)
+
+      // Special haptic for top percentile users
+      if (currentPercentile >= 95) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      }
+
+      setNextPercentileData({
+        targetPercentile,
+        weightNeeded: null,
+        isLoading: true,
+      })
+
+      // Fetch weight needed
+      try {
+        const weightNeeded = await database.stats.getWeightForNextPercentile(
+          ranking.exerciseId,
+          currentPercentile,
+          targetPercentile,
+          ranking.gender ?? null,
+          ranking.weightBucketStart ?? null,
+          ranking.weightBucketEnd ?? null,
+        )
+
+        setNextPercentileData({
+          targetPercentile,
+          weightNeeded,
+          isLoading: false,
+        })
+      } catch (error) {
+        console.error('Error fetching weight for next percentile:', error)
+        setNextPercentileData({
+          targetPercentile,
+          weightNeeded: null,
+          isLoading: false,
+        })
+      }
+    },
+    [rankingMode],
+  )
 
   const loadRankings = useCallback(async () => {
     setIsLoading(true)
@@ -357,6 +501,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
             colors={colors}
             isFirst={index === 0}
             rankingMode={rankingMode}
+            onPress={() => handleExerciseClick(ranking)}
           />
         ))}
       </View>
@@ -377,6 +522,7 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
                 colors={colors}
                 isCompact
                 rankingMode={rankingMode}
+                onPress={() => handleExerciseClick(ranking)}
               />
             ))}
           </ScrollView>
@@ -514,6 +660,369 @@ export const ExerciseLeaderboardCard = memo(function ExerciseLeaderboardCard({
           </Animated.View>
         </View>
       </Modal>
+
+      {/* Next Percentile Modal */}
+      <Modal
+        visible={showNextPercentileModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowNextPercentileModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.backdrop,
+              {
+                opacity: nextPercentileBackdropAnim,
+              },
+            ]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowNextPercentileModal(false)}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ translateY: nextPercentileSlideAnim }],
+              },
+            ]}
+          >
+            {/* Handle Bar */}
+            <View
+              style={styles.handleContainer}
+              {...nextPercentileModalPanResponder.panHandlers}
+            >
+              <View
+                style={[
+                  styles.handle,
+                  { backgroundColor: colors.textSecondary },
+                ]}
+              />
+            </View>
+
+            <View
+              style={styles.modalHeader}
+              {...nextPercentileModalPanResponder.panHandlers}
+            >
+              <Text style={styles.modalTitle}>
+                {selectedRanking?.exerciseName}
+              </Text>
+            </View>
+
+            <ScrollView
+              ref={nextPercentileScrollViewRef}
+              style={styles.modalBody}
+              contentContainerStyle={styles.modalBodyContent}
+              showsVerticalScrollIndicator={true}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
+              bounces={true}
+              onScroll={(event) => {
+                nextPercentileScrollOffsetRef.current =
+                  event.nativeEvent.contentOffset.y
+              }}
+              scrollEventThrottle={16}
+            >
+              {selectedRanking && (
+                <>
+                  {/* Current Status */}
+                  <View style={styles.currentStatusContainer}>
+                    <Text style={styles.currentStatusLabel}>Current</Text>
+                    <Text style={styles.currentStatusValue}>
+                      {(() => {
+                        const hasWeightClass =
+                          selectedRanking.genderWeightPercentile != null
+                        const displayPercentile =
+                          rankingMode === 'weight' && hasWeightClass
+                            ? selectedRanking.genderWeightPercentile!
+                            : selectedRanking.genderPercentile ??
+                              selectedRanking.percentile
+                        return `${displayPercentile}th percentile`
+                      })()}
+                    </Text>
+                    <Text style={styles.currentWeightValue}>
+                      {formatWeight(selectedRanking.userMax1RM, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Text>
+                  </View>
+
+                  {/* Next Bracket */}
+                  {nextPercentileData && (
+                    <View style={styles.nextBracketContainer}>
+                      <Text style={styles.sectionTitle}>Next Bracket</Text>
+                      <View style={styles.bracketInfo}>
+                        <Text style={styles.bracketPercentile}>
+                          {nextPercentileData.targetPercentile}th percentile
+                        </Text>
+                        {nextPercentileData.isLoading ? (
+                          <View style={styles.loadingWeight}>
+                            <ActivityIndicator
+                              size="small"
+                              color={colors.primary}
+                            />
+                            <Text style={styles.loadingText}>
+                              Calculating...
+                            </Text>
+                          </View>
+                        ) : nextPercentileData.weightNeeded ? (
+                          (() => {
+                            const weightDifference =
+                              nextPercentileData.weightNeeded -
+                              selectedRanking.userMax1RM
+                            const isAlreadyThere = weightDifference <= 0
+                            const isTopPercentile =
+                              (() => {
+                                const hasWeightClass =
+                                  selectedRanking.genderWeightPercentile != null
+                                const displayPercentile =
+                                  rankingMode === 'weight' && hasWeightClass
+                                    ? selectedRanking.genderWeightPercentile!
+                                    : selectedRanking.genderPercentile ??
+                                      selectedRanking.percentile
+                                return displayPercentile >= 95
+                              })()
+
+                            if (isTopPercentile) {
+                              return (
+                                <>
+                                  <View style={styles.celebrationContainer}>
+                                    <Ionicons
+                                      name="trophy"
+                                      size={32}
+                                      color="#FFD700"
+                                    />
+                                    <Text style={styles.celebrationText}>
+                                      Elite Status! 🎉
+                                    </Text>
+                                    <Text style={styles.celebrationSubtext}>
+                                      You're in the top tier of lifters
+                                    </Text>
+                                  </View>
+                                  {nextPercentileData.targetPercentile === 100 && (
+                                    <Text style={styles.weightNeededValue}>
+                                      {formatWeight(
+                                        nextPercentileData.weightNeeded,
+                                        {
+                                          maximumFractionDigits: 0,
+                                        },
+                                      )}
+                                    </Text>
+                                  )}
+                                </>
+                              )
+                            }
+
+                            if (isAlreadyThere) {
+                              return (
+                                <>
+                                  <View style={styles.alreadyThereContainer}>
+                                    <Ionicons
+                                      name="checkmark-circle"
+                                      size={32}
+                                      color={colors.primary}
+                                    />
+                                    <Text style={styles.alreadyThereText}>
+                                      You're already there! 🎯
+                                    </Text>
+                                    <Text style={styles.alreadyThereSubtext}>
+                                      Keep pushing to maintain your position
+                                    </Text>
+                                  </View>
+                                </>
+                              )
+                            }
+
+                            return (
+                              <>
+                                <Text style={styles.weightNeededLabel}>
+                                  You need to lift:
+                                </Text>
+                                <Text style={styles.weightNeededValue}>
+                                  {formatWeight(nextPercentileData.weightNeeded, {
+                                    maximumFractionDigits: 0,
+                                  })}
+                                </Text>
+                                <Text style={styles.weightDifference}>
+                                  +{formatWeight(weightDifference, {
+                                    maximumFractionDigits: 0,
+                                  })}{' '}
+                                  more
+                                </Text>
+                              </>
+                            )
+                          })()
+                        ) : (
+                          <Text style={styles.errorText}>
+                            Unable to calculate weight needed
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Tier Breakdown */}
+                  {(() => {
+                    if (!selectedRanking) return null
+
+                    const hasWeightClass =
+                      selectedRanking.genderWeightPercentile != null
+                    const currentPercentile =
+                      rankingMode === 'weight' && hasWeightClass
+                        ? selectedRanking.genderWeightPercentile!
+                        : selectedRanking.genderPercentile ??
+                          selectedRanking.percentile
+
+                    const tiers = [
+                      {
+                        range: '0-49th',
+                        label: 'Developing',
+                        description: 'Building your foundation',
+                        color: colors.textSecondary,
+                        min: 0,
+                        max: 50,
+                      },
+                      {
+                        range: '50-74th',
+                        label: 'Strong',
+                        description: 'Stronger than most',
+                        color: colors.primary,
+                        min: 50,
+                        max: 75,
+                      },
+                      {
+                        range: '75-89th',
+                        label: 'Advanced',
+                        description: 'Top tier strength',
+                        color: '#CD7F32',
+                        min: 75,
+                        max: 90,
+                      },
+                      {
+                        range: '90-94th',
+                        label: 'Elite',
+                        description: 'Exceptional strength',
+                        color: '#C0C0C0',
+                        min: 90,
+                        max: 95,
+                      },
+                      {
+                        range: '95-100th',
+                        label: 'Elite+',
+                        description: 'Peak performance',
+                        color: '#FFD700',
+                        min: 95,
+                        max: 101,
+                      },
+                    ]
+
+                    return (
+                      <View style={styles.tierBreakdownContainer}>
+                        <Text style={styles.tierBreakdownTitle}>
+                          Percentile Tiers
+                        </Text>
+                        <View style={styles.tierList}>
+                          {tiers.map((tier) => {
+                            const isCurrent =
+                              currentPercentile >= tier.min &&
+                              currentPercentile < tier.max
+                            return (
+                              <View
+                                key={tier.range}
+                                style={[
+                                  styles.tierRow,
+                                  isCurrent && styles.tierRowCurrent,
+                                ]}
+                              >
+                                <View style={styles.tierRowLeft}>
+                                  <View
+                                    style={[
+                                      styles.tierIndicator,
+                                      { backgroundColor: tier.color },
+                                    ]}
+                                  />
+                                  <View style={styles.tierRowText}>
+                                    <Text
+                                      style={[
+                                        styles.tierLabel,
+                                        isCurrent && styles.tierLabelCurrent,
+                                      ]}
+                                    >
+                                      {tier.range} - {tier.label}
+                                    </Text>
+                                    <Text
+                                      style={[
+                                        styles.tierDescription,
+                                        isCurrent &&
+                                          styles.tierDescriptionCurrent,
+                                      ]}
+                                    >
+                                      {tier.description}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            )
+                          })}
+                        </View>
+                      </View>
+                    )
+                  })()}
+
+                  {/* Tips */}
+                  {(() => {
+                    if (!nextPercentileData || !selectedRanking) return null
+
+                    const hasWeightClass =
+                      selectedRanking.genderWeightPercentile != null
+                    const displayPercentile =
+                      rankingMode === 'weight' && hasWeightClass
+                        ? selectedRanking.genderWeightPercentile!
+                        : selectedRanking.genderPercentile ??
+                          selectedRanking.percentile
+                    const isTopPercentile = displayPercentile >= 95
+                    const weightDifference =
+                      nextPercentileData.weightNeeded &&
+                      selectedRanking.userMax1RM
+                        ? nextPercentileData.weightNeeded -
+                          selectedRanking.userMax1RM
+                        : null
+                    const isAlreadyThere =
+                      weightDifference !== null && weightDifference <= 0
+
+                    // Don't show tips if already at top percentile or already there
+                    if (isTopPercentile || isAlreadyThere) {
+                      return null
+                    }
+
+                    return (
+                      <View style={styles.tipsContainer}>
+                        <Text style={styles.sectionTitle}>How to get there</Text>
+                        <Text style={styles.sectionText}>
+                          <Text style={styles.sectionBold}>
+                            Progressive Overload:
+                          </Text>{' '}
+                          Add 2.5-5kg each week to your working sets{'\n'}
+                          <Text style={styles.sectionBold}>Volume:</Text> Aim for
+                          3-5 sets of 3-6 reps at 85-90% of your max{'\n'}
+                          <Text style={styles.sectionBold}>Form:</Text> Focus on
+                          clean, controlled reps to maximize strength gains{'\n'}
+                          <Text style={styles.sectionBold}>Recovery:</Text> Ensure
+                          adequate rest between heavy sessions
+                        </Text>
+                      </View>
+                    )
+                  })()}
+                </>
+              )}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   )
 })
@@ -525,6 +1034,7 @@ interface RankingRowProps {
   isFirst?: boolean
   isCompact?: boolean
   rankingMode: RankingMode
+  onPress?: () => void
 }
 
 function RankingRow({
@@ -534,6 +1044,7 @@ function RankingRow({
   isFirst = false,
   isCompact = false,
   rankingMode,
+  onPress,
 }: RankingRowProps) {
   const { formatWeight } = useWeightUnits()
   const styles = createStyles(colors)
@@ -573,8 +1084,8 @@ function RankingRow({
     return () => animatedValue.removeListener(listener)
   }, [animatedValue, displayPercentile, rankingMode])
 
-  return (
-    <View style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}>
+  const content = (
+    <>
       {/* Exercise Info */}
       <View style={styles.exerciseInfo}>
         <View style={styles.exerciseHeader}>
@@ -584,8 +1095,7 @@ function RankingRow({
             {ranking.exerciseName}
           </Text>
           <Text style={styles.weightInfo}>
-            {formatWeight(ranking.userMax1RM, { maximumFractionDigits: 0 })} •{' '}
-            {ranking.totalUsers} users
+            {formatWeight(ranking.userMax1RM, { maximumFractionDigits: 0 })}
           </Text>
         </View>
 
@@ -617,6 +1127,24 @@ function RankingRow({
           </Text>
         </View>
       </View>
+    </>
+  )
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {content}
+      </TouchableOpacity>
+    )
+  }
+
+  return (
+    <View style={[styles.rankingRow, isCompact && styles.rankingRowCompact]}>
+      {content}
     </View>
   )
 }
@@ -917,5 +1445,173 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sectionBold: {
       fontWeight: '700',
       color: colors.text,
+    },
+    currentStatusContainer: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 20,
+      alignItems: 'center',
+    },
+    currentStatusLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 4,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    currentStatusValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    currentWeightValue: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    nextBracketContainer: {
+      marginBottom: 20,
+    },
+    bracketInfo: {
+      backgroundColor: colors.primaryLight + '20',
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colors.primaryLight,
+    },
+    bracketPercentile: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.primary,
+      marginBottom: 12,
+    },
+    weightNeededLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    weightNeededValue: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    weightDifference: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    loadingWeight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 12,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    errorText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+    },
+    tipsContainer: {
+      marginTop: 8,
+    },
+    celebrationContainer: {
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    celebrationText: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#FFD700',
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    celebrationSubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    alreadyThereContainer: {
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    alreadyThereText: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.primary,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    alreadyThereSubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    tierBreakdownContainer: {
+      marginTop: 24,
+      paddingTop: 20,
+      borderTopWidth: 1,
+      borderTopColor: colors.border + '40',
+    },
+    tierBreakdownTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 12,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    tierList: {
+      gap: 8,
+    },
+    tierRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: 'transparent',
+    },
+    tierRowCurrent: {
+      backgroundColor: colors.primaryLight + '15',
+    },
+    tierRowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    tierIndicator: {
+      width: 4,
+      height: 32,
+      borderRadius: 2,
+      marginRight: 12,
+    },
+    tierRowText: {
+      flex: 1,
+    },
+    tierLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    tierLabelCurrent: {
+      color: colors.text,
+      fontWeight: '700',
+    },
+    tierDescription: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    tierDescriptionCurrent: {
+      color: colors.textSecondary,
     },
   })

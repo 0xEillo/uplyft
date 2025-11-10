@@ -10,12 +10,15 @@ import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
+import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
+  clearDraft as clearWorkoutDraft,
   loadPendingWorkout,
   loadDraft as loadWorkoutDraft,
   saveDraft as saveWorkoutDraft,
@@ -117,7 +120,6 @@ export default function CreatePostScreen() {
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
@@ -129,7 +131,20 @@ export default function CreatePostScreen() {
     selectedRoutine,
     setSelectedRoutine,
   ] = useState<WorkoutRoutineWithDetails | null>(null)
-  const [structuredData, setStructuredData] = useState<any[]>([])
+  const [structuredData, setStructuredData] = useState<
+    StructuredExerciseDraft[]
+  >([])
+  const [pendingDraftRoutineId, setPendingDraftRoutineId] = useState<
+    string | null
+  >(null)
+
+  // Wrapper to log structuredData changes
+  const handleStructuredDataChange = useCallback(
+    (newData: StructuredExerciseDraft[]) => {
+      setStructuredData(newData)
+    },
+    [],
+  )
   const [
     lastRoutineWorkout,
     setLastRoutineWorkout,
@@ -162,10 +177,11 @@ export default function CreatePostScreen() {
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
-  const latestNotes = useRef('')
-  const latestTitle = useRef('')
-  const skipDraftClearRef = useRef(false)
-  const skipTitleDraftClearRef = useRef(false)
+  const notesRef = useRef(notes)
+  const titleRef = useRef(workoutTitle)
+  const suppressDraftToastRef = useRef(false)
+  const skipNextPersistRef = useRef(false)
+  const isHydratingRef = useRef(true)
   const convertButtonDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -173,6 +189,15 @@ export default function CreatePostScreen() {
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
+  const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
+
+  useEffect(() => {
+    notesRef.current = notes
+  }, [notes])
+
+  useEffect(() => {
+    titleRef.current = workoutTitle
+  }, [workoutTitle])
 
   const blurInputs = useCallback(() => {
     const textInputState = (TextInput as any)?.State
@@ -276,6 +301,46 @@ export default function CreatePostScreen() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (!pendingDraftRoutineId || !user?.id) {
+      return
+    }
+
+    const routine = routines.find((item) => item.id === pendingDraftRoutineId)
+    if (!routine) {
+      return
+    }
+
+    setSelectedRoutine(routine)
+    setPendingDraftRoutineId(null)
+
+    let isMounted = true
+
+    const hydrateLastWorkout = async () => {
+      try {
+        const lastWorkout = await database.workoutSessions.getLastForRoutine(
+          user.id,
+          routine.id,
+        )
+
+        if (isMounted) {
+          setLastRoutineWorkout(lastWorkout)
+        }
+      } catch (error) {
+        console.error(
+          '[hydrateDraftRoutine] Error loading last workout for routine:',
+          error,
+        )
+      }
+    }
+
+    hydrateLastWorkout()
+
+    return () => {
+      isMounted = false
+    }
+  }, [pendingDraftRoutineId, routines, user])
+
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
@@ -308,8 +373,8 @@ export default function CreatePostScreen() {
 
       trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
         mode: 'text',
-        hasDraft: Boolean(latestNotes.current.trim()),
-        hasTitle: Boolean(latestTitle.current.trim()),
+        hasDraft: Boolean(notesRef.current.trim()),
+        hasTitle: Boolean(titleRef.current.trim()),
       })
 
       // Blur inputs after a short delay to catch any late focus events
@@ -366,57 +431,10 @@ export default function CreatePostScreen() {
     }
   }, [blurInputs])
 
-  // Scroll to cursor position to keep it visible
-  const scrollToCursor = useCallback(() => {
-    if (notesInputRef.current && scrollViewRef.current) {
-      // Get current selection/cursor position
-      notesInputRef.current.measure((x, y, width, height, pageX, pageY) => {
-        // We need to find where the cursor is in the text
-        // For now, we'll estimate based on the text length
-        const lineHeight = 24 // matches notesInput lineHeight style
-        const lines = notes.split('\n').length
-        const approximateCursorY = lines * lineHeight
-
-        // Scroll just enough to keep cursor visible (no extra padding)
-        scrollViewRef.current?.scrollTo({
-          y: Math.max(0, approximateCursorY),
-          animated: true,
-        })
-      })
-    }
-  }, [notes])
-
-  // Track keyboard height
-  useEffect(() => {
-    const keyboardWillShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height)
-      },
-    )
-    const keyboardWillHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0)
-      },
-    )
-
-    return () => {
-      keyboardWillShowListener.remove()
-      keyboardWillHideListener.remove()
-    }
-  }, [])
-
-  useEffect(() => {
-    latestNotes.current = notes
-  }, [notes])
-
-  useEffect(() => {
-    latestTitle.current = workoutTitle
-  }, [workoutTitle])
-
   // Load saved draft on mount
   useEffect(() => {
+    let isMounted = true
+
     const hydrateDraft = async () => {
       try {
         const [draft, pending] = await Promise.all([
@@ -424,106 +442,128 @@ export default function CreatePostScreen() {
           loadPendingWorkout(),
         ])
 
+        if (!isMounted) {
+          return
+        }
+
         if (draft?.notes?.trim()) {
+          suppressDraftToastRef.current = true
           setNotes(draft.notes)
-          skipDraftClearRef.current = true
         } else if (pending?.notes) {
+          suppressDraftToastRef.current = true
           setNotes(pending.notes)
-          skipDraftClearRef.current = true
         }
 
         if (draft?.title?.trim()) {
           setWorkoutTitle(draft.title)
-          skipTitleDraftClearRef.current = true
         } else if (pending?.title) {
           setWorkoutTitle(pending.title)
-          skipTitleDraftClearRef.current = true
         }
-      } catch (error) {
-        console.error('Error loading draft:', error)
+
+        if (
+          Array.isArray(draft?.structuredData) &&
+          draft.structuredData.length
+        ) {
+          setStructuredData(draft.structuredData)
+          setIsStructuredMode(
+            typeof draft.isStructuredMode === 'boolean'
+              ? draft.isStructuredMode
+              : true,
+          )
+        } else if (typeof draft?.isStructuredMode === 'boolean') {
+          setIsStructuredMode(draft.isStructuredMode)
+        }
+
+        const routineIdFromDraft =
+          draft?.selectedRoutineId ?? pending?.routineId ?? null
+        if (routineIdFromDraft) {
+          setPendingDraftRoutineId(routineIdFromDraft)
+        }
+
+        skipNextPersistRef.current = true
+      } finally {
+        isHydratingRef.current = false
       }
     }
 
     hydrateDraft()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
-  // Auto-save draft immediately whenever notes change
+  // Auto-save draft whenever inputs change
   useEffect(() => {
-    if (skipDraftClearRef.current) {
-      skipDraftClearRef.current = false
+    if (isHydratingRef.current) {
       return
     }
 
-    const saveDraft = async () => {
-      try {
-        await saveWorkoutDraft({
-          notes,
-          title: latestTitle.current,
-        })
-      } catch (error) {
-        console.error('Error saving draft:', error)
-      }
-    }
-
-    saveDraft()
-  }, [notes, workoutTitle])
-
-  // Auto-save title draft immediately whenever title changes
-  useEffect(() => {
-    if (skipTitleDraftClearRef.current) {
-      skipTitleDraftClearRef.current = false
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false
       return
     }
 
-    const saveDraft = async () => {
-      try {
-        await saveWorkoutDraft({
-          notes: latestNotes.current,
-          title: workoutTitle,
-        })
-      } catch (error) {
-        console.error('Error saving title draft:', error)
-      }
-    }
+    const selectedRoutineId =
+      selectedRoutine?.id ?? pendingDraftRoutineId ?? null
 
-    saveDraft()
-  }, [workoutTitle])
+    void saveWorkoutDraft({
+      notes,
+      title: workoutTitle,
+      structuredData,
+      isStructuredMode,
+      selectedRoutineId,
+    }).catch((error) => console.error('Failed to save workout draft', error))
+  }, [
+    notes,
+    workoutTitle,
+    structuredData,
+    isStructuredMode,
+    selectedRoutine?.id,
+    pendingDraftRoutineId,
+  ])
 
   // Show "Draft saved" indicator with debounce (UI only)
   useEffect(() => {
-    if (skipDraftClearRef.current) {
-      skipDraftClearRef.current = false
+    if (isHydratingRef.current) {
       return
     }
 
-    const timer = setTimeout(() => {
-      if (notes.trim()) {
-        setShowDraftSaved(true)
-        // Hide after 2 seconds
-        setTimeout(() => setShowDraftSaved(false), 2000)
+    if (suppressDraftToastRef.current) {
+      suppressDraftToastRef.current = false
+      return
+    }
 
-        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED, {
-          length: notes.trim().length,
-          hasTitle: Boolean(workoutTitle.trim()),
-        })
-      } else {
-        setShowDraftSaved(false)
+    const trimmedNotes = notes.trim()
+
+    if (!trimmedNotes) {
+      setShowDraftSaved(false)
+      return
+    }
+
+    let hideTimer: ReturnType<typeof setTimeout> | undefined
+    const showTimer = setTimeout(() => {
+      setShowDraftSaved(true)
+      trackEvent(AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED, {
+        length: trimmedNotes.length,
+        hasTitle: Boolean(workoutTitle.trim()),
+      })
+
+      hideTimer = setTimeout(() => setShowDraftSaved(false), 2000)
+    }, 2500)
+
+    return () => {
+      clearTimeout(showTimer)
+      if (hideTimer) {
+        clearTimeout(hideTimer)
       }
-    }, 2500) // Wait 2500ms after user stops typing before showing indicator
-
-    return () => clearTimeout(timer)
+    }
   }, [notes, trackEvent, workoutTitle])
 
   const handleCancel = async () => {
     if (isRecording) {
       await stopRecording()
     }
-
-    // Clear routine state when canceling
-    setSelectedRoutine(null)
-    setIsStructuredMode(false)
-    setStructuredData([])
-    setLastRoutineWorkout(null)
 
     blurInputs()
     router.back()
@@ -572,6 +612,9 @@ export default function CreatePostScreen() {
         routineId: routineIdValue,
       })
 
+      // Refresh freemium limits after successful submission
+      refreshFreemiumLimits()
+
       trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
         hasTitle: Boolean(trimmedTitle),
         length: trimmedNotes.length,
@@ -606,14 +649,16 @@ export default function CreatePostScreen() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-      skipDraftClearRef.current = true
-      skipTitleDraftClearRef.current = true
+      skipNextPersistRef.current = true
+      suppressDraftToastRef.current = true
+      await clearWorkoutDraft()
 
       setNotes('')
       setWorkoutTitle('')
       setAttachedImageUri(null)
       setIsStructuredMode(false)
       setSelectedRoutine(null)
+      setPendingDraftRoutineId(null)
       setStructuredData([])
       setLastRoutineWorkout(null)
       setShowRoutineSelector(false)
@@ -626,10 +671,29 @@ export default function CreatePostScreen() {
         showPrompt(workoutNumber)
       }, 3700)
     },
-    [user, queueWorkout, trackEvent, blurInputs, showOverlay, showPrompt],
+    [
+      user,
+      queueWorkout,
+      trackEvent,
+      blurInputs,
+      showOverlay,
+      showPrompt,
+      refreshFreemiumLimits,
+    ],
   )
 
   const submitWorkout = async () => {
+    // Check if user can post workout (freemium limit)
+    if (!canPostWorkout) {
+      setShowPaywall(true)
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        feature: 'workout_logging',
+        source_screen: 'create_post',
+        subscription_status: isProMember ? 'active' : 'none',
+      })
+      return
+    }
+
     // Combine structured data with free-form notes
     let workoutNotes = notes
     if (isStructuredMode && structuredData.length > 0) {
@@ -715,45 +779,6 @@ export default function CreatePostScreen() {
   // 7. On routine deletion → if selected, all routine state cleared
   // =============================================================================
 
-  const handleClearRoutine = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-    // Clear routine selection and associated state
-    setSelectedRoutine(null)
-    setLastRoutineWorkout(null)
-    setWorkoutTitle('') // Clear the title when clearing routine
-
-    // Keep structured data if user has entered anything, but disable structured mode
-    const hasStructuredData = structuredData.some((exercise) =>
-      exercise.sets.some((set: any) => set.weight || set.reps),
-    )
-
-    if (!hasStructuredData) {
-      setIsStructuredMode(false)
-      setStructuredData([])
-    } else {
-      // Ask user if they want to keep the structured data
-      Alert.alert(
-        'Keep Workout Data?',
-        'You have entered workout data. Do you want to keep it or start fresh?',
-        [
-          {
-            text: 'Keep Data',
-            style: 'default',
-          },
-          {
-            text: 'Clear All',
-            style: 'destructive',
-            onPress: () => {
-              setIsStructuredMode(false)
-              setStructuredData([])
-            },
-          },
-        ],
-      )
-    }
-  }, [structuredData])
-
   const handleOpenRoutineSelector = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     blurInputs()
@@ -762,12 +787,6 @@ export default function CreatePostScreen() {
 
   const handleSelectRoutine = useCallback(
     async (routine: WorkoutRoutineWithDetails) => {
-      console.log('[handleSelectRoutine] Selected routine:', {
-        routineId: routine.id,
-        routineName: routine.name,
-        userId: user?.id,
-      })
-
       // Clear any existing routine data first to prevent stale state
       setLastRoutineWorkout(null)
       setStructuredData([])
@@ -776,17 +795,10 @@ export default function CreatePostScreen() {
       let lastWorkout: WorkoutSessionWithDetails | null = null
       if (user?.id) {
         try {
-          console.log('[handleSelectRoutine] Querying for last workout...')
           lastWorkout = await database.workoutSessions.getLastForRoutine(
             user.id,
             routine.id,
           )
-          console.log('[handleSelectRoutine] Got last workout:', {
-            found: !!lastWorkout,
-            workoutId: lastWorkout?.id,
-            exerciseCount: lastWorkout?.workout_exercises?.length,
-            firstExercise: lastWorkout?.workout_exercises?.[0]?.exercise?.name,
-          })
         } catch (error) {
           console.error(
             '[handleSelectRoutine] Error loading last workout for routine:',
@@ -798,6 +810,7 @@ export default function CreatePostScreen() {
 
       // Set all states together so component renders with lastWorkout data
       setSelectedRoutine(routine)
+      setPendingDraftRoutineId(routine.id)
       setWorkoutTitle(routine.name)
       setIsStructuredMode(true)
       setLastRoutineWorkout(lastWorkout)
@@ -810,13 +823,10 @@ export default function CreatePostScreen() {
     [user, trackEvent],
   )
 
-  const handleEditRoutine = useCallback(
-    (routine: WorkoutRoutineWithDetails) => {
-      setShowRoutineSelector(false)
-      router.push(`/create-routine?routineId=${routine.id}`)
-    },
-    [router],
-  )
+  const handleEditRoutine = (routine: WorkoutRoutineWithDetails) => {
+    setShowRoutineSelector(false)
+    router.push(`/create-routine?routineId=${routine.id}`)
+  }
 
   const handleDeleteRoutine = useCallback(
     async (routine: WorkoutRoutineWithDetails) => {
@@ -842,6 +852,7 @@ export default function CreatePostScreen() {
                   setStructuredData([])
                   setLastRoutineWorkout(null)
                   setWorkoutTitle('')
+                  setPendingDraftRoutineId(null)
                 }
 
                 // Refresh routines list
@@ -887,12 +898,14 @@ export default function CreatePostScreen() {
     // Dismiss keyboard
     blurInputs()
 
-    // Check if user is pro member
-    if (!isProMember) {
+    // Check freemium workout limit
+    if (!canPostWorkout) {
       setIsLoading(false)
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'workout_logging',
+        source_screen: 'create_post',
+        subscription_status: isProMember ? 'active' : 'none',
       })
       return
     }
@@ -912,7 +925,7 @@ export default function CreatePostScreen() {
       isStructuredMode &&
       structuredData.length > 0 &&
       structuredData.some((exercise) =>
-        exercise.sets.some((set: any) => set.weight || set.reps),
+        exercise.sets.some((set) => set.weight || set.reps),
       )
 
     if (!notes.trim() && !hasStructuredData) {
@@ -975,7 +988,7 @@ export default function CreatePostScreen() {
 
   // Convert structured workout data to text format
   const convertStructuredDataToText = useCallback(
-    (data: any[]): string => {
+    (data: StructuredExerciseDraft[]): string => {
       if (!data || data.length === 0) return ''
 
       const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
@@ -984,7 +997,7 @@ export default function CreatePostScreen() {
         .map((exercise) => {
           const lines = [exercise.name]
 
-          exercise.sets.forEach((set: any, index: number) => {
+          exercise.sets.forEach((set, index) => {
             if (set.weight || set.reps) {
               const weightText = set.weight || '___'
               const repsText = set.reps || '___'
@@ -1174,7 +1187,7 @@ export default function CreatePostScreen() {
     const { exerciseName, sets, startLineIndex, endLineIndex } = parsed
 
     // Create exercise data
-    const newExercise = {
+    const newExercise: StructuredExerciseDraft = {
       id: `manual-${Date.now()}`,
       name: exerciseName,
       sets: sets.map((set) => ({
@@ -1187,8 +1200,16 @@ export default function CreatePostScreen() {
       })),
     }
 
-    // Add to structured data
-    setStructuredData((prev) => [...prev, newExercise])
+    // Add to structured data FIRST, then enable structured mode
+    // This ensures the component renders with the exercise already in structuredData
+    setStructuredData((prev) => {
+      return [...prev, newExercise]
+    })
+
+    // Enable structured mode AFTER adding exercise to ensure component renders with data
+    if (!isStructuredMode) {
+      setIsStructuredMode(true)
+    }
 
     // Remove the converted text from notes
     const lines = notes.split('\n')
@@ -1199,11 +1220,6 @@ export default function CreatePostScreen() {
     const newNotes = newLines.join('\n')
     setNotes(newNotes)
     setShowConvertButton(false)
-
-    // Enable structured mode if not already enabled
-    if (!isStructuredMode) {
-      setIsStructuredMode(true)
-    }
   }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode])
 
   // Track previous structured data length to detect deletions
@@ -1220,6 +1236,7 @@ export default function CreatePostScreen() {
       setSelectedRoutine(null)
       setLastRoutineWorkout(null)
       setIsStructuredMode(false)
+      setPendingDraftRoutineId(null)
     }
 
     // Update previous length
@@ -1323,25 +1340,30 @@ export default function CreatePostScreen() {
             <View style={styles.divider} />
 
             {/* Structured Workout Input - Shown when routine is loaded or manual exercises exist */}
-            {isStructuredMode &&
-              (structuredData.length > 0 || selectedRoutine) && (
-                <View style={styles.structuredSection}>
-                  <StructuredWorkoutInput
-                    routine={selectedRoutine || undefined}
-                    lastWorkout={lastRoutineWorkout || undefined}
-                    initialExercises={
-                      structuredData.length > 0 ? structuredData : undefined
-                    }
-                    onDataChange={setStructuredData}
-                  />
-                </View>
-              )}
+            {isStructuredMode && (
+              <View style={styles.structuredSection}>
+                <StructuredWorkoutInput
+                  routine={selectedRoutine || undefined}
+                  lastWorkout={lastRoutineWorkout || undefined}
+                  initialExercises={
+                    structuredData.length > 0 ? structuredData : undefined
+                  }
+                  onDataChange={handleStructuredDataChange}
+                />
+              </View>
+            )}
 
             {/* Free-form Notes Input - Always visible */}
             <View style={styles.notesInputWrapper}>
               <TextInput
                 ref={notesInputRef}
-                style={[styles.notesInput, { color: colors.text }]}
+                style={[
+                  styles.notesInput,
+                  { color: colors.text },
+                  isStructuredMode &&
+                    (structuredData.length > 0 || selectedRoutine) &&
+                    styles.notesInputWithStructured,
+                ]}
                 placeholder={
                   isStructuredMode
                     ? 'Add notes about your workout...'
@@ -1510,8 +1532,8 @@ export default function CreatePostScreen() {
         <Paywall
           visible={showPaywall}
           onClose={() => setShowPaywall(false)}
-          title="Workout Logging is Premium"
-          message="Logging workouts is a premium feature. Subscribe to track unlimited workouts and unlock all features."
+          title="Try Pro for FREE!"
+          message="Free workout limit reached"
         />
       </Animated.View>
 
@@ -1667,7 +1689,8 @@ const createStyles = (
     },
     structuredSection: {
       paddingTop: 16,
-      paddingBottom: 8,
+      paddingBottom: 0,
+      paddingHorizontal: 20,
     },
     structuredHeader: {
       flexDirection: 'row',
@@ -1691,6 +1714,9 @@ const createStyles = (
       fontSize: 17,
       lineHeight: 24,
       color: colors.text,
+    },
+    notesInputWithStructured: {
+      paddingTop: 8,
     },
     notesOverlay: {
       position: 'absolute',

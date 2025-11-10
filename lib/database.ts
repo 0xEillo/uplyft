@@ -940,8 +940,8 @@ export const database = {
           if (!muscleGroup) return
 
           we.sets?.forEach((set: any) => {
-            if (set.reps && set.weight) {
-              const volume = set.reps * set.weight
+            if (set.reps) {
+              const volume = set.reps
               const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
               muscleGroupVolumes.set(muscleGroup, currentVolume + volume)
             }
@@ -1102,6 +1102,7 @@ export const database = {
               ? row.overall_total_users
               : 0,
           exerciseName: row.exercise_name,
+          gender: typeof row.gender === 'string' ? row.gender : null,
           genderPercentile:
             typeof row.gender_percentile === 'number'
               ? Math.round(row.gender_percentile)
@@ -1121,6 +1122,32 @@ export const database = {
         }
       } catch (error) {
         console.error('Error calculating exercise percentile:', error)
+        return null
+      }
+    },
+
+    async getWeightForNextPercentile(
+      exerciseId: string,
+      currentPercentile: number,
+      targetPercentile: number,
+      filterGender?: string | null,
+      weightBucketStart?: number | null,
+      weightBucketEnd?: number | null,
+    ) {
+      try {
+        const { data, error } = await supabase.rpc('get_weight_for_percentile', {
+          p_exercise_id: exerciseId,
+          p_target_percentile: targetPercentile,
+          p_filter_gender: filterGender ?? null,
+          p_bucket_start: weightBucketStart ?? null,
+          p_bucket_end: weightBucketEnd ?? null,
+        })
+
+        if (error) throw error
+
+        return typeof data === 'number' ? Math.round(data) : null
+      } catch (error) {
+        console.error('Error getting weight for next percentile:', error)
         return null
       }
     },
@@ -1151,6 +1178,7 @@ export const database = {
               userMax1RM: exercise.max1RM,
               percentile: percentile?.percentile || 0,
               totalUsers: percentile?.totalUsers || 0,
+              gender: percentile?.gender ?? null,
               genderPercentile: percentile?.genderPercentile ?? null,
               genderWeightPercentile:
                 percentile?.genderWeightPercentile ?? null,

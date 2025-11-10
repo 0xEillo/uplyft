@@ -1,5 +1,7 @@
 import { ExerciseSearchModal } from '@/components/exercise-search-modal'
+import { Paywall } from '@/components/paywall'
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -290,11 +292,13 @@ export default function CreateRoutineScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { user } = useAuth()
+  const { isProMember } = useSubscription()
 
   const isEditMode = !!routineId
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
   const [routineName, setRoutineName] = useState('')
   const [routineNotes, setRoutineNotes] = useState('')
   const [exercises, setExercises] = useState<ExerciseTemplate[]>([])
@@ -316,6 +320,13 @@ export default function CreateRoutineScreen() {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to create routines')
       router.back()
+      return
+    }
+
+    // Check if user has Pro membership for routines
+    if (!isProMember && !isEditMode) {
+      setShowPaywall(true)
+      setIsLoading(false)
       return
     }
 
@@ -884,6 +895,17 @@ export default function CreateRoutineScreen() {
         visible={exerciseSearchModalVisible}
         onClose={() => setExerciseSearchModalVisible(false)}
         onSelectExercise={handleSelectExercise}
+      />
+
+      {/* Paywall Modal */}
+      <Paywall
+        visible={showPaywall}
+        onClose={() => {
+          setShowPaywall(false)
+          router.back()
+        }}
+        title="Try Pro for FREE!"
+        message="Routines are a Pro feature"
       />
     </SafeAreaView>
   )

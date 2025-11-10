@@ -6,7 +6,7 @@ import {
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   StyleSheet,
   Text,
@@ -46,6 +46,7 @@ export function StructuredWorkoutInput({
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
   const styles = createStyles(colors)
+  const isInitialMount = useRef(true)
 
   // Get the display unit text (kg or lbs)
   const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
@@ -53,7 +54,7 @@ export function StructuredWorkoutInput({
   // Initialize exercise data from routine or initialExercises
   const [exercises, setExercises] = useState<ExerciseData[]>(() => {
     // If initialExercises provided, use those
-    if (initialExercises) {
+    if (initialExercises && initialExercises.length > 0) {
       return initialExercises
     }
 
@@ -61,13 +62,6 @@ export function StructuredWorkoutInput({
     if (!routine) {
       return []
     }
-
-    console.log('[StructuredWorkoutInput] Initializing with routine:', {
-      routineId: routine.id,
-      exerciseCount: routine.workout_routine_exercises?.length,
-      lastWorkoutId: lastWorkout?.id,
-      lastWorkoutExerciseCount: lastWorkout?.workout_exercises?.length,
-    })
 
     return (routine.workout_routine_exercises || [])
       .sort((a, b) => a.order_index - b.order_index)
@@ -82,14 +76,6 @@ export function StructuredWorkoutInput({
         const lastWorkoutExercise = lastWorkout?.workout_exercises?.find(
           (we) => we.exercise?.name === exerciseName,
         )
-
-        console.log('[StructuredWorkoutInput] Exercise matching:', {
-          routineExerciseName: exerciseName,
-          foundInLastWorkout: !!lastWorkoutExercise,
-          lastWorkoutExerciseName: lastWorkoutExercise?.exercise?.name,
-          firstSetWeight: lastWorkoutExercise?.sets?.[0]?.weight,
-          firstSetReps: lastWorkoutExercise?.sets?.[0]?.reps,
-        })
 
         return {
           id: exercise.id,
@@ -122,14 +108,30 @@ export function StructuredWorkoutInput({
 
   // Update exercises when initialExercises changes
   useEffect(() => {
-    if (initialExercises) {
+    if (initialExercises && initialExercises.length > 0) {
       setExercises(initialExercises)
+      // Don't call onDataChange on initial mount - parent already has the data
+      if (!isInitialMount.current) {
+        onDataChange(initialExercises)
+      }
+      isInitialMount.current = false
+    } else if (initialExercises === undefined && exercises.length > 0 && !routine) {
+      // Don't clear exercises if initialExercises becomes undefined but we have exercises and no routine
+      // This prevents clearing when the component re-renders during state updates
+      isInitialMount.current = false
+      return
+    } else if (initialExercises === undefined && exercises.length === 0 && !routine) {
+      // Only clear if we truly have no exercises and no routine
+      isInitialMount.current = false
+      // Don't call setExercises([]) - already empty
+    } else {
+      isInitialMount.current = false
     }
-  }, [initialExercises])
+  }, [initialExercises, routine, exercises.length, onDataChange])
 
   // Update exercises when routine changes
   useEffect(() => {
-    if (routine && !initialExercises) {
+    if (routine && (!initialExercises || initialExercises.length === 0)) {
       const newExercises = (routine.workout_routine_exercises || [])
         .sort((a, b) => a.order_index - b.order_index)
         .map((exercise) => {
@@ -352,7 +354,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       width: '100%',
-      paddingHorizontal: 20,
     },
     exerciseBlock: {
       marginBottom: 20,
@@ -414,6 +415,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       marginTop: 8,
       paddingVertical: 4,
+      alignSelf: 'flex-start',
     },
     addSetText: {
       fontSize: 15,

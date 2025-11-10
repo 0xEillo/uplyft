@@ -93,8 +93,8 @@ export function ImagePickerModal({
   const handleAttach = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     onClose()
-    // Launch camera directly after menu closes
-    setTimeout(onAttachWithCamera, 250)
+    // Launch library directly after menu closes
+    setTimeout(onAttachWithLibrary, 250)
   }
 
   const styles = createStyles(colors)

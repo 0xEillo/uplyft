@@ -318,10 +318,10 @@ export async function getMuscleGroupDistribution(
       if (!muscleGroup) return
 
       we.sets?.forEach((set) => {
-        if (typeof set.weight !== 'number' || typeof set.reps !== 'number') {
+        if (typeof set.reps !== 'number') {
           return
         }
-        const volume = set.weight * set.reps
+        const volume = set.reps
         volumeByGroup.set(
           muscleGroup,
           (volumeByGroup.get(muscleGroup) ?? 0) + volume,

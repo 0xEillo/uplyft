@@ -93,16 +93,15 @@ export async function requestReview(): Promise<void> {
 
     if (isAvailable) {
       await StoreReview.requestReview();
-      // Mark as rated after showing the native dialog
+      return;
+    }
+
+    // Fallback: open the store page if native review isn't available
+    const url = await StoreReview.storeUrl();
+    if (url) {
+      // Open the App Store/Play Store directly
+      await Linking.openURL(url);
       await markUserAsRated();
-    } else {
-      // Fallback: open the store page if native review isn't available
-      const url = await StoreReview.storeUrl();
-      if (url) {
-        // Open the App Store/Play Store directly
-        await Linking.openURL(url);
-        await markUserAsRated();
-      }
     }
   } catch (error) {
     console.error('Error requesting review:', error);

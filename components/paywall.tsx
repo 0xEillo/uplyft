@@ -188,7 +188,7 @@ export function Paywall({
           >
             {/* Icon */}
             <View style={styles.iconContainer}>
-              <Ionicons name="lock-closed" size={64} color={colors.primary} />
+              <Ionicons name="lock-closed" size={72} color={colors.primary} />
             </View>
 
             {/* Title */}
@@ -220,18 +220,18 @@ export function Paywall({
                 colors={colors}
               />
             </View>
+          </ScrollView>
 
-            {/* Pricing */}
+          {/* Actions */}
+          <View style={styles.actions}>
+            {/* Pricing - moved above button */}
             <View style={styles.pricingContainer}>
               <Text style={styles.pricingText}>
                 7 days free, then {monthlyPriceText}
               </Text>
               <Text style={styles.pricingSubtext}>Cancel anytime</Text>
             </View>
-          </ScrollView>
 
-          {/* Actions */}
-          <View style={styles.actions}>
             <TouchableOpacity
               style={styles.subscribeButton}
               onPress={handleSubscribe}
@@ -283,7 +283,9 @@ function Benefit({
 
   return (
     <View style={styles.benefit}>
-      <Ionicons name={icon} size={20} color={colors.primary} />
+      <View style={styles.benefitIconContainer}>
+        <Ionicons name={icon} size={24} color={colors.primary} />
+      </View>
       <Text style={styles.benefitText}>{text}</Text>
     </View>
   )
@@ -321,56 +323,64 @@ function createStyles(colors: any) {
       flex: 1,
     },
     scrollContentContainer: {
-      paddingHorizontal: 24,
-      paddingBottom: 24,
+      paddingHorizontal: 32,
+      paddingBottom: 16,
     },
     iconContainer: {
       alignItems: 'center',
-      marginBottom: 24,
+      marginBottom: 20,
+      marginTop: 8,
     },
     title: {
-      fontSize: 28,
+      fontSize: 32,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
+      letterSpacing: -0.5,
     },
     message: {
-      fontSize: 16,
+      fontSize: 15,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginBottom: 32,
-      lineHeight: 24,
+      marginBottom: 72,
+      lineHeight: 22,
     },
     benefitsContainer: {
-      gap: 16,
-      marginBottom: 32,
+      gap: 12,
+      marginBottom: 48,
+      paddingHorizontal: 8,
     },
     benefit: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 16,
+    },
+    benefitIconContainer: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     benefitText: {
-      fontSize: 16,
+      fontSize: 17,
       color: colors.text,
       fontWeight: '500',
+      flex: 1,
+      lineHeight: 24,
     },
     pricingContainer: {
       alignItems: 'center',
-      paddingVertical: 16,
-      backgroundColor: colors.cardBackground,
-      borderRadius: 12,
-      marginBottom: 8,
+      marginBottom: 12,
     },
     pricingText: {
-      fontSize: 18,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     pricingSubtext: {
-      fontSize: 14,
+      fontSize: 12,
       color: colors.textSecondary,
     },
     actions: {
