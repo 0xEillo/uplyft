@@ -1,7 +1,7 @@
-import { ExerciseLeaderboardCard } from '@/components/exercise-leaderboard-card'
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import SwipeTutorialOverlay from '@/components/SwipeTutorialOverlay'
+import { WorkoutCalendarCard } from '@/components/workout-calendar-card'
 import { WorkoutChat } from '@/components/workout-chat'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -225,10 +225,7 @@ export default function ProfileScreen() {
             >
               {user && (
                 <>
-                  <ExerciseLeaderboardCard
-                    userId={user.id}
-                    refreshTrigger={refreshTrigger}
-                  />
+                  <WorkoutCalendarCard userId={user.id} />
                   <StrengthScoreChart userId={user.id} />
                   <MuscleBalanceChart userId={user.id} />
                 </>
@@ -317,7 +314,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     scrollViewContent: {
-      paddingTop: 16,
+      paddingTop: 2,
       paddingBottom: 20,
     },
   })

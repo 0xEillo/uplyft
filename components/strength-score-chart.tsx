@@ -825,15 +825,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       backgroundColor: colors.white,
-      borderRadius: 16,
-      padding: 20,
-      marginHorizontal: 16,
-      marginBottom: 16,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+      paddingVertical: 20,
+      paddingHorizontal: 20,
+      borderBottomWidth: 2,
+      borderBottomColor: colors.background,
     },
     headerContainer: {
       flexDirection: 'row',

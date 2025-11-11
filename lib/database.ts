@@ -956,6 +956,125 @@ export const database = {
       return distribution
     },
 
+    async getWeeklyVolumeData(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          created_at,
+          workout_exercises!inner (
+            exercise:exercises!inner (muscle_group),
+            sets!inner (reps)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .not('workout_exercises.exercise.muscle_group', 'is', null)
+        .order('created_at', { ascending: true })
+
+      // Filter by date range if specified
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      // Group by week (Sunday start)
+      const weeklyData = new Map<
+        string,
+        Map<string, number>
+      >()
+
+      ;(data as any)?.forEach((session: any) => {
+        const sessionDate = new Date(session.created_at)
+
+        // Get Sunday of the week
+        const dayOfWeek = sessionDate.getDay()
+        const weekStart = new Date(sessionDate)
+        weekStart.setDate(sessionDate.getDate() - dayOfWeek)
+        weekStart.setHours(0, 0, 0, 0)
+        const weekKey = weekStart.toISOString().split('T')[0]
+
+        if (!weeklyData.has(weekKey)) {
+          weeklyData.set(weekKey, new Map<string, number>())
+        }
+
+        const weekMuscleGroups = weeklyData.get(weekKey)!
+
+        session.workout_exercises?.forEach((we: any) => {
+          const muscleGroup = we.exercise?.muscle_group
+          if (!muscleGroup) return
+
+          we.sets?.forEach((set: any) => {
+            if (set.reps) {
+              const currentSets = weekMuscleGroups.get(muscleGroup) || 0
+              weekMuscleGroups.set(muscleGroup, currentSets + 1)
+            }
+          })
+        })
+      })
+
+      // Convert to array format
+      return Array.from(weeklyData.entries())
+        .map(([weekStart, muscleGroups]) => ({
+          weekStart,
+          muscleGroups: Array.from(muscleGroups.entries())
+            .map(([name, sets]) => ({ name, sets }))
+            .sort((a, b) => b.sets - a.sets),
+        }))
+        .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+    },
+
+    async getSessionStats(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          workout_exercises!inner (
+            sets!inner (reps)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+
+      // Filter by date range if specified
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      let totalSets = 0
+      const totalWorkouts = data?.length || 0
+
+      ;(data as any)?.forEach((session: any) => {
+        session.workout_exercises?.forEach((we: any) => {
+          we.sets?.forEach((set: any) => {
+            if (set.reps) {
+              totalSets++
+            }
+          })
+        })
+      })
+
+      return {
+        totalSets,
+        totalWorkouts,
+        avgSetsPerWorkout:
+          totalWorkouts > 0 ? Math.round(totalSets / totalWorkouts) : 0,
+      }
+    },
+
     async getUserMax1RMs(userId: string) {
       const { data, error } = await supabase
         .from('workout_sessions')
@@ -1284,6 +1403,122 @@ export const database = {
       } catch (error) {
         console.error('Error getting user leaderboard rankings:', error)
         return []
+      }
+    },
+
+    /**
+     * Get workout dates in a specific date range for calendar display
+     */
+    async getWorkoutDatesInRange(
+      userId: string,
+      startDate: Date,
+      endDate: Date,
+    ): Promise<string[]> {
+      try {
+        const { data, error } = await supabase
+          .from('workout_sessions')
+          .select('date')
+          .eq('user_id', userId)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
+          .order('date', { ascending: true })
+
+        if (error) throw error
+
+        // Extract unique dates (YYYY-MM-DD format)
+        const dates = new Set<string>()
+        data?.forEach((session) => {
+          const dateStr = session.date.split('T')[0]
+          dates.add(dateStr)
+        })
+
+        return Array.from(dates)
+      } catch (error) {
+        console.error('Error getting workout dates in range:', error)
+        return []
+      }
+    },
+
+    /**
+     * Calculate workout streak based on consecutive weeks with at least one workout
+     * Returns current streak in weeks and last workout date
+     */
+    async calculateStreak(
+      userId: string,
+      weeklyGoal: number = 3,
+    ): Promise<{ currentStreak: number; lastWorkoutDate: string | null }> {
+      try {
+        // Fetch all workout dates
+        const { data, error } = await supabase
+          .from('workout_sessions')
+          .select('date')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+
+        if (error) throw error
+        if (!data || data.length === 0) {
+          return { currentStreak: 0, lastWorkoutDate: null }
+        }
+
+        // Get unique dates and sort descending
+        const uniqueDates = Array.from(
+          new Set(data.map((s) => s.date.split('T')[0])),
+        ).sort((a, b) => b.localeCompare(a))
+
+        const lastWorkoutDate = uniqueDates[0]
+
+        // Group workouts by week (Sunday-Saturday)
+        const getWeekKey = (dateStr: string) => {
+          const date = new Date(dateStr + 'T00:00:00')
+          // Get Sunday of the week
+          const day = date.getDay()
+          const sunday = new Date(date)
+          sunday.setDate(date.getDate() - day)
+          return sunday.toISOString().split('T')[0]
+        }
+
+        // Get all weeks with at least one workout
+        const weeksWithWorkouts = new Set<string>()
+        uniqueDates.forEach((dateStr) => {
+          const weekKey = getWeekKey(dateStr)
+          weeksWithWorkouts.add(weekKey)
+        })
+
+        // Sort weeks descending
+        const weeks = Array.from(weeksWithWorkouts).sort((a, b) =>
+          b.localeCompare(a),
+        )
+
+        // Calculate current streak - consecutive weeks with at least one workout
+        let currentStreak = 0
+        const today = new Date()
+        const currentWeekStart = new Date(today)
+        currentWeekStart.setDate(today.getDate() - today.getDay())
+        currentWeekStart.setHours(0, 0, 0, 0)
+        const currentWeekKey = currentWeekStart.toISOString().split('T')[0]
+
+        // Start from current week and go backwards
+        for (let i = 0; i < weeks.length; i++) {
+          const week = weeks[i]
+
+          // Calculate expected week for this position in the streak
+          const expectedWeek = new Date(currentWeekStart)
+          expectedWeek.setDate(currentWeekStart.getDate() - (i * 7))
+          const expectedWeekKey = expectedWeek.toISOString().split('T')[0]
+
+          // If this week matches the expected consecutive week, continue streak
+          if (week === expectedWeekKey) {
+            currentStreak++
+          } else {
+            // Streak is broken
+            break
+          }
+        }
+
+        return { currentStreak, lastWorkoutDate }
+      } catch (error) {
+        console.error('Error calculating streak:', error)
+        return { currentStreak: 0, lastWorkoutDate: null }
       }
     },
   },

@@ -1,6 +1,7 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -162,7 +163,11 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
   const styles = createStyles(colors)
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={() => router.push('/volume-stats')}
+      activeOpacity={0.9}
+    >
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
@@ -369,7 +374,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
           </Animated.View>
         </View>
       </Modal>
-    </View>
+    </TouchableOpacity>
   )
 })
 
@@ -377,15 +382,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       backgroundColor: colors.white,
-      borderRadius: 16,
-      padding: 20,
-      marginHorizontal: 16,
-      marginBottom: 16,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+      paddingVertical: 20,
+      paddingHorizontal: 20,
+      borderBottomWidth: 2,
+      borderBottomColor: colors.background,
     },
     headerContainer: {
       flexDirection: 'row',
