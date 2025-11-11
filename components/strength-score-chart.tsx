@@ -3,6 +3,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -372,8 +373,16 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
 
   const styles = createStyles(colors)
 
+  const handleCardPress = useCallback(() => {
+    router.push('/strength-stats')
+  }, [])
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={handleCardPress}
+      activeOpacity={0.9}
+    >
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
@@ -382,25 +391,33 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
           </View>
           <View>
             <Text style={styles.title}>Strength Progress</Text>
-            <Text style={styles.subtitle}>Tracking estimated 1RM</Text>
+            <Text style={styles.subtitle}>Tap for detailed stats</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.infoButton}
-          onPress={() => setShowInfoModal(true)}
-        >
-          <Ionicons
-            name="information-circle-outline"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.infoButton}
+            onPress={(e) => {
+              e.stopPropagation()
+              setShowInfoModal(true)
+            }}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Exercise Selector */}
       <TouchableOpacity
         style={styles.exerciseSelector}
-        onPress={() => setShowExercisePicker(true)}
+        onPress={(e) => {
+          e.stopPropagation()
+          setShowExercisePicker(true)
+        }}
       >
         <View style={styles.exerciseSelectorLeft}>
           <Ionicons name="barbell-outline" size={20} color={colors.primary} />
@@ -418,7 +435,10 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
             styles.timeRangeButton,
             timeRange === 'week' && styles.timeRangeButtonActive,
           ]}
-          onPress={() => setTimeRange('week')}
+          onPress={(e) => {
+            e.stopPropagation()
+            setTimeRange('week')
+          }}
         >
           <Text
             style={[
@@ -434,7 +454,10 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
             styles.timeRangeButton,
             timeRange === 'month' && styles.timeRangeButtonActive,
           ]}
-          onPress={() => setTimeRange('month')}
+          onPress={(e) => {
+            e.stopPropagation()
+            setTimeRange('month')
+          }}
         >
           <Text
             style={[
@@ -450,7 +473,10 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
             styles.timeRangeButton,
             timeRange === 'all' && styles.timeRangeButtonActive,
           ]}
-          onPress={() => setTimeRange('all')}
+          onPress={(e) => {
+            e.stopPropagation()
+            setTimeRange('all')
+          }}
         >
           <Text
             style={[
@@ -791,7 +817,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
           </Animated.View>
         </View>
       </Modal>
-    </View>
+    </TouchableOpacity>
   )
 })
 
@@ -820,6 +846,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'flex-start',
       gap: 12,
       flex: 1,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     iconContainer: {
       width: 44,

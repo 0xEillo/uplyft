@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   RefreshControl,
@@ -40,7 +40,10 @@ export default function ProfileScreen() {
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const insets = useSafeAreaInsets()
-  const [activeTab, setActiveTab] = useState<TabType>('chat')
+  const params = useLocalSearchParams<{ tab?: string }>()
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (params.tab as TabType) || 'chat',
+  )
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showTutorial, setShowTutorial] = useState(false)

@@ -1,4 +1,5 @@
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
+import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import type {
   Exercise,
   ParsedWorkout,
@@ -624,21 +625,8 @@ export const database = {
   // Stats and analytics
   stats: {
     // Key exercises for leaderboard rankings (main compound lifts only)
-    LEADERBOARD_EXERCISES: [
-      'Bench Press',
-      'Incline Bench Press',
-      'Dumbbell Bench Press',
-      'Incline Dumbbell Press',
-      'Squat',
-      'Deadlift',
-      'Overhead Press',
-      'Dumbbell Shoulder Press',
-      'Bent Over Row',
-      'Pull-ups',
-      'Weighted Pull-Ups',
-      'Dips',
-      'Weighted Dips',
-    ] as string[],
+    // Imported from centralized configuration to ensure consistency with strength standards
+    LEADERBOARD_EXERCISES: getLeaderboardExercises(),
 
     async getExerciseMaxWeight(
       userId: string,
@@ -1019,6 +1007,107 @@ export const database = {
           max1RM: data.max1RM,
         }),
       )
+    },
+
+    async getExerciseRecordsByWeight(userId: string, exerciseId: string) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          date,
+          created_at,
+          workout_exercises!inner (
+            exercise_id,
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .eq('workout_exercises.exercise_id', exerciseId)
+        .not('workout_exercises.sets.weight', 'is', null)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      interface RecordsByWeightRow {
+        id: string
+        date: string
+        created_at: string
+        workout_exercises?: {
+          sets?: {
+            reps: number
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      // Track max reps achieved at each weight and the date achieved
+      const weightRecords = new Map<
+        number,
+        { maxReps: number; date: string; estimated1RM: number }
+      >()
+
+      ;(data as RecordsByWeightRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
+            if (set.weight && set.reps) {
+              const weight = set.weight
+              const reps = set.reps
+              const estimated1RM = weight * (1 + reps / 30)
+
+              const existing = weightRecords.get(weight)
+              if (!existing || reps > existing.maxReps) {
+                weightRecords.set(weight, {
+                  maxReps: reps,
+                  date: session.date || session.created_at,
+                  estimated1RM: Math.round(estimated1RM),
+                })
+              }
+            }
+          })
+        })
+      })
+
+      // Convert to array and sort by weight descending
+      return Array.from(weightRecords.entries())
+        .map(([weight, record]) => ({
+          weight,
+          maxReps: record.maxReps,
+          date: record.date,
+          estimated1RM: record.estimated1RM,
+        }))
+        .sort((a, b) => b.weight - a.weight)
+    },
+
+    async getMajorCompoundLiftsData(userId: string) {
+      // Get all user's max 1RMs
+      const all1RMs = await this.getUserMax1RMs(userId)
+
+      // Filter to only major compound lifts (leaderboard exercises)
+      const compoundLifts = all1RMs.filter((exercise) =>
+        this.LEADERBOARD_EXERCISES.includes(exercise.exerciseName),
+      )
+
+      // For each compound lift, get detailed records
+      const detailedData = await Promise.all(
+        compoundLifts.map(async (lift) => {
+          const records = await this.getExerciseRecordsByWeight(
+            userId,
+            lift.exerciseId,
+          )
+          return {
+            exerciseId: lift.exerciseId,
+            exerciseName: lift.exerciseName,
+            max1RM: lift.max1RM,
+            records,
+          }
+        }),
+      )
+
+      return detailedData
     },
 
     async getAllUsersMax1RMs(exerciseId: string) {
