@@ -1463,21 +1463,22 @@ export default function CreatePostScreen() {
               </View>
             )}
 
-            {/* Example Workout - shown when user has no workouts and inputs are empty */}
-            {!notes.trim() && !workoutTitle.trim() && userWorkoutCount === 0 && (
-              <View style={styles.exampleContainer}>
-                <Text style={styles.exampleLabel}>Example:</Text>
-                <View style={styles.exampleCard}>
-                  <Text style={styles.exampleTitle}>
-                    {exampleWorkout.title}
-                  </Text>
-                  <View style={styles.exampleDivider} />
-                  <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
-                </View>
-              </View>
-            )}
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* Example Workout - shown when user has no workouts and inputs are empty */}
+        {!notes.trim() && !workoutTitle.trim() && userWorkoutCount === 0 && (
+          <View style={styles.exampleContainer}>
+            <Text style={styles.exampleLabel}>Example:</Text>
+            <View style={styles.exampleCard}>
+              <Text style={styles.exampleTitle}>
+                {exampleWorkout.title}
+              </Text>
+              <View style={styles.exampleDivider} />
+              <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
+            </View>
+          </View>
+        )}
 
         {/* Floating Microphone Button */}
         <TouchableOpacity
@@ -1739,10 +1740,11 @@ const createStyles = (
     },
     exampleContainer: {
       position: 'absolute',
-      top: '20%',
-      marginTop: 16,
+      top: 68, // Header height (12px padding + 44px button + 12px padding)
       left: 0,
       right: 0,
+      bottom: 0,
+      justifyContent: 'center',
       alignItems: 'center',
       pointerEvents: 'none',
     },
