@@ -315,6 +315,27 @@ export async function handleSearchExercises(
   return { candidates }
 }
 
+/**
+ * Normalizes exercise names to title case (each word starts with capital letter)
+ * Examples: "leg press" -> "Leg Press", "bench press" -> "Bench Press"
+ */
+function normalizeExerciseName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      // Handle hyphenated words (e.g., "push-ups" -> "Push-ups")
+      if (word.includes('-')) {
+        return word
+          .split('-')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .join('-')
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
 export async function handleCreateExercise(
   args: z.infer<typeof createExerciseInput>,
   userId: string,
@@ -336,13 +357,16 @@ export async function handleCreateExercise(
     throw new Error('Invalid exercise name')
   }
 
+  // Normalize to title case (e.g., "leg press" -> "Leg Press")
+  const normalizedName = normalizeExerciseName(trimmedName)
+
   const supabase = createServiceClient()
 
   // Check for exact match first
   const { data: exactMatch } = await supabase
     .from('exercises')
     .select('*')
-    .ilike('name', trimmedName)
+    .ilike('name', normalizedName)
     .single()
 
   if (exactMatch) {
@@ -361,7 +385,7 @@ export async function handleCreateExercise(
 
   // If any metadata is missing, use AI to fill it in
   if (!metadata.muscle_group || !metadata.type || !metadata.equipment) {
-    const generated = await generateExerciseMetadata(trimmedName)
+    const generated = await generateExerciseMetadata(normalizedName)
     metadata = {
       muscle_group: args.muscle_group || generated.muscle_group,
       type: args.type || generated.type,
@@ -370,13 +394,13 @@ export async function handleCreateExercise(
   }
 
   // Compute embedding
-  const embedding = await computeQueryEmbedding(trimmedName)
+  const embedding = await computeQueryEmbedding(normalizedName)
 
   // Insert new exercise
   const { data, error } = await supabase
     .from('exercises')
     .insert({
-      name: trimmedName,
+      name: normalizedName,
       created_by: userId,
       muscle_group: metadata.muscle_group,
       type: metadata.type,

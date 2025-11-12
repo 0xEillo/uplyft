@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { supabase } from '@/lib/supabase'
 import { callSupabaseFunction } from '@/lib/supabase-functions-client'
 
 const exerciseMetadataSchema = z.object({
@@ -52,10 +53,17 @@ export async function generateExerciseMetadata(
   }
 
   try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+
     const response = await callSupabaseFunction(
       'generate-exercise-metadata',
       'POST',
       { exerciseName: trimmedName },
+      undefined,
+      accessToken,
     )
 
     if (!response.ok) {

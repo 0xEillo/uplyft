@@ -28,6 +28,30 @@ export function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString()
 }
 
+/**
+ * Normalizes exercise names to title case (each word starts with capital letter)
+ * Examples: "leg press" -> "Leg Press", "bench press" -> "Bench Press"
+ */
+export function normalizeExerciseName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      // Handle hyphenated words (e.g., "push-ups" -> "Push-ups")
+      if (word.includes('-')) {
+        return word
+          .split('-')
+          .map(
+            (part) =>
+              part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
+          )
+          .join('-')
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
 export function formatWorkoutForDisplay(
   workout: WorkoutSessionWithDetails,
   unit: WeightUnit,

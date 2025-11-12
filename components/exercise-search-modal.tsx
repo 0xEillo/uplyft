@@ -1,11 +1,13 @@
+import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
-import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   Modal,
   Platform,
@@ -44,13 +46,22 @@ export function ExerciseSearchModal({
   currentExerciseName,
 }: ExerciseSearchModalProps) {
   const colors = useThemedColors()
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const translateY = useSharedValue(0)
 
   const styles = createStyles(colors)
+  const trimmedQuery = searchQuery.trim()
+  const normalizedQuery = trimmedQuery.toLowerCase()
+  const hasExactMatch = trimmedQuery
+    ? exercises.some(
+        (exercise) => exercise.name.toLowerCase() === normalizedQuery,
+      )
+    : false
 
   useEffect(() => {
     if (visible) {
@@ -93,8 +104,8 @@ export function ExerciseSearchModal({
     const loadExercises = async () => {
       try {
         setIsLoading(true)
-        if (searchQuery.trim()) {
-          const results = await database.exercises.findByName(searchQuery.trim())
+        if (trimmedQuery) {
+          const results = await database.exercises.findByName(trimmedQuery)
           setExercises(results)
         } else {
           const allExercises = await database.exercises.getAll()
@@ -148,6 +159,43 @@ export function ExerciseSearchModal({
     },
     [onSelectExercise, onClose],
   )
+
+  const handleCreateExercise = useCallback(async () => {
+    const name = trimmedQuery
+    if (!name || isCreating) return
+
+    if (!user) {
+      Alert.alert(
+        'Login Required',
+        'You must be logged in to create exercises.',
+      )
+      return
+    }
+
+    try {
+      setIsCreating(true)
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      const newExercise = await database.exercises.getOrCreate(name, user.id)
+      setExercises((prev) => {
+        if (prev.some((exercise) => exercise.id === newExercise.id)) {
+          return prev
+        }
+        return [newExercise, ...prev]
+      })
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      handleSelectExercise(newExercise)
+    } catch (error) {
+      console.error('Error creating exercise:', error)
+      Alert.alert(
+        'Error',
+        error instanceof Error
+          ? error.message
+          : 'Failed to create exercise. Please try again.',
+      )
+    } finally {
+      setIsCreating(false)
+    }
+  }, [trimmedQuery, isCreating, user, handleSelectExercise])
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -209,18 +257,65 @@ export function ExerciseSearchModal({
                   color={colors.textTertiary}
                 />
                 <Text style={styles.emptyText}>
-                  {searchQuery.trim()
-                    ? 'No exercises found'
+                  {trimmedQuery
+                    ? `No exercises found for "${trimmedQuery}"`
                     : 'Start typing to search'}
                 </Text>
+                {trimmedQuery && !hasExactMatch && (
+                  <TouchableOpacity
+                    style={styles.createButton}
+                    onPress={handleCreateExercise}
+                    disabled={isCreating}
+                  >
+                    {isCreating ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="add-circle"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.createButtonText}>
+                          Create "{trimmedQuery}"
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <ScrollView
                 style={styles.exerciseList}
                 keyboardShouldPersistTaps="handled"
               >
+                {trimmedQuery && !hasExactMatch && (
+                  <TouchableOpacity
+                    style={styles.createExerciseItem}
+                    onPress={handleCreateExercise}
+                    disabled={isCreating}
+                  >
+                    <Ionicons
+                      name="add-circle"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <View style={styles.exerciseItemContent}>
+                      <Text style={styles.createExerciseText}>
+                        Create "{trimmedQuery}"
+                      </Text>
+                      <Text style={styles.exerciseMuscleGroup}>
+                        New exercise
+                      </Text>
+                    </View>
+                    {isCreating && (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
                 {exercises.map((exercise) => {
-                  const isCurrentExercise = exercise.name === currentExerciseName
+                  const isCurrentExercise =
+                    exercise.name === currentExerciseName
                   return (
                     <TouchableOpacity
                       key={exercise.id}
@@ -235,7 +330,8 @@ export function ExerciseSearchModal({
                         <Text
                           style={[
                             styles.exerciseItemText,
-                            isCurrentExercise && styles.exerciseItemTextSelected,
+                            isCurrentExercise &&
+                              styles.exerciseItemTextSelected,
                           ]}
                         >
                           {exercise.name}
@@ -364,5 +460,40 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textTertiary,
       textAlign: 'center',
       marginTop: 12,
+    },
+    createButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 16,
+      paddingVertical: 12,
+      paddingHorizontal: 18,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    createButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    createExerciseItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      backgroundColor: colors.primaryLight,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      marginBottom: 8,
+      gap: 12,
+    },
+    createExerciseText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+      marginBottom: 2,
     },
   })

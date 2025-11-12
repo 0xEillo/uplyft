@@ -1,5 +1,6 @@
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
+import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
   Exercise,
   ParsedWorkout,
@@ -290,13 +291,15 @@ export const database = {
         throw new Error('Invalid exercise name')
       }
 
-      const normalizedName = trimmedName.toLowerCase()
+      // Normalize to title case (e.g., "leg press" -> "Leg Press")
+      const normalizedName = normalizeExerciseName(trimmedName)
+      const searchName = normalizedName.toLowerCase()
 
       // Try to find existing exercise by exact name match (case-insensitive)
       const { data: exactMatch } = await supabase
         .from('exercises')
         .select('*')
-        .ilike('name', trimmedName)
+        .ilike('name', normalizedName)
         .single()
 
       if (exactMatch) return exactMatch as Exercise
@@ -305,7 +308,7 @@ export const database = {
       const { data: aliasMatches } = await supabase
         .from('exercises')
         .select('*')
-        .contains('aliases', [normalizedName])
+        .contains('aliases', [searchName])
 
       if (aliasMatches && aliasMatches.length > 0) {
         // Return first match (system exercises are prioritized in seed order)
@@ -314,12 +317,12 @@ export const database = {
 
       // No match found - create new exercise with AI-generated metadata
       // This uses AI to infer muscle_group, type (compound/isolation), and equipment
-      const metadata = await generateExerciseMetadata(trimmedName)
+      const metadata = await generateExerciseMetadata(normalizedName)
 
       const { data, error } = await supabase
         .from('exercises')
         .insert({
-          name: trimmedName,
+          name: normalizedName,
           created_by: userId,
           muscle_group: metadata.muscle_group,
           type: metadata.type,
@@ -985,10 +988,7 @@ export const database = {
       if (error) throw error
 
       // Group by week (Sunday start)
-      const weeklyData = new Map<
-        string,
-        Map<string, number>
-      >()
+      const weeklyData = new Map<string, Map<string, number>>()
 
       ;(data as any)?.forEach((session: any) => {
         const sessionDate = new Date(session.created_at)
@@ -1343,13 +1343,16 @@ export const database = {
       weightBucketEnd?: number | null,
     ) {
       try {
-        const { data, error } = await supabase.rpc('get_weight_for_percentile', {
-          p_exercise_id: exerciseId,
-          p_target_percentile: targetPercentile,
-          p_filter_gender: filterGender ?? null,
-          p_bucket_start: weightBucketStart ?? null,
-          p_bucket_end: weightBucketEnd ?? null,
-        })
+        const { data, error } = await supabase.rpc(
+          'get_weight_for_percentile',
+          {
+            p_exercise_id: exerciseId,
+            p_target_percentile: targetPercentile,
+            p_filter_gender: filterGender ?? null,
+            p_bucket_start: weightBucketStart ?? null,
+            p_bucket_end: weightBucketEnd ?? null,
+          },
+        )
 
         if (error) throw error
 
@@ -1503,7 +1506,7 @@ export const database = {
 
           // Calculate expected week for this position in the streak
           const expectedWeek = new Date(currentWeekStart)
-          expectedWeek.setDate(currentWeekStart.getDate() - (i * 7))
+          expectedWeek.setDate(currentWeekStart.getDate() - i * 7)
           const expectedWeekKey = expectedWeek.toISOString().split('T')[0]
 
           // If this week matches the expected consecutive week, continue streak
