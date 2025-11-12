@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Crypto from 'expo-crypto'
 import * as WebBrowser from 'expo-web-browser'
+import { makeRedirectUri } from 'expo-auth-session'
 import { usePostHog } from 'posthog-react-native'
 import { Platform } from 'react-native'
 import React, {
@@ -86,8 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithGoogle = async (signInOnly = false) => {
-    // Use repai:// for standalone builds
-    const redirectUrl = 'repai://'
+    const redirectUrl = makeRedirectUri({
+      scheme: 'repai',
+      path: 'auth/callback',
+    })
+
+    console.log('[auth] 🔗 redirectUrl:', redirectUrl)
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -96,14 +101,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     })
 
-    if (error) throw error
+    if (error) {
+      console.error('[auth] ❌ OAuth error:', error)
+      throw error
+    }
 
     if (!data.url) {
       throw new Error('No OAuth URL generated')
     }
 
+    console.log('[auth] 🌐 OAuth URL:', data.url)
+    console.log('[auth] 📱 Opening browser with redirect:', redirectUrl)
+
     // Open OAuth in browser - works with standalone builds only
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
+
+    console.log('[auth] 📲 Browser result:', result.type, result.url)
 
     if (result.type === 'success' && result.url) {
       // Parse tokens from URL

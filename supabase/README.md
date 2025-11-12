@@ -2,28 +2,41 @@
 
 ## Running Migrations
 
-### Option 1: Supabase Dashboard (Easiest)
+### Production Migrations
 
-1. Go to your Supabase project dashboard
-2. Navigate to **SQL Editor**
-3. Create a new query
-4. Copy the contents of `migrations/20251003_initial_schema.sql`
-5. Run the query
-6. Create another new query
-7. Copy the contents of `migrations/20251003_seed_exercises.sql`
-8. Run the query
+The `migrations/` directory contains the exact migration files executed against production, preserved for audit purposes.
 
-### Option 2: Supabase CLI
+**To apply:**
+1. Go to Supabase Dashboard → SQL Editor
+2. Copy contents of each migration file
+3. Paste and execute in SQL Editor
+4. Run migrations in chronological order (by filename timestamp)
 
-If you have the Supabase CLI installed:
+### Test Database Migrations
 
-```bash
-# Link your project
-supabase link --project-ref your-project-ref
+`migrations/migrations-test/` contains consolidated migrations that mirror the production schema state.
 
-# Run migrations
-supabase db push
-```
+**To apply:**
+1. Go to Test Supabase Dashboard → SQL Editor
+   - URL: https://supabase.com/dashboard/project/fmwakvonzplhypklnsak
+2. Copy contents of each migration file
+3. Paste and execute in SQL Editor
+4. Run migrations in order: `20251112T0001_*` → `20251112T0011_*`
+
+**Migration files:**
+- `20251112T0001_initial_core_schema.sql` - Core tables and RLS
+- `20251112T0002_profiles_and_context.sql` - User profiles and context fields
+- `20251112T0003_exercise_seed_and_aliases.sql` - Exercise data and aliases
+- `20251112T0004_account_and_avatar_policies.sql` - Account functions and storage
+- `20251112T0005_schema_adjustments_and_rls.sql` - Schema updates
+- `20251112T0006_body_log_schema_and_policies.sql` - Body log tables
+- `20251112T0007_exercise_embeddings_and_search.sql` - Vector search
+- `20251112T0008_exercise_percentiles_and_refresh.sql` - Percentile calculations
+- `20251112T0009_cleanup.sql` - Cleanup operations
+- `20251112T0010_workout_routines_and_rpc.sql` - Workout routines
+- `20251112T0011_add_workout_session_image_url.sql` - Image URL field
+
+For more commands and workflows, see [docs/COMMANDS.md](../docs/COMMANDS.md).
 
 ## Schema Overview
 

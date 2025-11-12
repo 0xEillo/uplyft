@@ -1,6 +1,27 @@
 require('dotenv').config()
 
+const appEnv = process.env.APP_ENV || 'production'
 const revenueCatUseTestStoreEnv = process.env.REVENUECAT_USE_TEST_STORE
+
+const supabaseUrl =
+  appEnv === 'production'
+    ? process.env.EXPO_PUBLIC_SUPABASE_URL
+    : process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL
+
+const supabaseAnonKey =
+  appEnv === 'production'
+    ? process.env.EXPO_PUBLIC_SUPABASE_KEY
+    : process.env.SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_KEY
+
+if (!supabaseUrl) {
+  throw new Error('Missing Supabase URL. Check your environment variables.')
+}
+
+if (!supabaseAnonKey) {
+  throw new Error(
+    'Missing Supabase anon key. Check your environment variables.',
+  )
+}
 
 module.exports = {
   expo: {
@@ -80,6 +101,9 @@ module.exports = {
       reactCompiler: true,
     },
     extra: {
+      appEnv,
+      supabaseUrl,
+      supabaseAnonKey,
       router: {},
       eas: {
         projectId: 'd92cf9e6-0901-4a68-9f50-741decd5c10f',

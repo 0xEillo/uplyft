@@ -1,13 +1,23 @@
-import { supabase } from '@/lib/supabase'
+import Constants from 'expo-constants'
 
 /**
  * Get the base URL for Supabase Edge Functions.
  * This is constructed from the Supabase project URL.
  */
 export function getSupabaseFunctionBaseUrl(): string {
-  const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
+  type ExtraConfig = {
+    supabaseUrl?: string
+  }
+
+  const extra =
+    (Constants.expoConfig?.extra as ExtraConfig | undefined) ??
+    ((Constants.manifest as unknown) as { extra?: ExtraConfig })?.extra ??
+    {}
+
+  const projectUrl = extra.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL
+
   if (!projectUrl) {
-    throw new Error('EXPO_PUBLIC_SUPABASE_URL is not configured')
+    throw new Error('Supabase URL is not configured')
   }
   // Supabase functions are at: https://{project-ref}.supabase.co/functions/v1/{function-name}
   return `${projectUrl}/functions/v1`

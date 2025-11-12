@@ -4,6 +4,7 @@
   "version": "1.0.2",
   "scripts": {
     "start": "expo start",
+    "start:test": "DOTENV_CONFIG_PATH=.env.test node scripts/run-with-env.js expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
