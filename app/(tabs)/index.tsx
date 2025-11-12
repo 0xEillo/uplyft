@@ -5,6 +5,7 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
+import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -80,6 +81,7 @@ export default function FeedScreen() {
   const { isDark } = useTheme()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
+  const { updateWorkoutData } = useSuccessOverlay()
   const insets = useSafeAreaInsets()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -171,8 +173,12 @@ export default function FeedScreen() {
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return
 
+    console.log('[index] handlePendingPost started')
+
     try {
       const result = await processPendingWorkout()
+
+      console.log('[index] processPendingWorkout result:', result.status)
 
       if (result.status === 'none' || result.status === 'skipped') {
         return
@@ -180,6 +186,14 @@ export default function FeedScreen() {
 
       if (result.status === 'success') {
         const { workout } = result
+
+        console.log('[index] Workout processed successfully, updating overlay with workout:', {
+          workoutId: workout.id,
+          exerciseCount: workout.workout_exercises?.length,
+        })
+
+        // Update success overlay context with workout data for share screen
+        updateWorkoutData(workout)
 
         setNewWorkoutId(workout.id)
         LayoutAnimation.configureNext(CustomSlideAnimation)
@@ -233,7 +247,7 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('Error processing pending post:', error)
     }
-  }, [user, isProcessingPending, processPendingWorkout, router])
+  }, [user, isProcessingPending, processPendingWorkout, router, updateWorkoutData])
 
   const handleLoadMore = useCallback(() => {
     if (!isLoadingMore && hasMore && !isLoading) {

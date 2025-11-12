@@ -18,7 +18,8 @@ import {
   View,
 } from 'react-native'
 import { PrTooltip } from './pr-tooltip'
-import { ShareWorkoutCard } from './share-workout-card'
+import { WorkoutShareScreen } from './workout-share-screen'
+import { getWorkoutCountThisWeek } from '@/lib/utils/workout-stats'
 
 // Constants
 const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
@@ -106,8 +107,7 @@ export const FeedCard = memo(function FeedCard({
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
-  const { shareWorkout, isSharing } = useWorkoutShare()
-  const shareCardRef = useRef<View>(null)
+  const { shareWorkoutWidget, isSharing } = useWorkoutShare()
 
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
@@ -119,6 +119,7 @@ export const FeedCard = memo(function FeedCard({
     selectedExercisePR,
     setSelectedExercisePR,
   ] = useState<ExercisePRInfo | null>(null)
+  const [showShareScreen, setShowShareScreen] = useState(false)
 
   // Image loading states and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
@@ -251,11 +252,17 @@ export const FeedCard = memo(function FeedCard({
     setIsExpanded(!isExpanded)
   }
 
-  const handleShare = async () => {
+  const handleShare = () => {
     setMenuVisible(false)
-    if (workout && shareCardRef.current) {
-      await shareWorkout(workout, workoutTitle, shareCardRef.current)
-    }
+    setShowShareScreen(true)
+  }
+
+  const handleCloseShareScreen = () => {
+    setShowShareScreen(false)
+  }
+
+  const handleShareWidget = async (widgetIndex: number, shareType: 'instagram' | 'general', widgetRef: View) => {
+    await shareWorkoutWidget(widgetRef, shareType)
   }
 
   const rotateInterpolate = rotateAnim.interpolate({
@@ -697,31 +704,17 @@ export const FeedCard = memo(function FeedCard({
         />
       )}
 
-      {/* Hidden Share Card for Image Capture - Must be rendered but hidden */}
-      {workout && !isPending && (
-        <View
-          style={{
-            position: 'absolute',
-            left: -50000,
-            top: 0,
-          }}
-        >
-          <View
-            ref={shareCardRef}
-            collapsable={false}
-          >
-            <ShareWorkoutCard
-              workout={workout}
-              userName={userName}
-              userAvatar={userAvatar}
-              workoutTitle={workoutTitle}
-              workoutDescription={workoutDescription || null}
-              timeAgo={timeAgo}
-              weightUnit={weightUnit}
-              prInfo={prInfo}
-            />
-          </View>
-        </View>
+      {/* Workout Share Screen Modal */}
+      {workout && showShareScreen && (
+        <WorkoutShareScreen
+          visible={showShareScreen}
+          workout={workout}
+          weightUnit={weightUnit}
+          workoutCountThisWeek={1}
+          workoutTitle={workoutTitle}
+          onClose={handleCloseShareScreen}
+          onShare={handleShareWidget}
+        />
       )}
     </View>
   )

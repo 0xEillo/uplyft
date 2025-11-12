@@ -14,6 +14,7 @@ import {
 import { HapticTab } from '@/components/haptic-tab'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
+import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
@@ -22,6 +23,8 @@ import {
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
@@ -126,7 +129,63 @@ function CreateButton() {
 function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const { isVisible, data, hideOverlay } = useSuccessOverlay()
+  const { isVisible, data, hideOverlay, showShareScreen, setShowShareScreen } = useSuccessOverlay()
+  const { weightUnit } = useWeightUnits()
+  const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
+
+  // Track if we've already shown the share screen for this workout
+  const shownWorkoutIdRef = React.useRef<string | null>(null)
+
+  // Watch for workout data updates and show share screen when workout is ready
+  React.useEffect(() => {
+    console.log('[_layout] Data changed, workout:', {
+      hasWorkout: Boolean(data.workout),
+      workoutId: data.workout?.id,
+      isVisible,
+      showShareScreen,
+      shownWorkoutId: shownWorkoutIdRef.current,
+    })
+
+    // If we have workout data and overlay is not visible (animation completed), show share screen
+    // Only show once per workout ID
+    if (data.workout && !isVisible && !showShareScreen && shownWorkoutIdRef.current !== data.workout.id) {
+      console.log('[_layout] Workout data available and overlay hidden, showing share screen')
+      shownWorkoutIdRef.current = data.workout.id
+      setShowShareScreen(true)
+    }
+  }, [data.workout, isVisible, showShareScreen, setShowShareScreen])
+
+  const handleAnimationComplete = () => {
+    console.log('[_layout] Success overlay animation complete, data:', {
+      hasWorkout: Boolean(data.workout),
+      workoutId: data.workout?.id,
+      workoutTitle: data.workoutTitle,
+    })
+
+    hideOverlay()
+    // Note: Share screen will be shown by the useEffect above when workout data arrives
+  }
+
+  const handleShare = async (widgetIndex: number, shareType: 'instagram' | 'general', widgetRef: View) => {
+    if (!data.workout) return
+
+    const widgetTypes = ['summary', 'stats', 'achievement']
+    const widgetType = widgetTypes[widgetIndex]
+
+    try {
+      if (shareType === 'instagram') {
+        await shareToInstagramStories(data.workout, widgetRef, widgetType)
+      } else {
+        await shareWorkout(data.workout, data.workoutTitle || 'My Workout', widgetRef)
+      }
+    } catch (error) {
+      console.error('Error sharing workout:', error)
+    }
+  }
+
+  const handleCloseShareScreen = () => {
+    setShowShareScreen(false)
+  }
 
   return (
     <>
@@ -206,11 +265,22 @@ function TabLayoutContent() {
       </Tabs>
       <SubmitSuccessOverlay
         visible={isVisible}
-        onAnimationComplete={hideOverlay}
+        onAnimationComplete={handleAnimationComplete}
         message={data.message}
         workoutNumber={data.workoutNumber}
         weeklyTarget={data.weeklyTarget}
       />
+      {data.workout && (
+        <WorkoutShareScreen
+          visible={showShareScreen}
+          workout={data.workout}
+          weightUnit={weightUnit}
+          workoutCountThisWeek={data.workoutNumber}
+          workoutTitle={data.workoutTitle}
+          onClose={handleCloseShareScreen}
+          onShare={handleShare}
+        />
+      )}
       <RatingPromptModal />
     </>
   )

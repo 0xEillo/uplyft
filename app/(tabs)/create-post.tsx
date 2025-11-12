@@ -664,7 +664,19 @@ export default function CreatePostScreen() {
       setShowRoutineSelector(false)
       blurInputs()
 
-      showOverlay({ message, workoutNumber, weeklyTarget })
+      // Store title for later use in share screen
+      console.log('[create-post] Showing overlay with data:', {
+        message,
+        workoutNumber,
+        weeklyTarget,
+        workoutTitle: trimmedTitle || undefined,
+      })
+      showOverlay({
+        message,
+        workoutNumber,
+        weeklyTarget,
+        workoutTitle: trimmedTitle || undefined,
+      })
       router.replace('/(tabs)')
 
       setTimeout(() => {
