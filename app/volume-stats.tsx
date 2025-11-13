@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { VolumeProgressChart } from '@/components/volume-progress-chart'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -32,12 +33,6 @@ interface SessionStats {
   avgSetsPerWorkout: number
 }
 
-interface MuscleGroupData {
-  muscleGroup: string
-  volume: number
-  percentage: number
-}
-
 const MUSCLE_GROUP_COLORS: Record<string, string> = {
   Chest: '#FF6B6B',
   Back: '#4ECDC4',
@@ -63,7 +58,6 @@ export default function VolumeStatsScreen() {
     totalWorkouts: 0,
     avgSetsPerWorkout: 0,
   })
-  const [distribution, setDistribution] = useState<MuscleGroupData[]>([])
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -79,16 +73,14 @@ export default function VolumeStatsScreen() {
           ? 180
           : undefined
 
-      // Load all three data sets
-      const [weeklyVol, stats, dist] = await Promise.all([
+      // Load data sets
+      const [weeklyVol, stats] = await Promise.all([
         database.stats.getWeeklyVolumeData(user.id, daysBack),
         database.stats.getSessionStats(user.id, daysBack),
-        database.stats.getMuscleGroupDistribution(user.id, daysBack),
       ])
 
       setWeeklyData(weeklyVol)
       setSessionStats(stats)
-      setDistribution(dist)
     } catch (error) {
       console.error('Error loading volume stats:', error)
     } finally {
@@ -214,109 +206,67 @@ export default function VolumeStatsScreen() {
               <Text style={styles.emptyText}>No workout data for this period</Text>
             ) : (
               <View style={styles.volumeChartContainer}>
-                <View style={styles.muscleGroupBars}>
-                  {(() => {
-                    // Aggregate all muscle groups across all weeks
-                    const muscleGroupTotals = new Map<string, number>()
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.muscleGroupBarsContent}
+                >
+                  <View style={styles.muscleGroupBars}>
+                    {(() => {
+                      // Aggregate all muscle groups across all weeks
+                      const muscleGroupTotals = new Map<string, number>()
 
-                    weeklyData.forEach((week) => {
-                      week.muscleGroups.forEach((mg) => {
-                        const current = muscleGroupTotals.get(mg.name) || 0
-                        muscleGroupTotals.set(mg.name, current + mg.sets)
+                      weeklyData.forEach((week) => {
+                        week.muscleGroups.forEach((mg) => {
+                          const current = muscleGroupTotals.get(mg.name) || 0
+                          muscleGroupTotals.set(mg.name, current + mg.sets)
+                        })
                       })
-                    })
 
-                    // Convert to array and sort by volume
-                    const sortedMuscleGroups = Array.from(muscleGroupTotals.entries())
-                      .map(([name, sets]) => ({ name, sets }))
-                      .sort((a, b) => b.sets - a.sets)
+                      // Convert to array and sort by volume
+                      const sortedMuscleGroups = Array.from(muscleGroupTotals.entries())
+                        .map(([name, sets]) => ({ name, sets }))
+                        .sort((a, b) => b.sets - a.sets)
 
-                    const maxSets = Math.max(...sortedMuscleGroups.map((mg) => mg.sets))
+                      const maxSets = Math.max(...sortedMuscleGroups.map((mg) => mg.sets))
+                      const maxBarHeight = 100 // Fixed max height in pixels for bars
 
-                    return sortedMuscleGroups.map((mg, index) => {
-                      const barHeight = (mg.sets / maxSets) * 100
-                      return (
-                        <View
-                          key={index}
-                          style={styles.muscleGroupBarContainer}
-                        >
-                          <Text style={styles.setCount}>{mg.sets}</Text>
+                      return sortedMuscleGroups.map((mg, index) => {
+                        const barHeight = maxSets > 0 ? (mg.sets / maxSets) * maxBarHeight : 0
+                        return (
                           <View
-                            style={[
-                              styles.muscleGroupBar,
-                              {
-                                height: `${barHeight}%`,
-                                backgroundColor:
-                                  MUSCLE_GROUP_COLORS[mg.name] ||
-                                  colors.primary,
-                              },
-                            ]}
-                          />
-                          <Text style={styles.muscleGroupName}>
-                            {mg.name}
-                          </Text>
-                        </View>
-                      )
-                    })
-                  })()}
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Section 3: Volume Distribution */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconContainer}>
-                <Ionicons name="body" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.cardTitle}>Volume Distribution</Text>
-            </View>
-
-            {distribution.length === 0 ? (
-              <Text style={styles.emptyText}>
-                No distribution data for this period
-              </Text>
-            ) : (
-              <View style={styles.distributionContainer}>
-                {distribution.map((item, index) => (
-                  <View key={index} style={styles.distributionRow}>
-                    <View style={styles.distributionLabelRow}>
-                      <View
-                        style={[
-                          styles.colorDot,
-                          {
-                            backgroundColor:
-                              MUSCLE_GROUP_COLORS[item.muscleGroup] ||
-                              colors.primary,
-                          },
-                        ]}
-                      />
-                      <Text style={styles.distributionLabel}>
-                        {item.muscleGroup}
-                      </Text>
-                    </View>
-                    <View style={styles.distributionBarContainer}>
-                      <View
-                        style={[
-                          styles.distributionBar,
-                          {
-                            width: `${item.percentage}%`,
-                            backgroundColor:
-                              MUSCLE_GROUP_COLORS[item.muscleGroup] ||
-                              colors.primary,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.distributionPercentage}>
-                      {item.percentage}%
-                    </Text>
+                            key={index}
+                            style={styles.muscleGroupBarContainer}
+                          >
+                            <Text style={styles.setCount}>{mg.sets}</Text>
+                            <View
+                              style={[
+                                styles.muscleGroupBar,
+                                {
+                                  height: barHeight,
+                                  backgroundColor:
+                                    MUSCLE_GROUP_COLORS[mg.name] ||
+                                    colors.primary,
+                                },
+                              ]}
+                            />
+                            <Text style={styles.muscleGroupName}>
+                              {mg.name}
+                            </Text>
+                          </View>
+                        )
+                      })
+                    })()}
                   </View>
-                ))}
+                </ScrollView>
               </View>
             )}
           </View>
+
+          {/* Section 3: Volume Over Time Chart */}
+          {user?.id && (
+            <VolumeProgressChart userId={user.id} timeRange={timeRange} />
+          )}
         </ScrollView>
       </SafeAreaView>
     </>
@@ -454,21 +404,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     volumeChartContainer: {
       paddingTop: 24,
     },
+    muscleGroupBarsContent: {
+      paddingHorizontal: 4,
+    },
     muscleGroupBars: {
       flexDirection: 'row',
       gap: 8,
-      height: 120,
+      height: 160,
       alignItems: 'flex-end',
     },
     muscleGroupBarContainer: {
-      flex: 1,
+      width: 60,
       alignItems: 'center',
       justifyContent: 'flex-end',
-      height: '100%',
+      height: 160,
     },
     muscleGroupBar: {
       width: '100%',
-      minHeight: 8,
+      minHeight: 4,
       borderRadius: 4,
       marginBottom: 4,
     },
@@ -483,48 +436,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '500',
       color: colors.textSecondary,
       textAlign: 'center',
-    },
-    distributionContainer: {
-      gap: 16,
-    },
-    distributionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    distributionLabelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      width: 100,
-    },
-    colorDot: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-    },
-    distributionLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      flex: 1,
-    },
-    distributionBarContainer: {
-      flex: 1,
-      height: 24,
-      backgroundColor: colors.backgroundLight,
-      borderRadius: 12,
-      overflow: 'hidden',
-    },
-    distributionBar: {
-      height: '100%',
-      borderRadius: 12,
-    },
-    distributionPercentage: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      width: 45,
-      textAlign: 'right',
     },
   })

@@ -358,6 +358,17 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
 
   const needsScroll = calculatedWidth > baseWidth
 
+  // Get end date label for the time range
+  const getEndDateLabel = () => {
+    if (timeRange === 'week') {
+      return '7 days'
+    } else if (timeRange === 'month') {
+      return '1 month'
+    } else {
+      return 'All time'
+    }
+  }
+
   // Calculate stats
   const maxScore = filteredData.length
     ? Math.max(...filteredData.map((p) => p.strengthScore))
@@ -391,7 +402,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
           </View>
           <View>
             <Text style={styles.title}>Strength Progress</Text>
-            <Text style={styles.subtitle}>Tap for detailed stats</Text>
+            <Text style={styles.subtitle}>Estimated 1RM trends over time</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
@@ -547,10 +558,10 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
               <LineChart
                 data={chartData}
                 width={calculatedWidth}
-                height={220}
+                height={200}
                 spacing={optimalSpacing}
                 initialSpacing={20}
-                endSpacing={20}
+                endSpacing={10}
                 color={colors.primary}
                 thickness={3}
                 startFillColor={colors.primaryLight}
@@ -575,13 +586,14 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
                 rulesColor={colors.border}
                 showVerticalLines
                 verticalLinesColor={colors.border}
-                xAxisLabelTextStyle={{
-                  color: colors.textSecondary,
-                  fontSize: 10,
-                }}
                 maxValue={Math.ceil(maxScore * 1.1)} // Add 10% padding
               />
             </ScrollView>
+            <View style={styles.xAxisEndLabel}>
+              <Text style={styles.xAxisEndLabelText}>
+                {getEndDateLabel()}
+              </Text>
+            </View>
             {needsScroll && (
               <View style={styles.scrollHint}>
                 <Ionicons
@@ -877,16 +889,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       padding: 12,
       borderRadius: 9999,
+      alignItems: 'center',
     },
     statLabel: {
       fontSize: 11,
       color: colors.textSecondary,
       marginBottom: 4,
+      textAlign: 'center',
     },
     statValue: {
       fontSize: 18,
       fontWeight: '700',
       color: colors.text,
+      textAlign: 'center',
     },
     statPercentage: {
       fontSize: 11,
@@ -908,12 +923,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     loadingContainer: {
-      height: 220,
+      height: 200,
       justifyContent: 'center',
       alignItems: 'center',
     },
     emptyState: {
-      height: 220,
+      height: 200,
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: 32,
@@ -934,6 +949,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     chartScrollContent: {
       paddingRight: 16,
+      paddingBottom: 2,
     },
     scrollHint: {
       flexDirection: 'row',
@@ -946,6 +962,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 11,
       color: colors.textPlaceholder,
       fontStyle: 'italic',
+    },
+    xAxisEndLabel: {
+      alignItems: 'flex-end',
+      paddingRight: 20,
+      marginTop: 4,
+    },
+    xAxisEndLabelText: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
     timeRangeContainer: {
       flexDirection: 'row',

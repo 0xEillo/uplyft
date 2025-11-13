@@ -196,7 +196,12 @@ export interface TrialOfferStepProperties extends BaseEventProperties {
 }
 
 export interface TrialOfferProperties extends BaseEventProperties {
-  action?: 'viewed' | 'step_viewed' | 'step_completed' | 'accepted' | 'dismissed'
+  action?:
+    | 'viewed'
+    | 'step_viewed'
+    | 'step_completed'
+    | 'accepted'
+    | 'dismissed'
 }
 
 export interface FeedViewedProperties extends BaseEventProperties {

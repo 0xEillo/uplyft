@@ -897,6 +897,65 @@ export const database = {
       return progressData || []
     },
 
+    async getVolumeProgress(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          created_at,
+          workout_exercises!inner (
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true })
+
+      // Filter by date range if specified
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      interface VolumeProgressRow {
+        id: string
+        created_at: string
+        workout_exercises?: {
+          sets?: {
+            reps: number
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      // Calculate total volume for each workout session
+      const progressData = (data as VolumeProgressRow[])?.map((session) => {
+        let totalVolume = 0
+
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
+            if (set.reps && set.weight) {
+              // Volume = reps × weight (in kg)
+              totalVolume += set.reps * set.weight
+            }
+          })
+        })
+
+        return {
+          date: session.created_at,
+          volume: Math.round(totalVolume), // Round to whole number
+        }
+      })
+
+      return progressData || []
+    },
+
     async getMuscleGroupDistribution(userId: string, daysBack?: number) {
       let query = supabase
         .from('workout_sessions')
