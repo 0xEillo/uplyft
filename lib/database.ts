@@ -627,7 +627,7 @@ export const database = {
 
   // Stats and analytics
   stats: {
-    // Key exercises for leaderboard rankings (main compound lifts only)
+    // Key exercises for percentile tracking and strength standards (main compound lifts only)
     // Imported from centralized configuration to ensure consistency with strength standards
     LEADERBOARD_EXERCISES: getLeaderboardExercises(),
 
@@ -1205,7 +1205,7 @@ export const database = {
       // Get all user's max 1RMs
       const all1RMs = await this.getUserMax1RMs(userId)
 
-      // Filter to only major compound lifts (leaderboard exercises)
+      // Filter to only major compound lifts (exercises with strength standards)
       const compoundLifts = all1RMs.filter((exercise) =>
         this.LEADERBOARD_EXERCISES.includes(exercise.exerciseName),
       )
@@ -1331,81 +1331,6 @@ export const database = {
       } catch (error) {
         console.error('Error calculating exercise percentile:', error)
         return null
-      }
-    },
-
-    async getWeightForNextPercentile(
-      exerciseId: string,
-      currentPercentile: number,
-      targetPercentile: number,
-      filterGender?: string | null,
-      weightBucketStart?: number | null,
-      weightBucketEnd?: number | null,
-    ) {
-      try {
-        const { data, error } = await supabase.rpc(
-          'get_weight_for_percentile',
-          {
-            p_exercise_id: exerciseId,
-            p_target_percentile: targetPercentile,
-            p_filter_gender: filterGender ?? null,
-            p_bucket_start: weightBucketStart ?? null,
-            p_bucket_end: weightBucketEnd ?? null,
-          },
-        )
-
-        if (error) throw error
-
-        return typeof data === 'number' ? Math.round(data) : null
-      } catch (error) {
-        console.error('Error getting weight for next percentile:', error)
-        return null
-      }
-    },
-
-    async getUserLeaderboardRankings(userId: string) {
-      try {
-        const userMax1RMs = await this.getUserMax1RMs(userId)
-
-        // Filter to only include key compound exercises
-        const keyExercises = userMax1RMs.filter((exercise) =>
-          this.LEADERBOARD_EXERCISES.includes(exercise.exerciseName),
-        )
-
-        if (keyExercises.length === 0) {
-          return []
-        }
-
-        // Get percentiles for key exercises only
-        const rankings = await Promise.all(
-          keyExercises.map(async (exercise) => {
-            const percentile = await this.getExercisePercentile(
-              userId,
-              exercise.exerciseId,
-            )
-            return {
-              exerciseId: exercise.exerciseId,
-              exerciseName: exercise.exerciseName,
-              userMax1RM: exercise.max1RM,
-              percentile: percentile?.percentile || 0,
-              totalUsers: percentile?.totalUsers || 0,
-              gender: percentile?.gender ?? null,
-              genderPercentile: percentile?.genderPercentile ?? null,
-              genderWeightPercentile:
-                percentile?.genderWeightPercentile ?? null,
-              weightBucketStart: percentile?.weightBucketStart ?? null,
-              weightBucketEnd: percentile?.weightBucketEnd ?? null,
-            }
-          }),
-        )
-
-        // Sort by percentile (highest first) and return top exercises
-        return rankings
-          .filter((r) => r.totalUsers > 0) // Only include exercises with multiple users
-          .sort((a, b) => b.percentile - a.percentile)
-      } catch (error) {
-        console.error('Error getting user leaderboard rankings:', error)
-        return []
       }
     },
 

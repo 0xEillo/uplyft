@@ -90,8 +90,6 @@ export const AnalyticsEvents = {
   // Analytics & Insights
   STRENGTH_SCORE_VIEWED: 'Strength Score Viewed',
   MUSCLE_BALANCE_VIEWED: 'Muscle Balance Viewed',
-  LEADERBOARD_VIEWED: 'Leaderboard Viewed',
-  LEADERBOARD_EXERCISE_TAPPED: 'Leaderboard Exercise Tapped',
 
   // Social Features
   USER_PROFILE_VIEWED: 'User Profile Viewed',
@@ -270,7 +268,7 @@ export interface BodyScanProperties extends BaseEventProperties {
 }
 
 export interface AnalyticsViewProperties extends BaseEventProperties {
-  view_type: 'strength_score' | 'muscle_balance' | 'leaderboard'
+  view_type: 'strength_score' | 'muscle_balance'
   exercise?: string
 }
 
@@ -385,7 +383,6 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.BODY_SCAN_FAILED]: BodyScanProperties
   [AnalyticsEvents.STRENGTH_SCORE_VIEWED]: AnalyticsViewProperties
   [AnalyticsEvents.MUSCLE_BALANCE_VIEWED]: AnalyticsViewProperties
-  [AnalyticsEvents.LEADERBOARD_VIEWED]: AnalyticsViewProperties
   [AnalyticsEvents.USER_PROFILE_VIEWED]: UserProfileProperties
   [AnalyticsEvents.USER_FOLLOWED]: SocialActionProperties
   [AnalyticsEvents.USER_UNFOLLOWED]: SocialActionProperties
