@@ -1,6 +1,6 @@
 /**
  * Central Exercise Standards Configuration
- * Single source of truth for exercises that have both leaderboard tracking and strength standards
+ * Single source of truth for exercises that have strength standards and percentile tracking
  */
 
 export type StrengthLevel =
@@ -27,7 +27,7 @@ export interface ExerciseStandardsConfig {
 
 /**
  * Canonical list of exercises with strength standards
- * These are the exercises that appear in the leaderboard and have standards defined
+ * These exercises have standards defined and support percentile rankings (used in workout chat)
  */
 export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Bench Press
@@ -1508,7 +1508,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 ]
 
 /**
- * Get list of exercise names for leaderboard tracking
+ * Get list of exercise names that support percentile rankings
  */
 export function getLeaderboardExercises(): string[] {
   return EXERCISES_WITH_STANDARDS.flatMap((config) => [

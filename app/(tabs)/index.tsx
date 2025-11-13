@@ -173,12 +173,8 @@ export default function FeedScreen() {
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return
 
-    console.log('[index] handlePendingPost started')
-
     try {
       const result = await processPendingWorkout()
-
-      console.log('[index] processPendingWorkout result:', result.status)
 
       if (result.status === 'none' || result.status === 'skipped') {
         return
@@ -186,11 +182,6 @@ export default function FeedScreen() {
 
       if (result.status === 'success') {
         const { workout } = result
-
-        console.log('[index] Workout processed successfully, updating overlay with workout:', {
-          workoutId: workout.id,
-          exerciseCount: workout.workout_exercises?.length,
-        })
 
         // Update success overlay context with workout data for share screen
         updateWorkoutData(workout)

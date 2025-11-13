@@ -1,7 +1,7 @@
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type PaywallProps = {
   visible: boolean
@@ -29,6 +30,7 @@ export function Paywall({
 }: PaywallProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const insets = useSafeAreaInsets()
   const {
     purchasePackage,
     restorePurchases,
@@ -37,37 +39,88 @@ export function Paywall({
   } = useSubscription()
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+
+  // Parse packages
+  const packages = useMemo(() => {
+    if (!offerings) return null
+
+    const monthly = offerings.availablePackages.find(
+      (pkg) =>
+        pkg.identifier === '$rc_monthly' ||
+        pkg.identifier.toLowerCase().includes('monthly'),
+    )
+    const yearly = offerings.availablePackages.find(
+      (pkg) =>
+        pkg.identifier === '$rc_yearly' ||
+        pkg.identifier.toLowerCase().includes('yearly') ||
+        pkg.identifier.toLowerCase().includes('annual'),
+    )
+    const lifetime = offerings.availablePackages.find(
+      (pkg) =>
+        pkg.identifier.toLowerCase().includes('lifetime') ||
+        pkg.identifier.toLowerCase().includes('forever'),
+    )
+
+    return { monthly, yearly, lifetime }
+  }, [offerings])
+
+  // Set default selected plan to yearly
+  useEffect(() => {
+    if (!selectedPlan) {
+      if (packages?.yearly) {
+        setSelectedPlan(packages.yearly.identifier)
+      } else {
+        // Use placeholder if yearly not available yet
+        setSelectedPlan('yearly_placeholder')
+      }
+    }
+  }, [packages, selectedPlan])
+
+  // Calculate savings for yearly plan
+  const yearlySavings = useMemo(() => {
+    if (!packages?.monthly || !packages?.yearly) return null
+    const monthlyPrice = packages.monthly.product.price
+    const yearlyPrice = packages.yearly.product.price
+    if (monthlyPrice === 0) return null
+    const monthlyYearlyTotal = monthlyPrice * 12
+    const savings =
+      ((monthlyYearlyTotal - yearlyPrice) / monthlyYearlyTotal) * 100
+    return Math.round(savings)
+  }, [packages])
+
+  // Get selected package
+  const selectedPackage = useMemo(() => {
+    if (!selectedPlan || !offerings) return null
+    return offerings.availablePackages.find(
+      (pkg) => pkg.identifier === selectedPlan,
+    )
+  }, [selectedPlan, offerings])
+
+  // Get button text based on selected plan
+  const subscribeButtonText = useMemo(() => {
+    if (!selectedPackage) return 'Subscribe'
+    const planType = selectedPackage.identifier.toLowerCase()
+    if (planType.includes('monthly')) return 'Subscribe to Monthly plan'
+    if (planType.includes('yearly') || planType.includes('annual'))
+      return 'Subscribe to Yearly plan'
+    if (planType.includes('lifetime')) return 'Subscribe to Lifetime plan'
+    return 'Subscribe'
+  }, [selectedPackage])
 
   const handleSubscribe = async () => {
     try {
       setIsPurchasing(true)
 
-      if (!offerings) {
-        Alert.alert(
-          'Error',
-          'Unable to load subscription options. Please try again.',
-        )
+      if (!selectedPackage) {
+        Alert.alert('Error', 'Please select a subscription plan.')
         return
       }
 
-      // Find the monthly package
-      const monthlyPackage = offerings.availablePackages.find(
-        (pkg) =>
-          pkg.identifier === '$rc_monthly' ||
-          pkg.identifier.toLowerCase().includes('monthly'),
+      const updatedCustomerInfo = await purchasePackage(
+        selectedPackage.identifier,
       )
-
-      const packageToUse = monthlyPackage || offerings.availablePackages[0]
-
-      if (!packageToUse) {
-        Alert.alert(
-          'Error',
-          'No subscription packages available. Please try again.',
-        )
-        return
-      }
-
-      const updatedCustomerInfo = await purchasePackage(packageToUse.identifier)
 
       // Verify the Pro entitlement was actually granted
       const hasProEntitlement = Boolean(
@@ -92,7 +145,6 @@ export function Paywall({
     } catch (error) {
       // Handle user cancellation
       if (error?.userCancelled) {
-        console.log('[Paywall] User cancelled purchase')
         return
       }
 
@@ -150,20 +202,6 @@ export function Paywall({
     }
   }
 
-  const monthlyPriceString = useMemo(() => {
-    const monthlyPackage = offerings?.availablePackages.find(
-      (pkg) =>
-        pkg.identifier === '$rc_monthly' ||
-        pkg.identifier.toLowerCase().includes('monthly'),
-    )
-
-    return monthlyPackage?.product.priceString ?? null
-  }, [offerings])
-
-  const monthlyPriceText = monthlyPriceString
-    ? `${monthlyPriceString} per month`
-    : 'your local monthly rate'
-
   return (
     <Modal
       visible={visible}
@@ -173,8 +211,8 @@ export function Paywall({
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
+          {/* Fixed Close Button */}
+          <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={28} color={colors.text} />
             </TouchableOpacity>
@@ -184,134 +222,496 @@ export function Paywall({
           <ScrollView
             style={styles.scrollableContent}
             contentContainerStyle={styles.scrollContentContainer}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
+            scrollIndicatorInsets={{ right: 4 }}
+            persistentScrollbar={true}
           >
-            {/* Icon */}
-            <View style={styles.iconContainer}>
-              <Ionicons name="lock-closed" size={72} color={colors.primary} />
+            {/* Top Section - Title */}
+            <View style={styles.topSection}>
+              <View style={styles.brandHeader}>
+                <Text style={styles.brandName}>Rep AI</Text>
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              </View>
             </View>
 
-            {/* Title */}
-            <Text style={styles.title}>{title}</Text>
+            {/* Heading */}
+            <Text style={styles.heading}>Full Access</Text>
 
-            {/* Message */}
-            <Text style={styles.message}>{message}</Text>
+            {/* Description */}
+            <Text style={styles.description}>
+              Get access to all PRO features and take your training to the next
+              level.
+            </Text>
 
-            {/* Benefits */}
-            <View style={styles.benefitsContainer}>
-              <Benefit
-                icon="document-text"
-                text="Unlimited workout logging"
-                colors={colors}
-              />
-              <Benefit
-                icon="chatbubbles"
-                text="AI-powered fitness assistant"
-                colors={colors}
-              />
-              <Benefit
-                icon="trending-up"
-                text="Track all your PRs"
-                colors={colors}
-              />
-              <Benefit
-                icon="body"
-                text="Body scanning & analysis"
-                colors={colors}
-              />
+            {/* Subscription Plans */}
+            <View style={styles.plansContainer}>
+              {packages?.monthly && (
+                <PlanCard
+                  title="PRO MONTHLY"
+                  price={packages.monthly.product.priceString}
+                  billing="Billed monthly"
+                  isSelected={selectedPlan === packages.monthly.identifier}
+                  onSelect={() => setSelectedPlan(packages.monthly!.identifier)}
+                  colors={colors}
+                />
+              )}
+              {/* Always show yearly plan - either from offerings or placeholder */}
+              {packages?.yearly ? (
+                <PlanCard
+                  title="PRO YEARLY"
+                  price={packages.yearly.product.priceString}
+                  billing="Billed annually"
+                  isSelected={selectedPlan === packages.yearly.identifier}
+                  onSelect={() => setSelectedPlan(packages.yearly!.identifier)}
+                  colors={colors}
+                  savings={yearlySavings}
+                />
+              ) : (
+                <PlanCard
+                  title="PRO YEARLY"
+                  price="$24.99"
+                  billing="Billed annually"
+                  isSelected={selectedPlan === 'yearly_placeholder'}
+                  onSelect={() => setSelectedPlan('yearly_placeholder')}
+                  colors={colors}
+                  savings={58}
+                />
+              )}
+              {packages?.lifetime && (
+                <PlanCard
+                  title="PRO LIFETIME"
+                  price={packages.lifetime.product.priceString}
+                  billing="Pay once"
+                  isSelected={selectedPlan === packages.lifetime.identifier}
+                  onSelect={() =>
+                    setSelectedPlan(packages.lifetime!.identifier)
+                  }
+                  colors={colors}
+                />
+              )}
+            </View>
+
+            {/* Actions */}
+            <View style={styles.actions}>
+              <Text style={styles.trialInfoText}>
+                7 days free, then {selectedPackage?.product.priceString}/
+                {selectedPackage?.identifier.toLowerCase().includes('yearly')
+                  ? 'year'
+                  : 'month'}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.subscribeButton}
+                onPress={handleSubscribe}
+                disabled={
+                  isPurchasing || isRestoring || isLoading || !selectedPackage
+                }
+              >
+                {isPurchasing ? (
+                  <ActivityIndicator color={colors.buttonText} />
+                ) : (
+                  <Text style={styles.subscribeButtonText}>
+                    Start 7-Day Free Trial
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.notNowButton}
+                onPress={onClose}
+                disabled={isPurchasing || isRestoring}
+              >
+                <Text style={styles.notNowText}>Not now</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.cancelText}>
+                Cancel anytime during your trial.
+              </Text>
+            </View>
+
+            {/* User Reviews */}
+            <View style={styles.reviewsSection}>
+              <View style={styles.reviewsHeader}>
+                <View style={styles.starsContainer}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Ionicons
+                      key={star}
+                      name="star"
+                      size={24}
+                      color={colors.primary}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.reviewsTitle}>
+                  What our users are saying
+                </Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.reviewsScrollContainer}
+                style={styles.reviewsScrollView}
+              >
+                <ReviewCard
+                  title="Super quick to log workouts"
+                  rating={5}
+                  reviewer="Oliver.R.J"
+                  date="Fri"
+                  review="This is by far the best weight training tracker app I have ever used. I downloaded so many (even paid for one) and Rep AI was the best for so many different reasons! Love the community on here too :)"
+                  colors={colors}
+                />
+                <ReviewCard
+                  title="Clean, efficient and effective"
+                  rating={5}
+                  reviewer="Matthew M R"
+                  date="4 Nov"
+                  review="The app is super easy to use, has great features like BMI calculation and an AI chatbot for motivation. It's improved my workout quality and tracks everything intelligently. Setting and achieving goals with AI help has been amazing."
+                  colors={colors}
+                />
+                <ReviewCard
+                  title="Great app"
+                  rating={5}
+                  reviewer="Norwichfan500"
+                  date="Fri"
+                  review="Helped me reach my goals and get trim for a winter holiday. Highly recommend it!"
+                  colors={colors}
+                />
+              </ScrollView>
+            </View>
+
+            {/* Comparison Section */}
+            <View style={styles.comparisonSection}>
+              <Text style={styles.comparisonTitle}>Need to compare?</Text>
+
+              <View style={styles.comparisonTable}>
+                {/* Header Row */}
+                <View style={styles.comparisonHeaderRow}>
+                  <View style={styles.comparisonFeatureColumn}>
+                    <Text></Text>
+                  </View>
+                  <View style={styles.comparisonValueColumn}>
+                    <Text style={styles.comparisonHeaderText}>Free</Text>
+                  </View>
+                  <View style={styles.comparisonValueColumn}>
+                    <Text style={styles.comparisonHeaderTextPro}>Pro</Text>
+                  </View>
+                </View>
+
+                {/* Feature Rows */}
+                <ComparisonRow
+                  feature="Unlimited Workouts"
+                  free="3 per week"
+                  pro={true}
+                  colors={colors}
+                />
+                <ComparisonRow
+                  feature="Unlimited Routines"
+                  free={false}
+                  pro={true}
+                  colors={colors}
+                />
+                <ComparisonRow
+                  feature="Custom Exercises"
+                  free={false}
+                  pro={true}
+                  colors={colors}
+                />
+                <ComparisonRow
+                  feature="Advanced Stats"
+                  free={false}
+                  pro={true}
+                  colors={colors}
+                />
+                <ComparisonRow
+                  feature="Body Scanning"
+                  free={false}
+                  pro={true}
+                  colors={colors}
+                />
+              </View>
+            </View>
+
+            {/* FAQ Section */}
+            <View style={styles.faqSection}>
+              <Text style={styles.faqTitle}>Any Questions?</Text>
+              {faqData.map((faq, index) => (
+                <FAQItem
+                  key={index}
+                  question={faq.question}
+                  answer={faq.answer}
+                  isExpanded={expandedFaq === index}
+                  onToggle={() =>
+                    setExpandedFaq(expandedFaq === index ? null : index)
+                  }
+                  colors={colors}
+                />
+              ))}
+            </View>
+
+            {/* Support & Legal */}
+            <View style={styles.supportSection}>
+              <Text style={styles.supportText}>
+                Having issues with your subscription?
+              </Text>
+              <TouchableOpacity
+                onPress={() => Linking.openURL('mailto:support@repaifit.app')}
+              >
+                <Text style={styles.emailLink}>
+                  Contact us at support@repaifit.app
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.restoreButton}
+                onPress={handleRestore}
+                disabled={isPurchasing || isRestoring || isLoading}
+              >
+                {isRestoring ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <Text style={styles.restoreButtonText}>
+                    Restore Purchases
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <View style={styles.legalLinks}>
+                <TouchableOpacity
+                  onPress={() =>
+                    Linking.openURL('https://www.repaifit.app/privacy')
+                  }
+                >
+                  <Text style={styles.legalLink}>Privacy Policy</Text>
+                </TouchableOpacity>
+                <Text style={styles.legalSeparator}> • </Text>
+                <TouchableOpacity onPress={handleOpenTerms}>
+                  <Text style={styles.legalLink}>Terms & Conditions</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </ScrollView>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            {/* Pricing - moved above button */}
-            <View style={styles.pricingContainer}>
-              <Text style={styles.pricingText}>
-                7 days free, then {monthlyPriceText}
-              </Text>
-              <Text style={styles.pricingSubtext}>Cancel anytime</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.subscribeButton}
-              onPress={handleSubscribe}
-              disabled={isPurchasing || isRestoring || isLoading}
-            >
-              {isPurchasing ? (
-                <ActivityIndicator color={colors.buttonText} />
-              ) : (
-                <Text style={styles.subscribeButtonText}>Start Free Trial</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.restoreButton}
-              onPress={handleRestore}
-              disabled={isPurchasing || isRestoring || isLoading}
-            >
-              {isRestoring ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
-                <Text style={styles.restoreButtonText}>Restore Purchases</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Terms of Service Link */}
-            <TouchableOpacity
-              onPress={handleOpenTerms}
-              style={styles.termsLink}
-            >
-              <Text style={styles.termsText}>Terms of Service</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     </Modal>
   )
 }
 
-function Benefit({
-  icon,
-  text,
+// FAQ Data
+const faqData = [
+  {
+    question: 'What does Rep AI Pro include?',
+    answer:
+      'Rep AI Pro includes unlimited workout logging, AI-powered fitness assistant, advanced stats tracking, body scanning & analysis, unlimited custom exercises, and priority support.',
+  },
+  {
+    question:
+      'Is Rep AI Pro a one-time payment or will it renew automatically?',
+    answer:
+      'Rep AI Pro offers both monthly and yearly subscription plans that renew automatically, as well as a lifetime plan that is a one-time payment.',
+  },
+  {
+    question: 'Can I cancel my subscription anytime?',
+    answer:
+      'Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period.',
+  },
+  {
+    question: 'Is it possible to get a refund?',
+    answer:
+      'Refunds are handled through the App Store or Google Play Store according to their respective refund policies. Please contact us if you have any issues.',
+  },
+  {
+    question: 'Can I switch subscription plans?',
+    answer:
+      'Yes, you can switch between monthly, yearly, and lifetime plans at any time. Changes will take effect at the start of your next billing cycle.',
+  },
+  {
+    question: 'How does the Rep AI Pro Lifetime plan work?',
+    answer:
+      'The Lifetime plan is a one-time payment that gives you permanent access to all Pro features with no recurring charges.',
+  },
+  {
+    question: 'What happens if I switch devices or platforms?',
+    answer:
+      'Your subscription is tied to your account, so you can access Pro features on any device where you sign in with the same account.',
+  },
+]
+
+function ReviewCard({
+  title,
+  rating,
+  reviewer,
+  date,
+  review,
   colors,
 }: {
-  icon: any
-  text: string
+  title: string
+  rating: number
+  reviewer: string
+  date: string
+  review: string
   colors: any
 }) {
   const styles = createStyles(colors)
 
   return (
-    <View style={styles.benefit}>
-      <View style={styles.benefitIconContainer}>
-        <Ionicons name={icon} size={24} color={colors.primary} />
+    <View style={styles.reviewCard}>
+      <Text style={styles.reviewCardTitle}>{title}</Text>
+      <View style={styles.reviewCardHeader}>
+        <View style={styles.reviewCardStars}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Ionicons key={star} name="star" size={16} color={colors.primary} />
+          ))}
+        </View>
+        <Text style={styles.reviewCardMeta}>
+          {date} · {reviewer}
+        </Text>
       </View>
-      <Text style={styles.benefitText}>{text}</Text>
+      <Text style={styles.reviewCardText}>{review}</Text>
     </View>
+  )
+}
+
+function FAQItem({
+  question,
+  answer,
+  isExpanded,
+  onToggle,
+  colors,
+}: {
+  question: string
+  answer: string
+  isExpanded: boolean
+  onToggle: () => void
+  colors: any
+}) {
+  const styles = createStyles(colors)
+
+  return (
+    <View style={styles.faqItem}>
+      <TouchableOpacity
+        style={styles.faqQuestion}
+        onPress={onToggle}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.faqQuestionText}>{question}</Text>
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={colors.textSecondary}
+        />
+      </TouchableOpacity>
+      {isExpanded && (
+        <View style={styles.faqAnswer}>
+          <Text style={styles.faqAnswerText}>{answer}</Text>
+        </View>
+      )}
+    </View>
+  )
+}
+
+function ComparisonRow({
+  feature,
+  free,
+  pro,
+  colors,
+}: {
+  feature: string
+  free: boolean | string
+  pro: boolean | string
+  colors: any
+}) {
+  const styles = createStyles(colors)
+
+  const renderValue = (value: boolean | string) => {
+    if (typeof value === 'boolean') {
+      return value ? (
+        <Ionicons name="checkmark" size={24} color={colors.primary} />
+      ) : (
+        <Text style={styles.comparisonDisabled}>—</Text>
+      )
+    }
+    return <Text style={styles.comparisonLimitedText}>{value}</Text>
+  }
+
+  return (
+    <View style={styles.comparisonRow}>
+      <View style={styles.comparisonFeatureColumn}>
+        <Text style={styles.comparisonFeatureText}>{feature}</Text>
+      </View>
+      <View style={styles.comparisonValueColumn}>{renderValue(free)}</View>
+      <View style={styles.comparisonValueColumn}>{renderValue(pro)}</View>
+    </View>
+  )
+}
+
+function PlanCard({
+  title,
+  price,
+  billing,
+  isSelected,
+  onSelect,
+  colors,
+  savings,
+}: {
+  title: string
+  price: string
+  billing: string
+  isSelected: boolean
+  onSelect: () => void
+  colors: any
+  savings?: number | null
+}) {
+  const styles = createStyles(colors)
+
+  return (
+    <TouchableOpacity
+      style={[styles.planCard, isSelected && styles.planCardSelected]}
+      onPress={onSelect}
+      activeOpacity={0.8}
+    >
+      {savings && savings > 0 && (
+        <View style={styles.savingsBadge}>
+          <Text style={styles.savingsBadgeText}>SAVE {savings}%</Text>
+        </View>
+      )}
+      <View style={styles.planCardContent}>
+        <View style={styles.planTitleRow}>
+          <Text style={styles.planTitleYellow}>PRO</Text>
+          <Text style={styles.planTitleBlue}>
+            {title.replace('PRO ', '').toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.planPrice}>{price}</Text>
+        <Text style={styles.planBilling}>{billing}</Text>
+      </View>
+    </TouchableOpacity>
   )
 }
 
 function createStyles(colors: any) {
   return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     overlay: {
       flex: 1,
-      justifyContent: 'flex-end',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: colors.background,
     },
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      maxHeight: '90%',
       flexDirection: 'column',
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 10,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 20,
+      width: '100%',
+      backgroundColor: colors.background,
     },
     closeButton: {
       width: 40,
@@ -319,80 +719,344 @@ function createStyles(colors: any) {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    topSection: {
+      paddingTop: 60,
+      paddingBottom: 24,
+      width: '100%',
+      alignItems: 'center',
+    },
+    brandHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
     scrollableContent: {
       flex: 1,
     },
     scrollContentContainer: {
-      paddingHorizontal: 32,
-      paddingBottom: 16,
-    },
-    iconContainer: {
+      paddingHorizontal: 24,
+      paddingBottom: 40,
       alignItems: 'center',
-      marginBottom: 20,
-      marginTop: 8,
     },
-    title: {
-      fontSize: 32,
+    brandName: {
+      fontSize: 48,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -1,
+    },
+    proBadge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    proBadgeText: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: colors.buttonText,
+    },
+    heading: {
+      fontSize: 20,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 8,
-      letterSpacing: -0.5,
-    },
-    message: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginBottom: 72,
-      lineHeight: 22,
-    },
-    benefitsContainer: {
-      gap: 12,
-      marginBottom: 48,
-      paddingHorizontal: 8,
-    },
-    benefit: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-    },
-    benefitIconContainer: {
-      width: 32,
-      height: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    benefitText: {
-      fontSize: 17,
-      color: colors.text,
-      fontWeight: '500',
-      flex: 1,
-      lineHeight: 24,
-    },
-    pricingContainer: {
-      alignItems: 'center',
+      marginTop: 112,
       marginBottom: 12,
     },
-    pricingText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 2,
+    description: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 48,
+      lineHeight: 22,
+      paddingHorizontal: 8,
     },
-    pricingSubtext: {
+    plansContainer: {
+      width: '100%',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 12,
+      marginBottom: 16,
+      paddingHorizontal: 0,
+    },
+    planCard: {
+      flex: 1,
+      maxWidth: 180,
+      backgroundColor: colors.background,
+      borderWidth: 3,
+      borderColor: colors.border,
+      borderRadius: 20,
+      padding: 16,
+      position: 'relative',
+    },
+    planCardSelected: {
+      borderColor: colors.primary,
+      borderWidth: 3,
+    },
+    savingsBadge: {
+      position: 'absolute',
+      top: -10,
+      right: 12,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      zIndex: 10,
+    },
+    savingsBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.buttonText,
+    },
+    planCardContent: {
+      alignItems: 'flex-start',
+    },
+    planTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 16,
+    },
+    planTitleYellow: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    planTitleBlue: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    planPrice: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    planBilling: {
       fontSize: 12,
       color: colors.textSecondary,
     },
-    actions: {
+    reviewsSection: {
+      width: '100%',
+      marginTop: 22,
+      marginBottom: 48,
+    },
+    comparisonSection: {
+      width: '100%',
+      marginBottom: 40,
+    },
+    comparisonTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    comparisonTable: {
+      width: '100%',
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    comparisonHeaderRow: {
+      flexDirection: 'row',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    comparisonRow: {
+      flexDirection: 'row',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    comparisonFeatureColumn: {
+      flex: 2,
+    },
+    comparisonValueColumn: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    comparisonHeaderText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    comparisonHeaderTextPro: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    comparisonFeatureText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    comparisonLimitedText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    comparisonDisabled: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    reviewsHeader: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    starsContainer: {
+      flexDirection: 'row',
+      gap: 6,
+      marginBottom: 12,
+    },
+    reviewsTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    reviewsSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    reviewsScrollView: {
+      marginHorizontal: -24,
+    },
+    reviewsScrollContainer: {
       paddingHorizontal: 24,
-      paddingBottom: 24,
-      paddingTop: 8,
       gap: 12,
     },
+    reviewCard: {
+      width: 300,
+      backgroundColor: colors.backgroundLight || colors.background,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    reviewCardTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    reviewCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    reviewCardStars: {
+      flexDirection: 'row',
+      gap: 2,
+    },
+    reviewCardMeta: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    reviewCardText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 20,
+    },
+    faqSection: {
+      width: '100%',
+      marginBottom: 32,
+    },
+    faqTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    faqItem: {
+      backgroundColor: colors.backgroundLight || colors.background,
+      borderRadius: 12,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    faqQuestion: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+    },
+    faqQuestionText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+      marginRight: 12,
+    },
+    faqAnswer: {
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    faqAnswerText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+    supportSection: {
+      width: '100%',
+      alignItems: 'center',
+      marginTop: 8,
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    supportText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    emailLink: {
+      fontSize: 14,
+      color: colors.primary,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    legalLinks: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    legalLink: {
+      fontSize: 14,
+      color: colors.primary,
+    },
+    legalSeparator: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    actions: {
+      width: '100%',
+      paddingTop: 0,
+      paddingBottom: 32,
+      gap: 0,
+    },
+    trialInfoText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
     subscribeButton: {
-      height: 56,
+      height: 48,
       backgroundColor: colors.primary,
-      borderRadius: 28,
+      borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -401,11 +1065,28 @@ function createStyles(colors: any) {
       fontSize: 18,
       fontWeight: '700',
     },
+    notNowButton: {
+      height: 48,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    notNowText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    cancelText: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: -4,
+    },
     restoreButton: {
       height: 48,
       borderRadius: 24,
       justifyContent: 'center',
       alignItems: 'center',
+      marginTop: 4,
     },
     restoreButtonText: {
       color: colors.primary,

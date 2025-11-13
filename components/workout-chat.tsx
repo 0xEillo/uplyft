@@ -424,12 +424,6 @@ export function WorkoutChat() {
         }))
       }
 
-      console.log('Sending to chat API:', {
-        messageCount: formattedMessages.length,
-        hasImages: imageBase64Array.length > 0,
-        imageCount: imageBase64Array.length,
-      })
-
       const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
         method: 'POST',
         headers: {

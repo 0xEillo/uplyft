@@ -138,29 +138,15 @@ function TabLayoutContent() {
 
   // Watch for workout data updates and show share screen when workout is ready
   React.useEffect(() => {
-    console.log('[_layout] Data changed, workout:', {
-      hasWorkout: Boolean(data.workout),
-      workoutId: data.workout?.id,
-      isVisible,
-      showShareScreen,
-      shownWorkoutId: shownWorkoutIdRef.current,
-    })
-
     // If we have workout data and overlay is not visible (animation completed), show share screen
     // Only show once per workout ID
     if (data.workout && !isVisible && !showShareScreen && shownWorkoutIdRef.current !== data.workout.id) {
-      console.log('[_layout] Workout data available and overlay hidden, showing share screen')
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
   }, [data.workout, isVisible, showShareScreen, setShowShareScreen])
 
   const handleAnimationComplete = () => {
-    console.log('[_layout] Success overlay animation complete, data:', {
-      hasWorkout: Boolean(data.workout),
-      workoutId: data.workout?.id,
-      workoutTitle: data.workoutTitle,
-    })
 
     hideOverlay()
     // Note: Share screen will be shown by the useEffect above when workout data arrives

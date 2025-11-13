@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { LoadingScreen } from '@/components/loading-screen'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
@@ -20,7 +21,6 @@ import { PostsProvider } from '@/contexts/posts-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
-import { LoadingScreen } from '@/components/loading-screen'
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
@@ -46,12 +46,19 @@ function RootLayoutNav() {
     if (isLoading) return
 
     const inAuthGroup = segments[0] === '(auth)'
+    const authRoute = segments[1] as string | undefined
+    // Allow authenticated users to stay on signup-options and trial-offer
+    const allowedPostSignupRoutes = ['signup-options', 'trial-offer']
 
     if (!user && !inAuthGroup) {
       // Redirect to welcome screen if not authenticated
       router.replace('/(auth)/welcome')
-    } else if (user && inAuthGroup) {
-      // Redirect to app if authenticated
+    } else if (
+      user &&
+      inAuthGroup &&
+      !allowedPostSignupRoutes.includes(authRoute || '')
+    ) {
+      // Redirect to app if authenticated, unless on post-signup routes
       router.replace('/(tabs)')
     }
   }, [user, segments, isLoading, router])
