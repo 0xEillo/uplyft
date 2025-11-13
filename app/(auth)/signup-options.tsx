@@ -83,13 +83,14 @@ export default function SignupOptionsScreen() {
         }
       }
 
-      // Navigate to congratulations
-      router.replace({
-        pathname: '/(auth)/congratulations',
-        params: {
-          onboarding_data: params.onboarding_data as string,
-        },
-      })
+      // Navigate directly to app (trial offer deactivated)
+      // router.replace({
+      //   pathname: '/(auth)/trial-offer',
+      //   params: {
+      //     onboarding_data: params.onboarding_data as string,
+      //   },
+      // })
+      router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
         'Error',
@@ -139,13 +140,14 @@ export default function SignupOptionsScreen() {
         }
       }
 
-      // Navigate to congratulations
-      router.replace({
-        pathname: '/(auth)/congratulations',
-        params: {
-          onboarding_data: params.onboarding_data as string,
-        },
-      })
+      // Navigate directly to app (trial offer deactivated)
+      // router.replace({
+      //   pathname: '/(auth)/trial-offer',
+      //   params: {
+      //     onboarding_data: params.onboarding_data as string,
+      //   },
+      // })
+      router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
         'Error',

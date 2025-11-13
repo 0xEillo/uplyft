@@ -87,7 +87,9 @@ export default function ReviewScreen() {
       if (!hasShownReview) {
         // Haptic feedback when dialog opens
         if (Platform.OS === 'ios' || Platform.OS === 'android') {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          )
         }
 
         trackEvent(AnalyticsEvents.REVIEW_PROMPT_ONBOARDING_ACCEPTED, {})
@@ -120,9 +122,9 @@ export default function ReviewScreen() {
       trackEvent(AnalyticsEvents.REVIEW_PROMPT_ONBOARDING_DISMISSED, {})
     }
 
-    // Navigate to trial offer
+    // Navigate to signup options
     router.push({
-      pathname: '/(auth)/trial-offer',
+      pathname: '/(auth)/signup-options',
       params: {
         onboarding_data: params.onboarding_data as string,
       },

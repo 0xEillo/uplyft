@@ -189,13 +189,8 @@ export default function TrialOfferScreen() {
       // Track trial offer accepted
       trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
 
-      // Navigate to signup
-      router.push({
-        pathname: '/(auth)/signup-options',
-        params: {
-          onboarding_data: params.onboarding_data as string,
-        },
-      })
+      // Navigate directly to app
+      router.replace('/(tabs)')
     } catch (error) {
       // Handle user cancellation (not an error)
       const errorObj = error as any
@@ -221,23 +216,16 @@ export default function TrialOfferScreen() {
     // Track that user skipped the trial
     trackEvent(AnalyticsEvents.TRIAL_OFFER_SKIPPED, {})
 
-    // Navigate to signup without subscription
-    router.push({
-      pathname: '/(auth)/signup-options',
-      params: {
-        onboarding_data: params.onboarding_data as string,
-      },
-    })
+    // Navigate directly to app
+    router.replace('/(tabs)')
   }
 
   const renderStep1 = () => (
     <>
-      {/* Header with Close Button */}
+      {/* Header */}
       <View style={styles.step1HeaderContainer}>
         <View style={styles.step1HeaderSpacer} />
-        <TouchableOpacity style={styles.closeButton} onPress={handleSkipTrial}>
-          <Ionicons name="close" size={28} color={colors.text} />
-        </TouchableOpacity>
+        <View style={styles.step1HeaderSpacer} />
       </View>
 
       <ScrollView
@@ -249,7 +237,7 @@ export default function TrialOfferScreen() {
           style={styles.step1Title}
           entering={FadeInDown.delay(100).duration(600)}
         >
-          We want you to try Pro for FREE.
+          Try Pro for FREE
         </Animated.Text>
 
         {/* Features */}
@@ -313,6 +301,11 @@ export default function TrialOfferScreen() {
           <Text style={styles.startButtonText}>Try for FREE</Text>
         </AnimatedButton>
 
+        {/* Skip Button */}
+        <AnimatedButton style={styles.skipButton} onPress={handleSkipTrial}>
+          <Text style={styles.skipButtonText}>Skip</Text>
+        </AnimatedButton>
+
         {/* Terms of Service Link */}
         <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
           <Text style={styles.termsText}>Terms of Service</Text>
@@ -358,7 +351,7 @@ export default function TrialOfferScreen() {
 
   const renderStep2 = () => (
     <>
-      {/* Header with Back and Close Buttons */}
+      {/* Header with Back Button */}
       <View style={styles.step2HeaderContainer}>
         <TouchableOpacity
           style={styles.backButton}
@@ -370,9 +363,7 @@ export default function TrialOfferScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.closeButton} onPress={handleSkipTrial}>
-          <Ionicons name="close" size={28} color={colors.text} />
-        </TouchableOpacity>
+        <View style={styles.step1HeaderSpacer} />
       </View>
 
       <View style={styles.centeredContent}>
@@ -419,6 +410,11 @@ export default function TrialOfferScreen() {
           <Text style={styles.startButtonText}>Continue for FREE</Text>
         </AnimatedButton>
 
+        {/* Skip Button */}
+        <AnimatedButton style={styles.skipButton} onPress={handleSkipTrial}>
+          <Text style={styles.skipButtonText}>Skip</Text>
+        </AnimatedButton>
+
         {/* Terms of Service Link */}
         <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
           <Text style={styles.termsText}>Terms of Service</Text>
@@ -438,7 +434,7 @@ export default function TrialOfferScreen() {
 
     return (
       <>
-        {/* Header with Back and Close Buttons */}
+        {/* Header with Back Button */}
         <View style={styles.step3HeaderContainer}>
           <TouchableOpacity
             style={styles.backButton}
@@ -450,13 +446,7 @@ export default function TrialOfferScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleSkipTrial}
-            disabled={isPurchasing || subscriptionLoading}
-          >
-            <Ionicons name="close" size={28} color={colors.text} />
-          </TouchableOpacity>
+          <View style={styles.step1HeaderSpacer} />
         </View>
 
         <View style={styles.step3ContentWrapper}>
@@ -537,6 +527,15 @@ export default function TrialOfferScreen() {
           <Text style={styles.footerSubtext}>
             7 days free, then {monthlyPriceText}
           </Text>
+
+          {/* Skip Button */}
+          <AnimatedButton
+            style={styles.skipButton}
+            onPress={handleSkipTrial}
+            disabled={isPurchasing || subscriptionLoading}
+          >
+            <Text style={styles.skipButtonText}>Skip</Text>
+          </AnimatedButton>
 
           {/* Terms of Service Link */}
           <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
@@ -1000,14 +999,19 @@ function createStyles(colors: any, screenHeight: number = 800) {
       fontWeight: '700',
     },
     skipButton: {
-      height: 48,
+      height: 56,
+      backgroundColor: colors.background,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
+      marginTop: 2,
     },
     skipButtonText: {
-      color: colors.textSecondary,
-      fontSize: 16,
-      fontWeight: '600',
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '700',
     },
     termsLink: {
       marginTop: 4,
