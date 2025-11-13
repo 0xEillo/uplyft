@@ -145,7 +145,6 @@ export function Paywall({
     } catch (error) {
       // Handle user cancellation
       if (error?.userCancelled) {
-        console.log('[Paywall] User cancelled purchase')
         return
       }
 
