@@ -58,6 +58,7 @@ export interface WorkoutSession {
   type: string | null
   image_url: string | null
   routine_id: string | null
+  duration: number | null
   created_at: string
 }
 

@@ -4,7 +4,7 @@ export interface WorkoutStats {
   totalVolume: number; // in kg
   totalSets: number;
   totalReps: number;
-  duration: number; // in minutes
+  durationSeconds: number;
   exerciseCount: number;
   prCount: number;
   topWeight: number;
@@ -96,14 +96,31 @@ export function calculateWorkoutStats(
 
   const totalVolume = calculateTotalVolume(workout, weightUnit);
 
+  const trackedDurationSeconds =
+    typeof workout.duration === 'number'
+      ? workout.duration
+      : null;
+
   // Estimate duration (if not tracked, estimate 3 mins per set + 2 mins warmup)
-  const duration = Math.round((totalSets * 3 + 2));
+  const estimatedDurationSeconds = Math.max(0, Math.round((totalSets * 3 + 2)) * 60);
+  const durationSeconds = trackedDurationSeconds ?? estimatedDurationSeconds;
+
+  if (trackedDurationSeconds === null) {
+    console.log(
+      'Workout duration not tracked, using estimation:',
+      estimatedDurationSeconds,
+      'seconds for',
+      totalSets,
+      'sets. workout.duration =',
+      workout.duration
+    );
+  }
 
   return {
     totalVolume,
     totalSets,
     totalReps,
-    duration,
+    durationSeconds,
     exerciseCount: exercises.length,
     prCount,
     topWeight: Math.round(topWeight),
@@ -155,15 +172,23 @@ export function formatVolume(volumeKg: number, targetUnit: 'kg' | 'lb' = 'kg'): 
 }
 
 /**
- * Format duration in minutes to readable string
+ * Format duration (seconds) to readable string
  */
-export function formatDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes}min`;
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return '0:00';
   }
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+
+  const totalSeconds = Math.floor(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${mins.toString().padStart(2, '0')}m`;
+  }
+
+  return `${mins}m ${secs.toString().padStart(2, '0')}s`;
 }
 
 /**

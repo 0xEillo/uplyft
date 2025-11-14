@@ -6,7 +6,7 @@ import {
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   StyleSheet,
   Text,
@@ -35,6 +35,21 @@ interface StructuredWorkoutInputProps {
   lastWorkout?: WorkoutSessionWithDetails | null
   initialExercises?: ExerciseData[]
   onDataChange: (exercises: ExerciseData[]) => void
+}
+
+const formatRestDuration = (seconds: number) => {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+
+  // If under 1 minute, show just seconds
+  if (safeSeconds < 60) {
+    return `${safeSeconds}`
+  }
+
+  // If 1 minute or more, show M:SS
+  const mins = Math.floor(safeSeconds / 60)
+  const secs = safeSeconds % 60
+
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
 export function StructuredWorkoutInput({
@@ -106,6 +121,12 @@ export function StructuredWorkoutInput({
       })
   })
 
+  const [restTimerStarts, setRestTimerStarts] = useState<Record<string, number>>(
+    {},
+  )
+  const previousSetCountsRef = useRef(new Map<string, number>())
+  const [, forceTimerTick] = useState(0)
+
   // Update exercises when initialExercises changes
   useEffect(() => {
     if (initialExercises && initialExercises.length > 0) {
@@ -174,6 +195,59 @@ export function StructuredWorkoutInput({
       onDataChange(newExercises)
     }
   }, [routine, lastWorkout, initialExercises, convertToPreferred, onDataChange])
+
+  useEffect(() => {
+    setRestTimerStarts((prev) => {
+      let changed = false
+      const next = { ...prev }
+      const activeIds = new Set<string>()
+
+      exercises.forEach((exercise) => {
+        const key = exercise.id
+        activeIds.add(key)
+        const prevCount = previousSetCountsRef.current.get(key)
+        const currentCount = exercise.sets.length
+
+        if (prevCount === undefined || currentCount > prevCount) {
+          next[key] = Date.now()
+          changed = true
+        }
+
+        previousSetCountsRef.current.set(key, currentCount)
+      })
+
+      Object.keys(prev).forEach((key) => {
+        if (!activeIds.has(key)) {
+          delete next[key]
+          previousSetCountsRef.current.delete(key)
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [exercises])
+
+  useEffect(() => {
+    if (Object.keys(restTimerStarts).length === 0) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      forceTimerTick((tick) => tick + 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [restTimerStarts])
+
+  const getRestSeconds = useCallback(
+    (exerciseId: string) => {
+      const start = restTimerStarts[exerciseId]
+      if (!start) return 0
+      return Math.max(0, Math.floor((Date.now() - start) / 1000))
+    },
+    [restTimerStarts],
+  )
 
   const handleWeightChange = (
     exerciseIndex: number,
@@ -249,9 +323,12 @@ export function StructuredWorkoutInput({
           <View key={exercise.id} style={styles.exerciseBlock}>
             {/* Exercise Name with delete button */}
             <View style={styles.exerciseHeader}>
-              <Text style={styles.exerciseName}>
-                {exercise.name}
-              </Text>
+              <View style={styles.exerciseTitleRow}>
+                <Text style={styles.exerciseName}>{exercise.name}</Text>
+                <Text style={styles.restTimerText}>
+                  {formatRestDuration(getRestSeconds(exercise.id))}
+                </Text>
+              </View>
               <TouchableOpacity
                 style={styles.deleteExerciseButton}
                 onPress={() => handleDeleteExercise(exerciseIndex)}
@@ -364,6 +441,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       marginBottom: 4,
     },
+    exerciseTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 8,
+    },
     exerciseName: {
       fontSize: 17,
       fontWeight: '600',
@@ -422,5 +505,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.primary,
       marginLeft: 4,
       fontWeight: '500',
+    },
+    restTimerText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
     },
   })

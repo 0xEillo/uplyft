@@ -126,7 +126,7 @@ export default function SearchScreen() {
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     Keyboard.dismiss()
-    router.back()
+    router.replace('/(tabs)')
   }
 
   const handleInvite = async () => {

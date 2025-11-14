@@ -14,6 +14,7 @@ export interface WorkoutRequest {
   imageUrl?: string | null
   idempotencyKey?: string
   routineId?: string | null
+  durationSeconds?: number
 }
 
 export interface ParsedSet {

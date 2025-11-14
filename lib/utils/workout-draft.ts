@@ -30,6 +30,8 @@ export interface WorkoutDraft {
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
   selectedRoutineId?: string | null
+  timerStartedAt?: string | null
+  timerElapsedSeconds?: number
 }
 
 export interface PendingWorkout {
@@ -40,6 +42,7 @@ export interface PendingWorkout {
   userId: string
   idempotencyKey?: string
   routineId?: string | null
+  durationSeconds?: number | null
 }
 
 export interface PlaceholderWorkout {
@@ -138,6 +141,12 @@ export async function loadDraft(): Promise<WorkoutDraft | null> {
           typeof parsed.selectedRoutineId === 'string'
             ? parsed.selectedRoutineId
             : null,
+        timerStartedAt:
+          typeof parsed.timerStartedAt === 'string' ? parsed.timerStartedAt : null,
+        timerElapsedSeconds:
+          typeof parsed.timerElapsedSeconds === 'number'
+            ? parsed.timerElapsedSeconds
+            : 0,
       }
 
       return draftHasContent(normalized) ? normalized : null
@@ -193,6 +202,8 @@ export async function loadDraft(): Promise<WorkoutDraft | null> {
     structuredData,
     isStructuredMode,
     selectedRoutineId,
+    timerStartedAt: null,
+    timerElapsedSeconds: 0,
   }
 
   if (!draftHasContent(fallbackDraft)) {
@@ -211,6 +222,8 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
     structuredData = [],
     isStructuredMode = false,
     selectedRoutineId = null,
+    timerStartedAt = null,
+    timerElapsedSeconds = 0,
   } = draft
 
   const normalized: WorkoutDraft = {
@@ -219,6 +232,10 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
     structuredData: Array.isArray(structuredData) ? structuredData : [],
     isStructuredMode,
     selectedRoutineId,
+    timerStartedAt:
+      typeof timerStartedAt === 'string' ? timerStartedAt : null,
+    timerElapsedSeconds:
+      typeof timerElapsedSeconds === 'number' ? timerElapsedSeconds : 0,
   }
 
   if (!draftHasContent(normalized)) {

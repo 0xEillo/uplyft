@@ -4,6 +4,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutSessionWithDetails } from '@/types/database.types';
 import { useThemedColors } from '@/hooks/useThemedColors';
 
+const formatStopwatch = (seconds: number) => {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const mins = Math.floor((safeSeconds % 3600) / 60);
+  const secs = safeSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
 interface WorkoutSummaryWidgetProps {
   workout: WorkoutSessionWithDetails;
   weightUnit: 'kg' | 'lb';
@@ -13,6 +26,7 @@ interface WorkoutSummaryWidgetProps {
 export const WorkoutSummaryWidget = React.forwardRef<View, WorkoutSummaryWidgetProps>(
   ({ workout, weightUnit, workoutTitle }, ref) => {
     const colors = useThemedColors();
+    const durationDisplay = formatStopwatch(workout.duration ?? 0);
 
     return (
       <View ref={ref} style={styles.container} collapsable={false}>
@@ -36,6 +50,7 @@ export const WorkoutSummaryWidget = React.forwardRef<View, WorkoutSummaryWidgetP
             ) : (
               <Text style={styles.title}>Workout Summary</Text>
             )}
+            <Text style={styles.durationText}>{durationDisplay}</Text>
           </View>
 
           {/* Middle Section: Detailed Workout Content */}
@@ -83,6 +98,8 @@ export const WorkoutSummaryWidget = React.forwardRef<View, WorkoutSummaryWidgetP
   }
 );
 
+WorkoutSummaryWidget.displayName = 'WorkoutSummaryWidget';
+
 const styles = StyleSheet.create({
   container: {
     width: 360,
@@ -117,6 +134,14 @@ const styles = StyleSheet.create({
     color: '#000000',
     letterSpacing: -0.8,
     lineHeight: 28,
+  },
+  durationText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginTop: 4,
+    fontVariant: ['tabular-nums'],
   },
   middleSection: {
     flex: 1,

@@ -15,6 +15,7 @@ import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { database } from '@/lib/database'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
@@ -35,7 +36,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -57,6 +58,21 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const IMAGE_FADE_DURATION = 200
 const KEYBOARD_ACCESSORY_ID = 'workout-notes-accessory'
+
+const formatTimerDisplay = (seconds: number) => {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+
+  // If under 1 minute, show just seconds
+  if (safeSeconds < 60) {
+    return `${safeSeconds}`
+  }
+
+  // If 1 minute or more, show M:SS
+  const mins = Math.floor(safeSeconds / 60)
+  const secs = safeSeconds % 60
+
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 
 const EXAMPLE_WORKOUTS = [
   {
@@ -131,12 +147,45 @@ export default function CreatePostScreen() {
     selectedRoutine,
     setSelectedRoutine,
   ] = useState<WorkoutRoutineWithDetails | null>(null)
+  const {
+    elapsedSeconds: workoutElapsedSeconds,
+    isRunning: isWorkoutTimerRunning,
+    start: startWorkoutTimer,
+    reset: resetWorkoutTimer,
+    hydrate: hydrateWorkoutTimer,
+    getElapsedSeconds: getWorkoutElapsedSeconds,
+    serializableState: workoutTimerSerializableState,
+  } = useWorkoutTimer()
+
   const [structuredData, setStructuredData] = useState<
     StructuredExerciseDraft[]
   >([])
   const [pendingDraftRoutineId, setPendingDraftRoutineId] = useState<
     string | null
   >(null)
+
+  const hasStructuredEntries = useMemo(() => {
+    if (!isStructuredMode) return false
+    if (structuredData.length === 0) return false
+    return structuredData.some((exercise) =>
+      exercise.sets.some((set) => set.weight.trim() || set.reps.trim()),
+    )
+  }, [isStructuredMode, structuredData])
+
+  const hasWorkoutDraftContent = useMemo(() => {
+    return (
+      Boolean(notes.trim()) ||
+      Boolean(workoutTitle.trim()) ||
+      hasStructuredEntries ||
+      Boolean(selectedRoutine)
+    )
+  }, [hasStructuredEntries, notes, selectedRoutine, workoutTitle])
+
+  const shouldShowWorkoutTimer =
+    hasWorkoutDraftContent || workoutElapsedSeconds > 0
+  const headerTimerDisplay = formatTimerDisplay(
+    Math.max(1, workoutElapsedSeconds ?? 0),
+  )
 
   // Wrapper to log structuredData changes
   const handleStructuredDataChange = useCallback(
@@ -198,6 +247,26 @@ export default function CreatePostScreen() {
   useEffect(() => {
     titleRef.current = workoutTitle
   }, [workoutTitle])
+
+  useEffect(() => {
+    if (isHydratingRef.current) {
+      return
+    }
+
+    if (hasWorkoutDraftContent) {
+      if (!isWorkoutTimerRunning) {
+        startWorkoutTimer()
+      }
+    } else if (isWorkoutTimerRunning || workoutElapsedSeconds > 0) {
+      resetWorkoutTimer()
+    }
+  }, [
+    hasWorkoutDraftContent,
+    isWorkoutTimerRunning,
+    workoutElapsedSeconds,
+    startWorkoutTimer,
+    resetWorkoutTimer,
+  ])
 
   const blurInputs = useCallback(() => {
     const textInputState = (TextInput as any)?.State
@@ -344,23 +413,18 @@ export default function CreatePostScreen() {
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
-      // Reset animation values
       pageSlideAnim.setValue(100)
       pageOpacityAnim.setValue(0)
 
-      // Light haptic feedback when page opens
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
-      // Elegant page opening animation - like lifting a notepad
       Animated.parallel([
-        // Slide up from below
         Animated.spring(pageSlideAnim, {
           toValue: 0,
           tension: 50,
           friction: 9,
           useNativeDriver: true,
         }),
-        // Fade in
         Animated.timing(pageOpacityAnim, {
           toValue: 1,
           duration: 400,
@@ -368,7 +432,6 @@ export default function CreatePostScreen() {
         }),
       ]).start()
 
-      // Blur inputs immediately on focus
       blurInputs()
 
       trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
@@ -377,20 +440,15 @@ export default function CreatePostScreen() {
         hasTitle: Boolean(titleRef.current.trim()),
       })
 
-      // Blur inputs after a short delay to catch any late focus events
       const timeoutId = setTimeout(blurInputs, 0)
-
-      // Blur inputs after interactions complete
       const interactionHandle = InteractionManager.runAfterInteractions(
         blurInputs,
       )
 
-      // Randomize example workout
       const randomExample =
         EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
       setExampleWorkout(randomExample)
 
-      // Load user's workout count to determine if examples should be shown
       const loadWorkoutCount = async () => {
         try {
           if (user?.id) {
@@ -406,7 +464,6 @@ export default function CreatePostScreen() {
       }
       loadWorkoutCount()
 
-      // Load user's routines for quick template selection
       loadRoutines()
 
       return () => {
@@ -480,6 +537,19 @@ export default function CreatePostScreen() {
           setPendingDraftRoutineId(routineIdFromDraft)
         }
 
+        if (
+          draft &&
+          (draft.timerStartedAt ||
+            typeof draft.timerElapsedSeconds === 'number')
+        ) {
+          hydrateWorkoutTimer(
+            draft.timerStartedAt ?? null,
+            draft.timerElapsedSeconds ?? 0,
+          )
+        } else {
+          resetWorkoutTimer()
+        }
+
         skipNextPersistRef.current = true
       } finally {
         isHydratingRef.current = false
@@ -491,7 +561,7 @@ export default function CreatePostScreen() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [hydrateWorkoutTimer, resetWorkoutTimer])
 
   // Auto-save draft whenever inputs change
   useEffect(() => {
@@ -513,6 +583,8 @@ export default function CreatePostScreen() {
       structuredData,
       isStructuredMode,
       selectedRoutineId,
+      timerStartedAt: workoutTimerSerializableState.timerStartedAt,
+      timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
     }).catch((error) => console.error('Failed to save workout draft', error))
   }, [
     notes,
@@ -521,6 +593,8 @@ export default function CreatePostScreen() {
     isStructuredMode,
     selectedRoutine?.id,
     pendingDraftRoutineId,
+    workoutTimerSerializableState.timerElapsedSeconds,
+    workoutTimerSerializableState.timerStartedAt,
   ])
 
   // Show "Draft saved" indicator with debounce (UI only)
@@ -604,12 +678,16 @@ export default function CreatePostScreen() {
 
       const trimmedNotes = notesValue.trim()
       const trimmedTitle = titleValue.trim()
+      const durationSeconds = Math.max(0, getWorkoutElapsedSeconds())
+
+      console.log('Submitting workout with duration:', durationSeconds, 'seconds')
 
       await queueWorkout({
         notes: trimmedNotes,
         title: trimmedTitle,
         imageUri: imageUriValue,
         routineId: routineIdValue,
+        durationSeconds,
       })
 
       // Refresh freemium limits after successful submission
@@ -652,6 +730,7 @@ export default function CreatePostScreen() {
       skipNextPersistRef.current = true
       suppressDraftToastRef.current = true
       await clearWorkoutDraft()
+      resetWorkoutTimer()
 
       setNotes('')
       setWorkoutTitle('')
@@ -691,6 +770,8 @@ export default function CreatePostScreen() {
       showOverlay,
       showPrompt,
       refreshFreemiumLimits,
+      getWorkoutElapsedSeconds,
+      resetWorkoutTimer,
     ],
   )
 
@@ -1272,6 +1353,13 @@ export default function CreatePostScreen() {
           >
             <Ionicons name="arrow-back" size={28} color={colors.text} />
           </TouchableOpacity>
+
+          <View pointerEvents="none" style={styles.headerCenter}>
+            {shouldShowWorkoutTimer && (
+              <Text style={styles.headerTimerText}>{headerTimerDisplay}</Text>
+            )}
+          </View>
+
           {showDraftSaved && (
             <Animated.View
               style={[styles.draftSavedContainer, { opacity: fadeAnim }]}
@@ -1462,7 +1550,6 @@ export default function CreatePostScreen() {
                 <Text style={styles.attachedImageLabel}>Workout Photo</Text>
               </View>
             )}
-
           </ScrollView>
         </KeyboardAvoidingView>
 
@@ -1471,9 +1558,7 @@ export default function CreatePostScreen() {
           <View style={styles.exampleContainer}>
             <Text style={styles.exampleLabel}>Example:</Text>
             <View style={styles.exampleCard}>
-              <Text style={styles.exampleTitle}>
-                {exampleWorkout.title}
-              </Text>
+              <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
               <View style={styles.exampleDivider} />
               <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
             </View>
@@ -1580,12 +1665,27 @@ const createStyles = (
       paddingVertical: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+      position: 'relative',
     },
     headerButton: {
       padding: 8,
       minWidth: 44,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    headerCenter: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+    },
+    headerTimerText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+      fontVariant: ['tabular-nums'],
     },
     primaryButton: {
       backgroundColor: colors.primary,

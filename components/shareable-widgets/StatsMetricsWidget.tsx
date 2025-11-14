@@ -5,6 +5,19 @@ import { WorkoutSessionWithDetails } from '@/types/database.types';
 import { calculateWorkoutStats, formatVolume, getOrdinalSuffix } from '@/lib/utils/workout-stats';
 import { useThemedColors } from '@/hooks/useThemedColors';
 
+const formatStopwatch = (seconds: number) => {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const mins = Math.floor((safeSeconds % 3600) / 60);
+  const secs = safeSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
 interface StatsMetricsWidgetProps {
   workout: WorkoutSessionWithDetails;
   weightUnit: 'kg' | 'lb';
@@ -16,6 +29,7 @@ export const StatsMetricsWidget = React.forwardRef<View, StatsMetricsWidgetProps
     const colors = useThemedColors();
     const stats = calculateWorkoutStats(workout, weightUnit);
     const volume = formatVolume(stats.totalVolume, weightUnit);
+    const durationDisplay = formatStopwatch(stats.durationSeconds);
 
     // Format date
     const workoutDate = new Date(workout.date);
@@ -40,6 +54,10 @@ export const StatsMetricsWidget = React.forwardRef<View, StatsMetricsWidgetProps
               <Text style={styles.workoutCount}>
                 {getOrdinalSuffix(workoutCountThisWeek)} workout this week
               </Text>
+            </View>
+            <View style={styles.durationBadge}>
+              <Text style={styles.durationLabel}>Duration</Text>
+              <Text style={styles.durationValue}>{durationDisplay}</Text>
             </View>
           </View>
 
@@ -123,6 +141,8 @@ export const StatsMetricsWidget = React.forwardRef<View, StatsMetricsWidgetProps
   }
 );
 
+StatsMetricsWidget.displayName = 'StatsMetricsWidget';
+
 const styles = StyleSheet.create({
   container: {
     width: 360,
@@ -165,6 +185,30 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     fontWeight: '600',
     letterSpacing: -0.2,
+  },
+  durationBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1F1F1F',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 8,
+  },
+  durationLabel: {
+    fontSize: 9,
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  durationValue: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 0.5,
+    fontVariant: ['tabular-nums'],
   },
   middleSection: {
     flex: 1,

@@ -642,6 +642,7 @@ export const database = {
       parsedWorkout: ParsedWorkout,
       rawText: string,
       imageUrl?: string | null,
+      durationSeconds?: number | null,
     ) {
       // Create workout session
       const { data: session, error: sessionError } = await supabase
@@ -652,6 +653,8 @@ export const database = {
           notes: parsedWorkout.notes,
           type: parsedWorkout.type,
           image_url: imageUrl || null,
+          duration:
+            typeof durationSeconds === 'number' ? durationSeconds : null,
         })
         .select()
         .single()

@@ -1,20 +1,36 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { WorkoutSessionWithDetails } from '@/types/database.types';
-import { calculateWorkoutStats } from '@/lib/utils/workout-stats';
-import { useThemedColors } from '@/hooks/useThemedColors';
+import { calculateWorkoutStats } from '@/lib/utils/workout-stats'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { LinearGradient } from 'expo-linear-gradient'
+import React from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+
+const formatStopwatch = (seconds: number) => {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safeSeconds / 3600)
+  const mins = Math.floor((safeSeconds % 3600) / 60)
+  const secs = safeSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${mins
+      .toString()
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`
+}
 
 interface AchievementWidgetProps {
-  workout: WorkoutSessionWithDetails;
-  weightUnit: 'kg' | 'lb';
-  prData?: { exerciseName: string; prs: any[] }[];
+  workout: WorkoutSessionWithDetails
+  weightUnit: 'kg' | 'lb'
+  prData?: { exerciseName: string; prs: any[] }[]
 }
 
 export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
   ({ workout, weightUnit, prData = [] }, ref) => {
-    const colors = useThemedColors();
-    const stats = calculateWorkoutStats(workout, weightUnit);
+    const stats = calculateWorkoutStats(workout, weightUnit)
+    const durationDisplay = formatStopwatch(stats.durationSeconds)
 
     // Get exercises with PRs from computed PR data
     const prExercises = prData
@@ -23,16 +39,16 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
         // Find the matching workout exercise
         const workoutExercise = workout.workout_exercises?.find(
           (we) => we.exercise?.name === exPr.exerciseName,
-        );
+        )
         return {
           exercise: workoutExercise?.exercise,
           sets: workoutExercise?.sets || [],
           prs: exPr.prs.filter((pr) => pr.isCurrent),
-        };
+        }
       })
-      .filter((ex) => ex.exercise); // Only include exercises that exist in workout
+      .filter((ex) => ex.exercise) // Only include exercises that exist in workout
 
-    const hasPRs = prExercises.length > 0;
+    const hasPRs = prExercises.length > 0
 
     return (
       <View ref={ref} style={styles.container} collapsable={false}>
@@ -53,6 +69,11 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
             </Text>
             <Text style={[styles.title, hasPRs && styles.titleLight]}>
               {hasPRs ? 'Personal Records' : 'Workout Complete'}
+            </Text>
+            <Text
+              style={[styles.durationText, hasPRs && styles.durationTextLight]}
+            >
+              {durationDisplay}
             </Text>
           </View>
 
@@ -75,17 +96,17 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                     // Get the best PR from the computed PR data
                     const exercisePrData = prData.find(
                       (exPr) => exPr.exerciseName === exercise.exercise?.name,
-                    );
+                    )
                     const bestPR = exercisePrData?.prs
                       .filter((pr) => pr.isCurrent)
                       .sort((a, b) => {
                         // Sort by weight first, then reps
-                        if (a.weight !== b.weight) return b.weight - a.weight;
-                        return b.currentReps - a.currentReps;
-                      })[0];
+                        if (a.weight !== b.weight) return b.weight - a.weight
+                        return b.currentReps - a.currentReps
+                      })[0]
 
-                    const weight = bestPR?.weight || 0;
-                    const reps = bestPR?.currentReps || 0;
+                    const weight = bestPR?.weight || 0
+                    const reps = bestPR?.currentReps || 0
 
                     return (
                       <View key={index} style={styles.prItem}>
@@ -98,11 +119,12 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                           </Text>
                           <Text style={styles.prStats}>
                             {weight > 0 ? `${weight} ${weightUnit}` : ''}{' '}
-                            {weight > 0 && reps > 0 ? '×' : ''} {reps > 0 ? `${reps} reps` : ''}
+                            {weight > 0 && reps > 0 ? '×' : ''}{' '}
+                            {reps > 0 ? `${reps} reps` : ''}
                           </Text>
                         </View>
                       </View>
-                    );
+                    )
                   })}
                 </View>
               </View>
@@ -112,15 +134,21 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                 <View style={styles.summaryIconContainer}>
                   <Text style={styles.summaryIcon}>💪</Text>
                 </View>
-                <Text style={styles.summaryMessage}>Keep pushing! PRs are coming.</Text>
+                <Text style={styles.summaryMessage}>
+                  Keep pushing! PRs are coming.
+                </Text>
 
                 <View style={styles.summaryStats}>
                   <View style={styles.summaryStatCard}>
-                    <Text style={styles.summaryStatValue}>{stats.totalSets}</Text>
+                    <Text style={styles.summaryStatValue}>
+                      {stats.totalSets}
+                    </Text>
                     <Text style={styles.summaryStatLabel}>Sets Completed</Text>
                   </View>
                   <View style={styles.summaryStatCard}>
-                    <Text style={styles.summaryStatValue}>{stats.exerciseCount}</Text>
+                    <Text style={styles.summaryStatValue}>
+                      {stats.exerciseCount}
+                    </Text>
                     <Text style={styles.summaryStatLabel}>Exercises</Text>
                   </View>
                 </View>
@@ -131,16 +159,24 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
           {/* Bottom Section: Branding */}
           <View style={styles.bottomSection}>
             <View style={styles.brandContainer}>
-              <View style={[styles.brandLine, hasPRs && styles.brandLineLight]} />
-              <Text style={[styles.brandText, hasPRs && styles.brandTextLight]}>REP AI</Text>
-              <View style={[styles.brandLine, hasPRs && styles.brandLineLight]} />
+              <View
+                style={[styles.brandLine, hasPRs && styles.brandLineLight]}
+              />
+              <Text style={[styles.brandText, hasPRs && styles.brandTextLight]}>
+                REP AI
+              </Text>
+              <View
+                style={[styles.brandLine, hasPRs && styles.brandLineLight]}
+              />
             </View>
           </View>
         </LinearGradient>
       </View>
-    );
-  }
-);
+    )
+  },
+)
+
+AchievementWidget.displayName = 'AchievementWidget'
 
 const styles = StyleSheet.create({
   container: {
@@ -187,6 +223,17 @@ const styles = StyleSheet.create({
     flex: 1,
     marginVertical: 16,
     justifyContent: 'center',
+  },
+  durationText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: 0.5,
+    marginTop: 4,
+    fontVariant: ['tabular-nums'],
+  },
+  durationTextLight: {
+    color: '#FFFFFF',
   },
   prSection: {
     gap: 14,
@@ -351,5 +398,4 @@ const styles = StyleSheet.create({
   brandTextLight: {
     color: '#FFFFFF',
   },
-});
-
+})

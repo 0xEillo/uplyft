@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-  LayoutAnimation,
   Modal,
   Pressable,
   StyleSheet,
@@ -25,10 +24,33 @@ import { getWorkoutCountThisWeek } from '@/lib/utils/workout-stats'
 const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
 const FULLSCREEN_FADE_DURATION = 300 // Duration for fullscreen image fade-in
 
+// Helper functions for compact formatting
+const formatDurationCompact = (seconds: number) => {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safeSeconds / 3600)
+  const mins = Math.floor((safeSeconds % 3600) / 60)
+  const secs = safeSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+const formatVolumeCompact = (volumeKg: number, targetUnit: 'kg' | 'lb') => {
+  if (targetUnit === 'lb') {
+    const volumeLb = Math.round(volumeKg * 2.20462)
+    return `${volumeLb.toLocaleString()} lb`
+  }
+  return `${Math.round(volumeKg).toLocaleString()} kg`
+}
+
 interface WorkoutStats {
   exercises: number
   sets: number
   prs: number // number of personal records achieved
+  durationSeconds?: number
+  volume?: number // in kg
 }
 
 interface SetDetail {
@@ -74,9 +96,7 @@ export interface FeedCardProps {
   workoutId?: string
   workout?: WorkoutSessionWithDetails // Full workout object for sharing
   onUserPress?: () => void
-  onEdit?: () => void
-  onDelete?: () => void
-  onCreateRoutine?: () => void
+  onCardPress?: () => void // Navigate to workout detail
   prInfo?: ExercisePRInfo[]
   isPending?: boolean // Flag to show skeleton while workout is being parsed
   // Social stats
@@ -104,9 +124,7 @@ export const FeedCard = memo(function FeedCard({
   workoutId,
   workout,
   onUserPress,
-  onEdit,
-  onDelete,
-  onCreateRoutine,
+  onCardPress,
   prInfo = [],
   isPending = false,
   likeCount = 0,
@@ -118,13 +136,8 @@ export const FeedCard = memo(function FeedCard({
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
-  const { shareWorkoutWidget, isSharing } = useWorkoutShare()
+  const { shareWorkoutWidget } = useWorkoutShare()
 
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
-    new Set(),
-  )
-  const [menuVisible, setMenuVisible] = useState(false)
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [
     selectedExercisePR,
@@ -136,7 +149,6 @@ export const FeedCard = memo(function FeedCard({
   const [imageModalVisible, setImageModalVisible] = useState(false)
   const [imageLoading, setImageLoading] = useState(true)
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
-  const rotateAnim = useRef(new Animated.Value(0)).current
   const imageOpacity = useRef(new Animated.Value(0)).current
   const fullscreenOpacity = useRef(new Animated.Value(0)).current
 
@@ -148,11 +160,9 @@ export const FeedCard = memo(function FeedCard({
 
   const styles = createStyles(colors, isDark)
 
-  const PREVIEW_LIMIT = 6 // Show first 6 exercises when collapsed
+  const PREVIEW_LIMIT = 3 // Show first 3 exercises
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
-  const displayedExercises = isExpanded
-    ? exercises
-    : exercises.slice(0, PREVIEW_LIMIT)
+  const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
   // Shimmer animation for skeleton rows
   useEffect(() => {
@@ -239,35 +249,6 @@ export const FeedCard = memo(function FeedCard({
     outputRange: [0.6, 1],
   })
 
-  const toggleExerciseExpand = (index: number) => {
-    setExpandedExercises((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(index)) {
-        newSet.delete(index)
-      } else {
-        newSet.add(index)
-      }
-      return newSet
-    })
-  }
-
-  const toggleExpand = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-
-    Animated.timing(rotateAnim, {
-      toValue: isExpanded ? 0 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-
-    setIsExpanded(!isExpanded)
-  }
-
-  const handleShare = () => {
-    setMenuVisible(false)
-    setShowShareScreen(true)
-  }
-
   const handleCloseShareScreen = () => {
     setShowShareScreen(false)
   }
@@ -275,11 +256,6 @@ export const FeedCard = memo(function FeedCard({
   const handleShareWidget = async (widgetIndex: number, shareType: 'instagram' | 'general', widgetRef: View) => {
     await shareWorkoutWidget(widgetRef, shareType)
   }
-
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  })
 
   return (
     <View style={styles.card}>
@@ -303,30 +279,29 @@ export const FeedCard = memo(function FeedCard({
             <Text style={styles.timeAgo}>{timeAgo}</Text>
           </View>
         </TouchableOpacity>
-        {isPending ? (
+        {isPending && (
           <Animated.View
             style={[styles.analyzingBadge, { opacity: pulseOpacity }]}
           >
             <Text style={styles.analyzingText}>Analyzing{analyzingDots}</Text>
           </Animated.View>
-        ) : (
-          <TouchableOpacity onPress={() => setMenuVisible(true)}>
-            <Ionicons
-              name="ellipsis-horizontal"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
         )}
       </View>
 
-      {/* Workout Title */}
-      {workoutTitle && <Text style={styles.workoutTitle}>{workoutTitle}</Text>}
-
-      {/* Workout Description */}
-      {workoutDescription && (
-        <Text style={styles.workoutDescription}>{workoutDescription}</Text>
-      )}
+      {/* Workout Title - Clickable to navigate to detail */}
+      <Pressable
+        onPress={onCardPress}
+        disabled={!onCardPress || isPending}
+        style={({ pressed }) => [
+          styles.titleContainer,
+          pressed && onCardPress && styles.titleContainerPressed,
+        ]}
+      >
+        {workoutTitle && <Text style={styles.workoutTitle}>{workoutTitle}</Text>}
+        {workoutDescription && (
+          <Text style={styles.workoutDescription}>{workoutDescription}</Text>
+        )}
+      </Pressable>
 
       {/* Workout Image */}
       {workoutImageUrl && (
@@ -364,51 +339,59 @@ export const FeedCard = memo(function FeedCard({
         </TouchableOpacity>
       )}
 
-      {/* Exercises Table */}
-      <View style={styles.exercisesContainer}>
-        {/* Table Header */}
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, styles.exerciseCol]}>
-            Exercise
-          </Text>
-          <Text style={[styles.tableHeaderText, styles.setsCol]}>Sets</Text>
-          <Text style={[styles.tableHeaderText, styles.repsCol]}>Reps</Text>
-          <Text style={[styles.tableHeaderText, styles.weightCol]}>
-            {`Wt (${weightUnit})`}
-          </Text>
-        </View>
-        <View style={styles.headerDivider} />
+      {/* Stats Summary */}
+      {!isPending && (
+        <Pressable
+          onPress={onCardPress}
+          disabled={!onCardPress}
+          style={styles.statsContainer}
+        >
+          {stats.durationSeconds !== undefined && stats.durationSeconds > 0 && (
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Duration</Text>
+              <Text style={styles.statValue}>
+                {formatDurationCompact(stats.durationSeconds)}
+              </Text>
+            </View>
+          )}
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Sets</Text>
+            <Text style={styles.statValue}>{stats.sets}</Text>
+          </View>
+          {stats.volume !== undefined && stats.volume > 0 && (
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Volume</Text>
+              <Text style={styles.statValue}>
+                {formatVolumeCompact(stats.volume, weightUnit)}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      )}
+
+      {/* Exercises List */}
+      <Pressable
+        onPress={onCardPress}
+        disabled={!onCardPress || isPending}
+        style={styles.exercisesContainer}
+      >
 
         {/* Skeleton Rows (when pending) */}
         {isPending && (
           <>
             {[60, 80, 70].map((width, index) => (
-              <View key={`skeleton-${index}`} style={styles.skeletonRow}>
+              <View key={`skeleton-${index}`} style={styles.exerciseRow}>
                 <Animated.View
                   style={[
                     styles.skeletonBar,
-                    styles.skeletonBarLong,
+                    styles.skeletonBarExercise,
                     { opacity: shimmerOpacity, width: `${width}%` },
                   ]}
                 />
                 <Animated.View
                   style={[
                     styles.skeletonBar,
-                    styles.skeletonBarShort,
-                    { opacity: shimmerOpacity },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.skeletonBar,
-                    styles.skeletonBarShort,
-                    { opacity: shimmerOpacity },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.skeletonBar,
-                    styles.skeletonBarShort,
+                    styles.skeletonBarSets,
                     { opacity: shimmerOpacity },
                   ]}
                 />
@@ -421,167 +404,64 @@ export const FeedCard = memo(function FeedCard({
         {!isPending && (
           <Animated.View style={{ opacity: exercisesFadeAnim }}>
             {displayedExercises.map((exercise, index) => {
-          const isExerciseExpanded = expandedExercises.has(index)
-          const exercisePR = prInfo.find(
-            (pr) => pr.exerciseName === exercise.name,
-          )
-          const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
+              const exercisePR = prInfo.find(
+                (pr) => pr.exerciseName === exercise.name,
+              )
+              const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
 
-          return (
-            <View key={index}>
-              {/* Main exercise row */}
-              <TouchableOpacity
-                onPress={() => toggleExerciseExpand(index)}
-                activeOpacity={0.7}
-                style={[
-                  styles.tableRow,
-                  hasPR && styles.tableRowWithPR,
-                  !isExerciseExpanded &&
-                    index === displayedExercises.length - 1 &&
-                    !isExpanded &&
-                    styles.lastRow,
-                ]}
-              >
+              return (
                 <View
+                  key={index}
                   style={[
-                    isExerciseExpanded
-                      ? styles.expandedExerciseCol
-                      : styles.exerciseCol,
-                    styles.variedCell,
+                    styles.exerciseRow,
+                    index === displayedExercises.length - 1 && styles.lastExerciseRow,
                   ]}
                 >
-                  <Text
-                    key={`${index}-${isExerciseExpanded}`}
-                    style={[
-                      styles.exerciseName,
-                      !isExerciseExpanded && styles.exerciseNameText,
-                    ]}
-                    numberOfLines={isExerciseExpanded ? undefined : 1}
-                    ellipsizeMode="tail"
-                  >
-                    {exercise.name}
-                  </Text>
-                  {hasPR && exercisePR && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedExercisePR(exercisePR)
-                        setTooltipVisible(true)
-                      }}
-                      activeOpacity={0.7}
-                      style={[
-                        styles.prBadge,
-                        !exercisePR.hasCurrentPR && styles.prBadgeHistorical,
-                      ]}
-                    >
-                      <Text style={styles.prBadgeText}>PR</Text>
-                    </TouchableOpacity>
-                  )}
-                  <Ionicons
-                    name={isExerciseExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={12}
-                    color={colors.textSecondary}
-                  />
-                </View>
-                {!isExerciseExpanded && (
-                  <>
-                    <Text style={[styles.tableCell, styles.setsCol]}>
-                      {exercise.sets}
+                  <View style={styles.exerciseNameContainer}>
+                    <Text style={styles.exerciseNameSimple} numberOfLines={1}>
+                      {exercise.name}
                     </Text>
-                    <Text
-                      style={[styles.tableCell, styles.repsCol]}
-                      numberOfLines={1}
-                    >
-                      {exercise.reps}
-                    </Text>
-                    <Text
-                      style={[styles.tableCell, styles.weightCol]}
-                      numberOfLines={1}
-                    >
-                      {exercise.weight}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {/* Expanded set details */}
-              {isExerciseExpanded &&
-                exercise.setDetails &&
-                exercise.setDetails.length > 0 && (
-                  <View style={styles.setDetailsContainer}>
-                    {exercise.setDetails.map((set, setIndex) => {
-                      const setHasPR = exercisePR?.prSetIndices.has(setIndex)
-                      return (
-                        <View
-                          key={setIndex}
-                          style={[
-                            styles.setDetailRow,
-                            setHasPR && styles.setDetailRowWithPR,
-                          ]}
-                        >
-                          <Text style={styles.setDetailLabel}>
-                            Set {setIndex + 1}
-                          </Text>
-                          <Text style={styles.setDetailReps}>
-                            {set.reps != null ? `${set.reps} reps` : '--'}
-                          </Text>
-                          <Text style={styles.setDetailWeight}>
-                            {set.weight
-                              ? `${set.weight.toFixed(
-                                  weightUnit === 'kg' ? 1 : 0,
-                                )}`
-                              : 'BW'}
-                          </Text>
-                          <View style={styles.prBadgeContainer}>
-                            {setHasPR && exercisePR && (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  setSelectedExercisePR(exercisePR)
-                                  setTooltipVisible(true)
-                                }}
-                                activeOpacity={0.7}
-                                style={[
-                                  styles.prBadgeSmall,
-                                  !exercisePR.hasCurrentPR &&
-                                    styles.prBadgeSmallHistorical,
-                                ]}
-                              >
-                                <Text style={styles.prBadgeTextSmall}>PR</Text>
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        </View>
-                      )
-                    })}
+                    {hasPR && exercisePR && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedExercisePR(exercisePR)
+                          setTooltipVisible(true)
+                        }}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.prBadge,
+                          !exercisePR.hasCurrentPR && styles.prBadgeHistorical,
+                        ]}
+                      >
+                        <Text style={styles.prBadgeText}>PR</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                )}
-            </View>
-          )
-        })}
+                  <Text style={styles.setsText}>
+                    {exercise.sets} {exercise.sets === 1 ? 'set' : 'sets'}
+                  </Text>
+                </View>
+              )
+            })}
+            {hasMoreExercises && (
+              <TouchableOpacity
+                onPress={onCardPress}
+                activeOpacity={0.7}
+                style={styles.seeMoreButton}
+              >
+                <Text style={styles.seeMoreText}>
+                  See {exercises.length - PREVIEW_LIMIT} more {exercises.length - PREVIEW_LIMIT === 1 ? 'exercise' : 'exercises'}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            )}
           </Animated.View>
         )}
-      </View>
-
-      {/* Expand/Collapse Button */}
-      {!isPending && hasMoreExercises && (
-        <TouchableOpacity
-          onPress={toggleExpand}
-          activeOpacity={0.7}
-          style={styles.expandButton}
-        >
-          <Text style={styles.expandButtonText}>
-            {isExpanded ? 'Show Less' : `${exercises.length - PREVIEW_LIMIT} more`}
-          </Text>
-          <Animated.View
-            style={{ transform: [{ rotate: rotateInterpolate }] }}
-          >
-            <Ionicons
-              name="chevron-down"
-              size={14}
-              color={colors.textSecondary}
-            />
-          </Animated.View>
-        </TouchableOpacity>
-      )}
+      </Pressable>
 
       {/* Footer message for pending state */}
       {isPending && (
@@ -642,72 +522,6 @@ export const FeedCard = memo(function FeedCard({
           )}
         </View>
       )}
-
-      {/* Action Menu Modal */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setMenuVisible(false)}
-        >
-          <View style={styles.menuContainer}>
-            {workout && !isPending && (
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleShare}
-                disabled={isSharing}
-              >
-                {isSharing ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Ionicons name="share-outline" size={20} color={colors.text} />
-                )}
-                <Text style={styles.menuItemText}>
-                  {isSharing ? 'Sharing...' : 'Share Workout'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {onCreateRoutine && (
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMenuVisible(false)
-                  onCreateRoutine()
-                }}
-              >
-                <Ionicons name="albums-outline" size={20} color={colors.text} />
-                <Text style={styles.menuItemText}>Create Routine</Text>
-              </TouchableOpacity>
-            )}
-            {onEdit && (
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMenuVisible(false)
-                  onEdit()
-                }}
-              >
-                <Ionicons name="create-outline" size={20} color={colors.text} />
-                <Text style={styles.menuItemText}>Edit Workout</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuVisible(false)
-                onDelete?.()
-              }}
-            >
-              <Ionicons name="trash-outline" size={20} color={colors.error} />
-              <Text style={styles.menuItemTextDelete}>Delete Workout</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
 
       {/* Image Fullscreen Modal */}
       {workoutImageUrl && (
@@ -788,7 +602,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       backgroundColor: colors.white,
       borderRadius: 4,
       paddingHorizontal: 20,
-      paddingVertical: 18,
+      paddingTop: 18,
+      paddingBottom: 0,
       marginBottom: 2,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 1 },
@@ -829,6 +644,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       fontSize: 13,
       color: colors.textTertiary,
       marginTop: 2,
+    },
+    titleContainer: {
+      // Container for clickable title/description area
+    },
+    titleContainerPressed: {
+      opacity: 0.6,
     },
     workoutTitle: {
       fontSize: 18,
@@ -1012,41 +833,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       flex: 1,
       textAlign: 'right',
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    menuContainer: {
-      backgroundColor: colors.white,
-      borderRadius: 12,
-      minWidth: 200,
-      padding: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-    menuItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-    },
-    menuItemText: {
-      fontSize: 16,
-      color: colors.text,
-      fontWeight: '500',
-    },
-    menuItemTextDelete: {
-      fontSize: 16,
-      color: colors.error,
-      fontWeight: '500',
-    },
     workoutImageContainer: {
       width: '100%',
       aspectRatio: 16 / 9,
@@ -1100,27 +886,90 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       fontWeight: '600',
       color: colors.primary,
     },
-    skeletonRow: {
+    exerciseRow: {
       flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
       paddingVertical: 12,
-      paddingHorizontal: 4,
-      backgroundColor: isDark ? '#2C2C2C' : '#ffffff',
+      paddingHorizontal: 12,
+      backgroundColor: colors.backgroundLight,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    lastExerciseRow: {
+      borderBottomWidth: 0,
+    },
+    exerciseNameContainer: {
+      flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+      marginRight: 12,
+    },
+    exerciseNameSimple: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text,
+      flex: 1,
+    },
+    setsText: {
+      fontSize: 14,
+      fontWeight: '400',
+      color: colors.textSecondary,
+    },
+    seeMoreButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+      backgroundColor: colors.backgroundLight,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    seeMoreText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+      letterSpacing: -0.2,
+    },
+    statsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginBottom: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    statItem: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    statLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    statValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
     },
     skeletonBar: {
       height: 14,
       backgroundColor: isDark ? '#555555' : '#999999',
       borderRadius: 6,
     },
-    skeletonBarLong: {
-      flex: 3,
-    },
-    skeletonBarShort: {
+    skeletonBarExercise: {
       flex: 1,
-      minWidth: 30,
+      maxWidth: '60%',
+    },
+    skeletonBarSets: {
+      width: 60,
     },
     footer: {
       paddingTop: 8,
@@ -1135,21 +984,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-around',
-      paddingTop: 16,
-      paddingBottom: 4,
+      paddingVertical: 14,
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      marginTop: 16,
+      marginTop: 12,
     },
     socialActionButton: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
     },
     socialActionCount: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.textSecondary,
       fontWeight: '500',
     },

@@ -93,6 +93,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         payload.notes,
         payload.imageUrl,
         payload.routineId,
+        payload.durationSeconds,
         correlationId,
       )
 

@@ -24,6 +24,7 @@ interface SubmitWorkoutArgs {
   title: string
   imageUri: string | null
   routineId?: string | null
+  durationSeconds?: number
 }
 
 export type SubmitWorkoutErrorCode = 'IMAGE_UPLOAD'
@@ -66,7 +67,7 @@ export function useSubmitWorkout() {
   const isProcessingRef = useRef(false)
 
   const submitWorkout = useCallback(
-    async ({ notes, title, imageUri, routineId }: SubmitWorkoutArgs) => {
+    async ({ notes, title, imageUri, routineId, durationSeconds }: SubmitWorkoutArgs) => {
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
       }
@@ -94,6 +95,7 @@ export function useSubmitWorkout() {
         weightUnit,
         userId: user.id,
         routineId: routineId || null,
+        durationSeconds: typeof durationSeconds === 'number' ? durationSeconds : null,
       }
 
       const placeholder = createPlaceholderWorkout(trimmedTitle, imageUrl)
@@ -141,6 +143,7 @@ export function useSubmitWorkout() {
           workoutTitle: pending.title,
           imageUrl: pending.imageUrl,
           routineId: pending.routineId,
+          durationSeconds: pending.durationSeconds ?? undefined,
         },
         accessToken,
       )
