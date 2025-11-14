@@ -29,99 +29,22 @@ import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 
-function CreateButton() {
-  const router = useRouter()
+function ElevatedPlusButton() {
   const colors = useThemedColors()
-  const [isCreatingPost, setIsCreatingPost] = useState(false)
-  const [hasDraft, setHasDraft] = useState(false)
-  const spinValue = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    // Check for pending post and draft every 500ms
-    let isChecking = false
-
-    const checkState = async () => {
-      if (isChecking) {
-        return
-      }
-
-      isChecking = true
-      try {
-        const pendingData = await AsyncStorage.getItem(PENDING_POST_KEY)
-        const hasPending = Boolean(pendingData)
-        const draftExists = await hasStoredDraft()
-
-        // Only update state if it actually changed to avoid unnecessary re-renders
-        setIsCreatingPost((prev) => (prev !== hasPending ? hasPending : prev))
-        setHasDraft((prev) => (prev !== draftExists ? draftExists : prev))
-      } catch (error) {
-        console.error('[CreateButton] checkState - error:', error)
-      } finally {
-        isChecking = false
-      }
-    }
-
-    const interval = setInterval(() => {
-      void checkState()
-    }, 500)
-
-    void checkState()
-
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    if (isCreatingPost) {
-      // Start smooth spinning animation
-      Animated.loop(
-        Animated.timing(spinValue, {
-          toValue: 1,
-          duration: 1200,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      ).start()
-    } else {
-      // Reset
-      spinValue.setValue(0)
-    }
-  }, [isCreatingPost, spinValue])
-
-  const handlePress = () => {
-    if (isCreatingPost) return
-    router.push('/(tabs)/create-post')
-  }
-
-  const spin = spinValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  })
-
+  const router = useRouter()
   const styles = createStyles(colors)
 
   return (
     <TouchableOpacity
-      style={[
-        styles.createButton,
-        hasDraft && !isCreatingPost && styles.createButtonWithDraft,
-      ]}
-      onPress={handlePress}
+      style={styles.elevatedButton}
+      onPress={() => router.push('/(tabs)/create-post')}
       activeOpacity={0.8}
-      disabled={isCreatingPost}
     >
-      {isCreatingPost ? (
-        <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <View style={styles.loaderRing}>
-            <View style={styles.loaderArc} />
-          </View>
-        </Animated.View>
-      ) : (
-        <Ionicons
-          name={hasDraft ? 'document-text' : 'add'}
-          size={32}
-          color={colors.white}
-        />
-      )}
+      <Ionicons
+        name="add"
+        size={28}
+        color={colors.white}
+      />
     </TouchableOpacity>
   )
 }
@@ -191,8 +114,14 @@ function TabLayoutContent() {
             paddingTop: 8,
           },
           tabBarInactiveTintColor: colors.textSecondary,
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+            marginTop: 4,
+          },
         }}
       >
+        {/* Feed tab */}
         <Tabs.Screen
           name="index"
           options={{
@@ -202,6 +131,27 @@ function TabLayoutContent() {
             ),
           }}
         />
+        {/* Progress tab */}
+        <Tabs.Screen
+          name="analytics"
+          options={{
+            title: 'Progress',
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="bar-chart" size={28} color={color} />
+            ),
+          }}
+        />
+        {/* Profile tab */}
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="person-circle" size={28} color={color} />
+            ),
+          }}
+        />
+        {/* Elevated + button */}
         <Tabs.Screen
           name="create"
           options={{
@@ -213,9 +163,10 @@ function TabLayoutContent() {
                   flex: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
+                  paddingTop: 8,
                 }}
               >
-                <CreateButton />
+                <ElevatedPlusButton />
               </View>
             ),
           }}
@@ -225,13 +176,12 @@ function TabLayoutContent() {
             },
           }}
         />
+        {/* Hidden screens */}
         <Tabs.Screen
           name="explore"
           options={{
-            title: 'Profile',
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="person-circle" size={28} color={color} />
-            ),
+            href: null,
+            tabBarStyle: { display: 'none' },
           }}
         />
         <Tabs.Screen
@@ -284,43 +234,21 @@ export default function TabLayout() {
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    createButton: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+    elevatedButton: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.primary,
       shadowOffset: {
         width: 0,
-        height: 4,
+        height: 6,
       },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    createButtonWithDraft: {
-      backgroundColor: colors.primaryDark,
       shadowOpacity: 0.4,
-    },
-    loaderRing: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      borderWidth: 3,
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loaderArc: {
-      position: 'absolute',
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      borderWidth: 3,
-      borderColor: 'transparent',
-      borderTopColor: '#ffffff',
-      borderRightColor: '#ffffff',
+      shadowRadius: 12,
+      elevation: 12,
+      marginTop: -74,
     },
   })

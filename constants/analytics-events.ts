@@ -49,6 +49,7 @@ export const AnalyticsEvents = {
   FEED_REFRESHED: 'Feed Refreshed',
   EXPLORE_VIEWED: 'Explore Viewed',
   EXPLORE_REFRESHED: 'Explore Refreshed',
+  ANALYTICS_VIEWED: 'Analytics Viewed',
 
   // Workout Creation
   WORKOUT_CREATE_STARTED: 'Workout Create Started',

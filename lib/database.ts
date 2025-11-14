@@ -3,23 +3,20 @@ import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
   Exercise,
+  Follow,
+  Notification,
+  NotificationWithProfiles,
   ParsedWorkout,
   Profile,
+  WorkoutComment,
+  WorkoutLike,
   WorkoutRoutine,
   WorkoutRoutineWithDetails,
   WorkoutSession,
   WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import { supabase } from './supabase'
-
-/**
- * Type for nested Supabase query results
- */
-interface SessionWithExercises {
-  workout_exercises: {
-    exercise: Exercise
-  }[]
-}
 
 export const database = {
   // Profile operations
@@ -102,6 +99,28 @@ export const database = {
 
       if (error) throw error
       return data as Profile
+    },
+
+    async searchByUserTag(userTag: string) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .ilike('user_tag', `${userTag}%`)
+        .limit(10)
+
+      if (error) throw error
+      return (data || []) as Profile[]
+    },
+
+    async getByUserTag(userTag: string) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_tag', userTag)
+        .single()
+
+      if (error && error.code !== 'PGRST116') throw error
+      return data as Profile | null
     },
 
     async generateUniqueUserTag(displayName: string): Promise<string> {
@@ -189,6 +208,286 @@ export const database = {
 
       if (error) throw error
       return data as Profile
+    },
+  },
+
+  // Follow operations
+  follows: {
+    async follow(followerId: string, followeeId: string) {
+      if (followerId === followeeId) {
+        throw new Error('Users cannot follow themselves')
+      }
+
+      const { data, error } = await supabase
+        .from('follows')
+        .insert({
+          follower_id: followerId,
+          followee_id: followeeId,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Follow
+    },
+
+    async unfollow(followerId: string, followeeId: string) {
+      const { error } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', followerId)
+        .eq('followee_id', followeeId)
+
+      if (error) throw error
+    },
+
+    async listFollowers(userId: string, limit = 50, offset = 0) {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('followee_id', userId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+      return (data || []) as Follow[]
+    },
+
+    async listFollowing(userId: string, limit = 50, offset = 0) {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', userId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+      return (data || []) as Follow[]
+    },
+
+    async isFollowing(followerId: string, followeeId: string) {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', followerId)
+        .eq('followee_id', followeeId)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') throw error
+      return !!data
+    },
+
+    async getCounts(userId: string) {
+      const [followerRes, followingRes] = await Promise.all([
+        supabase.rpc('follower_count', { target_user: userId }),
+        supabase.rpc('following_count', { target_user: userId }),
+      ])
+
+      if (followerRes.error) throw followerRes.error
+      if (followingRes.error) throw followingRes.error
+
+      return {
+        followers: followerRes.data ?? 0,
+        following: followingRes.data ?? 0,
+      }
+    },
+  },
+
+  // Workout like operations
+  workoutLikes: {
+    async like(workoutId: string, userId: string) {
+      const { data, error } = await supabase
+        .from('workout_likes')
+        .insert({
+          workout_id: workoutId,
+          user_id: userId,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutLike
+    },
+
+    async unlike(workoutId: string, userId: string) {
+      const { error } = await supabase
+        .from('workout_likes')
+        .delete()
+        .eq('workout_id', workoutId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+    },
+
+    async listByWorkout(workoutId: string) {
+      const { data, error } = await supabase
+        .from('workout_likes')
+        .select('*')
+        .eq('workout_id', workoutId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return (data || []) as WorkoutLike[]
+    },
+
+    async listByUser(userId: string, limit = 50, offset = 0) {
+      const { data, error } = await supabase
+        .from('workout_likes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+      return (data || []) as WorkoutLike[]
+    },
+
+    async hasLiked(workoutId: string, userId: string) {
+      const { data, error } = await supabase
+        .from('workout_likes')
+        .select('workout_id')
+        .eq('workout_id', workoutId)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') throw error
+      return !!data
+    },
+
+    async getCount(workoutId: string) {
+      const { count, error } = await supabase
+        .from('workout_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('workout_id', workoutId)
+
+      if (error) throw error
+      return count ?? 0
+    },
+  },
+
+  // Workout comment operations
+  workoutComments: {
+    async add(workoutId: string, userId: string, content: string) {
+      const trimmed = content.trim()
+      if (!trimmed) {
+        throw new Error('Comment content cannot be empty')
+      }
+
+      const { data, error } = await supabase
+        .from('workout_comments')
+        .insert({
+          workout_id: workoutId,
+          user_id: userId,
+          content: trimmed,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutComment
+    },
+
+    async update(commentId: string, userId: string, content: string) {
+      const trimmed = content.trim()
+      if (!trimmed) {
+        throw new Error('Comment content cannot be empty')
+      }
+
+      const { data, error } = await supabase
+        .from('workout_comments')
+        .update({
+          content: trimmed,
+        })
+        .eq('id', commentId)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutComment
+    },
+
+    async delete(commentId: string) {
+      const { error } = await supabase
+        .from('workout_comments')
+        .delete()
+        .eq('id', commentId)
+
+      if (error) throw error
+    },
+
+    async listByWorkout(workoutId: string, limit = 50, offset = 0) {
+      const { data, error } = await supabase
+        .from('workout_comments')
+        .select('*')
+        .eq('workout_id', workoutId)
+        .order('created_at', { ascending: true })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+      return (data || []) as WorkoutComment[]
+    },
+
+    async getCount(workoutId: string) {
+      const { count, error } = await supabase
+        .from('workout_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('workout_id', workoutId)
+
+      if (error) throw error
+      return count ?? 0
+    },
+  },
+
+  // Aggregated social metadata
+  workoutSocial: {
+    async getStatsForWorkout(workoutId: string) {
+      const { data, error } = await supabase
+        .from('workout_social_stats')
+        .select('*')
+        .eq('workout_id', workoutId)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') throw error
+
+      if (!data) {
+        return {
+          workout_id: workoutId,
+          like_count: 0,
+          comment_count: 0,
+        } as WorkoutSocialStats
+      }
+
+      return data as WorkoutSocialStats
+    },
+
+    async getStatsForWorkouts(workoutIds: string[]) {
+      if (workoutIds.length === 0) {
+        return [] as WorkoutSocialStats[]
+      }
+
+      const { data, error } = await supabase
+        .from('workout_social_stats')
+        .select('*')
+        .in('workout_id', workoutIds)
+
+      if (error) throw error
+
+      // Ensure we return zeros for workouts missing from the view
+      const statsMap = new Map<string, WorkoutSocialStats>()
+      ;(data as WorkoutSocialStats[] | null)?.forEach((row) => {
+        statsMap.set(row.workout_id, row)
+      })
+
+      return workoutIds.map((id) => {
+        const stat = statsMap.get(id)
+        if (stat) return stat
+        return {
+          workout_id: id,
+          like_count: 0,
+          comment_count: 0,
+        } as WorkoutSocialStats
+      })
     },
   },
 
@@ -444,6 +743,64 @@ export const database = {
       return data as WorkoutSessionWithDetails[]
     },
 
+    async getSocialFeed(userId: string, limit = 10, offset = 0) {
+      // First, get the list of users whose workouts we want to see:
+      // 1. The authenticated user
+      // 2. Users they follow
+      const { data: followData, error: followError } = await supabase
+        .from('follows')
+        .select('followee_id')
+        .eq('follower_id', userId)
+
+      if (followError) throw followError
+
+      // Build array of user IDs to fetch workouts from
+      const followeeIds = followData?.map((f) => f.followee_id) || []
+      const authorIds = [userId, ...followeeIds]
+
+      // Fetch workouts from all these users
+      const { data: workouts, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          *,
+          workout_exercises (
+            *,
+            exercise:exercises (*),
+            sets (*)
+          )
+        `,
+        )
+        .in('user_id', authorIds)
+        .order('date', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+      if (!workouts || workouts.length === 0) {
+        return []
+      }
+
+      // Fetch profiles for all unique user IDs in the workouts
+      const uniqueUserIds = [...new Set(workouts.map((w) => w.user_id))]
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_tag, display_name, avatar_url')
+        .in('id', uniqueUserIds)
+
+      if (profileError) throw profileError
+
+      // Create a map of user_id -> profile for quick lookup
+      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || [])
+
+      // Attach profile to each workout
+      const workoutsWithProfiles = workouts.map((workout) => ({
+        ...workout,
+        profile: profileMap.get(workout.user_id),
+      }))
+
+      return workoutsWithProfiles as WorkoutSessionWithDetails[]
+    },
+
     async getThisWeekCount(userId: string, startOfWeek: Date) {
       const { data, error } = await supabase
         .from('workout_sessions')
@@ -454,6 +811,16 @@ export const database = {
 
       if (error) throw error
       return data?.length || 0
+    },
+
+    async getTotalCount(userId: string) {
+      const { count, error } = await supabase
+        .from('workout_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return count || 0
     },
 
     async getById(id: string) {
@@ -1482,8 +1849,6 @@ export const database = {
         const currentWeekStart = new Date(today)
         currentWeekStart.setDate(today.getDate() - today.getDay())
         currentWeekStart.setHours(0, 0, 0, 0)
-        const currentWeekKey = currentWeekStart.toISOString().split('T')[0]
-
         // Start from current week and go backwards
         for (let i = 0; i < weeks.length; i++) {
           const week = weeks[i]
@@ -1899,6 +2264,97 @@ export const database = {
         .from('workout_routines')
         .delete()
         .eq('id', routineId)
+
+      if (error) throw error
+    },
+  },
+
+  // Notifications operations
+  notifications: {
+    /**
+     * Get all notifications for a user, enriched with actor profiles
+     */
+    async list(userId: string) {
+      const { data: notifications, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('recipient_id', userId)
+        .order('updated_at', { ascending: false })
+
+      if (error) throw error
+      if (!notifications || notifications.length === 0) {
+        return []
+      }
+
+      // Fetch unique actor profiles
+      const allActorIds = notifications.flatMap((n) => n.actors)
+      const uniqueActorIds = [...new Set(allActorIds)]
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url, user_tag')
+        .in('id', uniqueActorIds)
+
+      if (profilesError) throw profilesError
+
+      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || [])
+
+      // Attach profiles to notifications
+      return notifications.map((n) => ({
+        ...n,
+        actorProfiles: [...new Set(n.actors)]
+          .map((id: string) => profileMap.get(id))
+          .filter(Boolean),
+      }))
+    },
+
+    /**
+     * Mark a notification as read
+     */
+    async markAsRead(notificationId: string) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId)
+
+      if (error) throw error
+    },
+
+    /**
+     * Mark all notifications as read for a user
+     */
+    async markAllAsRead(userId: string) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('recipient_id', userId)
+        .eq('read', false)
+
+      if (error) throw error
+    },
+
+    /**
+     * Get unread notification count for a user
+     */
+    async getUnreadCount(userId: string): Promise<number> {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', userId)
+        .eq('read', false)
+
+      if (error) throw error
+      return count || 0
+    },
+
+    /**
+     * Delete a notification
+     */
+    async delete(notificationId: string) {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
 
       if (error) throw error
     },

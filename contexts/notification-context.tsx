@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
+import { useAuth } from './auth-context'
+import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
+import type { NotificationWithProfiles } from '@/types/database.types'
 
 // Check if notifications module is available (requires native build)
 let isNotificationsAvailable = true
@@ -24,7 +28,10 @@ interface NotificationContextType {
   hasPermission: boolean
   requestPermission: () => Promise<boolean>
   unreadCount: number
+  notifications: NotificationWithProfiles[]
   markAsRead: () => void
+  markAllAsReadOptimistically: () => void
+  refreshNotifications: () => Promise<void>
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -36,29 +43,85 @@ export function NotificationProvider({
 }: {
   children: React.ReactNode
 }) {
+  const { user } = useAuth()
   const [hasPermission, setHasPermission] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState<NotificationWithProfiles[]>([])
+
+  // Load notifications from database
+  const loadNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([])
+      setUnreadCount(0)
+      return
+    }
+
+    try {
+      const data = await database.notifications.list(user.id)
+      setNotifications(data)
+
+      const unread = data.filter((n) => !n.read).length
+      setUnreadCount(unread)
+    } catch (error) {
+      console.error('[Notifications] Error loading notifications:', error)
+    }
+  }, [user])
 
   // Request notification permissions on mount
   useEffect(() => {
     checkPermission()
   }, [])
 
-  // Listen for incoming notifications
+  // Load notifications when user changes
+  useEffect(() => {
+    if (user) {
+      loadNotifications()
+    }
+  }, [user, loadNotifications])
+
+  // Real-time subscription to notifications table
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${user.id}`,
+        },
+        (payload) => {
+          loadNotifications()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, loadNotifications])
+
+  // Listen for incoming push notifications
   useEffect(() => {
     if (!isNotificationsAvailable) return
 
     try {
       // Listener for when notification is received while app is foregrounded
       const notificationListener =
-        Notifications.addNotificationReceivedListener(() => {
-          setUnreadCount((prev) => prev + 1)
+        Notifications.addNotificationReceivedListener((notification) => {
+          // Reload from database to get updated count
+          loadNotifications()
         })
 
       // Listener for when user taps on notification
       const responseListener =
         Notifications.addNotificationResponseReceivedListener(() => {
-          // Navigation will be handled in the notifications screen
+          // Navigation is handled in usePushNotifications hook
+          // Just reload notifications here
+          loadNotifications()
         })
 
       return () => {
@@ -68,7 +131,7 @@ export function NotificationProvider({
     } catch (error) {
       console.warn('[Notifications] Failed to set up listeners:', error)
     }
-  }, [])
+  }, [loadNotifications])
 
   const checkPermission = async () => {
     if (!isNotificationsAvailable) {
@@ -110,7 +173,7 @@ export function NotificationProvider({
           name: 'default',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
+          lightColor: '#FF6B35', // App primary color
         })
       }
 
@@ -123,9 +186,24 @@ export function NotificationProvider({
     }
   }
 
-  const markAsRead = () => {
+  const markAsRead = useCallback(() => {
     setUnreadCount(0)
-  }
+  }, [])
+
+  const markAllAsReadOptimistically = useCallback(() => {
+    // Optimistically update UI immediately
+    setNotifications((prevNotifications) =>
+      prevNotifications.map((notification) => ({
+        ...notification,
+        read: true,
+      }))
+    )
+    setUnreadCount(0)
+  }, [])
+
+  const refreshNotifications = useCallback(async () => {
+    await loadNotifications()
+  }, [loadNotifications])
 
   return (
     <NotificationContext.Provider
@@ -133,7 +211,10 @@ export function NotificationProvider({
         hasPermission,
         requestPermission,
         unreadCount,
+        notifications,
         markAsRead,
+        markAllAsReadOptimistically,
+        refreshNotifications,
       }}
     >
       {children}

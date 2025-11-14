@@ -59,23 +59,68 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       })),
     }
   }, [user, workout])
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
+  // Determine if this workout belongs to the current user
+  const isOwnWorkout = user?.id === workout.user_id
+
+  // Get user display info from the workout's profile data
+  const userName = isOwnWorkout
+    ? 'You'
+    : workout.profile?.display_name || 'User'
+  const avatarUrl = workout.profile?.avatar_url || null
+
+  // Social interaction states
+  const [likeCount, setLikeCount] = useState(0)
+  const [commentCount, setCommentCount] = useState(0)
+  const [isLiked, setIsLiked] = useState(false)
+
+  // Fetch social stats
   useEffect(() => {
-    if (!user) return
+    if (!user || !workout.id || workout.isPending) return
 
-    const loadProfile = async () => {
+    const fetchSocialStats = async () => {
       try {
-        const profile = await database.profiles.getById(user.id)
-        setAvatarUrl(profile.avatar_url)
+        // Fetch like count and check if user has liked
+        const [likeCountResult, hasLikedResult, commentCountResult] = await Promise.all([
+          database.workoutLikes.getCount(workout.id),
+          database.workoutLikes.hasLiked(workout.id, user.id),
+          database.workoutComments.getCount(workout.id),
+        ])
+
+        setLikeCount(likeCountResult)
+        setIsLiked(hasLikedResult)
+        setCommentCount(commentCountResult)
       } catch (error) {
-        console.error('Error loading profile:', error)
-        setAvatarUrl(null)
+        console.error('Error fetching social stats:', error)
       }
     }
 
-    loadProfile()
-  }, [user])
+    fetchSocialStats()
+  }, [user, workout.id, workout.isPending])
+
+  // Handle like toggle
+  const handleLike = useCallback(async () => {
+    if (!user || !workout.id) return
+
+    try {
+      if (isLiked) {
+        await database.workoutLikes.unlike(workout.id, user.id)
+        setIsLiked(false)
+        setLikeCount((prev) => Math.max(0, prev - 1))
+      } else {
+        await database.workoutLikes.like(workout.id, user.id)
+        setIsLiked(true)
+        setLikeCount((prev) => prev + 1)
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+    }
+  }, [user, workout.id, isLiked])
+
+  // Handle comment - navigate to comments screen
+  const handleComment = useCallback(() => {
+    router.push(`/workout-comments/${workout.id}`)
+  }, [workout.id, router])
 
   useEffect(() => {
     if (!computeContext) return
@@ -169,7 +214,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 
   return (
     <FeedCard
-      userName="You"
+      userName={userName}
       userAvatar={avatarUrl || ''}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
@@ -200,6 +245,11 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       onCreateRoutine={isPending ? undefined : handleCreateRoutine}
       prInfo={prInfo}
       isPending={isPending}
+      likeCount={likeCount}
+      commentCount={commentCount}
+      isLiked={isLiked}
+      onLike={handleLike}
+      onComment={handleComment}
     />
   )
 })

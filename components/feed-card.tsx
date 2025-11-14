@@ -79,6 +79,12 @@ export interface FeedCardProps {
   onCreateRoutine?: () => void
   prInfo?: ExercisePRInfo[]
   isPending?: boolean // Flag to show skeleton while workout is being parsed
+  // Social stats
+  likeCount?: number
+  commentCount?: number
+  isLiked?: boolean
+  onLike?: () => void
+  onComment?: () => void
 }
 
 /**
@@ -103,6 +109,11 @@ export const FeedCard = memo(function FeedCard({
   onCreateRoutine,
   prInfo = [],
   isPending = false,
+  likeCount = 0,
+  commentCount = 0,
+  isLiked = false,
+  onLike,
+  onComment,
 }: FeedCardProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -578,6 +589,57 @@ export const FeedCard = memo(function FeedCard({
           <Text style={styles.footerText}>
             Parsing your workout and identifying exercises...
           </Text>
+        </View>
+      )}
+
+      {/* Social Actions Bar */}
+      {!isPending && (
+        <View style={styles.socialActionsBar}>
+          {/* Like Button */}
+          <TouchableOpacity
+            style={styles.socialActionButton}
+            onPress={onLike}
+            disabled={!onLike}
+          >
+            <Ionicons
+              name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
+              size={20}
+              color={isLiked ? colors.primary : colors.textSecondary}
+            />
+            {likeCount > 0 && (
+              <Text style={styles.socialActionCount}>{likeCount}</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Comment Button */}
+          <TouchableOpacity
+            style={styles.socialActionButton}
+            onPress={onComment}
+            disabled={!onComment}
+          >
+            <Ionicons
+              name="chatbubble-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+            {commentCount > 0 && (
+              <Text style={styles.socialActionCount}>{commentCount}</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Share Button */}
+          {workout && (
+            <TouchableOpacity
+              style={styles.socialActionButton}
+              onPress={() => setShowShareScreen(true)}
+            >
+              <Ionicons
+                name="share-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -1068,5 +1130,27 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       fontSize: 13,
       color: colors.textSecondary,
       fontStyle: 'italic',
+    },
+    socialActionsBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      paddingTop: 16,
+      paddingBottom: 4,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      marginTop: 16,
+    },
+    socialActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    socialActionCount: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
   })

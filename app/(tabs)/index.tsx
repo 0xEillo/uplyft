@@ -24,6 +24,7 @@ import {
   Image,
   LayoutAnimation,
   Platform,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -93,6 +94,7 @@ export default function FeedScreen() {
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
 
   const loadWorkouts = useCallback(
@@ -113,7 +115,7 @@ export default function FeedScreen() {
 
         const currentOffset = loadMore ? offset : 0
         const limit = 10
-        const data = await database.workoutSessions.getRecent(
+        const data = await database.workoutSessions.getSocialFeed(
           user.id,
           limit,
           currentOffset,
@@ -169,6 +171,20 @@ export default function FeedScreen() {
     },
     [user, isInitialLoad, offset],
   )
+
+  const handleRefresh = useCallback(async () => {
+    if (!user || isRefreshing) return
+
+    setIsRefreshing(true)
+    try {
+      // Reset pagination and reload from scratch
+      setOffset(0)
+      setHasMore(true)
+      await loadWorkouts(false, false)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [user, isRefreshing, loadWorkouts])
 
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return
@@ -350,17 +366,29 @@ export default function FeedScreen() {
           />
           <Text style={styles.headerTitle}>Rep AI</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/notifications')}
-          style={{ position: 'relative' }}
-        >
-          <Ionicons
-            name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
-            size={24}
-            color={colors.text}
-          />
-          <NotificationBadge count={unreadCount} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => router.push('/search')}
+            style={styles.iconButton}
+          >
+            <Ionicons
+              name="search-outline"
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/notifications')}
+            style={{ position: 'relative' }}
+          >
+            <Ionicons
+              name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+              size={24}
+              color={colors.text}
+            />
+            <NotificationBadge count={unreadCount} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading ? (
@@ -379,6 +407,12 @@ export default function FeedScreen() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
+          }
         />
       )}
     </SafeAreaView>
@@ -422,6 +456,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    iconButton: {
+      padding: 0,
     },
     content: {
       flex: 1,

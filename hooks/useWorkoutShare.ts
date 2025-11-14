@@ -2,6 +2,7 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useState } from 'react'
@@ -12,25 +13,19 @@ import {
   Platform,
   Share,
 } from 'react-native'
-import { captureRef } from 'react-native-view-shot'
 import { useWeightUnits } from './useWeightUnits'
 
-export interface UseWorkoutShareResult {
-  shareWorkout: (
-    workout: WorkoutSessionWithDetails,
-    workoutTitle: string,
-    viewRef: any,
-  ) => Promise<void>
-  shareToInstagramStories: (
-    workout: WorkoutSessionWithDetails,
-    viewRef: any,
-    widgetType?: string,
-  ) => Promise<void>
-  shareWorkoutWidget: (
-    viewRef: any,
-    shareType: 'instagram' | 'general',
-  ) => Promise<void>
-  isSharing: boolean
+// Disable view-shot on simulator (it's not available there)
+const isSimulator = !Device.isDevice
+
+// Conditionally import view-shot (will be null on simulator)
+let captureRef: typeof import('react-native-view-shot')['captureRef'] | null = null
+try {
+  if (!isSimulator) {
+    captureRef = require('react-native-view-shot').captureRef
+  }
+} catch {
+  // Module not available, will be handled by simulator check
 }
 
 /**
@@ -55,6 +50,15 @@ export function useWorkoutShare(): UseWorkoutShareResult {
       viewRef: any,
     ) => {
       if (isSharing) return
+
+      if (isSimulator) {
+        Alert.alert(
+          'Share Unavailable',
+          'Workout sharing is not available on the simulator. Please test on a physical device.',
+          [{ text: 'OK' }],
+        )
+        return
+      }
 
       const startTime = Date.now()
 
@@ -86,6 +90,10 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         let uri: string | undefined
 
+        if (!captureRef) {
+          throw new Error('View capture not available')
+        }
+
         try {
           uri = await captureRef(viewRef, baseCaptureOptions)
         } catch (captureError) {
@@ -96,7 +104,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           if (message.includes('drawViewHierarchyInRect')) {
             // Fallback path for large/complex views on iOS
-            uri = await captureRef(viewRef, {
+            uri = await captureRef!(viewRef, {
               ...baseCaptureOptions,
               useRenderInContext: true,
               quality: 0.8,
@@ -183,6 +191,15 @@ export function useWorkoutShare(): UseWorkoutShareResult {
     ) => {
       if (isSharing) return
 
+      if (isSimulator) {
+        Alert.alert(
+          'Share Unavailable',
+          'Workout sharing is not available on the simulator. Please test on a physical device.',
+          [{ text: 'OK' }],
+        )
+        return
+      }
+
       const startTime = Date.now()
 
       try {
@@ -218,6 +235,10 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         let uri: string | undefined
 
+        if (!captureRef) {
+          throw new Error('View capture not available')
+        }
+
         try {
           uri = await captureRef(viewRef, captureOptions)
         } catch (captureError) {
@@ -228,7 +249,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           if (message.includes('drawViewHierarchyInRect')) {
             // Fallback for complex views
-            uri = await captureRef(viewRef, {
+            uri = await captureRef!(viewRef, {
               ...captureOptions,
               useRenderInContext: true,
               quality: 0.95,
@@ -334,6 +355,15 @@ export function useWorkoutShare(): UseWorkoutShareResult {
     async (viewRef: any, shareType: 'instagram' | 'general') => {
       if (isSharing) return
 
+      if (isSimulator) {
+        Alert.alert(
+          'Share Unavailable',
+          'Workout sharing is not available on the simulator. Please test on a physical device.',
+          [{ text: 'OK' }],
+        )
+        return
+      }
+
       const startTime = Date.now()
 
       try {
@@ -365,6 +395,10 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           let uri: string | undefined
 
+          if (!captureRef) {
+            throw new Error('View capture not available')
+          }
+
           try {
             uri = await captureRef(viewRef, captureOptions)
           } catch (captureError) {
@@ -374,7 +408,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
                 : String(captureError)
 
             if (message.includes('drawViewHierarchyInRect')) {
-              uri = await captureRef(viewRef, {
+              uri = await captureRef!(viewRef, {
                 ...captureOptions,
                 useRenderInContext: true,
                 quality: 0.95,
@@ -436,6 +470,10 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           let uri: string | undefined
 
+          if (!captureRef) {
+            throw new Error('View capture not available')
+          }
+
           try {
             uri = await captureRef(viewRef, captureOptions)
           } catch (captureError) {
@@ -445,7 +483,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
                 : String(captureError)
 
             if (message.includes('drawViewHierarchyInRect')) {
-              uri = await captureRef(viewRef, {
+              uri = await captureRef!(viewRef, {
                 ...captureOptions,
                 useRenderInContext: true,
                 quality: 0.8,

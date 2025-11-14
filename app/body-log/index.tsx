@@ -354,7 +354,7 @@ export default function BodyLogScreen() {
   )
 
   const navigateToProfile = () => {
-    router.push('/(tabs)/explore')
+    router.push('/(tabs)/analytics')
   }
 
   const handleBackPress = useCallback(() => {

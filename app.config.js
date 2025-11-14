@@ -1,4 +1,28 @@
-require('dotenv').config()
+const path = require('path')
+const dotenv = require('dotenv')
+
+const buildProfile =
+  process.env.APP_ENV ||
+  process.env.EAS_BUILD_PROFILE ||
+  process.env.NODE_ENV ||
+  'production'
+
+const envFilesByProfile = {
+  development: ['.env.test', '.env'],
+  staging: ['.env.staging', '.env'],
+  production: ['.env'],
+}
+
+const envFiles = envFilesByProfile[buildProfile] || ['.env']
+
+envFiles
+  .map((file) => path.resolve(__dirname, file))
+  .forEach((filePath, index) => {
+    dotenv.config({
+      path: filePath,
+      override: index === 0,
+    })
+  })
 
 const appEnv = process.env.APP_ENV || 'production'
 const revenueCatUseTestStoreEnv = process.env.REVENUECAT_USE_TEST_STORE
@@ -66,6 +90,9 @@ module.exports = {
         'POST_NOTIFICATIONS',
       ],
       package: 'com.viralstudio.repai',
+    },
+    updates: {
+      url: 'https://u.expo.dev/d92cf9e6-0901-4a68-9f50-741decd5c10f',
     },
     web: {
       output: 'server',

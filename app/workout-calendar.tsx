@@ -237,7 +237,7 @@ export default function WorkoutCalendarScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.push('/(tabs)/explore?tab=progress')}
+          onPress={() => router.push('/(tabs)/analytics?tab=progress')}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />

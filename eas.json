@@ -7,6 +7,13 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
       "ios": {
         "simulator": true
       },
@@ -31,8 +38,5 @@
   },
   "submit": {
     "production": {}
-  },
-  "updates": {
-    "url": "https://u.expo.dev/your-expo-project-id"
   }
 }

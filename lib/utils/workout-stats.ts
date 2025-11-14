@@ -32,6 +32,9 @@ const ANIMAL_COMPARISONS: AnimalComparison[] = [
 
 /**
  * Calculate total volume lifted in a workout (in kg)
+ * Note: All weights are stored in kg internally, regardless of user's display preference.
+ * The weightUnit parameter is only used for the calculation context and is not applied
+ * to the stored weights. Use formatVolume() to convert the result for display.
  */
 export function calculateTotalVolume(workout: WorkoutSessionWithDetails, weightUnit: 'kg' | 'lb' = 'kg'): number {
   if (!workout.workout_exercises) return 0;
@@ -40,12 +43,11 @@ export function calculateTotalVolume(workout: WorkoutSessionWithDetails, weightU
 
   workout.workout_exercises.forEach((exercise) => {
     exercise.sets?.forEach((set) => {
-      const weight = set.weight || 0;
+      const weight = set.weight || 0; // Already in kg
       const reps = set.reps || 0;
 
-      // Convert to kg if needed
-      const weightInKg = weightUnit === 'lb' ? weight * 0.453592 : weight;
-      totalVolume += weightInKg * reps;
+      // Volume calculation: weight (kg) × reps
+      totalVolume += weight * reps;
     });
   });
 

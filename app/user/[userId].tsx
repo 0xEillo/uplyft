@@ -77,7 +77,7 @@ export default function UserProfileScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         {isOwnProfile ? (
-          <TouchableOpacity onPress={() => router.push('/settings')}>
+          <TouchableOpacity onPress={() => router.push('/account-settings')}>
             <Ionicons name="settings-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         ) : (

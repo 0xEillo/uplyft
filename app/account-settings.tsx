@@ -604,34 +604,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Personal Information Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/edit-profile')}
-          >
-            <View style={styles.actionButtonContent}>
-              <Ionicons
-                name="person-outline"
-                size={22}
-                color={colors.textSecondary}
-              />
-              <View>
-                <Text style={styles.actionButtonTextNeutral}>
-                  Personal Details
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textLight}
-            />
-          </TouchableOpacity>
-        </View>
-
         {/* Preferences Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>

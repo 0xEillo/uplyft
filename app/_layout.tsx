@@ -9,8 +9,16 @@ import { StatusBar } from 'expo-status-bar'
 import { PostHogProvider } from 'posthog-react-native'
 import { useEffect, useRef } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Platform, UIManager } from 'react-native'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+
+// Set global refresh control tint color for iOS
+if (Platform.OS === 'ios') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true)
+  }
+}
 
 import { LoadingScreen } from '@/components/loading-screen'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -21,6 +29,7 @@ import { PostsProvider } from '@/contexts/posts-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
@@ -28,6 +37,9 @@ function RootLayoutNav() {
   const router = useRouter()
   const { isDark } = useTheme()
   const { trackEvent } = useAnalytics()
+
+  // Initialize push notifications
+  usePushNotifications()
 
   const hasTrackedAppOpen = useRef(false)
 

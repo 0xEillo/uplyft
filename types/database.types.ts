@@ -19,6 +19,7 @@ export interface Profile {
   goals: Goal[] | null
   commitment: string | null
   training_years: TrainingYears | null
+  expo_push_token: string | null
   created_at: string
   updated_at: string
 }
@@ -119,6 +120,7 @@ export interface WorkoutExerciseWithDetails extends WorkoutExercise {
 export interface WorkoutSessionWithDetails extends WorkoutSession {
   workout_exercises: WorkoutExerciseWithDetails[]
   isPending?: boolean // Flag for placeholder workouts being processed
+  profile?: Profile // Profile of the user who created the workout (for social feed)
 }
 
 export interface WorkoutRoutineExerciseWithDetails
@@ -129,6 +131,33 @@ export interface WorkoutRoutineExerciseWithDetails
 
 export interface WorkoutRoutineWithDetails extends WorkoutRoutine {
   workout_routine_exercises: WorkoutRoutineExerciseWithDetails[]
+}
+
+export interface Follow {
+  follower_id: string
+  followee_id: string
+  created_at: string
+}
+
+export interface WorkoutLike {
+  workout_id: string
+  user_id: string
+  created_at: string
+}
+
+export interface WorkoutComment {
+  id: string
+  workout_id: string
+  user_id: string
+  content: string
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkoutSocialStats {
+  workout_id: string
+  like_count: number
+  comment_count: number
 }
 
 // Parsed workout data structure (from LLM) - matches database schema
@@ -152,4 +181,23 @@ export interface ParsedSet {
   weight?: number
   rpe?: number
   notes?: string
+}
+
+// Notification types
+export type NotificationType = 'workout_like' | 'workout_comment'
+
+export interface Notification {
+  id: string
+  recipient_id: string
+  type: NotificationType
+  workout_id: string
+  actors: string[] // Array of user IDs who liked/commented
+  comment_preview: string | null // Latest comment text (for comment notifications)
+  read: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationWithProfiles extends Notification {
+  actorProfiles: Profile[] // Enriched with actor profile data
 }

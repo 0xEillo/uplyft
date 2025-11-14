@@ -99,7 +99,7 @@ export function WorkoutChat() {
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [displayedExamples] = useState<ExamplePrompt[]>(() => getRandomExamples(5))
+  const [displayedExamples] = useState<ExamplePrompt[]>(() => getRandomExamples(4))
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -1139,7 +1139,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopColor: colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 12,
+      paddingBottom: 40, // Account for bottom tab bar
     },
     inputWrapper: {
       flexDirection: 'row',
