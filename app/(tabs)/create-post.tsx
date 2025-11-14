@@ -680,7 +680,11 @@ export default function CreatePostScreen() {
       const trimmedTitle = titleValue.trim()
       const durationSeconds = Math.max(0, getWorkoutElapsedSeconds())
 
-      console.log('Submitting workout with duration:', durationSeconds, 'seconds')
+      console.log(
+        'Submitting workout with duration:',
+        durationSeconds,
+        'seconds',
+      )
 
       await queueWorkout({
         notes: trimmedNotes,

@@ -142,7 +142,9 @@ export async function loadDraft(): Promise<WorkoutDraft | null> {
             ? parsed.selectedRoutineId
             : null,
         timerStartedAt:
-          typeof parsed.timerStartedAt === 'string' ? parsed.timerStartedAt : null,
+          typeof parsed.timerStartedAt === 'string'
+            ? parsed.timerStartedAt
+            : null,
         timerElapsedSeconds:
           typeof parsed.timerElapsedSeconds === 'number'
             ? parsed.timerElapsedSeconds
@@ -232,8 +234,7 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
     structuredData: Array.isArray(structuredData) ? structuredData : [],
     isStructuredMode,
     selectedRoutineId,
-    timerStartedAt:
-      typeof timerStartedAt === 'string' ? timerStartedAt : null,
+    timerStartedAt: typeof timerStartedAt === 'string' ? timerStartedAt : null,
     timerElapsedSeconds:
       typeof timerElapsedSeconds === 'number' ? timerElapsedSeconds : 0,
   }

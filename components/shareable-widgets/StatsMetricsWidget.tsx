@@ -1,147 +1,158 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { WorkoutSessionWithDetails } from '@/types/database.types';
-import { calculateWorkoutStats, formatVolume, getOrdinalSuffix } from '@/lib/utils/workout-stats';
-import { useThemedColors } from '@/hooks/useThemedColors';
+import { useThemedColors } from '@/hooks/useThemedColors'
+import {
+  calculateWorkoutStats,
+  formatVolume,
+  getOrdinalSuffix,
+} from '@/lib/utils/workout-stats'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { LinearGradient } from 'expo-linear-gradient'
+import React from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 
 const formatStopwatch = (seconds: number) => {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(safeSeconds / 3600);
-  const mins = Math.floor((safeSeconds % 3600) / 60);
-  const secs = safeSeconds % 60;
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safeSeconds / 3600)
+  const mins = Math.floor((safeSeconds % 3600) / 60)
+  const secs = safeSeconds % 60
 
   if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}:${mins
+      .toString()
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
-
-interface StatsMetricsWidgetProps {
-  workout: WorkoutSessionWithDetails;
-  weightUnit: 'kg' | 'lb';
-  workoutCountThisWeek: number;
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`
 }
 
-export const StatsMetricsWidget = React.forwardRef<View, StatsMetricsWidgetProps>(
-  ({ workout, weightUnit, workoutCountThisWeek }, ref) => {
-    const colors = useThemedColors();
-    const stats = calculateWorkoutStats(workout, weightUnit);
-    const volume = formatVolume(stats.totalVolume, weightUnit);
-    const durationDisplay = formatStopwatch(stats.durationSeconds);
+interface StatsMetricsWidgetProps {
+  workout: WorkoutSessionWithDetails
+  weightUnit: 'kg' | 'lb'
+  workoutCountThisWeek: number
+}
 
-    // Format date
-    const workoutDate = new Date(workout.date);
-    const formattedDate = workoutDate.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
+export const StatsMetricsWidget = React.forwardRef<
+  View,
+  StatsMetricsWidgetProps
+>(({ workout, weightUnit, workoutCountThisWeek }, ref) => {
+  const colors = useThemedColors()
+  const stats = calculateWorkoutStats(workout, weightUnit)
+  const volume = formatVolume(stats.totalVolume, weightUnit)
+  const durationDisplay = formatStopwatch(stats.durationSeconds)
 
-    return (
-      <View ref={ref} style={styles.container} collapsable={false}>
-        <LinearGradient
-          colors={['#1A1A1A', '#2A2A2A']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          {/* Top Section: Date */}
-          <View style={styles.topSection}>
-            <Text style={styles.date}>{formattedDate}</Text>
-            <View style={styles.workoutCountBadge}>
-              <Text style={styles.workoutCount}>
-                {getOrdinalSuffix(workoutCountThisWeek)} workout this week
-              </Text>
+  // Format date
+  const workoutDate = new Date(workout.date)
+  const formattedDate = workoutDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+
+  return (
+    <View ref={ref} style={styles.container} collapsable={false}>
+      <LinearGradient
+        colors={['#1A1A1A', '#2A2A2A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
+        {/* Top Section: Date */}
+        <View style={styles.topSection}>
+          <Text style={styles.date}>{formattedDate}</Text>
+          <View style={styles.workoutCountBadge}>
+            <Text style={styles.workoutCount}>
+              {getOrdinalSuffix(workoutCountThisWeek)} workout this week
+            </Text>
+          </View>
+          <View style={styles.durationBadge}>
+            <Text style={styles.durationLabel}>Duration</Text>
+            <Text style={styles.durationValue}>{durationDisplay}</Text>
+          </View>
+        </View>
+
+        {/* Middle Section: Workout Content */}
+        <View style={styles.middleSection}>
+          {/* Main metric - Volume */}
+          <View style={styles.mainMetric}>
+            <Text style={styles.volumeValue}>
+              {volume.value.toLocaleString()}
+              <Text style={styles.volumeUnit}> {volume.unit}</Text>
+            </Text>
+            <Text style={styles.volumeLabel}>Total Volume</Text>
+          </View>
+
+          {/* Stats grid */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={['#FF6B35', '#FF8C5A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <Text style={styles.statNumber}>{stats.totalSets}</Text>
+                <Text style={styles.statLabel}>Sets</Text>
+              </LinearGradient>
             </View>
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationLabel}>Duration</Text>
-              <Text style={styles.durationValue}>{durationDisplay}</Text>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={['#FF6B35', '#FF8C5A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <Text style={styles.statNumber}>
+                  {stats.totalReps.toLocaleString()}
+                </Text>
+                <Text style={styles.statLabel}>Reps</Text>
+              </LinearGradient>
+            </View>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={['#FF6B35', '#FF8C5A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <Text style={styles.statNumber}>{stats.exerciseCount}</Text>
+                <Text style={styles.statLabel}>Exercises</Text>
+              </LinearGradient>
             </View>
           </View>
 
-          {/* Middle Section: Workout Content */}
-          <View style={styles.middleSection}>
-            {/* Main metric - Volume */}
-            <View style={styles.mainMetric}>
-              <Text style={styles.volumeValue}>
-                {volume.value.toLocaleString()}
-                <Text style={styles.volumeUnit}> {volume.unit}</Text>
-              </Text>
-              <Text style={styles.volumeLabel}>Total Volume</Text>
+          {/* PR badge if any */}
+          {stats.prCount > 0 && (
+            <View style={styles.prBadge}>
+              <LinearGradient
+                colors={['#FF6B35', '#FF8C5A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.prBadgeGradient}
+              >
+                <Text style={styles.prEmoji}>🏆</Text>
+                <Text style={styles.prText}>
+                  {stats.prCount} PR{stats.prCount > 1 ? 's' : ''} hit
+                </Text>
+              </LinearGradient>
             </View>
+          )}
+        </View>
 
-            {/* Stats grid */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <LinearGradient
-                  colors={['#FF6B35', '#FF8C5A']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.statCardGradient}
-                >
-                  <Text style={styles.statNumber}>{stats.totalSets}</Text>
-                  <Text style={styles.statLabel}>Sets</Text>
-                </LinearGradient>
-              </View>
-              <View style={styles.statCard}>
-                <LinearGradient
-                  colors={['#FF6B35', '#FF8C5A']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.statCardGradient}
-                >
-                  <Text style={styles.statNumber}>{stats.totalReps.toLocaleString()}</Text>
-                  <Text style={styles.statLabel}>Reps</Text>
-                </LinearGradient>
-              </View>
-              <View style={styles.statCard}>
-                <LinearGradient
-                  colors={['#FF6B35', '#FF8C5A']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.statCardGradient}
-                >
-                  <Text style={styles.statNumber}>{stats.exerciseCount}</Text>
-                  <Text style={styles.statLabel}>Exercises</Text>
-                </LinearGradient>
-              </View>
-            </View>
-
-            {/* PR badge if any */}
-            {stats.prCount > 0 && (
-              <View style={styles.prBadge}>
-                <LinearGradient
-                  colors={['#FF6B35', '#FF8C5A']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.prBadgeGradient}
-                >
-                  <Text style={styles.prEmoji}>🏆</Text>
-                  <Text style={styles.prText}>
-                    {stats.prCount} PR{stats.prCount > 1 ? 's' : ''} hit
-                  </Text>
-                </LinearGradient>
-              </View>
-            )}
+        {/* Bottom Section: Branding */}
+        <View style={styles.bottomSection}>
+          <View style={styles.brandContainer}>
+            <View style={styles.brandLine} />
+            <Text style={styles.brandText}>REP AI</Text>
+            <View style={styles.brandLine} />
           </View>
+        </View>
+      </LinearGradient>
+    </View>
+  )
+})
 
-          {/* Bottom Section: Branding */}
-          <View style={styles.bottomSection}>
-            <View style={styles.brandContainer}>
-              <View style={styles.brandLine} />
-              <Text style={styles.brandText}>REP AI</Text>
-              <View style={styles.brandLine} />
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
-    );
-  }
-);
-
-StatsMetricsWidget.displayName = 'StatsMetricsWidget';
+StatsMetricsWidget.displayName = 'StatsMetricsWidget'
 
 const styles = StyleSheet.create({
   container: {
@@ -320,5 +331,4 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     letterSpacing: 4,
   },
-});
-
+})

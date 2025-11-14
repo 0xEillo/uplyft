@@ -4,8 +4,6 @@ import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
   Exercise,
   Follow,
-  Notification,
-  NotificationWithProfiles,
   ParsedWorkout,
   Profile,
   WorkoutComment,

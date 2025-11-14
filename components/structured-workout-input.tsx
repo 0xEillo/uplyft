@@ -121,9 +121,9 @@ export function StructuredWorkoutInput({
       })
   })
 
-  const [restTimerStarts, setRestTimerStarts] = useState<Record<string, number>>(
-    {},
-  )
+  const [restTimerStarts, setRestTimerStarts] = useState<
+    Record<string, number>
+  >({})
   const previousSetCountsRef = useRef(new Map<string, number>())
   const [, forceTimerTick] = useState(0)
 
@@ -136,12 +136,20 @@ export function StructuredWorkoutInput({
         onDataChange(initialExercises)
       }
       isInitialMount.current = false
-    } else if (initialExercises === undefined && exercises.length > 0 && !routine) {
+    } else if (
+      initialExercises === undefined &&
+      exercises.length > 0 &&
+      !routine
+    ) {
       // Don't clear exercises if initialExercises becomes undefined but we have exercises and no routine
       // This prevents clearing when the component re-renders during state updates
       isInitialMount.current = false
       return
-    } else if (initialExercises === undefined && exercises.length === 0 && !routine) {
+    } else if (
+      initialExercises === undefined &&
+      exercises.length === 0 &&
+      !routine
+    ) {
       // Only clear if we truly have no exercises and no routine
       isInitialMount.current = false
       // Don't call setExercises([]) - already empty
@@ -190,7 +198,7 @@ export function StructuredWorkoutInput({
             }),
           }
         })
-      
+
       setExercises(newExercises)
       onDataChange(newExercises)
     }
@@ -275,7 +283,7 @@ export function StructuredWorkoutInput({
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     const newExercises = [...exercises]
     const exercise = newExercises[exerciseIndex]
-    
+
     // Create a new empty set
     const newSet: SetData = {
       weight: '',
@@ -285,25 +293,22 @@ export function StructuredWorkoutInput({
       targetRepsMin: null,
       targetRepsMax: null,
     }
-    
+
     exercise.sets.push(newSet)
     setExercises(newExercises)
     onDataChange(newExercises)
   }
 
-  const handleDeleteSet = async (
-    exerciseIndex: number,
-    setIndex: number,
-  ) => {
+  const handleDeleteSet = async (exerciseIndex: number, setIndex: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     const newExercises = [...exercises]
     const exercise = newExercises[exerciseIndex]
-    
+
     // Don't allow deleting if only one set remains
     if (exercise.sets.length <= 1) {
       return
     }
-    
+
     exercise.sets.splice(setIndex, 1)
     setExercises(newExercises)
     onDataChange(newExercises)
@@ -334,11 +339,7 @@ export function StructuredWorkoutInput({
                 onPress={() => handleDeleteExercise(exerciseIndex)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons
-                  name="close-circle"
-                  size={20}
-                  color={colors.error}
-                />
+                <Ionicons name="close-circle" size={20} color={colors.error} />
               </TouchableOpacity>
             </View>
 
@@ -359,8 +360,14 @@ export function StructuredWorkoutInput({
                   <Text style={styles.setText}>Set {setIndex + 1}: </Text>
                   <TextInput
                     style={styles.inlineInput}
-                    placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'}
-                    placeholderTextColor={set.lastWorkoutWeight ? colors.textTertiary : colors.textPlaceholder}
+                    placeholder={
+                      set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
+                    }
+                    placeholderTextColor={
+                      set.lastWorkoutWeight
+                        ? colors.textTertiary
+                        : colors.textPlaceholder
+                    }
                     keyboardType="decimal-pad"
                     value={set.weight}
                     onChangeText={(value) =>
@@ -374,8 +381,14 @@ export function StructuredWorkoutInput({
                   <Text style={styles.setText}> {unitDisplay} x </Text>
                   <TextInput
                     style={styles.inlineInput}
-                    placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '___'}
-                    placeholderTextColor={set.lastWorkoutReps ? colors.textTertiary : colors.textPlaceholder}
+                    placeholder={
+                      set.lastWorkoutReps ? set.lastWorkoutReps : '___'
+                    }
+                    placeholderTextColor={
+                      set.lastWorkoutReps
+                        ? colors.textTertiary
+                        : colors.textPlaceholder
+                    }
                     keyboardType="number-pad"
                     value={set.reps}
                     onChangeText={(value) =>
@@ -390,23 +403,24 @@ export function StructuredWorkoutInput({
                   {targetText && (
                     <Text style={styles.targetText}>{targetText}</Text>
                   )}
-                  {setIndex === exercise.sets.length - 1 && exercise.sets.length > 1 && (
-                    <TouchableOpacity
-                      style={styles.deleteSetButton}
-                      onPress={() => handleDeleteSet(exerciseIndex, setIndex)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={18}
-                        color={colors.textTertiary}
-                      />
-                    </TouchableOpacity>
-                  )}
+                  {setIndex === exercise.sets.length - 1 &&
+                    exercise.sets.length > 1 && (
+                      <TouchableOpacity
+                        style={styles.deleteSetButton}
+                        onPress={() => handleDeleteSet(exerciseIndex, setIndex)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={18}
+                          color={colors.textTertiary}
+                        />
+                      </TouchableOpacity>
+                    )}
                 </View>
               )
             })}
-            
+
             {/* Add Set Button */}
             <TouchableOpacity
               style={styles.addSetButton}

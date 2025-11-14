@@ -1,104 +1,112 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { WorkoutSessionWithDetails } from '@/types/database.types';
-import { useThemedColors } from '@/hooks/useThemedColors';
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { LinearGradient } from 'expo-linear-gradient'
+import React from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 
 const formatStopwatch = (seconds: number) => {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(safeSeconds / 3600);
-  const mins = Math.floor((safeSeconds % 3600) / 60);
-  const secs = safeSeconds % 60;
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safeSeconds / 3600)
+  const mins = Math.floor((safeSeconds % 3600) / 60)
+  const secs = safeSeconds % 60
 
   if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}:${mins
+      .toString()
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
-
-interface WorkoutSummaryWidgetProps {
-  workout: WorkoutSessionWithDetails;
-  weightUnit: 'kg' | 'lb';
-  workoutTitle?: string;
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`
 }
 
-export const WorkoutSummaryWidget = React.forwardRef<View, WorkoutSummaryWidgetProps>(
-  ({ workout, weightUnit, workoutTitle }, ref) => {
-    const colors = useThemedColors();
-    const durationDisplay = formatStopwatch(workout.duration ?? 0);
+interface WorkoutSummaryWidgetProps {
+  workout: WorkoutSessionWithDetails
+  weightUnit: 'kg' | 'lb'
+  workoutTitle?: string
+}
 
-    return (
-      <View ref={ref} style={styles.container} collapsable={false}>
-        <LinearGradient
-          colors={['#FFFFFF', '#FAFAFA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          {/* Top Section: Date & Title */}
-          <View style={styles.topSection}>
-            <Text style={styles.date}>
-              {new Date(workout.date).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}
-            </Text>
-            {workoutTitle ? (
-              <Text style={styles.title}>{workoutTitle}</Text>
-            ) : (
-              <Text style={styles.title}>Workout Summary</Text>
-            )}
-            <Text style={styles.durationText}>{durationDisplay}</Text>
-          </View>
+export const WorkoutSummaryWidget = React.forwardRef<
+  View,
+  WorkoutSummaryWidgetProps
+>(({ workout, weightUnit, workoutTitle }, ref) => {
+  const colors = useThemedColors()
+  const durationDisplay = formatStopwatch(workout.duration ?? 0)
 
-          {/* Middle Section: Detailed Workout Content */}
-          <View style={styles.middleSection}>
-            {/* Exercise list with set counts */}
-            <View style={styles.exerciseSection}>
-              {workout.workout_exercises?.slice(0, 8).map((exercise, index) => {
-                const sets = exercise.sets || [];
-                const exerciseName = exercise.exercise?.name || 'Exercise';
-                const setCount = sets.length;
+  return (
+    <View ref={ref} style={styles.container} collapsable={false}>
+      <LinearGradient
+        colors={['#FFFFFF', '#FAFAFA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
+        {/* Top Section: Date & Title */}
+        <View style={styles.topSection}>
+          <Text style={styles.date}>
+            {new Date(workout.date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </Text>
+          {workoutTitle ? (
+            <Text style={styles.title}>{workoutTitle}</Text>
+          ) : (
+            <Text style={styles.title}>Workout Summary</Text>
+          )}
+          <Text style={styles.durationText}>{durationDisplay}</Text>
+        </View>
 
-                return (
-                  <View key={index} style={styles.exerciseRow}>
-                    <View style={styles.exerciseIndicator}>
-                      <View style={styles.exerciseDot} />
-                    </View>
-                    <Text style={styles.exerciseName} numberOfLines={1}>
-                      {exerciseName}
-                    </Text>
-                    <Text style={styles.setCount}>
-                      {setCount > 0 ? `${setCount} set${setCount > 1 ? 's' : ''}` : 'No sets'}
-                    </Text>
+        {/* Middle Section: Detailed Workout Content */}
+        <View style={styles.middleSection}>
+          {/* Exercise list with set counts */}
+          <View style={styles.exerciseSection}>
+            {workout.workout_exercises?.slice(0, 8).map((exercise, index) => {
+              const sets = exercise.sets || []
+              const exerciseName = exercise.exercise?.name || 'Exercise'
+              const setCount = sets.length
+
+              return (
+                <View key={index} style={styles.exerciseRow}>
+                  <View style={styles.exerciseIndicator}>
+                    <View style={styles.exerciseDot} />
                   </View>
-                );
-              })}
-              {workout.workout_exercises && workout.workout_exercises.length > 8 && (
+                  <Text style={styles.exerciseName} numberOfLines={1}>
+                    {exerciseName}
+                  </Text>
+                  <Text style={styles.setCount}>
+                    {setCount > 0
+                      ? `${setCount} set${setCount > 1 ? 's' : ''}`
+                      : 'No sets'}
+                  </Text>
+                </View>
+              )
+            })}
+            {workout.workout_exercises &&
+              workout.workout_exercises.length > 8 && (
                 <Text style={styles.moreExercises}>
                   +{workout.workout_exercises.length - 8} more exercises
                 </Text>
               )}
-            </View>
           </View>
+        </View>
 
-          {/* Bottom Section: Branding */}
-          <View style={styles.bottomSection}>
-            <View style={styles.brandContainer}>
-              <View style={styles.brandLine} />
-              <Text style={styles.brandText}>REP AI</Text>
-              <View style={styles.brandLine} />
-            </View>
+        {/* Bottom Section: Branding */}
+        <View style={styles.bottomSection}>
+          <View style={styles.brandContainer}>
+            <View style={styles.brandLine} />
+            <Text style={styles.brandText}>REP AI</Text>
+            <View style={styles.brandLine} />
           </View>
-        </LinearGradient>
-      </View>
-    );
-  }
-);
+        </View>
+      </LinearGradient>
+    </View>
+  )
+})
 
-WorkoutSummaryWidget.displayName = 'WorkoutSummaryWidget';
+WorkoutSummaryWidget.displayName = 'WorkoutSummaryWidget'
 
 const styles = StyleSheet.create({
   container: {
@@ -208,5 +216,4 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     letterSpacing: 4,
   },
-});
-
+})
