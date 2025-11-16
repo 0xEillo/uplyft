@@ -18,7 +18,6 @@ import {
 } from 'react-native'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
-import { getWorkoutCountThisWeek } from '@/lib/utils/workout-stats'
 
 // Constants
 const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
@@ -32,7 +31,9 @@ const formatDurationCompact = (seconds: number) => {
   const secs = safeSeconds % 60
 
   if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${hours}:${mins
+      .toString()
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
@@ -105,6 +106,9 @@ export interface FeedCardProps {
   isLiked?: boolean
   onLike?: () => void
   onComment?: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+  onCreateRoutine?: () => void
 }
 
 /**
@@ -155,7 +159,8 @@ export const FeedCard = memo(function FeedCard({
   // Skeleton shimmer animation for pending state
   const shimmerAnim = useRef(new Animated.Value(0)).current
   const pulseAnim = useRef(new Animated.Value(0)).current
-  const exercisesFadeAnim = useRef(new Animated.Value(isPending ? 0 : 1)).current
+  const exercisesFadeAnim = useRef(new Animated.Value(isPending ? 0 : 1))
+    .current
   const [analyzingDots, setAnalyzingDots] = useState('')
 
   const styles = createStyles(colors, isDark)
@@ -253,7 +258,11 @@ export const FeedCard = memo(function FeedCard({
     setShowShareScreen(false)
   }
 
-  const handleShareWidget = async (widgetIndex: number, shareType: 'instagram' | 'general', widgetRef: View) => {
+  const handleShareWidget = async (
+    widgetIndex: number,
+    shareType: 'instagram' | 'general',
+    widgetRef: View,
+  ) => {
     await shareWorkoutWidget(widgetRef, shareType)
   }
 
@@ -297,7 +306,9 @@ export const FeedCard = memo(function FeedCard({
           pressed && onCardPress && styles.titleContainerPressed,
         ]}
       >
-        {workoutTitle && <Text style={styles.workoutTitle}>{workoutTitle}</Text>}
+        {workoutTitle && (
+          <Text style={styles.workoutTitle}>{workoutTitle}</Text>
+        )}
         {workoutDescription && (
           <Text style={styles.workoutDescription}>{workoutDescription}</Text>
         )}
@@ -375,7 +386,6 @@ export const FeedCard = memo(function FeedCard({
         disabled={!onCardPress || isPending}
         style={styles.exercisesContainer}
       >
-
         {/* Skeleton Rows (when pending) */}
         {isPending && (
           <>
@@ -414,7 +424,8 @@ export const FeedCard = memo(function FeedCard({
                   key={index}
                   style={[
                     styles.exerciseRow,
-                    index === displayedExercises.length - 1 && styles.lastExerciseRow,
+                    index === displayedExercises.length - 1 &&
+                      styles.lastExerciseRow,
                   ]}
                 >
                   <View style={styles.exerciseNameContainer}>
@@ -450,7 +461,10 @@ export const FeedCard = memo(function FeedCard({
                 style={styles.seeMoreButton}
               >
                 <Text style={styles.seeMoreText}>
-                  See {exercises.length - PREVIEW_LIMIT} more {exercises.length - PREVIEW_LIMIT === 1 ? 'exercise' : 'exercises'}
+                  See {exercises.length - PREVIEW_LIMIT} more{' '}
+                  {exercises.length - PREVIEW_LIMIT === 1
+                    ? 'exercise'
+                    : 'exercises'}
                 </Text>
                 <Ionicons
                   name="chevron-forward"
@@ -596,7 +610,10 @@ export const FeedCard = memo(function FeedCard({
   )
 })
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolean) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.white,

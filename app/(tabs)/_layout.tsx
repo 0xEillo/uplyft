@@ -32,7 +32,25 @@ const PENDING_POST_KEY = '@pending_workout_post'
 function ElevatedPlusButton() {
   const colors = useThemedColors()
   const router = useRouter()
-  const styles = createStyles(colors)
+  const [hasDraft, setHasDraft] = useState(false)
+
+  // Check for draft on mount and when returning from create-post
+  useEffect(() => {
+    const checkDraft = async () => {
+      const draftExists = await hasStoredDraft()
+      setHasDraft(draftExists)
+      console.log('[ElevatedPlusButton] Draft exists:', draftExists)
+    }
+
+    checkDraft()
+
+    // Check every second while mounted
+    const interval = setInterval(checkDraft, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const styles = createStyles(colors, hasDraft)
 
   return (
     <TouchableOpacity
@@ -41,7 +59,7 @@ function ElevatedPlusButton() {
       activeOpacity={0.8}
     >
       <Ionicons
-        name="add"
+        name={hasDraft ? "document-text" : "add"}
         size={28}
         color={colors.white}
       />
@@ -58,6 +76,10 @@ function TabLayoutContent() {
 
   // Track if we've already shown the share screen for this workout
   const shownWorkoutIdRef = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    console.log('[TabLayout] Tabs configured with backBehavior="history"')
+  }, [])
 
   // Watch for workout data updates and show share screen when workout is ready
   React.useEffect(() => {
@@ -100,6 +122,7 @@ function TabLayoutContent() {
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <Tabs
+        backBehavior="history"
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
           headerShown: false,
@@ -121,11 +144,11 @@ function TabLayoutContent() {
           },
         }}
       >
-        {/* Feed tab */}
+        {/* Home tab */}
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Feed',
+            title: 'Home',
             tabBarIcon: ({ color }) => (
               <IconSymbol size={28} name="house.fill" color={color} />
             ),
@@ -178,13 +201,6 @@ function TabLayoutContent() {
         />
         {/* Hidden screens */}
         <Tabs.Screen
-          name="explore"
-          options={{
-            href: null,
-            tabBarStyle: { display: 'none' },
-          }}
-        />
-        <Tabs.Screen
           name="create-post"
           options={{
             href: null,
@@ -232,16 +248,16 @@ export default function TabLayout() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>, hasDraft: boolean = false) =>
   StyleSheet.create({
     elevatedButton: {
       width: 64,
       height: 64,
       borderRadius: 32,
-      backgroundColor: colors.primary,
+      backgroundColor: hasDraft ? '#EF4444' : colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.primary,
+      shadowColor: hasDraft ? '#EF4444' : colors.primary,
       shadowOffset: {
         width: 0,
         height: 6,
@@ -249,6 +265,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowOpacity: 0.4,
       shadowRadius: 12,
       elevation: 12,
-      marginTop: -74,
+      marginTop: -72,
     },
   })

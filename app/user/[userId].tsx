@@ -1,17 +1,23 @@
 import { FeedCard } from '@/components/feed-card'
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { database } from '@/lib/database'
+import { database, PrivacyError } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
+import {
+  FollowRelationshipStatus,
+  WorkoutSessionWithDetails,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
+import React, { useCallback, useState } from 'react'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -26,31 +32,105 @@ export default function UserProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
+  const { weightUnit } = useWeightUnits()
+  const insets = useSafeAreaInsets()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [userName, setUserName] = useState('')
   const [userTag, setUserTag] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [privacyLocked, setPrivacyLocked] = useState(false)
+  const [relationship, setRelationship] = useState<FollowRelationshipStatus | null>(null)
+  const [relationshipBusy, setRelationshipBusy] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [shouldExit, setShouldExit] = useState(false)
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
+  const [weeklyVolume, setWeeklyVolume] = useState(0)
+
+  // Log when component mounts/unmounts
+  React.useEffect(() => {
+    console.log('[UserProfile] 🎬 Component MOUNTED - userId:', userId)
+    return () => {
+      console.log('[UserProfile] 💀 Component UNMOUNTED - userId:', userId)
+    }
+  }, [userId])
+
+  // Log focus events
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[UserProfile] 👁️ Screen FOCUSED - userId:', userId)
+      return () => {
+        console.log('[UserProfile] 😴 Screen UNFOCUSED - userId:', userId)
+      }
+    }, [userId])
+  )
 
   const loadUserData = useCallback(async () => {
     if (!userId) return
 
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      const workoutData = await database.workoutSessions.getRecent(userId, 20)
-      setWorkouts(workoutData)
-
-      // Try to load profile, but don't fail if it doesn't exist
       try {
         const profileData = await database.profiles.getById(userId)
-        setUserName(profileData.display_name)
-        setUserTag(profileData.user_tag)
-        setAvatarUrl(profileData.avatar_url)
+        if (profileData) {
+          setUserName(profileData.display_name)
+          setUserTag(profileData.user_tag)
+          setAvatarUrl(profileData.avatar_url)
+        } else {
+          setUserName('User')
+          setUserTag('')
+          setAvatarUrl(null)
+        }
       } catch (profileError) {
         console.error('Profile not found, using defaults:', profileError)
         setUserName('User')
         setUserTag('')
         setAvatarUrl(null)
+      }
+
+      try {
+        // Calculate start of week (Sunday)
+        const now = new Date()
+        const startOfWeek = new Date(now)
+        startOfWeek.setDate(now.getDate() - now.getDay())
+        startOfWeek.setHours(0, 0, 0, 0)
+
+        const workoutData = await database.workoutSessions.getRecent(userId, 20)
+        setWorkouts(workoutData)
+        setPrivacyLocked(false)
+
+        // Calculate weekly stats
+        const weekCount = workoutData.filter((w) => {
+          const workoutDate = new Date(w.date)
+          return workoutDate >= startOfWeek
+        }).length
+
+        let totalVolume = 0
+        workoutData.forEach((workout) => {
+          const workoutDate = new Date(workout.date)
+          if (workoutDate >= startOfWeek) {
+            workout.workout_exercises?.forEach((exercise) => {
+              exercise.sets?.forEach((set) => {
+                if (set.weight && set.reps) {
+                  totalVolume += set.weight * set.reps
+                }
+              })
+            })
+          }
+        })
+
+        setWeeklyWorkouts(weekCount)
+        setWeeklyVolume(totalVolume)
+      } catch (workoutError) {
+        if (workoutError instanceof PrivacyError) {
+          setPrivacyLocked(true)
+          setWorkouts([])
+          setWeeklyWorkouts(0)
+          setWeeklyVolume(0)
+        } else {
+          throw workoutError
+        }
       }
     } catch (error) {
       console.error('Error loading user data:', error)
@@ -59,84 +139,324 @@ export default function UserProfileScreen() {
     }
   }, [userId])
 
+  const loadRelationship = useCallback(async () => {
+    if (!user || !userId || user.id === userId) {
+      setRelationship(null)
+      return
+    }
+
+    try {
+      const [status] = await database.relationships.getStatuses(user.id, [userId])
+      setRelationship(status ?? null)
+    } catch (error) {
+      console.error('Error loading relationship status:', error)
+    }
+  }, [user, userId])
+
+  const loadFollowCounts = useCallback(async () => {
+    if (!userId) return
+
+    try {
+      const counts = await database.follows.getCounts(userId)
+      setFollowerCount(counts.followers)
+      setFollowingCount(counts.following)
+    } catch (error) {
+      console.error('Error loading follow counts:', error)
+    }
+  }, [userId])
+
+  const handleFollowAction = useCallback(async () => {
+    if (!user || !userId || relationshipBusy) return
+    if (!relationship) return
+
+    try {
+      setRelationshipBusy(true)
+      if (relationship.is_following) {
+        await database.follows.unfollow(user.id, userId)
+        setRelationship((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_following: false,
+              }
+            : prev,
+        )
+        // Reload follow counts after unfollowing
+        await loadFollowCounts()
+      } else {
+        const result = await database.follows.follow(user.id, userId)
+        if (result.status === 'following' || result.status === 'already_following') {
+          setRelationship((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  is_following: true,
+                  has_pending_request: false,
+                  request_id: null,
+                }
+              : prev,
+          )
+          // Reload user data and follow counts after following
+          await loadUserData()
+          await loadFollowCounts()
+        } else {
+          setRelationship((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  has_pending_request: true,
+                  request_id: result.requestId ?? null,
+                }
+              : prev,
+          )
+        }
+      }
+    } catch (error) {
+      console.error('Error updating follow state:', error)
+      Alert.alert('Error', 'Unable to update follow status right now.')
+    } finally {
+      setRelationshipBusy(false)
+    }
+  }, [user, userId, relationship, relationshipBusy, loadUserData, loadFollowCounts])
+
   useFocusEffect(
     useCallback(() => {
       loadUserData()
-    }, [loadUserData]),
+      loadRelationship()
+      loadFollowCounts()
+    }, [loadUserData, loadRelationship, loadFollowCounts]),
   )
 
   const styles = createStyles(colors)
   const isOwnProfile = user?.id === userId
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-        {isOwnProfile ? (
-          <TouchableOpacity onPress={() => router.push('/account-settings')}>
-            <Ionicons name="settings-outline" size={24} color={colors.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.placeholder} />
-        )}
-      </View>
+  const handleBack = useCallback(() => {
+    console.log('[UserProfile] ⬅️ Back button pressed, starting exit animation')
+    setShouldExit(true)
+  }, [])
 
+  const handleExitComplete = useCallback(() => {
+    console.log('[UserProfile] ✅ Exit animation complete, navigating back to search')
+    router.back()
+  }, [router])
+
+  const renderFollowButton = () => {
+    if (isOwnProfile) return null
+
+    if (!user) {
+      return (
+        <TouchableOpacity
+          style={[styles.followActionButton, styles.followActionButtonPending]}
+          onPress={() => router.push('/(auth)/welcome')}
+        >
+          <Text
+            style={[
+              styles.followActionButtonText,
+              styles.followActionButtonTextPending,
+            ]}
+          >
+            Sign in to follow
+          </Text>
+        </TouchableOpacity>
+      )
+    }
+
+    const isFollowing = relationship?.is_following ?? false
+    const isPending = relationship?.has_pending_request ?? false
+    const hasIncoming = relationship?.has_incoming_request ?? false
+    const isPrivate = relationship?.is_private ?? false
+    const label = hasIncoming
+      ? 'Requested you'
+      : isPending
+      ? 'Pending'
+      : isFollowing
+      ? 'Following'
+      : isPrivate
+      ? 'Request to follow'
+      : 'Follow'
+
+    const buttonStyles = [
+      styles.followActionButton,
+      isFollowing && styles.followActionButtonFollowing,
+      (isPending || hasIncoming) && styles.followActionButtonPending,
+    ]
+
+    const textStyles = [
+      styles.followActionButtonText,
+      isFollowing && styles.followActionButtonTextFollowing,
+      (isPending || hasIncoming) && styles.followActionButtonTextPending,
+    ]
+
+    return (
+      <TouchableOpacity
+        style={buttonStyles}
+        onPress={() => {
+          if (hasIncoming) {
+            router.push('/follow-requests')
+            return
+          }
+          if (isPending) {
+            return
+          }
+          handleFollowAction()
+        }}
+        disabled={relationshipBusy || isPending}
+      >
+        {relationshipBusy && !isFollowing ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <Text style={textStyles}>{label}</Text>
+        )}
+      </TouchableOpacity>
+    )
+  }
+
+  return (
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Status bar background */}
+        <View style={[styles.statusBarBackground, { height: insets.top }]} />
       {/* Scrollable Content */}
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Info */}
-        <View style={styles.profileSection}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={48} color="#fff" />
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          {/* Back Button */}
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          {/* Profile Section with Avatar and Info */}
+          <View style={styles.profileSection}>
+            {/* Avatar and Name Row */}
+            <View style={styles.profileTop}>
+              {/* Avatar */}
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Ionicons name="person" size={36} color={colors.white} />
+                </View>
+              )}
+
+              {/* Name */}
+              <View style={styles.nameContainer}>
+                <Text style={styles.displayName}>{userName || 'User'}</Text>
+                {userTag && (
+                  <Text style={styles.userTag}>@{userTag}</Text>
+                )}
+              </View>
             </View>
-          )}
-          <Text style={styles.userName}>{userName}</Text>
-          {userTag && <Text style={styles.userTag}>@{userTag}</Text>}
+
+            {/* Stats Row - Below Avatar */}
+            <View style={styles.statsRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statNumber}>{workouts.length}</Text>
+                <Text style={styles.statLabel}>Workouts</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statNumber}>{followerCount}</Text>
+                <Text style={styles.statLabel}>Followers</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statNumber}>{followingCount}</Text>
+                <Text style={styles.statLabel}>Following</Text>
+              </View>
+            </View>
+
+            {/* Follow Button */}
+            {!isOwnProfile && !privacyLocked && (
+              <View style={styles.followButtonContainer}>
+                {renderFollowButton()}
+              </View>
+            )}
+          </View>
+
+          {/* This Week Stats Section */}
+          <View style={styles.weeklyStatsSection}>
+            <View style={styles.weeklyStatsHeader}>
+              <Ionicons name="calendar-outline" size={20} color={colors.text} />
+              <Text style={styles.weeklyStatsTitle}>This Week</Text>
+            </View>
+            <View style={styles.weeklyStats}>
+              <View style={styles.weeklyStat}>
+                <Text style={styles.weeklyStatNumber}>{weeklyWorkouts}</Text>
+                <Text style={styles.weeklyStatLabel}>Workouts</Text>
+              </View>
+              <View style={styles.weeklyStatDivider} />
+              <View style={styles.weeklyStat}>
+                <Text style={styles.weeklyStatNumber}>
+                  {(weightUnit === 'lb' ? (weeklyVolume * 2.20462) / 1000 : weeklyVolume / 1000).toFixed(1)}k
+                </Text>
+                <Text style={styles.weeklyStatLabel}>Volume ({weightUnit})</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Workouts Divider */}
+          <View style={styles.divider} />
         </View>
 
-        {/* Tab Header (Log only for other users) */}
-        <View style={styles.tabHeader}>
-          <Text style={styles.tabHeaderText}>Workout Log</Text>
-        </View>
-
-        {/* Workout Posts */}
-        <View style={styles.logContent}>
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+        {privacyLocked && !isOwnProfile ? (
+          <View style={styles.lockedCard}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={48}
+              color={colors.primary}
+              style={styles.lockedIcon}
+            />
+            <Text style={styles.lockedTitle}>This athlete is private</Text>
+            <Text style={styles.lockedMessage}>
+              Request to follow to unlock their workouts and stats.
+            </Text>
+            {renderFollowButton()}
+          </View>
+        ) : (
+          <>
+            {/* Workout Posts */}
+            <View style={styles.logContent}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              ) : workouts.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons
+                    name="barbell-outline"
+                    size={64}
+                    color={colors.textPlaceholder}
+                  />
+                  <Text style={styles.emptyText}>No workouts yet</Text>
+                </View>
+              ) : (
+                workouts.map((workout) => (
+                  <AsyncPrFeedCard
+                    key={workout.id}
+                    workout={workout}
+                    userId={userId}
+                    userName={userName}
+                    avatarUrl={avatarUrl}
+                  />
+                ))
+              )}
             </View>
-          ) : workouts.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="barbell-outline"
-                size={64}
-                color={colors.textPlaceholder}
-              />
-              <Text style={styles.emptyText}>No workouts yet</Text>
-            </View>
-          ) : (
-            workouts.map((workout) => (
-              <AsyncPrFeedCard
-                key={workout.id}
-                workout={workout}
-                userId={userId}
-                userName={userName}
-                avatarUrl={avatarUrl}
-              />
-            ))
-          )}
-        </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
+    </SlideInView>
   )
 }
 
@@ -156,6 +476,7 @@ function AsyncPrFeedCard({
   const [isComputed, setIsComputed] = useState(false)
   const { weightUnit } = useWeightUnits()
   const router = useRouter()
+  const pathname = usePathname()
 
   const compute = useCallback(async () => {
     if (isComputed) return
@@ -205,8 +526,17 @@ function AsyncPrFeedCard({
   }, [workout.id, router])
 
   const handleCardPress = useCallback(() => {
-    router.push(`/workout/${workout.id}`)
-  }, [workout.id, router])
+    console.log('🚀 [UserProfile->WorkoutDetail] Navigation')
+    console.log('   From: /user/' + userId)
+    console.log('   To: /workout/' + workout.id)
+    router.push({
+      pathname: '/workout/[workoutId]',
+      params: {
+        workoutId: workout.id,
+        returnTo: pathname,
+      },
+    })
+  }, [workout.id, userId, router, pathname])
 
   return (
     <FeedCard
@@ -241,69 +571,191 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+    statusBarBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      zIndex: 0,
     },
-    headerTitle: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: colors.text,
+    profileHeader: {
+      backgroundColor: colors.white,
     },
-    placeholder: {
-      width: 24,
+    backButton: {
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 8,
     },
     profileSection: {
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 20,
+    },
+    profileTop: {
+      flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 24,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      marginBottom: 16,
     },
     avatar: {
       width: 80,
       height: 80,
       borderRadius: 40,
+    },
+    avatarPlaceholder: {
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 12,
     },
-    userName: {
+    nameContainer: {
+      marginLeft: 16,
+      justifyContent: 'center',
+    },
+    displayName: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
+      marginBottom: 2,
     },
     userTag: {
-      fontSize: 15,
-      fontWeight: '500',
+      fontSize: 13,
       color: colors.textSecondary,
-      marginTop: 4,
     },
-    tabHeader: {
-      paddingVertical: 16,
-      paddingHorizontal: 20,
-      backgroundColor: colors.white,
-      borderBottomWidth: 2,
-      borderBottomColor: colors.primary,
+    statsRow: {
+      flexDirection: 'row',
+      gap: 20,
+      marginBottom: 16,
     },
-    tabHeaderText: {
+    stat: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 4,
+    },
+    statNumber: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    statLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '400',
+    },
+    followButtonContainer: {
+      marginTop: 0,
+    },
+    weeklyStatsSection: {
+      backgroundColor: colors.backgroundLight,
+      marginHorizontal: 20,
+      marginBottom: 8,
+      borderRadius: 12,
+      padding: 16,
+    },
+    weeklyStatsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    weeklyStatsTitle: {
       fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    weeklyStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    weeklyStat: {
+      flex: 1,
+    },
+    weeklyStatNumber: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    weeklyStatLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    weeklyStatDivider: {
+      width: 1,
+      height: 40,
+      backgroundColor: colors.border,
+      marginHorizontal: 16,
+    },
+    divider: {
+      height: 4,
+      backgroundColor: colors.background,
+    },
+    followActionButton: {
+      width: '100%',
+      backgroundColor: colors.primary,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: 6,
+      paddingVertical: 7,
+      alignItems: 'center',
+    },
+    followActionButtonFollowing: {
+      backgroundColor: colors.white,
+      borderColor: colors.border,
+    },
+    followActionButtonPending: {
+      backgroundColor: colors.backgroundLight,
+      borderColor: colors.border,
+    },
+    followActionButtonText: {
+      fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.white,
+    },
+    followActionButtonTextFollowing: {
+      color: colors.text,
+    },
+    followActionButtonTextPending: {
+      color: colors.textSecondary,
+    },
+    lockedCard: {
+      margin: 20,
+      padding: 32,
+      borderRadius: 16,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    lockedIcon: {
+      marginBottom: 16,
+    },
+    lockedTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
       textAlign: 'center',
+      marginBottom: 8,
+    },
+    lockedMessage: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+      lineHeight: 22,
+      paddingHorizontal: 8,
     },
     scrollView: {
       flex: 1,
     },
     logContent: {
       padding: 16,
+      paddingTop: 0,
     },
     loadingContainer: {
       paddingVertical: 64,
@@ -311,14 +763,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     emptyState: {
-      paddingVertical: 64,
+      paddingVertical: 80,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: colors.white,
+      marginHorizontal: 16,
+      marginVertical: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     emptyText: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '600',
-      color: colors.textTertiary,
+      color: colors.textSecondary,
       marginTop: 16,
     },
   })

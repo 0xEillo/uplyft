@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -30,6 +30,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const { isDark, toggleTheme } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit } = useWeightUnits()
@@ -42,6 +43,10 @@ export default function SettingsScreen() {
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [pendingRequestCount, setPendingRequestCount] = useState(0)
+  const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
+  const resolvedReturnTo =
+    Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
   const loadProfile = useCallback(async () => {
     if (!user?.email) return
@@ -57,9 +62,60 @@ export default function SettingsScreen() {
     }
   }, [user?.email, user?.id])
 
+  const loadPendingRequests = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const count = await database.followRequests.countIncomingPending(user.id)
+      setPendingRequestCount(count)
+    } catch (error) {
+      console.error('Error loading follow requests count:', error)
+    }
+  }, [user])
+
+  const handleTogglePrivacy = useCallback(async () => {
+    if (!user || !profile) return
+
+    const nextValue = !profile.is_private
+    try {
+      setIsPrivacyUpdating(true)
+      const updated = await database.profiles.update(user.id, {
+        is_private: nextValue,
+      })
+      setProfile(updated)
+    } catch (error) {
+      console.error('Error toggling privacy:', error)
+      Alert.alert(
+        'Error',
+        'Unable to update privacy settings right now. Please try again.',
+      )
+    } finally {
+      setIsPrivacyUpdating(false)
+    }
+  }, [user, profile])
+
+  const handleOpenFollowRequests = useCallback(() => {
+    router.push('/follow-requests')
+  }, [router])
+
+  const handleGoBack = useCallback(() => {
+    if (resolvedReturnTo) {
+      router.replace(resolvedReturnTo)
+      return
+    }
+    router.back()
+  }, [resolvedReturnTo, router])
+
   useEffect(() => {
     loadProfile()
-  }, [loadProfile])
+    loadPendingRequests()
+  }, [loadProfile, loadPendingRequests])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPendingRequests()
+    }, [loadPendingRequests]),
+  )
 
   const styles = createStyles(colors)
 
@@ -400,7 +456,7 @@ export default function SettingsScreen() {
         {/* Status bar background to match navbar */}
         <View style={[styles.statusBarBackground, { height: insets.top }]} />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleGoBack}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Settings</Text>
@@ -419,7 +475,7 @@ export default function SettingsScreen() {
       <View style={[styles.statusBarBackground, { height: insets.top }]} />
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleGoBack}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -669,7 +725,70 @@ export default function SettingsScreen() {
                 thumbColor={isDark ? colors.primary : '#F3F4F6'}
               />
             </View>
+
+            {/* Divider */}
+            <View style={styles.preferenceDivider} />
+
+            {/* Privacy Toggle */}
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <View>
+                  <Text style={styles.preferenceTitle}>Private Profile</Text>
+                  <Text style={styles.preferenceDescription}>
+                    Only approved followers can see your workouts, comments, and likes.
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={profile?.is_private ?? false}
+                onValueChange={handleTogglePrivacy}
+                disabled={!profile || isPrivacyUpdating}
+                trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
+                thumbColor={
+                  profile?.is_private ? colors.primary : '#F3F4F6'
+                }
+              />
+            </View>
           </View>
+        </View>
+
+        {/* Community Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Community</Text>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleOpenFollowRequests}
+            activeOpacity={0.8}
+          >
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="people-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+              <View>
+                <Text style={styles.actionButtonTextNeutral}>Follow Requests</Text>
+                <Text style={styles.actionButtonSubtext}>
+                  Approve new followers or cancel pending invites.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.followRequestRight}>
+              {pendingRequestCount > 0 && (
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingBadgeText}>
+                    {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
+                  </Text>
+                </View>
+              )}
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textLight}
+              />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Support Section */}
@@ -1006,6 +1125,30 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
+    },
+    actionButtonSubtext: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    followRequestRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    pendingBadge: {
+      minWidth: 28,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pendingBadgeText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: '700',
     },
     supportEmail: {
       fontSize: 13,

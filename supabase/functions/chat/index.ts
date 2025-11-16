@@ -270,7 +270,12 @@ async function buildUserContext(
           includeExercises: z.boolean().optional(),
         })
         .partial(),
-      execute: async ({ routineId, routineName, limit, includeExercises } = {}) => {
+      execute: async ({
+        routineId,
+        routineName,
+        limit,
+        includeExercises,
+      } = {}) => {
         const toIso = (value?: string | null) => {
           if (!value) return undefined
           const date = new Date(value)
@@ -355,6 +360,7 @@ async function buildUserContext(
                       setNumber: set.set_number,
                       repsMin: set.reps_min,
                       repsMax: set.reps_max,
+                      restSeconds: set.rest_seconds,
                     })),
             }
           })
@@ -392,7 +398,7 @@ async function buildUserContext(
               order_index,
               notes,
               exercise:exercises (name),
-              sets:workout_routine_sets (id, set_number, reps_min, reps_max)
+              sets:workout_routine_sets (id, set_number, reps_min, reps_max, rest_seconds)
             )
           `,
           )
@@ -473,6 +479,7 @@ async function buildUserContext(
                         setNumber: set.set_number,
                         repsMin: set.reps_min,
                         repsMax: set.reps_max,
+                        restSeconds: set.rest_seconds,
                       })),
                   }))
                 : undefined,

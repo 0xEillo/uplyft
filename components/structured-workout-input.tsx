@@ -5,6 +5,7 @@ import {
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { Audio } from 'expo-av'
 import * as Haptics from 'expo-haptics'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -22,6 +23,7 @@ interface SetData {
   lastWorkoutReps?: string | null
   targetRepsMin?: number | null
   targetRepsMax?: number | null
+  targetRestSeconds?: number | null
 }
 
 interface ExerciseData {
@@ -52,6 +54,14 @@ const formatRestDuration = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+const resolveExerciseRestTarget = (exercise: ExerciseData): number | null => {
+  const firstSetWithRest = exercise.sets.find(
+    (set) => typeof set.targetRestSeconds === 'number' && set.targetRestSeconds > 0,
+  )
+
+  return firstSetWithRest?.targetRestSeconds ?? null
+}
+
 export function StructuredWorkoutInput({
   routine,
   lastWorkout,
@@ -62,6 +72,7 @@ export function StructuredWorkoutInput({
   const { weightUnit, convertToPreferred } = useWeightUnits()
   const styles = createStyles(colors)
   const isInitialMount = useRef(true)
+  const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
 
   // Get the display unit text (kg or lbs)
   const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
@@ -115,6 +126,7 @@ export function StructuredWorkoutInput({
               lastWorkoutReps: lastSet?.reps?.toString() || null,
               targetRepsMin: routineSet?.reps_min ?? null,
               targetRepsMax: routineSet?.reps_max ?? null,
+              targetRestSeconds: routineSet?.rest_seconds ?? null,
             }
           }),
         }
@@ -124,8 +136,14 @@ export function StructuredWorkoutInput({
   const [restTimerStarts, setRestTimerStarts] = useState<
     Record<string, number>
   >({})
-  const previousSetCountsRef = useRef(new Map<string, number>())
-  const [, forceTimerTick] = useState(0)
+  const [activeSetIndex, setActiveSetIndex] = useState<
+    Record<string, number>
+  >({})
+  const [restTimerTick, setRestTimerTick] = useState(0)
+  const [restReady, setRestReady] = useState<Record<string, boolean>>({})
+  const [activeRestTargets, setActiveRestTargets] = useState<
+    Record<string, number | null>
+  >({})
 
   // Update exercises when initialExercises changes
   useEffect(() => {
@@ -194,6 +212,7 @@ export function StructuredWorkoutInput({
                 lastWorkoutReps: lastSet?.reps?.toString() || null,
                 targetRepsMin: routineSet?.reps_min ?? null,
                 targetRepsMax: routineSet?.reps_max ?? null,
+                targetRestSeconds: routineSet?.rest_seconds ?? null,
               }
             }),
           }
@@ -204,30 +223,32 @@ export function StructuredWorkoutInput({
     }
   }, [routine, lastWorkout, initialExercises, convertToPreferred, onDataChange])
 
+useEffect(() => {
+  setRestTimerStarts((prev) => {
+    const activeIds = new Set(exercises.map((exercise) => exercise.id))
+    const next = { ...prev }
+    let changed = false
+
+    Object.keys(next).forEach((id) => {
+      if (!activeIds.has(id)) {
+        delete next[id]
+        changed = true
+      }
+    })
+
+    return changed ? next : prev
+  })
+}, [exercises])
+
   useEffect(() => {
-    setRestTimerStarts((prev) => {
-      let changed = false
+    setRestReady((prev) => {
+      const activeIds = new Set(exercises.map((exercise) => exercise.id))
       const next = { ...prev }
-      const activeIds = new Set<string>()
+      let changed = false
 
-      exercises.forEach((exercise) => {
-        const key = exercise.id
-        activeIds.add(key)
-        const prevCount = previousSetCountsRef.current.get(key)
-        const currentCount = exercise.sets.length
-
-        if (prevCount === undefined || currentCount > prevCount) {
-          next[key] = Date.now()
-          changed = true
-        }
-
-        previousSetCountsRef.current.set(key, currentCount)
-      })
-
-      Object.keys(prev).forEach((key) => {
-        if (!activeIds.has(key)) {
-          delete next[key]
-          previousSetCountsRef.current.delete(key)
+      Object.keys(next).forEach((id) => {
+        if (!activeIds.has(id)) {
+          delete next[id]
           changed = true
         }
       })
@@ -242,11 +263,58 @@ export function StructuredWorkoutInput({
     }
 
     const interval = setInterval(() => {
-      forceTimerTick((tick) => tick + 1)
+      setRestTimerTick((tick) => tick + 1)
     }, 1000)
 
     return () => clearInterval(interval)
   }, [restTimerStarts])
+
+  useEffect(() => {
+    setActiveRestTargets((prev) => {
+      const next = { ...prev }
+      let changed = false
+      const activeIds = new Set(exercises.map((exercise) => exercise.id))
+
+      Object.keys(next).forEach((id) => {
+        if (!activeIds.has(id)) {
+          delete next[id]
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+
+    setRestTimerStarts((prev) => {
+      const next = { ...prev }
+      let changed = false
+      const activeIds = new Set(exercises.map((exercise) => exercise.id))
+
+      Object.keys(next).forEach((id) => {
+        if (!activeIds.has(id)) {
+          delete next[id]
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+
+    setActiveSetIndex((prev) => {
+      const next = { ...prev }
+      let changed = false
+      const activeIds = new Set(exercises.map((exercise) => exercise.id))
+
+      Object.keys(next).forEach((id) => {
+        if (!activeIds.has(id)) {
+          delete next[id]
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [exercises])
 
   const getRestSeconds = useCallback(
     (exerciseId: string) => {
@@ -257,13 +325,163 @@ export function StructuredWorkoutInput({
     [restTimerStarts],
   )
 
+  const playRestCompleteAlert = useCallback(async () => {
+    // Two long vibrations pattern - like a stopwatch ending
+    // First long vibration
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    setTimeout(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    }, 100)
+    setTimeout(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    }, 200)
+
+    // Second long vibration after a pause
+    setTimeout(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    }, 500)
+    setTimeout(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    }, 600)
+    setTimeout(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    }, 700)
+
+    // Play stopwatch-style completion sound - two quick beeps
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      })
+
+      // First beep
+      const { sound: sound1 } = await Audio.Sound.createAsync(
+        { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
+        { shouldPlay: true, volume: 1.0 },
+      )
+
+      // Second beep after short delay
+      setTimeout(async () => {
+        try {
+          const { sound: sound2 } = await Audio.Sound.createAsync(
+            { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
+            { shouldPlay: true, volume: 1.0 },
+          )
+
+          sound2.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              void sound2.unloadAsync()
+            }
+          })
+        } catch (e) {
+          // Ignore second beep error
+        }
+      }, 200)
+
+      // Unload first sound after playing
+      sound1.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          void sound1.unloadAsync()
+        }
+      })
+    } catch (error) {
+      // If sound fails, just continue with haptics
+      console.log('Sound not available, using haptics only')
+    }
+  }, [])
+
+  const restartRestTimer = useCallback(
+    (exerciseId: string, targetSeconds: number | null, setIndex: number) => {
+      setRestTimerStarts((prev) => ({
+        ...prev,
+        [exerciseId]: Date.now(),
+      }))
+
+      setActiveRestTargets((prev) => ({
+        ...prev,
+        [exerciseId]: targetSeconds,
+      }))
+
+      setActiveSetIndex((prev) => ({
+        ...prev,
+        [exerciseId]: setIndex,
+      }))
+
+      setRestReady((prev) => {
+        if (!(exerciseId in prev) || prev[exerciseId] === false) {
+          return prev
+        }
+        return {
+          ...prev,
+          [exerciseId]: false,
+        }
+      })
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (exercises.length === 0) {
+      return
+    }
+
+    exercises.forEach((exercise) => {
+      const activeTarget = activeRestTargets[exercise.id]
+
+      if (!activeTarget) {
+        if (restReady[exercise.id]) {
+          setRestReady((prev) => {
+            if (!prev[exercise.id]) {
+              return prev
+            }
+            const next = { ...prev }
+            delete next[exercise.id]
+            return next
+          })
+        }
+        return
+      }
+
+      const elapsed = getRestSeconds(exercise.id)
+      const hasAlerted = restReady[exercise.id] ?? false
+
+      if (elapsed >= activeTarget && !hasAlerted) {
+        void playRestCompleteAlert()
+        setRestReady((prev) => ({ ...prev, [exercise.id]: true }))
+        setActiveRestTargets((prev) => ({
+          ...prev,
+          [exercise.id]: null,
+        }))
+      } else if (elapsed < activeTarget && hasAlerted) {
+        setRestReady((prev) => {
+          if (!prev[exercise.id]) {
+            return prev
+          }
+          const next = { ...prev }
+          next[exercise.id] = false
+          return next
+        })
+      }
+    })
+  }, [
+    activeRestTargets,
+    exercises,
+    getRestSeconds,
+    playRestCompleteAlert,
+    restReady,
+    restTimerTick,
+  ])
+
   const handleWeightChange = (
     exerciseIndex: number,
     setIndex: number,
     value: string,
   ) => {
     const newExercises = [...exercises]
-    newExercises[exerciseIndex].sets[setIndex].weight = value
+    const set = newExercises[exerciseIndex].sets[setIndex]
+
+    set.weight = value
+
     setExercises(newExercises)
     onDataChange(newExercises)
   }
@@ -274,7 +492,21 @@ export function StructuredWorkoutInput({
     value: string,
   ) => {
     const newExercises = [...exercises]
-    newExercises[exerciseIndex].sets[setIndex].reps = value
+    const set = newExercises[exerciseIndex].sets[setIndex]
+    const repsWasEmpty = !set.reps.trim()
+
+    set.reps = value
+    const repsNowHasData = Boolean(set.reps.trim())
+
+    // Start timer when user enters reps (goes from empty to having data)
+    if (repsWasEmpty && repsNowHasData) {
+      restartRestTimer(
+        newExercises[exerciseIndex].id,
+        set.targetRestSeconds ?? null,
+        setIndex,
+      )
+    }
+
     setExercises(newExercises)
     onDataChange(newExercises)
   }
@@ -292,6 +524,7 @@ export function StructuredWorkoutInput({
       lastWorkoutReps: null,
       targetRepsMin: null,
       targetRepsMax: null,
+      targetRestSeconds: null,
     }
 
     exercise.sets.push(newSet)
@@ -321,19 +554,40 @@ export function StructuredWorkoutInput({
     onDataChange(newExercises)
   }
 
+  const focusNextInput = (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    if (field === 'weight') {
+      // Move to reps field of the same set
+      const repsKey = `${exerciseIndex}-${setIndex}-reps`
+      inputRefs.current[repsKey]?.focus()
+    } else if (field === 'reps') {
+      // Move to weight field of next set
+      const nextSetIndex = setIndex + 1
+      if (nextSetIndex < exercises[exerciseIndex].sets.length) {
+        // Next set in same exercise
+        const weightKey = `${exerciseIndex}-${nextSetIndex}-weight`
+        inputRefs.current[weightKey]?.focus()
+      } else if (exerciseIndex + 1 < exercises.length) {
+        // First set of next exercise
+        const weightKey = `${exerciseIndex + 1}-0-weight`
+        inputRefs.current[weightKey]?.focus()
+      }
+    }
+  }
+
   return (
     <View style={styles.container}>
       {exercises.map((exercise, exerciseIndex) => {
+        const restSeconds = getRestSeconds(exercise.id)
+        const exerciseRestTargetSeconds =
+          activeRestTargets[exercise.id] ?? resolveExerciseRestTarget(exercise)
+        const isRestTimerReady =
+          Boolean(exerciseRestTargetSeconds) && Boolean(restReady[exercise.id])
+
         return (
           <View key={exercise.id} style={styles.exerciseBlock}>
             {/* Exercise Name with delete button */}
             <View style={styles.exerciseHeader}>
-              <View style={styles.exerciseTitleRow}>
-                <Text style={styles.exerciseName}>{exercise.name}</Text>
-                <Text style={styles.restTimerText}>
-                  {formatRestDuration(getRestSeconds(exercise.id))}
-                </Text>
-              </View>
+              <Text style={styles.exerciseName}>{exercise.name}</Text>
               <TouchableOpacity
                 style={styles.deleteExerciseButton}
                 onPress={() => handleDeleteExercise(exerciseIndex)}
@@ -355,10 +609,28 @@ export function StructuredWorkoutInput({
                 }
               }
 
+              // Check if this is the active set for the timer
+              const isActiveSet = activeSetIndex[exercise.id] === setIndex
+              const isTimerRunning = isActiveSet && restTimerStarts[exercise.id]
+              const showTimer = set.targetRestSeconds // Always show if there's a target
+
+              // Calculate remaining time (countdown)
+              let displayTime = set.targetRestSeconds || 0
+              let isAtZero = false
+
+              if (isTimerRunning && set.targetRestSeconds) {
+                const remaining = set.targetRestSeconds - restSeconds
+                displayTime = Math.max(0, remaining) // Stop at 0, don't go negative
+                isAtZero = remaining <= 0
+              }
+
               return (
                 <View key={setIndex} style={styles.setRow}>
                   <Text style={styles.setText}>Set {setIndex + 1}: </Text>
                   <TextInput
+                    ref={(ref) => {
+                      inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref
+                    }}
                     style={styles.inlineInput}
                     placeholder={
                       set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
@@ -373,6 +645,7 @@ export function StructuredWorkoutInput({
                     onChangeText={(value) =>
                       handleWeightChange(exerciseIndex, setIndex, value)
                     }
+                    onSubmitEditing={() => focusNextInput(exerciseIndex, setIndex, 'weight')}
                     returnKeyType="next"
                     cursorColor={colors.primary}
                     selectionColor={colors.primary}
@@ -380,6 +653,9 @@ export function StructuredWorkoutInput({
                   />
                   <Text style={styles.setText}> {unitDisplay} x </Text>
                   <TextInput
+                    ref={(ref) => {
+                      inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref
+                    }}
                     style={styles.inlineInput}
                     placeholder={
                       set.lastWorkoutReps ? set.lastWorkoutReps : '___'
@@ -394,6 +670,7 @@ export function StructuredWorkoutInput({
                     onChangeText={(value) =>
                       handleRepsChange(exerciseIndex, setIndex, value)
                     }
+                    onSubmitEditing={() => focusNextInput(exerciseIndex, setIndex, 'reps')}
                     returnKeyType="next"
                     cursorColor={colors.primary}
                     selectionColor={colors.primary}
@@ -403,20 +680,42 @@ export function StructuredWorkoutInput({
                   {targetText && (
                     <Text style={styles.targetText}>{targetText}</Text>
                   )}
-                  {setIndex === exercise.sets.length - 1 &&
-                    exercise.sets.length > 1 && (
-                      <TouchableOpacity
-                        style={styles.deleteSetButton}
-                        onPress={() => handleDeleteSet(exerciseIndex, setIndex)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  {showTimer && (
+                    <View style={styles.timerContainer}>
+                      <Text
+                        style={[
+                          styles.timerText,
+                          isAtZero && styles.timerTextReady,
+                        ]}
                       >
+                        {formatRestDuration(displayTime)}
+                      </Text>
+                      {isAtZero && (
                         <Ionicons
-                          name="close-circle"
-                          size={18}
-                          color={colors.textTertiary}
+                          name="checkmark-circle"
+                          size={16}
+                          color={colors.primary}
+                          style={styles.checkIcon}
                         />
-                      </TouchableOpacity>
-                    )}
+                      )}
+                    </View>
+                  )}
+                  <View style={styles.deleteSetButtonContainer}>
+                    {setIndex === exercise.sets.length - 1 &&
+                      exercise.sets.length > 1 && (
+                        <TouchableOpacity
+                          style={styles.deleteSetButton}
+                          onPress={() => handleDeleteSet(exerciseIndex, setIndex)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color={colors.textTertiary}
+                          />
+                        </TouchableOpacity>
+                      )}
+                  </View>
                 </View>
               )
             })}
@@ -455,22 +754,45 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       marginBottom: 4,
     },
-    exerciseTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-      gap: 8,
-    },
     exerciseName: {
       fontSize: 17,
       fontWeight: '600',
       color: colors.text,
       lineHeight: 24,
-      flex: 1,
     },
     deleteExerciseButton: {
       marginLeft: 8,
       padding: 4,
+    },
+    timerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 'auto',
+      gap: 4,
+      minWidth: 80,
+      justifyContent: 'flex-end',
+    },
+    timerText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+      fontWeight: '500',
+    },
+    timerTextReady: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    timerTextOverTime: {
+      color: '#FF6B35',
+      fontWeight: '600',
+    },
+    timerTargetText: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      fontWeight: '400',
+    },
+    checkIcon: {
+      marginLeft: 2,
     },
     targetText: {
       fontSize: 14,
@@ -482,6 +804,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       marginBottom: 2,
       lineHeight: 24,
+      width: '100%',
     },
     setText: {
       fontSize: 17,
@@ -503,8 +826,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       fontWeight: '500',
     },
-    deleteSetButton: {
+    deleteSetButtonContainer: {
+      width: 34,
       marginLeft: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteSetButton: {
       padding: 4,
     },
     addSetButton: {
@@ -519,10 +847,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.primary,
       marginLeft: 4,
       fontWeight: '500',
-    },
-    restTimerText: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontVariant: ['tabular-nums'],
     },
   })

@@ -4,6 +4,8 @@ import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
   Exercise,
   Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
   ParsedWorkout,
   Profile,
   WorkoutComment,
@@ -14,7 +16,49 @@ import type {
   WorkoutSessionWithDetails,
   WorkoutSocialStats,
 } from '@/types/database.types'
+import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+
+type FollowActionStatus = 'following' | 'request_pending' | 'already_following'
+type FollowRequestDecision = 'approve' | 'decline'
+
+export interface FollowActionResult {
+  status: FollowActionStatus
+  requestId?: string | null
+}
+
+type FollowRequestWithFollower = FollowRequest & {
+  follower?: Pick<Profile, 'id' | 'display_name' | 'user_tag' | 'avatar_url'>
+}
+
+type FollowRequestWithFollowee = FollowRequest & {
+  followee?: Pick<Profile, 'id' | 'display_name' | 'user_tag' | 'avatar_url'>
+}
+
+const PRIVACY_ERROR_CODES = new Set(['PGRST301', '42501'])
+
+const isPrivacyViolation = (error?: PostgrestError | null) => {
+  if (!error) return false
+  if (PRIVACY_ERROR_CODES.has(error.code)) return true
+  return /rls|permission denied|not authorized/i.test(error.message ?? '')
+}
+
+const throwIfPrivacyViolation = (error?: PostgrestError | null) => {
+  if (!error) return
+  if (isPrivacyViolation(error)) {
+    throw new PrivacyError()
+  }
+  throw error
+}
+
+export class PrivacyError extends Error {
+  constructor(
+    message = 'This athlete only shares workouts with approved followers.',
+  ) {
+    super(message)
+    this.name = 'PrivacyError'
+  }
+}
 
 export const database = {
   // Profile operations
@@ -211,22 +255,31 @@ export const database = {
 
   // Follow operations
   follows: {
-    async follow(followerId: string, followeeId: string) {
+    async follow(
+      followerId: string,
+      followeeId: string,
+    ): Promise<FollowActionResult> {
       if (followerId === followeeId) {
         throw new Error('Users cannot follow themselves')
       }
 
-      const { data, error } = await supabase
-        .from('follows')
-        .insert({
-          follower_id: followerId,
-          followee_id: followeeId,
-        })
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc('request_follow', {
+        follower: followerId,
+        followee: followeeId,
+      })
 
       if (error) throw error
-      return data as Follow
+
+      const status = (data?.status ?? 'following') as FollowActionStatus
+      const requestId =
+        data && typeof data === 'object' && 'request_id' in data
+          ? (data as { request_id?: string | null }).request_id ?? null
+          : null
+
+      return {
+        status,
+        requestId,
+      }
     },
 
     async unfollow(followerId: string, followeeId: string) {
@@ -288,6 +341,106 @@ export const database = {
         followers: followerRes.data ?? 0,
         following: followingRes.data ?? 0,
       }
+    },
+  },
+
+  followRequests: {
+    async listIncoming(userId: string) {
+      const { data, error } = await supabase
+        .from('follow_requests')
+        .select(
+          `
+          *,
+          follower:profiles!follow_requests_follower_id_fkey (
+            id,
+            display_name,
+            user_tag,
+            avatar_url
+          )
+        `,
+        )
+        .eq('followee_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return (data || []) as FollowRequestWithFollower[]
+    },
+
+    async listOutgoing(userId: string) {
+      const { data, error } = await supabase
+        .from('follow_requests')
+        .select(
+          `
+          *,
+          followee:profiles!follow_requests_followee_id_fkey (
+            id,
+            display_name,
+            user_tag,
+            avatar_url
+          )
+        `,
+        )
+        .eq('follower_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return (data || []) as FollowRequestWithFollowee[]
+    },
+
+    async respond(requestId: string, decision: FollowRequestDecision) {
+      const { data, error } = await supabase.rpc('respond_follow_request', {
+        request_id: requestId,
+        decision,
+      })
+
+      if (error) throw error
+      return data as { status: string }
+    },
+
+    async cancel(requestId: string, followerId: string) {
+      const { error } = await supabase
+        .from('follow_requests')
+        .update({
+          status: 'cancelled',
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', requestId)
+        .eq('follower_id', followerId)
+        .eq('status', 'pending')
+
+      if (error) throw error
+    },
+
+    async countIncomingPending(userId: string) {
+      const { count, error } = await supabase
+        .from('follow_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('followee_id', userId)
+        .eq('status', 'pending')
+
+      if (error) throw error
+      return count ?? 0
+    },
+  },
+
+  relationships: {
+    async getStatuses(
+      viewerId: string,
+      targetIds: string[],
+    ): Promise<FollowRelationshipStatus[]> {
+      if (!viewerId || targetIds.length === 0) {
+        return []
+      }
+
+      const { data, error } = await supabase.rpc('get_relationship_statuses', {
+        viewer: viewerId,
+        target_ids: targetIds,
+      })
+
+      if (error) throw error
+      return (data || []) as FollowRelationshipStatus[]
     },
   },
 
@@ -499,6 +652,24 @@ export const database = {
 
       if (error) throw error
       return data as Exercise[]
+    },
+
+    async getMuscleGroups() {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('muscle_group')
+        .not('muscle_group', 'is', null)
+        .order('muscle_group', { ascending: true })
+
+      if (error) throw error
+      const groups = Array.from(
+        new Set(
+          (data || [])
+            .map((row) => row.muscle_group)
+            .filter((group): group is string => Boolean(group)),
+        ),
+      )
+      return groups
     },
 
     async getExercisesWithData(userId: string) {
@@ -740,7 +911,9 @@ export const database = {
         .order('date', { ascending: false })
         .range(offset, offset + limit - 1)
 
-      if (error) throw error
+      if (error) {
+        throwIfPrivacyViolation(error)
+      }
       return data as WorkoutSessionWithDetails[]
     },
 
@@ -776,7 +949,9 @@ export const database = {
         .order('date', { ascending: false })
         .range(offset, offset + limit - 1)
 
-      if (error) throw error
+      if (error) {
+        throwIfPrivacyViolation(error)
+      }
       if (!workouts || workouts.length === 0) {
         return []
       }
@@ -840,7 +1015,9 @@ export const database = {
         .eq('id', id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        throwIfPrivacyViolation(error)
+      }
       return data as WorkoutSessionWithDetails
     },
 
@@ -2152,7 +2329,7 @@ export const database = {
         }
       })
 
-      // Insert routine sets (template only - no reps/weight)
+      // Insert routine sets (template only - no reps/weight/rest yet)
       const routineSets = workoutExercises.flatMap((we, weIndex) => {
         const orderIndex =
           typeof we.order_index === 'number' && !Number.isNaN(we.order_index)
@@ -2178,6 +2355,8 @@ export const database = {
           set_number: set.set_number,
           reps_min: null,
           reps_max: null,
+          // Future UI will map parsed/set rest to this field; keep nullable for now
+          rest_seconds: null,
         }))
       })
 
@@ -2287,9 +2466,39 @@ export const database = {
         return []
       }
 
+      // Filter out follow_request_received notifications where the request is no longer pending
+      const followRequestNotifications = notifications.filter(
+        (n) => n.type === 'follow_request_received' && n.request_id,
+      )
+
+      let requestStatuses = new Map<string, string>()
+      if (followRequestNotifications.length > 0) {
+        const requestIds = followRequestNotifications
+          .map((n) => n.request_id)
+          .filter(Boolean)
+        const { data: requests } = await supabase
+          .from('follow_requests')
+          .select('id, status')
+          .in('id', requestIds)
+
+        requestStatuses = new Map(requests?.map((r) => [r.id, r.status]) || [])
+      }
+
+      // Filter out notifications where follow request is no longer pending
+      const filteredNotifications = notifications.filter((n) => {
+        if (n.type === 'follow_request_received' && n.request_id) {
+          const status = requestStatuses.get(n.request_id)
+          // Only show if status is still pending (or if we couldn't find the status, keep it just in case)
+          return status === 'pending' || status === undefined
+        }
+        return true
+      })
+
       // Fetch unique actor profiles
-      const allActorIds = notifications.flatMap((n) => n.actors)
-      const uniqueActorIds = [...new Set(allActorIds)]
+      const allActorIds = filteredNotifications.flatMap<string>((n) =>
+        Array.isArray(n.actors) ? (n.actors as string[]) : [],
+      )
+      const uniqueActorIds = [...new Set<string>(allActorIds)]
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -2301,10 +2510,14 @@ export const database = {
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || [])
 
       // Attach profiles to notifications
-      return notifications.map((n) => ({
+      return filteredNotifications.map((n) => ({
         ...n,
-        actorProfiles: [...new Set(n.actors)]
-          .map((id: string) => profileMap.get(id))
+        actorProfiles: [
+          ...new Set<string>(
+            Array.isArray(n.actors) ? (n.actors as string[]) : [],
+          ),
+        ]
+          .map((id) => profileMap.get(id))
           .filter(Boolean),
       }))
     },

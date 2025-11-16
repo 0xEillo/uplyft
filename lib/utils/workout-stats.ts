@@ -11,70 +11,6 @@ export interface WorkoutStats {
   uniqueMuscleGroups: string[]
 }
 
-export interface AnimalComparison {
-  name: string
-  multiplier: number
-  emoji: string
-  description: string
-}
-
-const ANIMAL_COMPARISONS: AnimalComparison[] = [
-  {
-    name: 'House Cat',
-    multiplier: 0.05,
-    emoji: '🐱',
-    description: 'Just getting started!',
-  },
-  {
-    name: 'Fox',
-    multiplier: 0.15,
-    emoji: '🦊',
-    description: 'Quick and agile',
-  },
-  {
-    name: 'Wolf',
-    multiplier: 0.3,
-    emoji: '🐺',
-    description: 'Pack leader material',
-  },
-  {
-    name: 'Jaguar',
-    multiplier: 0.5,
-    emoji: '🐆',
-    description: 'Apex predator vibes',
-  },
-  {
-    name: 'Grizzly Bear',
-    multiplier: 0.75,
-    emoji: '🐻',
-    description: 'Pure raw power',
-  },
-  {
-    name: 'Silverback Gorilla',
-    multiplier: 1.0,
-    emoji: '🦍',
-    description: 'Primate strength!',
-  },
-  {
-    name: 'African Elephant',
-    multiplier: 1.5,
-    emoji: '🐘',
-    description: 'Massive power!',
-  },
-  {
-    name: 'Great White Shark',
-    multiplier: 2.0,
-    emoji: '🦈',
-    description: 'Ocean destroyer',
-  },
-  {
-    name: 'Tyrannosaurus Rex',
-    multiplier: 3.0,
-    emoji: '🦖',
-    description: 'Prehistoric beast!',
-  },
-]
-
 /**
  * Calculate total volume lifted in a workout (in kg)
  * Note: All weights are stored in kg internally, regardless of user's display preference.
@@ -174,35 +110,6 @@ export function calculateWorkoutStats(
     prCount,
     topWeight: Math.round(topWeight),
     uniqueMuscleGroups: Array.from(muscleGroups),
-  }
-}
-
-/**
- * Get animal comparison based on volume lifted
- * Returns the closest animal to the volume multiplier
- */
-export function getAnimalComparison(
-  volumeKg: number,
-): AnimalComparison & { multiplier: number } {
-  // Average human bodyweight for comparison (70kg)
-  const avgBodyweight = 70
-  const volumeMultiplier = volumeKg / avgBodyweight
-
-  // Find the closest animal comparison
-  let closestAnimal = ANIMAL_COMPARISONS[0]
-  let closestDiff = Math.abs(volumeMultiplier - closestAnimal.multiplier)
-
-  for (const animal of ANIMAL_COMPARISONS) {
-    const diff = Math.abs(volumeMultiplier - animal.multiplier)
-    if (diff < closestDiff) {
-      closestDiff = diff
-      closestAnimal = animal
-    }
-  }
-
-  return {
-    ...closestAnimal,
-    multiplier: parseFloat(volumeMultiplier.toFixed(2)),
   }
 }
 

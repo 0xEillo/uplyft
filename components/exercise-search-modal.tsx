@@ -4,7 +4,7 @@ import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +52,8 @@ export function ExerciseSearchModal({
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [muscleGroups, setMuscleGroups] = useState<string[]>([])
+  const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
   const translateY = useSharedValue(0)
 
   const styles = createStyles(colors)
@@ -62,6 +64,26 @@ export function ExerciseSearchModal({
         (exercise) => exercise.name.toLowerCase() === normalizedQuery,
       )
     : false
+  const hasMuscleFilter = selectedMuscleGroups.length > 0
+  const filteredExercises = useMemo(() => {
+    if (!hasMuscleFilter) return exercises
+    const selectedSet = new Set(selectedMuscleGroups)
+    return exercises.filter((exercise) => {
+      if (!exercise.muscle_group) return false
+      return selectedSet.has(exercise.muscle_group)
+    })
+  }, [exercises, selectedMuscleGroups, hasMuscleFilter])
+  const emptyStateText = (() => {
+    if (trimmedQuery) {
+      return hasMuscleFilter
+        ? `No exercises found for "${trimmedQuery}" in selected groups`
+        : `No exercises found for "${trimmedQuery}"`
+    }
+    if (hasMuscleFilter) {
+      return 'No exercises match the selected muscle groups'
+    }
+    return 'Start typing to search'
+  })()
 
   useEffect(() => {
     if (visible) {
@@ -97,6 +119,7 @@ export function ExerciseSearchModal({
       setSearchQuery('')
       setExercises([])
       setKeyboardHeight(0)
+      setSelectedMuscleGroups([])
       Keyboard.dismiss()
       return
     }
@@ -123,6 +146,28 @@ export function ExerciseSearchModal({
     const timeoutId = setTimeout(loadExercises, 300)
     return () => clearTimeout(timeoutId)
   }, [visible, searchQuery])
+
+  useEffect(() => {
+    if (!visible) return
+
+    let isMounted = true
+    const fetchMuscleGroups = async () => {
+      try {
+        const groups = await database.exercises.getMuscleGroups()
+        if (isMounted) {
+          setMuscleGroups(groups)
+        }
+      } catch (error) {
+        console.error('Error loading muscle groups:', error)
+      }
+    }
+
+    fetchMuscleGroups()
+
+    return () => {
+      isMounted = false
+    }
+  }, [visible])
 
   const closeSheet = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -202,6 +247,19 @@ export function ExerciseSearchModal({
     onClose()
   }
 
+  const toggleMuscleGroup = useCallback((group: string) => {
+    setSelectedMuscleGroups((prev) => {
+      if (prev.includes(group)) {
+        return prev.filter((item) => item !== group)
+      }
+      return [...prev, group]
+    })
+  }, [])
+
+  const clearMuscleGroups = useCallback(() => {
+    setSelectedMuscleGroups([])
+  }, [])
+
   return (
     <Modal
       visible={visible}
@@ -244,23 +302,62 @@ export function ExerciseSearchModal({
               autoCapitalize="words"
             />
 
+            {muscleGroups.length > 0 && (
+              <View style={styles.muscleFilterContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.muscleFilterChip,
+                    !hasMuscleFilter && styles.muscleFilterChipActive,
+                  ]}
+                  onPress={clearMuscleGroups}
+                >
+                  <Text
+                    style={[
+                      styles.muscleFilterChipText,
+                      !hasMuscleFilter && styles.muscleFilterChipTextActive,
+                    ]}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
+                {muscleGroups.map((group) => {
+                  const isSelected = selectedMuscleGroups.includes(group)
+                  return (
+                    <TouchableOpacity
+                      key={group}
+                      style={[
+                        styles.muscleFilterChip,
+                        isSelected && styles.muscleFilterChipActive,
+                      ]}
+                      onPress={() => toggleMuscleGroup(group)}
+                    >
+                      <Text
+                        style={[
+                          styles.muscleFilterChipText,
+                          isSelected && styles.muscleFilterChipTextActive,
+                        ]}
+                      >
+                        {group}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            )}
+
             {/* Results */}
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : exercises.length === 0 ? (
+            ) : filteredExercises.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons
                   name="barbell-outline"
                   size={48}
                   color={colors.textTertiary}
                 />
-                <Text style={styles.emptyText}>
-                  {trimmedQuery
-                    ? `No exercises found for "${trimmedQuery}"`
-                    : 'Start typing to search'}
-                </Text>
+                <Text style={styles.emptyText}>{emptyStateText}</Text>
                 {trimmedQuery && !hasExactMatch && (
                   <TouchableOpacity
                     style={styles.createButton}
@@ -313,7 +410,7 @@ export function ExerciseSearchModal({
                     )}
                   </TouchableOpacity>
                 )}
-                {exercises.map((exercise) => {
+                {filteredExercises.map((exercise) => {
                   const isCurrentExercise =
                     exercise.name === currentExerciseName
                   return (
@@ -413,6 +510,34 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 8,
       fontSize: 16,
       color: colors.text,
+    },
+    muscleFilterContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 16,
+      marginBottom: 8,
+    },
+    muscleFilterChip: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundLight,
+      marginRight: 8,
+      marginBottom: 8,
+    },
+    muscleFilterChipActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight,
+    },
+    muscleFilterChipText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    muscleFilterChipTextActive: {
+      color: colors.primary,
     },
     exerciseList: {
       paddingHorizontal: 16,

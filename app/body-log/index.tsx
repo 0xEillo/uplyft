@@ -1,3 +1,4 @@
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
@@ -21,12 +22,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -169,17 +164,7 @@ export default function BodyLogScreen() {
   const styles = createStyles(colors)
 
   const [userGender, setUserGender] = useState<'male' | 'female' | null>(null)
-
-  // Snapchat-like slide animation
-  const translateX = useSharedValue(SCREEN_WIDTH)
-
-  useEffect(() => {
-    // Slide in from right with smooth Snapchat-like animation
-    translateX.value = withTiming(0, {
-      duration: 300,
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Empty deps - only run on mount. translateX is a stable SharedValue
+  const [shouldExit, setShouldExit] = useState(false)
 
   // Mark tutorial as completed when user visits body log for the first time
   useEffect(() => {
@@ -193,12 +178,6 @@ export default function BodyLogScreen() {
 
     markTutorialCompleted()
   }, [])
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: translateX.value }],
-    }
-  })
 
   const [entryOrder, setEntryOrder] = useState<string[]>([])
   const [entryStore, setEntryStore] = useState<
@@ -353,26 +332,13 @@ export default function BodyLogScreen() {
     [],
   )
 
-  const navigateToProfile = () => {
-    router.push('/(tabs)/analytics')
-  }
-
   const handleBackPress = useCallback(() => {
-    // Slide out to right with reverse animation
-    translateX.value = withTiming(
-      SCREEN_WIDTH,
-      {
-        duration: 300,
-      },
-      (finished) => {
-        if (finished) {
-          // Navigate to profile page after animation completes
-          runOnJS(navigateToProfile)()
-        }
-      },
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Empty deps - translateX and router are stable
+    setShouldExit(true)
+  }, [])
+
+  const handleExitComplete = useCallback(() => {
+    router.push('/(tabs)/analytics')
+  }, [router])
 
   const handleEntryOpen = useCallback(
     (entry: EntryWithSignedUrls) => {
@@ -471,7 +437,11 @@ export default function BodyLogScreen() {
   )
 
   return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
       <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity
@@ -536,7 +506,7 @@ export default function BodyLogScreen() {
       </View>
 
     </SafeAreaView>
-    </Animated.View>
+    </SlideInView>
   )
 }
 

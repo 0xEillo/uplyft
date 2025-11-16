@@ -5,7 +5,7 @@ import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { useRouter } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 
@@ -40,6 +40,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 }: AsyncPrFeedCardProps) {
   const { user } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
@@ -81,7 +82,11 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     const fetchSocialStats = async () => {
       try {
         // Fetch like count and check if user has liked
-        const [likeCountResult, hasLikedResult, commentCountResult] = await Promise.all([
+        const [
+          likeCountResult,
+          hasLikedResult,
+          commentCountResult,
+        ] = await Promise.all([
           database.workoutLikes.getCount(workout.id),
           database.workoutLikes.hasLiked(workout.id, user.id),
           database.workoutComments.getCount(workout.id),
@@ -210,8 +215,14 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   }, [workout.id, router])
 
   const handleCardPress = useCallback(() => {
-    router.push(`/workout/${workout.id}`)
-  }, [workout.id, router])
+    router.push({
+      pathname: '/workout/[workoutId]',
+      params: {
+        workoutId: workout.id,
+        returnTo: pathname,
+      },
+    })
+  }, [workout.id, router, pathname])
 
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
@@ -245,8 +256,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
             (sum, we) =>
               sum +
               (we.sets?.reduce(
-                (setSum, set) =>
-                  setSum + (set.weight || 0) * (set.reps || 0),
+                (setSum, set) => setSum + (set.weight || 0) * (set.reps || 0),
                 0,
               ) || 0),
             0,

@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { SlideInView } from '@/components/slide-in-view'
 
 interface ExerciseRecord {
   weight: number
@@ -48,6 +49,7 @@ export default function StrengthStatsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('standards')
+  const [shouldExit, setShouldExit] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   )
@@ -81,6 +83,16 @@ export default function StrengthStatsScreen() {
     setRefreshing(true)
     loadData()
   }, [loadData])
+
+  const handleBack = () => {
+    console.log('[StrengthStats] Back button pressed, starting exit animation')
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    console.log('[StrengthStats] Exit animation complete, navigating back to analytics')
+    router.push('/(tabs)/analytics?tab=progress')
+  }
 
   const toggleExercise = useCallback((exerciseId: string) => {
     setExpandedExercises((prev) => {
@@ -137,31 +149,12 @@ export default function StrengthStatsScreen() {
 
   const styles = createStyles(colors)
 
-  if (isLoading) {
-    return (
-      <>
-        <Stack.Screen
-          options={{
-            title: 'Strength Standards',
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: colors.white,
-            },
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
-          }}
-        />
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        </SafeAreaView>
-      </>
-    )
-  }
-
   return (
-    <>
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
       <Stack.Screen
         options={{
           title: 'Strength Progress',
@@ -172,7 +165,7 @@ export default function StrengthStatsScreen() {
         {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/analytics?tab=progress')}
+            onPress={handleBack}
             style={styles.headerBackButton}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -212,20 +205,26 @@ export default function StrengthStatsScreen() {
         </View>
 
         {/* Tab Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          }
-        >
-          {/* Content based on active tab */}
-          {exerciseData.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading your strength data...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+          >
+            {/* Content based on active tab */}
+            {exerciseData.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons
                 name="barbell-outline"
@@ -470,10 +469,11 @@ export default function StrengthStatsScreen() {
             )
           })
           )}
-        </ScrollView>
+          </ScrollView>
+        )}
         </View>
       </SafeAreaView>
-    </>
+    </SlideInView>
   )
 }
 
@@ -545,6 +545,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.background,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.textSecondary,
     },
     summaryCard: {
       backgroundColor: colors.white,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { useTheme } from '@/contexts/theme-context'
@@ -17,7 +18,9 @@ import { MuscleSplitChart } from './MuscleSplitChart'
 import { ExerciseDetailCard } from './ExerciseDetailCard'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { formatTimeAgo } from '@/lib/utils/formatters'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
+import type { Href } from 'expo-router'
+import { SlideInView } from '@/components/slide-in-view'
 
 interface PrDetailForDisplay {
   label: string
@@ -36,7 +39,7 @@ export interface ExercisePRInfo {
 }
 
 interface WorkoutDetailViewProps {
-  workout: WorkoutSessionWithDetails
+  workout: WorkoutSessionWithDetails | null
   prInfo?: ExercisePRInfo[]
   // Social props
   likeCount?: number
@@ -49,6 +52,8 @@ interface WorkoutDetailViewProps {
   onEdit?: () => void
   onDelete?: () => void
   onCreateRoutine?: () => void
+  // Loading state
+  isLoading?: boolean
 }
 
 export function WorkoutDetailView({
@@ -63,19 +68,63 @@ export function WorkoutDetailView({
   onEdit,
   onDelete,
   onCreateRoutine,
+  isLoading = false,
 }: WorkoutDetailViewProps) {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const router = useRouter()
+  const params = useLocalSearchParams<{ returnTo?: string }>()
   const [menuVisible, setMenuVisible] = useState(false)
+  const [shouldExit, setShouldExit] = useState(false)
+  const normalizedReturnTo = useMemo(() => {
+    const raw = params.returnTo
+    if (!raw) return undefined
+    const value = Array.isArray(raw) ? raw[0] : raw
+    if (!value) return undefined
+    try {
+      const decoded = decodeURIComponent(value)
+      if (decoded.startsWith('http')) {
+        console.warn('[WorkoutDetail] Ignoring external returnTo param:', decoded)
+        return undefined
+      }
+      return decoded.startsWith('/') ? decoded : `/${decoded}`
+    } catch (error) {
+      console.warn('[WorkoutDetail] Failed to decode returnTo param:', value, error)
+      return undefined
+    }
+  }, [params.returnTo])
 
   // Get workout metadata
-  const muscleGroups = getWorkoutMuscleGroups(workout)
-  const timeAgo = formatTimeAgo(workout.created_at)
-  const profile = workout.profile
+  const muscleGroups = workout ? getWorkoutMuscleGroups(workout) : ''
+  const timeAgo = workout ? formatTimeAgo(workout.created_at) : ''
+  const profile = workout?.profile
+
+  const handleBack = () => {
+    // Trigger exit animation first
+    console.log('[WorkoutDetail] Back button pressed, starting exit animation')
+    console.log('[WorkoutDetail] resolved returnTo parameter:', normalizedReturnTo)
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    // Navigate after animation completes
+    if (normalizedReturnTo) {
+      console.log('[WorkoutDetail] Exit animation complete, returning to:', normalizedReturnTo)
+      router.replace(normalizedReturnTo as Href)
+      return
+    }
+
+    if (router.canGoBack()) {
+      console.log('[WorkoutDetail] Exit animation complete, using router.back() fallback')
+      router.back()
+    } else {
+      console.log('[WorkoutDetail] No history stack, replacing to /(tabs)')
+      router.replace('/(tabs)')
+    }
+  }
 
   const handleUserPress = () => {
-    if (workout.user_id) {
+    if (workout?.user_id) {
       router.push(`/user/${workout.user_id}`)
     }
   }
@@ -99,22 +148,27 @@ export function WorkoutDetailView({
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Workout Detail
-        </Text>
-        <TouchableOpacity
-          onPress={() => setMenuVisible(!menuVisible)}
-          style={styles.menuButton}
-        >
-          <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+    <SlideInView
+      style={styles.container}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Workout Detail
+          </Text>
+          <TouchableOpacity
+            onPress={() => setMenuVisible(!menuVisible)}
+            style={styles.menuButton}
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
       {/* Menu dropdown */}
       {menuVisible && (
@@ -161,6 +215,30 @@ export function WorkoutDetailView({
         </View>
       )}
 
+      {isLoading ? (
+        <ScrollView style={styles.scrollView}>
+          <View style={[styles.topCard, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
+            {/* Loading skeleton */}
+            <View style={styles.userInfo}>
+              <View style={[styles.skeletonAvatar, { backgroundColor: colors.backgroundLight }]} />
+              <View style={styles.userDetails}>
+                <View style={[styles.skeletonText, styles.skeletonName, { backgroundColor: colors.backgroundLight }]} />
+                <View style={[styles.skeletonText, styles.skeletonTime, { backgroundColor: colors.backgroundLight }]} />
+              </View>
+            </View>
+
+            <View style={styles.titleSection}>
+              <View style={[styles.skeletonText, styles.skeletonTitle, { backgroundColor: colors.backgroundLight }]} />
+              <View style={[styles.skeletonText, styles.skeletonNotes, { backgroundColor: colors.backgroundLight }]} />
+            </View>
+
+            {/* Loading indicator */}
+            <View style={styles.loadingIndicator}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          </View>
+        </ScrollView>
+      ) : workout ? (
       <ScrollView style={styles.scrollView}>
         {/* Top Card: Profile + Stats + Social Actions */}
         <View style={[styles.topCard, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
@@ -257,7 +335,7 @@ export function WorkoutDetailView({
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             Workout
           </Text>
-          {workout.workout_exercises.map((workoutExercise, index) => {
+          {workout?.workout_exercises.map((workoutExercise, index) => {
             const exercisePR = prInfo.find(
               (pr) => pr.exerciseName === workoutExercise.exercise?.name
             )
@@ -271,7 +349,9 @@ export function WorkoutDetailView({
           })}
         </View>
       </ScrollView>
-    </View>
+      ) : null}
+      </View>
+    </SlideInView>
   )
 }
 
@@ -397,4 +477,38 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   exercisesSection: {},
+  // Loading skeleton styles
+  skeletonAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  skeletonText: {
+    height: 12,
+    borderRadius: 6,
+  },
+  skeletonName: {
+    width: 120,
+    marginBottom: 8,
+  },
+  skeletonTime: {
+    width: 80,
+  },
+  skeletonTitle: {
+    height: 24,
+    width: '70%',
+    marginBottom: 12,
+    borderRadius: 8,
+  },
+  skeletonNotes: {
+    height: 14,
+    width: '90%',
+    borderRadius: 6,
+  },
+  loadingIndicator: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })

@@ -7,6 +7,7 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import Animated, {
@@ -21,6 +22,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   LayoutAnimation,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -43,6 +45,7 @@ if (
 interface SetTemplate {
   repsMin: string // Store as string to allow empty/partial input
   repsMax: string
+  restSeconds: number | null // Store as total seconds, null if not set
 }
 
 interface ExerciseTemplate {
@@ -70,6 +73,11 @@ interface ExerciseItemProps {
     field: 'repsMin' | 'repsMax',
     value: string,
   ) => void
+  onOpenRestPicker: (
+    exerciseIndex: number,
+    setIndex: number,
+  ) => void
+  formatRestTime: (seconds: number | null) => string
   onLongPress: (index: number) => void
   onMoveUp: (index: number) => void
   onMoveDown: (index: number) => void
@@ -91,6 +99,8 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
     onAddSet,
     onRemoveSet,
     onUpdateReps,
+    onOpenRestPicker,
+    formatRestTime,
     onLongPress,
     onMoveUp,
     onMoveDown,
@@ -221,6 +231,9 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
               <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
                 Max Reps
               </Text>
+              <Text style={[styles.setHeaderText, styles.setHeaderRest]}>
+                Rest (M:S)
+              </Text>
               <Text style={[styles.setHeaderText, styles.setHeaderDelete]}>
               </Text>
             </View>
@@ -251,6 +264,26 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
                   placeholderTextColor={colors.textPlaceholder}
                   maxLength={3}
                 />
+                <TouchableOpacity
+                  onPress={() => onOpenRestPicker(index, setIndex)}
+                  style={styles.restInputButton}
+                >
+                  <Text
+                    style={[
+                      styles.restInputText,
+                      !set.restSeconds && styles.restInputTextPlaceholder,
+                    ]}
+                  >
+                    {set.restSeconds
+                      ? formatRestTime(set.restSeconds)
+                      : 'Rest'}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => onRemoveSet(index, setIndex)}
                   style={styles.deleteSetButton}
@@ -308,6 +341,15 @@ export default function CreateRoutineScreen() {
   const [exerciseSearchModalVisible, setExerciseSearchModalVisible] = useState(
     false,
   )
+  const [restPickerVisible, setRestPickerVisible] = useState(false)
+  const [restPickerExerciseIndex, setRestPickerExerciseIndex] = useState<
+    number | null
+  >(null)
+  const [restPickerSetIndex, setRestPickerSetIndex] = useState<number | null>(
+    null,
+  )
+  const [restPickerMinutes, setRestPickerMinutes] = useState(0)
+  const [restPickerSeconds, setRestPickerSeconds] = useState(0)
 
   // Drag and drop state
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
@@ -315,6 +357,14 @@ export default function CreateRoutineScreen() {
   // Shared values for animations
   const draggingScale = useSharedValue(1)
   const draggingOpacity = useSharedValue(1)
+
+  // Helper: Format seconds to MM:SS display
+  const formatRestTime = useCallback((seconds: number | null): string => {
+    if (seconds === null || seconds === 0) return ''
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -354,6 +404,7 @@ export default function CreateRoutineScreen() {
                 sets: sets.map((s) => ({
                   repsMin: s.reps_min?.toString() || '',
                   repsMax: s.reps_max?.toString() || '',
+                  restSeconds: s.rest_seconds ?? null,
                 })),
                 notes: re.notes,
               }
@@ -389,7 +440,11 @@ export default function CreateRoutineScreen() {
           ).map((we) => ({
             exerciseId: we.exercise_id,
             exerciseName: we.exercise?.name || 'Exercise',
-            sets: (we.sets || []).map(() => ({ repsMin: '', repsMax: '' })),
+            sets: (we.sets || []).map(() => ({
+              repsMin: '',
+              repsMax: '',
+              restSeconds: null,
+            })),
             notes: we.notes,
           }))
           setExercises(templates)
@@ -549,11 +604,21 @@ export default function CreateRoutineScreen() {
           const finalMin = repsMin ?? repsMax
           const finalMax = repsMax ?? repsMin
 
+          const restSeconds = set.restSeconds
+
+          // Validate rest seconds range
+          if (restSeconds !== null && (restSeconds < 0 || restSeconds > 3600)) {
+            throw new Error(
+              `Rest time must be between 0 and 60 minutes (${ex.exerciseName}, Set ${setIndex + 1})`,
+            )
+          }
+
           return {
             routine_exercise_id: routineExerciseId,
             set_number: setIndex + 1,
             reps_min: finalMin,
             reps_max: finalMax,
+            rest_seconds: restSeconds,
           }
         })
       })
@@ -595,7 +660,11 @@ export default function CreateRoutineScreen() {
       )
     } catch (error) {
       console.error('Error saving routine:', error)
-      Alert.alert('Error', 'Failed to save routine. Please try again.')
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to save routine. Please try again.'
+      Alert.alert('Error', errorMessage)
     } finally {
       setIsSaving(false)
     }
@@ -653,7 +722,10 @@ export default function CreateRoutineScreen() {
       const updated = [...prev]
       updated[exerciseIndex] = {
         ...updated[exerciseIndex],
-        sets: [...updated[exerciseIndex].sets, { repsMin: '', repsMax: '' }],
+        sets: [
+          ...updated[exerciseIndex].sets,
+          { repsMin: '', repsMax: '', restSeconds: null },
+        ],
       }
       return updated
     })
@@ -704,6 +776,60 @@ export default function CreateRoutineScreen() {
     [],
   )
 
+  const handleOpenRestPicker = useCallback(
+    (exerciseIndex: number, setIndex: number) => {
+      const set = exercises[exerciseIndex]?.sets[setIndex]
+      if (set?.restSeconds !== null && set?.restSeconds !== undefined) {
+        const mins = Math.floor(set.restSeconds / 60)
+        const secs = set.restSeconds % 60
+        setRestPickerMinutes(mins)
+        setRestPickerSeconds(secs)
+      } else {
+        setRestPickerMinutes(0)
+        setRestPickerSeconds(0)
+      }
+      setRestPickerExerciseIndex(exerciseIndex)
+      setRestPickerSetIndex(setIndex)
+      setRestPickerVisible(true)
+    },
+    [exercises],
+  )
+
+  const handleConfirmRestPicker = useCallback(() => {
+    if (
+      restPickerExerciseIndex === null ||
+      restPickerSetIndex === null
+    ) {
+      return
+    }
+
+    const totalSeconds = restPickerMinutes * 60 + restPickerSeconds
+
+    setExercises((prev) => {
+      const updated = [...prev]
+      const updatedSets = [...updated[restPickerExerciseIndex!].sets]
+      updatedSets[restPickerSetIndex!] = {
+        ...updatedSets[restPickerSetIndex!],
+        restSeconds: totalSeconds > 0 ? totalSeconds : null,
+      }
+      updated[restPickerExerciseIndex!] = {
+        ...updated[restPickerExerciseIndex!],
+        sets: updatedSets,
+      }
+      return updated
+    })
+
+    setRestPickerVisible(false)
+    setRestPickerExerciseIndex(null)
+    setRestPickerSetIndex(null)
+  }, [restPickerExerciseIndex, restPickerSetIndex, restPickerMinutes, restPickerSeconds])
+
+  const handleCancelRestPicker = useCallback(() => {
+    setRestPickerVisible(false)
+    setRestPickerExerciseIndex(null)
+    setRestPickerSetIndex(null)
+  }, [])
+
   const handleAddExercise = useCallback(() => {
     setExerciseSearchModalVisible(true)
   }, [])
@@ -715,7 +841,7 @@ export default function CreateRoutineScreen() {
       {
         exerciseId: selectedExercise.id,
         exerciseName: selectedExercise.name,
-        sets: [{ repsMin: '', repsMax: '' }], // Start with 1 set
+        sets: [{ repsMin: '', repsMax: '', restSeconds: null }], // Start with 1 set
         notes: null,
       },
     ])
@@ -865,6 +991,8 @@ export default function CreateRoutineScreen() {
                   onAddSet={handleAddSet}
                   onRemoveSet={handleRemoveSet}
                   onUpdateReps={handleUpdateReps}
+                  onOpenRestPicker={handleOpenRestPicker}
+                  formatRestTime={formatRestTime}
                   onLongPress={handleLongPress}
                   onMoveUp={handleMoveUp}
                   onMoveDown={handleMoveDown}
@@ -922,6 +1050,75 @@ export default function CreateRoutineScreen() {
         title="Try Pro for FREE!"
         message="Routines are a Pro feature"
       />
+
+      {/* Rest Time Picker Modal */}
+      <Modal
+        visible={restPickerVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCancelRestPicker}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerModalHeader}>
+              <TouchableOpacity
+                onPress={handleCancelRestPicker}
+                style={styles.pickerModalButton}
+              >
+                <Text style={styles.pickerModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.pickerModalTitle}>Rest Time</Text>
+              <TouchableOpacity
+                onPress={handleConfirmRestPicker}
+                style={styles.pickerModalButton}
+              >
+                <Text style={styles.pickerModalConfirmText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerContainer}>
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Minutes</Text>
+                <Picker
+                  selectedValue={restPickerMinutes}
+                  onValueChange={(itemValue) =>
+                    setRestPickerMinutes(itemValue)
+                  }
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  {Array.from({ length: 61 }, (_, i) => i).map((min) => (
+                    <Picker.Item
+                      key={min}
+                      label={min.toString()}
+                      value={min}
+                    />
+                  ))}
+                </Picker>
+              </View>
+              <View style={styles.pickerDivider} />
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Seconds</Text>
+                <Picker
+                  selectedValue={restPickerSeconds}
+                  onValueChange={(itemValue) =>
+                    setRestPickerSeconds(itemValue)
+                  }
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  {Array.from({ length: 60 }, (_, i) => i).map((sec) => (
+                    <Picker.Item
+                      key={sec}
+                      label={sec.toString().padStart(2, '0')}
+                      value={sec}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -1119,6 +1316,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setHeaderInput: {
       flex: 1,
     },
+    setHeaderRest: {
+      width: 100,
+    },
     setHeaderDelete: {
       width: 30,
     },
@@ -1145,6 +1345,104 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    restInputButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: 100,
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 4,
+    },
+    restInputText: {
+      fontSize: 14,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    restInputTextPlaceholder: {
+      color: colors.textPlaceholder,
+      fontWeight: '400',
+    },
+    pickerModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    pickerModalContent: {
+      backgroundColor: colors.white,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    },
+    pickerModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerModalButton: {
+      minWidth: 60,
+    },
+    pickerModalCancelText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    pickerModalTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    pickerModalConfirmText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+      textAlign: 'right',
+    },
+    pickerContainer: {
+      flexDirection: 'row',
+      height: 220,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    pickerColumn: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      minWidth: 0,
+    },
+    pickerDivider: {
+      width: 1,
+      backgroundColor: colors.border,
+      marginHorizontal: 12,
+      height: 180,
+      alignSelf: 'center',
+    },
+    pickerLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 12,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    picker: {
+      width: '100%',
+      height: 180,
+      maxWidth: '100%',
+    },
+    pickerItem: {
+      fontSize: 22,
+      color: colors.text,
+      fontWeight: '500',
     },
     deleteSetButton: {
       width: 30,

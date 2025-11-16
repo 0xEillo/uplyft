@@ -27,7 +27,8 @@ export interface ExercisePRInfo {
 }
 
 export default function WorkoutDetailScreen() {
-  const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
+  const params = useLocalSearchParams<{ workoutId: string; returnTo?: string }>()
+  const { workoutId } = params
   const router = useRouter()
   const { user } = useAuth()
   const { isDark } = useTheme()
@@ -40,6 +41,17 @@ export default function WorkoutDetailScreen() {
   const [commentCount, setCommentCount] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
   const [prInfo, setPrInfo] = useState<ExercisePRInfo[]>([])
+
+  // Log when component mounts/unmounts
+  useEffect(() => {
+    console.log('📍 [WorkoutDetailScreen] MOUNTED')
+    console.log('   workoutId:', workoutId)
+    console.log('   returnTo param:', params.returnTo)
+    console.log('   All params:', JSON.stringify(params))
+    return () => {
+      console.log('📍 [WorkoutDetailScreen] UNMOUNTED - workoutId:', workoutId)
+    }
+  }, [workoutId, params])
 
   // Compute context for PR calculation
   const computeContext = useMemo(() => {
@@ -212,16 +224,8 @@ export default function WorkoutDetailScreen() {
     })
   }, [workoutId, router])
 
-  if (isLoading || !workout) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    )
-  }
-
   // Only show edit/delete/create routine for own workouts
-  const isOwnWorkout = user?.id === workout.user_id
+  const isOwnWorkout = workout ? user?.id === workout.user_id : false
 
   return (
     <WorkoutDetailView
@@ -236,6 +240,7 @@ export default function WorkoutDetailScreen() {
       onEdit={isOwnWorkout ? handleEdit : undefined}
       onDelete={isOwnWorkout ? handleDelete : undefined}
       onCreateRoutine={handleCreateRoutine}
+      isLoading={isLoading}
     />
   )
 }

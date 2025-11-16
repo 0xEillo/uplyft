@@ -6,8 +6,14 @@ interface NotificationPayload {
   record: {
     id: string
     recipient_id: string
-    type: 'workout_like' | 'workout_comment'
-    workout_id: string
+    type:
+      | 'workout_like'
+      | 'workout_comment'
+      | 'follow_request_received'
+      | 'follow_request_approved'
+      | 'follow_request_declined'
+    workout_id: string | null
+    request_id: string | null
     actors: string[]
     comment_preview: string | null
     read: boolean
@@ -24,7 +30,8 @@ interface ExpoPushMessage {
   body: string
   data: {
     type: string
-    workoutId: string
+    workoutId?: string
+    requestId?: string
     notificationId: string
   }
   badge?: number
@@ -34,16 +41,25 @@ Deno.serve(async (req) => {
   try {
     // Parse webhook payload
     const payload: NotificationPayload = await req.json()
-    console.log('[send-push-notification] Received payload:', JSON.stringify(payload))
+    console.log(
+      '[send-push-notification] Received payload:',
+      JSON.stringify(payload),
+    )
 
     const notification = payload.record
 
     // Skip if notification is already read (for UPDATE events)
     if (payload.type === 'UPDATE' && notification.read) {
-      console.log('[send-push-notification] Notification already read, skipping')
+      console.log(
+        '[send-push-notification] Notification already read, skipping',
+      )
       return new Response(
-        JSON.stringify({ success: true, skipped: true, reason: 'already_read' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          skipped: true,
+          reason: 'already_read',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
       )
     }
 
@@ -58,10 +74,13 @@ Deno.serve(async (req) => {
       .single()
 
     if (profileError) {
-      console.error('[send-push-notification] Error fetching profile:', profileError)
+      console.error(
+        '[send-push-notification] Error fetching profile:',
+        profileError,
+      )
       return new Response(
         JSON.stringify({ success: false, error: 'profile_not_found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { status: 404, headers: { 'Content-Type': 'application/json' } },
       )
     }
 
@@ -69,7 +88,7 @@ Deno.serve(async (req) => {
       console.log('[send-push-notification] No push token for user, skipping')
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: 'no_token' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
       )
     }
 
@@ -80,7 +99,10 @@ Deno.serve(async (req) => {
       .in('id', notification.actors)
 
     if (actorsError) {
-      console.error('[send-push-notification] Error fetching actors:', actorsError)
+      console.error(
+        '[send-push-notification] Error fetching actors:',
+        actorsError,
+      )
       // Continue with generic message
     }
 
@@ -96,38 +118,68 @@ Deno.serve(async (req) => {
       if (actorCount === 1) {
         body = `${firstActor} liked your workout`
       } else {
-        body = `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} liked your workout`
+        body = `${firstActor} and ${actorCount - 1} other${
+          actorCount > 2 ? 's' : ''
+        } liked your workout`
       }
     } else if (notification.type === 'workout_comment') {
       title = 'New Comment'
       if (actorCount === 1) {
         body = `${firstActor} commented on your workout`
       } else {
-        body = `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} commented on your workout`
+        body = `${firstActor} and ${actorCount - 1} other${
+          actorCount > 2 ? 's' : ''
+        } commented on your workout`
       }
+    } else if (notification.type === 'follow_request_received') {
+      title = 'Follow Request'
+      body = `${firstActor} wants to follow you`
+    } else if (notification.type === 'follow_request_approved') {
+      title = 'Request Approved'
+      body = `${firstActor} approved your follow request`
+    } else if (notification.type === 'follow_request_declined') {
+      title = 'Request Declined'
+      body = `${firstActor} declined your follow request`
     } else {
-      console.error('[send-push-notification] Unknown notification type:', notification.type)
+      console.error(
+        '[send-push-notification] Unknown notification type:',
+        notification.type,
+      )
       return new Response(
         JSON.stringify({ success: false, error: 'unknown_type' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
       )
     }
 
     // 4. Build push notification message
+    const messageData: ExpoPushMessage['data'] = {
+      type: notification.type,
+      notificationId: notification.id,
+    }
+
+    // Add workoutId only for workout-related notifications
+    if (notification.workout_id) {
+      messageData.workoutId = notification.workout_id
+    }
+
+    // Add requestId only for follow request notifications
+    if (notification.request_id) {
+      messageData.requestId = notification.request_id
+    }
+
     const message: ExpoPushMessage = {
       to: profile.expo_push_token,
       sound: 'default',
       title,
       body,
-      data: {
-        type: 'workout_notification',
-        workoutId: notification.workout_id,
-        notificationId: notification.id,
-      },
+      data: messageData,
       badge: 1, // iOS badge increment
     }
 
-    console.log('[send-push-notification] Sending push:', JSON.stringify(message))
+    console.log(
+      '[send-push-notification] Sending push:',
+      JSON.stringify(message),
+    )
 
     // 5. Send push notification via Expo's API
     const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -141,7 +193,10 @@ Deno.serve(async (req) => {
     })
 
     const expoResult = await expoResponse.json()
-    console.log('[send-push-notification] Expo API result:', JSON.stringify(expoResult))
+    console.log(
+      '[send-push-notification] Expo API result:',
+      JSON.stringify(expoResult),
+    )
 
     // Check for Expo API errors
     if (!expoResponse.ok || expoResult.errors) {
@@ -152,7 +207,7 @@ Deno.serve(async (req) => {
           error: 'expo_api_error',
           details: expoResult,
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
       )
     }
 
@@ -162,7 +217,7 @@ Deno.serve(async (req) => {
         expoResponse: expoResult,
         notificationId: notification.id,
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
     )
   } catch (error) {
     console.error('[send-push-notification] Unexpected error:', error)
@@ -172,7 +227,7 @@ Deno.serve(async (req) => {
         error: 'internal_error',
         message: error instanceof Error ? error.message : 'Unknown error',
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
     )
   }
 })

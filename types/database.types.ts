@@ -12,6 +12,7 @@ export interface Profile {
   display_name: string
   bio: string | null
   avatar_url: string | null
+  is_private: boolean
   gender: Gender | null
   height_cm: number | null
   weight_kg: number | null
@@ -108,6 +109,7 @@ export interface WorkoutRoutineSet {
   set_number: number
   reps_min: number | null
   reps_max: number | null
+  rest_seconds: number | null
   created_at: string
   updated_at: string
 }
@@ -138,6 +140,32 @@ export interface Follow {
   follower_id: string
   followee_id: string
   created_at: string
+}
+
+export type FollowRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'declined'
+  | 'cancelled'
+
+export interface FollowRequest {
+  id: string
+  follower_id: string
+  followee_id: string
+  status: FollowRequestStatus
+  created_at: string
+  updated_at: string
+  responded_at: string | null
+}
+
+export interface FollowRelationshipStatus {
+  target_id: string
+  is_private: boolean
+  is_following: boolean
+  has_pending_request: boolean
+  request_id: string | null
+  has_incoming_request: boolean
+  incoming_request_id: string | null
 }
 
 export interface WorkoutLike {
@@ -185,15 +213,22 @@ export interface ParsedSet {
 }
 
 // Notification types
-export type NotificationType = 'workout_like' | 'workout_comment'
+export type NotificationType =
+  | 'workout_like'
+  | 'workout_comment'
+  | 'follow_request_received'
+  | 'follow_request_approved'
+  | 'follow_request_declined'
 
 export interface Notification {
   id: string
   recipient_id: string
   type: NotificationType
-  workout_id: string
+  workout_id: string | null
+  request_id: string | null
   actors: string[] // Array of user IDs who liked/commented
   comment_preview: string | null // Latest comment text (for comment notifications)
+  metadata: Record<string, any> | null
   read: boolean
   created_at: string
   updated_at: string

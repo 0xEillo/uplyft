@@ -2,6 +2,7 @@ import { ImagePickerModal } from '@/components/ImagePickerModal'
 import { KeyboardAccessory } from '@/components/keyboard-accessory'
 import { Paywall } from '@/components/paywall'
 import { RoutineSelectorSheet } from '@/components/routine-selector-sheet'
+import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -219,10 +220,6 @@ export default function CreatePostScreen() {
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
   const imageOpacity = useRef(new Animated.Value(0)).current
 
-  // Page opening animation - like lifting a notepad or opening a book
-  const pageSlideAnim = useRef(new Animated.Value(100)).current // Start below screen
-  const pageOpacityAnim = useRef(new Animated.Value(0)).current // Start transparent
-
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
@@ -410,27 +407,19 @@ export default function CreatePostScreen() {
     }
   }, [pendingDraftRoutineId, routines, user])
 
+  // Track animation state to reset on each focus
+  const [slideKey, setSlideKey] = useState(0)
+  const [shouldExit, setShouldExit] = useState(false)
+
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
-      pageSlideAnim.setValue(100)
-      pageOpacityAnim.setValue(0)
+      console.log('[CreatePost] 👁️ Screen FOCUSED, resetting animation')
+      // Reset animation by changing key to force remount of SlideUpView
+      setSlideKey(prev => prev + 1)
+      setShouldExit(false)
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-      Animated.parallel([
-        Animated.spring(pageSlideAnim, {
-          toValue: 0,
-          tension: 50,
-          friction: 9,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pageOpacityAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start()
 
       blurInputs()
 
@@ -468,14 +457,14 @@ export default function CreatePostScreen() {
 
       return () => {
         clearTimeout(timeoutId)
-        interactionHandle.cancel?.()
+        if (interactionHandle) {
+          interactionHandle.cancel?.()
+        }
         blurInputs()
       }
     }, [
       blurInputs,
       trackEvent,
-      pageSlideAnim,
-      pageOpacityAnim,
       user,
       loadRoutines,
     ]),
@@ -639,9 +628,15 @@ export default function CreatePostScreen() {
       await stopRecording()
     }
 
+    console.log('[CreatePost] ⬅️ Cancel button pressed, starting exit animation')
     blurInputs()
-    router.back()
+    setShouldExit(true)
   }
+
+  const handleExitComplete = useCallback(() => {
+    console.log('[CreatePost] ✅ Exit animation complete, navigating back')
+    router.back()
+  }, [router])
 
   const handlePickImage = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -1294,6 +1289,7 @@ export default function CreatePostScreen() {
         lastWorkoutReps: null,
         targetRepsMin: null,
         targetRepsMax: null,
+        targetRestSeconds: null,
       })),
     }
 
@@ -1342,12 +1338,17 @@ export default function CreatePostScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Animated.View
-        style={{
-          flex: 1,
-          transform: [{ translateY: pageSlideAnim }],
-          opacity: pageOpacityAnim,
-        }}
+      <SlideUpView
+        key={slideKey}
+        style={{ flex: 1 }}
+        backgroundColor="transparent"
+        fade={true}
+        fadeFrom={0.5}
+        duration={200}
+        tension={65}
+        friction={14}
+        shouldExit={shouldExit}
+        onExitComplete={handleExitComplete}
       >
         <Pressable style={styles.header} onPress={blurInputs}>
           <TouchableOpacity
@@ -1355,7 +1356,7 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="arrow-back" size={28} color={colors.text} />
+            <Ionicons name="chevron-down" size={28} color={colors.text} />
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.headerCenter}>
@@ -1637,7 +1638,7 @@ export default function CreatePostScreen() {
           title="Try Pro for FREE!"
           message="Free workout limit reached"
         />
-      </Animated.View>
+      </SlideUpView>
 
       {/* Keyboard Accessory for adding exercises */}
       <KeyboardAccessory
@@ -1688,7 +1689,7 @@ const createStyles = (
     headerTimerText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.text,
       fontVariant: ['tabular-nums'],
     },
     primaryButton: {

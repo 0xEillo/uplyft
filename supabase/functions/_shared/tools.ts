@@ -21,6 +21,7 @@ export const exerciseCandidate = z.object({
   muscle_group: z.string().nullable().optional(),
   type: z.string().nullable().optional(),
   equipment: z.string().nullable().optional(),
+  created_by: z.string().nullable().optional(),
 })
 
 export const searchExercisesOutput = z.object({
@@ -191,6 +192,7 @@ async function computeQueryEmbedding(query: string): Promise<number[]> {
 
 export async function handleSearchExercises(
   args: z.infer<typeof searchExercisesInput>,
+  userId: string,
 ): Promise<z.infer<typeof searchExercisesOutput>> {
   console.log(
     `[Tool: searchExercises] query="${args.query}", limit=${args.limit}`,
@@ -203,6 +205,11 @@ export async function handleSearchExercises(
 
   const addCandidates = (rows: any[], source: string) => {
     for (const row of rows) {
+      const createdBy =
+        typeof row.created_by === 'string' ? row.created_by : null
+      if (createdBy && createdBy !== userId) {
+        continue
+      }
       const candidate: z.infer<typeof exerciseCandidate> = {
         id: row.id,
         name: row.name,
@@ -211,6 +218,7 @@ export async function handleSearchExercises(
         muscle_group: row.muscle_group,
         type: row.type,
         equipment: row.equipment,
+        created_by: createdBy,
       }
 
       const existing = candidateMap.get(candidate.id)
@@ -238,6 +246,7 @@ export async function handleSearchExercises(
   try {
     const { data, error } = await supabase.rpc('match_exercises_trgm', {
       search_query: args.query,
+      requesting_user_id: userId,
       match_count: limit,
       similarity_threshold: 0.35,
     })
@@ -272,6 +281,7 @@ export async function handleSearchExercises(
 
       const { data, error } = await supabase.rpc('match_exercises', {
         query_embedding: queryEmbedding,
+        requesting_user_id: userId,
         match_count: limit,
       })
 
@@ -359,6 +369,7 @@ export async function handleCreateExercise(
 
   // Normalize to title case (e.g., "leg press" -> "Leg Press")
   const normalizedName = normalizeExerciseName(trimmedName)
+  const searchName = normalizedName.toLowerCase()
 
   const supabase = createServiceClient()
 
@@ -367,6 +378,7 @@ export async function handleCreateExercise(
     .from('exercises')
     .select('*')
     .ilike('name', normalizedName)
+    .or(`created_by.is.null,created_by.eq.${userId}`)
     .single()
 
   if (exactMatch) {
@@ -374,6 +386,24 @@ export async function handleCreateExercise(
       `[Tool: createExercise] Found exact match, returning existing: ${exactMatch.id}`,
     )
     return { id: exactMatch.id, name: exactMatch.name }
+  }
+
+  // Respect aliases (stored in lower-case) before creating duplicates
+  const { data: aliasMatches, error: aliasError } = await supabase
+    .from('exercises')
+    .select('*')
+    .contains('aliases', [searchName])
+    .or(`created_by.is.null,created_by.eq.${userId}`)
+    .limit(1)
+
+  if (aliasError) {
+    console.warn('[Tool: createExercise] Alias check failed:', aliasError)
+  } else if (aliasMatches && aliasMatches.length > 0) {
+    const aliasMatch = aliasMatches[0]
+    console.log(
+      `[Tool: createExercise] Found alias match, returning existing: ${aliasMatch.id}`,
+    )
+    return { id: aliasMatch.id, name: aliasMatch.name }
   }
 
   // Generate metadata if not provided

@@ -52,7 +52,7 @@ export function ExerciseDetailCard({ workoutExercise, prInfo }: ExerciseDetailCa
     <View style={[styles.container, { borderBottomColor: colors.border }]}>
       {/* Exercise name */}
       <View style={styles.exerciseHeader}>
-        <Text style={[styles.exerciseName, { color: colors.text }]}>
+        <Text style={[styles.exerciseName, { color: colors.primary }]}>
           {exercise.name}
         </Text>
       </View>

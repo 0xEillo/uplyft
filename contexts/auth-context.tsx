@@ -92,8 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       path: 'auth/callback',
     })
 
-    console.log('[auth] 🔗 redirectUrl:', redirectUrl)
-
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -102,7 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     if (error) {
-      console.error('[auth] ❌ OAuth error:', error)
       throw error
     }
 
@@ -110,13 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('No OAuth URL generated')
     }
 
-    console.log('[auth] 🌐 OAuth URL:', data.url)
-    console.log('[auth] 📱 Opening browser with redirect:', redirectUrl)
-
     // Open OAuth in browser - works with standalone builds only
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
-
-    console.log('[auth] 📲 Browser result:', result.type, result.url)
 
     if (result.type === 'success' && result.url) {
       // Parse tokens from URL

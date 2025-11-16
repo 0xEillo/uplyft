@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { Platform, UIManager } from 'react-native'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { getColors } from '@/constants/colors'
 
 // Set global refresh control tint color for iOS
 if (Platform.OS === 'ios') {
@@ -30,6 +31,25 @@ import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+
+// Custom navigation themes with our app colors
+const CustomLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: getColors(false).background,
+    card: getColors(false).backgroundWhite,
+  },
+}
+
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: getColors(true).background,
+    card: getColors(true).backgroundWhite,
+  },
+}
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth()
@@ -77,12 +97,23 @@ function RootLayoutNav() {
 
   return (
     <>
-      <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <NavigationThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
         <Slot />
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       {isLoading && <LoadingScreen />}
     </>
+  )
+}
+
+function ThemedRootView({ children }: { children: React.ReactNode }) {
+  const { isDark } = useTheme()
+  const colors = getColors(isDark)
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+      {children}
+    </GestureHandlerRootView>
   )
 }
 
@@ -96,18 +127,18 @@ export default function RootLayout() {
     'https://us.i.posthog.com'
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <PostHogProvider
-        apiKey={posthogApiKey || ''}
-        options={{
-          host: posthogHost,
-        }}
-        autocapture={{
-          captureScreens: true,
-        }}
-      >
-        <SafeAreaProvider>
-          <ThemeProvider>
+    <PostHogProvider
+      apiKey={posthogApiKey || ''}
+      options={{
+        host: posthogHost,
+      }}
+      autocapture={{
+        captureScreens: true,
+      }}
+    >
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <ThemedRootView>
             <UnitProvider>
               <AuthProvider>
                 <SubscriptionProvider>
@@ -121,9 +152,9 @@ export default function RootLayout() {
                 </SubscriptionProvider>
               </AuthProvider>
             </UnitProvider>
-          </ThemeProvider>
-        </SafeAreaProvider>
-      </PostHogProvider>
-    </GestureHandlerRootView>
+          </ThemedRootView>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </PostHogProvider>
   )
 }

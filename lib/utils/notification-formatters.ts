@@ -30,6 +30,21 @@ export function formatNotificationText(
           ? `${firstActor} commented on your workout`
           : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} commented on your workout`,
     }
+  } else if (type === 'follow_request_received') {
+    return {
+      title: 'Follow Request',
+      body: `${firstActor} wants to follow you`,
+    }
+  } else if (type === 'follow_request_approved') {
+    return {
+      title: 'Request Approved',
+      body: `${firstActor} approved your follow request`,
+    }
+  } else if (type === 'follow_request_declined') {
+    return {
+      title: 'Request Declined',
+      body: `${firstActor} declined your follow request`,
+    }
   }
 
   // Fallback for unknown types
@@ -50,6 +65,12 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'thumbs-up'
     case 'workout_comment':
       return 'chatbubble'
+    case 'follow_request_received':
+      return 'person-add'
+    case 'follow_request_approved':
+      return 'checkmark-circle'
+    case 'follow_request_declined':
+      return 'close-circle'
     default:
       return 'notifications'
   }

@@ -218,7 +218,12 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity
-          onPress={() => router.push('/account-settings')}
+          onPress={() =>
+            router.push({
+              pathname: '/account-settings',
+              params: { returnTo: '/(tabs)/settings' },
+            })
+          }
           style={{ padding: 8 }}
         >
           <Ionicons name="settings-outline" size={24} color={colors.text} />

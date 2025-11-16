@@ -16,6 +16,7 @@ export interface StructuredSetDraft {
   lastWorkoutReps?: string | null
   targetRepsMin?: number | null
   targetRepsMax?: number | null
+  targetRestSeconds?: number | null
 }
 
 export interface StructuredExerciseDraft {

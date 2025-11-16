@@ -40,9 +40,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase environment is not configured')
 }
 
-if (__DEV__) {
-  // eslint-disable-next-line no-console
-  console.log('[supabase] using', supabaseUrl, `env=${extra.appEnv ?? 'unknown'}`)
-}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, supabaseOptions)

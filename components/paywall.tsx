@@ -66,14 +66,17 @@ export function Paywall({
     return { monthly, yearly, lifetime }
   }, [offerings])
 
-  // Set default selected plan to yearly
+  // Set default selected plan to monthly
   useEffect(() => {
     if (!selectedPlan) {
-      if (packages?.yearly) {
+      if (packages?.monthly) {
+        setSelectedPlan(packages.monthly.identifier)
+      } else if (packages?.yearly) {
+        // Fallback to yearly if monthly not available
         setSelectedPlan(packages.yearly.identifier)
       } else {
-        // Use placeholder if yearly not available yet
-        setSelectedPlan('yearly_placeholder')
+        // Use placeholder if neither is available yet
+        setSelectedPlan('monthly_placeholder')
       }
     }
   }, [packages, selectedPlan])

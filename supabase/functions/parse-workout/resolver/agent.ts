@@ -116,7 +116,7 @@ etc.`
         try {
           if (toolName === 'searchExercises') {
             const validatedArgs = searchExercisesInput.parse(toolArgs)
-            toolResult = await handleSearchExercises(validatedArgs)
+            toolResult = await handleSearchExercises(validatedArgs, userId)
           } else if (toolName === 'createExercise') {
             const validatedArgs = createExerciseInput.parse(toolArgs)
             const result = await handleCreateExercise(validatedArgs, userId)
@@ -210,10 +210,13 @@ etc.`
       )
 
       try {
-        const searchResult = await handleSearchExercises({
-          query: name,
-          limit: 1,
-        })
+        const searchResult = await handleSearchExercises(
+          {
+            query: name,
+            limit: 1,
+          },
+          userId,
+        )
 
         if (
           searchResult.candidates.length > 0 &&

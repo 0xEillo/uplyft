@@ -3,7 +3,7 @@ import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -15,8 +15,14 @@ import { supabase } from '@/lib/supabase'
 export function usePushNotifications() {
   const { user } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const notificationListener = useRef<Notifications.Subscription>()
   const responseListener = useRef<Notifications.Subscription>()
+  const lastPathnameRef = useRef(pathname || '/(tabs)')
+
+  useEffect(() => {
+    lastPathnameRef.current = pathname || '/(tabs)'
+  }, [pathname])
 
   useEffect(() => {
     if (!user) return
@@ -27,20 +33,19 @@ export function usePushNotifications() {
     // Listen for notifications received while app is in foreground
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        console.log('[Push] Notification received:', notification)
         // You could show an in-app toast here
       })
 
     // Listen for user tapping on notification
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const { workoutId, notificationId } =
+        const { workoutId, notificationId, type, requestId } =
           response.notification.request.content.data as {
             workoutId?: string
             notificationId?: string
+            type?: string
+            requestId?: string
           }
-
-        console.log('[Push] Notification tapped:', { workoutId, notificationId })
 
         // Mark notification as read
         if (notificationId) {
@@ -49,11 +54,28 @@ export function usePushNotifications() {
           })
         }
 
-        // Navigate to workout detail screen
-        if (workoutId) {
-          router.push(`/(tabs)`) // Navigate to feed first
-          // The workout will be visible in the feed
-          // Future: could add a workout detail screen
+        // Navigate based on notification type
+        const buildWorkoutHref = (id: string) => ({
+          pathname: '/workout/[workoutId]',
+          params: {
+            workoutId: id,
+            returnTo: lastPathnameRef.current,
+          },
+        })
+
+        if (
+          type === 'follow_request_received' ||
+          type === 'follow_request_approved' ||
+          type === 'follow_request_declined'
+        ) {
+          router.push('/follow-requests')
+        } else if (type === 'workout_comment' && workoutId) {
+          router.push(`/workout-comments/${workoutId}`)
+        } else if (type === 'workout_like' && workoutId) {
+          router.push(buildWorkoutHref(workoutId))
+        } else if (workoutId) {
+          // Fallback to workout detail for any other workout-related notifications
+          router.push(buildWorkoutHref(workoutId))
         }
       })
 
@@ -74,7 +96,6 @@ export function usePushNotifications() {
 async function registerForPushNotifications() {
   // Only run on physical devices
   if (!Device.isDevice) {
-    console.log('[Push] Skipping registration - not a physical device')
     return
   }
 
@@ -91,7 +112,6 @@ async function registerForPushNotifications() {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('[Push] Permission not granted')
       return
     }
 
@@ -105,20 +125,16 @@ async function registerForPushNotifications() {
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId })
     const token = tokenData.data
 
-    console.log('[Push] Token obtained:', token)
-
     // Get current user
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) {
-      console.log('[Push] No authenticated user, skipping token storage')
       return
     }
 
     // Store token in database
     await database.profiles.update(user.id, { expo_push_token: token })
-    console.log('[Push] Token saved to database')
 
     // iOS: reset badge count
     if (Platform.OS === 'ios') {

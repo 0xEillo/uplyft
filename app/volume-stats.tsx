@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { SlideInView } from '@/components/slide-in-view'
 
 type TimeRange = '30D' | '3M' | '6M' | 'ALL'
 
@@ -58,6 +59,7 @@ export default function VolumeStatsScreen() {
     totalWorkouts: 0,
     avgSetsPerWorkout: 0,
   })
+  const [shouldExit, setShouldExit] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -92,6 +94,16 @@ export default function VolumeStatsScreen() {
     loadData()
   }, [loadData])
 
+  const handleBack = () => {
+    console.log('[VolumeStats] Back button pressed, starting exit animation')
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    console.log('[VolumeStats] Exit animation complete, navigating back to analytics')
+    router.push('/(tabs)/analytics?tab=progress')
+  }
+
   const formatWeekLabel = (weekStart: string) => {
     const date = new Date(weekStart)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -99,25 +111,12 @@ export default function VolumeStatsScreen() {
 
   const styles = createStyles(colors)
 
-  if (isLoading) {
-    return (
-      <>
-        <Stack.Screen
-          options={{
-            headerShown: false,
-          }}
-        />
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        </SafeAreaView>
-      </>
-    )
-  }
-
   return (
-    <>
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
       <Stack.Screen
         options={{
           headerShown: false,
@@ -127,7 +126,7 @@ export default function VolumeStatsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/analytics?tab=progress')}
+            onPress={handleBack}
             style={styles.headerBackButton}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -159,12 +158,18 @@ export default function VolumeStatsScreen() {
           ))}
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Section 1: Session Stats */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading your training data...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Section 1: Session Stats */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconContainer}>
@@ -267,9 +272,10 @@ export default function VolumeStatsScreen() {
           {user?.id && (
             <VolumeProgressChart userId={user.id} timeRange={timeRange} />
           )}
-        </ScrollView>
+          </ScrollView>
+        )}
       </SafeAreaView>
-    </>
+    </SlideInView>
   )
 }
 
@@ -341,6 +347,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.background,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.textSecondary,
     },
     card: {
       backgroundColor: colors.white,

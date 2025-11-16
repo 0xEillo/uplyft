@@ -6,7 +6,8 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
   RefreshControl,
@@ -24,6 +25,7 @@ export default function AnalyticsScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
+  const router = useRouter()
   const insets = useSafeAreaInsets()
   const params = useLocalSearchParams<{ tab?: string }>()
   const [activeTab, setActiveTab] = useState<TabType>(
@@ -57,6 +59,12 @@ export default function AnalyticsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Progress</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/body-log')}
+          style={{ padding: 8 }}
+        >
+          <Ionicons name="images-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.gestureContainer}>

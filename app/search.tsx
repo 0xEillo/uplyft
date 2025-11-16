@@ -3,9 +3,10 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect } from '@react-navigation/native'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -20,21 +21,78 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SlideInView } from '@/components/slide-in-view'
+
+let skipNextSearchEntryAnimation = false
+
+const markSearchEntrySkipFlag = () => {
+  skipNextSearchEntryAnimation = true
+}
+
+const consumeSearchEntrySkipFlag = () => {
+  const shouldSkip = skipNextSearchEntryAnimation
+  skipNextSearchEntryAnimation = false
+  return shouldSkip
+}
 
 interface UserWithFollowStatus extends Profile {
   isFollowing: boolean
+  isPrivate: boolean
+  hasPendingRequest: boolean
+  requestId: string | null
+  hasIncomingRequest: boolean
 }
 
 export default function SearchScreen() {
   const colors = useThemedColors()
   const { user } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState('')
   const [users, setUsers] = useState<UserWithFollowStatus[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(
     new Set(),
+  )
+  const [shouldExit, setShouldExit] = useState(false)
+  const shouldSkipNextEntryRef = useRef<boolean>(consumeSearchEntrySkipFlag())
+  const [shouldAnimate, setShouldAnimate] = useState(!shouldSkipNextEntryRef.current)
+  const isInitialFocusRef = useRef(true)
+
+  // Log mount/unmount
+  useEffect(() => {
+    console.log(
+      '[Search] 🎬 Component MOUNTED, shouldSkipEntry:',
+      shouldSkipNextEntryRef.current,
+    )
+
+    return () => {
+      console.log('[Search] 💀 Component UNMOUNTED')
+      shouldSkipNextEntryRef.current = false
+      isInitialFocusRef.current = true
+    }
+  }, [shouldSkipNextEntryRef])
+
+  // Handle focus events - disable animation when returning from child route
+  useFocusEffect(
+    useCallback(() => {
+      console.log(
+        '[Search] 👁️ Screen FOCUSED, shouldSkipEntry:',
+        shouldSkipNextEntryRef.current,
+      )
+
+      if (shouldSkipNextEntryRef.current) {
+        console.log('[Search] ⏭️ Returning from child route, disabling animation')
+        setShouldAnimate(false)
+        shouldSkipNextEntryRef.current = false
+        isInitialFocusRef.current = false
+      } else if (isInitialFocusRef.current) {
+        console.log('[Search] ✨ Initial mount, enabling animation')
+        setShouldAnimate(true)
+        isInitialFocusRef.current = false
+      }
+    }, [shouldSkipNextEntryRef])
   )
 
   const styles = createStyles(colors)
@@ -57,16 +115,23 @@ export default function SearchScreen() {
         // Filter out current user from results
         const filteredResults = results.filter((u) => u.id !== user.id)
 
-        // Check follow status for each user
-        const usersWithFollowStatus = await Promise.all(
-          filteredResults.map(async (profile) => {
-            const isFollowing = await database.follows.isFollowing(
-              user.id,
-              profile.id,
-            )
-            return { ...profile, isFollowing }
-          }),
+        const statuses = await database.relationships.getStatuses(
+          user.id,
+          filteredResults.map((profile) => profile.id),
         )
+        const statusMap = new Map(statuses.map((status) => [status.target_id, status]))
+
+        const usersWithFollowStatus = filteredResults.map((profile) => {
+          const status = statusMap.get(profile.id)
+          return {
+            ...profile,
+            isFollowing: status?.is_following ?? false,
+            isPrivate: status?.is_private ?? false,
+            hasPendingRequest: status?.has_pending_request ?? false,
+            requestId: status?.request_id ?? null,
+            hasIncomingRequest: status?.has_incoming_request ?? false,
+          }
+        })
 
         setUsers(usersWithFollowStatus)
       } catch (error) {
@@ -85,6 +150,9 @@ export default function SearchScreen() {
   const handleToggleFollow = useCallback(
     async (targetUser: UserWithFollowStatus) => {
       if (!user || followingInProgress.has(targetUser.id)) return
+      if (targetUser.hasPendingRequest || targetUser.hasIncomingRequest) {
+        return
+      }
 
       try {
         setFollowingInProgress((prev) => new Set(prev).add(targetUser.id))
@@ -93,13 +161,43 @@ export default function SearchScreen() {
         if (targetUser.isFollowing) {
           await database.follows.unfollow(user.id, targetUser.id)
         } else {
-          await database.follows.follow(user.id, targetUser.id)
+          const result = await database.follows.follow(user.id, targetUser.id)
+
+          setUsers((prev) =>
+            prev.map((u) => {
+              if (u.id !== targetUser.id) return u
+              if (result.status === 'following' || result.status === 'already_following') {
+                return {
+                  ...u,
+                  isFollowing: true,
+                  hasPendingRequest: false,
+                  requestId: null,
+                }
+              }
+              return {
+                ...u,
+                isFollowing: false,
+                hasPendingRequest: true,
+                requestId: result.requestId ?? null,
+                isPrivate: true,
+              }
+            }),
+          )
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          return
         }
 
         // Update local state
         setUsers((prev) =>
           prev.map((u) =>
-            u.id === targetUser.id ? { ...u, isFollowing: !u.isFollowing } : u,
+            u.id === targetUser.id
+              ? {
+                  ...u,
+                  isFollowing: !targetUser.isFollowing,
+                  hasPendingRequest: false,
+                  requestId: null,
+                }
+              : u,
           ),
         )
 
@@ -124,9 +222,15 @@ export default function SearchScreen() {
   )
 
   const handleBack = () => {
+    console.log('[Search] ⬅️ Back button pressed, starting exit animation')
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     Keyboard.dismiss()
-    router.replace('/(tabs)')
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    console.log('[Search] ✅ Exit animation complete, navigating back to home')
+    router.back()
   }
 
   const handleInvite = async () => {
@@ -156,18 +260,47 @@ export default function SearchScreen() {
     }
   }
 
+  const markNextFocusAsChildReturn = useCallback(() => {
+    markSearchEntrySkipFlag()
+    shouldSkipNextEntryRef.current = true
+  }, [shouldSkipNextEntryRef])
+
+  const handleReviewRequests = useCallback(() => {
+    console.log('[Search] 🔀 Navigating to follow-requests')
+    markNextFocusAsChildReturn()
+    router.push('/follow-requests')
+  }, [router, markNextFocusAsChildReturn])
+
+  const handleNavigateToProfile = useCallback((userId: string) => {
+    console.log('[Search] 🔀 Navigating to profile:', userId)
+    markNextFocusAsChildReturn()
+    router.push(`/user/${userId}`)
+  }, [router, markNextFocusAsChildReturn])
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.contentWrapper}>
+    <SlideInView
+      style={{ flex: 1 }}
+      enabled={shouldAnimate}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Status bar background to match navbar */}
+        <View style={[styles.statusBarBackground, { height: insets.top }]} />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.contentWrapper}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={handleBack}
+              style={styles.backButton}
+              activeOpacity={0.6}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
               <Ionicons name="chevron-back" size={28} color={colors.text} />
-              <Text style={styles.backText}>Home</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Search</Text>
-            <View style={styles.headerRight} />
+            <View style={styles.headerSpacer} />
           </View>
 
           {/* Search Input */}
@@ -250,7 +383,7 @@ export default function SearchScreen() {
             <TouchableOpacity
               key={userProfile.id}
               style={styles.userItem}
-              onPress={() => router.push(`/user/${userProfile.id}`)}
+              onPress={() => handleNavigateToProfile(userProfile.id)}
             >
               <View style={styles.userAvatar}>
                 {userProfile.avatar_url ? (
@@ -273,30 +406,56 @@ export default function SearchScreen() {
                 </Text>
                 <Text style={styles.userTag}>@{userProfile.user_tag}</Text>
               </View>
-              <TouchableOpacity
-                style={[
+              {(() => {
+                const isBusy = followingInProgress.has(userProfile.id)
+                const isPending = userProfile.hasPendingRequest
+                const hasIncoming = userProfile.hasIncomingRequest
+                const buttonLabel = hasIncoming
+                  ? 'Requested you'
+                  : isPending
+                  ? 'Pending'
+                  : userProfile.isFollowing
+                  ? 'Following'
+                  : userProfile.isPrivate
+                  ? 'Request'
+                  : 'Follow'
+
+                const buttonStyles = [
                   styles.followButton,
                   userProfile.isFollowing && styles.followingButton,
-                ]}
-                onPress={(e) => {
-                  e.stopPropagation()
-                  handleToggleFollow(userProfile)
-                }}
-                disabled={followingInProgress.has(userProfile.id)}
-              >
-                {followingInProgress.has(userProfile.id) ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Text
-                    style={[
-                      styles.followButtonText,
-                      userProfile.isFollowing && styles.followingButtonText,
-                    ]}
+                  (isPending || hasIncoming) && styles.pendingButton,
+                ]
+
+                const textStyles = [
+                  styles.followButtonText,
+                  userProfile.isFollowing && styles.followingButtonText,
+                  (isPending || hasIncoming) && styles.pendingButtonText,
+                ]
+
+                return (
+                  <TouchableOpacity
+                    style={buttonStyles}
+                    onPress={(e) => {
+                      e.stopPropagation()
+                      if (hasIncoming) {
+                        handleReviewRequests()
+                        return
+                      }
+                      if (isPending) {
+                        return
+                      }
+                      handleToggleFollow(userProfile)
+                    }}
+                    disabled={isBusy || isPending}
                   >
-                    {userProfile.isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                    {isBusy ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Text style={textStyles}>{buttonLabel}</Text>
+                    )}
+                  </TouchableOpacity>
+                )
+              })()}
             </TouchableOpacity>
           ))}
             </ScrollView>
@@ -304,20 +463,21 @@ export default function SearchScreen() {
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Bottom Invite Section */}
-      <View style={styles.inviteSection}>
-        <Text style={styles.inviteText}>Invite friends that aren't on Rep AI</Text>
-        <TouchableOpacity style={styles.inviteButton} onPress={handleInvite}>
-          <Ionicons
-            name="share-outline"
-            size={20}
-            color={colors.white}
-            style={styles.inviteIcon}
-          />
-          <Text style={styles.inviteButtonText}>Invite</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+        {/* Bottom Invite Section */}
+        <View style={styles.inviteSection}>
+          <Text style={styles.inviteText}>Invite friends that aren't on Rep AI</Text>
+          <TouchableOpacity style={styles.inviteButton} onPress={handleInvite}>
+            <Ionicons
+              name="share-outline"
+              size={20}
+              color={colors.white}
+              style={styles.inviteIcon}
+            />
+            <Text style={styles.inviteButtonText}>Invite</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </SlideInView>
   )
 }
 
@@ -327,6 +487,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.background,
     },
+    statusBarBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.white,
+    },
     contentWrapper: {
       flex: 1,
     },
@@ -334,19 +501,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 8,
-      paddingVertical: 12,
+      paddingHorizontal: 4,
+      paddingVertical: 8,
       backgroundColor: colors.white,
     },
     backButton: {
-      flexDirection: 'row',
+      padding: 8,
+      justifyContent: 'center',
       alignItems: 'center',
-      paddingRight: 8,
-    },
-    backText: {
-      fontSize: 17,
-      color: colors.text,
-      marginLeft: 4,
+      minWidth: 44,
+      minHeight: 44,
     },
     headerTitle: {
       fontSize: 17,
@@ -356,9 +520,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       left: 0,
       right: 0,
       textAlign: 'center',
+      pointerEvents: 'none',
     },
-    headerRight: {
-      width: 80,
+    headerSpacer: {
+      width: 44,
     },
     searchContainer: {
       flexDirection: 'row',
@@ -451,12 +616,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.white,
       borderColor: colors.border,
     },
+    pendingButton: {
+      backgroundColor: colors.backgroundLight,
+      borderColor: colors.border,
+    },
     followButtonText: {
       fontSize: 14,
       fontWeight: '600',
       color: colors.white,
     },
     followingButtonText: {
+      color: colors.textSecondary,
+    },
+    pendingButtonText: {
       color: colors.textSecondary,
     },
     loadingContainer: {
@@ -469,6 +641,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: 32,
+      paddingBottom: 140,
     },
     emptyText: {
       fontSize: 14,
@@ -511,7 +684,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       backgroundColor: '#FC4C02',
       paddingVertical: 14,
-      borderRadius: 6,
+      borderRadius: 28,
     },
     inviteIcon: {
       marginRight: 8,

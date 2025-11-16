@@ -8,7 +8,9 @@ import {
   getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import type { NotificationWithProfiles } from '@/types/database.types'
+import { useFocusEffect } from '@react-navigation/native'
+import { router, usePathname } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
@@ -26,6 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 export default function NotificationsScreen() {
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const pathname = usePathname()
   const {
     notifications,
     unreadCount,
@@ -34,6 +37,16 @@ export default function NotificationsScreen() {
     refreshNotifications,
   } = useNotifications()
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [respondingRequests, setRespondingRequests] = useState<Set<string>>(new Set())
+  const [respondedRequests, setRespondedRequests] = useState<Map<string, 'approve' | 'decline'>>(new Map())
+
+  // Reset responded requests state when screen is focused
+  // The database filtering will handle not showing already-responded requests
+  useFocusEffect(
+    useCallback(() => {
+      setRespondedRequests(new Map())
+    }, [])
+  )
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
@@ -53,19 +66,38 @@ export default function NotificationsScreen() {
   }
 
   const handleNotificationPress = useCallback(
-    async (notificationId: string, workoutId: string) => {
+    async (notification: NotificationWithProfiles) => {
       try {
-        // Mark as read
-        await database.notifications.markAsRead(notificationId)
-        // Refresh to update UI
+        await database.notifications.markAsRead(notification.id)
         await refreshNotifications()
-        // Navigate to feed (workout will be visible there)
-        router.push('/(tabs)')
+
+        if (
+          notification.type === 'follow_request_received' ||
+          notification.type === 'follow_request_approved' ||
+          notification.type === 'follow_request_declined'
+        ) {
+          router.push('/follow-requests')
+        } else if (notification.type === 'workout_comment') {
+          // Navigate to the comments view for the workout
+          router.push(`/workout-comments/${notification.workout_id}`)
+        } else if (notification.type === 'workout_like' && notification.workout_id) {
+          // Navigate to the workout detail view for likes
+          router.push({
+            pathname: '/workout/[workoutId]',
+            params: {
+              workoutId: notification.workout_id,
+              returnTo: pathname,
+            },
+          })
+        } else {
+          // For other notifications, go to the feed
+          router.push('/(tabs)')
+        }
       } catch (error) {
         console.error('Error handling notification press:', error)
       }
     },
-    [refreshNotifications]
+    [refreshNotifications, pathname]
   )
 
   const handleMarkAllAsRead = useCallback(async () => {
@@ -90,6 +122,33 @@ export default function NotificationsScreen() {
       await refreshNotifications()
     }
   }, [markAllAsReadOptimistically, refreshNotifications])
+
+  const handleFollowRequestResponse = useCallback(
+    async (requestId: string, decision: 'approve' | 'decline') => {
+      try {
+        setRespondingRequests((prev) => new Set(prev).add(requestId))
+        await database.followRequests.respond(requestId, decision)
+        // Mark this request as responded to and store the decision
+        setRespondedRequests((prev) => new Map(prev).set(requestId, decision))
+
+        // Optimistically remove the notification from the list after a short delay
+        // This gives users time to see the updated message before it disappears
+        setTimeout(() => {
+          refreshNotifications()
+        }, 1500)
+      } catch (error) {
+        console.error('Error responding to follow request notification:', error)
+        Alert.alert('Error', 'Unable to update that follow request. Please try again.')
+      } finally {
+        setRespondingRequests((prev) => {
+          const next = new Set(prev)
+          next.delete(requestId)
+          return next
+        })
+      }
+    },
+    [refreshNotifications],
+  )
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -127,18 +186,59 @@ export default function NotificationsScreen() {
                 (p) => p.display_name
               )
               const actorCount = notification.actors.length
-              const { title, body } = formatNotificationText(
+              let { title, body } = formatNotificationText(
                 notification.type,
                 actorNames,
                 actorCount
               )
 
-              const iconName = getNotificationIcon(notification.type)
-              const iconColor = getNotificationIconColor(
+              // Update messaging if this request was responded to
+              if (
+                notification.type === 'follow_request_received' &&
+                notification.request_id &&
+                respondedRequests.has(notification.request_id)
+              ) {
+                const decision = respondedRequests.get(notification.request_id)
+                const firstActor = actorNames[0] || 'User'
+
+                if (decision === 'approve') {
+                  title = 'Request Approved'
+                  body = `${firstActor} is now following you`
+                } else if (decision === 'decline') {
+                  title = 'Request Declined'
+                  body = `You declined ${firstActor}'s follow request`
+                }
+              }
+
+              let iconName = getNotificationIcon(notification.type)
+              let iconColor = getNotificationIconColor(
                 notification.read,
                 colors.primary,
                 colors.textSecondary
               )
+
+              // Update icon if this request was responded to
+              if (
+                notification.type === 'follow_request_received' &&
+                notification.request_id &&
+                respondedRequests.has(notification.request_id)
+              ) {
+                const decision = respondedRequests.get(notification.request_id)
+                if (decision === 'approve') {
+                  iconName = 'checkmark-circle'
+                  iconColor = colors.success || colors.primary
+                } else if (decision === 'decline') {
+                  iconName = 'close-circle'
+                  iconColor = colors.textSecondary
+                }
+              }
+
+              const showFollowRequestActions =
+                notification.type === 'follow_request_received' &&
+                Boolean(notification.request_id) &&
+                !respondedRequests.has(notification.request_id!)
+              const isResponding =
+                notification.request_id && respondingRequests.has(notification.request_id)
 
               return (
                 <TouchableOpacity
@@ -147,17 +247,12 @@ export default function NotificationsScreen() {
                     styles.notificationItem,
                     !notification.read && styles.notificationItemUnread,
                   ]}
-                  onPress={() =>
-                    handleNotificationPress(
-                      notification.id,
-                      notification.workout_id
-                    )
-                  }
+                  onPress={() => handleNotificationPress(notification)}
                   activeOpacity={0.7}
                 >
-                  {/* Actor avatars (show first 3) */}
+                  {/* Actor avatars (show first 2) */}
                   <View style={styles.avatarsContainer}>
-                    {notification.actorProfiles.slice(0, 3).map((actor, index) => (
+                    {notification.actorProfiles.slice(0, 2).map((actor, index) => (
                       <View
                         key={actor.id}
                         style={[
@@ -200,6 +295,43 @@ export default function NotificationsScreen() {
                       </Text>
                     </View>
                     <Text style={styles.notificationBody}>{body}</Text>
+                    {showFollowRequestActions && notification.request_id && (
+                      <View style={styles.followRequestActions}>
+                        <TouchableOpacity
+                          style={[styles.followRequestButton, styles.declineButton]}
+                          onPress={() =>
+                            handleFollowRequestResponse(notification.request_id!, 'decline')
+                          }
+                          disabled={isResponding}
+                        >
+                          {isResponding ? (
+                            <ActivityIndicator size="small" color={colors.error} />
+                          ) : (
+                            <Text
+                              style={[
+                                styles.followRequestButtonText,
+                                styles.declineButtonText,
+                              ]}
+                            >
+                              Decline
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.followRequestButton, styles.approveButton]}
+                          onPress={() =>
+                            handleFollowRequestResponse(notification.request_id!, 'approve')
+                          }
+                          disabled={isResponding}
+                        >
+                          {isResponding ? (
+                            <ActivityIndicator size="small" color={colors.white} />
+                          ) : (
+                            <Text style={styles.followRequestButtonText}>Approve</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
                     <Text style={styles.notificationTime}>
                       {formatTimeAgo(notification.updated_at)}
                     </Text>
@@ -285,7 +417,6 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     },
     notificationsList: {
       flex: 1,
-      paddingTop: 8,
     },
     notificationItem: {
       flexDirection: 'row',
@@ -348,6 +479,35 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       color: colors.text,
       lineHeight: 20,
       marginBottom: 8,
+    },
+    followRequestActions: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 8,
+    },
+    followRequestButton: {
+      flex: 1,
+      borderRadius: 20,
+      paddingVertical: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    followRequestButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.white,
+    },
+    approveButton: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    declineButton: {
+      backgroundColor: colors.white,
+      borderColor: colors.border,
+    },
+    declineButtonText: {
+      color: colors.error,
     },
     notificationTime: {
       fontSize: 12,

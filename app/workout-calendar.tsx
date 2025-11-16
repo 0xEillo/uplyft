@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { SlideInView } from '@/components/slide-in-view'
 
 type ViewMode = 'month' | 'year' | 'multi-year'
 
@@ -23,6 +24,7 @@ export default function WorkoutCalendarScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [shouldExit, setShouldExit] = useState(false)
 
   const loadWorkoutDates = useCallback(async () => {
     if (!user?.id) return
@@ -50,6 +52,16 @@ export default function WorkoutCalendarScreen() {
   useEffect(() => {
     loadWorkoutDates()
   }, [loadWorkoutDates])
+
+  const handleBack = () => {
+    console.log('[WorkoutCalendar] Back button pressed, starting exit animation')
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    console.log('[WorkoutCalendar] Exit animation complete, navigating back to analytics')
+    router.push('/(tabs)/analytics?tab=progress')
+  }
 
   const renderMonthView = () => {
     const year = currentDate.getFullYear()
@@ -227,24 +239,29 @@ export default function WorkoutCalendarScreen() {
   const styles = createStyles(colors)
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <Stack.Screen
+          options={{
+            headerShown: false,
+          }}
+        />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.push('/(tabs)/analytics?tab=progress')}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Workout Calendar</Text>
-        <View style={styles.headerRightSpacer} />
-      </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Workout Calendar</Text>
+          <View style={styles.headerRightSpacer} />
+        </View>
 
       {/* View Mode Selector */}
       <View style={styles.viewModeSelectorContainer}>
@@ -312,7 +329,8 @@ export default function WorkoutCalendarScreen() {
           {viewMode === 'multi-year' && renderMultiYearView()}
         </ScrollView>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </SlideInView>
   )
 }
 
