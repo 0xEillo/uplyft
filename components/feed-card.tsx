@@ -990,6 +990,7 @@ const createStyles = (
     },
     footer: {
       paddingTop: 8,
+      paddingBottom: 12,
       alignItems: 'center',
     },
     footerText: {

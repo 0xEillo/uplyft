@@ -103,6 +103,7 @@ export function WorkoutDetailView({
 
   // Get workout metadata
   const muscleGroups = workout ? getWorkoutMuscleGroups(workout) : ''
+  const workoutTitle = workout?.type || muscleGroups || 'Workout'
   const timeAgo = workout ? formatTimeAgo(workout.created_at) : ''
   const profile = workout?.profile
 
@@ -349,7 +350,7 @@ export function WorkoutDetailView({
               {/* Workout title */}
               <View style={styles.titleSection}>
                 <Text style={[styles.workoutTitle, { color: colors.text }]}>
-                  {muscleGroups}
+                  {workoutTitle}
                 </Text>
                 {workout.notes && (
                   <Text
