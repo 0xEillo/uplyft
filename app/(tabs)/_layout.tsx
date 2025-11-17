@@ -1,21 +1,13 @@
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Tabs, useRouter } from 'expo-router'
-import React, { useEffect, useRef, useState } from 'react'
-import {
-  Animated,
-  Easing,
-  StatusBar,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import { HapticTab } from '@/components/haptic-tab'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
-import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { IconSymbol } from '@/components/ui/icon-symbol'
+import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
   SuccessOverlayProvider,
@@ -23,8 +15,8 @@ import {
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
@@ -58,7 +50,7 @@ function ElevatedPlusButton() {
       activeOpacity={0.8}
     >
       <Ionicons
-        name={hasDraft ? "document-text" : "add"}
+        name={hasDraft ? 'document-text' : 'add'}
         size={28}
         color={colors.white}
       />
@@ -69,7 +61,13 @@ function ElevatedPlusButton() {
 function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const { isVisible, data, hideOverlay, showShareScreen, setShowShareScreen } = useSuccessOverlay()
+  const {
+    isVisible,
+    data,
+    hideOverlay,
+    showShareScreen,
+    setShowShareScreen,
+  } = useSuccessOverlay()
   const { weightUnit } = useWeightUnits()
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
 
@@ -80,19 +78,27 @@ function TabLayoutContent() {
   React.useEffect(() => {
     // If we have workout data and overlay is not visible (animation completed), show share screen
     // Only show once per workout ID
-    if (data.workout && !isVisible && !showShareScreen && shownWorkoutIdRef.current !== data.workout.id) {
+    if (
+      data.workout &&
+      !isVisible &&
+      !showShareScreen &&
+      shownWorkoutIdRef.current !== data.workout.id
+    ) {
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
   }, [data.workout, isVisible, showShareScreen, setShowShareScreen])
 
   const handleAnimationComplete = () => {
-
     hideOverlay()
     // Note: Share screen will be shown by the useEffect above when workout data arrives
   }
 
-  const handleShare = async (widgetIndex: number, shareType: 'instagram' | 'general', widgetRef: View) => {
+  const handleShare = async (
+    widgetIndex: number,
+    shareType: 'instagram' | 'general',
+    widgetRef: View,
+  ) => {
     if (!data.workout) return
 
     const widgetTypes = ['summary', 'stats', 'achievement']
@@ -102,7 +108,11 @@ function TabLayoutContent() {
       if (shareType === 'instagram') {
         await shareToInstagramStories(data.workout, widgetRef, widgetType)
       } else {
-        await shareWorkout(data.workout, data.workoutTitle || 'My Workout', widgetRef)
+        await shareWorkout(
+          data.workout,
+          data.workoutTitle || 'My Workout',
+          widgetRef,
+        )
       }
     } catch (error) {
       console.error('Error sharing workout:', error)
@@ -243,7 +253,10 @@ export default function TabLayout() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>, hasDraft: boolean = false) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  hasDraft: boolean = false,
+) =>
   StyleSheet.create({
     elevatedButton: {
       width: 64,

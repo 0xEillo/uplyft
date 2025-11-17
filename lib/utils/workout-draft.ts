@@ -59,18 +59,15 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
 
   const notesLength = draft.notes?.trim().length ?? 0
   const titleLength = draft.title?.trim().length ?? 0
-  const structuredLength = Array.isArray(draft.structuredData)
-    ? draft.structuredData.length
-    : 0
+  
+  // Check if structured data has actual content (sets with weight or reps)
+  const hasStructuredContent = Array.isArray(draft.structuredData) &&
+    draft.structuredData.length > 0 &&
+    draft.structuredData.some((exercise) =>
+      exercise.sets.some((set) => set.weight.trim() || set.reps.trim())
+    )
 
-  // Only consider isStructuredMode as content if there's actual structured data
-  // Only consider selectedRoutineId as content if there's actual structured data or a routine is selected
-  return (
-    notesLength > 0 ||
-    titleLength > 0 ||
-    structuredLength > 0 ||
-    Boolean(draft.selectedRoutineId)
-  )
+  return notesLength > 0 || titleLength > 0 || hasStructuredContent
 }
 
 export async function hasStoredDraft(): Promise<boolean> {
@@ -83,7 +80,7 @@ export async function hasStoredDraft(): Promise<boolean> {
       if (hasContent) {
         return true
       }
-    } catch {
+    } catch (error) {
       await AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY)
     }
   }
@@ -117,7 +114,7 @@ export async function hasStoredDraft(): Promise<boolean> {
         selectedRoutineId: parsed.selectedRoutineId,
       }
       return draftHasContent(combinedDraft)
-    } catch {
+    } catch (error) {
       await AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY)
     }
   }

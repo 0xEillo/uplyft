@@ -422,7 +422,6 @@ export default function CreatePostScreen() {
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
-      console.log('[CreatePost] 👁️ Screen FOCUSED, resetting animation')
       // Reset animation by changing key to force remount of SlideUpView
       setSlideKey(prev => prev + 1)
       setShouldExit(false)
@@ -636,13 +635,11 @@ export default function CreatePostScreen() {
       await stopRecording()
     }
 
-    console.log('[CreatePost] ⬅️ Cancel button pressed, starting exit animation')
     blurInputs()
     setShouldExit(true)
   }
 
   const handleExitComplete = useCallback(() => {
-    console.log('[CreatePost] ✅ Exit animation complete, navigating back')
     router.back()
   }, [router])
 
@@ -682,12 +679,6 @@ export default function CreatePostScreen() {
       const trimmedNotes = notesValue.trim()
       const trimmedTitle = titleValue.trim()
       const durationSeconds = Math.max(0, getWorkoutElapsedSeconds())
-
-      console.log(
-        'Submitting workout with duration:',
-        durationSeconds,
-        'seconds',
-      )
 
       await queueWorkout({
         notes: trimmedNotes,
@@ -751,12 +742,6 @@ export default function CreatePostScreen() {
       blurInputs()
 
       // Store title for later use in share screen
-      console.log('[create-post] Showing overlay with data:', {
-        message,
-        workoutNumber,
-        weeklyTarget,
-        workoutTitle: trimmedTitle || undefined,
-      })
       showOverlay({
         message,
         workoutNumber,

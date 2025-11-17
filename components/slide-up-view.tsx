@@ -65,34 +65,10 @@ export function SlideUpView({
   ).current
   const opacityAnim = useRef(new Animated.Value(fade && enabled ? fadeFrom : 1)).current
 
-  // Log initial values
-  useEffect(() => {
-    console.log('[SlideUpView] 🎬 MOUNTED')
-    console.log('[SlideUpView]   - enabled:', enabled)
-    console.log('[SlideUpView]   - duration:', duration)
-    console.log('[SlideUpView]   - useSpring:', useSpring)
-    console.log('[SlideUpView]   - tension:', tension)
-    console.log('[SlideUpView]   - friction:', friction)
-    console.log('[SlideUpView]   - SCREEN_HEIGHT:', SCREEN_HEIGHT)
-    console.log('[SlideUpView]   - initial slideAnim value:', enabled ? SCREEN_HEIGHT : 0)
-    console.log('[SlideUpView]   - initial opacityAnim value:', fade && enabled ? fadeFrom : 1)
-    console.log('[SlideUpView]   - fadeFrom:', fadeFrom)
-
-    return () => {
-      console.log('[SlideUpView] 💀 UNMOUNTED')
-    }
-  }, [])
 
   // Entry animation
   useEffect(() => {
     if (enabled) {
-      console.log('[SlideUpView] ⬆️ Starting entry animation')
-      console.log('[SlideUpView]   - Animation type:', useSpring ? 'SPRING' : 'TIMING')
-      console.log('[SlideUpView]   - Duration:', duration, 'ms')
-      console.log('[SlideUpView]   - From Y:', SCREEN_HEIGHT, '→ To Y:', 0)
-      console.log('[SlideUpView]   - Fade:', fade ? `YES (${fadeFrom} → 1)` : 'NO')
-
-      const startTime = Date.now()
       const animations = []
 
       if (useSpring) {
@@ -126,25 +102,13 @@ export function SlideUpView({
         )
       }
 
-      Animated.parallel(animations).start(() => {
-        const elapsed = Date.now() - startTime
-        console.log('[SlideUpView] ✅ Entry animation complete')
-        console.log('[SlideUpView]   - Actual time elapsed:', elapsed, 'ms')
-      })
-    } else {
-      console.log('[SlideUpView] ⏭️ Entry animation DISABLED (enabled=false)')
+      Animated.parallel(animations).start()
     }
   }, [enabled, slideAnim, opacityAnim, duration, delay, fade, useSpring, tension, friction])
 
   // Exit animation
   useEffect(() => {
     if (shouldExit) {
-      console.log('[SlideUpView] ⬇️ Starting exit animation')
-      console.log('[SlideUpView]   - Duration:', duration, 'ms')
-      console.log('[SlideUpView]   - From Y:', 0, '→ To Y:', SCREEN_HEIGHT)
-      console.log('[SlideUpView]   - Fade:', fade ? `YES (1 → ${fadeFrom})` : 'NO')
-
-      const startTime = Date.now()
       const animations = [
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
@@ -164,10 +128,6 @@ export function SlideUpView({
       }
 
       Animated.parallel(animations).start(() => {
-        const elapsed = Date.now() - startTime
-        console.log('[SlideUpView] ✅ Exit animation complete')
-        console.log('[SlideUpView]   - Actual time elapsed:', elapsed, 'ms')
-        console.log('[SlideUpView]   - Calling onExitComplete callback')
         onExitComplete?.()
       })
     }
