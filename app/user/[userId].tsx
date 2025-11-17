@@ -67,25 +67,12 @@ export default function UserProfileScreen() {
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState(0)
 
-  // Log when component mounts/unmounts
   useEffect(() => {
-    console.log('[UserProfile] 🎬 Component MOUNTED - userId:', userId)
     return () => {
-      console.log('[UserProfile] 💀 Component UNMOUNTED - userId:', userId)
       shouldSkipNextEntryRef.current = false
       isInitialFocusRef.current = true
     }
   }, [userId])
-
-  // Log focus events
-  useFocusEffect(
-    useCallback(() => {
-      console.log('[UserProfile] 👁️ Screen FOCUSED - userId:', userId)
-      return () => {
-        console.log('[UserProfile] 😴 Screen UNFOCUSED - userId:', userId)
-      }
-    }, [userId]),
-  )
 
   const loadUserData = useCallback(async () => {
     if (!userId) return
@@ -282,14 +269,10 @@ export default function UserProfileScreen() {
   }, [shouldSkipNextEntryRef])
 
   const handleBack = useCallback(() => {
-    console.log('[UserProfile] ⬅️ Back button pressed, starting exit animation')
     setShouldExit(true)
   }, [])
 
   const handleExitComplete = useCallback(() => {
-    console.log(
-      '[UserProfile] ✅ Exit animation complete, navigating back to search',
-    )
     router.back()
   }, [router])
 
@@ -652,9 +635,6 @@ function AsyncPrFeedCard({
   }, [workout.id, router, onNavigateAway])
 
   const handleCardPress = useCallback(() => {
-    console.log('🚀 [UserProfile->WorkoutDetail] Navigation')
-    console.log('   From: /user/' + userId)
-    console.log('   To: /workout/' + workout.id)
     onNavigateAway?.()
     router.push({
       pathname: '/workout/[workoutId]',
@@ -663,7 +643,7 @@ function AsyncPrFeedCard({
         returnTo: pathname,
       },
     })
-  }, [workout.id, userId, router, pathname, onNavigateAway])
+  }, [workout.id, router, pathname, onNavigateAway])
 
   return (
     <FeedCard

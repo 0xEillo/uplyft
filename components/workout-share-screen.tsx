@@ -3,7 +3,6 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { PrService } from '@/lib/pr'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { LinearGradient } from 'expo-linear-gradient'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   Animated,
@@ -110,9 +109,7 @@ export function WorkoutShareScreen({
   const backdropAnim = useRef(new Animated.Value(0)).current
 
   React.useEffect(() => {
-    console.log('[WorkoutShareScreen] Visibility changed:', visible)
     if (visible) {
-      console.log('[WorkoutShareScreen] Starting slide animation')
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -176,13 +173,6 @@ export function WorkoutShareScreen({
     const offsetX = event.nativeEvent.contentOffset.x
     const page = Math.round(offsetX / SCREEN_WIDTH)
     setCurrentPage(page)
-  }
-
-  const handleShareInstagram = () => {
-    const currentRef = widgetRefs[currentPage]
-    if (currentRef?.current) {
-      onShare(currentPage, 'instagram', currentRef.current)
-    }
   }
 
   const handleShareGeneral = () => {
@@ -295,39 +285,22 @@ export function WorkoutShareScreen({
           {/* Share buttons */}
           <View style={styles.shareButtons}>
             <TouchableOpacity
-              style={styles.instagramButton}
-              onPress={handleShareInstagram}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#833AB4', '#C13584', '#E1306C', '#FD1D1D', '#F77737']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.instagramGradient}
-              >
-                <Ionicons
-                  name="logo-instagram"
-                  size={18}
-                  color="#FFFFFF"
-                  style={styles.instagramIcon}
-                />
-                <Text style={styles.shareButtonText}>Stories</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.shareButton, { backgroundColor: colors.border }]}
+              style={[
+                styles.shareButton,
+                styles.shareButtonFull,
+                { backgroundColor: colors.primary },
+              ]}
               onPress={handleShareGeneral}
               activeOpacity={0.8}
             >
               <Ionicons
                 name="share-outline"
                 size={18}
-                color={colors.text}
+                color="#FFFFFF"
                 style={styles.moreIcon}
               />
-              <Text style={[styles.shareButtonText, { color: colors.text }]}>
-                More
+              <Text style={[styles.shareButtonText, { color: '#FFFFFF' }]}>
+                Share
               </Text>
             </TouchableOpacity>
           </View>
@@ -395,29 +368,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  instagramButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  instagramGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 6,
-  },
-  instagramIcon: {
-    marginTop: -1,
-  },
   shareButton: {
-    flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 6,
+  },
+  shareButtonFull: {
+    flex: 1,
   },
   moreIcon: {
     marginTop: -1,

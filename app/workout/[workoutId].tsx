@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { getColors } from '@/constants/colors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { WorkoutShareScreen } from '@/components/workout-share-screen'
+import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { PrService } from '@/lib/pr'
 
 interface PrDetailForDisplay {
@@ -34,6 +37,7 @@ export default function WorkoutDetailScreen() {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { shareWorkoutWidget } = useWorkoutShare()
+  const { weightUnit } = useWeightUnits()
 
   const [workout, setWorkout] = useState<WorkoutSessionWithDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -41,6 +45,7 @@ export default function WorkoutDetailScreen() {
   const [commentCount, setCommentCount] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
   const [prInfo, setPrInfo] = useState<ExercisePRInfo[]>([])
+  const [showShareScreen, setShowShareScreen] = useState(false)
 
   // Log when component mounts/unmounts
   useEffect(() => {
@@ -189,10 +194,27 @@ export default function WorkoutDetailScreen() {
   }, [workoutId, router])
 
   // Handle share
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(() => {
     if (!workout) return
-    await shareWorkoutWidget(workout, 'feed')
-  }, [workout, shareWorkoutWidget])
+    setShowShareScreen(true)
+  }, [workout])
+
+  // Handle share widget
+  const handleShareWidget = useCallback(
+    async (
+      widgetIndex: number,
+      shareType: 'instagram' | 'general',
+      widgetRef: View,
+    ) => {
+      await shareWorkoutWidget(widgetRef, shareType)
+    },
+    [shareWorkoutWidget],
+  )
+
+  // Handle close share screen
+  const handleCloseShareScreen = useCallback(() => {
+    setShowShareScreen(false)
+  }, [])
 
   // Handle edit
   const handleEdit = useCallback(() => {
@@ -223,21 +245,39 @@ export default function WorkoutDetailScreen() {
   // Only show edit/delete/create routine for own workouts
   const isOwnWorkout = workout ? user?.id === workout.user_id : false
 
+  // Get workout title for sharing
+  const workoutTitle = workout ? getWorkoutMuscleGroups(workout) : ''
+
   return (
-    <WorkoutDetailView
-      workout={workout}
-      prInfo={prInfo}
-      likeCount={likeCount}
-      commentCount={commentCount}
-      isLiked={isLiked}
-      onLike={handleLike}
-      onComment={handleComment}
-      onShare={handleShare}
-      onEdit={isOwnWorkout ? handleEdit : undefined}
-      onDelete={isOwnWorkout ? handleDelete : undefined}
-      onCreateRoutine={handleCreateRoutine}
-      isLoading={isLoading}
-    />
+    <>
+      <WorkoutDetailView
+        workout={workout}
+        prInfo={prInfo}
+        likeCount={likeCount}
+        commentCount={commentCount}
+        isLiked={isLiked}
+        onLike={handleLike}
+        onComment={handleComment}
+        onShare={handleShare}
+        onEdit={isOwnWorkout ? handleEdit : undefined}
+        onDelete={isOwnWorkout ? handleDelete : undefined}
+        onCreateRoutine={handleCreateRoutine}
+        isLoading={isLoading}
+      />
+
+      {/* Workout Share Screen Modal */}
+      {workout && showShareScreen && (
+        <WorkoutShareScreen
+          visible={showShareScreen}
+          workout={workout}
+          weightUnit={weightUnit}
+          workoutCountThisWeek={1}
+          workoutTitle={workoutTitle}
+          onClose={handleCloseShareScreen}
+          onShare={handleShareWidget}
+        />
+      )}
+    </>
   )
 }
 
