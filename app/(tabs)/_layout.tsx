@@ -171,7 +171,7 @@ function TabLayoutContent() {
         />
         {/* Profile tab */}
         <Tabs.Screen
-          name="settings"
+          name="profile"
           options={{
             title: 'Profile',
             tabBarIcon: ({ color }) => (

@@ -11,6 +11,7 @@ export interface Profile {
   user_tag: string
   display_name: string
   bio: string | null
+  profile_description: string | null
   avatar_url: string | null
   is_private: boolean
   gender: Gender | null

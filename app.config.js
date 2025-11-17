@@ -1,3 +1,4 @@
+/* eslint-env node */
 const path = require('path')
 const dotenv = require('dotenv')
 
@@ -16,7 +17,7 @@ const envFilesByProfile = {
 const envFiles = envFilesByProfile[buildProfile] || ['.env']
 
 envFiles
-  .map((file) => path.resolve(__dirname, file))
+  .map((file) => path.resolve(process.cwd(), file))
   .forEach((filePath, index) => {
     dotenv.config({
       path: filePath,
@@ -51,7 +52,7 @@ module.exports = {
   expo: {
     name: 'Rep AI',
     slug: 'repai',
-    version: '1.0.2',
+    version: '1.0.3',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'repai',
@@ -94,12 +95,21 @@ module.exports = {
     updates: {
       url: 'https://u.expo.dev/d92cf9e6-0901-4a68-9f50-741decd5c10f',
     },
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     web: {
       output: 'server',
       favicon: './assets/images/favicon.png',
     },
     plugins: [
       'expo-router',
+      [
+        'expo-updates',
+        {
+          username: 'oliver-ry',
+        },
+      ],
       [
         'expo-splash-screen',
         {

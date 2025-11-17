@@ -37,7 +37,9 @@ export default function ProfileScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(null)
+  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
+    null,
+  )
 
   // This week stats
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
@@ -70,7 +72,10 @@ export default function ProfileScreen() {
       setWeeklyWorkouts(weekCount)
 
       // Calculate weekly volume
-      const weekWorkouts = await database.workoutSessions.getRecent(user.id, 100)
+      const weekWorkouts = await database.workoutSessions.getRecent(
+        user.id,
+        100,
+      )
       const weeklyWorkouts = weekWorkouts.filter((w) => {
         const workoutDate = new Date(w.date)
         return workoutDate >= startOfWeek
@@ -200,9 +205,15 @@ export default function ProfileScreen() {
     if (isLoading) return null
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="barbell-outline" size={64} color={colors.textPlaceholder} />
+        <Ionicons
+          name="barbell-outline"
+          size={64}
+          color={colors.textPlaceholder}
+        />
         <Text style={styles.emptyText}>No workouts yet</Text>
-        <Text style={styles.emptySubtext}>Start logging to see your progress!</Text>
+        <Text style={styles.emptySubtext}>
+          Start logging to see your progress!
+        </Text>
       </View>
     )
   }, [isLoading, colors])
@@ -221,7 +232,7 @@ export default function ProfileScreen() {
           onPress={() =>
             router.push({
               pathname: '/account-settings',
-              params: { returnTo: '/(tabs)/settings' },
+              params: { returnTo: '/(tabs)/profile' },
             })
           }
           style={{ padding: 8 }}
@@ -259,7 +270,9 @@ export default function ProfileScreen() {
 
                   {/* Name */}
                   <View style={styles.nameContainer}>
-                    <Text style={styles.displayName}>{profile?.display_name || 'User'}</Text>
+                    <Text style={styles.displayName}>
+                      {profile?.display_name || 'User'}
+                    </Text>
                     {profile?.user_tag && (
                       <Text style={styles.userTag}>@{profile.user_tag}</Text>
                     )}
@@ -282,6 +295,17 @@ export default function ProfileScreen() {
                   </View>
                 </View>
 
+                {/* Profile Description */}
+                {profile?.profile_description ? (
+                  <Text
+                    style={styles.profileDescription}
+                    numberOfLines={3}
+                    ellipsizeMode="tail"
+                  >
+                    {profile.profile_description}
+                  </Text>
+                ) : null}
+
                 {/* Edit Profile Button */}
                 <TouchableOpacity
                   style={styles.editButton}
@@ -294,20 +318,32 @@ export default function ProfileScreen() {
               {/* This Week Stats Section */}
               <View style={styles.weeklyStatsSection}>
                 <View style={styles.weeklyStatsHeader}>
-                  <Ionicons name="calendar-outline" size={20} color={colors.text} />
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.text}
+                  />
                   <Text style={styles.weeklyStatsTitle}>This Week</Text>
                 </View>
                 <View style={styles.weeklyStats}>
                   <View style={styles.weeklyStat}>
-                    <Text style={styles.weeklyStatNumber}>{weeklyWorkouts}</Text>
+                    <Text style={styles.weeklyStatNumber}>
+                      {weeklyWorkouts}
+                    </Text>
                     <Text style={styles.weeklyStatLabel}>Workouts</Text>
                   </View>
                   <View style={styles.weeklyStatDivider} />
                   <View style={styles.weeklyStat}>
                     <Text style={styles.weeklyStatNumber}>
-                      {(weightUnit === 'lb' ? (weeklyVolume * 2.20462) / 1000 : weeklyVolume / 1000).toFixed(1)}k
+                      {(weightUnit === 'lb'
+                        ? (weeklyVolume * 2.20462) / 1000
+                        : weeklyVolume / 1000
+                      ).toFixed(1)}
+                      k
                     </Text>
-                    <Text style={styles.weeklyStatLabel}>Volume ({weightUnit})</Text>
+                    <Text style={styles.weeklyStatLabel}>
+                      Volume ({weightUnit})
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -427,6 +463,11 @@ const createStyles = (
       color: colors.textSecondary,
       fontWeight: '400',
     },
+    profileDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 16,
+    },
     editButton: {
       backgroundColor: colors.white,
       borderWidth: 1,
@@ -509,3 +550,4 @@ const createStyles = (
       textAlign: 'center',
     },
   })
+

@@ -50,6 +50,9 @@ export default function UserProfileScreen() {
   const [userName, setUserName] = useState('')
   const [userTag, setUserTag] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [profileDescription, setProfileDescription] = useState<string | null>(
+    null,
+  )
   const [privacyLocked, setPrivacyLocked] = useState(false)
   const [
     relationship,
@@ -85,16 +88,19 @@ export default function UserProfileScreen() {
           setUserName(profileData.display_name)
           setUserTag(profileData.user_tag)
           setAvatarUrl(profileData.avatar_url)
+          setProfileDescription(profileData.profile_description || null)
         } else {
           setUserName('User')
           setUserTag('')
           setAvatarUrl(null)
+          setProfileDescription(null)
         }
       } catch (profileError) {
         console.error('Profile not found, using defaults:', profileError)
         setUserName('User')
         setUserTag('')
         setAvatarUrl(null)
+        setProfileDescription(null)
       }
 
       try {
@@ -405,6 +411,16 @@ export default function UserProfileScreen() {
                   <Text style={styles.statLabel}>Following</Text>
                 </View>
               </View>
+
+              {profileDescription ? (
+                <Text
+                  style={styles.profileDescription}
+                  numberOfLines={3}
+                  ellipsizeMode="tail"
+                >
+                  {profileDescription}
+                </Text>
+              ) : null}
 
               {/* Follow Button */}
               {!isOwnProfile && !privacyLocked && (
@@ -743,6 +759,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     userTag: {
       fontSize: 13,
       color: colors.textSecondary,
+    },
+    profileDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 6,
     },
     statsRow: {
       flexDirection: 'row',

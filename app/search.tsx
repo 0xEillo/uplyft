@@ -533,15 +533,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 12,
       backgroundColor: colors.backgroundLight,
       borderRadius: 8,
+      minHeight: 48,
     },
     searchIcon: {
       marginRight: 8,
     },
     searchInput: {
       flex: 1,
-      paddingVertical: 12,
       fontSize: 16,
       color: colors.text,
+      paddingVertical: Platform.OS === 'ios' ? 12 : 0,
+      minHeight: 40,
+      lineHeight: 20,
+      textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
+      includeFontPadding: Platform.OS === 'android' ? false : undefined,
     },
     clearButton: {
       padding: 4,

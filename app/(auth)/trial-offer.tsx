@@ -3,6 +3,10 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import {
+  calculateYearlySavings,
+  useRevenueCatPackages,
+} from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { Ionicons } from '@expo/vector-icons'
@@ -26,6 +30,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { PACKAGE_TYPE } from 'react-native-purchases'
 
 // Animated TouchableOpacity with press animation
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
@@ -89,17 +94,43 @@ export default function TrialOfferScreen() {
   } = useSubscription()
   const { requestPermission, hasPermission } = useNotifications()
 
-  const monthlyPackage = useMemo(() => {
-    return offerings?.availablePackages.find(
-      (pkg) =>
-        pkg.identifier === '$rc_monthly' ||
-        pkg.identifier.toLowerCase().includes('monthly'),
-    )
-  }, [offerings])
+  const { monthly: monthlyPackage, yearly: yearlyPackage } =
+    useRevenueCatPackages(offerings)
 
-  const monthlyPriceText = monthlyPackage?.product.priceString
-    ? `${monthlyPackage.product.priceString} per month`
-    : 'your local monthly rate'
+  const yearlySavings = useMemo(
+    () => calculateYearlySavings(monthlyPackage, yearlyPackage),
+    [monthlyPackage, yearlyPackage],
+  )
+
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>(
+    'monthly',
+  )
+
+  useEffect(() => {
+    if (selectedPlan === 'monthly' && !monthlyPackage && yearlyPackage) {
+      setSelectedPlan('yearly')
+    } else if (selectedPlan === 'yearly' && !yearlyPackage && monthlyPackage) {
+      setSelectedPlan('monthly')
+    }
+  }, [monthlyPackage, selectedPlan, yearlyPackage])
+
+  const selectedTrialPackage = useMemo(() => {
+    if (selectedPlan === 'yearly') {
+      return yearlyPackage ?? monthlyPackage ?? null
+    }
+
+    return monthlyPackage ?? yearlyPackage ?? null
+  }, [monthlyPackage, selectedPlan, yearlyPackage])
+
+  const trialPriceText = useMemo(() => {
+    if (!selectedTrialPackage) {
+      return 'Select a plan to see pricing'
+    }
+    if (selectedTrialPackage.packageType === PACKAGE_TYPE.ANNUAL) {
+      return `${selectedTrialPackage.product.priceString} per year`
+    }
+    return `${selectedTrialPackage.product.priceString} per month`
+  }, [selectedTrialPackage])
 
   // Track trial offer view on mount
   useEffect(() => {
@@ -132,24 +163,18 @@ export default function TrialOfferScreen() {
         step_name: 'payment_setup',
       })
 
-      // Get the monthly package (should have the 7-day trial)
-      if (!offerings) {
-        throw new Error('No subscription packages available. Please try again.')
-      }
-
-      let updatedCustomerInfo
-      if (!monthlyPackage) {
-        // If no monthly package found, try the first available package
-        const firstPackage = offerings.availablePackages[0]
-        if (!firstPackage) {
+      let targetPackage = selectedTrialPackage
+      if (!targetPackage) {
+        const fallback = offerings?.availablePackages?.[0]
+        if (!fallback) {
           throw new Error(
             'No subscription packages available. Please try again.',
           )
         }
-        updatedCustomerInfo = await purchasePackage(firstPackage.identifier)
-      } else {
-        updatedCustomerInfo = await purchasePackage(monthlyPackage.identifier)
+        targetPackage = fallback
       }
+
+      const updatedCustomerInfo = await purchasePackage(targetPackage.identifier)
 
       // Verify the Pro entitlement was actually granted
       const hasProEntitlement = Boolean(
@@ -494,6 +519,79 @@ export default function TrialOfferScreen() {
                 />
               </Animated.View>
             </View>
+
+            {(monthlyPackage || yearlyPackage) && (
+              <View style={styles.pricingCardsContainer}>
+                {monthlyPackage && (
+                  <TouchableOpacity
+                    style={[
+                      styles.pricingOption,
+                      selectedPlan === 'monthly' && styles.pricingOptionSelected,
+                    ]}
+                    onPress={() => setSelectedPlan('monthly')}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.pricingOptionContent}>
+                      <Text style={styles.pricingOptionLabel}>Monthly</Text>
+                      <Text style={styles.pricingOptionPrice}>
+                        {monthlyPackage.product.priceString}
+                      </Text>
+                      <Text style={styles.pricingOptionSubtext}>
+                        Billed monthly
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        selectedPlan === 'monthly' && styles.radioButtonSelected,
+                      ]}
+                    >
+                      {selectedPlan === 'monthly' && (
+                        <View style={styles.radioButtonInner} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {yearlyPackage && (
+                  <TouchableOpacity
+                    style={[
+                      styles.pricingOption,
+                      selectedPlan === 'yearly' && styles.pricingOptionSelected,
+                    ]}
+                    onPress={() => setSelectedPlan('yearly')}
+                    activeOpacity={0.9}
+                  >
+                    {yearlySavings ? (
+                      <View style={styles.freeBadge}>
+                        <Text style={styles.freeBadgeText}>
+                          SAVE {yearlySavings}%
+                        </Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.pricingOptionContent}>
+                      <Text style={styles.pricingOptionLabel}>Yearly</Text>
+                      <Text style={styles.pricingOptionPrice}>
+                        {yearlyPackage.product.priceString}
+                      </Text>
+                      <Text style={styles.pricingOptionSubtext}>
+                        Billed annually
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        selectedPlan === 'yearly' && styles.radioButtonSelected,
+                      ]}
+                    >
+                      {selectedPlan === 'yearly' && (
+                        <View style={styles.radioButtonInner} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </ScrollView>
         </View>
 
@@ -525,7 +623,7 @@ export default function TrialOfferScreen() {
             )}
           </AnimatedButton>
           <Text style={styles.footerSubtext}>
-            7 days free, then {monthlyPriceText}
+            7 days free, then {trialPriceText}
           </Text>
 
           {/* Skip Button */}
@@ -870,7 +968,8 @@ function createStyles(colors: any, screenHeight: number = 800) {
     // Pricing Cards
     pricingCardsContainer: {
       gap: 16,
-      marginBottom: 0,
+      marginBottom: 24,
+      marginTop: 8,
     },
     pricingOption: {
       flexDirection: 'row',
@@ -882,6 +981,8 @@ function createStyles(colors: any, screenHeight: number = 800) {
       borderWidth: 2,
       borderColor: colors.border,
       backgroundColor: colors.background,
+      position: 'relative',
+      gap: 12,
     },
     pricingOptionYearly: {
       position: 'relative',
@@ -904,6 +1005,10 @@ function createStyles(colors: any, screenHeight: number = 800) {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
+    },
+    pricingOptionSubtext: {
+      fontSize: 12,
+      color: colors.textSecondary,
     },
     radioButton: {
       width: 24,

@@ -60,6 +60,25 @@ export class PrivacyError extends Error {
   }
 }
 
+const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
+  if (!updates) return updates
+  const sanitized = { ...updates }
+
+  if ('profile_description' in sanitized) {
+    const raw = sanitized.profile_description
+    if (raw === undefined) {
+      // leave as undefined so Supabase ignores it
+    } else if (raw === null) {
+      sanitized.profile_description = null
+    } else {
+      const trimmed = raw.trim()
+      sanitized.profile_description = trimmed.length > 0 ? trimmed : null
+    }
+  }
+
+  return sanitized
+}
+
 export const database = {
   // Profile operations
   profiles: {
@@ -132,9 +151,10 @@ export const database = {
     },
 
     async update(userId: string, updates: Partial<Profile>) {
+      const sanitizedUpdates = sanitizeProfileUpdates(updates)
       const { data, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(sanitizedUpdates)
         .eq('id', userId)
         .select()
         .single()

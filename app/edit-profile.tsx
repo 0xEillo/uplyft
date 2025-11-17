@@ -43,6 +43,7 @@ export default function EditProfileScreen() {
   const [editedTrainingYears, setEditedTrainingYears] =
     useState<TrainingYears | null>(null)
   const [editedBio, setEditedBio] = useState('')
+  const [editedProfileDescription, setEditedProfileDescription] = useState('')
 
   const loadProfile = useCallback(async () => {
     if (!user?.email) return
@@ -64,6 +65,7 @@ export default function EditProfileScreen() {
       setEditedCommitment(profile?.commitment || null)
       setEditedTrainingYears(profile?.training_years || null)
       setEditedBio(profile?.bio || '')
+      setEditedProfileDescription(profile?.profile_description || '')
     } catch (error) {
       console.error('Error loading profile:', error)
     } finally {
@@ -93,6 +95,7 @@ export default function EditProfileScreen() {
         commitment: editedCommitment,
         training_years: editedTrainingYears,
         bio: editedBio.trim() || null,
+        profile_description: editedProfileDescription.trim() || null,
       })
       router.back()
     } catch (error) {
@@ -300,6 +303,28 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
+        {/* Profile Description */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Profile Description</Text>
+          <Text style={styles.description}>
+            This shows under your name on your public profile.
+          </Text>
+          <TextInput
+            style={[styles.bioInput, styles.profileDescriptionInput]}
+            value={editedProfileDescription}
+            onChangeText={setEditedProfileDescription}
+            placeholder="E.g., Hybrid athlete. Coffee & deadlifts."
+            placeholderTextColor={colors.textPlaceholder}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            maxLength={160}
+          />
+          <Text style={styles.characterCount}>
+            {editedProfileDescription.length}/160
+          </Text>
+        </View>
+
         {/* Bio Input */}
         <View style={styles.section}>
           <Text style={styles.label}>AI Context (Optional)</Text>
@@ -455,6 +480,9 @@ const createStyles = (
       borderColor: colors.border,
       minHeight: 120,
       textAlignVertical: 'top',
+    },
+    profileDescriptionInput: {
+      minHeight: 80,
     },
     characterCount: {
       fontSize: 13,

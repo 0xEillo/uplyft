@@ -1,4 +1,8 @@
 import { useSubscription } from '@/contexts/subscription-context'
+import {
+  calculateYearlySavings,
+  useRevenueCatPackages,
+} from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -13,6 +17,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { PACKAGE_TYPE } from 'react-native-purchases'
+
+const PLAN_PLACEHOLDERS = new Set(['monthly_placeholder', 'yearly_placeholder'])
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type PaywallProps = {
@@ -42,74 +49,105 @@ export function Paywall({
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
 
-  // Parse packages
-  const packages = useMemo(() => {
-    if (!offerings) return null
+  const { monthly, yearly, lifetime, available } = useRevenueCatPackages(
+    offerings,
+  )
 
-    const monthly = offerings.availablePackages.find(
-      (pkg) =>
-        pkg.identifier === '$rc_monthly' ||
-        pkg.identifier.toLowerCase().includes('monthly'),
-    )
-    const yearly = offerings.availablePackages.find(
-      (pkg) =>
-        pkg.identifier === '$rc_yearly' ||
-        pkg.identifier.toLowerCase().includes('yearly') ||
-        pkg.identifier.toLowerCase().includes('annual'),
-    )
-    const lifetime = offerings.availablePackages.find(
-      (pkg) =>
-        pkg.identifier.toLowerCase().includes('lifetime') ||
-        pkg.identifier.toLowerCase().includes('forever'),
-    )
-
-    return { monthly, yearly, lifetime }
-  }, [offerings])
-
-  // Set default selected plan to monthly
   useEffect(() => {
+    const selectedExists =
+      selectedPlan && available.some((pkg) => pkg.identifier === selectedPlan)
+
+    if (
+      selectedPlan &&
+      !selectedExists &&
+      !PLAN_PLACEHOLDERS.has(selectedPlan)
+    ) {
+      const fallbackId =
+        monthly?.identifier ?? yearly?.identifier ?? lifetime?.identifier ?? null
+
+      if (fallbackId && fallbackId !== selectedPlan) {
+        setSelectedPlan(fallbackId)
+      } else if (!fallbackId && selectedPlan !== 'monthly_placeholder') {
+        setSelectedPlan('monthly_placeholder')
+      }
+      return
+    }
+
+    if (selectedPlan === 'monthly_placeholder' && monthly) {
+      setSelectedPlan(monthly.identifier)
+      return
+    }
+
+    if (selectedPlan === 'yearly_placeholder' && yearly) {
+      setSelectedPlan(yearly.identifier)
+      return
+    }
+
     if (!selectedPlan) {
-      if (packages?.monthly) {
-        setSelectedPlan(packages.monthly.identifier)
-      } else if (packages?.yearly) {
-        // Fallback to yearly if monthly not available
-        setSelectedPlan(packages.yearly.identifier)
-      } else {
-        // Use placeholder if neither is available yet
+      if (monthly) {
+        setSelectedPlan(monthly.identifier)
+      } else if (yearly) {
+        setSelectedPlan(yearly.identifier)
+      } else if (lifetime) {
+        setSelectedPlan(lifetime.identifier)
+      } else if (selectedPlan !== 'monthly_placeholder') {
         setSelectedPlan('monthly_placeholder')
       }
     }
-  }, [packages, selectedPlan])
+  }, [
+    available,
+    lifetime?.identifier,
+    monthly,
+    selectedPlan,
+    yearly,
+  ])
 
-  // Calculate savings for yearly plan
-  const yearlySavings = useMemo(() => {
-    if (!packages?.monthly || !packages?.yearly) return null
-    const monthlyPrice = packages.monthly.product.price
-    const yearlyPrice = packages.yearly.product.price
-    if (monthlyPrice === 0) return null
-    const monthlyYearlyTotal = monthlyPrice * 12
-    const savings =
-      ((monthlyYearlyTotal - yearlyPrice) / monthlyYearlyTotal) * 100
-    return Math.round(savings)
-  }, [packages])
+  const yearlySavings = useMemo(
+    () => calculateYearlySavings(monthly, yearly),
+    [monthly, yearly],
+  )
 
-  // Get selected package
   const selectedPackage = useMemo(() => {
-    if (!selectedPlan || !offerings) return null
-    return offerings.availablePackages.find(
-      (pkg) => pkg.identifier === selectedPlan,
-    )
-  }, [selectedPlan, offerings])
+    if (!selectedPlan) return null
 
-  // Get button text based on selected plan
+    const match = available.find((pkg) => pkg.identifier === selectedPlan)
+    if (match) return match
+
+    if (monthly?.identifier === selectedPlan) return monthly
+    if (yearly?.identifier === selectedPlan) return yearly
+    if (lifetime?.identifier === selectedPlan) return lifetime
+    return null
+  }, [
+    available,
+    lifetime?.identifier,
+    monthly?.identifier,
+    selectedPlan,
+    yearly?.identifier,
+  ])
+
   const subscribeButtonText = useMemo(() => {
-    if (!selectedPackage) return 'Subscribe'
-    const planType = selectedPackage.identifier.toLowerCase()
-    if (planType.includes('monthly')) return 'Subscribe to Monthly plan'
-    if (planType.includes('yearly') || planType.includes('annual'))
-      return 'Subscribe to Yearly plan'
-    if (planType.includes('lifetime')) return 'Subscribe to Lifetime plan'
-    return 'Subscribe'
+    if (!selectedPackage) return 'Select a plan'
+    if (selectedPackage.packageType === PACKAGE_TYPE.LIFETIME) {
+      return 'Unlock Lifetime access'
+    }
+    if (selectedPackage.packageType === PACKAGE_TYPE.ANNUAL) {
+      return 'Start Yearly Free Trial'
+    }
+    return 'Start 7-Day Free Trial'
+  }, [selectedPackage])
+
+  const trialInfoText = useMemo(() => {
+    if (!selectedPackage) {
+      return 'Select a plan to see billing details.'
+    }
+
+    if (selectedPackage.packageType === PACKAGE_TYPE.LIFETIME) {
+      return `${selectedPackage.product.priceString} lifetime access`
+    }
+
+    const cadence =
+      selectedPackage.packageType === PACKAGE_TYPE.ANNUAL ? 'year' : 'month'
+    return `7 days free, then ${selectedPackage.product.priceString}/${cadence}`
   }, [selectedPackage])
 
   const handleSubscribe = async () => {
@@ -250,24 +288,23 @@ export function Paywall({
 
             {/* Subscription Plans */}
             <View style={styles.plansContainer}>
-              {packages?.monthly && (
+              {monthly && (
                 <PlanCard
                   title="PRO MONTHLY"
-                  price={packages.monthly.product.priceString}
+                  price={monthly.product.priceString}
                   billing="Billed monthly"
-                  isSelected={selectedPlan === packages.monthly.identifier}
-                  onSelect={() => setSelectedPlan(packages.monthly!.identifier)}
+                  isSelected={selectedPlan === monthly.identifier}
+                  onSelect={() => setSelectedPlan(monthly.identifier)}
                   colors={colors}
                 />
               )}
-              {/* Always show yearly plan - either from offerings or placeholder */}
-              {packages?.yearly ? (
+              {yearly ? (
                 <PlanCard
                   title="PRO YEARLY"
-                  price={packages.yearly.product.priceString}
+                  price={yearly.product.priceString}
                   billing="Billed annually"
-                  isSelected={selectedPlan === packages.yearly.identifier}
-                  onSelect={() => setSelectedPlan(packages.yearly!.identifier)}
+                  isSelected={selectedPlan === yearly.identifier}
+                  onSelect={() => setSelectedPlan(yearly.identifier)}
                   colors={colors}
                   savings={yearlySavings}
                 />
@@ -282,15 +319,13 @@ export function Paywall({
                   savings={58}
                 />
               )}
-              {packages?.lifetime && (
+              {lifetime && (
                 <PlanCard
                   title="PRO LIFETIME"
-                  price={packages.lifetime.product.priceString}
+                  price={lifetime.product.priceString}
                   billing="Pay once"
-                  isSelected={selectedPlan === packages.lifetime.identifier}
-                  onSelect={() =>
-                    setSelectedPlan(packages.lifetime!.identifier)
-                  }
+                  isSelected={selectedPlan === lifetime.identifier}
+                  onSelect={() => setSelectedPlan(lifetime.identifier)}
                   colors={colors}
                 />
               )}
@@ -298,12 +333,7 @@ export function Paywall({
 
             {/* Actions */}
             <View style={styles.actions}>
-              <Text style={styles.trialInfoText}>
-                7 days free, then {selectedPackage?.product.priceString}/
-                {selectedPackage?.identifier.toLowerCase().includes('yearly')
-                  ? 'year'
-                  : 'month'}
-              </Text>
+              <Text style={styles.trialInfoText}>{trialInfoText}</Text>
 
               <TouchableOpacity
                 style={styles.subscribeButton}
@@ -316,7 +346,7 @@ export function Paywall({
                   <ActivityIndicator color={colors.buttonText} />
                 ) : (
                   <Text style={styles.subscribeButtonText}>
-                    Start 7-Day Free Trial
+                    {subscribeButtonText}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -834,7 +864,7 @@ function createStyles(colors: any) {
       textTransform: 'uppercase',
     },
     planPrice: {
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: '700',
       color: colors.text,
       marginBottom: 8,

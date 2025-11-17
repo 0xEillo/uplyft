@@ -59,7 +59,12 @@ export function EmptyFeedState() {
 
   const arrowTranslateY = arrowBounce.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 15],
+    outputRange: [0, 12],
+  })
+
+  const arrowTranslateX = arrowBounce.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 12],
   })
 
   const styles = createStyles(colors)
@@ -92,18 +97,27 @@ export function EmptyFeedState() {
         </Text>
       </Animated.View>
 
-      {/* Animated arrow pointing down */}
+      {/* Animated arrow pointing diagonally to the + button */}
       <Animated.View
         style={[
           styles.arrowContainer,
           {
             opacity: arrowOpacity,
-            transform: [{ translateY: arrowTranslateY }],
+            transform: [
+              { translateY: arrowTranslateY },
+              { translateX: arrowTranslateX },
+            ],
           },
         ]}
       >
         <View style={styles.arrowWrapper}>
-          <Ionicons name="arrow-down" size={48} color={colors.primary} />
+          <Animated.View
+            style={{
+              transform: [{ rotate: '-45deg' }],
+            }}
+          >
+            <Ionicons name="arrow-down" size={48} color={colors.primary} />
+          </Animated.View>
         </View>
         <Text style={styles.arrowText}>Tap here to start</Text>
       </Animated.View>
@@ -125,7 +139,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 40,
     },
     iconContainer: {
-      width: 120,
+      width: 128,
       height: 120,
       borderRadius: 60,
       backgroundColor: colors.backgroundLight,
@@ -134,7 +148,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 24,
       borderWidth: 2,
       borderColor: colors.primary,
-      borderStyle: 'dashed',
     },
     title: {
       fontSize: 26,
@@ -159,7 +172,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     arrowContainer: {
       alignItems: 'center',
       position: 'absolute',
-      bottom: 40, // Position just above the tab bar
+      bottom: 50, // Position above the + button (tab bar height ~90 + button elevation ~72)
+      right: 100, // Positioned more toward center, pointing diagonally to the + button
     },
     arrowWrapper: {
       backgroundColor: colors.backgroundLight,
