@@ -689,7 +689,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Overhead Press
   {
     name: 'Overhead Press',
-    aliases: [],
+    aliases: ['Barbell Shoulder Press', 'Military Press'],
     male: [
       {
         level: 'Beginner',
@@ -852,8 +852,90 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Bent Over Row
   {
-    name: 'Bent Over Row',
-    aliases: ['Barbell Row'],
+    name: 'Barbell Rows',
+    aliases: ['Barbell Row', 'Bent Over Row'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.4,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.65,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.9,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.2,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Lat Pulldown
+  {
+    name: 'Lat Pulldown',
+    aliases: [],
     male: [
       {
         level: 'Beginner',
@@ -901,25 +983,25 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
       {
         level: 'Novice',
-        multiplier: 0.5,
+        multiplier: 0.45,
         color: '#3B82F6',
         description: 'A few months training',
       },
       {
         level: 'Intermediate',
-        multiplier: 0.65,
+        multiplier: 0.7,
         color: '#10B981',
         description: '1-2 years consistent training',
       },
       {
         level: 'Advanced',
-        multiplier: 1.0,
+        multiplier: 0.95,
         color: '#8B5CF6',
         description: '2-5 years dedicated training',
       },
       {
         level: 'Elite',
-        multiplier: 1.25,
+        multiplier: 1.3,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },

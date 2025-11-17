@@ -399,7 +399,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     header: {
       position: 'relative',
@@ -436,6 +436,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     },
     content: {
       flex: 1,
+      backgroundColor: colors.background,
     },
     contentContainer: {
       flexGrow: 1,
