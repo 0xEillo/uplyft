@@ -802,6 +802,103 @@ export const database = {
       if (error) throw error
       return data as Exercise
     },
+
+    async createWithMetadata(
+      name: string,
+      userId: string,
+      metadata: {
+        muscle_group: string
+        type: string
+        equipment: string
+      },
+    ) {
+      console.log('[database.exercises.createWithMetadata] Called', {
+        name,
+        userId,
+        metadata,
+      })
+
+      // Validate and sanitize name
+      if (!name || typeof name !== 'string') {
+        console.error('[database.exercises.createWithMetadata] Invalid name type')
+        throw new Error('Invalid exercise name')
+      }
+
+      const trimmedName = name.trim()
+      if (!trimmedName) {
+        console.error('[database.exercises.createWithMetadata] Empty name')
+        throw new Error('Exercise name cannot be empty')
+      }
+
+      if (trimmedName.length > 100) {
+        console.error('[database.exercises.createWithMetadata] Name too long')
+        throw new Error('Exercise name must be 100 characters or less')
+      }
+
+      // Check for XSS patterns
+      if (
+        trimmedName.toLowerCase().includes('script') ||
+        trimmedName.toLowerCase().includes('javascript')
+      ) {
+        console.error('[database.exercises.createWithMetadata] XSS pattern detected')
+        throw new Error('Invalid exercise name')
+      }
+
+      // Normalize the name
+      const normalizedName = trimmedName
+        .toLowerCase()
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+
+      console.log('[database.exercises.createWithMetadata] Normalized name', normalizedName)
+
+      // Check if exercise already exists
+      console.log('[database.exercises.createWithMetadata] Checking for existing exercise')
+      const { data: existing, error: existingError } = await supabase
+        .from('exercises')
+        .select('id')
+        .ilike('name', normalizedName)
+        .limit(1)
+        .single()
+
+      if (existingError && existingError.code !== 'PGRST116') {
+        console.error('[database.exercises.createWithMetadata] Error checking existing', existingError)
+        throw existingError
+      }
+
+      if (existing) {
+        console.log('[database.exercises.createWithMetadata] Exercise already exists', existing.id)
+        const { data } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('id', existing.id)
+          .single()
+        return data as Exercise
+      }
+
+      // Create new exercise with provided metadata
+      console.log('[database.exercises.createWithMetadata] Creating new exercise with metadata')
+      const { data, error } = await supabase
+        .from('exercises')
+        .insert({
+          name: normalizedName,
+          created_by: userId,
+          muscle_group: metadata.muscle_group,
+          type: metadata.type,
+          equipment: metadata.equipment,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[database.exercises.createWithMetadata] Insert error', error)
+        throw error
+      }
+
+      console.log('[database.exercises.createWithMetadata] Exercise created successfully', data)
+      return data as Exercise
+    },
   },
 
   // Workout session operations
@@ -1052,11 +1149,6 @@ export const database = {
       userId: string,
       routineId: string,
     ): Promise<WorkoutSessionWithDetails | null> {
-      console.log('[database.getLastForRoutine] Querying:', {
-        userId,
-        routineId,
-      })
-
       const { data, error } = await supabase
         .from('workout_sessions')
         .select(
@@ -1082,20 +1174,22 @@ export const database = {
         })
         // If no workout found, return null instead of throwing
         if (error.code === 'PGRST116') {
-          console.log(
-            '[database.getLastForRoutine] No workout found for this routine',
-          )
           return null
         }
         throw error
       }
 
-      console.log('[database.getLastForRoutine] Found workout:', {
-        id: data?.id,
-        exercises: data?.workout_exercises?.length,
-      })
-
       return data as WorkoutSessionWithDetails
+    },
+
+    async getCountByUserId(userId: string): Promise<number> {
+      const { count, error } = await supabase
+        .from('workout_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return count || 0
     },
   },
 
@@ -2058,27 +2152,38 @@ export const database = {
     /**
      * Create a new body log entry
      */
-    async createEntry(userId: string) {
-      console.log('[BODY_LOG] 🗄️ Database: Creating entry', {
-        userId: userId.substring(0, 8),
-      })
+    async createEntry(
+      userId: string,
+      options?: {
+        weightKg?: number | null
+      },
+    ) {
+      const payload: {
+        user_id: string
+        weight_kg?: number
+      } = {
+        user_id: userId,
+      }
+
+      if (
+        options &&
+        options.weightKg !== undefined &&
+        options.weightKg !== null &&
+        !Number.isNaN(options.weightKg)
+      ) {
+        payload.weight_kg = options.weightKg
+      }
 
       const { data, error } = await supabase
         .from('body_log_entries')
-        .insert({
-          user_id: userId,
-        })
+        .insert(payload)
         .select()
         .single()
 
       if (error) {
-        console.error('[BODY_LOG] ❌ Database: Failed to create entry', error)
         throw error
       }
 
-      console.log('[BODY_LOG] ✅ Database: Entry created successfully', {
-        entryId: data?.id?.substring(0, 8),
-      })
       return data
     },
 
@@ -2091,12 +2196,6 @@ export const database = {
       filePath: string,
       sequence: number,
     ) {
-      console.log('[BODY_LOG] 🗄️ Database: Adding image to entry', {
-        entryId: entryId.substring(0, 8),
-        sequence,
-        filePath: filePath.substring(0, 40) + '...',
-      })
-
       const { data, error } = await supabase
         .from('body_log_images')
         .insert({
@@ -2109,14 +2208,9 @@ export const database = {
         .single()
 
       if (error) {
-        console.error('[BODY_LOG] ❌ Database: Failed to add image', error)
         throw error
       }
 
-      console.log('[BODY_LOG] ✅ Database: Image added successfully', {
-        imageId: data?.id?.substring(0, 8),
-        sequence,
-      })
       return data
     },
 
@@ -2210,11 +2304,6 @@ export const database = {
         muscle_mass_kg?: number | null
       },
     ) {
-      console.log('[BODY_LOG] 🗄️ Database: Updating entry metrics', {
-        entryId: entryId.substring(0, 8),
-        metrics,
-      })
-
       const { data, error } = await supabase
         .from('body_log_entries')
         .update(metrics)
@@ -2223,17 +2312,25 @@ export const database = {
         .single()
 
       if (error) {
-        console.error('[BODY_LOG] ❌ Database: Failed to update metrics', error)
         throw error
       }
 
-      console.log(
-        '[BODY_LOG] ✅ Database: Entry metrics updated successfully',
-        {
-          entryId: entryId.substring(0, 8),
-        },
-      )
       return data
+    },
+
+    /**
+     * Delete a specific image from an entry
+     */
+    async deleteImage(imageId: string, userId: string) {
+      const { error } = await supabase
+        .from('body_log_images')
+        .delete()
+        .eq('id', imageId)
+        .eq('user_id', userId)
+
+      if (error) {
+        throw error
+      }
     },
 
     /**
@@ -2246,7 +2343,9 @@ export const database = {
         .delete()
         .eq('id', entryId)
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
     },
   },
 

@@ -172,10 +172,9 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const exercises = formatWorkoutForDisplay(workout, weightUnit)
 
   const handleUserPress = useCallback(() => {
-    if (workout.user_id && workout.user_id !== user?.id) {
-      router.push(`/user/${workout.user_id}`)
-    }
-  }, [workout.user_id, user?.id, router])
+    if (!workout.user_id) return
+    router.push(`/user/${workout.user_id}`)
+  }, [workout.user_id, router])
 
   const handleEdit = useCallback(() => {
     router.push(`/edit-workout/${workout.id}`)
@@ -265,7 +264,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       userId={workout.user_id}
       workoutId={workout.id}
       workout={isPending ? undefined : workout}
-      onUserPress={workout.user_id !== user?.id ? handleUserPress : undefined}
+      onUserPress={workout.user_id ? handleUserPress : undefined}
       onCardPress={isPending ? undefined : handleCardPress}
       onEdit={isPending ? undefined : handleEdit}
       onDelete={isPending ? undefined : handleDelete}

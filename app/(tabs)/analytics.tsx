@@ -63,7 +63,7 @@ export default function AnalyticsScreen() {
           onPress={() => router.push('/body-log')}
           style={{ padding: 8 }}
         >
-          <Ionicons name="images-outline" size={24} color={colors.text} />
+          <Ionicons name="body-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 

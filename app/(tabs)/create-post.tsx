@@ -68,7 +68,15 @@ const formatTimerDisplay = (seconds: number) => {
     return `${safeSeconds}`
   }
 
-  // If 1 minute or more, show M:SS
+  // If 1 hour or more, show H:MM:SS
+  if (safeSeconds >= 3600) {
+    const hours = Math.floor(safeSeconds / 3600)
+    const mins = Math.floor((safeSeconds % 3600) / 60)
+    const secs = safeSeconds % 60
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // If 1 minute or more (but under 1 hour), show M:SS
   const mins = Math.floor(safeSeconds / 60)
   const secs = safeSeconds % 60
 

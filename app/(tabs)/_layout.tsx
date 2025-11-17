@@ -39,7 +39,6 @@ function ElevatedPlusButton() {
     const checkDraft = async () => {
       const draftExists = await hasStoredDraft()
       setHasDraft(draftExists)
-      console.log('[ElevatedPlusButton] Draft exists:', draftExists)
     }
 
     checkDraft()
@@ -76,10 +75,6 @@ function TabLayoutContent() {
 
   // Track if we've already shown the share screen for this workout
   const shownWorkoutIdRef = React.useRef<string | null>(null)
-
-  React.useEffect(() => {
-    console.log('[TabLayout] Tabs configured with backBehavior="history"')
-  }, [])
 
   // Watch for workout data updates and show share screen when workout is ready
   React.useEffect(() => {

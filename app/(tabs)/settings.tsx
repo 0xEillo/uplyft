@@ -367,7 +367,8 @@ const createStyles = (
     },
     feedContent: {
       flexGrow: 1,
-      paddingBottom: 20,
+      paddingTop: 2,
+      paddingBottom: 2,
     },
     profileHeader: {
       backgroundColor: colors.white,

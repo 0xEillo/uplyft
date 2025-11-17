@@ -24,6 +24,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { SlideInView } from '@/components/slide-in-view'
 
 export default function NotificationsScreen() {
   const colors = useThemedColors()
@@ -39,6 +40,8 @@ export default function NotificationsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [respondingRequests, setRespondingRequests] = useState<Set<string>>(new Set())
   const [respondedRequests, setRespondedRequests] = useState<Map<string, 'approve' | 'decline'>>(new Map())
+  const [shouldExit, setShouldExit] = useState(false)
+  const [shouldAnimate] = useState(true)
 
   // Reset responded requests state when screen is focused
   // The database filtering will handle not showing already-responded requests
@@ -62,6 +65,10 @@ export default function NotificationsScreen() {
     if (unreadCount > 0) {
       markAsRead()
     }
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
     router.back()
   }
 
@@ -151,24 +158,31 @@ export default function NotificationsScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SlideInView
+      style={{ flex: 1 }}
+      enabled={shouldAnimate}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Notifications</Text>
+        </View>
         <TouchableOpacity
           onPress={handleBackPress}
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
         {unreadCount > 0 ? (
-          <TouchableOpacity onPress={handleMarkAllAsRead}>
+          <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
             <Text style={styles.markAllReadText}>Mark all</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={styles.placeholder} />
-        )}
+        ) : null}
       </View>
 
       <ScrollView
@@ -360,6 +374,7 @@ export default function NotificationsScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+    </SlideInView>
   )
 }
 
@@ -387,27 +402,37 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       backgroundColor: colors.background,
     },
     header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      position: 'relative',
       paddingHorizontal: 20,
       paddingVertical: 16,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
+    headerContent: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     headerTitle: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
     },
+    backButton: {
+      position: 'absolute',
+      left: 20,
+      top: 16,
+      padding: 4,
+    },
+    markAllButton: {
+      position: 'absolute',
+      right: 20,
+      top: 16,
+    },
     markAllReadText: {
       fontSize: 14,
       color: colors.primary,
       fontWeight: '600',
-    },
-    placeholder: {
-      width: 60,
     },
     content: {
       flex: 1,

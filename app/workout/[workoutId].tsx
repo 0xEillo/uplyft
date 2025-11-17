@@ -44,12 +44,8 @@ export default function WorkoutDetailScreen() {
 
   // Log when component mounts/unmounts
   useEffect(() => {
-    console.log('📍 [WorkoutDetailScreen] MOUNTED')
-    console.log('   workoutId:', workoutId)
-    console.log('   returnTo param:', params.returnTo)
-    console.log('   All params:', JSON.stringify(params))
     return () => {
-      console.log('📍 [WorkoutDetailScreen] UNMOUNTED - workoutId:', workoutId)
+      // Cleanup on unmount
     }
   }, [workoutId, params])
 

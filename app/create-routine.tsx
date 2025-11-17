@@ -1,7 +1,7 @@
-import { ExerciseSearchModal } from '@/components/exercise-search-modal'
 import { Paywall } from '@/components/paywall'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -338,9 +338,6 @@ export default function CreateRoutineScreen() {
   const [expandedExercises, setExpandedExercises] = useState<Set<number>>(
     new Set(),
   )
-  const [exerciseSearchModalVisible, setExerciseSearchModalVisible] = useState(
-    false,
-  )
   const [restPickerVisible, setRestPickerVisible] = useState(false)
   const [restPickerExerciseIndex, setRestPickerExerciseIndex] = useState<
     number | null
@@ -357,6 +354,9 @@ export default function CreateRoutineScreen() {
   // Shared values for animations
   const draggingScale = useSharedValue(1)
   const draggingOpacity = useSharedValue(1)
+
+  // Exercise selection hook
+  const { registerCallback } = useExerciseSelection()
 
   // Helper: Format seconds to MM:SS display
   const formatRestTime = useCallback((seconds: number | null): string => {
@@ -830,10 +830,6 @@ export default function CreateRoutineScreen() {
     setRestPickerSetIndex(null)
   }, [])
 
-  const handleAddExercise = useCallback(() => {
-    setExerciseSearchModalVisible(true)
-  }, [])
-
   const handleSelectExercise = useCallback((selectedExercise: Exercise) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     setExercises((prev) => [
@@ -845,8 +841,15 @@ export default function CreateRoutineScreen() {
         notes: null,
       },
     ])
-    setExerciseSearchModalVisible(false)
   }, [])
+
+  const handleAddExercise = useCallback(() => {
+    // Register callback for when exercise is selected
+    registerCallback(handleSelectExercise)
+
+    // Navigate to select-exercise page
+    router.push('/select-exercise')
+  }, [registerCallback, handleSelectExercise, router])
 
   // Handle long press to start dragging
   const handleLongPress = useCallback((index: number) => {
@@ -1032,13 +1035,6 @@ export default function CreateRoutineScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Exercise Search Modal */}
-      <ExerciseSearchModal
-        visible={exerciseSearchModalVisible}
-        onClose={() => setExerciseSearchModalVisible(false)}
-        onSelectExercise={handleSelectExercise}
-      />
 
       {/* Paywall Modal */}
       <Paywall

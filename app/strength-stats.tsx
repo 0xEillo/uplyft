@@ -1,7 +1,10 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { ProBadge } from '@/components/pro-badge'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { Paywall } from '@/components/paywall'
 import {
   getStandardsLadder,
   getStrengthStandard,
@@ -42,6 +45,7 @@ type TabType = 'standards' | 'records'
 
 export default function StrengthStatsScreen() {
   const { user } = useAuth()
+  const { isProMember } = useSubscription()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -53,6 +57,7 @@ export default function StrengthStatsScreen() {
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   )
+  const [paywallVisible, setPaywallVisible] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -272,23 +277,17 @@ export default function StrengthStatsScreen() {
                         <Text style={styles.exerciseName}>
                           {exercise.exerciseName}
                         </Text>
-                        <Text style={styles.exerciseMax}>
-                          Est. 1RM:{' '}
-                          {formatWeight(exercise.max1RM, {
-                            maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                          })}
-                        </Text>
                       </View>
                     </View>
                     <View style={styles.exerciseHeaderRight}>
-                      {strengthInfo && (
+                      {strengthInfo && !isProMember ? (
+                        <ProBadge onPress={() => setPaywallVisible(true)} size="small" />
+                      ) : strengthInfo ? (
                         <View
                           style={[
                             styles.levelBadge,
                             {
-                              backgroundColor: getLevelColor(
-                                strengthInfo.level,
-                              ),
+                              backgroundColor: getLevelColor(strengthInfo.level),
                             },
                           ]}
                         >
@@ -296,7 +295,7 @@ export default function StrengthStatsScreen() {
                             {strengthInfo.level}
                           </Text>
                         </View>
-                      )}
+                      ) : null}
                       <Ionicons
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
                         size={20}
@@ -329,7 +328,7 @@ export default function StrengthStatsScreen() {
                               key={levelStandard.level}
                               style={[
                                 styles.levelRow,
-                                isCurrentLevel && styles.levelRowCurrent,
+                                isProMember && isCurrentLevel && styles.levelRowCurrent,
                               ]}
                             >
                               <View style={styles.levelRowLeft}>
@@ -341,10 +340,10 @@ export default function StrengthStatsScreen() {
                                         levelStandard.level,
                                       ),
                                     },
-                                    isPassed && styles.levelDotPassed,
+                                    isProMember && isPassed && styles.levelDotPassed,
                                   ]}
                                 >
-                                  {isPassed && (
+                                  {isProMember && isPassed && (
                                     <Ionicons
                                       name="checkmark"
                                       size={12}
@@ -356,7 +355,7 @@ export default function StrengthStatsScreen() {
                                   <Text
                                     style={[
                                       styles.levelRowTitle,
-                                      isCurrentLevel &&
+                                      isProMember && isCurrentLevel &&
                                         styles.levelRowTitleCurrent,
                                     ]}
                                   >
@@ -368,18 +367,22 @@ export default function StrengthStatsScreen() {
                                 </View>
                               </View>
                               <View style={styles.levelRowRight}>
-                                <Text
-                                  style={[
-                                    styles.levelRowWeight,
-                                    isCurrentLevel &&
-                                      styles.levelRowWeightCurrent,
-                                  ]}
-                                >
-                                  {formatWeight(targetWeight, {
-                                    maximumFractionDigits:
-                                      weightUnit === 'kg' ? 1 : 0,
-                                  })}
-                                </Text>
+                                {isProMember ? (
+                                  <Text
+                                    style={[
+                                      styles.levelRowWeight,
+                                      isCurrentLevel &&
+                                        styles.levelRowWeightCurrent,
+                                    ]}
+                                  >
+                                    {formatWeight(targetWeight, {
+                                      maximumFractionDigits:
+                                        weightUnit === 'kg' ? 1 : 0,
+                                    })}
+                                  </Text>
+                                ) : (
+                                  <ProBadge onPress={() => setPaywallVisible(true)} size="small" />
+                                )}
                               </View>
                             </View>
                           )
@@ -473,6 +476,14 @@ export default function StrengthStatsScreen() {
         )}
         </View>
       </SafeAreaView>
+
+      {/* Paywall Modal */}
+      <Paywall
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        title="Unlock Your Strength Level"
+        message="See which strength standard you've achieved. Upgrade to view your ranking and track your progress towards Elite and World Class levels."
+      />
     </SlideInView>
   )
 }

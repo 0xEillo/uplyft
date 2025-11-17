@@ -60,7 +60,6 @@ export function SlideInView({
       if (fade) {
         opacityAnim.setValue(1)
       }
-      console.log('[SlideInView] Entry animation disabled, rendering static')
       return
     }
 
@@ -69,7 +68,6 @@ export function SlideInView({
       opacityAnim.setValue(0)
     }
 
-    console.log('[SlideInView] Starting entry animation, duration:', duration)
     const animations = [
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -91,14 +89,13 @@ export function SlideInView({
     }
 
     Animated.parallel(animations).start(() => {
-      console.log('[SlideInView] Entry animation complete')
+      // Animation complete
     })
   }, [enabled, slideAnim, opacityAnim, duration, delay, fade])
 
   // Exit animation
   useEffect(() => {
     if (shouldExit) {
-      console.log('[SlideInView] Starting exit animation, duration:', duration)
       const animations = [
         Animated.timing(slideAnim, {
           toValue: SCREEN_WIDTH,
@@ -118,7 +115,6 @@ export function SlideInView({
       }
 
       Animated.parallel(animations).start(() => {
-        console.log('[SlideInView] Exit animation complete, calling onExitComplete callback')
         onExitComplete?.()
       })
     }

@@ -1,5 +1,5 @@
-import { ExerciseSearchModal } from '@/components/exercise-search-modal'
 import { useAuth } from '@/contexts/auth-context'
+import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
@@ -73,11 +73,10 @@ export default function EditWorkoutScreen() {
   const [editedExercises, setEditedExercises] = useState<
     Record<string, string>
   >({}) // workoutExerciseId -> new exerciseId
-  const [exerciseSearchModalVisible, setExerciseSearchModalVisible] =
-    useState(false)
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null,
   )
+  const { registerCallback } = useExerciseSelection()
 
   // Image management states
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
@@ -169,20 +168,13 @@ export default function EditWorkoutScreen() {
     loadWorkout()
   }, [loadWorkout])
 
-  const handleEditExercise = useCallback((workoutExerciseId: string) => {
-    setEditingExerciseId(workoutExerciseId)
-    setExerciseSearchModalVisible(true)
-  }, [])
-
   const handleSelectExercise = useCallback(
-    async (selectedExercise: Exercise) => {
-      if (!editingExerciseId) return
-
+    async (selectedExercise: Exercise, workoutExerciseId: string) => {
       try {
         // Update local state
         setEditedExercises((prev) => ({
           ...prev,
-          [editingExerciseId]: selectedExercise.id,
+          [workoutExerciseId]: selectedExercise.id,
         }))
 
         // Update workout state optimistically
@@ -192,7 +184,7 @@ export default function EditWorkoutScreen() {
           return {
             ...prevWorkout,
             workout_exercises: prevWorkout.workout_exercises?.map((we) =>
-              we.id === editingExerciseId
+              we.id === workoutExerciseId
                 ? {
                     ...we,
                     exercise_id: selectedExercise.id,
@@ -209,7 +201,32 @@ export default function EditWorkoutScreen() {
         Alert.alert('Error', 'Failed to update exercise. Please try again.')
       }
     },
-    [editingExerciseId],
+    [],
+  )
+
+  const handleEditExercise = useCallback(
+    (workoutExerciseId: string) => {
+      setEditingExerciseId(workoutExerciseId)
+
+      // Register callback for when exercise is selected
+      registerCallback((selectedExercise: Exercise) => {
+        handleSelectExercise(selectedExercise, workoutExerciseId)
+      })
+
+      // Get current exercise name for highlighting
+      const currentExercise = workout?.workout_exercises?.find(
+        (we) => we.id === workoutExerciseId,
+      )?.exercise
+
+      // Navigate to select-exercise page
+      router.push({
+        pathname: '/select-exercise',
+        params: {
+          currentExerciseName: currentExercise?.name || '',
+        },
+      })
+    },
+    [registerCallback, handleSelectExercise, workout, router],
   )
 
   const handleSave = useCallback(async () => {
@@ -776,22 +793,6 @@ export default function EditWorkoutScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Exercise Search Modal */}
-      <ExerciseSearchModal
-        visible={exerciseSearchModalVisible}
-        onClose={() => {
-          setExerciseSearchModalVisible(false)
-          setEditingExerciseId(null)
-        }}
-        onSelectExercise={handleSelectExercise}
-        currentExerciseName={
-          editingExerciseId
-            ? workout?.workout_exercises?.find((we) => we.id === editingExerciseId)
-                ?.exercise?.name
-            : undefined
-        }
-      />
     </SafeAreaView>
   )
 }

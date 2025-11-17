@@ -1,5 +1,6 @@
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
@@ -10,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -99,23 +100,28 @@ const BodyLogEntryItem = memo(
     onLoadError,
   }: BodyLogEntryItemProps) => {
     const colors = useThemedColors()
+    const { formatWeight } = useUnit()
     const styles = useMemo(() => createImageItemStyles(colors), [colors])
 
+    const hasImages = entry.images.length > 0
     const handlePress = useCallback(() => {
-      if (entry.signedUrls[0]) {
-        onPress(entry)
-      }
+      // Allow opening all entries (including empty ones for editing)
+      onPress(entry)
     }, [entry, onPress])
 
     const primaryImageUrl = entry.signedUrls[0]
     const imageCount = entry.images.length
+    const hasWeight =
+      entry.weight_kg !== null && entry.weight_kg !== undefined
+    const formattedWeight = hasWeight ? formatWeight(entry.weight_kg) : null
+    const isEmpty = !hasImages && !hasWeight
+    const hasBodyScan = entry.body_fat_percentage !== null || entry.bmi !== null
 
     return (
       <TouchableOpacity
         style={styles.imageContainer}
         onPress={handlePress}
-        activeOpacity={primaryImageUrl ? 0.9 : 1}
-        disabled={!primaryImageUrl}
+        activeOpacity={0.9}
       >
         {primaryImageUrl ? (
           <>
@@ -137,7 +143,45 @@ const BodyLogEntryItem = memo(
                 <Text style={styles.imageBadgeText}>{imageCount}</Text>
               </View>
             )}
+            {hasWeight && formattedWeight && (
+              <View style={styles.weightOverlay}>
+                <Text style={styles.weightOverlayLabel}>Weight</Text>
+                <Text style={styles.weightOverlayValue}>{formattedWeight}</Text>
+              </View>
+            )}
+            {hasBodyScan && (
+              <View style={[styles.scanBadge, { backgroundColor: colors.success }]}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.white} />
+                <Text style={styles.scanBadgeText}>Scanned</Text>
+              </View>
+            )}
           </>
+        ) : hasImages ? (
+          <View style={styles.imageLoadingOverlay}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : hasWeight && formattedWeight ? (
+          <View style={styles.weightCard}>
+            <Ionicons
+              name="barbell-outline"
+              size={20}
+              color={colors.primary}
+              style={styles.weightCardIcon}
+            />
+            <Text style={styles.weightCardLabel}>Weight logged</Text>
+            <Text style={styles.weightCardValue}>{formattedWeight}</Text>
+          </View>
+        ) : isEmpty ? (
+          <View style={styles.emptyEntryCard}>
+            <Ionicons
+              name="add-circle-outline"
+              size={32}
+              color={colors.textSecondary}
+              style={styles.emptyEntryIcon}
+            />
+            <Text style={styles.emptyEntryLabel}>Empty Entry</Text>
+            <Text style={styles.emptyEntryHint}>Tap to add data</Text>
+          </View>
         ) : (
           <View style={styles.imageLoadingOverlay}>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -150,7 +194,10 @@ const BodyLogEntryItem = memo(
     return (
       prevProps.entry.id === nextProps.entry.id &&
       prevProps.entry.signedUrls[0] === nextProps.entry.signedUrls[0] &&
-      prevProps.entry.imageLoadStatus === nextProps.entry.imageLoadStatus
+      prevProps.entry.imageLoadStatus === nextProps.entry.imageLoadStatus &&
+      prevProps.entry.weight_kg === nextProps.entry.weight_kg &&
+      prevProps.entry.body_fat_percentage === nextProps.entry.body_fat_percentage &&
+      prevProps.entry.bmi === nextProps.entry.bmi
     )
   },
 )
@@ -212,7 +259,8 @@ export default function BodyLogScreen() {
     return sectionsArray
   }, [entryOrder, entryStore])
 
-  useEffect(() => {
+  // Load entries function that can be called on mount and on focus
+  const loadEntries = useCallback(async () => {
     if (!user) {
       setEntryOrder([])
       setEntryStore({})
@@ -221,91 +269,85 @@ export default function BodyLogScreen() {
       return
     }
 
-    let cancelled = false
+    setIsInitialLoading(true)
 
-    const loadEntries = async () => {
-      setIsInitialLoading(true)
+    try {
+      // Fetch user profile for gender
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('gender')
+        .eq('id', user.id)
+        .single()
 
-      try {
-        // Fetch user profile for gender
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('gender')
-          .eq('id', user.id)
-          .single()
-
-        if (!cancelled && profile?.gender) {
-          if (profile.gender === 'male' || profile.gender === 'female') {
-            setUserGender(profile.gender)
-          }
-        }
-
-        const entries = await database.bodyLog.getAllEntries(user.id)
-        if (cancelled) return
-
-        if (!entries || entries.length === 0) {
-          setEntryOrder([])
-          setEntryStore({})
-          return
-        }
-
-        // Collect all image file paths from all entries
-        const allFilePaths: string[] = []
-        const filePathToEntryMap: Record<string, { entryId: string; imageIndex: number }> = {}
-
-        entries.forEach((entry: any) => {
-          const images = entry.images || []
-          if (Array.isArray(images)) {
-            images.forEach((image, imageIndex) => {
-              allFilePaths.push(image.file_path)
-              filePathToEntryMap[image.file_path] = { entryId: entry.id, imageIndex }
-            })
-          }
-        })
-
-        // Get all signed URLs in one call
-        const signedUrls = allFilePaths.length > 0 ? await getBodyLogImageUrls(allFilePaths) : []
-        if (cancelled) return
-
-        // Build entries with signed URLs
-        const entriesWithUrls: EntryWithSignedUrls[] = entries.map((entry: any) => {
-          const images = entry.images || []
-          return {
-            ...entry,
-            images: Array.isArray(images) ? images : [],
-            signedUrls: Array.isArray(images)
-              ? images.map((image) => {
-                  const filePathIndex = allFilePaths.indexOf(image.file_path)
-                  return filePathIndex >= 0 ? signedUrls[filePathIndex] ?? null : null
-                })
-              : [],
-            imageLoadStatus: 'idle' as ImageLoadStatus,
-          }
-        })
-
-        setEntryStore(() => {
-          const next: Record<string, EntryWithSignedUrls> = {}
-          entriesWithUrls.forEach((entry) => {
-            next[entry.id] = entry
-          })
-          return next
-        })
-        setEntryOrder(entriesWithUrls.map((entry) => entry.id))
-      } catch (error) {
-        console.error('Error loading body log entries:', error)
-      } finally {
-        if (!cancelled) {
-          setIsInitialLoading(false)
+      if (profile?.gender) {
+        if (profile.gender === 'male' || profile.gender === 'female') {
+          setUserGender(profile.gender)
         }
       }
-    }
 
-    loadEntries()
+      const entries = await database.bodyLog.getAllEntries(user.id)
 
-    return () => {
-      cancelled = true
+      if (!entries || entries.length === 0) {
+        setEntryOrder([])
+        setEntryStore({})
+        setIsInitialLoading(false)
+        return
+      }
+
+      // Collect all image file paths from all entries
+      const allFilePaths: string[] = []
+      const filePathToEntryMap: Record<string, { entryId: string; imageIndex: number }> = {}
+
+      entries.forEach((entry: any) => {
+        const images = entry.images || []
+        if (Array.isArray(images)) {
+          images.forEach((image, imageIndex) => {
+            allFilePaths.push(image.file_path)
+            filePathToEntryMap[image.file_path] = { entryId: entry.id, imageIndex }
+          })
+        }
+      })
+
+      // Get all signed URLs in one call
+      const signedUrls = allFilePaths.length > 0 ? await getBodyLogImageUrls(allFilePaths) : []
+
+      // Build entries with signed URLs
+      const entriesWithUrls: EntryWithSignedUrls[] = entries.map((entry: any) => {
+        const images = entry.images || []
+        return {
+          ...entry,
+          images: Array.isArray(images) ? images : [],
+          signedUrls: Array.isArray(images)
+            ? images.map((image) => {
+                const filePathIndex = allFilePaths.indexOf(image.file_path)
+                return filePathIndex >= 0 ? signedUrls[filePathIndex] ?? null : null
+              })
+            : [],
+          imageLoadStatus: 'idle' as ImageLoadStatus,
+        }
+      })
+
+      setEntryStore(() => {
+        const next: Record<string, EntryWithSignedUrls> = {}
+        entriesWithUrls.forEach((entry) => {
+          next[entry.id] = entry
+        })
+        return next
+      })
+      setEntryOrder(entriesWithUrls.map((entry) => entry.id))
+    } catch (error) {
+      console.error('Error loading body log entries:', error)
+    } finally {
+      setIsInitialLoading(false)
     }
   }, [user])
+
+  // Reload data when screen comes into focus (user navigates back)
+  useFocusEffect(
+    useCallback(() => {
+      loadEntries()
+    }, [loadEntries])
+  )
 
   const markEntryImageStatus = useCallback(
     (entryId: string, status: ImageLoadStatus) => {
@@ -387,21 +429,23 @@ export default function BodyLogScreen() {
     [markEntryImageStatus],
   )
 
-  const handleCameraPress = useCallback(async () => {
+  const handleAddNewEntry = useCallback(async () => {
     if (!user) {
-      alert('You must be logged in to add photos')
+      alert('You must be logged in to add entries')
       return
     }
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
-    // Navigate to intro page with user gender
+    // Navigate to detail page with special "new" ID
+    // Entry will be created when user adds data
     router.push({
-      pathname: '/body-log/intro',
-      params: { userGender: userGender || '' },
+      pathname: '/body-log/[entryId]',
+      params: {
+        entryId: 'new',
+      },
     })
-  }, [user, userGender, router])
-
+  }, [user, router])
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: EntrySection }) => (
@@ -464,13 +508,25 @@ export default function BodyLogScreen() {
         </View>
       ) : sections.length === 0 ? (
         <View style={styles.emptyStateContainer}>
+          <View style={styles.addNewEntryContainer}>
+            <TouchableOpacity
+              style={[styles.addNewEntryCard, { backgroundColor: colors.backgroundLight, borderColor: colors.border }]}
+              onPress={handleAddNewEntry}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={40}
+                color={colors.primary}
+                style={styles.addNewEntryIcon}
+              />
+              <Text style={[styles.addNewEntryLabel, { color: colors.text }]}>New Entry</Text>
+              <Text style={[styles.addNewEntryHint, { color: colors.textSecondary }]}>Tap to create</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.emptyStateContent}>
-            <View style={styles.emptyStateIconContainer}>
-              <Ionicons name="body-outline" size={80} color={colors.textSecondary} />
-            </View>
-            <Text style={styles.emptyStateTitle}>No progress photos yet</Text>
             <Text style={styles.emptyStateDescription}>
-              Track your fitness journey with progress photos.
+              Track your fitness journey with weight and progress photos.
             </Text>
           </View>
         </View>
@@ -484,26 +540,26 @@ export default function BodyLogScreen() {
           contentContainerStyle={styles.gridContent}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={true}
+          ListHeaderComponent={
+            <View style={styles.addNewEntryContainer}>
+              <TouchableOpacity
+                style={[styles.addNewEntryCard, { backgroundColor: colors.backgroundLight, borderColor: colors.border }]}
+                onPress={handleAddNewEntry}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={40}
+                  color={colors.primary}
+                  style={styles.addNewEntryIcon}
+                />
+                <Text style={[styles.addNewEntryLabel, { color: colors.text }]}>New Entry</Text>
+                <Text style={[styles.addNewEntryHint, { color: colors.textSecondary }]}>Tap to create</Text>
+              </TouchableOpacity>
+            </View>
+          }
         />
       )}
-
-      <View style={styles.cameraFabContainer}>
-        <View
-          style={[
-            styles.cameraFabBackground,
-            { backgroundColor: colors.background },
-          ]}
-        />
-        <TouchableOpacity
-          style={styles.cameraFab}
-          onPress={handleCameraPress}
-          accessibilityLabel="Take photo"
-          accessibilityRole="button"
-          accessibilityHint="Open camera to take a body progress photo"
-        >
-          <Ionicons name="camera" size={28} color={colors.white} />
-        </TouchableOpacity>
-      </View>
 
     </SafeAreaView>
     </SlideInView>
@@ -559,6 +615,109 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       letterSpacing: -0.1,
     },
+    weightOverlay: {
+      position: 'absolute',
+      left: 10,
+      bottom: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    },
+    weightOverlayLabel: {
+      fontSize: 10,
+      color: 'rgba(255, 255, 255, 0.8)',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 2,
+    },
+    weightOverlayValue: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.white,
+      letterSpacing: -0.2,
+    },
+    weightCard: {
+      flex: 1,
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 16,
+      gap: 6,
+      backgroundColor: colors.backgroundLight,
+      borderWidth: 1.5,
+      borderColor: `${colors.primary}30`,
+      borderStyle: 'dashed',
+    },
+    weightCardIcon: {
+      marginBottom: 4,
+    },
+    weightCardLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 1.0,
+      fontWeight: '600',
+    },
+    weightCardValue: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    scanBadge: {
+      position: 'absolute',
+      top: 8,
+      left: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      borderRadius: 12,
+      gap: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    scanBadgeText: {
+      color: colors.white,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+      textTransform: 'uppercase',
+    },
+    emptyEntryCard: {
+      flex: 1,
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 16,
+      gap: 8,
+      backgroundColor: colors.backgroundLight,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
+    emptyEntryIcon: {
+      marginBottom: 4,
+    },
+    emptyEntryLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    emptyEntryHint: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      opacity: 0.7,
+    },
   })
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
@@ -597,31 +756,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     emptyStateContainer: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 40,
-      paddingBottom: 100,
+      paddingTop: 20,
+      alignItems: 'flex-start',
     },
     emptyStateContent: {
       alignItems: 'center',
       maxWidth: 320,
-    },
-    emptyStateIconContainer: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: colors.backgroundLight,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-    emptyStateTitle: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 12,
-      textAlign: 'center',
-      letterSpacing: -0.5,
+      alignSelf: 'center',
+      marginTop: 40,
     },
     emptyStateDescription: {
       fontSize: 15,
@@ -655,30 +797,36 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.text,
       letterSpacing: 0.35,
     },
-    cameraFabContainer: {
-      position: 'absolute',
-      bottom: 36,
-      alignSelf: 'center',
+    addNewEntryContainer: {
+      paddingHorizontal: GRID_PADDING,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    addNewEntryCard: {
+      width: IMAGE_SIZE,
+      height: IMAGE_SIZE,
       justifyContent: 'center',
       alignItems: 'center',
+      borderRadius: 2,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      gap: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 2,
     },
-    cameraFabBackground: {
-      position: 'absolute',
-      width: 76,
-      height: 76,
-      borderRadius: 38,
+    addNewEntryIcon: {
+      marginBottom: 4,
     },
-    cameraFab: {
-      width: 68,
-      height: 68,
-      borderRadius: 34,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.35,
-      shadowRadius: 16,
-      elevation: 12,
+    addNewEntryLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    addNewEntryHint: {
+      fontSize: 12,
+      opacity: 0.7,
     },
   })

@@ -111,11 +111,6 @@ serve(async (req) => {
     const payload = REQUEST_SCHEMA.parse(await req.json())
     const { entryId } = payload
 
-    console.log('[BODY_LOG] 🤖 EdgeFunction: Starting analysis', {
-      entryId: entryId.substring(0, 8),
-      timestamp: new Date().toISOString(),
-    })
-
     const supabase = createUserClient(accessToken)
     const serviceClient = createServiceClient()
 
@@ -126,8 +121,6 @@ serve(async (req) => {
       console.error('[BODY_LOG] ❌ EdgeFunction: Authentication failed')
       return errorResponse(401, 'Unauthorized')
     }
-
-    console.log('[BODY_LOG] ✅ EdgeFunction: User authenticated')
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase

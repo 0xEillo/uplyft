@@ -1,7 +1,10 @@
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { VolumeProgressChart } from '@/components/volume-progress-chart'
+import { Paywall } from '@/components/paywall'
+import { ProBadge } from '@/components/pro-badge'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -50,6 +53,7 @@ const MUSCLE_GROUP_COLORS: Record<string, string> = {
 
 export default function VolumeStatsScreen() {
   const { user } = useAuth()
+  const { isProMember } = useSubscription()
   const colors = useThemedColors()
   const [timeRange, setTimeRange] = useState<TimeRange>('30D')
   const [isLoading, setIsLoading] = useState(true)
@@ -60,6 +64,7 @@ export default function VolumeStatsScreen() {
     avgSetsPerWorkout: 0,
   })
   const [shouldExit, setShouldExit] = useState(false)
+  const [paywallVisible, setPaywallVisible] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -207,7 +212,15 @@ export default function VolumeStatsScreen() {
               <Text style={styles.cardTitle}>Total Sets by Muscle Group</Text>
             </View>
 
-            {weeklyData.length === 0 ? (
+            {!isProMember ? (
+              <TouchableOpacity
+                onPress={() => setPaywallVisible(true)}
+                style={styles.proOnlyContainer}
+              >
+                <ProBadge size="medium" />
+                <Text style={styles.proOnlySubtext}>Unlock detailed muscle group breakdown</Text>
+              </TouchableOpacity>
+            ) : weeklyData.length === 0 ? (
               <Text style={styles.emptyText}>No workout data for this period</Text>
             ) : (
               <View style={styles.volumeChartContainer}>
@@ -270,11 +283,37 @@ export default function VolumeStatsScreen() {
 
           {/* Section 3: Volume Over Time Chart */}
           {user?.id && (
-            <VolumeProgressChart userId={user.id} timeRange={timeRange} />
+            !isProMember ? (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardIconContainer}>
+                    <Ionicons name="trending-up" size={20} color={colors.primary} />
+                  </View>
+                  <Text style={styles.cardTitle}>Volume Over Time</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPaywallVisible(true)}
+                  style={styles.proOnlyContainer}
+                >
+                  <ProBadge size="medium" />
+                  <Text style={styles.proOnlySubtext}>Track your volume progression over time</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <VolumeProgressChart userId={user.id} timeRange={timeRange} />
+            )
           )}
           </ScrollView>
         )}
       </SafeAreaView>
+
+      {/* Paywall Modal */}
+      <Paywall
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        title="Training Volume Analytics - Premium Feature"
+        message="Track your volume by muscle group and monitor your progression over time. Unlock detailed insights to optimize your training split."
+      />
     </SlideInView>
   )
 }
@@ -446,6 +485,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 10,
       fontWeight: '500',
       color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    proOnlyContainer: {
+      paddingVertical: 40,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    proOnlySubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
       textAlign: 'center',
     },
   })

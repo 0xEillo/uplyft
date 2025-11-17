@@ -471,12 +471,18 @@ function AsyncPrFeedCard({
   userName: string
   avatarUrl: string | null
 }) {
+  const { user } = useAuth()
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<any[]>([])
   const [isComputed, setIsComputed] = useState(false)
   const { weightUnit } = useWeightUnits()
   const router = useRouter()
   const pathname = usePathname()
+
+  // Social interaction states
+  const [likeCount, setLikeCount] = useState(0)
+  const [commentCount, setCommentCount] = useState(0)
+  const [isLiked, setIsLiked] = useState(false)
 
   const compute = useCallback(async () => {
     if (isComputed) return
@@ -502,6 +508,13 @@ function AsyncPrFeedCard({
         exerciseName: exPr.exerciseName,
         prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
         prLabels: exPr.prs.map((pr) => pr.label),
+        prDetails: exPr.prs.map((pr) => ({
+          label: pr.label,
+          weight: pr.weight,
+          previousReps: pr.previousReps,
+          currentReps: pr.currentReps,
+          isCurrent: pr.isCurrent,
+        })),
         hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
       }))
       setPrInfo(prData)
@@ -513,6 +526,33 @@ function AsyncPrFeedCard({
     }
   }, [userId, workout, isComputed])
 
+  // Fetch social stats
+  React.useEffect(() => {
+    if (!user || !workout.id) return
+
+    const fetchSocialStats = async () => {
+      try {
+        const [
+          likeCountResult,
+          hasLikedResult,
+          commentCountResult,
+        ] = await Promise.all([
+          database.workoutLikes.getCount(workout.id),
+          database.workoutLikes.hasLiked(workout.id, user.id),
+          database.workoutComments.getCount(workout.id),
+        ])
+
+        setLikeCount(likeCountResult)
+        setIsLiked(hasLikedResult)
+        setCommentCount(commentCountResult)
+      } catch (error) {
+        console.error('Error fetching social stats:', error)
+      }
+    }
+
+    fetchSocialStats()
+  }, [user, workout.id])
+
   useFocusEffect(
     useCallback(() => {
       compute()
@@ -520,6 +560,30 @@ function AsyncPrFeedCard({
   )
 
   const exercises = formatWorkoutForDisplay(workout, weightUnit)
+
+  // Handle like toggle
+  const handleLike = useCallback(async () => {
+    if (!user || !workout.id) return
+
+    try {
+      if (isLiked) {
+        await database.workoutLikes.unlike(workout.id, user.id)
+        setIsLiked(false)
+        setLikeCount((prev) => Math.max(0, prev - 1))
+      } else {
+        await database.workoutLikes.like(workout.id, user.id)
+        setIsLiked(true)
+        setLikeCount((prev) => prev + 1)
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+    }
+  }, [user, workout.id, isLiked])
+
+  // Handle comment - navigate to comments screen
+  const handleComment = useCallback(() => {
+    router.push(`/workout-comments/${workout.id}`)
+  }, [workout.id, router])
 
   const handleCreateRoutine = useCallback(() => {
     router.push(`/create-routine?from=${workout.id}`)
@@ -556,11 +620,27 @@ function AsyncPrFeedCard({
             0,
           ) || 0,
         prs,
+        durationSeconds: workout.duration ?? undefined,
+        volume:
+          workout.workout_exercises?.reduce(
+            (sum, we) =>
+              sum +
+              (we.sets?.reduce(
+                (setSum, set) => setSum + (set.weight || 0) * (set.reps || 0),
+                0,
+              ) || 0),
+            0,
+          ) || 0,
       }}
       workout={workout}
       onCardPress={handleCardPress}
       onCreateRoutine={handleCreateRoutine}
       prInfo={prInfo}
+      likeCount={likeCount}
+      commentCount={commentCount}
+      isLiked={isLiked}
+      onLike={handleLike}
+      onComment={handleComment}
     />
   )
 }
@@ -754,7 +834,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     logContent: {
-      padding: 16,
       paddingTop: 0,
     },
     loadingContainer: {

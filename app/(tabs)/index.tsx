@@ -5,6 +5,7 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
+import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
@@ -83,6 +84,7 @@ export default function FeedScreen() {
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
   const { updateWorkoutData } = useSuccessOverlay()
+  const { showPrompt } = useRatingPrompt()
   const insets = useSafeAreaInsets()
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -211,6 +213,14 @@ export default function FeedScreen() {
         setHasMore(true)
         loadWorkouts(false, false)
 
+        // Show rating prompt if applicable (after first workout, then every 10 workouts)
+        try {
+          const workoutCount = await database.workoutSessions.getCountByUserId(user.id)
+          await showPrompt(workoutCount)
+        } catch (error) {
+          console.error('Error checking workout count for rating prompt:', error)
+        }
+
         setTimeout(() => setNewWorkoutId(null), 1000)
         return
       }
@@ -254,7 +264,7 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('Error processing pending post:', error)
     }
-  }, [user, isProcessingPending, processPendingWorkout, router, updateWorkoutData])
+  }, [user, isProcessingPending, processPendingWorkout, router, updateWorkoutData, showPrompt])
 
   const handleLoadMore = useCallback(() => {
     if (!isLoadingMore && hasMore && !isLoading) {

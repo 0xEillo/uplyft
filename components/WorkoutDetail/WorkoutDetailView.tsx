@@ -101,24 +101,19 @@ export function WorkoutDetailView({
 
   const handleBack = () => {
     // Trigger exit animation first
-    console.log('[WorkoutDetail] Back button pressed, starting exit animation')
-    console.log('[WorkoutDetail] resolved returnTo parameter:', normalizedReturnTo)
     setShouldExit(true)
   }
 
   const handleExitComplete = () => {
     // Navigate after animation completes
     if (normalizedReturnTo) {
-      console.log('[WorkoutDetail] Exit animation complete, returning to:', normalizedReturnTo)
       router.replace(normalizedReturnTo as Href)
       return
     }
 
     if (router.canGoBack()) {
-      console.log('[WorkoutDetail] Exit animation complete, using router.back() fallback')
       router.back()
     } else {
-      console.log('[WorkoutDetail] No history stack, replacing to /(tabs)')
       router.replace('/(tabs)')
     }
   }
@@ -244,12 +239,18 @@ export function WorkoutDetailView({
         <View style={[styles.topCard, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
           {/* User info */}
           <TouchableOpacity onPress={handleUserPress} style={styles.userInfo}>
-            <Image
-              source={{
-                uri: profile?.avatar_url || 'https://via.placeholder.com/40',
-              }}
-              style={styles.avatar}
-            />
+            {profile?.avatar_url ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={[styles.avatarText, { color: colors.white }]}>
+                  {profile?.display_name?.[0]?.toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
             <View style={styles.userDetails}>
               <Text style={[styles.userName, { color: colors.text }]}>
                 {profile?.display_name || 'User'}
@@ -421,6 +422,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   userDetails: {
     flex: 1,

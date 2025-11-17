@@ -1,20 +1,22 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useUnit, type WeightUnit } from '@/contexts/unit-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
+  Linking,
+  Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  Alert,
-  Platform,
-  Linking,
-  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, {
@@ -35,22 +37,22 @@ interface CapturedPhoto {
 }
 
 const MAX_PHOTOS = 3
+const WEIGHT_UNITS: WeightUnit[] = ['kg', 'lb']
 
 export default function BodyLogCaptureScreen() {
   const colors = useThemedColors()
   const router = useRouter()
   const { isProMember } = useSubscription()
-  const { userGender } = useLocalSearchParams<{ userGender?: string }>()
+  const { entryId } = useLocalSearchParams<{ entryId?: string }>()
 
   const [photos, setPhotos] = useState<(CapturedPhoto | null)[]>([null, null, null])
   const [isTakingPhoto, setIsTakingPhoto] = useState(false)
   const [activeTakingPhotoSlot, setActiveTakingPhotoSlot] = useState<number | null>(null)
-
-  const gender =
-    userGender === 'male' || userGender === 'female' ? userGender : null
+  const [isSaving, setIsSaving] = useState(false)
 
   const photoCount = photos.filter((p) => p !== null).length
   const canContinue = photoCount >= 1
+  const continueLabel = `Save (${photoCount}/${MAX_PHOTOS} photo${photoCount !== 1 ? 's' : ''})`
 
   const handleTakePhoto = async (slotIndex: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -59,7 +61,7 @@ export default function BodyLogCaptureScreen() {
     if (!isProMember) {
       Alert.alert(
         'Premium Feature',
-        'Body Scan is a premium feature. Upgrade to use it.',
+        'Body scan photos are a premium feature. Upgrade to unlock, or continue with weight-only entries.',
         [{ text: 'OK', style: 'cancel' }],
       )
       return
@@ -185,31 +187,53 @@ export default function BodyLogCaptureScreen() {
   }
 
   const handleContinue = async () => {
-    if (!canContinue) return
+    if (!canContinue || !entryId) return
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    setIsSaving(true)
 
-    // Navigate to processing with all photo URIs
-    const photoUris = photos
-      .map((p) => p?.uri)
-      .filter((uri): uri is string => uri !== undefined && uri !== null)
+    try {
+      const { uploadBodyLogImages } = await import('@/lib/utils/body-log-storage')
+      const { database } = await import('@/lib/database')
+      const { useAuth } = await import('@/contexts/auth-context')
 
-    console.log(
-      '[BODY_LOG] 📸 Capture: Moving to processing screen',
-      {
-        photoCount: photoCount,
-        uriCount: photoUris.length,
-        uris: photoUris.map((uri) => uri.substring(0, 50) + '...'),
+      // Get user ID (we need to access it properly)
+      const photoUris = photos
+        .map((p) => p?.uri)
+        .filter((uri): uri is string => uri !== undefined && uri !== null)
+
+      // We need user ID - get from auth context (will need to pass it via params or get from context)
+      // For now, let's assume we can get it from the entry
+      const { supabase } = await import('@/lib/supabase')
+      const { data: entryData } = await supabase
+        .from('body_log_entries')
+        .select('user_id')
+        .eq('id', entryId)
+        .single()
+
+      if (!entryData) {
+        throw new Error('Entry not found')
       }
-    )
 
-    router.replace({
-      pathname: '/body-log/processing',
-      params: {
-        imageUris: photoUris.join('|||'), // Use delimiter to pass multiple URIs
-        imageCount: photoCount.toString(),
-      },
-    })
+      const userId = entryData.user_id
+
+      // Upload images to storage
+      const filePaths = await uploadBodyLogImages(photoUris, userId, entryId)
+
+      // Add images to entry
+      for (let i = 0; i < filePaths.length; i++) {
+        await database.bodyLog.addImage(entryId, userId, filePaths[i], i + 1)
+      }
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+
+      // Navigate back to detail page
+      router.back()
+    } catch (error) {
+      console.error('Error saving photos:', error)
+      Alert.alert('Error', 'Failed to save photos. Please try again.')
+      setIsSaving(false)
+    }
   }
 
   const handleClose = async () => {
@@ -239,9 +263,9 @@ export default function BodyLogCaptureScreen() {
 
         {/* Title */}
         <View style={dynamicStyles.titleSection}>
-          <Text style={dynamicStyles.title}>Capture Photos</Text>
+          <Text style={dynamicStyles.title}>Add Photos</Text>
           <Text style={dynamicStyles.subtitle}>
-            Take 1-3 photos for better accuracy
+            Take 1-3 progress photos
           </Text>
         </View>
 
@@ -348,9 +372,16 @@ export default function BodyLogCaptureScreen() {
         {/* Info text */}
         <View style={dynamicStyles.infoSection}>
           <View style={dynamicStyles.infoBadge}>
-            <Ionicons name="bulb-outline" size={16} color={colors.primary} />
-            <Text style={[dynamicStyles.infoText, { color: colors.primary }]}>
-              More photos = better analysis
+            <Ionicons
+              name="bulb-outline"
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={[
+              dynamicStyles.infoText,
+              { color: colors.primary }
+            ]}>
+              Take at least one photo. More photos = better body scan analysis.
             </Text>
           </View>
         </View>
@@ -361,19 +392,26 @@ export default function BodyLogCaptureScreen() {
             style={[
               dynamicStyles.continueButton,
               {
-                backgroundColor: canContinue ? colors.primary : colors.textSecondary + '40',
+                backgroundColor: canContinue
+                  ? colors.primary
+                  : colors.textSecondary + '40',
               },
             ]}
             onPress={handleContinue}
             activeOpacity={canContinue ? 0.8 : 1}
-            disabled={!canContinue || isTakingPhoto}
-            accessibilityLabel={`Continue with ${photoCount} photos`}
+            disabled={!canContinue || isTakingPhoto || isSaving}
+            accessibilityLabel={`Save ${photoCount} photos`}
             accessibilityRole="button"
           >
             <Text style={dynamicStyles.continueButtonText}>
-              Continue ({photoCount}/{MAX_PHOTOS})
+              {isSaving ? 'Saving...' : continueLabel}
             </Text>
           </TouchableOpacity>
+          <Text style={dynamicStyles.buttonHint}>
+            {photoCount === 0
+              ? 'Take at least one photo to continue.'
+              : `${photoCount} photo${photoCount !== 1 ? 's' : ''} ready to save.`}
+          </Text>
         </View>
       </SafeAreaView>
     </View>
@@ -537,9 +575,93 @@ const createDynamicStyles = (colors: Colors) =>
       fontWeight: '500',
       letterSpacing: -0.1,
     },
+    weightSection: {
+      paddingHorizontal: 24,
+      gap: 12,
+      marginBottom: 12,
+    },
+    weightHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    weightTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      letterSpacing: -0.2,
+    },
+    unitToggle: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    unitButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    },
+    unitButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    unitButtonText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: 'rgba(255, 255, 255, 0.7)',
+      letterSpacing: 0.6,
+    },
+    unitButtonTextActive: {
+      color: colors.buttonText,
+    },
+    weightInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 18,
+      backgroundColor: 'rgba(0, 0, 0, 0.35)',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    weightIcon: {
+      marginRight: 12,
+    },
+    weightInput: {
+      flex: 1,
+      fontSize: 22,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      letterSpacing: -0.3,
+    },
+    weightInputError: {
+      borderColor: colors.error,
+    },
+    weightHelperRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    weightHelperText: {
+      fontSize: 12,
+      color: 'rgba(255, 255, 255, 0.7)',
+      flex: 1,
+      marginRight: 8,
+    },
+    weightHelperTextError: {
+      color: colors.error,
+    },
+    weightPreview: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primary,
+    },
     buttonSection: {
       paddingHorizontal: 24,
       paddingBottom: 32,
+      gap: 10,
     },
     continueButton: {
       paddingVertical: 16,
@@ -558,5 +680,10 @@ const createDynamicStyles = (colors: Colors) =>
       fontWeight: '600',
       color: colors.white,
       letterSpacing: -0.3,
+    },
+    buttonHint: {
+      fontSize: 12,
+      color: 'rgba(255, 255, 255, 0.7)',
+      textAlign: 'center',
     },
   })

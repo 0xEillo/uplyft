@@ -30,11 +30,12 @@ export async function uploadBodyLogImage(
     // Create unique file name
     const fileExt = uri.split('.').pop()?.split('?')[0] || 'jpg'
 
-    // If we have entry ID and sequence, use that naming convention
+    // If we have entry ID and sequence, use that naming convention with a unique identifier
     // Otherwise, use timestamp-based naming for legacy compatibility
+    const uniqueId = Math.random().toString(36).substring(2, 9)
     const fileName = entryId && sequence !== undefined
-      ? `${entryId}_${sequence}.${fileExt}`
-      : `${Date.now()}.${fileExt}`
+      ? `${entryId}_${sequence}_${uniqueId}.${fileExt}`
+      : `${Date.now()}_${uniqueId}.${fileExt}`
 
     const filePath = `${userId}/${fileName}`
 
@@ -73,22 +74,11 @@ export async function uploadBodyLogImages(
   entryId: string,
 ): Promise<string[]> {
   try {
-    console.log('[BODY_LOG] 📦 Storage: Starting batch upload', {
-      imageCount: uris.length,
-      entryId: entryId.substring(0, 8),
-    })
-
     const uploadPromises = uris.map((uri, index) => {
-      console.log(`[BODY_LOG] 📦 Storage: Uploading image ${index + 1}/${uris.length}`)
       return uploadBodyLogImage(uri, userId, entryId, index + 1)
     })
 
     const filePaths = await Promise.all(uploadPromises)
-
-    console.log('[BODY_LOG] ✅ Storage: Batch upload complete', {
-      uploadedCount: filePaths.length,
-      paths: filePaths.map((p) => p.substring(0, 40) + '...'),
-    })
 
     return filePaths
   } catch (error) {
