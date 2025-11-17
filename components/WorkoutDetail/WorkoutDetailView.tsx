@@ -1,26 +1,26 @@
+import { SlideInView } from '@/components/slide-in-view'
+import { getColors } from '@/constants/colors'
+import { useTheme } from '@/contexts/theme-context'
+import { formatTimeAgo } from '@/lib/utils/formatters'
+import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { Ionicons } from '@expo/vector-icons'
+import type { Href } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useMemo, useState } from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { useTheme } from '@/contexts/theme-context'
-import { getColors } from '@/constants/colors'
-import { Ionicons } from '@expo/vector-icons'
-import { WorkoutStatsGrid } from './WorkoutStatsGrid'
-import { MuscleSplitChart } from './MuscleSplitChart'
 import { ExerciseDetailCard } from './ExerciseDetailCard'
-import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
-import { formatTimeAgo } from '@/lib/utils/formatters'
-import { useRouter, useLocalSearchParams } from 'expo-router'
-import type { Href } from 'expo-router'
-import { SlideInView } from '@/components/slide-in-view'
+import { MuscleSplitChart } from './MuscleSplitChart'
+import { WorkoutStatsGrid } from './WorkoutStatsGrid'
 
 interface PrDetailForDisplay {
   label: string
@@ -84,12 +84,19 @@ export function WorkoutDetailView({
     try {
       const decoded = decodeURIComponent(value)
       if (decoded.startsWith('http')) {
-        console.warn('[WorkoutDetail] Ignoring external returnTo param:', decoded)
+        console.warn(
+          '[WorkoutDetail] Ignoring external returnTo param:',
+          decoded,
+        )
         return undefined
       }
       return decoded.startsWith('/') ? decoded : `/${decoded}`
     } catch (error) {
-      console.warn('[WorkoutDetail] Failed to decode returnTo param:', value, error)
+      console.warn(
+        '[WorkoutDetail] Failed to decode returnTo param:',
+        value,
+        error,
+      )
       return undefined
     }
   }, [params.returnTo])
@@ -105,17 +112,19 @@ export function WorkoutDetailView({
   }
 
   const handleExitComplete = () => {
-    // Navigate after animation completes
+    // Prefer native back navigation to preserve the existing stack + animations
+    if (router.canGoBack()) {
+      router.back()
+      return
+    }
+
+    // If there's no stack history (deep link, notification, etc), fall back to the provided target
     if (normalizedReturnTo) {
       router.replace(normalizedReturnTo as Href)
       return
     }
 
-    if (router.canGoBack()) {
-      router.back()
-    } else {
-      router.replace('/(tabs)')
-    }
+    router.replace('/(tabs)')
   }
 
   const handleUserPress = () => {
@@ -138,7 +147,7 @@ export function WorkoutDetailView({
             onDelete?.()
           },
         },
-      ]
+      ],
     )
   }
 
@@ -150,7 +159,15 @@ export function WorkoutDetailView({
     >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: colors.backgroundWhite,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -161,196 +178,288 @@ export function WorkoutDetailView({
             onPress={() => setMenuVisible(!menuVisible)}
             style={styles.menuButton}
           >
-            <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={24}
+              color={colors.text}
+            />
           </TouchableOpacity>
         </View>
 
-      {/* Menu dropdown */}
-      {menuVisible && (
-        <View style={[styles.menuDropdown, { backgroundColor: colors.backgroundWhite, borderColor: colors.border }]}>
-          {onEdit && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuVisible(false)
-                onEdit()
-              }}
-            >
-              <Ionicons name="create-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                Edit
-              </Text>
-            </TouchableOpacity>
-          )}
-          {onCreateRoutine && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuVisible(false)
-                onCreateRoutine()
-              }}
-            >
-              <Ionicons name="albums-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                Save as Routine
-              </Text>
-            </TouchableOpacity>
-          )}
-          {onDelete && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={handleDelete}
-            >
-              <Ionicons name="trash-outline" size={20} color={colors.error} />
-              <Text style={[styles.menuItemText, { color: colors.error }]}>
-                Delete
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+        {/* Menu dropdown */}
+        {menuVisible && (
+          <View
+            style={[
+              styles.menuDropdown,
+              {
+                backgroundColor: colors.backgroundWhite,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            {onEdit && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onEdit()
+                }}
+              >
+                <Ionicons name="create-outline" size={20} color={colors.text} />
+                <Text style={[styles.menuItemText, { color: colors.text }]}>
+                  Edit
+                </Text>
+              </TouchableOpacity>
+            )}
+            {onCreateRoutine && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onCreateRoutine()
+                }}
+              >
+                <Ionicons name="albums-outline" size={20} color={colors.text} />
+                <Text style={[styles.menuItemText, { color: colors.text }]}>
+                  Save as Routine
+                </Text>
+              </TouchableOpacity>
+            )}
+            {onDelete && (
+              <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Text style={[styles.menuItemText, { color: colors.error }]}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
-      {isLoading ? (
-        <ScrollView style={styles.scrollView}>
-          <View style={[styles.topCard, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
-            {/* Loading skeleton */}
-            <View style={styles.userInfo}>
-              <View style={[styles.skeletonAvatar, { backgroundColor: colors.backgroundLight }]} />
-              <View style={styles.userDetails}>
-                <View style={[styles.skeletonText, styles.skeletonName, { backgroundColor: colors.backgroundLight }]} />
-                <View style={[styles.skeletonText, styles.skeletonTime, { backgroundColor: colors.backgroundLight }]} />
+        {isLoading ? (
+          <ScrollView style={styles.scrollView}>
+            <View
+              style={[
+                styles.topCard,
+                {
+                  backgroundColor: colors.backgroundWhite,
+                  borderBottomColor: colors.border,
+                },
+              ]}
+            >
+              {/* Loading skeleton */}
+              <View style={styles.userInfo}>
+                <View
+                  style={[
+                    styles.skeletonAvatar,
+                    { backgroundColor: colors.backgroundLight },
+                  ]}
+                />
+                <View style={styles.userDetails}>
+                  <View
+                    style={[
+                      styles.skeletonText,
+                      styles.skeletonName,
+                      { backgroundColor: colors.backgroundLight },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.skeletonText,
+                      styles.skeletonTime,
+                      { backgroundColor: colors.backgroundLight },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.titleSection}>
+                <View
+                  style={[
+                    styles.skeletonText,
+                    styles.skeletonTitle,
+                    { backgroundColor: colors.backgroundLight },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.skeletonText,
+                    styles.skeletonNotes,
+                    { backgroundColor: colors.backgroundLight },
+                  ]}
+                />
+              </View>
+
+              {/* Loading indicator */}
+              <View style={styles.loadingIndicator}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            </View>
+          </ScrollView>
+        ) : workout ? (
+          <ScrollView style={styles.scrollView}>
+            {/* Top Card: Profile + Stats + Social Actions */}
+            <View
+              style={[
+                styles.topCard,
+                {
+                  backgroundColor: colors.backgroundWhite,
+                  borderBottomColor: colors.border,
+                },
+              ]}
+            >
+              {/* User info */}
+              <TouchableOpacity
+                onPress={handleUserPress}
+                style={styles.userInfo}
+              >
+                {profile?.avatar_url ? (
+                  <Image
+                    source={{ uri: profile.avatar_url }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.avatar,
+                      {
+                        backgroundColor: colors.primary,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.avatarText, { color: colors.white }]}>
+                      {profile?.display_name?.[0]?.toUpperCase() || 'U'}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.userDetails}>
+                  <Text style={[styles.userName, { color: colors.text }]}>
+                    {profile?.display_name || 'User'}
+                  </Text>
+                  <Text
+                    style={[styles.timeAgo, { color: colors.textSecondary }]}
+                  >
+                    {timeAgo}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Workout title */}
+              <View style={styles.titleSection}>
+                <Text style={[styles.workoutTitle, { color: colors.text }]}>
+                  {muscleGroups}
+                </Text>
+                {workout.notes && (
+                  <Text
+                    style={[
+                      styles.workoutNotes,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {workout.notes}
+                  </Text>
+                )}
+              </View>
+
+              {/* Stats grid */}
+              <View style={styles.statsContainer}>
+                <WorkoutStatsGrid workout={workout} />
+              </View>
+
+              {/* Social actions bar */}
+              <View
+                style={[styles.socialBar, { borderTopColor: colors.border }]}
+              >
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={onLike}
+                  disabled={!onLike}
+                >
+                  <Ionicons
+                    name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
+                    size={20}
+                    color={isLiked ? colors.primary : colors.icon}
+                  />
+                  {likeCount > 0 && (
+                    <Text
+                      style={[
+                        styles.socialCount,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {likeCount}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={onComment}
+                  disabled={!onComment}
+                >
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={20}
+                    color={colors.icon}
+                  />
+                  {commentCount > 0 && (
+                    <Text
+                      style={[
+                        styles.socialCount,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {commentCount}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={onShare}
+                  disabled={!onShare}
+                >
+                  <Ionicons
+                    name="share-outline"
+                    size={20}
+                    color={colors.icon}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.titleSection}>
-              <View style={[styles.skeletonText, styles.skeletonTitle, { backgroundColor: colors.backgroundLight }]} />
-              <View style={[styles.skeletonText, styles.skeletonNotes, { backgroundColor: colors.backgroundLight }]} />
-            </View>
+            {/* Muscle split chart */}
+            <MuscleSplitChart workout={workout} />
 
-            {/* Loading indicator */}
-            <View style={styles.loadingIndicator}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          </View>
-        </ScrollView>
-      ) : workout ? (
-      <ScrollView style={styles.scrollView}>
-        {/* Top Card: Profile + Stats + Social Actions */}
-        <View style={[styles.topCard, { backgroundColor: colors.backgroundWhite, borderBottomColor: colors.border }]}>
-          {/* User info */}
-          <TouchableOpacity onPress={handleUserPress} style={styles.userInfo}>
-            {profile?.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={[styles.avatar, { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={[styles.avatarText, { color: colors.white }]}>
-                  {profile?.display_name?.[0]?.toUpperCase() || 'U'}
-                </Text>
-              </View>
-            )}
-            <View style={styles.userDetails}>
-              <Text style={[styles.userName, { color: colors.text }]}>
-                {profile?.display_name || 'User'}
-              </Text>
-              <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>
-                {timeAgo}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Workout title */}
-          <View style={styles.titleSection}>
-            <Text style={[styles.workoutTitle, { color: colors.text }]}>
-              {muscleGroups}
-            </Text>
-            {workout.notes && (
-              <Text style={[styles.workoutNotes, { color: colors.textSecondary }]}>
-                {workout.notes}
-              </Text>
-            )}
-          </View>
-
-          {/* Stats grid */}
-          <View style={styles.statsContainer}>
-            <WorkoutStatsGrid workout={workout} />
-          </View>
-
-          {/* Social actions bar */}
-          <View style={[styles.socialBar, { borderTopColor: colors.border }]}>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={onLike}
-              disabled={!onLike}
+            {/* Exercise list */}
+            <View
+              style={[
+                styles.exercisesSection,
+                { backgroundColor: colors.backgroundWhite },
+              ]}
             >
-              <Ionicons
-                name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
-                size={20}
-                color={isLiked ? colors.primary : colors.icon}
-              />
-              {likeCount > 0 && (
-                <Text style={[styles.socialCount, { color: colors.textSecondary }]}>
-                  {likeCount}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={onComment}
-              disabled={!onComment}
-            >
-              <Ionicons
-                name="chatbubble-outline"
-                size={20}
-                color={colors.icon}
-              />
-              {commentCount > 0 && (
-                <Text style={[styles.socialCount, { color: colors.textSecondary }]}>
-                  {commentCount}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={onShare}
-              disabled={!onShare}
-            >
-              <Ionicons
-                name="share-outline"
-                size={20}
-                color={colors.icon}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Muscle split chart */}
-        <MuscleSplitChart workout={workout} />
-
-        {/* Exercise list */}
-        <View style={[styles.exercisesSection, { backgroundColor: colors.backgroundWhite }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            Workout
-          </Text>
-          {workout?.workout_exercises.map((workoutExercise, index) => {
-            const exercisePR = prInfo.find(
-              (pr) => pr.exerciseName === workoutExercise.exercise?.name
-            )
-            return (
-              <ExerciseDetailCard
-                key={workoutExercise.id || index}
-                workoutExercise={workoutExercise}
-                prInfo={exercisePR}
-              />
-            )
-          })}
-        </View>
-      </ScrollView>
-      ) : null}
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
+                Workout
+              </Text>
+              {workout?.workout_exercises.map((workoutExercise, index) => {
+                const exercisePR = prInfo.find(
+                  (pr) => pr.exerciseName === workoutExercise.exercise?.name,
+                )
+                return (
+                  <ExerciseDetailCard
+                    key={workoutExercise.id || index}
+                    workoutExercise={workoutExercise}
+                    prInfo={exercisePR}
+                  />
+                )
+              })}
+            </View>
+          </ScrollView>
+        ) : null}
       </View>
     </SlideInView>
   )

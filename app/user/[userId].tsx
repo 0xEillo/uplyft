@@ -13,8 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
-import React, { useCallback, useState } from 'react'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +24,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+let skipNextProfileEntryAnimation = false
+
+const markProfileEntrySkipFlag = () => {
+  skipNextProfileEntryAnimation = true
+}
+
+const consumeProfileEntrySkipFlag = () => {
+  const shouldSkip = skipNextProfileEntryAnimation
+  skipNextProfileEntryAnimation = false
+  return shouldSkip
+}
 
 export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
@@ -40,19 +51,29 @@ export default function UserProfileScreen() {
   const [userTag, setUserTag] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [privacyLocked, setPrivacyLocked] = useState(false)
-  const [relationship, setRelationship] = useState<FollowRelationshipStatus | null>(null)
+  const [
+    relationship,
+    setRelationship,
+  ] = useState<FollowRelationshipStatus | null>(null)
   const [relationshipBusy, setRelationshipBusy] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
+  const shouldSkipNextEntryRef = useRef<boolean>(consumeProfileEntrySkipFlag())
+  const isInitialFocusRef = useRef(true)
   const [shouldExit, setShouldExit] = useState(false)
+  const [shouldAnimateEntry, setShouldAnimateEntry] = useState(
+    !shouldSkipNextEntryRef.current,
+  )
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState(0)
 
   // Log when component mounts/unmounts
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('[UserProfile] 🎬 Component MOUNTED - userId:', userId)
     return () => {
       console.log('[UserProfile] 💀 Component UNMOUNTED - userId:', userId)
+      shouldSkipNextEntryRef.current = false
+      isInitialFocusRef.current = true
     }
   }, [userId])
 
@@ -63,7 +84,7 @@ export default function UserProfileScreen() {
       return () => {
         console.log('[UserProfile] 😴 Screen UNFOCUSED - userId:', userId)
       }
-    }, [userId])
+    }, [userId]),
   )
 
   const loadUserData = useCallback(async () => {
@@ -146,7 +167,9 @@ export default function UserProfileScreen() {
     }
 
     try {
-      const [status] = await database.relationships.getStatuses(user.id, [userId])
+      const [status] = await database.relationships.getStatuses(user.id, [
+        userId,
+      ])
       setRelationship(status ?? null)
     } catch (error) {
       console.error('Error loading relationship status:', error)
@@ -185,7 +208,10 @@ export default function UserProfileScreen() {
         await loadFollowCounts()
       } else {
         const result = await database.follows.follow(user.id, userId)
-        if (result.status === 'following' || result.status === 'already_following') {
+        if (
+          result.status === 'following' ||
+          result.status === 'already_following'
+        ) {
           setRelationship((prev) =>
             prev
               ? {
@@ -217,7 +243,14 @@ export default function UserProfileScreen() {
     } finally {
       setRelationshipBusy(false)
     }
-  }, [user, userId, relationship, relationshipBusy, loadUserData, loadFollowCounts])
+  }, [
+    user,
+    userId,
+    relationship,
+    relationshipBusy,
+    loadUserData,
+    loadFollowCounts,
+  ])
 
   useFocusEffect(
     useCallback(() => {
@@ -230,13 +263,33 @@ export default function UserProfileScreen() {
   const styles = createStyles(colors)
   const isOwnProfile = user?.id === userId
 
+  useFocusEffect(
+    useCallback(() => {
+      if (shouldSkipNextEntryRef.current) {
+        setShouldAnimateEntry(false)
+        shouldSkipNextEntryRef.current = false
+        isInitialFocusRef.current = false
+      } else if (isInitialFocusRef.current) {
+        setShouldAnimateEntry(true)
+        isInitialFocusRef.current = false
+      }
+    }, [shouldSkipNextEntryRef]),
+  )
+
+  const markNextFocusAsChildReturn = useCallback(() => {
+    markProfileEntrySkipFlag()
+    shouldSkipNextEntryRef.current = true
+  }, [shouldSkipNextEntryRef])
+
   const handleBack = useCallback(() => {
     console.log('[UserProfile] ⬅️ Back button pressed, starting exit animation')
     setShouldExit(true)
   }, [])
 
   const handleExitComplete = useCallback(() => {
-    console.log('[UserProfile] ✅ Exit animation complete, navigating back to search')
+    console.log(
+      '[UserProfile] ✅ Exit animation complete, navigating back to search',
+    )
     router.back()
   }, [router])
 
@@ -292,6 +345,7 @@ export default function UserProfileScreen() {
         style={buttonStyles}
         onPress={() => {
           if (hasIncoming) {
+            markNextFocusAsChildReturn()
             router.push('/follow-requests')
             return
           }
@@ -314,148 +368,152 @@ export default function UserProfileScreen() {
   return (
     <SlideInView
       style={{ flex: 1 }}
+      enabled={shouldAnimateEntry}
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Status bar background */}
         <View style={[styles.statusBarBackground, { height: insets.top }]} />
-      {/* Scrollable Content */}
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+        {/* Scrollable Content */}
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Profile Header */}
+          <View style={styles.profileHeader}>
+            {/* Back Button */}
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
 
-          {/* Profile Section with Avatar and Info */}
-          <View style={styles.profileSection}>
-            {/* Avatar and Name Row */}
-            <View style={styles.profileTop}>
-              {/* Avatar */}
-              {avatarUrl ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Ionicons name="person" size={36} color={colors.white} />
+            {/* Profile Section with Avatar and Info */}
+            <View style={styles.profileSection}>
+              {/* Avatar and Name Row */}
+              <View style={styles.profileTop}>
+                {/* Avatar */}
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Ionicons name="person" size={36} color={colors.white} />
+                  </View>
+                )}
+
+                {/* Name */}
+                <View style={styles.nameContainer}>
+                  <Text style={styles.displayName}>{userName || 'User'}</Text>
+                  {userTag && <Text style={styles.userTag}>@{userTag}</Text>}
+                </View>
+              </View>
+
+              {/* Stats Row - Below Avatar */}
+              <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                  <Text style={styles.statNumber}>{workouts.length}</Text>
+                  <Text style={styles.statLabel}>Workouts</Text>
+                </View>
+                <View style={styles.stat}>
+                  <Text style={styles.statNumber}>{followerCount}</Text>
+                  <Text style={styles.statLabel}>Followers</Text>
+                </View>
+                <View style={styles.stat}>
+                  <Text style={styles.statNumber}>{followingCount}</Text>
+                  <Text style={styles.statLabel}>Following</Text>
+                </View>
+              </View>
+
+              {/* Follow Button */}
+              {!isOwnProfile && !privacyLocked && (
+                <View style={styles.followButtonContainer}>
+                  {renderFollowButton()}
                 </View>
               )}
+            </View>
 
-              {/* Name */}
-              <View style={styles.nameContainer}>
-                <Text style={styles.displayName}>{userName || 'User'}</Text>
-                {userTag && (
-                  <Text style={styles.userTag}>@{userTag}</Text>
+            {/* This Week Stats Section */}
+            <View style={styles.weeklyStatsSection}>
+              <View style={styles.weeklyStatsHeader}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={colors.text}
+                />
+                <Text style={styles.weeklyStatsTitle}>This Week</Text>
+              </View>
+              <View style={styles.weeklyStats}>
+                <View style={styles.weeklyStat}>
+                  <Text style={styles.weeklyStatNumber}>{weeklyWorkouts}</Text>
+                  <Text style={styles.weeklyStatLabel}>Workouts</Text>
+                </View>
+                <View style={styles.weeklyStatDivider} />
+                <View style={styles.weeklyStat}>
+                  <Text style={styles.weeklyStatNumber}>
+                    {(weightUnit === 'lb'
+                      ? (weeklyVolume * 2.20462) / 1000
+                      : weeklyVolume / 1000
+                    ).toFixed(1)}
+                    k
+                  </Text>
+                  <Text style={styles.weeklyStatLabel}>
+                    Volume ({weightUnit})
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Workouts Divider */}
+            <View style={styles.divider} />
+          </View>
+
+          {privacyLocked && !isOwnProfile ? (
+            <View style={styles.lockedCard}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={48}
+                color={colors.primary}
+                style={styles.lockedIcon}
+              />
+              <Text style={styles.lockedTitle}>This athlete is private</Text>
+              <Text style={styles.lockedMessage}>
+                Request to follow to unlock their workouts and stats.
+              </Text>
+              {renderFollowButton()}
+            </View>
+          ) : (
+            <>
+              {/* Workout Posts */}
+              <View style={styles.logContent}>
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                  </View>
+                ) : workouts.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons
+                      name="barbell-outline"
+                      size={64}
+                      color={colors.textPlaceholder}
+                    />
+                    <Text style={styles.emptyText}>No workouts yet</Text>
+                  </View>
+                ) : (
+                  workouts.map((workout) => (
+                    <AsyncPrFeedCard
+                      key={workout.id}
+                      workout={workout}
+                      userId={userId}
+                      userName={userName}
+                      avatarUrl={avatarUrl}
+                      onNavigateAway={markNextFocusAsChildReturn}
+                    />
+                  ))
                 )}
               </View>
-            </View>
-
-            {/* Stats Row - Below Avatar */}
-            <View style={styles.statsRow}>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{workouts.length}</Text>
-                <Text style={styles.statLabel}>Workouts</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{followerCount}</Text>
-                <Text style={styles.statLabel}>Followers</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{followingCount}</Text>
-                <Text style={styles.statLabel}>Following</Text>
-              </View>
-            </View>
-
-            {/* Follow Button */}
-            {!isOwnProfile && !privacyLocked && (
-              <View style={styles.followButtonContainer}>
-                {renderFollowButton()}
-              </View>
-            )}
-          </View>
-
-          {/* This Week Stats Section */}
-          <View style={styles.weeklyStatsSection}>
-            <View style={styles.weeklyStatsHeader}>
-              <Ionicons name="calendar-outline" size={20} color={colors.text} />
-              <Text style={styles.weeklyStatsTitle}>This Week</Text>
-            </View>
-            <View style={styles.weeklyStats}>
-              <View style={styles.weeklyStat}>
-                <Text style={styles.weeklyStatNumber}>{weeklyWorkouts}</Text>
-                <Text style={styles.weeklyStatLabel}>Workouts</Text>
-              </View>
-              <View style={styles.weeklyStatDivider} />
-              <View style={styles.weeklyStat}>
-                <Text style={styles.weeklyStatNumber}>
-                  {(weightUnit === 'lb' ? (weeklyVolume * 2.20462) / 1000 : weeklyVolume / 1000).toFixed(1)}k
-                </Text>
-                <Text style={styles.weeklyStatLabel}>Volume ({weightUnit})</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Workouts Divider */}
-          <View style={styles.divider} />
-        </View>
-
-        {privacyLocked && !isOwnProfile ? (
-          <View style={styles.lockedCard}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={48}
-              color={colors.primary}
-              style={styles.lockedIcon}
-            />
-            <Text style={styles.lockedTitle}>This athlete is private</Text>
-            <Text style={styles.lockedMessage}>
-              Request to follow to unlock their workouts and stats.
-            </Text>
-            {renderFollowButton()}
-          </View>
-        ) : (
-          <>
-            {/* Workout Posts */}
-            <View style={styles.logContent}>
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-              ) : workouts.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons
-                    name="barbell-outline"
-                    size={64}
-                    color={colors.textPlaceholder}
-                  />
-                  <Text style={styles.emptyText}>No workouts yet</Text>
-                </View>
-              ) : (
-                workouts.map((workout) => (
-                  <AsyncPrFeedCard
-                    key={workout.id}
-                    workout={workout}
-                    userId={userId}
-                    userName={userName}
-                    avatarUrl={avatarUrl}
-                  />
-                ))
-              )}
-            </View>
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
     </SlideInView>
   )
 }
@@ -465,11 +523,13 @@ function AsyncPrFeedCard({
   userId,
   userName,
   avatarUrl,
+  onNavigateAway,
 }: {
   workout: WorkoutSessionWithDetails
   userId: string
   userName: string
   avatarUrl: string | null
+  onNavigateAway?: () => void
 }) {
   const { user } = useAuth()
   const [prs, setPrs] = useState<number>(0)
@@ -582,17 +642,20 @@ function AsyncPrFeedCard({
 
   // Handle comment - navigate to comments screen
   const handleComment = useCallback(() => {
+    onNavigateAway?.()
     router.push(`/workout-comments/${workout.id}`)
-  }, [workout.id, router])
+  }, [workout.id, router, onNavigateAway])
 
   const handleCreateRoutine = useCallback(() => {
+    onNavigateAway?.()
     router.push(`/create-routine?from=${workout.id}`)
-  }, [workout.id, router])
+  }, [workout.id, router, onNavigateAway])
 
   const handleCardPress = useCallback(() => {
     console.log('🚀 [UserProfile->WorkoutDetail] Navigation')
     console.log('   From: /user/' + userId)
     console.log('   To: /workout/' + workout.id)
+    onNavigateAway?.()
     router.push({
       pathname: '/workout/[workoutId]',
       params: {
@@ -600,7 +663,7 @@ function AsyncPrFeedCard({
         returnTo: pathname,
       },
     })
-  }, [workout.id, userId, router, pathname])
+  }, [workout.id, userId, router, pathname, onNavigateAway])
 
   return (
     <FeedCard
@@ -727,9 +790,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     weeklyStatsSection: {
       backgroundColor: colors.backgroundLight,
       marginHorizontal: 20,
-      marginBottom: 8,
+      marginBottom: 4,
       borderRadius: 12,
-      padding: 16,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 12,
     },
     weeklyStatsHeader: {
       flexDirection: 'row',
@@ -767,7 +832,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginHorizontal: 16,
     },
     divider: {
-      height: 4,
+      height: 0,
       backgroundColor: colors.background,
     },
     followActionButton: {
