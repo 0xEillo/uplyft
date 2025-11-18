@@ -402,14 +402,26 @@ export default function UserProfileScreen() {
                   <Text style={styles.statNumber}>{workouts.length}</Text>
                   <Text style={styles.statLabel}>Workouts</Text>
                 </View>
-                <View style={styles.stat}>
+                <TouchableOpacity
+                  style={styles.stat}
+                  onPress={() => router.push({
+                    pathname: '/followers/[userId]',
+                    params: { userId, returnTo: `/user/${userId}` }
+                  })}
+                >
                   <Text style={styles.statNumber}>{followerCount}</Text>
                   <Text style={styles.statLabel}>Followers</Text>
-                </View>
-                <View style={styles.stat}>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.stat}
+                  onPress={() => router.push({
+                    pathname: '/following/[userId]',
+                    params: { userId, returnTo: `/user/${userId}` }
+                  })}
+                >
                   <Text style={styles.statNumber}>{followingCount}</Text>
                   <Text style={styles.statLabel}>Following</Text>
-                </View>
+                </TouchableOpacity>
               </View>
 
               {profileDescription ? (

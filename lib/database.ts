@@ -315,25 +315,55 @@ export const database = {
     async listFollowers(userId: string, limit = 50, offset = 0) {
       const { data, error } = await supabase
         .from('follows')
-        .select('*')
+        .select(
+          `
+          *,
+          follower:profiles!follows_follower_id_fkey (
+            id,
+            display_name,
+            user_tag,
+            avatar_url
+          )
+        `,
+        )
         .eq('followee_id', userId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
       if (error) throw error
-      return (data || []) as Follow[]
+      return (data || []) as (Follow & {
+        follower: Pick<
+          Profile,
+          'id' | 'display_name' | 'user_tag' | 'avatar_url'
+        >
+      })[]
     },
 
     async listFollowing(userId: string, limit = 50, offset = 0) {
       const { data, error } = await supabase
         .from('follows')
-        .select('*')
+        .select(
+          `
+          *,
+          followee:profiles!follows_followee_id_fkey (
+            id,
+            display_name,
+            user_tag,
+            avatar_url
+          )
+        `,
+        )
         .eq('follower_id', userId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
       if (error) throw error
-      return (data || []) as Follow[]
+      return (data || []) as (Follow & {
+        followee: Pick<
+          Profile,
+          'id' | 'display_name' | 'user_tag' | 'avatar_url'
+        >
+      })[]
     },
 
     async isFollowing(followerId: string, followeeId: string) {
@@ -840,7 +870,9 @@ export const database = {
 
       // Validate and sanitize name
       if (!name || typeof name !== 'string') {
-        console.error('[database.exercises.createWithMetadata] Invalid name type')
+        console.error(
+          '[database.exercises.createWithMetadata] Invalid name type',
+        )
         throw new Error('Invalid exercise name')
       }
 
@@ -860,7 +892,9 @@ export const database = {
         trimmedName.toLowerCase().includes('script') ||
         trimmedName.toLowerCase().includes('javascript')
       ) {
-        console.error('[database.exercises.createWithMetadata] XSS pattern detected')
+        console.error(
+          '[database.exercises.createWithMetadata] XSS pattern detected',
+        )
         throw new Error('Invalid exercise name')
       }
 
@@ -871,10 +905,15 @@ export const database = {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
 
-      console.log('[database.exercises.createWithMetadata] Normalized name', normalizedName)
+      console.log(
+        '[database.exercises.createWithMetadata] Normalized name',
+        normalizedName,
+      )
 
       // Check if exercise already exists
-      console.log('[database.exercises.createWithMetadata] Checking for existing exercise')
+      console.log(
+        '[database.exercises.createWithMetadata] Checking for existing exercise',
+      )
       const { data: existing, error: existingError } = await supabase
         .from('exercises')
         .select('id')
@@ -883,12 +922,18 @@ export const database = {
         .single()
 
       if (existingError && existingError.code !== 'PGRST116') {
-        console.error('[database.exercises.createWithMetadata] Error checking existing', existingError)
+        console.error(
+          '[database.exercises.createWithMetadata] Error checking existing',
+          existingError,
+        )
         throw existingError
       }
 
       if (existing) {
-        console.log('[database.exercises.createWithMetadata] Exercise already exists', existing.id)
+        console.log(
+          '[database.exercises.createWithMetadata] Exercise already exists',
+          existing.id,
+        )
         const { data } = await supabase
           .from('exercises')
           .select('*')
@@ -898,7 +943,9 @@ export const database = {
       }
 
       // Create new exercise with provided metadata
-      console.log('[database.exercises.createWithMetadata] Creating new exercise with metadata')
+      console.log(
+        '[database.exercises.createWithMetadata] Creating new exercise with metadata',
+      )
       const { data, error } = await supabase
         .from('exercises')
         .insert({
@@ -912,11 +959,17 @@ export const database = {
         .single()
 
       if (error) {
-        console.error('[database.exercises.createWithMetadata] Insert error', error)
+        console.error(
+          '[database.exercises.createWithMetadata] Insert error',
+          error,
+        )
         throw error
       }
 
-      console.log('[database.exercises.createWithMetadata] Exercise created successfully', data)
+      console.log(
+        '[database.exercises.createWithMetadata] Exercise created successfully',
+        data,
+      )
       return data as Exercise
     },
   },

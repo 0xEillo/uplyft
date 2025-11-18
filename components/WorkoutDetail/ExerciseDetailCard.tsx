@@ -34,7 +34,7 @@ export function ExerciseDetailCard({ workoutExercise, prInfo }: ExerciseDetailCa
   const exercise = workoutExercise.exercise
   const sets = workoutExercise.sets || []
 
-  if (sets.length === 0) {
+  if (!exercise || sets.length === 0) {
     return null
   }
 
