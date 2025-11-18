@@ -244,7 +244,7 @@ export default function WorkoutCalendarScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.safeAreaContainer} edges={['top']}>
         <Stack.Screen
           options={{
             headerShown: false,
@@ -336,6 +336,10 @@ export default function WorkoutCalendarScreen() {
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeAreaContainer: {
+      flex: 1,
+      backgroundColor: colors.white,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -397,9 +401,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.background,
     },
     scrollView: {
       flex: 1,
+      backgroundColor: colors.background,
     },
     content: {
       padding: 16,

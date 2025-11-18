@@ -28,3 +28,4 @@ $$;
 comment on column public.workout_routine_sets.rest_seconds is
   'Recommended rest interval between sets (seconds, nullable)';
 
+
