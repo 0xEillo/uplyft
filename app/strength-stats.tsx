@@ -90,12 +90,10 @@ export default function StrengthStatsScreen() {
   }, [loadData])
 
   const handleBack = () => {
-    console.log('[StrengthStats] Back button pressed, starting exit animation')
     setShouldExit(true)
   }
 
   const handleExitComplete = () => {
-    console.log('[StrengthStats] Exit animation complete, navigating back to analytics')
     router.push('/(tabs)/analytics?tab=progress')
   }
 

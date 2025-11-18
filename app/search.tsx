@@ -62,15 +62,8 @@ export default function SearchScreen() {
   )
   const isInitialFocusRef = useRef(true)
 
-  // Log mount/unmount
   useEffect(() => {
-    console.log(
-      '[Search] 🎬 Component MOUNTED, shouldSkipEntry:',
-      shouldSkipNextEntryRef.current,
-    )
-
     return () => {
-      console.log('[Search] 💀 Component UNMOUNTED')
       shouldSkipNextEntryRef.current = false
       isInitialFocusRef.current = true
     }
@@ -79,20 +72,11 @@ export default function SearchScreen() {
   // Handle focus events - disable animation when returning from child route
   useFocusEffect(
     useCallback(() => {
-      console.log(
-        '[Search] 👁️ Screen FOCUSED, shouldSkipEntry:',
-        shouldSkipNextEntryRef.current,
-      )
-
       if (shouldSkipNextEntryRef.current) {
-        console.log(
-          '[Search] ⏭️ Returning from child route, disabling animation',
-        )
         setShouldAnimate(false)
         shouldSkipNextEntryRef.current = false
         isInitialFocusRef.current = false
       } else if (isInitialFocusRef.current) {
-        console.log('[Search] ✨ Initial mount, enabling animation')
         setShouldAnimate(true)
         isInitialFocusRef.current = false
       }
@@ -235,14 +219,12 @@ export default function SearchScreen() {
   )
 
   const handleBack = () => {
-    console.log('[Search] ⬅️ Back button pressed, starting exit animation')
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     Keyboard.dismiss()
     setShouldExit(true)
   }
 
   const handleExitComplete = () => {
-    console.log('[Search] ✅ Exit animation complete, navigating back to home')
     router.back()
   }
 
@@ -282,14 +264,12 @@ export default function SearchScreen() {
   }, [shouldSkipNextEntryRef])
 
   const handleReviewRequests = useCallback(() => {
-    console.log('[Search] 🔀 Navigating to follow-requests')
     markNextFocusAsChildReturn()
     router.push('/follow-requests')
   }, [router, markNextFocusAsChildReturn])
 
   const handleNavigateToProfile = useCallback(
     (userId: string) => {
-      console.log('[Search] 🔀 Navigating to profile:', userId)
       markNextFocusAsChildReturn()
       router.push(`/user/${userId}`)
     },
