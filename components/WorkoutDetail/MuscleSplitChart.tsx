@@ -32,7 +32,7 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
   }
 
   return (
-    <View style={[styles.container, { borderBottomColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.feedCardBackground, borderBottomColor: colors.border }]}>
       <Text style={[styles.title, { color: colors.textSecondary }]}>
         Muscle Split
       </Text>

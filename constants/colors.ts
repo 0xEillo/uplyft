@@ -23,6 +23,7 @@ const lightColors = {
   backgroundWhite: '#fff',
   backgroundLight: '#f0f0f0',
   inputBackground: '#fafafa',
+  feedCardBackground: '#fff',
 
   // Border colors
   border: '#f0f0f0',
@@ -62,6 +63,7 @@ const darkColors = {
   backgroundWhite: '#242424', // Card background - slightly elevated
   backgroundLight: '#2C2C2C', // Input backgrounds - more elevated
   inputBackground: '#2C2C2C', // Explicit input background
+  feedCardBackground: '#1c1c1c', // Feed card background - slightly lighter than main background
 
   // Border colors (very subtle)
   border: '#333333',

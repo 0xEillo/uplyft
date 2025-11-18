@@ -515,7 +515,7 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       paddingVertical: 20,
       paddingHorizontal: 20,
       borderRadius: 16,

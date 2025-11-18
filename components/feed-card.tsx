@@ -616,7 +616,7 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       borderRadius: 4,
       paddingHorizontal: 20,
       paddingTop: 18,

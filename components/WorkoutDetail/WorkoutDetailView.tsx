@@ -243,7 +243,7 @@ export function WorkoutDetailView({
               style={[
                 styles.topCard,
                 {
-                  backgroundColor: colors.backgroundWhite,
+                  backgroundColor: colors.feedCardBackground,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -304,7 +304,7 @@ export function WorkoutDetailView({
               style={[
                 styles.topCard,
                 {
-                  backgroundColor: colors.backgroundWhite,
+                  backgroundColor: colors.feedCardBackground,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -438,7 +438,7 @@ export function WorkoutDetailView({
             <View
               style={[
                 styles.exercisesSection,
-                { backgroundColor: colors.backgroundWhite },
+                { backgroundColor: colors.feedCardBackground },
               ]}
             >
               <Text

@@ -731,7 +731,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 0,
     },
     profileHeader: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
     },
     backButton: {
       paddingHorizontal: 20,

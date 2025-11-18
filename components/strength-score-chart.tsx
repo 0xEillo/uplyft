@@ -836,7 +836,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       paddingVertical: 20,
       paddingHorizontal: 20,
       borderBottomWidth: 2,

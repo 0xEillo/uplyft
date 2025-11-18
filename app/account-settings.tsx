@@ -31,7 +31,7 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>()
-  const { isDark, toggleTheme } = useTheme()
+  const { themePreference, setThemePreference, isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit } = useWeightUnits()
   const { isProMember, customerInfo, restorePurchases } = useSubscription()
@@ -711,19 +711,36 @@ export default function SettingsScreen() {
             {/* Divider */}
             <View style={styles.preferenceDivider} />
 
-            {/* Dark Mode Toggle */}
+            {/* Theme Selector */}
             <View style={styles.preferenceRow}>
               <View style={styles.preferenceLeft}>
                 <View>
-                  <Text style={styles.preferenceTitle}>Dark Mode</Text>
+                  <Text style={styles.preferenceTitle}>Theme</Text>
                 </View>
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
-                thumbColor={isDark ? colors.primary : '#F3F4F6'}
-              />
+              <View style={styles.unitToggleContainer}>
+                {(['light', 'dark', 'system'] as const).map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.unitButton,
+                      themePreference === option && styles.unitButtonActive,
+                    ]}
+                    onPress={() => setThemePreference(option)}
+                  >
+                    <Text
+                      style={[
+                        styles.unitButtonText,
+                        themePreference === option && styles.unitButtonTextActive,
+                      ]}
+                    >
+                      {option === 'system'
+                        ? 'System'
+                        : option.charAt(0).toUpperCase() + option.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
             {/* Divider */}

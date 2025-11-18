@@ -2,11 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useColorScheme } from 'react-native'
 
-type Theme = 'light' | 'dark'
+export type ThemePreference = 'light' | 'dark' | 'system'
 
 interface ThemeContextType {
-  theme: Theme
-  toggleTheme: () => void
+  themePreference: ThemePreference
+  setThemePreference: (theme: ThemePreference) => void
   isDark: boolean
 }
 
@@ -16,7 +16,7 @@ const THEME_KEY = '@app_theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useColorScheme()
-  const [theme, setTheme] = useState<Theme>(systemColorScheme === 'dark' ? 'dark' : 'light')
+  const [themePreference, setThemeState] = useState<ThemePreference>('system')
 
   useEffect(() => {
     loadTheme()
@@ -25,33 +25,41 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const loadTheme = async () => {
     try {
       const savedTheme = await AsyncStorage.getItem(THEME_KEY)
-      if (savedTheme === 'dark' || savedTheme === 'light') {
-        setTheme(savedTheme)
+      if (
+        savedTheme === 'dark' ||
+        savedTheme === 'light' ||
+        savedTheme === 'system'
+      ) {
+        setThemeState(savedTheme as ThemePreference)
       } else {
-        // No saved preference, use system color scheme
-        setTheme(systemColorScheme === 'dark' ? 'dark' : 'light')
+        // Default to system if no preference saved
+        setThemeState('system')
       }
     } catch (error) {
       console.error('Error loading theme:', error)
     }
   }
 
-  const toggleTheme = async () => {
+  const setThemePreference = async (newTheme: ThemePreference) => {
     try {
-      const newTheme = theme === 'light' ? 'dark' : 'light'
-      setTheme(newTheme)
+      setThemeState(newTheme)
       await AsyncStorage.setItem(THEME_KEY, newTheme)
     } catch (error) {
       console.error('Error saving theme:', error)
     }
   }
 
+  const isDark =
+    themePreference === 'system'
+      ? systemColorScheme === 'dark'
+      : themePreference === 'dark'
+
   return (
     <ThemeContext.Provider
       value={{
-        theme,
-        toggleTheme,
-        isDark: theme === 'dark',
+        themePreference,
+        setThemePreference,
+        isDark,
       }}
     >
       {children}

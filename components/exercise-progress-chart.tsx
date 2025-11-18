@@ -426,7 +426,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       padding: 12,
       borderRadius: 9999,
       shadowColor: colors.shadow,
@@ -457,7 +457,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.error,
     },
     chartContainer: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       padding: 16,
       borderRadius: 12,
       shadowColor: colors.shadow,

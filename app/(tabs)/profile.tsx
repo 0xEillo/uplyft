@@ -427,7 +427,7 @@ const createStyles = (
       paddingBottom: 2,
     },
     profileHeader: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
     },
     profileSection: {
       paddingHorizontal: 20,
