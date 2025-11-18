@@ -3,8 +3,7 @@ import { View, Text, StyleSheet } from 'react-native'
 import { WorkoutExerciseWithDetails } from '@/types/database.types'
 import { useTheme } from '@/contexts/theme-context'
 import { getColors } from '@/constants/colors'
-import { useUnit } from '@/contexts/unit-context'
-import { kgToPreferred } from '@/contexts/unit-context'
+import { useUnit , kgToPreferred } from '@/contexts/unit-context'
 
 interface PrDetailForDisplay {
   label: string

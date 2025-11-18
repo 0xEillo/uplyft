@@ -60,58 +60,60 @@ export function formatWorkoutForDisplay(
     return []
   }
 
-  return workout.workout_exercises.map((we) => {
-    const exercise = we.exercise
-    const sets = we.sets || []
+  return workout.workout_exercises
+    .filter((we) => we.exercise !== null)
+    .map((we) => {
+      const exercise = we.exercise!
+      const sets = we.sets || []
 
-    if (sets.length === 0) {
+      if (sets.length === 0) {
+        return {
+          name: exercise.name,
+          sets: 0,
+          reps: '-',
+          weight: '-',
+          hasVariedSets: false,
+        }
+      }
+
+      // Check if sets are varied (different reps or weights)
+      const allSameReps = sets.every((s) => s.reps === sets[0].reps)
+      const weights = sets
+        .map((s) => s.weight)
+        .filter((w): w is number => w !== null)
+      const allSameWeight =
+        weights.length === 0 || weights.every((w) => w === weights[0])
+      const hasVariedSets = !allSameReps || !allSameWeight
+
+      // Format reps
+      let repsDisplay: string
+      if (allSameReps) {
+        repsDisplay = sets[0].reps != null ? `${sets[0].reps}` : '--'
+      } else {
+        repsDisplay = sets.some((s) => s.reps == null) ? '--' : '...'
+      }
+
+      // Format weight
+      let weightDisplay: string
+      if (weights.length === 0) {
+        weightDisplay = 'BW' // Bodyweight
+      } else if (allSameWeight) {
+        const converted = kgToPreferred(weights[0], unit)
+        weightDisplay = `${converted.toFixed(unit === 'kg' ? 1 : 0)}`
+      } else {
+        weightDisplay = '...'
+      }
+
       return {
         name: exercise.name,
-        sets: 0,
-        reps: '-',
-        weight: '-',
-        hasVariedSets: false,
+        sets: sets.length,
+        reps: repsDisplay,
+        weight: weightDisplay,
+        hasVariedSets,
+        setDetails: sets.map((s) => ({
+          reps: s.reps,
+          weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
+        })),
       }
-    }
-
-    // Check if sets are varied (different reps or weights)
-    const allSameReps = sets.every((s) => s.reps === sets[0].reps)
-    const weights = sets
-      .map((s) => s.weight)
-      .filter((w): w is number => w !== null)
-    const allSameWeight =
-      weights.length === 0 || weights.every((w) => w === weights[0])
-    const hasVariedSets = !allSameReps || !allSameWeight
-
-    // Format reps
-    let repsDisplay: string
-    if (allSameReps) {
-      repsDisplay = sets[0].reps != null ? `${sets[0].reps}` : '--'
-    } else {
-      repsDisplay = sets.some((s) => s.reps == null) ? '--' : '...'
-    }
-
-    // Format weight
-    let weightDisplay: string
-    if (weights.length === 0) {
-      weightDisplay = 'BW' // Bodyweight
-    } else if (allSameWeight) {
-      const converted = kgToPreferred(weights[0], unit)
-      weightDisplay = `${converted.toFixed(unit === 'kg' ? 1 : 0)}`
-    } else {
-      weightDisplay = '...'
-    }
-
-    return {
-      name: exercise.name,
-      sets: sets.length,
-      reps: repsDisplay,
-      weight: weightDisplay,
-      hasVariedSets,
-      setDetails: sets.map((s) => ({
-        reps: s.reps,
-        weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
-      })),
-    }
-  })
+    })
 }

@@ -1402,9 +1402,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.3,
   },
-  dateOverlay: {
-    alignItems: 'flex-start',
-  },
 
   // Content Section
   contentSection: {

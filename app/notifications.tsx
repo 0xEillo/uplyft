@@ -1,3 +1,4 @@
+import { SlideInView } from '@/components/slide-in-view'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -7,8 +8,8 @@ import {
   getNotificationIcon,
   getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
-import { Ionicons } from '@expo/vector-icons'
 import type { NotificationWithProfiles } from '@/types/database.types'
+import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { router, usePathname } from 'expo-router'
 import { useCallback, useState } from 'react'
@@ -24,7 +25,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { SlideInView } from '@/components/slide-in-view'
 
 export default function NotificationsScreen() {
   const colors = useThemedColors()
@@ -38,8 +38,12 @@ export default function NotificationsScreen() {
     refreshNotifications,
   } = useNotifications()
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [respondingRequests, setRespondingRequests] = useState<Set<string>>(new Set())
-  const [respondedRequests, setRespondedRequests] = useState<Map<string, 'approve' | 'decline'>>(new Map())
+  const [respondingRequests, setRespondingRequests] = useState<Set<string>>(
+    new Set(),
+  )
+  const [respondedRequests, setRespondedRequests] = useState<
+    Map<string, 'approve' | 'decline'>
+  >(new Map())
   const [shouldExit, setShouldExit] = useState(false)
   const [shouldAnimate] = useState(true)
 
@@ -48,7 +52,7 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       setRespondedRequests(new Map())
-    }, [])
+    }, []),
   )
 
   const handleRefresh = useCallback(async () => {
@@ -87,7 +91,10 @@ export default function NotificationsScreen() {
         } else if (notification.type === 'workout_comment') {
           // Navigate to the comments view for the workout
           router.push(`/workout-comments/${notification.workout_id}`)
-        } else if (notification.type === 'workout_like' && notification.workout_id) {
+        } else if (
+          notification.type === 'workout_like' &&
+          notification.workout_id
+        ) {
           // Navigate to the workout detail view for likes
           router.push({
             pathname: '/workout/[workoutId]',
@@ -104,7 +111,7 @@ export default function NotificationsScreen() {
         console.error('Error handling notification press:', error)
       }
     },
-    [refreshNotifications, pathname]
+    [refreshNotifications, pathname],
   )
 
   const handleMarkAllAsRead = useCallback(async () => {
@@ -145,7 +152,10 @@ export default function NotificationsScreen() {
         }, 1500)
       } catch (error) {
         console.error('Error responding to follow request notification:', error)
-        Alert.alert('Error', 'Unable to update that follow request. Please try again.')
+        Alert.alert(
+          'Error',
+          'Unable to update that follow request. Please try again.',
+        )
       } finally {
         setRespondingRequests((prev) => {
           const next = new Set(prev)
@@ -167,213 +177,253 @@ export default function NotificationsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Notifications</Text>
-        </View>
-        <TouchableOpacity
-          onPress={handleBackPress}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
-            <Text style={styles.markAllReadText}>Mark all</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Notifications</Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-        ) : null}
-      </View>
+          {unreadCount > 0 ? (
+            <TouchableOpacity
+              onPress={handleMarkAllAsRead}
+              style={styles.markAllButton}
+            >
+              <Text style={styles.markAllReadText}>Mark all</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
-      >
-        {notifications.length > 0 ? (
-          <View style={styles.notificationsList}>
-            {notifications.map((notification) => {
-              const actorNames = notification.actorProfiles.map(
-                (p) => p.display_name
-              )
-              const actorCount = notification.actors.length
-              let { title, body } = formatNotificationText(
-                notification.type,
-                actorNames,
-                actorCount
-              )
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
+          }
+        >
+          {notifications.length > 0 ? (
+            <View style={styles.notificationsList}>
+              {notifications.map((notification) => {
+                const actorNames = notification.actorProfiles.map(
+                  (p) => p.display_name,
+                )
+                const actorCount = notification.actors.length
+                let { title, body } = formatNotificationText(
+                  notification.type,
+                  actorNames,
+                  actorCount,
+                )
 
-              // Update messaging if this request was responded to
-              if (
-                notification.type === 'follow_request_received' &&
-                notification.request_id &&
-                respondedRequests.has(notification.request_id)
-              ) {
-                const decision = respondedRequests.get(notification.request_id)
-                const firstActor = actorNames[0] || 'User'
+                // Update messaging if this request was responded to
+                if (
+                  notification.type === 'follow_request_received' &&
+                  notification.request_id &&
+                  respondedRequests.has(notification.request_id)
+                ) {
+                  const decision = respondedRequests.get(
+                    notification.request_id,
+                  )
+                  const firstActor = actorNames[0] || 'User'
 
-                if (decision === 'approve') {
-                  title = 'Request Approved'
-                  body = `${firstActor} is now following you`
-                } else if (decision === 'decline') {
-                  title = 'Request Declined'
-                  body = `You declined ${firstActor}'s follow request`
+                  if (decision === 'approve') {
+                    title = 'Request Approved'
+                    body = `${firstActor} is now following you`
+                  } else if (decision === 'decline') {
+                    title = 'Request Declined'
+                    body = `You declined ${firstActor}'s follow request`
+                  }
                 }
-              }
 
-              let iconName = getNotificationIcon(notification.type)
-              let iconColor = getNotificationIconColor(
-                notification.read,
-                colors.primary,
-                colors.textSecondary
-              )
+                let iconName = getNotificationIcon(notification.type)
+                let iconColor = getNotificationIconColor(
+                  notification.read,
+                  colors.primary,
+                  colors.textSecondary,
+                )
 
-              // Update icon if this request was responded to
-              if (
-                notification.type === 'follow_request_received' &&
-                notification.request_id &&
-                respondedRequests.has(notification.request_id)
-              ) {
-                const decision = respondedRequests.get(notification.request_id)
-                if (decision === 'approve') {
-                  iconName = 'checkmark-circle'
-                  iconColor = colors.success || colors.primary
-                } else if (decision === 'decline') {
-                  iconName = 'close-circle'
-                  iconColor = colors.textSecondary
+                // Update icon if this request was responded to
+                if (
+                  notification.type === 'follow_request_received' &&
+                  notification.request_id &&
+                  respondedRequests.has(notification.request_id)
+                ) {
+                  const decision = respondedRequests.get(
+                    notification.request_id,
+                  )
+                  if (decision === 'approve') {
+                    iconName = 'checkmark-circle'
+                    iconColor = colors.success || colors.primary
+                  } else if (decision === 'decline') {
+                    iconName = 'close-circle'
+                    iconColor = colors.textSecondary
+                  }
                 }
-              }
 
-              const showFollowRequestActions =
-                notification.type === 'follow_request_received' &&
-                Boolean(notification.request_id) &&
-                !respondedRequests.has(notification.request_id!)
-              const isResponding =
-                notification.request_id && respondingRequests.has(notification.request_id)
+                const showFollowRequestActions =
+                  notification.type === 'follow_request_received' &&
+                  Boolean(notification.request_id) &&
+                  !respondedRequests.has(notification.request_id!)
+                const isResponding =
+                  notification.request_id &&
+                  respondingRequests.has(notification.request_id)
 
-              return (
-                <TouchableOpacity
-                  key={notification.id}
-                  style={[
-                    styles.notificationItem,
-                    !notification.read && styles.notificationItemUnread,
-                  ]}
-                  onPress={() => handleNotificationPress(notification)}
-                  activeOpacity={0.7}
-                >
-                  {/* Actor avatars (show first 2) */}
-                  <View style={styles.avatarsContainer}>
-                    {notification.actorProfiles.slice(0, 2).map((actor, index) => (
-                      <View
-                        key={actor.id}
-                        style={[
-                          styles.avatarWrapper,
-                          index > 0 && { marginLeft: -8 },
-                        ]}
-                      >
-                        {actor.avatar_url ? (
-                          <Image
-                            source={{ uri: actor.avatar_url }}
-                            style={styles.avatar}
-                          />
-                        ) : (
-                          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                            <Text style={styles.avatarText}>
-                              {actor.display_name[0]?.toUpperCase() || '?'}
-                            </Text>
+                return (
+                  <TouchableOpacity
+                    key={notification.id}
+                    style={[
+                      styles.notificationItem,
+                      !notification.read && styles.notificationItemUnread,
+                    ]}
+                    onPress={() => handleNotificationPress(notification)}
+                    activeOpacity={0.7}
+                  >
+                    {/* Actor avatars (show first 2) */}
+                    <View style={styles.avatarsContainer}>
+                      {notification.actorProfiles
+                        .slice(0, 2)
+                        .map((actor, index) => (
+                          <View
+                            key={actor.id}
+                            style={[
+                              styles.avatarWrapper,
+                              index > 0 && { marginLeft: -8 },
+                            ]}
+                          >
+                            {actor.avatar_url ? (
+                              <Image
+                                source={{ uri: actor.avatar_url }}
+                                style={styles.avatar}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.avatar,
+                                  styles.avatarPlaceholder,
+                                ]}
+                              >
+                                <Text style={styles.avatarText}>
+                                  {actor.display_name[0]?.toUpperCase() || '?'}
+                                </Text>
+                              </View>
+                            )}
                           </View>
-                        )}
-                      </View>
-                    ))}
-                  </View>
+                        ))}
+                    </View>
 
-                  {/* Notification content */}
-                  <View style={styles.notificationContent}>
-                    <View style={styles.notificationHeader}>
-                      <Ionicons
-                        name={iconName as any}
-                        size={16}
-                        color={iconColor}
-                        style={styles.notificationTypeIcon}
-                      />
-                      <Text
-                        style={[
-                          styles.notificationTitle,
-                          !notification.read && styles.notificationTitleUnread,
-                        ]}
-                      >
-                        {title}
+                    {/* Notification content */}
+                    <View style={styles.notificationContent}>
+                      <View style={styles.notificationHeader}>
+                        <Ionicons
+                          name={iconName as any}
+                          size={16}
+                          color={iconColor}
+                          style={styles.notificationTypeIcon}
+                        />
+                        <Text
+                          style={[
+                            styles.notificationTitle,
+                            !notification.read &&
+                              styles.notificationTitleUnread,
+                          ]}
+                        >
+                          {title}
+                        </Text>
+                      </View>
+                      <Text style={styles.notificationBody}>{body}</Text>
+                      {showFollowRequestActions && notification.request_id && (
+                        <View style={styles.followRequestActions}>
+                          <TouchableOpacity
+                            style={[
+                              styles.followRequestButton,
+                              styles.declineButton,
+                            ]}
+                            onPress={() =>
+                              handleFollowRequestResponse(
+                                notification.request_id!,
+                                'decline',
+                              )
+                            }
+                            disabled={isResponding}
+                          >
+                            {isResponding ? (
+                              <ActivityIndicator
+                                size="small"
+                                color={colors.error}
+                              />
+                            ) : (
+                              <Text
+                                style={[
+                                  styles.followRequestButtonText,
+                                  styles.declineButtonText,
+                                ]}
+                              >
+                                Decline
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.followRequestButton,
+                              styles.approveButton,
+                            ]}
+                            onPress={() =>
+                              handleFollowRequestResponse(
+                                notification.request_id!,
+                                'approve',
+                              )
+                            }
+                            disabled={isResponding}
+                          >
+                            {isResponding ? (
+                              <ActivityIndicator
+                                size="small"
+                                color={colors.white}
+                              />
+                            ) : (
+                              <Text style={styles.followRequestButtonText}>
+                                Approve
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      <Text style={styles.notificationTime}>
+                        {formatTimeAgo(notification.updated_at)}
                       </Text>
                     </View>
-                    <Text style={styles.notificationBody}>{body}</Text>
-                    {showFollowRequestActions && notification.request_id && (
-                      <View style={styles.followRequestActions}>
-                        <TouchableOpacity
-                          style={[styles.followRequestButton, styles.declineButton]}
-                          onPress={() =>
-                            handleFollowRequestResponse(notification.request_id!, 'decline')
-                          }
-                          disabled={isResponding}
-                        >
-                          {isResponding ? (
-                            <ActivityIndicator size="small" color={colors.error} />
-                          ) : (
-                            <Text
-                              style={[
-                                styles.followRequestButtonText,
-                                styles.declineButtonText,
-                              ]}
-                            >
-                              Decline
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.followRequestButton, styles.approveButton]}
-                          onPress={() =>
-                            handleFollowRequestResponse(notification.request_id!, 'approve')
-                          }
-                          disabled={isResponding}
-                        >
-                          {isResponding ? (
-                            <ActivityIndicator size="small" color={colors.white} />
-                          ) : (
-                            <Text style={styles.followRequestButtonText}>Approve</Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                    <Text style={styles.notificationTime}>
-                      {formatTimeAgo(notification.updated_at)}
-                    </Text>
-                  </View>
 
-                  {/* Unread indicator */}
-                  {!notification.read && <View style={styles.unreadDot} />}
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons
-                name="notifications-outline"
-                size={80}
-                color={colors.border}
-              />
+                    {/* Unread indicator */}
+                    {!notification.read && <View style={styles.unreadDot} />}
+                  </TouchableOpacity>
+                )
+              })}
             </View>
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.emptyMessage}>
-              You'll be notified when someone likes or comments on your workouts
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons
+                  name="notifications-outline"
+                  size={80}
+                  color={colors.border}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No notifications yet</Text>
+              <Text style={styles.emptyMessage}>
+                You&apos;ll be notified when someone likes or comments on your
+                workouts
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
     </SlideInView>
   )
 }

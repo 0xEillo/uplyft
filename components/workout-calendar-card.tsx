@@ -160,11 +160,11 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
     const daysInMonth = lastDay.getDate()
 
     // Generate array of day objects
-    const days: Array<{
+    const days: {
       date: number | null
       dateStr: string | null
       isCurrentMonth: boolean
-    }> = []
+    }[] = []
 
     // Add empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {

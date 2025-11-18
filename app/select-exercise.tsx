@@ -195,149 +195,149 @@ export default function SelectExerciseScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Exercise</Text>
-        <View style={styles.backButton} />
-      </View>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Select Exercise</Text>
+          <View style={styles.backButton} />
+        </View>
 
-      {/* Search Input */}
-      <TextInput
-        style={styles.searchInput}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Search exercises..."
-        placeholderTextColor={colors.textPlaceholder}
-        autoCapitalize="words"
-      />
+        {/* Search Input */}
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search exercises..."
+          placeholderTextColor={colors.textPlaceholder}
+          autoCapitalize="words"
+        />
 
-      {muscleGroups.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.muscleFilterScrollView}
-          contentContainerStyle={styles.muscleFilterContainer}
-        >
-          <TouchableOpacity
-            style={[
-              styles.muscleFilterChip,
-              !hasMuscleFilter && styles.muscleFilterChipActive,
-            ]}
-            onPress={clearMuscleGroups}
+        {muscleGroups.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.muscleFilterScrollView}
+            contentContainerStyle={styles.muscleFilterContainer}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.muscleFilterChipText,
-                !hasMuscleFilter && styles.muscleFilterChipTextActive,
+                styles.muscleFilterChip,
+                !hasMuscleFilter && styles.muscleFilterChipActive,
               ]}
+              onPress={clearMuscleGroups}
             >
-              All
-            </Text>
-          </TouchableOpacity>
-          {muscleGroups.map((group) => {
-            const isSelected = selectedMuscleGroups.includes(group)
-            return (
-              <TouchableOpacity
-                key={group}
+              <Text
                 style={[
-                  styles.muscleFilterChip,
-                  isSelected && styles.muscleFilterChipActive,
+                  styles.muscleFilterChipText,
+                  !hasMuscleFilter && styles.muscleFilterChipTextActive,
                 ]}
-                onPress={() => toggleMuscleGroup(group)}
               >
-                <Text
-                  style={[
-                    styles.muscleFilterChipText,
-                    isSelected && styles.muscleFilterChipTextActive,
-                  ]}
-                >
-                  {group}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-      )}
-
-      {/* Create Exercise Button */}
-      {trimmedQuery && !hasExactMatch && !isLoading && (
-        <View style={styles.createExerciseContainer}>
-          <TouchableOpacity
-            style={styles.createExerciseItem}
-            onPress={handleCreateExercise}
-          >
-            <Ionicons name="add-circle" size={20} color={colors.primary} />
-            <View style={styles.exerciseItemContent}>
-              <Text style={styles.createExerciseText}>
-                Create "{trimmedQuery}"
+                All
               </Text>
-              <Text style={styles.exerciseMuscleGroup}>New exercise</Text>
-            </View>
-            {!isProMember && <ProBadge size="small" />}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Results */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : filteredExercises.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons
-            name="barbell-outline"
-            size={48}
-            color={colors.textTertiary}
-          />
-          <Text style={styles.emptyText}>{emptyStateText}</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.exerciseList}
-          contentContainerStyle={{ paddingBottom: keyboardHeight + 20 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {filteredExercises.map((exercise) => {
-            const isCurrentExercise = exercise.name === currentExerciseName
-            return (
-              <TouchableOpacity
-                key={exercise.id}
-                style={[
-                  styles.exerciseItem,
-                  isCurrentExercise && styles.exerciseItemSelected,
-                ]}
-                onPress={() => handleSelectExercise(exercise)}
-                disabled={isCurrentExercise}
-              >
-                <View style={styles.exerciseItemContent}>
+            </TouchableOpacity>
+            {muscleGroups.map((group) => {
+              const isSelected = selectedMuscleGroups.includes(group)
+              return (
+                <TouchableOpacity
+                  key={group}
+                  style={[
+                    styles.muscleFilterChip,
+                    isSelected && styles.muscleFilterChipActive,
+                  ]}
+                  onPress={() => toggleMuscleGroup(group)}
+                >
                   <Text
                     style={[
-                      styles.exerciseItemText,
-                      isCurrentExercise && styles.exerciseItemTextSelected,
+                      styles.muscleFilterChipText,
+                      isSelected && styles.muscleFilterChipTextActive,
                     ]}
                   >
-                    {exercise.name}
+                    {group}
                   </Text>
-                  {exercise.muscle_group && (
-                    <Text style={styles.exerciseMuscleGroup}>
-                      {exercise.muscle_group}
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        )}
+
+        {/* Create Exercise Button */}
+        {trimmedQuery && !hasExactMatch && !isLoading && (
+          <View style={styles.createExerciseContainer}>
+            <TouchableOpacity
+              style={styles.createExerciseItem}
+              onPress={handleCreateExercise}
+            >
+              <Ionicons name="add-circle" size={20} color={colors.primary} />
+              <View style={styles.exerciseItemContent}>
+                <Text style={styles.createExerciseText}>
+                  Create &quot;{trimmedQuery}&quot;
+                </Text>
+                <Text style={styles.exerciseMuscleGroup}>New exercise</Text>
+              </View>
+              {!isProMember && <ProBadge size="small" />}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Results */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : filteredExercises.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="barbell-outline"
+              size={48}
+              color={colors.textTertiary}
+            />
+            <Text style={styles.emptyText}>{emptyStateText}</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.exerciseList}
+            contentContainerStyle={{ paddingBottom: keyboardHeight + 20 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {filteredExercises.map((exercise) => {
+              const isCurrentExercise = exercise.name === currentExerciseName
+              return (
+                <TouchableOpacity
+                  key={exercise.id}
+                  style={[
+                    styles.exerciseItem,
+                    isCurrentExercise && styles.exerciseItemSelected,
+                  ]}
+                  onPress={() => handleSelectExercise(exercise)}
+                  disabled={isCurrentExercise}
+                >
+                  <View style={styles.exerciseItemContent}>
+                    <Text
+                      style={[
+                        styles.exerciseItemText,
+                        isCurrentExercise && styles.exerciseItemTextSelected,
+                      ]}
+                    >
+                      {exercise.name}
                     </Text>
+                    {exercise.muscle_group && (
+                      <Text style={styles.exerciseMuscleGroup}>
+                        {exercise.muscle_group}
+                      </Text>
+                    )}
+                  </View>
+                  {isCurrentExercise && (
+                    <Ionicons
+                      name="checkmark"
+                      size={20}
+                      color={colors.primary}
+                    />
                   )}
-                </View>
-                {isCurrentExercise && (
-                  <Ionicons
-                    name="checkmark"
-                    size={20}
-                    color={colors.primary}
-                  />
-                )}
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-      )}
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        )}
 
         {/* Paywall Modal */}
         <Paywall

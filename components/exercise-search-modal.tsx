@@ -374,7 +374,7 @@ export function ExerciseSearchModal({
                           color={colors.primary}
                         />
                         <Text style={styles.createButtonText}>
-                          Create "{trimmedQuery}"
+                          Create &quot;{trimmedQuery}&quot;
                         </Text>
                       </>
                     )}
@@ -399,7 +399,7 @@ export function ExerciseSearchModal({
                     />
                     <View style={styles.exerciseItemContent}>
                       <Text style={styles.createExerciseText}>
-                        Create "{trimmedQuery}"
+                        Create &quot;{trimmedQuery}&quot;
                       </Text>
                       <Text style={styles.exerciseMuscleGroup}>
                         New exercise

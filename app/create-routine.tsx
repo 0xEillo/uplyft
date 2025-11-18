@@ -1028,7 +1028,7 @@ export default function CreateRoutineScreen() {
                 />
                 <Text style={styles.emptyTitle}>No Exercises Yet</Text>
                 <Text style={styles.emptyMessage}>
-                  Tap "Add Exercise" to build your routine
+                  Tap &quot;Add Exercise&quot; to build your routine
                 </Text>
               </View>
             )}

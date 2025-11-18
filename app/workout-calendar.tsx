@@ -74,11 +74,11 @@ export default function WorkoutCalendarScreen() {
     const daysInMonth = lastDay.getDate()
 
     // Generate calendar days
-    const days: Array<{
+    const days: {
       date: number | null
       dateStr: string | null
       isCurrentMonth: boolean
-    }> = []
+    }[] = []
 
     // Add empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {

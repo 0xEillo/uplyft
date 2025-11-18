@@ -1,3 +1,4 @@
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -22,7 +23,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { SlideInView } from '@/components/slide-in-view'
 
 let skipNextSearchEntryAnimation = false
 
@@ -57,7 +57,9 @@ export default function SearchScreen() {
   )
   const [shouldExit, setShouldExit] = useState(false)
   const shouldSkipNextEntryRef = useRef<boolean>(consumeSearchEntrySkipFlag())
-  const [shouldAnimate, setShouldAnimate] = useState(!shouldSkipNextEntryRef.current)
+  const [shouldAnimate, setShouldAnimate] = useState(
+    !shouldSkipNextEntryRef.current,
+  )
   const isInitialFocusRef = useRef(true)
 
   // Log mount/unmount
@@ -83,7 +85,9 @@ export default function SearchScreen() {
       )
 
       if (shouldSkipNextEntryRef.current) {
-        console.log('[Search] ⏭️ Returning from child route, disabling animation')
+        console.log(
+          '[Search] ⏭️ Returning from child route, disabling animation',
+        )
         setShouldAnimate(false)
         shouldSkipNextEntryRef.current = false
         isInitialFocusRef.current = false
@@ -92,7 +96,7 @@ export default function SearchScreen() {
         setShouldAnimate(true)
         isInitialFocusRef.current = false
       }
-    }, [shouldSkipNextEntryRef])
+    }, [shouldSkipNextEntryRef]),
   )
 
   const styles = createStyles(colors)
@@ -119,7 +123,9 @@ export default function SearchScreen() {
           user.id,
           filteredResults.map((profile) => profile.id),
         )
-        const statusMap = new Map(statuses.map((status) => [status.target_id, status]))
+        const statusMap = new Map(
+          statuses.map((status) => [status.target_id, status]),
+        )
 
         const usersWithFollowStatus = filteredResults.map((profile) => {
           const status = statusMap.get(profile.id)
@@ -166,7 +172,10 @@ export default function SearchScreen() {
           setUsers((prev) =>
             prev.map((u) => {
               if (u.id !== targetUser.id) return u
-              if (result.status === 'following' || result.status === 'already_following') {
+              if (
+                result.status === 'following' ||
+                result.status === 'already_following'
+              ) {
                 return {
                   ...u,
                   isFollowing: true,
@@ -183,7 +192,9 @@ export default function SearchScreen() {
               }
             }),
           )
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          )
           return
         }
 
@@ -201,7 +212,9 @@ export default function SearchScreen() {
           ),
         )
 
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        )
       } catch (error) {
         console.error('Error toggling follow:', error)
         Alert.alert(
@@ -237,7 +250,8 @@ export default function SearchScreen() {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
-      const appStoreLink = 'https://apps.apple.com/app/rep-ai-workout-tracker/id6753986473'
+      const appStoreLink =
+        'https://apps.apple.com/app/rep-ai-workout-tracker/id6753986473'
       const message = `Join me on Rep AI! Track your workouts, share your progress, and connect with the fitness community.\n\n${appStoreLink}`
 
       const result = await Share.share(
@@ -248,11 +262,13 @@ export default function SearchScreen() {
             }
           : {
               message,
-            }
+            },
       )
 
       if (result.action === Share.sharedAction) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        )
       }
     } catch (error) {
       console.error('Error sharing:', error)
@@ -271,11 +287,14 @@ export default function SearchScreen() {
     router.push('/follow-requests')
   }, [router, markNextFocusAsChildReturn])
 
-  const handleNavigateToProfile = useCallback((userId: string) => {
-    console.log('[Search] 🔀 Navigating to profile:', userId)
-    markNextFocusAsChildReturn()
-    router.push(`/user/${userId}`)
-  }, [router, markNextFocusAsChildReturn])
+  const handleNavigateToProfile = useCallback(
+    (userId: string) => {
+      console.log('[Search] 🔀 Navigating to profile:', userId)
+      markNextFocusAsChildReturn()
+      router.push(`/user/${userId}`)
+    },
+    [router, markNextFocusAsChildReturn],
+  )
 
   return (
     <SlideInView
@@ -289,183 +308,191 @@ export default function SearchScreen() {
         <View style={[styles.statusBarBackground, { height: insets.top }]} />
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.contentWrapper}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={handleBack}
-              style={styles.backButton}
-              activeOpacity={0.6}
-              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            >
-              <Ionicons name="chevron-back" size={28} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Search</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          {/* Search Input */}
-          <View style={styles.searchContainer}>
-        <Ionicons
-          name="search"
-          size={20}
-          color={colors.textSecondary}
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search for people on Rep AI"
-          placeholderTextColor={colors.textPlaceholder}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          blurOnSubmit
-          onSubmitEditing={() => Keyboard.dismiss()}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setSearchQuery('')}
-            style={styles.clearButton}
-          >
-            <Ionicons
-              name="close-circle"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-
-          {/* Results */}
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity
+                onPress={handleBack}
+                style={styles.backButton}
+                activeOpacity={0.6}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              >
+                <Ionicons name="chevron-back" size={28} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Search</Text>
+              <View style={styles.headerSpacer} />
             </View>
-          ) : !trimmedQuery ? (
-            <View style={styles.emptyContainer}>
+
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
               <Ionicons
-                name="people-outline"
-                size={48}
-                color={colors.textTertiary}
+                name="search"
+                size={20}
+                color={colors.textSecondary}
+                style={styles.searchIcon}
               />
-              <Text style={styles.emptyText}>
-                Start typing to search for users
-              </Text>
-            </View>
-          ) : users.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name="search-outline"
-                size={48}
-                color={colors.textTertiary}
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search for people on Rep AI"
+                placeholderTextColor={colors.textPlaceholder}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+                blurOnSubmit
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
-              <Text style={styles.emptyText}>
-                No users found for "{trimmedQuery}"
-              </Text>
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
-          ) : (
-            <ScrollView
-              style={styles.userList}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              contentContainerStyle={styles.userListContent}
-            >
-          {/* Results Header */}
-          <View style={styles.resultsHeader}>
-            <Text style={styles.resultsCount}>
-              {users.length} ATHLETE{users.length !== 1 ? 'S' : ''} TO FOLLOW
-            </Text>
-          </View>
 
-          {/* User List */}
-          {users.map((userProfile) => (
-            <TouchableOpacity
-              key={userProfile.id}
-              style={styles.userItem}
-              onPress={() => handleNavigateToProfile(userProfile.id)}
-            >
-              <View style={styles.userAvatar}>
-                {userProfile.avatar_url ? (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarText}>
-                      {userProfile.display_name[0]?.toUpperCase()}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarText}>
-                      {userProfile.display_name[0]?.toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+            {/* Results */}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.displayName}>
-                  {userProfile.display_name}
+            ) : !trimmedQuery ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="people-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                />
+                <Text style={styles.emptyText}>
+                  Start typing to search for users
                 </Text>
-                <Text style={styles.userTag}>@{userProfile.user_tag}</Text>
               </View>
-              {(() => {
-                const isBusy = followingInProgress.has(userProfile.id)
-                const isPending = userProfile.hasPendingRequest
-                const hasIncoming = userProfile.hasIncomingRequest
-                const buttonLabel = hasIncoming
-                  ? 'Requested you'
-                  : isPending
-                  ? 'Pending'
-                  : userProfile.isFollowing
-                  ? 'Following'
-                  : userProfile.isPrivate
-                  ? 'Request'
-                  : 'Follow'
+            ) : users.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="search-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                />
+                <Text style={styles.emptyText}>
+                  No users found for &quot;{trimmedQuery}&quot;
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.userList}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                contentContainerStyle={styles.userListContent}
+              >
+                {/* Results Header */}
+                <View style={styles.resultsHeader}>
+                  <Text style={styles.resultsCount}>
+                    {users.length} ATHLETE{users.length !== 1 ? 'S' : ''} TO
+                    FOLLOW
+                  </Text>
+                </View>
 
-                const buttonStyles = [
-                  styles.followButton,
-                  userProfile.isFollowing && styles.followingButton,
-                  (isPending || hasIncoming) && styles.pendingButton,
-                ]
-
-                const textStyles = [
-                  styles.followButtonText,
-                  userProfile.isFollowing && styles.followingButtonText,
-                  (isPending || hasIncoming) && styles.pendingButtonText,
-                ]
-
-                return (
+                {/* User List */}
+                {users.map((userProfile) => (
                   <TouchableOpacity
-                    style={buttonStyles}
-                    onPress={(e) => {
-                      e.stopPropagation()
-                      if (hasIncoming) {
-                        handleReviewRequests()
-                        return
-                      }
-                      if (isPending) {
-                        return
-                      }
-                      handleToggleFollow(userProfile)
-                    }}
-                    disabled={isBusy || isPending}
+                    key={userProfile.id}
+                    style={styles.userItem}
+                    onPress={() => handleNavigateToProfile(userProfile.id)}
                   >
-                    {isBusy ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <Text style={textStyles}>{buttonLabel}</Text>
-                    )}
+                    <View style={styles.userAvatar}>
+                      {userProfile.avatar_url ? (
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarText}>
+                            {userProfile.display_name[0]?.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarText}>
+                            {userProfile.display_name[0]?.toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.displayName}>
+                        {userProfile.display_name}
+                      </Text>
+                      <Text style={styles.userTag}>
+                        @{userProfile.user_tag}
+                      </Text>
+                    </View>
+                    {(() => {
+                      const isBusy = followingInProgress.has(userProfile.id)
+                      const isPending = userProfile.hasPendingRequest
+                      const hasIncoming = userProfile.hasIncomingRequest
+                      const buttonLabel = hasIncoming
+                        ? 'Requested you'
+                        : isPending
+                        ? 'Pending'
+                        : userProfile.isFollowing
+                        ? 'Following'
+                        : userProfile.isPrivate
+                        ? 'Request'
+                        : 'Follow'
+
+                      const buttonStyles = [
+                        styles.followButton,
+                        userProfile.isFollowing && styles.followingButton,
+                        (isPending || hasIncoming) && styles.pendingButton,
+                      ]
+
+                      const textStyles = [
+                        styles.followButtonText,
+                        userProfile.isFollowing && styles.followingButtonText,
+                        (isPending || hasIncoming) && styles.pendingButtonText,
+                      ]
+
+                      return (
+                        <TouchableOpacity
+                          style={buttonStyles}
+                          onPress={(e) => {
+                            e.stopPropagation()
+                            if (hasIncoming) {
+                              handleReviewRequests()
+                              return
+                            }
+                            if (isPending) {
+                              return
+                            }
+                            handleToggleFollow(userProfile)
+                          }}
+                          disabled={isBusy || isPending}
+                        >
+                          {isBusy ? (
+                            <ActivityIndicator
+                              size="small"
+                              color={colors.primary}
+                            />
+                          ) : (
+                            <Text style={textStyles}>{buttonLabel}</Text>
+                          )}
+                        </TouchableOpacity>
+                      )
+                    })()}
                   </TouchableOpacity>
-                )
-              })()}
-            </TouchableOpacity>
-          ))}
-            </ScrollView>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Bottom Invite Section */}
         <View style={styles.inviteSection}>
-          <Text style={styles.inviteText}>Invite friends that aren't on Rep AI</Text>
+          <Text style={styles.inviteText}>
+            Invite friends that aren&apos;t on Rep AI
+          </Text>
           <TouchableOpacity style={styles.inviteButton} onPress={handleInvite}>
             <Ionicons
               name="share-outline"

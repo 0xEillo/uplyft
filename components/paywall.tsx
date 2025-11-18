@@ -18,9 +18,9 @@ import {
   View,
 } from 'react-native'
 import { PACKAGE_TYPE } from 'react-native-purchases'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const PLAN_PLACEHOLDERS = new Set(['monthly_placeholder', 'yearly_placeholder'])
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type PaywallProps = {
   visible: boolean

@@ -14,13 +14,6 @@ import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { getColors } from '@/constants/colors'
 
-// Set global refresh control tint color for iOS
-if (Platform.OS === 'ios') {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true)
-  }
-}
-
 import { LoadingScreen } from '@/components/loading-screen'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
@@ -31,6 +24,13 @@ import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+
+// Set global refresh control tint color for iOS
+if (Platform.OS === 'ios') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true)
+  }
+}
 
 // Custom navigation themes with our app colors
 const CustomLightTheme = {
