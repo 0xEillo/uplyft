@@ -100,12 +100,10 @@ export default function VolumeStatsScreen() {
   }, [loadData])
 
   const handleBack = () => {
-    console.log('[VolumeStats] Back button pressed, starting exit animation')
     setShouldExit(true)
   }
 
   const handleExitComplete = () => {
-    console.log('[VolumeStats] Exit animation complete, navigating back to analytics')
     router.push('/(tabs)/analytics?tab=progress')
   }
 

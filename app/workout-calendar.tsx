@@ -54,12 +54,10 @@ export default function WorkoutCalendarScreen() {
   }, [loadWorkoutDates])
 
   const handleBack = () => {
-    console.log('[WorkoutCalendar] Back button pressed, starting exit animation')
     setShouldExit(true)
   }
 
   const handleExitComplete = () => {
-    console.log('[WorkoutCalendar] Exit animation complete, navigating back to analytics')
     router.push('/(tabs)/analytics?tab=progress')
   }
 
