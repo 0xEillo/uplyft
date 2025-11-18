@@ -197,6 +197,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     scrollViewContent: {
       paddingTop: 2,
-      paddingBottom: 20,
+      paddingBottom: 0,
     },
   })
