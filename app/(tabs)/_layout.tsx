@@ -53,7 +53,7 @@ function ElevatedPlusButton() {
     >
       <Ionicons
         name={hasDraft ? 'document-text' : 'add'}
-        size={24}
+        size={25}
         color={colors.white}
       />
     </TouchableOpacity>
@@ -273,9 +273,9 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     elevatedButton: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
+      width: 54,
+      height: 54,
+      borderRadius: 27,
       backgroundColor: hasDraft ? '#EF4444' : colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
