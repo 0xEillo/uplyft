@@ -1,10 +1,11 @@
+import { Paywall } from '@/components/paywall'
+import { ProBadge } from '@/components/pro-badge'
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { ProBadge } from '@/components/pro-badge'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
-import { Paywall } from '@/components/paywall'
 import {
   getStandardsLadder,
   getStrengthStandard,
@@ -25,7 +26,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { SlideInView } from '@/components/slide-in-view'
 
 interface ExerciseRecord {
   weight: number
@@ -275,6 +275,14 @@ export default function StrengthStatsScreen() {
                         <Text style={styles.exerciseName}>
                           {exercise.exerciseName}
                         </Text>
+                        {isProMember && (
+                          <Text style={styles.exerciseMax}>
+                            1RM: {formatWeight(exercise.max1RM, {
+                              maximumFractionDigits:
+                                weightUnit === 'kg' ? 1 : 0,
+                            })}
+                          </Text>
+                        )}
                       </View>
                     </View>
                     <View style={styles.exerciseHeaderRight}>
