@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { postWorkout, WorkoutResponse } from '@/lib/api/post-workout'
+import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import {
@@ -98,7 +99,19 @@ export function useSubmitWorkout() {
         durationSeconds: typeof durationSeconds === 'number' ? durationSeconds : null,
       }
 
-      const placeholder = createPlaceholderWorkout(trimmedTitle, imageUrl)
+      // Fetch user's profile for the placeholder
+      const profile = await database.profiles.getById(user.id)
+      const placeholder = createPlaceholderWorkout(
+        trimmedTitle,
+        imageUrl,
+        user.id,
+        profile
+          ? {
+              display_name: profile.display_name,
+              avatar_url: profile.avatar_url,
+            }
+          : null,
+      )
 
       await Promise.all([
         savePendingWorkout(pending),

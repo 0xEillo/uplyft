@@ -135,11 +135,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     avatarPlaceholder: {
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: colors.primary,
     },
     avatarInitial: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: colors.white,
     },
     info: {
       flex: 1,

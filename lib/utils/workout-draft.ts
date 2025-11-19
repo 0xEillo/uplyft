@@ -52,6 +52,11 @@ export interface PlaceholderWorkout {
   imageUrl: string | null
   created_at: string
   isPending: boolean
+  user_id: string
+  profile: {
+    display_name: string
+    avatar_url: string | null
+  } | null
 }
 
 export function draftHasContent(draft?: WorkoutDraft | null): boolean {
@@ -316,6 +321,8 @@ export async function clearPendingArtifacts(): Promise<void> {
 export function createPlaceholderWorkout(
   title: string,
   imageUrl: string | null,
+  userId: string,
+  profile: { display_name: string; avatar_url: string | null } | null,
 ): PlaceholderWorkout {
   return {
     id: `temp-${Date.now()}`,
@@ -323,5 +330,7 @@ export function createPlaceholderWorkout(
     imageUrl,
     created_at: new Date().toISOString(),
     isPending: true,
+    user_id: userId,
+    profile,
   }
 }

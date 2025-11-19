@@ -519,9 +519,13 @@ export function StructuredWorkoutInput({
     const newExercises = [...exercises]
     const exercise = newExercises[exerciseIndex]
 
-    // Create a new empty set
+    // Get the weight from the previous set (if it exists)
+    const previousSet = exercise.sets[exercise.sets.length - 1]
+    const prefillWeight = previousSet?.weight || ''
+
+    // Create a new set with prefilled weight
     const newSet: SetData = {
-      weight: '',
+      weight: prefillWeight,
       reps: '',
       lastWorkoutWeight: null,
       lastWorkoutReps: null,
