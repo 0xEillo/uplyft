@@ -9,7 +9,7 @@ import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -365,6 +365,38 @@ export default function CreateRoutineScreen() {
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }, [])
+
+  // Calculate estimated duration dynamically
+  const estimatedDuration = useMemo(() => {
+    const DEFAULT_REST_SECONDS = 90
+    const SET_EXECUTION_SECONDS = 45
+    const EXERCISE_TRANSITION_SECONDS = 30
+
+    const exerciseCount = exercises.length
+    const setCount = exercises.reduce((sum, ex) => sum + ex.sets.length, 0)
+
+    const totalRestSeconds = exercises.reduce((sum, ex) => {
+      return (
+        sum +
+        ex.sets.reduce((setSum, set) => {
+          return setSum + (set.restSeconds ?? DEFAULT_REST_SECONDS)
+        }, 0)
+      )
+    }, 0)
+
+    const totalSetExecutionSeconds = setCount * SET_EXECUTION_SECONDS
+    const totalTransitionSeconds = exerciseCount * EXERCISE_TRANSITION_SECONDS
+
+    const estDurationSeconds =
+      totalSetExecutionSeconds + totalRestSeconds + totalTransitionSeconds
+    const estDurationMinutes = Math.ceil(estDurationSeconds / 60)
+    const estDurationHours = Math.floor(estDurationMinutes / 60)
+    const estDurationMinsRemainder = estDurationMinutes % 60
+
+    return estDurationHours > 0
+      ? `${estDurationHours}h ${estDurationMinsRemainder}min`
+      : `${estDurationMinutes}min`
+  }, [exercises])
 
   useEffect(() => {
     if (!user) {
@@ -968,6 +1000,34 @@ export default function CreateRoutineScreen() {
               placeholderTextColor={colors.textPlaceholder}
               autoCapitalize="words"
             />
+            {/* Estimated Duration */}
+            {exercises.length > 0 && (
+              <View style={styles.durationContainer}>
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.durationText}>
+                  Est. Duration: {estimatedDuration}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Notes Input */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Notes</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={routineNotes}
+              onChangeText={setRoutineNotes}
+              placeholder="Add any notes or description about this routine..."
+              placeholderTextColor={colors.textPlaceholder}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           </View>
 
           {/* Exercises */}
@@ -1185,6 +1245,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.text,
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    durationContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 12,
+      gap: 6,
+    },
+    durationText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
     textArea: {
       minHeight: 100,

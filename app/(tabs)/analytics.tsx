@@ -1,25 +1,22 @@
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutCalendarCard } from '@/components/workout-calendar-card'
-import { WorkoutChat } from '@/components/workout-chat'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-
-type TabType = 'progress' | 'chat'
 
 export default function AnalyticsScreen() {
   const { user } = useAuth()
@@ -27,10 +24,6 @@ export default function AnalyticsScreen() {
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const params = useLocalSearchParams<{ tab?: string }>()
-  const [activeTab, setActiveTab] = useState<TabType>(
-    (params.tab as TabType) || 'chat',
-  )
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
@@ -67,71 +60,28 @@ export default function AnalyticsScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.gestureContainer}>
-        {/* Tabs */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
-            onPress={() => setActiveTab('chat')}
-            accessibilityLabel="Chat tab"
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activeTab === 'chat' }}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'chat' && styles.activeTabText,
-              ]}
-            >
-              Chat
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'progress' && styles.activeTab]}
-            onPress={() => setActiveTab('progress')}
-            accessibilityLabel="Stats tab"
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activeTab === 'progress' }}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'progress' && styles.activeTabText,
-              ]}
-            >
-              Stats
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Content */}
-        {activeTab === 'progress' ? (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[colors.primary]}
-                tintColor={colors.primary}
-                progressBackgroundColor={colors.white}
-              />
-            }
-          >
-            {user && (
-              <>
-                <WorkoutCalendarCard userId={user.id} />
-                <StrengthScoreChart userId={user.id} />
-                <MuscleBalanceChart userId={user.id} />
-              </>
-            )}
-          </ScrollView>
-        ) : (
-          <WorkoutChat />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+            progressBackgroundColor={colors.white}
+          />
+        }
+      >
+        {user && (
+          <>
+            <WorkoutCalendarCard userId={user.id} />
+            <StrengthScoreChart userId={user.id} />
+            <MuscleBalanceChart userId={user.id} />
+          </>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -155,7 +105,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingVertical: 8,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,

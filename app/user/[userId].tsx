@@ -1,4 +1,5 @@
 import { FeedCard } from '@/components/feed-card'
+import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -7,22 +8,22 @@ import { database, PrivacyError } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import {
-  FollowRelationshipStatus,
-  WorkoutSessionWithDetails,
+    FollowRelationshipStatus,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -441,6 +442,9 @@ export default function UserProfileScreen() {
                 </View>
               )}
             </View>
+
+            {/* Routines Section */}
+            {(!privacyLocked || isOwnProfile) && <ProfileRoutines userId={userId} />}
 
             {/* This Week Stats Section */}
             <View style={styles.weeklyStatsSection}>

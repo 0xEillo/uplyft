@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { HapticTab } from '@/components/haptic-tab'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
@@ -17,6 +18,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
@@ -51,7 +53,7 @@ function ElevatedPlusButton() {
     >
       <Ionicons
         name={hasDraft ? 'document-text' : 'add'}
-        size={28}
+        size={26}
         color={colors.white}
       />
     </TouchableOpacity>
@@ -61,6 +63,8 @@ function ElevatedPlusButton() {
 function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
   const {
     isVisible,
     data,
@@ -137,9 +141,9 @@ function TabLayoutContent() {
             backgroundColor: colors.white,
             borderTopWidth: 1,
             borderTopColor: 'rgba(0, 0, 0, 0.08)',
-            height: 90,
-            paddingBottom: 30,
-            paddingTop: 8,
+            height: 80,
+            paddingBottom: 20,
+            paddingTop: 2,
           },
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarLabelStyle: {
@@ -169,17 +173,7 @@ function TabLayoutContent() {
             ),
           }}
         />
-        {/* Profile tab */}
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="person-circle" size={28} color={color} />
-            ),
-          }}
-        />
-        {/* Elevated + button */}
+        {/* Create tab */}
         <Tabs.Screen
           name="create"
           options={{
@@ -191,7 +185,6 @@ function TabLayoutContent() {
                   flex: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  paddingTop: 8,
                 }}
               >
                 <ElevatedPlusButton />
@@ -202,6 +195,26 @@ function TabLayoutContent() {
             tabPress: (e) => {
               e.preventDefault()
             },
+          }}
+        />
+        {/* Chat tab */}
+        <Tabs.Screen
+          name="chat"
+          options={{
+            title: 'Chat',
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="chatbubble-ellipses" size={28} color={color} />
+            ),
+          }}
+        />
+        {/* Profile tab */}
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="person-circle" size={28} color={color} />
+            ),
           }}
         />
         {/* Hidden screens */}
@@ -259,9 +272,9 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     elevatedButton: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       backgroundColor: hasDraft ? '#EF4444' : colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -273,6 +286,5 @@ const createStyles = (
       shadowOpacity: 0.4,
       shadowRadius: 12,
       elevation: 12,
-      marginTop: -72,
     },
   })

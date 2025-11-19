@@ -20,40 +20,40 @@ import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { database } from '@/lib/database'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearDraft as clearWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
+    clearDraft as clearWorkoutDraft,
+    loadPendingWorkout,
+    loadDraft as loadWorkoutDraft,
+    saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-  generateWorkoutMessage,
-  parseCommitment,
+    generateWorkoutMessage,
+    parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import * as Haptics from 'expo-haptics'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Easing,
-  InteractionManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Easing,
+    InteractionManager,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -129,6 +129,14 @@ export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+  const { selectedRoutineId } = useLocalSearchParams<{ selectedRoutineId: string }>()
+
+  // Handle routine selection from external screens
+  useEffect(() => {
+    if (selectedRoutineId) {
+      setPendingDraftRoutineId(selectedRoutineId)
+    }
+  }, [selectedRoutineId])
 
   // =============================================================================
   // BASIC WORKOUT INPUT STATE

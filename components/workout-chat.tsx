@@ -6,42 +6,41 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as Haptics from 'expo-haptics'
+import * as ImagePicker from 'expo-image-picker'
 import { useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
-import Markdown from 'react-native-markdown-display'
-import * as ImagePicker from 'expo-image-picker'
-import * as FileSystem from 'expo-file-system/legacy'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
+import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
-import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface Message {
@@ -54,6 +53,16 @@ interface Message {
 interface ExamplePrompt {
   text: string
   requiresImage: boolean
+}
+
+interface WorkoutPlanningState {
+  isActive: boolean
+  step: 'muscles' | 'duration' | 'intensity' | 'none'
+  data: {
+    muscles?: string
+    duration?: string
+    intensity?: string
+  }
 }
 
 const TEXT_EXAMPLES: ExamplePrompt[] = [
@@ -83,6 +92,11 @@ const IMAGE_EXAMPLES: ExamplePrompt[] = [
 
 const ALL_EXAMPLES = [...TEXT_EXAMPLES, ...IMAGE_EXAMPLES]
 
+const FIXED_EXAMPLES: ExamplePrompt[] = [
+  { text: 'Plan my next workout', requiresImage: false },
+  { text: 'Create a routine', requiresImage: false },
+]
+
 const MAX_IMAGES = 10
 
 // Fisher-Yates shuffle to get random examples
@@ -99,7 +113,9 @@ export function WorkoutChat() {
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [displayedExamples] = useState<ExamplePrompt[]>(() => getRandomExamples(4))
+  const [displayedExamples] = useState<ExamplePrompt[]>(() =>
+    getRandomExamples(2),
+  )
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -107,6 +123,12 @@ export function WorkoutChat() {
   const [showImagePickerModal, setShowImagePickerModal] = useState(false)
   const [viewerImages, setViewerImages] = useState<string[]>([])
   const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const [workoutPlanning, setWorkoutPlanning] = useState<WorkoutPlanningState>({
+    isActive: false,
+    step: 'none',
+    data: {},
+  })
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
@@ -131,12 +153,21 @@ export function WorkoutChat() {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       () => {
+        setIsKeyboardVisible(true)
         setTimeout(() => scrollToBottom(), 100)
+      },
+    )
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setIsKeyboardVisible(false)
       },
     )
 
     return () => {
       keyboardWillShowListener.remove()
+      keyboardWillHideListener.remove()
     }
   }, [])
 
@@ -201,7 +232,8 @@ export function WorkoutChat() {
         Alert.alert(
           'Camera Access Needed',
           Platform.select({
-            ios: 'To take photos, please enable camera access in Settings > Rep AI > Camera.',
+            ios:
+              'To take photos, please enable camera access in Settings > Rep AI > Camera.',
             android:
               'To take photos, please enable camera access in Settings > Apps > Rep AI > Permissions.',
           }),
@@ -263,14 +295,14 @@ export function WorkoutChat() {
     setShowImagePickerModal(false)
 
     try {
-      const currentStatus =
-        await ImagePicker.getMediaLibraryPermissionsAsync()
+      const currentStatus = await ImagePicker.getMediaLibraryPermissionsAsync()
 
       if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
         Alert.alert(
           'Photo Library Access Needed',
           Platform.select({
-            ios: 'To select photos, please enable photo library access in Settings > Rep AI > Photos.',
+            ios:
+              'To select photos, please enable photo library access in Settings > Rep AI > Photos.',
             android:
               'To select photos, please enable storage access in Settings > Apps > Rep AI > Permissions.',
           }),
@@ -285,8 +317,7 @@ export function WorkoutChat() {
         return
       }
 
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync()
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
 
       if (permission.status !== 'granted') {
         Alert.alert(
@@ -381,6 +412,216 @@ export function WorkoutChat() {
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
     }
     setMessages((prev) => [...prev, userMessage])
+
+    // Handle Workout Planning Flow
+    if (workoutPlanning.isActive) {
+      let nextStep: WorkoutPlanningState['step'] = 'none'
+      let assistantMessage = ''
+      let nextData = { ...workoutPlanning.data }
+
+      if (workoutPlanning.step === 'muscles') {
+        nextData.muscles = messageContent
+        nextStep = 'duration'
+        assistantMessage =
+          'Great. How much time do you have for this workout? (e.g., 30 mins, 1 hour)'
+      } else if (workoutPlanning.step === 'duration') {
+        nextData.duration = messageContent
+        nextStep = 'intensity'
+        assistantMessage =
+          'Got it. What about intensity and volume? (e.g., High intensity, low volume, strength focus)'
+      } else if (workoutPlanning.step === 'intensity') {
+        nextData.intensity = messageContent
+        nextStep = 'none'
+        // Final step: Proceed to call API with constructed prompt
+      }
+
+      if (nextStep !== 'none') {
+        setWorkoutPlanning({
+          isActive: true,
+          step: nextStep,
+          data: nextData,
+        })
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: assistantMessage,
+            },
+          ])
+        }, 500)
+        return
+      }
+
+      // If we reached here, it means we finished the flow (step was 'intensity')
+      // Construct the final prompt
+      const finalPrompt = `Plan a workout for me.
+Muscle Groups: ${nextData.muscles}
+Duration: ${nextData.duration}
+Intensity/Style: ${messageContent}
+Please provide a detailed workout routine based on these preferences.`
+
+      // Reset planning state
+      setWorkoutPlanning({
+        isActive: false,
+        step: 'none',
+        data: {},
+      })
+
+      // Continue to API call with the constructed prompt instead of just the last message
+      // We need to replace the last user message content in the API call context,
+      // but visually we keep the user's last answer ("High intensity").
+      // Actually, for the API context, we should probably send the whole conversation history
+      // OR just send the summarized prompt as the "user" message for the AI to act on.
+      // To make it simple and robust, let's send the constructed prompt as the last message content to the API.
+      // But we don't want to change what the user sees in the UI.
+
+      setIsLoading(true)
+
+      try {
+        const { getSupabaseFunctionBaseUrl } = await import(
+          '@/lib/supabase-functions-client'
+        )
+
+        // Format messages for API
+        // We'll use the visible messages history, but for the very last message (which triggered the final step),
+        // we'll swap its content with the detailed prompt so the AI knows what to do.
+        const formattedMessages = messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }))
+
+        // Add the current user message (which was just added to UI state)
+        // but with the FULL PROMPT content for the AI
+        formattedMessages.push({
+          role: 'user',
+          content: finalPrompt,
+        })
+
+        const requestBody: any = {
+          messages: formattedMessages,
+          userId: user?.id,
+          weightUnit,
+        }
+
+        const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-no-stream': '1',
+            ...(session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {}),
+          },
+          body: JSON.stringify(requestBody),
+        })
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to get response: ${response.status} ${response.statusText}`,
+          )
+        }
+
+        const assistantMessageId = (Date.now() + 1).toString()
+        setMessages((prev) => [
+          ...prev,
+          { id: assistantMessageId, role: 'assistant', content: '' },
+        ])
+
+        const reader = response.body?.getReader()
+        if (!reader) {
+          const assistantContent = await response.text()
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? { ...m, content: assistantContent }
+                : m,
+            ),
+          )
+        } else {
+          // ... (Reuse existing streaming logic)
+          // For brevity, I'll copy the streaming logic structure but it needs to be identical.
+          // Since I cannot easily "call" the existing code, I have to duplicate the streaming logic here
+          // or refactor it into a helper. Given the constraints, I will duplicate the essential streaming part.
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let acc = ''
+          let ndjsonMode: boolean | null = null
+
+          while (true) {
+            const { value, done } = await reader.read()
+            if (done) break
+            const chunk = decoder.decode(value, { stream: true })
+
+            if (ndjsonMode === null) {
+              const firstNonWs = chunk.trimStart()[0]
+              ndjsonMode = firstNonWs === '{' || chunk.startsWith('data:')
+            }
+
+            if (!ndjsonMode) {
+              acc += chunk
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId ? { ...m, content: acc } : m,
+                ),
+              )
+              continue
+            }
+
+            buffer += chunk
+            let newlineIndex: number
+            while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+              let line = buffer.slice(0, newlineIndex).trim()
+              buffer = buffer.slice(newlineIndex + 1)
+              if (!line || line === '[DONE]') continue
+              if (line.startsWith('data:')) line = line.slice(5).trim()
+
+              try {
+                const evt = JSON.parse(line)
+                if (
+                  evt.type === 'text-delta' &&
+                  typeof evt.textDelta === 'string'
+                ) {
+                  acc += evt.textDelta
+                } else if (
+                  evt.type === 'message' &&
+                  typeof evt.text === 'string'
+                ) {
+                  acc += evt.text
+                }
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId ? { ...m, content: acc } : m,
+                  ),
+                )
+              } catch {
+                acc += line
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId ? { ...m, content: acc } : m,
+                  ),
+                )
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Chat error:', error)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: "Sorry, I couldn't process that request. Please try again.",
+          },
+        ])
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -601,7 +842,44 @@ export function WorkoutChat() {
       return
     }
 
+    if (question === 'Plan my next workout') {
+      setWorkoutPlanning({
+        isActive: true,
+        step: 'muscles',
+        data: {},
+      })
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'user',
+          content: question,
+        },
+      ])
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content:
+              'Sure, I can help with that. What muscle groups do you want to train? (e.g., Upper Body, Legs, Push, Pull)',
+          },
+        ])
+      }, 500)
+      return
+    }
+
     setInput(question)
+  }
+
+  const handleNewChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setMessages([])
+    setInput('')
+    setSelectedImages([])
+    inputRef.current?.clear()
+    Keyboard.dismiss()
   }
 
   const styles = createStyles(colors)
@@ -610,8 +888,17 @@ export function WorkoutChat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
+      {/* New Chat Button - Positioned absolutely */}
+      <TouchableOpacity
+        style={[styles.newChatButton, { top: Math.max(insets.top - 38, 0) }]}
+        onPress={handleNewChat}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="create-outline" size={22} color={colors.primary} />
+      </TouchableOpacity>
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
@@ -660,6 +947,20 @@ export function WorkoutChat() {
                     />
                   </TouchableOpacity>
                 ))}
+                {FIXED_EXAMPLES.map((example, index) => (
+                  <TouchableOpacity
+                    key={`fixed-${index}`}
+                    style={styles.fixedExampleCard}
+                    onPress={() => handleExampleQuestion(example.text)}
+                  >
+                    <Text style={styles.fixedExampleText}>{example.text}</Text>
+                    <Ionicons
+                      name="add"
+                      size={20}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           </View>
@@ -684,7 +985,9 @@ export function WorkoutChat() {
                             <TouchableOpacity
                               key={index}
                               style={styles.messageImageThumbnail}
-                              onPress={() => openImageViewer(message.images!, index)}
+                              onPress={() =>
+                                openImageViewer(message.images!, index)
+                              }
                             >
                               <Image
                                 source={{ uri: imageUri }}
@@ -821,7 +1124,12 @@ export function WorkoutChat() {
       </ScrollView>
 
       {/* Input Area */}
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          { paddingBottom: isKeyboardVisible ? 80 : 16 },
+        ]}
+      >
         {/* Image Thumbnails Preview */}
         {selectedImages.length > 0 && (
           <ScrollView
@@ -1007,7 +1315,7 @@ export function WorkoutChat() {
               {viewerImages.length > 1 && (
                 <View style={styles.imageViewerCounter}>
                   <Text style={styles.imageViewerCounterText}>
-                    {(viewerImageIndex + 1)} of {viewerImages.length}
+                    {viewerImageIndex + 1} of {viewerImages.length}
                   </Text>
                 </View>
               )}
@@ -1025,13 +1333,26 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.background,
     },
+    newChatButton: {
+      position: 'absolute',
+      left: 16,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.backgroundLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+      padding: 0,
+    },
     messagesContainer: {
       flex: 1,
     },
     messagesContent: {
       flexGrow: 1,
       padding: 16,
-      paddingBottom: 32,
+      paddingBottom: 8,
+      paddingTop: 16,
     },
     emptyState: {
       flex: 1,
@@ -1102,6 +1423,28 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       marginRight: 12,
     },
+    fixedExampleCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.white,
+      padding: 16,
+      borderRadius: 9999,
+      borderWidth: 2,
+      borderColor: colors.primary,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    fixedExampleText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary,
+      flex: 1,
+      marginRight: 12,
+    },
     chatMessages: {
       gap: 24,
     },
@@ -1138,8 +1481,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopWidth: 1,
       borderTopColor: colors.border,
       paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 40, // Account for bottom tab bar
+      paddingTop: 8,
     },
     inputWrapper: {
       flexDirection: 'row',

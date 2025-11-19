@@ -1,18 +1,19 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useEffect, useRef } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    PanResponder,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 const SCREEN_HEIGHT = Dimensions.get('window').height
@@ -38,6 +39,7 @@ export function RoutineSelectorSheet({
 }: RoutineSelectorSheetProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const router = useRouter()
 
   // Animation refs
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
@@ -181,7 +183,14 @@ export function RoutineSelectorSheet({
                   <View key={routine.id} style={styles.routineItem}>
                     <TouchableOpacity
                       style={styles.routineMainContent}
-                      onPress={() => handleSelect(routine)}
+                      onPress={() => {
+                        // Navigate to routine detail
+                        router.push({
+                          pathname: '/routine-detail',
+                          params: { routineId: routine.id }
+                        })
+                        onClose()
+                      }}
                       activeOpacity={0.7}
                     >
                       <View style={styles.routineInfo}>
@@ -193,28 +202,44 @@ export function RoutineSelectorSheet({
                         </Text>
                       </View>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => onEditRoutine(routine)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={styles.actionButton}
-                    >
-                      <Ionicons
-                        name="create-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => onDeleteRoutine(routine)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={styles.actionButton}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={20}
-                        color={colors.error}
-                      />
-                    </TouchableOpacity>
+
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtonsContainer}>
+                      <TouchableOpacity
+                        onPress={() => handleSelect(routine)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.actionButton}
+                      >
+                        <Ionicons
+                          name="play-outline"
+                          size={20}
+                          color={colors.success}
+                        />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => onEditRoutine(routine)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.actionButton}
+                      >
+                        <Ionicons
+                          name="create-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => onDeleteRoutine(routine)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.actionButton}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={20}
+                          color={colors.error}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )
               })
@@ -323,6 +348,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+    },
+    actionButtonsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     actionButton: {
       padding: 4,

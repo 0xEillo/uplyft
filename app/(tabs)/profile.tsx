@@ -1,4 +1,5 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
+import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -8,13 +9,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -335,6 +336,9 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Routines Section */}
+              {user && <ProfileRoutines userId={user.id} />}
+
               {/* This Week Stats Section */}
               <View style={styles.weeklyStatsSection}>
                 <View style={styles.weeklyStatsHeader}>
@@ -406,7 +410,7 @@ const createStyles = (
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingVertical: 8,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,

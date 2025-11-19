@@ -1,18 +1,18 @@
+import { getColors } from '@/constants/colors'
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
-import { Slot, useRouter, useSegments } from 'expo-router'
+import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { PostHogProvider } from 'posthog-react-native'
 import { useEffect, useRef } from 'react'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { Platform, UIManager } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { getColors } from '@/constants/colors'
 
 import { LoadingScreen } from '@/components/loading-screen'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -98,7 +98,7 @@ function RootLayoutNav() {
   return (
     <>
       <NavigationThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
-        <Slot />
+        <Stack screenOptions={{ headerShown: false }} />
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       {isLoading && <LoadingScreen />}
