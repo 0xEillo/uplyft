@@ -47,9 +47,8 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      // Load user profile to get weekly goal
-      const profile = await database.profiles.getById(userId)
-      const goal = profile?.weekly_workout_goal || 3
+      // Load user profile to get weekly goal (default to 3)
+      const goal = 3 // TODO: Add weekly_workout_goal to Profile type
       setWeeklyGoal(goal)
 
       // Get first and last day of current month

@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider as NavigationThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -97,8 +97,59 @@ function RootLayoutNav() {
 
   return (
     <>
-      <NavigationThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
-        <Stack screenOptions={{ headerShown: false }} />
+      <NavigationThemeProvider
+        value={isDark ? CustomDarkTheme : CustomLightTheme}
+      >
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name="strength-stats"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="volume-stats"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="workout-calendar"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="notifications"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="routine-detail"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="search"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="create-exercise"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="select-exercise"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="user/[userId]"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="workout/[workoutId]"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="(stand-alone)/create-routine"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="(stand-alone)/edit-workout/[workoutId]"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+        </Stack>
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       {isLoading && <LoadingScreen />}
@@ -111,7 +162,9 @@ function ThemedRootView({ children }: { children: React.ReactNode }) {
   const colors = getColors(isDark)
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+    <GestureHandlerRootView
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
       {children}
     </GestureHandlerRootView>
   )

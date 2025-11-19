@@ -1,4 +1,5 @@
 import { Paywall } from '@/components/paywall'
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -10,13 +11,6 @@ import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated'
 import {
   ActivityIndicator,
   Alert,
@@ -32,7 +26,15 @@ import {
   UIManager,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, {
+  Easing,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Enable LayoutAnimation on Android
 if (
@@ -61,8 +63,8 @@ interface ExerciseItemProps {
   isExpanded: boolean
   isDragging: boolean
   colors: any
-  draggingScale: Animated.SharedValue<number>
-  draggingOpacity: Animated.SharedValue<number>
+  draggingScale: SharedValue<number>
+  draggingOpacity: SharedValue<number>
   onToggle: (index: number) => void
   onRemove: (index: number) => void
   onAddSet: (index: number) => void
@@ -73,10 +75,7 @@ interface ExerciseItemProps {
     field: 'repsMin' | 'repsMax',
     value: string,
   ) => void
-  onOpenRestPicker: (
-    exerciseIndex: number,
-    setIndex: number,
-  ) => void
+  onOpenRestPicker: (exerciseIndex: number, setIndex: number) => void
   formatRestTime: (seconds: number | null) => string
   onLongPress: (index: number) => void
   onMoveUp: (index: number) => void
@@ -138,181 +137,170 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
           />
         </View>
 
-          <View
-            style={[
-              styles.exerciseHeaderLeft,
-              isDragging && styles.exerciseHeaderLeftDragging,
-            ]}
+        <View
+          style={[
+            styles.exerciseHeaderLeft,
+            isDragging && styles.exerciseHeaderLeftDragging,
+          ]}
+        >
+          <Text
+            style={styles.exerciseName}
+            numberOfLines={isDragging ? 1 : undefined}
+            ellipsizeMode={isDragging ? 'tail' : undefined}
           >
-            <Text
-              style={styles.exerciseName}
-              numberOfLines={isDragging ? 1 : undefined}
-              ellipsizeMode={isDragging ? 'tail' : undefined}
-            >
-              {exercise.exerciseName}
+            {exercise.exerciseName}
+          </Text>
+          <Text style={styles.setCount}>{exercise.sets.length} sets</Text>
+        </View>
+        <View style={styles.exerciseHeaderRight}>
+          {!isDragging && (
+            <>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation()
+                  onRemove(index)
+                }}
+                style={styles.deleteExerciseButton}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.error} />
+              </TouchableOpacity>
+              <Ionicons
+                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      {/* Minimal drag controls */}
+      {isDragging && (
+        <View style={styles.dragControls}>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation()
+              onMoveUp(index)
+            }}
+            style={styles.dragArrow}
+            activeOpacity={0.5}
+          >
+            <Ionicons name="chevron-up" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation()
+              onMoveDown(index)
+            }}
+            style={styles.dragArrow}
+            activeOpacity={0.5}
+          >
+            <Ionicons name="chevron-down" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation()
+              onDrop()
+            }}
+            style={styles.dragDone}
+            activeOpacity={0.5}
+          >
+            <Ionicons name="checkmark" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Sets (Expanded) */}
+      {isExpanded && (
+        <View style={styles.setsContainer}>
+          {/* Sets Table Header */}
+          <View style={styles.setsTableHeader}>
+            <Text style={[styles.setHeaderText, styles.setHeaderNumber]}>
+              Set
             </Text>
-            <Text style={styles.setCount}>{exercise.sets.length} sets</Text>
+            <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
+              Min Reps
+            </Text>
+            <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
+              Max Reps
+            </Text>
+            <Text style={[styles.setHeaderText, styles.setHeaderRest]}>
+              Rest (M:S)
+            </Text>
+            <Text style={[styles.setHeaderText, styles.setHeaderDelete]}></Text>
           </View>
-          <View style={styles.exerciseHeaderRight}>
-            {!isDragging && (
-              <>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation()
-                    onRemove(index)
-                  }}
-                  style={styles.deleteExerciseButton}
+
+          {/* Sets Rows */}
+          {exercise.sets.map((set, setIndex) => (
+            <View key={setIndex} style={styles.setRow}>
+              <Text style={styles.setNumber}>{setIndex + 1}</Text>
+              <TextInput
+                style={styles.setInput}
+                value={set.repsMin}
+                onChangeText={(value) =>
+                  onUpdateReps(index, setIndex, 'repsMin', value)
+                }
+                keyboardType="number-pad"
+                placeholder="--"
+                placeholderTextColor={colors.textPlaceholder}
+                maxLength={3}
+              />
+              <TextInput
+                style={styles.setInput}
+                value={set.repsMax}
+                onChangeText={(value) =>
+                  onUpdateReps(index, setIndex, 'repsMax', value)
+                }
+                keyboardType="number-pad"
+                placeholder="--"
+                placeholderTextColor={colors.textPlaceholder}
+                maxLength={3}
+              />
+              <TouchableOpacity
+                onPress={() => onOpenRestPicker(index, setIndex)}
+                style={styles.restInputButton}
+              >
+                <Text
+                  style={[
+                    styles.restInputText,
+                    !set.restSeconds && styles.restInputTextPlaceholder,
+                  ]}
                 >
-                  <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color={colors.error}
-                  />
-                </TouchableOpacity>
+                  {set.restSeconds ? formatRestTime(set.restSeconds) : 'Rest'}
+                </Text>
                 <Ionicons
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={20}
+                  name="chevron-down"
+                  size={16}
                   color={colors.textSecondary}
                 />
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        {/* Minimal drag controls */}
-        {isDragging && (
-          <View style={styles.dragControls}>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation()
-                onMoveUp(index)
-              }}
-              style={styles.dragArrow}
-              activeOpacity={0.5}
-            >
-              <Ionicons name="chevron-up" size={24} color={colors.text} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation()
-                onMoveDown(index)
-              }}
-              style={styles.dragArrow}
-              activeOpacity={0.5}
-            >
-              <Ionicons name="chevron-down" size={24} color={colors.text} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation()
-                onDrop()
-              }}
-              style={styles.dragDone}
-              activeOpacity={0.5}
-            >
-              <Ionicons name="checkmark" size={20} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Sets (Expanded) */}
-        {isExpanded && (
-          <View style={styles.setsContainer}>
-            {/* Sets Table Header */}
-            <View style={styles.setsTableHeader}>
-              <Text style={[styles.setHeaderText, styles.setHeaderNumber]}>
-                Set
-              </Text>
-              <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
-                Min Reps
-              </Text>
-              <Text style={[styles.setHeaderText, styles.setHeaderInput]}>
-                Max Reps
-              </Text>
-              <Text style={[styles.setHeaderText, styles.setHeaderRest]}>
-                Rest (M:S)
-              </Text>
-              <Text style={[styles.setHeaderText, styles.setHeaderDelete]}>
-              </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onRemoveSet(index, setIndex)}
+                style={styles.deleteSetButton}
+              >
+                <Ionicons name="close-circle" size={20} color={colors.error} />
+              </TouchableOpacity>
             </View>
+          ))}
 
-            {/* Sets Rows */}
-            {exercise.sets.map((set, setIndex) => (
-              <View key={setIndex} style={styles.setRow}>
-                <Text style={styles.setNumber}>{setIndex + 1}</Text>
-                <TextInput
-                  style={styles.setInput}
-                  value={set.repsMin}
-                  onChangeText={(value) =>
-                    onUpdateReps(index, setIndex, 'repsMin', value)
-                  }
-                  keyboardType="number-pad"
-                  placeholder="--"
-                  placeholderTextColor={colors.textPlaceholder}
-                  maxLength={3}
-                />
-                <TextInput
-                  style={styles.setInput}
-                  value={set.repsMax}
-                  onChangeText={(value) =>
-                    onUpdateReps(index, setIndex, 'repsMax', value)
-                  }
-                  keyboardType="number-pad"
-                  placeholder="--"
-                  placeholderTextColor={colors.textPlaceholder}
-                  maxLength={3}
-                />
-                <TouchableOpacity
-                  onPress={() => onOpenRestPicker(index, setIndex)}
-                  style={styles.restInputButton}
-                >
-                  <Text
-                    style={[
-                      styles.restInputText,
-                      !set.restSeconds && styles.restInputTextPlaceholder,
-                    ]}
-                  >
-                    {set.restSeconds
-                      ? formatRestTime(set.restSeconds)
-                      : 'Rest'}
-                  </Text>
-                  <Ionicons
-                    name="chevron-down"
-                    size={16}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => onRemoveSet(index, setIndex)}
-                  style={styles.deleteSetButton}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={colors.error}
-                  />
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            {/* Add Set Button */}
-            <TouchableOpacity
-              style={styles.addSetButton}
-              onPress={() => onAddSet(index)}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={styles.addSetText}>Add Set</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </Animated.View>
-    )
+          {/* Add Set Button */}
+          <TouchableOpacity
+            style={styles.addSetButton}
+            onPress={() => onAddSet(index)}
+          >
+            <Ionicons
+              name="add-circle-outline"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.addSetText}>Add Set</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </Animated.View>
+  )
 })
 
 ExerciseItem.displayName = 'ExerciseItem'
@@ -354,6 +342,17 @@ export default function CreateRoutineScreen() {
   // Shared values for animations
   const draggingScale = useSharedValue(1)
   const draggingOpacity = useSharedValue(1)
+
+  // Slide in view state
+  const [shouldExit, setShouldExit] = useState(false)
+
+  const handleExit = useCallback(() => {
+    setShouldExit(true)
+  }, [])
+
+  const handleExitComplete = useCallback(() => {
+    router.back()
+  }, [router])
 
   // Exercise selection hook
   const { registerCallback } = useExerciseSelection()
@@ -401,7 +400,7 @@ export default function CreateRoutineScreen() {
   useEffect(() => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to create routines')
-      router.back()
+      handleExit()
       return
     }
 
@@ -445,7 +444,7 @@ export default function CreateRoutineScreen() {
         } catch (error) {
           console.error('Error loading routine:', error)
           Alert.alert('Error', 'Failed to load routine')
-          router.back()
+          handleExit()
         } finally {
           setIsLoading(false)
         }
@@ -462,7 +461,8 @@ export default function CreateRoutineScreen() {
           const workout = await database.workoutSessions.getById(from)
 
           // Pre-fill name with workout title/type
-          const name = workout.type || workout.notes?.split('\n')[0] || 'New Routine'
+          const name =
+            workout.type || workout.notes?.split('\n')[0] || 'New Routine'
           setRoutineName(name)
           setRoutineNotes(workout.notes || '')
 
@@ -483,7 +483,7 @@ export default function CreateRoutineScreen() {
         } catch (error) {
           console.error('Error loading workout:', error)
           Alert.alert('Error', 'Failed to load workout')
-          router.back()
+          handleExit()
         } finally {
           setIsLoading(false)
         }
@@ -495,7 +495,7 @@ export default function CreateRoutineScreen() {
 
     // Otherwise start with empty routine
     setIsLoading(false)
-  }, [from, routineId, user, router])
+  }, [from, routineId, user, router, isProMember, isEditMode, handleExit])
 
   const handleSave = useCallback(async () => {
     if (!routineName.trim()) {
@@ -641,7 +641,9 @@ export default function CreateRoutineScreen() {
           // Validate rest seconds range
           if (restSeconds !== null && (restSeconds < 0 || restSeconds > 3600)) {
             throw new Error(
-              `Rest time must be between 0 and 60 minutes (${ex.exerciseName}, Set ${setIndex + 1})`,
+              `Rest time must be between 0 and 60 minutes (${
+                ex.exerciseName
+              }, Set ${setIndex + 1})`,
             )
           }
 
@@ -673,7 +675,10 @@ export default function CreateRoutineScreen() {
           .eq('user_id', user.id)
 
         if (linkError) {
-          console.error('[create-routine] Failed to link workout to routine:', linkError)
+          console.error(
+            '[create-routine] Failed to link workout to routine:',
+            linkError,
+          )
           // Don't throw - routine was created successfully, this is just a nice-to-have
         }
       }
@@ -686,7 +691,7 @@ export default function CreateRoutineScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => handleExit(),
           },
         ],
       )
@@ -705,9 +710,10 @@ export default function CreateRoutineScreen() {
     routineNotes,
     exercises,
     user,
-    router,
+    handleExit,
     isEditMode,
     routineId,
+    from,
   ])
 
   const handleCancel = useCallback(() => {
@@ -719,11 +725,11 @@ export default function CreateRoutineScreen() {
         {
           text: 'Discard',
           style: 'destructive',
-          onPress: () => router.back(),
+          onPress: () => handleExit(),
         },
       ],
     )
-  }, [router])
+  }, [handleExit])
 
   const toggleExercise = useCallback((index: number) => {
     setExpandedExercises((prev) => {
@@ -828,10 +834,7 @@ export default function CreateRoutineScreen() {
   )
 
   const handleConfirmRestPicker = useCallback(() => {
-    if (
-      restPickerExerciseIndex === null ||
-      restPickerSetIndex === null
-    ) {
+    if (restPickerExerciseIndex === null || restPickerSetIndex === null) {
       return
     }
 
@@ -854,7 +857,12 @@ export default function CreateRoutineScreen() {
     setRestPickerVisible(false)
     setRestPickerExerciseIndex(null)
     setRestPickerSetIndex(null)
-  }, [restPickerExerciseIndex, restPickerSetIndex, restPickerMinutes, restPickerSeconds])
+  }, [
+    restPickerExerciseIndex,
+    restPickerSetIndex,
+    restPickerMinutes,
+    restPickerSeconds,
+  ])
 
   const handleCancelRestPicker = useCallback(() => {
     setRestPickerVisible(false)
@@ -884,37 +892,40 @@ export default function CreateRoutineScreen() {
   }, [registerCallback, handleSelectExercise, router])
 
   // Handle long press to start dragging
-  const handleLongPress = useCallback((index: number) => {
-    console.log(`[Drag] LONG PRESS activated on exercise ${index}`)
-    setDraggingIndex(index)
-    draggingScale.value = withSpring(1.02, {
-      damping: 15,
-      stiffness: 150,
-    })
-    draggingOpacity.value = withTiming(0.95, {
-      duration: 150,
-      easing: Easing.inOut(Easing.ease),
-    })
-  }, [draggingScale, draggingOpacity])
+  const handleLongPress = useCallback(
+    (index: number) => {
+      console.log(`[Drag] LONG PRESS activated on exercise ${index}`)
+      setDraggingIndex(index)
+      draggingScale.value = withSpring(1.02, {
+        damping: 15,
+        stiffness: 150,
+      })
+      draggingOpacity.value = withTiming(0.95, {
+        duration: 150,
+        easing: Easing.inOut(Easing.ease),
+      })
+    },
+    [draggingScale, draggingOpacity],
+  )
 
   // Handle moving an exercise up
-  const handleMoveUp = useCallback(
-    (index: number) => {
-      if (index <= 0) {
-        console.log(`[Drag] Already at top, cannot move up`)
-        return
-      }
-      const newIndex = index - 1
-      console.log(`[Drag] MOVE UP: exercise ${index} -> ${newIndex}`)
-      setExercises((prev) => {
-        const updated = [...prev]
-        ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
-        return updated
-      })
-      setDraggingIndex(newIndex)
-    },
-    [],
-  )
+  const handleMoveUp = useCallback((index: number) => {
+    if (index <= 0) {
+      console.log(`[Drag] Already at top, cannot move up`)
+      return
+    }
+    const newIndex = index - 1
+    console.log(`[Drag] MOVE UP: exercise ${index} -> ${newIndex}`)
+    setExercises((prev) => {
+      const updated = [...prev]
+      ;[updated[index - 1], updated[index]] = [
+        updated[index],
+        updated[index - 1],
+      ]
+      return updated
+    })
+    setDraggingIndex(newIndex)
+  }, [])
 
   // Handle moving an exercise down
   const handleMoveDown = useCallback(
@@ -927,7 +938,10 @@ export default function CreateRoutineScreen() {
       console.log(`[Drag] MOVE DOWN: exercise ${index} -> ${newIndex}`)
       setExercises((prev) => {
         const updated = [...prev]
-        ;[updated[index + 1], updated[index]] = [updated[index], updated[index + 1]]
+        ;[updated[index + 1], updated[index]] = [
+          updated[index],
+          updated[index + 1],
+        ]
         return updated
       })
       setDraggingIndex(newIndex)
@@ -949,233 +963,246 @@ export default function CreateRoutineScreen() {
     setDraggingIndex(null)
   }, [draggingScale, draggingOpacity])
 
+  const insets = useSafeAreaInsets()
   const styles = createStyles(colors)
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {isEditMode ? 'Edit Routine' : 'Create Routine'}
-          </Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            style={styles.headerButton}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={styles.saveText}>Save</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Name Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Routine Name</Text>
-            <TextInput
-              style={styles.input}
-              value={routineName}
-              onChangeText={setRoutineName}
-              placeholder="e.g., Push Day, Upper Body, etc."
-              placeholderTextColor={colors.textPlaceholder}
-              autoCapitalize="words"
-            />
-            {/* Estimated Duration */}
-            {exercises.length > 0 && (
-              <View style={styles.durationContainer}>
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.durationText}>
-                  Est. Duration: {estimatedDuration}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Notes Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Notes</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={routineNotes}
-              onChangeText={setRoutineNotes}
-              placeholder="Add any notes or description about this routine..."
-              placeholderTextColor={colors.textPlaceholder}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
-
-          {/* Exercises */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionLabel}>Exercises</Text>
-            </View>
-            {exercises.map((exercise, exerciseIndex) => {
-              const isExpanded = expandedExercises.has(exerciseIndex)
-              const isDragging = draggingIndex === exerciseIndex
-
-              return (
-                <ExerciseItem
-                  key={exerciseIndex}
-                  exercise={exercise}
-                  index={exerciseIndex}
-                  isExpanded={isExpanded}
-                  isDragging={isDragging}
-                  colors={colors}
-                  draggingScale={draggingScale}
-                  draggingOpacity={draggingOpacity}
-                  onToggle={toggleExercise}
-                  onRemove={handleRemoveExercise}
-                  onAddSet={handleAddSet}
-                  onRemoveSet={handleRemoveSet}
-                  onUpdateReps={handleUpdateReps}
-                  onOpenRestPicker={handleOpenRestPicker}
-                  formatRestTime={formatRestTime}
-                  onLongPress={handleLongPress}
-                  onMoveUp={handleMoveUp}
-                  onMoveDown={handleMoveDown}
-                  onDrop={handleDropExercise}
-                  styles={styles}
-                />
-              )
-            })}
-
-            {/* Add Exercise Button */}
+    <SlideInView
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+      style={styles.container}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
+        >
+          {/* Header */}
+          <View style={styles.header}>
             <TouchableOpacity
-              style={styles.addExerciseButton}
-              onPress={handleAddExercise}
+              onPress={handleCancel}
+              style={styles.headerButton}
             >
-              <Ionicons
-                name="add-circle-outline"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={styles.addExerciseText}>Add Exercise</Text>
+              <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {isEditMode ? 'Edit Routine' : 'Create Routine'}
+            </Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              style={styles.headerButton}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.saveText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-            {/* Empty State */}
-            {exercises.length === 0 && (
-              <View style={styles.emptyState}>
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Name Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Routine Name</Text>
+              <TextInput
+                style={styles.input}
+                value={routineName}
+                onChangeText={setRoutineName}
+                placeholder="e.g., Push Day, Upper Body, etc."
+                placeholderTextColor={colors.textPlaceholder}
+                autoCapitalize="words"
+              />
+              {/* Estimated Duration */}
+              {exercises.length > 0 && (
+                <View style={styles.durationContainer}>
+                  <Ionicons
+                    name="time-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.durationText}>
+                    Est. Duration: {estimatedDuration}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Notes Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Notes</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={routineNotes}
+                onChangeText={setRoutineNotes}
+                placeholder="Add any notes or description about this routine..."
+                placeholderTextColor={colors.textPlaceholder}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Exercises */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionLabel}>Exercises</Text>
+              </View>
+              {exercises.map((exercise, exerciseIndex) => {
+                const isExpanded = expandedExercises.has(exerciseIndex)
+                const isDragging = draggingIndex === exerciseIndex
+
+                return (
+                  <ExerciseItem
+                    key={exerciseIndex}
+                    exercise={exercise}
+                    index={exerciseIndex}
+                    isExpanded={isExpanded}
+                    isDragging={isDragging}
+                    colors={colors}
+                    draggingScale={draggingScale}
+                    draggingOpacity={draggingOpacity}
+                    onToggle={toggleExercise}
+                    onRemove={handleRemoveExercise}
+                    onAddSet={handleAddSet}
+                    onRemoveSet={handleRemoveSet}
+                    onUpdateReps={handleUpdateReps}
+                    onOpenRestPicker={handleOpenRestPicker}
+                    formatRestTime={formatRestTime}
+                    onLongPress={handleLongPress}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
+                    onDrop={handleDropExercise}
+                    styles={styles}
+                  />
+                )
+              })}
+
+              {/* Add Exercise Button */}
+              <TouchableOpacity
+                style={styles.addExerciseButton}
+                onPress={handleAddExercise}
+              >
                 <Ionicons
-                  name="barbell-outline"
-                  size={48}
-                  color={colors.textPlaceholder}
+                  name="add-circle-outline"
+                  size={24}
+                  color={colors.primary}
                 />
-                <Text style={styles.emptyTitle}>No Exercises Yet</Text>
-                <Text style={styles.emptyMessage}>
-                  Tap &quot;Add Exercise&quot; to build your routine
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Paywall Modal */}
-      <Paywall
-        visible={showPaywall}
-        onClose={() => {
-          setShowPaywall(false)
-          router.back()
-        }}
-        title="Try Pro for FREE!"
-        message="Routines are a Pro feature"
-      />
-
-      {/* Rest Time Picker Modal */}
-      <Modal
-        visible={restPickerVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={handleCancelRestPicker}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerModalHeader}>
-              <TouchableOpacity
-                onPress={handleCancelRestPicker}
-                style={styles.pickerModalButton}
-              >
-                <Text style={styles.pickerModalCancelText}>Cancel</Text>
+                <Text style={styles.addExerciseText}>Add Exercise</Text>
               </TouchableOpacity>
-              <Text style={styles.pickerModalTitle}>Rest Time</Text>
-              <TouchableOpacity
-                onPress={handleConfirmRestPicker}
-                style={styles.pickerModalButton}
-              >
-                <Text style={styles.pickerModalConfirmText}>Done</Text>
-              </TouchableOpacity>
+
+              {/* Empty State */}
+              {exercises.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Ionicons
+                    name="barbell-outline"
+                    size={48}
+                    color={colors.textPlaceholder}
+                  />
+                  <Text style={styles.emptyTitle}>No Exercises Yet</Text>
+                  <Text style={styles.emptyMessage}>
+                    Tap &quot;Add Exercise&quot; to build your routine
+                  </Text>
+                </View>
+              )}
             </View>
-            <View style={styles.pickerContainer}>
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Minutes</Text>
-                <Picker
-                  selectedValue={restPickerMinutes}
-                  onValueChange={(itemValue) =>
-                    setRestPickerMinutes(itemValue)
-                  }
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Paywall Modal */}
+        <Paywall
+          visible={showPaywall}
+          onClose={() => {
+            setShowPaywall(false)
+            handleExit()
+          }}
+          title="Try Pro for FREE!"
+          message="Routines are a Pro feature"
+        />
+
+        {/* Rest Time Picker Modal */}
+        <Modal
+          visible={restPickerVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={handleCancelRestPicker}
+        >
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerModalHeader}>
+                <TouchableOpacity
+                  onPress={handleCancelRestPicker}
+                  style={styles.pickerModalButton}
                 >
-                  {Array.from({ length: 61 }, (_, i) => i).map((min) => (
-                    <Picker.Item
-                      key={min}
-                      label={min.toString()}
-                      value={min}
-                    />
-                  ))}
-                </Picker>
+                  <Text style={styles.pickerModalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.pickerModalTitle}>Rest Time</Text>
+                <TouchableOpacity
+                  onPress={handleConfirmRestPicker}
+                  style={styles.pickerModalButton}
+                >
+                  <Text style={styles.pickerModalConfirmText}>Done</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.pickerDivider} />
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Seconds</Text>
-                <Picker
-                  selectedValue={restPickerSeconds}
-                  onValueChange={(itemValue) =>
-                    setRestPickerSeconds(itemValue)
-                  }
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
-                  {Array.from({ length: 60 }, (_, i) => i).map((sec) => (
-                    <Picker.Item
-                      key={sec}
-                      label={sec.toString().padStart(2, '0')}
-                      value={sec}
-                    />
-                  ))}
-                </Picker>
+              <View style={styles.pickerContainer}>
+                <View style={styles.pickerColumn}>
+                  <Text style={styles.pickerLabel}>Minutes</Text>
+                  <Picker
+                    selectedValue={restPickerMinutes}
+                    onValueChange={(itemValue) =>
+                      setRestPickerMinutes(itemValue)
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {Array.from({ length: 61 }, (_, i) => i).map((min) => (
+                      <Picker.Item
+                        key={min}
+                        label={min.toString()}
+                        value={min}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={styles.pickerDivider} />
+                <View style={styles.pickerColumn}>
+                  <Text style={styles.pickerLabel}>Seconds</Text>
+                  <Picker
+                    selectedValue={restPickerSeconds}
+                    onValueChange={(itemValue) =>
+                      setRestPickerSeconds(itemValue)
+                    }
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {Array.from({ length: 60 }, (_, i) => i).map((sec) => (
+                      <Picker.Item
+                        key={sec}
+                        label={sec.toString().padStart(2, '0')}
+                        value={sec}
+                      />
+                    ))}
+                  </Picker>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </View>
+    </SlideInView>
   )
 }
 
@@ -1183,7 +1210,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     flex: {
       flex: 1,
@@ -1192,6 +1219,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.background,
     },
     header: {
       flexDirection: 'row',
@@ -1223,6 +1251,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     content: {
       flex: 1,
+      backgroundColor: colors.background,
     },
     section: {
       padding: 16,

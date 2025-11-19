@@ -23,7 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const IMAGE_SPACING = 4
@@ -209,6 +209,7 @@ export default function BodyLogScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const styles = createStyles(colors)
+  const insets = useSafeAreaInsets()
 
   const [userGender, setUserGender] = useState<'male' | 'female' | null>(null)
   const [shouldExit, setShouldExit] = useState(false)
@@ -379,7 +380,7 @@ export default function BodyLogScreen() {
   }, [])
 
   const handleExitComplete = useCallback(() => {
-    router.push('/(tabs)/analytics')
+    router.back()
   }, [router])
 
   const handleEntryOpen = useCallback(
@@ -486,7 +487,7 @@ export default function BodyLogScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleBackPress}
@@ -561,7 +562,7 @@ export default function BodyLogScreen() {
         />
       )}
 
-    </SafeAreaView>
+    </View>
     </SlideInView>
   )
 }

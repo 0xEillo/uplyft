@@ -1,8 +1,8 @@
 import type { AsyncStorageStatic } from '@react-native-async-storage/async-storage'
 import type { SupabaseClientOptions } from '@supabase/supabase-js'
 import { createClient, processLock } from '@supabase/supabase-js'
-import 'react-native-url-polyfill/auto'
 import Constants from 'expo-constants'
+import 'react-native-url-polyfill/auto'
 
 const isReactNative =
   typeof navigator !== 'undefined' && navigator.product === 'ReactNative'
@@ -24,9 +24,7 @@ const supabaseOptions: SupabaseClientOptions<'public'> = {
   },
 }
 
-const extra = (Constants.expoConfig?.extra ??
-  Constants.manifest?.extra ??
-  {}) as {
+const extra = (Constants.expoConfig?.extra ?? {}) as {
   supabaseUrl?: string
   supabaseAnonKey?: string
   appEnv?: string
@@ -40,5 +38,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase environment is not configured')
 }
 
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, supabaseOptions)
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  supabaseOptions,
+)

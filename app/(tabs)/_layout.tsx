@@ -53,7 +53,7 @@ function ElevatedPlusButton() {
     >
       <Ionicons
         name={hasDraft ? 'document-text' : 'add'}
-        size={26}
+        size={24}
         color={colors.white}
       />
     </TouchableOpacity>
@@ -147,7 +147,7 @@ function TabLayoutContent() {
           },
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarLabelStyle: {
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: '500',
             marginTop: 4,
           },
@@ -159,7 +159,7 @@ function TabLayoutContent() {
           options={{
             title: 'Home',
             tabBarIcon: ({ color }) => (
-              <IconSymbol size={28} name="house.fill" color={color} />
+              <IconSymbol size={26} name="house.fill" color={color} />
             ),
           }}
         />
@@ -169,7 +169,7 @@ function TabLayoutContent() {
           options={{
             title: 'Progress',
             tabBarIcon: ({ color }) => (
-              <Ionicons name="bar-chart" size={28} color={color} />
+              <Ionicons name="bar-chart" size={26} color={color} />
             ),
           }}
         />
@@ -185,6 +185,7 @@ function TabLayoutContent() {
                   flex: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
+                  marginTop: -4,
                 }}
               >
                 <ElevatedPlusButton />
@@ -201,9 +202,9 @@ function TabLayoutContent() {
         <Tabs.Screen
           name="chat"
           options={{
-            title: 'Chat',
+            title: 'Plan',
             tabBarIcon: ({ color }) => (
-              <Ionicons name="chatbubble-ellipses" size={28} color={color} />
+              <Ionicons name="chatbubble-ellipses" size={26} color={color} />
             ),
           }}
         />
@@ -213,7 +214,7 @@ function TabLayoutContent() {
           options={{
             title: 'Profile',
             tabBarIcon: ({ color }) => (
-              <Ionicons name="person-circle" size={28} color={color} />
+              <Ionicons name="person-circle" size={26} color={color} />
             ),
           }}
         />
@@ -272,9 +273,9 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     elevatedButton: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
       backgroundColor: hasDraft ? '#EF4444' : colors.primary,
       justifyContent: 'center',
       alignItems: 'center',

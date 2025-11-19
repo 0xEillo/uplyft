@@ -62,11 +62,6 @@ export function EmptyFeedState() {
     outputRange: [0, 12],
   })
 
-  const arrowTranslateX = arrowBounce.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 12],
-  })
-
   const styles = createStyles(colors)
 
   return (
@@ -97,7 +92,7 @@ export function EmptyFeedState() {
         </Text>
       </Animated.View>
 
-      {/* Animated arrow pointing diagonally to the + button */}
+      {/* Animated arrow pointing straight down to the center + button */}
       <Animated.View
         style={[
           styles.arrowContainer,
@@ -105,19 +100,12 @@ export function EmptyFeedState() {
             opacity: arrowOpacity,
             transform: [
               { translateY: arrowTranslateY },
-              { translateX: arrowTranslateX },
             ],
           },
         ]}
       >
         <View style={styles.arrowWrapper}>
-          <Animated.View
-            style={{
-              transform: [{ rotate: '-45deg' }],
-            }}
-          >
-            <Ionicons name="arrow-down" size={48} color={colors.primary} />
-          </Animated.View>
+          <Ionicons name="arrow-down" size={48} color={colors.primary} />
         </View>
         <Text style={styles.arrowText}>Tap here to start</Text>
       </Animated.View>
@@ -173,7 +161,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       position: 'absolute',
       bottom: 50, // Position above the + button (tab bar height ~90 + button elevation ~72)
-      right: 100, // Positioned more toward center, pointing diagonally to the + button
+      left: 0,
+      right: 0,
+      alignSelf: 'center', // Center horizontally
     },
     arrowWrapper: {
       backgroundColor: colors.backgroundLight,

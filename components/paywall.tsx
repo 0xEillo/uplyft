@@ -183,7 +183,7 @@ export function Paywall({
           [{ text: 'OK' }],
         )
       }
-    } catch (error) {
+    } catch (error: any) {
       // Handle user cancellation
       if (error?.userCancelled) {
         return

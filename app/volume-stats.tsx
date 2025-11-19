@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SlideInView } from '@/components/slide-in-view'
 
 type TimeRange = '30D' | '3M' | '6M' | 'ALL'
@@ -104,7 +104,7 @@ export default function VolumeStatsScreen() {
   }
 
   const handleExitComplete = () => {
-    router.push('/(tabs)/analytics?tab=progress')
+    router.back()
   }
 
   const formatWeekLabel = (weekStart: string) => {
@@ -113,6 +113,7 @@ export default function VolumeStatsScreen() {
   }
 
   const styles = createStyles(colors)
+  const insets = useSafeAreaInsets()
 
   return (
     <SlideInView
@@ -125,7 +126,7 @@ export default function VolumeStatsScreen() {
           headerShown: false,
         }}
       />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -303,7 +304,7 @@ export default function VolumeStatsScreen() {
           )}
           </ScrollView>
         )}
-      </SafeAreaView>
+      </View>
 
       {/* Paywall Modal */}
       <Paywall

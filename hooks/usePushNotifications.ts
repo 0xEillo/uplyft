@@ -16,8 +16,8 @@ export function usePushNotifications() {
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  const notificationListener = useRef<Notifications.Subscription>()
-  const responseListener = useRef<Notifications.Subscription>()
+  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined)
+  const responseListener = useRef<Notifications.Subscription | undefined>(undefined)
   const lastPathnameRef = useRef(pathname || '/(tabs)')
 
   useEffect(() => {
@@ -32,9 +32,9 @@ export function usePushNotifications() {
 
     // Listen for notifications received while app is in foreground
     notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
+      Notifications.addNotificationReceivedListener((notification: any) => {
         // You could show an in-app toast here
-      })
+      }) as any
 
     // Listen for user tapping on notification
     responseListener.current =
@@ -56,7 +56,7 @@ export function usePushNotifications() {
 
         // Navigate based on notification type
         const buildWorkoutHref = (id: string) => ({
-          pathname: '/workout/[workoutId]',
+          pathname: '/workout/[workoutId]' as const,
           params: {
             workoutId: id,
             returnTo: lastPathnameRef.current,
@@ -70,12 +70,12 @@ export function usePushNotifications() {
         ) {
           router.push('/follow-requests')
         } else if (type === 'workout_comment' && workoutId) {
-          router.push(`/workout-comments/${workoutId}`)
+          router.push(`/workout-comments/${workoutId}` as any)
         } else if (type === 'workout_like' && workoutId) {
-          router.push(buildWorkoutHref(workoutId))
+          router.push(buildWorkoutHref(workoutId) as any)
         } else if (workoutId) {
           // Fallback to workout detail for any other workout-related notifications
-          router.push(buildWorkoutHref(workoutId))
+          router.push(buildWorkoutHref(workoutId) as any)
         }
       })
 
@@ -122,7 +122,9 @@ async function registerForPushNotifications() {
       return
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId })
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    } as any)
     const token = tokenData.data
 
     // Get current user

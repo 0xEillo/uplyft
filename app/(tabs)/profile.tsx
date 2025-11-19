@@ -231,10 +231,7 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity
           onPress={() =>
-            router.push({
-              pathname: '/account-settings',
-              params: { returnTo: '/(tabs)/profile' },
-            })
+            router.push('/account-settings')
           }
           style={{ padding: 8 }}
         >
@@ -292,7 +289,7 @@ export default function ProfileScreen() {
                       if (user?.id) {
                         router.push({
                           pathname: '/followers/[userId]',
-                          params: { userId: user.id, returnTo: '/(tabs)/profile' }
+                          params: { userId: user.id }
                         })
                       }
                     }}
@@ -306,7 +303,7 @@ export default function ProfileScreen() {
                       if (user?.id) {
                         router.push({
                           pathname: '/following/[userId]',
-                          params: { userId: user.id, returnTo: '/(tabs)/profile' }
+                          params: { userId: user.id }
                         })
                       }
                     }}

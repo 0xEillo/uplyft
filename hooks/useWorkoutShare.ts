@@ -28,6 +28,24 @@ try {
   // Module not available, will be handled by simulator check
 }
 
+export interface UseWorkoutShareResult {
+  shareWorkout: (
+    workout: WorkoutSessionWithDetails,
+    workoutTitle: string,
+    viewRef: any,
+  ) => Promise<void>
+  shareToInstagramStories: (
+    workout: WorkoutSessionWithDetails,
+    viewRef: any,
+    widgetType?: string,
+  ) => Promise<void>
+  shareWorkoutWidget: (
+    viewRef: any,
+    shareType: 'instagram' | 'general',
+  ) => Promise<void>
+  isSharing: boolean
+}
+
 /**
  * Hook to handle workout sharing functionality
  *

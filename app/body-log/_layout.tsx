@@ -5,8 +5,8 @@ export default function BodyLogLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        presentation: 'card',
-        animation: 'default',
+        presentation: 'transparentModal',
+        animation: 'none',
       }}
     />
   )

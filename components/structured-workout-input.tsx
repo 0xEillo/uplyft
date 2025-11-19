@@ -56,7 +56,8 @@ const formatRestDuration = (seconds: number) => {
 
 const resolveExerciseRestTarget = (exercise: ExerciseData): number | null => {
   const firstSetWithRest = exercise.sets.find(
-    (set) => typeof set.targetRestSeconds === 'number' && set.targetRestSeconds > 0,
+    (set) =>
+      typeof set.targetRestSeconds === 'number' && set.targetRestSeconds > 0,
   )
 
   return firstSetWithRest?.targetRestSeconds ?? null
@@ -136,9 +137,9 @@ export function StructuredWorkoutInput({
   const [restTimerStarts, setRestTimerStarts] = useState<
     Record<string, number>
   >({})
-  const [activeSetIndex, setActiveSetIndex] = useState<
-    Record<string, number>
-  >({})
+  const [activeSetIndex, setActiveSetIndex] = useState<Record<string, number>>(
+    {},
+  )
   const [restTimerTick, setRestTimerTick] = useState(0)
   const [restReady, setRestReady] = useState<Record<string, boolean>>({})
   const [activeRestTargets, setActiveRestTargets] = useState<
@@ -223,22 +224,22 @@ export function StructuredWorkoutInput({
     }
   }, [routine, lastWorkout, initialExercises, convertToPreferred, onDataChange])
 
-useEffect(() => {
-  setRestTimerStarts((prev) => {
-    const activeIds = new Set(exercises.map((exercise) => exercise.id))
-    const next = { ...prev }
-    let changed = false
+  useEffect(() => {
+    setRestTimerStarts((prev) => {
+      const activeIds = new Set(exercises.map((exercise) => exercise.id))
+      const next = { ...prev }
+      let changed = false
 
-    Object.keys(next).forEach((id) => {
-      if (!activeIds.has(id)) {
-        delete next[id]
-        changed = true
-      }
+      Object.keys(next).forEach((id) => {
+        if (!activeIds.has(id)) {
+          delete next[id]
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
     })
-
-    return changed ? next : prev
-  })
-}, [exercises])
+  }, [exercises])
 
   useEffect(() => {
     setRestReady((prev) => {
@@ -364,7 +365,9 @@ useEffect(() => {
       setTimeout(async () => {
         try {
           const { sound: sound2 } = await Audio.Sound.createAsync(
-            { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
+            {
+              uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
+            },
             { shouldPlay: true, volume: 1.0 },
           )
 
@@ -554,7 +557,11 @@ useEffect(() => {
     onDataChange(newExercises)
   }
 
-  const focusNextInput = (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+  const focusNextInput = (
+    exerciseIndex: number,
+    setIndex: number,
+    field: 'weight' | 'reps',
+  ) => {
     if (field === 'weight') {
       // Move to reps field of the same set
       const repsKey = `${exerciseIndex}-${setIndex}-reps`
@@ -629,7 +636,9 @@ useEffect(() => {
                   <Text style={styles.setText}>Set {setIndex + 1}: </Text>
                   <TextInput
                     ref={(ref) => {
-                      inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref
+                      inputRefs.current[
+                        `${exerciseIndex}-${setIndex}-weight`
+                      ] = ref
                     }}
                     style={styles.inlineInput}
                     placeholder={
@@ -645,16 +654,19 @@ useEffect(() => {
                     onChangeText={(value) =>
                       handleWeightChange(exerciseIndex, setIndex, value)
                     }
-                    onSubmitEditing={() => focusNextInput(exerciseIndex, setIndex, 'weight')}
+                    onSubmitEditing={() =>
+                      focusNextInput(exerciseIndex, setIndex, 'weight')
+                    }
                     returnKeyType="next"
                     cursorColor={colors.primary}
                     selectionColor={colors.primary}
-                    includeFontPadding={false}
                   />
                   <Text style={styles.setText}> {unitDisplay} x </Text>
                   <TextInput
                     ref={(ref) => {
-                      inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref
+                      inputRefs.current[
+                        `${exerciseIndex}-${setIndex}-reps`
+                      ] = ref
                     }}
                     style={styles.inlineInput}
                     placeholder={
@@ -670,11 +682,12 @@ useEffect(() => {
                     onChangeText={(value) =>
                       handleRepsChange(exerciseIndex, setIndex, value)
                     }
-                    onSubmitEditing={() => focusNextInput(exerciseIndex, setIndex, 'reps')}
+                    onSubmitEditing={() =>
+                      focusNextInput(exerciseIndex, setIndex, 'reps')
+                    }
                     returnKeyType="next"
                     cursorColor={colors.primary}
                     selectionColor={colors.primary}
-                    includeFontPadding={false}
                   />
                   <Text style={styles.setText}> reps</Text>
                   {targetText && (
@@ -705,7 +718,9 @@ useEffect(() => {
                       exercise.sets.length > 1 && (
                         <TouchableOpacity
                           style={styles.deleteSetButton}
-                          onPress={() => handleDeleteSet(exerciseIndex, setIndex)}
+                          onPress={() =>
+                            handleDeleteSet(exerciseIndex, setIndex)
+                          }
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
                           <Ionicons

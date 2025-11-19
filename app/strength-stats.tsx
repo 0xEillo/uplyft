@@ -7,25 +7,25 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  getStandardsLadder,
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel,
+    getStandardsLadder,
+    getStrengthStandard,
+    hasStrengthStandards,
+    type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ExerciseRecord {
   weight: number
@@ -94,7 +94,7 @@ export default function StrengthStatsScreen() {
   }
 
   const handleExitComplete = () => {
-    router.push('/(tabs)/analytics?tab=progress')
+    router.back()
   }
 
   const toggleExercise = useCallback((exerciseId: string) => {
@@ -151,6 +151,7 @@ export default function StrengthStatsScreen() {
   }
 
   const styles = createStyles(colors)
+  const insets = useSafeAreaInsets()
 
   return (
     <SlideInView
@@ -164,7 +165,7 @@ export default function StrengthStatsScreen() {
           headerShown: false,
         }}
       />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
         {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -481,7 +482,7 @@ export default function StrengthStatsScreen() {
           </ScrollView>
         )}
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Paywall Modal */}
       <Paywall
@@ -734,7 +735,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: 'transparent',
       borderBottomColor: colors.primary,
       borderBottomWidth: 2,
-      paddingBottomAdjust: -1,
+      paddingBottom: -1,
     },
     levelRowLeft: {
       flexDirection: 'row',

@@ -1,4 +1,4 @@
-import type { BodyLogRecord } from '@/lib/body-log/metadata'
+import type { BodyLogEntry } from '@/lib/body-log/metadata'
 
 export interface BodyLogContextSummary {
   latest?: {
@@ -14,7 +14,7 @@ export interface BodyLogContextSummary {
   }
 }
 
-function normalizeRecords(records: BodyLogRecord[]): BodyLogRecord[] {
+function normalizeRecords(records: BodyLogEntry[]): BodyLogEntry[] {
   return [...records].sort((a, b) => {
     const aTime = new Date(a.created_at).getTime()
     const bTime = new Date(b.created_at).getTime()
@@ -29,7 +29,7 @@ function diff(a: number | null, b: number | null): number | null {
 }
 
 export function summarizeBodyLogContext(
-  records: BodyLogRecord[] | null | undefined,
+  records: BodyLogEntry[] | null | undefined,
   options: { trendWindow?: number } = {},
 ): BodyLogContextSummary | null {
   if (!records || records.length === 0) {

@@ -99,8 +99,8 @@ export default function SettingsScreen() {
   }, [router])
 
   const handleGoBack = useCallback(() => {
-    if (resolvedReturnTo) {
-      router.replace(resolvedReturnTo)
+    if (resolvedReturnTo && typeof resolvedReturnTo === 'string') {
+      router.replace(resolvedReturnTo as any)
       return
     }
     router.back()
@@ -731,7 +731,8 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.unitButtonText,
-                        themePreference === option && styles.unitButtonTextActive,
+                        themePreference === option &&
+                          styles.unitButtonTextActive,
                       ]}
                     >
                       {option === 'system'
@@ -752,7 +753,8 @@ export default function SettingsScreen() {
                 <View>
                   <Text style={styles.preferenceTitle}>Private Profile</Text>
                   <Text style={styles.preferenceDescription}>
-                    Only approved followers can see your workouts, comments, and likes.
+                    Only approved followers can see your workouts, comments, and
+                    likes.
                   </Text>
                 </View>
               </View>
@@ -761,9 +763,7 @@ export default function SettingsScreen() {
                 onValueChange={handleTogglePrivacy}
                 disabled={!profile || isPrivacyUpdating}
                 trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
-                thumbColor={
-                  profile?.is_private ? colors.primary : '#F3F4F6'
-                }
+                thumbColor={profile?.is_private ? colors.primary : '#F3F4F6'}
               />
             </View>
           </View>
@@ -785,7 +785,9 @@ export default function SettingsScreen() {
                 color={colors.textSecondary}
               />
               <View>
-                <Text style={styles.actionButtonTextNeutral}>Follow Requests</Text>
+                <Text style={styles.actionButtonTextNeutral}>
+                  Follow Requests
+                </Text>
                 <Text style={styles.actionButtonSubtext}>
                   Approve new followers or cancel pending invites.
                 </Text>

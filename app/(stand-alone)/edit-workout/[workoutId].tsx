@@ -1,3 +1,4 @@
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -27,7 +28,7 @@ import {
   UIManager,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Enable LayoutAnimation on Android
 if (
@@ -84,6 +85,17 @@ export default function EditWorkoutScreen() {
   const [imageLoading, setImageLoading] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const imageOpacity = useRef(new Animated.Value(0)).current
+
+  // Slide in view state
+  const [shouldExit, setShouldExit] = useState(false)
+
+  const handleExit = useCallback(() => {
+    setShouldExit(true)
+  }, [])
+
+  const handleExitComplete = useCallback(() => {
+    router.back()
+  }, [router])
 
   const handleImageSelected = useCallback(
     async (uri: string) => {
@@ -158,11 +170,11 @@ export default function EditWorkoutScreen() {
     } catch (error) {
       console.error('Error loading workout:', error)
       Alert.alert('Error', 'Failed to load workout')
-      router.back()
+      handleExit()
     } finally {
       setIsLoading(false)
     }
-  }, [router, workoutId])
+  }, [handleExit, workoutId])
 
   useEffect(() => {
     loadWorkout()
@@ -331,7 +343,7 @@ export default function EditWorkoutScreen() {
       )
       await Promise.all(updateSetPromises)
 
-      router.back()
+      handleExit()
     } catch (error) {
       console.error('Error saving workout:', error)
       Alert.alert('Error', 'Failed to save changes. Please try again.')
@@ -348,7 +360,7 @@ export default function EditWorkoutScreen() {
     editedTitle,
     editedImageUrl,
     imageDeleted,
-    router,
+    handleExit,
     workout,
     workoutId,
   ])
@@ -483,15 +495,16 @@ export default function EditWorkoutScreen() {
     }
   }
 
+  const insets = useSafeAreaInsets()
   const styles = createStyles(colors)
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
@@ -500,300 +513,315 @@ export default function EditWorkoutScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-          >
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Workout</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            style={styles.headerButton}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={styles.saveText}>Save</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Title Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Title</Text>
-            <TextInput
-              style={styles.input}
-              value={editedTitle}
-              onChangeText={setEditedTitle}
-              placeholder="Workout Title"
-              placeholderTextColor={colors.textPlaceholder}
-              maxLength={50}
-            />
+    <SlideInView
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+      style={styles.container}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => handleExit()}
+              style={styles.headerButton}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Workout</Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              style={styles.headerButton}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.saveText}>Save</Text>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Notes Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Notes</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={editedNotes}
-              onChangeText={setEditedNotes}
-              placeholder="Workout notes..."
-              placeholderTextColor={colors.textPlaceholder}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Title Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Title</Text>
+              <TextInput
+                style={styles.input}
+                value={editedTitle}
+                onChangeText={setEditedTitle}
+                placeholder="Workout Title"
+                placeholderTextColor={colors.textPlaceholder}
+                maxLength={50}
+              />
+            </View>
 
-          {/* Photo Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Photo</Text>
-            {!imageDeleted && (editedImageUrl || workout.image_url) ? (
-              <View style={styles.imageContainer}>
-                <View style={styles.imageWrapper}>
-                  <Animated.Image
-                    source={{
-                      uri: editedImageUrl || workout.image_url || undefined,
-                    }}
-                    style={[styles.workoutImage, { opacity: imageOpacity }]}
-                    resizeMode="cover"
-                    onLoadStart={() => setImageLoading(true)}
-                    onLoad={() => {
-                      setImageLoading(false)
-                      Animated.timing(imageOpacity, {
-                        toValue: 1,
-                        duration: IMAGE_FADE_DURATION,
-                        useNativeDriver: true,
-                      }).start()
-                    }}
-                    onError={(error) => {
-                      console.error(
-                        'Failed to load workout image:',
-                        error.nativeEvent.error,
-                      )
-                      setImageLoading(false)
-                    }}
-                  />
-                  {imageLoading && (
-                    <View style={styles.imageLoadingOverlay}>
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    </View>
-                  )}
-                </View>
-                <View style={styles.imageButtons}>
-                  <TouchableOpacity
-                    style={[styles.imageButton, styles.changeButton]}
-                    onPress={pickImage}
-                    disabled={isUploadingImage}
-                  >
-                    {isUploadingImage ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="camera-outline"
-                          size={18}
+            {/* Notes Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Notes</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={editedNotes}
+                onChangeText={setEditedNotes}
+                placeholder="Workout notes..."
+                placeholderTextColor={colors.textPlaceholder}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Photo Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Photo</Text>
+              {!imageDeleted && (editedImageUrl || workout.image_url) ? (
+                <View style={styles.imageContainer}>
+                  <View style={styles.imageWrapper}>
+                    <Animated.Image
+                      source={{
+                        uri: editedImageUrl || workout.image_url || undefined,
+                      }}
+                      style={[styles.workoutImage, { opacity: imageOpacity }]}
+                      resizeMode="cover"
+                      onLoadStart={() => setImageLoading(true)}
+                      onLoad={() => {
+                        setImageLoading(false)
+                        Animated.timing(imageOpacity, {
+                          toValue: 1,
+                          duration: IMAGE_FADE_DURATION,
+                          useNativeDriver: true,
+                        }).start()
+                      }}
+                      onError={(error) => {
+                        console.error(
+                          'Failed to load workout image:',
+                          error.nativeEvent.error,
+                        )
+                        setImageLoading(false)
+                      }}
+                    />
+                    {imageLoading && (
+                      <View style={styles.imageLoadingOverlay}>
+                        <ActivityIndicator
+                          size="small"
                           color={colors.primary}
                         />
-                        <Text style={styles.changeButtonText}>
-                          Change Photo
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.imageButton, styles.deleteButton]}
-                    onPress={handleDeleteImage}
-                    disabled={isUploadingImage}
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={18}
-                      color={colors.error}
-                    />
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.addPhotoButton}
-                onPress={pickImage}
-                disabled={isUploadingImage}
-              >
-                {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="camera-outline"
-                      size={24}
-                      color={colors.primary}
-                    />
-                    <Text style={styles.addPhotoText}>Add Photo</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Exercises Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Exercises</Text>
-            {workout.workout_exercises
-              ?.filter((we) => !deletedExerciseIds.has(we.id))
-              .map((workoutExercise, index) => {
-                const isExpanded = expandedExercises.has(workoutExercise.id)
-                const activeSets = workoutExercise.sets?.filter(
-                  (s) => !deletedSetIds.has(s.id),
-                )
-                return (
-                  <View key={workoutExercise.id} style={styles.exerciseCard}>
-                    {/* Exercise Header */}
-                    <TouchableOpacity
-                      style={styles.exerciseHeader}
-                      onPress={() => toggleExercise(workoutExercise.id)}
-                    >
-                      <View style={styles.exerciseHeaderLeft}>
-                        <Text style={styles.exerciseName}>
-                          {workoutExercise.exercise?.name || 'Exercise'}
-                        </Text>
-                        <Text style={styles.setCount}>
-                          {activeSets?.length || 0} sets
-                        </Text>
-                      </View>
-                      <View style={styles.exerciseHeaderRight}>
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation()
-                            handleEditExercise(workoutExercise.id)
-                          }}
-                          style={styles.editExerciseButton}
-                        >
-                          <Ionicons
-                            name="create-outline"
-                            size={18}
-                            color={colors.primary}
-                          />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation()
-                            deleteExercise(workoutExercise.id)
-                          }}
-                          style={styles.deleteExerciseButton}
-                        >
-                          <Ionicons
-                            name="trash-outline"
-                            size={18}
-                            color={colors.error}
-                          />
-                        </TouchableOpacity>
-                        <Ionicons
-                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                          size={20}
-                          color={colors.textSecondary}
-                        />
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Sets (Expanded) */}
-                    {isExpanded && (
-                      <View style={styles.setsContainer}>
-                        {/* Sets Table Header */}
-                        <View style={styles.setsTableHeader}>
-                          <Text style={styles.setHeaderText}>Set</Text>
-                          <Text style={styles.setHeaderText}>Reps</Text>
-                          <Text style={styles.setHeaderText}>
-                            Weight ({weightUnit})
-                          </Text>
-                          <Text style={styles.setHeaderText}></Text>
-                        </View>
-
-                        {/* Sets Rows */}
-                        {activeSets?.map((set, setIndex) => {
-                          const repsValue = getSetValue(
-                            set.id,
-                            'reps',
-                            set.reps,
-                          )
-                          const weightValue = getSetValue(
-                            set.id,
-                            'weight',
-                            set.weight,
-                          )
-
-                          return (
-                            <View key={set.id} style={styles.setRow}>
-                              <Text style={styles.setNumber}>
-                                {setIndex + 1}
-                              </Text>
-                              <TextInput
-                                style={styles.setInput}
-                                value={repsValue}
-                                onChangeText={(val) =>
-                                  updateSet(set.id, 'reps', val)
-                                }
-                                keyboardType="decimal-pad"
-                                placeholder="--"
-                                placeholderTextColor={colors.textPlaceholder}
-                              />
-                              <TextInput
-                                style={styles.setInput}
-                                value={weightValue}
-                                onChangeText={(val) =>
-                                  updateSet(set.id, 'weight', val)
-                                }
-                                keyboardType="decimal-pad"
-                                placeholder="BW"
-                                placeholderTextColor={colors.textPlaceholder}
-                              />
-                              <TouchableOpacity
-                                onPress={() => deleteSet(set.id)}
-                                style={styles.deleteSetButton}
-                              >
-                                <Ionicons
-                                  name="close-circle"
-                                  size={20}
-                                  color={colors.error}
-                                />
-                              </TouchableOpacity>
-                            </View>
-                          )
-                        })}
-
-                        {/* Add Set Button */}
-                        <TouchableOpacity
-                          style={styles.addSetButton}
-                          onPress={() => addSet(workoutExercise.id)}
-                        >
-                          <Ionicons
-                            name="add-circle-outline"
-                            size={20}
-                            color={colors.primary}
-                          />
-                          <Text style={styles.addSetText}>Add Set</Text>
-                        </TouchableOpacity>
                       </View>
                     )}
                   </View>
-                )
-              })}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+                  <View style={styles.imageButtons}>
+                    <TouchableOpacity
+                      style={[styles.imageButton, styles.changeButton]}
+                      onPress={pickImage}
+                      disabled={isUploadingImage}
+                    >
+                      {isUploadingImage ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={colors.primary}
+                        />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="camera-outline"
+                            size={18}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.changeButtonText}>
+                            Change Photo
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.imageButton, styles.deleteButton]}
+                      onPress={handleDeleteImage}
+                      disabled={isUploadingImage}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color={colors.error}
+                      />
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addPhotoButton}
+                  onPress={pickImage}
+                  disabled={isUploadingImage}
+                >
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="camera-outline"
+                        size={24}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.addPhotoText}>Add Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Exercises Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Exercises</Text>
+              {workout.workout_exercises
+                ?.filter((we) => !deletedExerciseIds.has(we.id))
+                .map((workoutExercise, index) => {
+                  const isExpanded = expandedExercises.has(workoutExercise.id)
+                  const activeSets = workoutExercise.sets?.filter(
+                    (s) => !deletedSetIds.has(s.id),
+                  )
+                  return (
+                    <View key={workoutExercise.id} style={styles.exerciseCard}>
+                      {/* Exercise Header */}
+                      <TouchableOpacity
+                        style={styles.exerciseHeader}
+                        onPress={() => toggleExercise(workoutExercise.id)}
+                      >
+                        <View style={styles.exerciseHeaderLeft}>
+                          <Text style={styles.exerciseName}>
+                            {workoutExercise.exercise?.name || 'Exercise'}
+                          </Text>
+                          <Text style={styles.setCount}>
+                            {activeSets?.length || 0} sets
+                          </Text>
+                        </View>
+                        <View style={styles.exerciseHeaderRight}>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation()
+                              handleEditExercise(workoutExercise.id)
+                            }}
+                            style={styles.editExerciseButton}
+                          >
+                            <Ionicons
+                              name="create-outline"
+                              size={18}
+                              color={colors.primary}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation()
+                              deleteExercise(workoutExercise.id)
+                            }}
+                            style={styles.deleteExerciseButton}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color={colors.error}
+                            />
+                          </TouchableOpacity>
+                          <Ionicons
+                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={20}
+                            color={colors.textSecondary}
+                          />
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Sets (Expanded) */}
+                      {isExpanded && (
+                        <View style={styles.setsContainer}>
+                          {/* Sets Table Header */}
+                          <View style={styles.setsTableHeader}>
+                            <Text style={styles.setHeaderText}>Set</Text>
+                            <Text style={styles.setHeaderText}>Reps</Text>
+                            <Text style={styles.setHeaderText}>
+                              Weight ({weightUnit})
+                            </Text>
+                            <Text style={styles.setHeaderText}></Text>
+                          </View>
+
+                          {/* Sets Rows */}
+                          {activeSets?.map((set, setIndex) => {
+                            const repsValue = getSetValue(
+                              set.id,
+                              'reps',
+                              set.reps,
+                            )
+                            const weightValue = getSetValue(
+                              set.id,
+                              'weight',
+                              set.weight,
+                            )
+
+                            return (
+                              <View key={set.id} style={styles.setRow}>
+                                <Text style={styles.setNumber}>
+                                  {setIndex + 1}
+                                </Text>
+                                <TextInput
+                                  style={styles.setInput}
+                                  value={repsValue}
+                                  onChangeText={(val) =>
+                                    updateSet(set.id, 'reps', val)
+                                  }
+                                  keyboardType="decimal-pad"
+                                  placeholder="--"
+                                  placeholderTextColor={colors.textPlaceholder}
+                                />
+                                <TextInput
+                                  style={styles.setInput}
+                                  value={weightValue}
+                                  onChangeText={(val) =>
+                                    updateSet(set.id, 'weight', val)
+                                  }
+                                  keyboardType="decimal-pad"
+                                  placeholder="BW"
+                                  placeholderTextColor={colors.textPlaceholder}
+                                />
+                                <TouchableOpacity
+                                  onPress={() => deleteSet(set.id)}
+                                  style={styles.deleteSetButton}
+                                >
+                                  <Ionicons
+                                    name="close-circle"
+                                    size={20}
+                                    color={colors.error}
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            )
+                          })}
+
+                          {/* Add Set Button */}
+                          <TouchableOpacity
+                            style={styles.addSetButton}
+                            onPress={() => addSet(workoutExercise.id)}
+                          >
+                            <Ionicons
+                              name="add-circle-outline"
+                              size={20}
+                              color={colors.primary}
+                            />
+                            <Text style={styles.addSetText}>Add Set</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  )
+                })}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </SlideInView>
   )
 }
 
@@ -801,7 +829,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     keyboardView: {
       flex: 1,
@@ -810,6 +838,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.background,
     },
     header: {
       flexDirection: 'row',
@@ -841,6 +870,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     content: {
       flex: 1,
+      backgroundColor: colors.background,
     },
     section: {
       padding: 16,

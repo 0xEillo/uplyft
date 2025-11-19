@@ -283,7 +283,7 @@ export default function SearchScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Status bar background to match navbar */}
         <View style={[styles.statusBarBackground, { height: insets.top }]} />
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -483,7 +483,7 @@ export default function SearchScreen() {
             <Text style={styles.inviteButtonText}>Invite</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </SlideInView>
   )
 }

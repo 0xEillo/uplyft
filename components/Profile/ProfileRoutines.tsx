@@ -120,7 +120,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="list-outline" size={20} color={colors.text} />
+        <Ionicons name="albums-outline" size={20} color={colors.text} />
         <Text style={styles.title}>Routines</Text>
       </View>
       

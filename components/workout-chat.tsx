@@ -5,41 +5,50 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import {
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
+} from '@/lib/ai/ai-workout-converter'
+import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
+import { saveDraft } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
+import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
 } from 'react-native-gesture-handler'
+import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -57,11 +66,23 @@ interface ExamplePrompt {
 
 interface WorkoutPlanningState {
   isActive: boolean
-  step: 'muscles' | 'duration' | 'intensity' | 'none'
+  step: 'muscles' | 'duration' | 'intensity' | 'specifics' | 'none'
   data: {
     muscles?: string
     duration?: string
     intensity?: string
+    specifics?: string
+  }
+}
+
+interface RoutinePlanningState {
+  isActive: boolean
+  step: 'focus' | 'muscles' | 'duration' | 'specifics' | 'none'
+  data: {
+    focus?: string
+    muscles?: string
+    duration?: string
+    specifics?: string
   }
 }
 
@@ -93,8 +114,8 @@ const IMAGE_EXAMPLES: ExamplePrompt[] = [
 const ALL_EXAMPLES = [...TEXT_EXAMPLES, ...IMAGE_EXAMPLES]
 
 const FIXED_EXAMPLES: ExamplePrompt[] = [
-  { text: 'Plan my next workout', requiresImage: false },
-  { text: 'Create a routine', requiresImage: false },
+  { text: 'Plan Workout', requiresImage: false },
+  { text: 'Create Routine', requiresImage: false },
 ]
 
 const MAX_IMAGES = 10
@@ -114,7 +135,7 @@ export function WorkoutChat() {
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [displayedExamples] = useState<ExamplePrompt[]>(() =>
-    getRandomExamples(2),
+    getRandomExamples(4),
   )
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -129,6 +150,13 @@ export function WorkoutChat() {
     step: 'none',
     data: {},
   })
+  const [routinePlanning, setRoutinePlanning] = useState<RoutinePlanningState>({
+    isActive: false,
+    step: 'none',
+    data: {},
+  })
+  const [isWorkoutGenerated, setIsWorkoutGenerated] = useState(false)
+  const [isRoutineGenerated, setIsRoutineGenerated] = useState(false)
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
@@ -147,6 +175,16 @@ export function WorkoutChat() {
       scrollToBottom()
     }
   }, [messages.length])
+
+  // Scroll to bottom when buttons appear (to ensure they're visible)
+  useEffect(() => {
+    if (isWorkoutGenerated || isRoutineGenerated) {
+      // Small delay to ensure buttons are rendered before scrolling
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true })
+      }, 100)
+    }
+  }, [isWorkoutGenerated, isRoutineGenerated])
 
   // Scroll to bottom when keyboard appears
   useEffect(() => {
@@ -413,6 +451,9 @@ export function WorkoutChat() {
     }
     setMessages((prev) => [...prev, userMessage])
 
+    let hiddenPromptContent: string | undefined
+    let pendingGenerationType: 'workout' | 'routine' | null = null
+
     // Handle Workout Planning Flow
     if (workoutPlanning.isActive) {
       let nextStep: WorkoutPlanningState['step'] = 'none'
@@ -431,6 +472,11 @@ export function WorkoutChat() {
           'Got it. What about intensity and volume? (e.g., High intensity, low volume, strength focus)'
       } else if (workoutPlanning.step === 'intensity') {
         nextData.intensity = messageContent
+        nextStep = 'specifics'
+        assistantMessage =
+          'Almost done. Any specific requests or injuries I should know about? (Optional, just say "none" if not)'
+      } else if (workoutPlanning.step === 'specifics') {
+        nextData.specifics = messageContent
         nextStep = 'none'
         // Final step: Proceed to call API with constructed prompt
       }
@@ -454,12 +500,13 @@ export function WorkoutChat() {
         return
       }
 
-      // If we reached here, it means we finished the flow (step was 'intensity')
+      // If we reached here, it means we finished the flow (step was 'specifics')
       // Construct the final prompt
       const finalPrompt = `Plan a workout for me.
 Muscle Groups: ${nextData.muscles}
 Duration: ${nextData.duration}
-Intensity/Style: ${messageContent}
+Intensity/Style: ${nextData.intensity}
+Specific Requests: ${messageContent}
 Please provide a detailed workout routine based on these preferences.`
 
       // Reset planning state
@@ -469,158 +516,88 @@ Please provide a detailed workout routine based on these preferences.`
         data: {},
       })
 
-      // Continue to API call with the constructed prompt instead of just the last message
-      // We need to replace the last user message content in the API call context,
-      // but visually we keep the user's last answer ("High intensity").
-      // Actually, for the API context, we should probably send the whole conversation history
-      // OR just send the summarized prompt as the "user" message for the AI to act on.
-      // To make it simple and robust, let's send the constructed prompt as the last message content to the API.
-      // But we don't want to change what the user sees in the UI.
+      pendingGenerationType = 'workout'
 
-      setIsLoading(true)
+      // Continue to API call with the constructed prompt...
+      // We'll handle the API call below, passing finalPrompt as the user message content for the AI logic
+      // but keeping the UI user message as is.
+      // To achieve this, we'll just update the logic below where formattedMessages are created.
 
-      try {
-        const { getSupabaseFunctionBaseUrl } = await import(
-          '@/lib/supabase-functions-client'
-        )
+      // But wait, the logic below uses `messages` state which currently has the user's last answer.
+      // We need to pass this `finalPrompt` to the API call logic.
+      // The easiest way is to let the flow continue, but we need to distinguish this specific case.
+      // Let's wrap the API call in a shared function or duplicate the logic?
+      // Or better, just modify the `userMessage` variable here? No, that's already added to state.
 
-        // Format messages for API
-        // We'll use the visible messages history, but for the very last message (which triggered the final step),
-        // we'll swap its content with the detailed prompt so the AI knows what to do.
-        const formattedMessages = messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        }))
-
-        // Add the current user message (which was just added to UI state)
-        // but with the FULL PROMPT content for the AI
-        formattedMessages.push({
-          role: 'user',
-          content: finalPrompt,
-        })
-
-        const requestBody: any = {
-          messages: formattedMessages,
-          userId: user?.id,
-          weightUnit,
-        }
-
-        const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-no-stream': '1',
-            ...(session?.access_token
-              ? { Authorization: `Bearer ${session.access_token}` }
-              : {}),
-          },
-          body: JSON.stringify(requestBody),
-        })
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to get response: ${response.status} ${response.statusText}`,
-          )
-        }
-
-        const assistantMessageId = (Date.now() + 1).toString()
-        setMessages((prev) => [
-          ...prev,
-          { id: assistantMessageId, role: 'assistant', content: '' },
-        ])
-
-        const reader = response.body?.getReader()
-        if (!reader) {
-          const assistantContent = await response.text()
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId
-                ? { ...m, content: assistantContent }
-                : m,
-            ),
-          )
-        } else {
-          // ... (Reuse existing streaming logic)
-          // For brevity, I'll copy the streaming logic structure but it needs to be identical.
-          // Since I cannot easily "call" the existing code, I have to duplicate the streaming logic here
-          // or refactor it into a helper. Given the constraints, I will duplicate the essential streaming part.
-          const decoder = new TextDecoder()
-          let buffer = ''
-          let acc = ''
-          let ndjsonMode: boolean | null = null
-
-          while (true) {
-            const { value, done } = await reader.read()
-            if (done) break
-            const chunk = decoder.decode(value, { stream: true })
-
-            if (ndjsonMode === null) {
-              const firstNonWs = chunk.trimStart()[0]
-              ndjsonMode = firstNonWs === '{' || chunk.startsWith('data:')
-            }
-
-            if (!ndjsonMode) {
-              acc += chunk
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMessageId ? { ...m, content: acc } : m,
-                ),
-              )
-              continue
-            }
-
-            buffer += chunk
-            let newlineIndex: number
-            while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-              let line = buffer.slice(0, newlineIndex).trim()
-              buffer = buffer.slice(newlineIndex + 1)
-              if (!line || line === '[DONE]') continue
-              if (line.startsWith('data:')) line = line.slice(5).trim()
-
-              try {
-                const evt = JSON.parse(line)
-                if (
-                  evt.type === 'text-delta' &&
-                  typeof evt.textDelta === 'string'
-                ) {
-                  acc += evt.textDelta
-                } else if (
-                  evt.type === 'message' &&
-                  typeof evt.text === 'string'
-                ) {
-                  acc += evt.text
-                }
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId ? { ...m, content: acc } : m,
-                  ),
-                )
-              } catch {
-                acc += line
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId ? { ...m, content: acc } : m,
-                  ),
-                )
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Chat error:', error)
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: "Sorry, I couldn't process that request. Please try again.",
-          },
-        ])
-      } finally {
-        setIsLoading(false)
-      }
-      return
+      // We can set a temporary variable that will be used for the prompt content
+      hiddenPromptContent = finalPrompt
     }
+
+    // Handle Routine Planning Flow
+    if (routinePlanning.isActive) {
+      let nextStep: RoutinePlanningState['step'] = 'none'
+      let assistantMessage = ''
+      let nextData = { ...routinePlanning.data }
+
+      if (routinePlanning.step === 'focus') {
+        nextData.focus = messageContent
+        nextStep = 'muscles'
+        assistantMessage =
+          'Got it. What muscle groups do you want to focus on? (e.g., Full Body, Upper Body, Legs, Chest & Triceps)'
+      } else if (routinePlanning.step === 'muscles') {
+        nextData.muscles = messageContent
+        nextStep = 'duration'
+        assistantMessage =
+          'Okay. How long should this routine take? (e.g., 30 mins, 1 hour, 90 mins)'
+      } else if (routinePlanning.step === 'duration') {
+        nextData.duration = messageContent
+        nextStep = 'specifics'
+        assistantMessage =
+          'Almost done. Any specific requests or equipment limitations? (e.g., Dumbbells only, No jumping, Include cardio)'
+      } else if (routinePlanning.step === 'specifics') {
+        nextData.specifics = messageContent
+        nextStep = 'none'
+        // Final step
+      }
+
+      if (nextStep !== 'none') {
+        setRoutinePlanning({
+          isActive: true,
+          step: nextStep,
+          data: nextData,
+        })
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: assistantMessage,
+            },
+          ])
+        }, 500)
+        return
+      }
+
+      // Final step reached
+      const finalPrompt = `Create a reusable workout routine template.
+Focus/Goal: ${nextData.focus}
+Muscles Targeted: ${nextData.muscles}
+Target Duration: ${nextData.duration}
+Custom Specifications: ${messageContent}
+Please provide a structured routine template.`
+
+      setRoutinePlanning({
+        isActive: false,
+        step: 'none',
+        data: {},
+      })
+
+      pendingGenerationType = 'routine'
+      hiddenPromptContent = finalPrompt
+    }
+
+    // setIsWorkoutGenerated(false) // Don't reset this, so the button stays visible for refinements
 
     setIsLoading(true)
 
@@ -647,6 +624,26 @@ Please provide a detailed workout routine based on these preferences.`
         role: m.role,
         content: m.content,
       }))
+
+      // Check if we have a hidden prompt content from the planning flows
+      if (typeof hiddenPromptContent !== 'undefined') {
+        // Replace the last user message content with the full prompt for the AI
+        formattedMessages[
+          formattedMessages.length - 1
+        ].content = hiddenPromptContent
+      } else {
+        // If we already generated a workout/routine, and the user is sending a new message,
+        // we assume they might be refining it.
+        if (isWorkoutGenerated) {
+          const lastMsg = formattedMessages[formattedMessages.length - 1]
+          lastMsg.content +=
+            '\n\n(If this request involves modifying the workout plan, please output the FULL updated workout routine details (exercises, sets, reps) in your response, not just the changes. I need the complete routine to start the workout.)'
+        } else if (isRoutineGenerated) {
+          const lastMsg = formattedMessages[formattedMessages.length - 1]
+          lastMsg.content +=
+            '\n\n(If this request involves modifying the routine, please output the FULL updated routine details in your response. I need the complete structure to save it.)'
+        }
+      }
 
       // Prepare request body with images as separate field
       const requestBody: any = {
@@ -829,6 +826,11 @@ Please provide a detailed workout routine based on these preferences.`
       ])
     } finally {
       setIsLoading(false)
+      if (pendingGenerationType === 'workout') {
+        setIsWorkoutGenerated(true)
+      } else if (pendingGenerationType === 'routine') {
+        setIsRoutineGenerated(true)
+      }
     }
   }
 
@@ -842,7 +844,7 @@ Please provide a detailed workout routine based on these preferences.`
       return
     }
 
-    if (question === 'Plan my next workout') {
+    if (question === 'Plan Workout') {
       setWorkoutPlanning({
         isActive: true,
         step: 'muscles',
@@ -870,6 +872,34 @@ Please provide a detailed workout routine based on these preferences.`
       return
     }
 
+    if (question === 'Create Routine') {
+      setRoutinePlanning({
+        isActive: true,
+        step: 'focus',
+        data: {},
+      })
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'user',
+          content: question,
+        },
+      ])
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content:
+              'I can help you create a reusable routine. What is the primary focus or goal of this routine? (e.g., Strength, Hypertrophy, Fat Loss, Sport Specific)',
+          },
+        ])
+      }, 500)
+      return
+    }
+
     setInput(question)
   }
 
@@ -878,8 +908,218 @@ Please provide a detailed workout routine based on these preferences.`
     setMessages([])
     setInput('')
     setSelectedImages([])
+    setWorkoutPlanning({
+      isActive: false,
+      step: 'none',
+      data: {},
+    })
+    setRoutinePlanning({
+      isActive: false,
+      step: 'none',
+      data: {},
+    })
+    setIsWorkoutGenerated(false)
+    setIsRoutineGenerated(false)
     inputRef.current?.clear()
     Keyboard.dismiss()
+  }
+
+  const handleStartWorkout = async () => {
+    if (isLoading) return
+
+    // Find the last assistant message (the workout plan)
+    const lastAssistantMessage = [...messages]
+      .reverse()
+      .find((m) => m.role === 'assistant')
+
+    if (!lastAssistantMessage) {
+      Alert.alert('Error', 'No workout plan found to start.')
+      return
+    }
+
+    setIsLoading(true)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+    try {
+      const workoutData = await convertAiPlanToWorkout({
+        text: lastAssistantMessage.content,
+        userId: user?.id,
+        weightUnit,
+        token: session?.access_token,
+      })
+
+      // Convert to StructuredExerciseDraft format
+      const generateId = () =>
+        Date.now().toString(36) + Math.random().toString(36).substr(2)
+
+      const structuredData = workoutData.exercises.map((ex: any) => ({
+        id: generateId(),
+        name: ex.name,
+        sets: ex.sets.map((s: any) => ({
+          weight: s.weight || '',
+          reps: s.reps || '',
+          lastWorkoutWeight: null,
+          lastWorkoutReps: null,
+          targetRepsMin: s.repsMin || null,
+          targetRepsMax: s.repsMax || null,
+          targetRestSeconds: null,
+        })),
+      }))
+
+      // Save draft
+      await saveDraft({
+        title: workoutData.title || 'AI Generated Workout',
+        notes: workoutData.description || 'Generated from AI Chat',
+        structuredData,
+        isStructuredMode: true,
+      })
+
+      // Navigate to create-post
+      router.push('/(tabs)/create-post')
+    } catch (error) {
+      console.error('Error starting workout:', error)
+      Alert.alert(
+        'Error',
+        'Failed to create workout from chat. Please try again.',
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateRoutine = async () => {
+    if (isLoading) return
+
+    // Find the last assistant message (the routine plan)
+    const lastAssistantMessage = [...messages]
+      .reverse()
+      .find((m) => m.role === 'assistant')
+
+    if (!lastAssistantMessage) {
+      Alert.alert('Error', 'No routine plan found to create.')
+      return
+    }
+
+    setIsLoading(true)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+    try {
+      if (!user?.id) throw new Error('User not found')
+
+      const routineData = await convertAiPlanToRoutine({
+        text: lastAssistantMessage.content,
+        userId: user.id,
+        weightUnit,
+        token: session?.access_token,
+      })
+
+      // Create routine
+      const routine = await database.workoutRoutines.create(
+        user.id,
+        routineData.title || 'AI Generated Routine',
+        routineData.description || 'Generated from AI Chat',
+      )
+
+      // Resolve exercises and create routine exercises/sets
+      const routineSets: any[] = []
+
+      for (let i = 0; i < routineData.exercises.length; i++) {
+        const ex = routineData.exercises[i]
+
+        // Find exercise by name (fuzzy match)
+        const { data: foundExercises } = await supabase
+          .from('exercises')
+          .select('id, name')
+          .ilike('name', ex.name)
+          .limit(1)
+
+        let exerciseId = foundExercises?.[0]?.id
+
+        // If not found, try a broader search or fallback?
+        // For now, if not found, we skip it or maybe try to find "similar"?
+        // Let's try a broader search if exact match failed
+        if (!exerciseId) {
+          const { data: looseMatch } = await supabase
+            .from('exercises')
+            .select('id, name')
+            .textSearch('name', ex.name)
+            .limit(1)
+          exerciseId = looseMatch?.[0]?.id
+        }
+
+        if (exerciseId) {
+          // Add to routine exercises list (we'll insert them all at once)
+          // Wait, we need the ID of the inserted routine_exercise to insert sets.
+          // So we must insert them one by one or in a batch and then map them back.
+          // Let's do one by one for simplicity and reliability here.
+
+          const { data: insertedExercise, error: exError } = await supabase
+            .from('workout_routine_exercises')
+            .insert({
+              routine_id: routine.id,
+              exercise_id: exerciseId,
+              order_index: i,
+              notes: null,
+            })
+            .select()
+            .single()
+
+          if (exError || !insertedExercise) {
+            console.error('Error inserting routine exercise:', exError)
+            continue
+          }
+
+          // Prepare sets for this exercise
+          ex.sets.forEach((s, setIndex) => {
+            routineSets.push({
+              routine_exercise_id: insertedExercise.id,
+              set_number: setIndex + 1,
+              reps_min: s.repsMin || null,
+              reps_max: s.repsMax || null,
+              // If a single rep number was given as string "10", we could parse it.
+              // convertAiPlanToRoutine gives repsMin/Max if range, or we might put single number in min/max?
+              // The converter logic: if range "8-12", min=8, max=12. If "10", min=null, max=null, reps="10".
+              // But our database only supports reps_min/reps_max for routines usually?
+              // Let's check schema. workout_routine_sets has reps_min, reps_max, rest_seconds.
+              // It doesn't seem to have a fixed 'reps' column.
+              // So if we have a single target, we can set min=max=target? Or just leave it null?
+              // Usually for routines, we want ranges. If "10 reps", it implies target 10.
+              // Let's set min=max=10 if "10" is parsed.
+              // If the AI returns "reps" string, we need to parse it.
+            })
+
+            // Quick fix for the sets:
+            // We need to handle the 'reps' string if min/max are missing.
+            if (!s.repsMin && !s.repsMax && s.reps) {
+              const parsed = parseInt(s.reps)
+              if (!isNaN(parsed)) {
+                routineSets[routineSets.length - 1].reps_min = parsed
+                routineSets[routineSets.length - 1].reps_max = parsed
+              }
+            }
+          })
+        }
+      }
+
+      if (routineSets.length > 0) {
+        const { error: setsError } = await supabase
+          .from('workout_routine_sets')
+          .insert(routineSets)
+
+        if (setsError) throw setsError
+      }
+
+      // Navigate directly to the routine detail page
+      router.push({
+        pathname: '/routine-detail',
+        params: { routineId: routine.id },
+      })
+    } catch (error) {
+      console.error('Error creating routine:', error)
+      Alert.alert('Error', 'Failed to create routine. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const styles = createStyles(colors)
@@ -918,7 +1158,7 @@ Please provide a detailed workout routine based on these preferences.`
                 color={colors.primary}
               />
               <Text style={styles.welcomeTitle}>
-                Chat with Your Personal AI
+                Plan your workouts with AI
               </Text>
             </View>
 
@@ -943,20 +1183,6 @@ Please provide a detailed workout routine based on these preferences.`
                     <Ionicons
                       name="arrow-forward"
                       size={16}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
-                ))}
-                {FIXED_EXAMPLES.map((example, index) => (
-                  <TouchableOpacity
-                    key={`fixed-${index}`}
-                    style={styles.fixedExampleCard}
-                    onPress={() => handleExampleQuestion(example.text)}
-                  >
-                    <Text style={styles.fixedExampleText}>{example.text}</Text>
-                    <Ionicons
-                      name="add"
-                      size={20}
                       color={colors.primary}
                     />
                   </TouchableOpacity>
@@ -1119,9 +1345,62 @@ Please provide a detailed workout routine based on these preferences.`
                 <ActivityIndicator size="small" color={colors.primary} />
               </View>
             )}
+            {/* Start Workout Button - In chat section */}
+            {isWorkoutGenerated && (
+              <View style={styles.startWorkoutButtonContainer}>
+                <TouchableOpacity
+                  style={styles.startWorkoutButton}
+                  onPress={handleStartWorkout}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="barbell" size={20} color={colors.white} />
+                  <Text style={styles.startWorkoutButtonText}>
+                    Start Workout
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Create Routine Button - In chat section */}
+            {isRoutineGenerated && (
+              <View style={styles.startWorkoutButtonContainer}>
+                <TouchableOpacity
+                  style={styles.startWorkoutButton}
+                  onPress={handleCreateRoutine}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="albums-outline"
+                    size={20}
+                    color={colors.white}
+                  />
+                  <Text style={styles.startWorkoutButtonText}>
+                    Create Routine
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
+
+      {/* Fixed Example Buttons - Plan Workout & Create Routine - Pinned above input */}
+      {messages.length === 0 &&
+        !workoutPlanning.isActive &&
+        !routinePlanning.isActive && (
+          <View style={styles.fixedExamplesRow}>
+            {FIXED_EXAMPLES.map((example, index) => (
+              <TouchableOpacity
+                key={`fixed-${index}`}
+                style={styles.fixedExampleCard}
+                onPress={() => handleExampleQuestion(example.text)}
+              >
+                <Text style={styles.fixedExampleText}>{example.text}</Text>
+                <Ionicons name="add" size={18} color={colors.primary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
       {/* Input Area */}
       <View
@@ -1345,6 +1624,32 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 10,
       padding: 0,
     },
+    startWorkoutButtonContainer: {
+      alignItems: 'center',
+      marginTop: 8,
+      marginBottom: 16,
+      paddingHorizontal: 16,
+    },
+    startWorkoutButton: {
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      gap: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    startWorkoutButtonText: {
+      color: colors.white,
+      fontSize: 14,
+      fontWeight: '600',
+    },
     messagesContainer: {
       flex: 1,
     },
@@ -1410,9 +1715,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: colors.primaryLight
-        ? `${colors.primaryLight}40`
-        : `${colors.primary}15`,
+      backgroundColor: `${colors.primary}15`,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 8,
@@ -1423,27 +1726,36 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       marginRight: 12,
     },
+    fixedExamplesRow: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
     fixedExampleCard: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: colors.white,
-      padding: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
       borderRadius: 9999,
-      borderWidth: 2,
+      borderWidth: 1.5,
       borderColor: colors.primary,
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 1,
     },
     fixedExampleText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.primary,
       flex: 1,
-      marginRight: 12,
+      marginRight: 8,
     },
     chatMessages: {
       gap: 24,

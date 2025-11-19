@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function SelectExerciseScreen() {
   const colors = useThemedColors()
@@ -40,6 +40,7 @@ export default function SelectExerciseScreen() {
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
   const [showPaywall, setShowPaywall] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
+  const insets = useSafeAreaInsets()
 
   const styles = createStyles(colors)
   const trimmedQuery = searchQuery.trim()
@@ -192,7 +193,7 @@ export default function SelectExerciseScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -346,7 +347,7 @@ export default function SelectExerciseScreen() {
           title="Create Custom Exercises"
           message="Creating custom exercises is a PRO feature."
         />
-      </SafeAreaView>
+      </View>
     </SlideInView>
   )
 }

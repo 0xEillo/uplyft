@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ExerciseDetailCard } from './ExerciseDetailCard'
 import { MuscleSplitChart } from './MuscleSplitChart'
 import { WorkoutStatsGrid } from './WorkoutStatsGrid'
@@ -74,6 +75,7 @@ export function WorkoutDetailView({
   const colors = getColors(isDark)
   const router = useRouter()
   const params = useLocalSearchParams<{ returnTo?: string }>()
+  const insets = useSafeAreaInsets()
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const normalizedReturnTo = useMemo(() => {
@@ -166,6 +168,7 @@ export function WorkoutDetailView({
             {
               backgroundColor: colors.backgroundWhite,
               borderBottomColor: colors.border,
+              paddingTop: insets.top + 10,
             },
           ]}
         >
@@ -195,6 +198,7 @@ export function WorkoutDetailView({
               {
                 backgroundColor: colors.backgroundWhite,
                 borderColor: colors.border,
+                top: insets.top + 66,
               },
             ]}
           >
@@ -475,7 +479,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
@@ -491,7 +494,6 @@ const styles = StyleSheet.create({
   },
   menuDropdown: {
     position: 'absolute',
-    top: 100,
     right: 16,
     borderRadius: 8,
     borderWidth: 1,

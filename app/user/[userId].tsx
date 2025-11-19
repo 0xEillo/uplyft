@@ -25,7 +25,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 let skipNextProfileEntryAnimation = false
 
@@ -362,7 +362,7 @@ export default function UserProfileScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Status bar background */}
         <View style={[styles.statusBarBackground, { height: insets.top }]} />
         {/* Scrollable Content */}
@@ -528,7 +528,7 @@ export default function UserProfileScreen() {
             </>
           )}
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </SlideInView>
   )
 }

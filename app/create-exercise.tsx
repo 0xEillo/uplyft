@@ -22,7 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const MUSCLE_GROUPS = [
   'Chest',
@@ -70,6 +70,7 @@ export default function CreateExerciseScreen() {
   const [showTypeModal, setShowTypeModal] = useState(false)
   const [showEquipmentModal, setShowEquipmentModal] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
+  const insets = useSafeAreaInsets()
 
   const styles = createStyles(colors)
 
@@ -196,7 +197,7 @@ export default function CreateExerciseScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -451,7 +452,7 @@ export default function CreateExerciseScreen() {
           </Modal>
         </>
       )}
-      </SafeAreaView>
+      </View>
     </SlideInView>
   )
 }

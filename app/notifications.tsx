@@ -24,7 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function NotificationsScreen() {
   const colors = useThemedColors()
@@ -167,6 +167,8 @@ export default function NotificationsScreen() {
     [refreshNotifications],
   )
 
+  const insets = useSafeAreaInsets()
+
   return (
     <SlideInView
       style={{ flex: 1 }}
@@ -174,7 +176,7 @@ export default function NotificationsScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -260,7 +262,7 @@ export default function NotificationsScreen() {
                   )
                   if (decision === 'approve') {
                     iconName = 'checkmark-circle'
-                    iconColor = colors.success || colors.primary
+                    iconColor = colors.primary
                   } else if (decision === 'decline') {
                     iconName = 'close-circle'
                     iconColor = colors.textSecondary
@@ -351,7 +353,7 @@ export default function NotificationsScreen() {
                                 'decline',
                               )
                             }
-                            disabled={isResponding}
+                            disabled={!!isResponding}
                           >
                             {isResponding ? (
                               <ActivityIndicator
@@ -380,7 +382,7 @@ export default function NotificationsScreen() {
                                 'approve',
                               )
                             }
-                            disabled={isResponding}
+                            disabled={!!isResponding}
                           >
                             {isResponding ? (
                               <ActivityIndicator
@@ -423,7 +425,7 @@ export default function NotificationsScreen() {
             </View>
           )}
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </SlideInView>
   )
 }

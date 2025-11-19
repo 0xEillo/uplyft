@@ -1,7 +1,7 @@
+import { getColors } from '@/constants/colors'
+import { useTheme } from '@/contexts/theme-context'
 import { ReactNode, useEffect, useRef } from 'react'
 import { Animated, Dimensions, StyleProp, ViewStyle } from 'react-native'
-import { useTheme } from '@/contexts/theme-context'
-import { getColors } from '@/constants/colors'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -48,10 +48,10 @@ export function SlideInView({
 }: SlideInViewProps) {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
-  const slideAnim = useRef(
-    new Animated.Value(enabled ? SCREEN_WIDTH : 0)
-  ).current
-  const opacityAnim = useRef(new Animated.Value(fade && enabled ? 0 : 1)).current
+  const slideAnim = useRef(new Animated.Value(enabled ? SCREEN_WIDTH : 0))
+    .current
+  const opacityAnim = useRef(new Animated.Value(fade && enabled ? 0 : 1))
+    .current
 
   // Entry animation
   useEffect(() => {
@@ -84,7 +84,7 @@ export function SlideInView({
           duration: duration * 0.7, // Fade completes slightly before slide
           delay,
           useNativeDriver: true,
-        })
+        }),
       )
     }
 
@@ -110,7 +110,7 @@ export function SlideInView({
             toValue: 0,
             duration: duration * 0.7,
             useNativeDriver: true,
-          })
+          }),
         )
       }
 
@@ -122,6 +122,18 @@ export function SlideInView({
 
   const bgColor = backgroundColor || colors.background
 
+  // Shadow style to create separation from the underlying screen
+  const shadowStyle = {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -10, // Shadow on left side
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  }
+
   return (
     <Animated.View
       style={[
@@ -130,6 +142,7 @@ export function SlideInView({
           transform: [{ translateX: slideAnim }],
           opacity: fade ? opacityAnim : 1,
         },
+        shadowStyle,
         style,
       ]}
     >

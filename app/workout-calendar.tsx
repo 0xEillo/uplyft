@@ -1,3 +1,4 @@
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -12,8 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { SlideInView } from '@/components/slide-in-view'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type ViewMode = 'month' | 'year' | 'multi-year'
 
@@ -58,7 +58,7 @@ export default function WorkoutCalendarScreen() {
   }
 
   const handleExitComplete = () => {
-    router.push('/(tabs)/analytics?tab=progress')
+    router.back()
   }
 
   const renderMonthView = () => {
@@ -87,7 +87,9 @@ export default function WorkoutCalendarScreen() {
 
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(
+        day,
+      ).padStart(2, '0')}`
       days.push({ date: day, dateStr, isCurrentMonth: true })
     }
 
@@ -168,7 +170,9 @@ export default function WorkoutCalendarScreen() {
       }
       // Days of month
       for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(
+          day,
+        ).padStart(2, '0')}`
         days.push({ day, hasWorkout: workoutDates.has(dateStr) })
       }
 
@@ -208,8 +212,23 @@ export default function WorkoutCalendarScreen() {
       <View style={styles.content}>
         <Text style={styles.yearTitle}>{currentYear}</Text>
         <View style={styles.multiYearRow}>
-          {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, idx) => (
-            <Text key={idx} style={styles.multiYearMonth}>{month}</Text>
+          {[
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ].map((month, idx) => (
+            <Text key={idx} style={styles.multiYearMonth}>
+              {month}
+            </Text>
           ))}
         </View>
         <View style={styles.multiYearGrid}>
@@ -235,6 +254,7 @@ export default function WorkoutCalendarScreen() {
   }
 
   const styles = createStyles(colors)
+  const insets = useSafeAreaInsets()
 
   return (
     <SlideInView
@@ -242,7 +262,7 @@ export default function WorkoutCalendarScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <SafeAreaView style={styles.safeAreaContainer} edges={['top']}>
+      <View style={[styles.safeAreaContainer, { paddingTop: insets.top }]}>
         <Stack.Screen
           options={{
             headerShown: false,
@@ -251,83 +271,83 @@ export default function WorkoutCalendarScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.backButton}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Workout Calendar</Text>
           <View style={styles.headerRightSpacer} />
         </View>
 
-      {/* View Mode Selector */}
-      <View style={styles.viewModeSelectorContainer}>
-        <View style={styles.viewModeSelector}>
-          <TouchableOpacity
-            style={[
-              styles.viewModeButton,
-              viewMode === 'month' && styles.viewModeButtonActive,
-            ]}
-            onPress={() => setViewMode('month')}
-          >
-            <Text
+        {/* View Mode Selector */}
+        <View style={styles.viewModeSelectorContainer}>
+          <View style={styles.viewModeSelector}>
+            <TouchableOpacity
               style={[
-                styles.viewModeText,
-                viewMode === 'month' && styles.viewModeTextActive,
+                styles.viewModeButton,
+                viewMode === 'month' && styles.viewModeButtonActive,
               ]}
+              onPress={() => setViewMode('month')}
             >
-              Month
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.viewModeButton,
-              viewMode === 'year' && styles.viewModeButtonActive,
-            ]}
-            onPress={() => setViewMode('year')}
-          >
-            <Text
+              <Text
+                style={[
+                  styles.viewModeText,
+                  viewMode === 'month' && styles.viewModeTextActive,
+                ]}
+              >
+                Month
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
-                styles.viewModeText,
-                viewMode === 'year' && styles.viewModeTextActive,
+                styles.viewModeButton,
+                viewMode === 'year' && styles.viewModeButtonActive,
               ]}
+              onPress={() => setViewMode('year')}
             >
-              Year
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.viewModeButton,
-              viewMode === 'multi-year' && styles.viewModeButtonActive,
-            ]}
-            onPress={() => setViewMode('multi-year')}
-          >
-            <Text
+              <Text
+                style={[
+                  styles.viewModeText,
+                  viewMode === 'year' && styles.viewModeTextActive,
+                ]}
+              >
+                Year
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
-                styles.viewModeText,
-                viewMode === 'multi-year' && styles.viewModeTextActive,
+                styles.viewModeButton,
+                viewMode === 'multi-year' && styles.viewModeButtonActive,
               ]}
+              onPress={() => setViewMode('multi-year')}
             >
-              Multi-year
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.viewModeText,
+                  viewMode === 'multi-year' && styles.viewModeTextActive,
+                ]}
+              >
+                Multi-year
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* Content */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {viewMode === 'month' && renderMonthView()}
-          {viewMode === 'year' && renderYearView()}
-          {viewMode === 'multi-year' && renderMultiYearView()}
-        </ScrollView>
-      )}
-      </SafeAreaView>
+        {/* Content */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {viewMode === 'month' && renderMonthView()}
+            {viewMode === 'year' && renderYearView()}
+            {viewMode === 'multi-year' && renderMultiYearView()}
+          </ScrollView>
+        )}
+      </View>
     </SlideInView>
   )
 }
