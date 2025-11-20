@@ -19,10 +19,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
 import { Paywall } from '@/components/paywall'
+import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -77,6 +78,7 @@ export default function BodyLogDetailScreen() {
   const [imagesLoading, setImagesLoading] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [userGender, setUserGender] = useState<Gender>('male')
+  const [shouldExit, setShouldExit] = useState(false)
 
   // Modal states
   const [infoModalVisible, setInfoModalVisible] = useState(false)
@@ -167,7 +169,7 @@ export default function BodyLogDetailScreen() {
           Alert.alert(
             'Error',
             'Failed to load body log entry.',
-            [{ text: 'OK', onPress: () => router.back() }],
+            [{ text: 'OK', onPress: () => handleBack() }],
           )
           return
         }
@@ -215,7 +217,7 @@ export default function BodyLogDetailScreen() {
           Alert.alert(
             'Error',
             'Failed to load body log entry.',
-            [{ text: 'OK', onPress: () => router.back() }],
+            [{ text: 'OK', onPress: () => handleBack() }],
           )
         }
       } finally {
@@ -736,7 +738,7 @@ export default function BodyLogDetailScreen() {
   const handleDelete = async () => {
     // If this is a new entry that hasn't been created yet, just go back
     if (entryId === 'new') {
-      router.back()
+      handleBack()
       return
     }
 
@@ -838,15 +840,28 @@ export default function BodyLogDetailScreen() {
 
   const imageCount = imageUrls.length
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ headerShown: false }} />
+  const handleBack = () => {
+    setShouldExit(true)
+  }
 
-      <ScrollView
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+  const handleExitComplete = () => {
+    router.back()
+  }
+
+  return (
+    <SlideInView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+
+        <ScrollView
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
         {/* Hero Image Section with Carousel */}
         <View style={[styles.heroContainer, { backgroundColor: colors.background }]}>
           {imagesLoading ? (
@@ -1074,11 +1089,11 @@ export default function BodyLogDetailScreen() {
       </ScrollView>
 
       {/* Floating Top Actions */}
-      <SafeAreaView edges={['top']} style={styles.topActionsContainer}>
+      <View style={[styles.topActionsContainer, { paddingTop: insets.top }]}>
         <View style={styles.topActions}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={[
               styles.topButton,
               {
@@ -1106,7 +1121,7 @@ export default function BodyLogDetailScreen() {
             <Ionicons name="trash-outline" size={22} color={colors.error} />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Image Fullscreen Modal */}
       {imageUrls.length > 0 && (
@@ -1211,7 +1226,11 @@ export default function BodyLogDetailScreen() {
       )}
 
       {/* Bottom Action Buttons */}
-      <SafeAreaView edges={['bottom']} style={[styles.actionBarContainer, styles.buttonContainer]}>
+      <View style={[
+        styles.actionBarContainer,
+        styles.buttonContainer,
+        { paddingBottom: insets.bottom + 16 },
+      ]}>
         <TouchableOpacity
           style={[styles.actionButtonIcon, { backgroundColor: colors.backgroundWhite, borderColor: colors.border }]}
           onPress={handleLogWeight}
@@ -1267,7 +1286,7 @@ export default function BodyLogDetailScreen() {
             />
           )}
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
 
       {/* Weight Input Modal */}
       <WeightInputModal
@@ -1301,6 +1320,7 @@ export default function BodyLogDetailScreen() {
         message="Body scan analysis is a premium feature. Upgrade to unlock AI-powered body composition analysis."
       />
     </View>
+    </SlideInView>
   )
 }
 

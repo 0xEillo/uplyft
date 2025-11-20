@@ -149,6 +149,30 @@ function RootLayoutNav() {
             name="(stand-alone)/edit-workout/[workoutId]"
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
+          <Stack.Screen
+            name="body-log/index"
+            options={{
+              presentation: 'transparentModal',
+              animation: 'none',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="body-log/[entryId]"
+            options={{
+              presentation: 'transparentModal',
+              animation: 'none',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="body-log/capture"
+            options={{
+              presentation: 'transparentModal',
+              animation: 'none',
+              gestureEnabled: false,
+            }}
+          />
         </Stack>
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />

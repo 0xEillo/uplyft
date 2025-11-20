@@ -1,3 +1,4 @@
+import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
@@ -483,25 +484,18 @@ export default function BodyLogScreen() {
 
   return (
     <SlideInView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleBackPress}
-          accessibilityLabel="Go back to profile"
-          accessibilityRole="button"
-          accessibilityHint="Navigate back to the profile page"
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerTitle}>
-          <Text style={styles.headerTitleText}>Body log</Text>
-        </View>
-        <View style={styles.placeholder} />
-      </View>
+      <ScreenHeader
+        title="Body log"
+        onLeftPress={handleBackPress}
+        leftIcon="arrow-back"
+        rightIcon="add"
+        onRightPress={handleAddNewEntry}
+      />
 
       {isInitialLoading ? (
         <View style={styles.loadingContainer}>
@@ -510,20 +504,6 @@ export default function BodyLogScreen() {
       ) : sections.length === 0 ? (
         <View style={styles.emptyStateContainer}>
           <View style={styles.addNewEntryContainer}>
-            <TouchableOpacity
-              style={[styles.addNewEntryCard, { backgroundColor: colors.backgroundLight, borderColor: colors.border }]}
-              onPress={handleAddNewEntry}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={40}
-                color={colors.primary}
-                style={styles.addNewEntryIcon}
-              />
-              <Text style={[styles.addNewEntryLabel, { color: colors.text }]}>New Entry</Text>
-              <Text style={[styles.addNewEntryHint, { color: colors.textSecondary }]}>Tap to create</Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.emptyStateContent}>
             <Text style={styles.emptyStateDescription}>
@@ -542,22 +522,7 @@ export default function BodyLogScreen() {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={true}
           ListHeaderComponent={
-            <View style={styles.addNewEntryContainer}>
-              <TouchableOpacity
-                style={[styles.addNewEntryCard, { backgroundColor: colors.backgroundLight, borderColor: colors.border }]}
-                onPress={handleAddNewEntry}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={40}
-                  color={colors.primary}
-                  style={styles.addNewEntryIcon}
-                />
-                <Text style={[styles.addNewEntryLabel, { color: colors.text }]}>New Entry</Text>
-                <Text style={[styles.addNewEntryHint, { color: colors.textSecondary }]}>Tap to create</Text>
-              </TouchableOpacity>
-            </View>
+            <View style={styles.addNewEntryContainer} />
           }
         />
       )}
@@ -623,19 +588,20 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 10,
       paddingVertical: 6,
       borderRadius: 12,
-      backgroundColor: 'rgba(0, 0, 0, 0.65)',
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
     },
     weightOverlayLabel: {
       fontSize: 10,
-      color: 'rgba(255, 255, 255, 0.8)',
+      color: 'rgba(255, 255, 255, 0.9)',
       textTransform: 'uppercase',
       letterSpacing: 0.6,
       marginBottom: 2,
+      fontWeight: '500',
     },
     weightOverlayValue: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.white,
+      color: '#FFFFFF',
       letterSpacing: -0.2,
     },
     weightCard: {
@@ -650,7 +616,6 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       borderWidth: 1.5,
       borderColor: `${colors.primary}30`,
-      borderStyle: 'dashed',
     },
     weightCardIcon: {
       marginBottom: 4,
@@ -674,21 +639,21 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       left: 8,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-      borderRadius: 12,
-      gap: 4,
+      paddingHorizontal: 7,
+      paddingVertical: 4,
+      borderRadius: 8,
+      gap: 3,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
     },
     scanBadgeText: {
-      color: colors.white,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 0.3,
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontWeight: '600',
+      letterSpacing: 0.2,
       textTransform: 'uppercase',
     },
     emptyEntryCard: {
@@ -703,7 +668,6 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       borderWidth: 2,
       borderColor: colors.border,
-      borderStyle: 'dashed',
     },
     emptyEntryIcon: {
       marginBottom: 4,
@@ -726,29 +690,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      backgroundColor: colors.background,
-      borderBottomWidth: 0,
-      gap: 12,
-    },
-    headerTitle: {
-      alignItems: 'center',
-      flex: 1,
-    },
-    headerTitleText: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.text,
-      letterSpacing: -0.3,
-    },
-    placeholder: {
-      width: 24,
     },
     loadingContainer: {
       flex: 1,
@@ -802,32 +743,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: GRID_PADDING,
       paddingTop: 8,
       paddingBottom: 12,
-    },
-    addNewEntryCard: {
-      width: IMAGE_SIZE,
-      height: IMAGE_SIZE,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 2,
-      borderWidth: 2,
-      borderStyle: 'dashed',
-      gap: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    addNewEntryIcon: {
-      marginBottom: 4,
-    },
-    addNewEntryLabel: {
-      fontSize: 14,
-      fontWeight: '700',
-      letterSpacing: -0.2,
-    },
-    addNewEntryHint: {
-      fontSize: 12,
-      opacity: 0.7,
     },
   })
