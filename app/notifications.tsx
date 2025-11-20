@@ -1,3 +1,4 @@
+import { BaseNavbar } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -177,28 +178,31 @@ export default function NotificationsScreen() {
       onExitComplete={handleExitComplete}
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Notifications</Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleBackPress}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          {unreadCount > 0 ? (
-            <TouchableOpacity
-              onPress={handleMarkAllAsRead}
-              style={styles.markAllButton}
-            >
-              <Text style={styles.markAllReadText}>Mark all</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <BaseNavbar
+          leftContent={
+            <>
+              <TouchableOpacity
+                onPress={handleBackPress}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                style={styles.backButton}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Notifications</Text>
+            </>
+          }
+          rightContent={
+            unreadCount > 0 ? (
+              <TouchableOpacity
+                onPress={handleMarkAllAsRead}
+                style={styles.markAllButton}
+              >
+                <Text style={styles.markAllReadText}>Mark all</Text>
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
 
         <ScrollView
           style={styles.content}
@@ -453,33 +457,21 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       flex: 1,
       backgroundColor: colors.white,
     },
-    header: {
-      position: 'relative',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    headerContent: {
-      justifyContent: 'center',
-      alignItems: 'center',
+    backButton: {
+      zIndex: 1,
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
-    },
-    backButton: {
       position: 'absolute',
-      left: 20,
-      top: 16,
-      padding: 4,
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+      pointerEvents: 'none',
     },
     markAllButton: {
-      position: 'absolute',
-      right: 20,
-      top: 16,
+      padding: 4,
     },
     markAllReadText: {
       fontSize: 14,

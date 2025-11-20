@@ -1,4 +1,5 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
+import { BaseNavbar } from '@/components/base-navbar'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -17,14 +18,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
-  const insets = useSafeAreaInsets()
 
   // Profile data
   const [profile, setProfile] = useState<any>(null)
@@ -219,25 +219,21 @@ export default function ProfileScreen() {
     )
   }, [isLoading, colors])
 
-  const styles = createStyles(colors, insets)
+  const styles = createStyles(colors)
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Status bar background */}
-      <View style={[styles.statusBarBackground, { height: insets.top }]} />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity
-          onPress={() =>
-            router.push('/account-settings')
-          }
-          style={{ padding: 8 }}
-        >
-          <Ionicons name="settings-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+      <BaseNavbar
+        leftContent={<Text style={styles.headerTitle}>Profile</Text>}
+        rightContent={
+          <TouchableOpacity
+            onPress={() => router.push('/account-settings')}
+            style={{ padding: 8 }}
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        }
+      />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -385,32 +381,11 @@ export default function ProfileScreen() {
   )
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useThemedColors>,
-  insets: { top: number; bottom: number; left: number; right: number },
-) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    statusBarBackground: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: colors.white,
-      zIndex: 0,
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 8,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
     },
     headerTitle: {
       fontSize: 20,

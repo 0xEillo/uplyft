@@ -731,7 +731,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       zIndex: 0,
     },
     profileHeader: {

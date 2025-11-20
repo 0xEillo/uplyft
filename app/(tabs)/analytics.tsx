@@ -1,3 +1,4 @@
+import { BaseNavbar } from '@/components/base-navbar'
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
 import { WorkoutCalendarCard } from '@/components/workout-calendar-card'
@@ -16,14 +17,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function AnalyticsScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const router = useRouter()
-  const insets = useSafeAreaInsets()
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
@@ -47,18 +47,17 @@ export default function AnalyticsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Status bar background to match navbar */}
-      <View style={[styles.statusBarBackground, { height: insets.top }]} />
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Progress</Text>
-        <TouchableOpacity
-          onPress={() => router.push('/body-log')}
-          style={{ padding: 8 }}
-        >
-          <Ionicons name="body-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+      <BaseNavbar
+        leftContent={<Text style={styles.headerTitle}>Progress</Text>}
+        rightContent={
+          <TouchableOpacity
+            onPress={() => router.push('/body-log')}
+            style={{ padding: 8 }}
+          >
+            <Ionicons name="body-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -91,27 +90,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    statusBarBackground: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: colors.white,
-      zIndex: 0,
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 8,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    gestureContainer: {
-      flex: 1,
     },
     headerTitle: {
       fontSize: 20,

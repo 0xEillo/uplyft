@@ -1,3 +1,4 @@
+import { BaseNavbar } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -22,7 +23,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 let skipNextSearchEntryAnimation = false
 
@@ -284,12 +285,9 @@ export default function SearchScreen() {
       onExitComplete={handleExitComplete}
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        {/* Status bar background to match navbar */}
-        <View style={[styles.statusBarBackground, { height: insets.top }]} />
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.contentWrapper}>
-            {/* Header */}
-            <View style={styles.header}>
+        <BaseNavbar
+          leftContent={
+            <>
               <TouchableOpacity
                 onPress={handleBack}
                 style={styles.backButton}
@@ -299,8 +297,12 @@ export default function SearchScreen() {
                 <Ionicons name="chevron-back" size={28} color={colors.text} />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Search</Text>
-              <View style={styles.headerSpacer} />
-            </View>
+            </>
+          }
+        />
+
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.contentWrapper}>
 
             {/* Search Input */}
             <View style={styles.searchContainer}>
@@ -494,34 +496,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    statusBarBackground: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: colors.white,
-    },
-    contentWrapper: {
-      flex: 1,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 4,
-      paddingVertical: 8,
-      backgroundColor: colors.white,
-    },
     backButton: {
-      padding: 8,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minWidth: 44,
-      minHeight: 44,
+      zIndex: 1,
     },
     headerTitle: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 20,
+      fontWeight: '700',
       color: colors.text,
       position: 'absolute',
       left: 0,
@@ -529,8 +509,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
       pointerEvents: 'none',
     },
-    headerSpacer: {
-      width: 44,
+    contentWrapper: {
+      flex: 1,
     },
     searchContainer: {
       flexDirection: 'row',

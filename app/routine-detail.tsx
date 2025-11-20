@@ -1,3 +1,4 @@
+import { BaseNavbar } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
@@ -169,28 +170,19 @@ export default function RoutineDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: colors.background,
-              paddingTop: insets.top + 10,
-            },
-          ]}
-        >
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Routine
-          </Text>
-          <View style={{ width: 40 }} />
-          {/* <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
-            <Ionicons name="share-outline" size={24} color={colors.text} />
-          </TouchableOpacity> */}
-        </View>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+        <BaseNavbar
+          leftContent={
+            <>
+              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                Routine
+              </Text>
+            </>
+          }
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -391,26 +383,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    zIndex: 1,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    pointerEvents: 'none',
   },
   scrollView: {
     flex: 1,
   },
   infoSection: {
     paddingHorizontal: 16,
+    paddingTop: 20,
     marginBottom: 24,
   },
   routineName: {

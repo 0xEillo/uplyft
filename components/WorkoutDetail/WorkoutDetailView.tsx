@@ -1,3 +1,4 @@
+import { BaseNavbar } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
@@ -160,35 +161,31 @@ export function WorkoutDetailView({
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: colors.backgroundWhite,
-              borderBottomColor: colors.border,
-              paddingTop: insets.top + 10,
-            },
-          ]}
-        >
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Workout Detail
-          </Text>
-          <TouchableOpacity
-            onPress={() => setMenuVisible(!menuVisible)}
-            style={styles.menuButton}
-          >
-            <Ionicons
-              name="ellipsis-horizontal"
-              size={24}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-        </View>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+        <BaseNavbar
+          leftContent={
+            <>
+              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                Workout Detail
+              </Text>
+            </>
+          }
+          rightContent={
+            <TouchableOpacity
+              onPress={() => setMenuVisible(!menuVisible)}
+              style={styles.menuButton}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={24}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+          }
+        />
 
         {/* Menu dropdown */}
         {menuVisible && (
@@ -198,7 +195,7 @@ export function WorkoutDetailView({
               {
                 backgroundColor: colors.backgroundWhite,
                 borderColor: colors.border,
-                top: insets.top + 66,
+                top: insets.top + 50,
               },
             ]}
           >
@@ -474,23 +471,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-  },
   backButton: {
-    padding: 4,
+    zIndex: 1,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    pointerEvents: 'none',
   },
   menuButton: {
-    padding: 4,
+    zIndex: 1,
   },
   menuDropdown: {
     position: 'absolute',

@@ -1,3 +1,4 @@
+import { BaseNavbar } from '@/components/base-navbar'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -983,21 +984,21 @@ export default function CreateRoutineScreen() {
       style={styles.container}
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={handleCancel}
-              style={styles.headerButton}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>
-              {isEditMode ? 'Edit Routine' : 'Create Routine'}
-            </Text>
+        <BaseNavbar
+          leftContent={
+            <>
+              <TouchableOpacity
+                onPress={handleCancel}
+                style={styles.headerButton}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>
+                {isEditMode ? 'Edit Routine' : 'Create Routine'}
+              </Text>
+            </>
+          }
+          rightContent={
             <TouchableOpacity
               onPress={handleSave}
               style={styles.headerButton}
@@ -1009,7 +1010,12 @@ export default function CreateRoutineScreen() {
                 <Text style={styles.saveText}>Save</Text>
               )}
             </TouchableOpacity>
-          </View>
+          }
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
+        >
 
           <ScrollView
             style={styles.content}
@@ -1221,23 +1227,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       backgroundColor: colors.background,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
     headerButton: {
-      minWidth: 60,
+      zIndex: 1,
     },
     headerTitle: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 20,
+      fontWeight: '700',
       color: colors.text,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+      pointerEvents: 'none',
     },
     cancelText: {
       fontSize: 16,
