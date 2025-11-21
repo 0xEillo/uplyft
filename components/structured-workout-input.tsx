@@ -1,19 +1,19 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Audio } from 'expo-av'
 import * as Haptics from 'expo-haptics'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 interface SetData {
@@ -774,6 +774,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 4,
     },
     exerciseName: {
+      flex: 1,
       fontSize: 17,
       fontWeight: '600',
       color: colors.text,
@@ -782,6 +783,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     deleteExerciseButton: {
       marginLeft: 8,
       padding: 4,
+      flexShrink: 0,
     },
     timerContainer: {
       flexDirection: 'row',

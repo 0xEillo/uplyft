@@ -129,7 +129,10 @@ export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
-  const { selectedRoutineId } = useLocalSearchParams<{ selectedRoutineId: string }>()
+  const { selectedRoutineId, refresh } = useLocalSearchParams<{
+    selectedRoutineId: string
+    refresh: string
+  }>()
 
   // Handle routine selection from external screens
   useEffect(() => {
@@ -492,80 +495,71 @@ export default function CreatePostScreen() {
     }
   }, [blurInputs])
 
-  // Load saved draft on mount
-  useEffect(() => {
-    let isMounted = true
+  const hydrateDraft = useCallback(async () => {
+    isHydratingRef.current = true
+    try {
+      const [draft, pending] = await Promise.all([
+        loadWorkoutDraft(),
+        loadPendingWorkout(),
+      ])
 
-    const hydrateDraft = async () => {
-      try {
-        const [draft, pending] = await Promise.all([
-          loadWorkoutDraft(),
-          loadPendingWorkout(),
-        ])
-
-        if (!isMounted) {
-          return
-        }
-
-        if (draft?.notes?.trim()) {
-          suppressDraftToastRef.current = true
-          setNotes(draft.notes)
-        } else if (pending?.notes) {
-          suppressDraftToastRef.current = true
-          setNotes(pending.notes)
-        }
-
-        if (draft?.title?.trim()) {
-          setWorkoutTitle(draft.title)
-        } else if (pending?.title) {
-          setWorkoutTitle(pending.title)
-        }
-
-        if (
-          Array.isArray(draft?.structuredData) &&
-          draft.structuredData.length
-        ) {
-          setStructuredData(draft.structuredData)
-          setIsStructuredMode(
-            typeof draft.isStructuredMode === 'boolean'
-              ? draft.isStructuredMode
-              : true,
-          )
-        } else if (typeof draft?.isStructuredMode === 'boolean') {
-          setIsStructuredMode(draft.isStructuredMode)
-        }
-
-        const routineIdFromDraft =
-          draft?.selectedRoutineId ?? pending?.routineId ?? null
-        if (routineIdFromDraft) {
-          setPendingDraftRoutineId(routineIdFromDraft)
-        }
-
-        if (
-          draft &&
-          (draft.timerStartedAt ||
-            typeof draft.timerElapsedSeconds === 'number')
-        ) {
-          hydrateWorkoutTimer(
-            draft.timerStartedAt ?? null,
-            draft.timerElapsedSeconds ?? 0,
-          )
-        } else {
-          resetWorkoutTimer()
-        }
-
-        skipNextPersistRef.current = true
-      } finally {
-        isHydratingRef.current = false
+      if (draft?.notes?.trim()) {
+        suppressDraftToastRef.current = true
+        setNotes(draft.notes)
+      } else if (pending?.notes) {
+        suppressDraftToastRef.current = true
+        setNotes(pending.notes)
       }
-    }
 
-    hydrateDraft()
+      if (draft?.title?.trim()) {
+        setWorkoutTitle(draft.title)
+      } else if (pending?.title) {
+        setWorkoutTitle(pending.title)
+      }
 
-    return () => {
-      isMounted = false
+      if (
+        Array.isArray(draft?.structuredData) &&
+        draft.structuredData.length
+      ) {
+        setStructuredData(draft.structuredData)
+        setIsStructuredMode(
+          typeof draft.isStructuredMode === 'boolean'
+            ? draft.isStructuredMode
+            : true,
+        )
+      } else if (typeof draft?.isStructuredMode === 'boolean') {
+        setIsStructuredMode(draft.isStructuredMode)
+      }
+
+      const routineIdFromDraft =
+        draft?.selectedRoutineId ?? pending?.routineId ?? null
+      if (routineIdFromDraft) {
+        setPendingDraftRoutineId(routineIdFromDraft)
+      }
+
+      if (
+        draft &&
+        (draft.timerStartedAt ||
+          typeof draft.timerElapsedSeconds === 'number')
+      ) {
+        hydrateWorkoutTimer(
+          draft.timerStartedAt ?? null,
+          draft.timerElapsedSeconds ?? 0,
+        )
+      } else {
+        resetWorkoutTimer()
+      }
+
+      skipNextPersistRef.current = true
+    } finally {
+      isHydratingRef.current = false
     }
   }, [hydrateWorkoutTimer, resetWorkoutTimer])
+
+  // Load saved draft on mount or when refresh param changes
+  useEffect(() => {
+    hydrateDraft()
+  }, [hydrateDraft, refresh])
 
   // Auto-save draft whenever inputs change
   useEffect(() => {
