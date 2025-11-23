@@ -52,7 +52,7 @@ module.exports = {
   expo: {
     name: 'Rep AI',
     slug: 'repai',
-    version: '1.0.4',
+    version: '1.0.5',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'repai',
