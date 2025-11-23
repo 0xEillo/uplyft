@@ -22,6 +22,7 @@ export interface Profile {
   commitment: string | null
   training_years: TrainingYears | null
   expo_push_token: string | null
+  has_requested_push_notifications: boolean
   created_at: string
   updated_at: string
 }

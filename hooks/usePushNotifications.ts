@@ -9,8 +9,8 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 
 /**
- * Hook to register for push notifications and handle notification responses
- * Automatically registers the device when user is authenticated
+ * Hook to handle notification responses
+ * Does NOT automatically register for push notifications - call registerForPushNotifications separately
  */
 export function usePushNotifications() {
   const { user } = useAuth()
@@ -26,9 +26,6 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!user) return
-
-    // Register for push notifications on mount
-    registerForPushNotifications()
 
     // Listen for notifications received while app is in foreground
     notificationListener.current =
@@ -66,7 +63,8 @@ export function usePushNotifications() {
         if (
           type === 'follow_request_received' ||
           type === 'follow_request_approved' ||
-          type === 'follow_request_declined'
+          type === 'follow_request_declined' ||
+          type === 'follow_received'
         ) {
           router.push('/follow-requests')
         } else if (type === 'workout_comment' && workoutId) {
@@ -93,7 +91,7 @@ export function usePushNotifications() {
 /**
  * Register device for push notifications and store token in Supabase
  */
-async function registerForPushNotifications() {
+export async function registerForPushNotifications() {
   // Only run on physical devices
   if (!Device.isDevice) {
     return

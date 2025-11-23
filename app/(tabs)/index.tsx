@@ -11,6 +11,7 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { isApiError, mapApiErrorToMessage } from '@/lib/api/errors'
 import { database } from '@/lib/database'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
@@ -219,6 +220,46 @@ export default function FeedScreen() {
           await showPrompt(workoutCount)
         } catch (error) {
           console.error('Error checking workout count for rating prompt:', error)
+        }
+
+        // Check if this is the first workout and prompt for push notifications
+        try {
+          const profile = await database.profiles.getById(user.id)
+          const workoutCount = await database.workoutSessions.getCountByUserId(user.id)
+
+          // Only prompt if this is the first workout and we haven't asked before
+          if (workoutCount === 1 && profile && !profile.has_requested_push_notifications) {
+            // Delay the prompt slightly so the success animation completes first
+            setTimeout(() => {
+              Alert.alert(
+                'Stay Connected',
+                'Enable notifications to get updates when friends like and comment on your workouts!',
+                [
+                  {
+                    text: 'Not Now',
+                    style: 'cancel',
+                    onPress: async () => {
+                      // Mark as requested even if they decline
+                      await database.profiles.update(user.id, {
+                        has_requested_push_notifications: true
+                      })
+                    },
+                  },
+                  {
+                    text: 'Enable',
+                    onPress: async () => {
+                      await registerForPushNotifications()
+                      await database.profiles.update(user.id, {
+                        has_requested_push_notifications: true
+                      })
+                    },
+                  },
+                ],
+              )
+            }, 1500)
+          }
+        } catch (error) {
+          console.error('Error checking for push notification prompt:', error)
         }
 
         setTimeout(() => setNewWorkoutId(null), 1000)

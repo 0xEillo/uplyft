@@ -20,18 +20,18 @@ import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { database } from '@/lib/database'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
+  clearDraft as clearWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -39,21 +39,21 @@ import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Easing,
-    InteractionManager,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  InteractionManager,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -73,7 +73,9 @@ const formatTimerDisplay = (seconds: number) => {
     const hours = Math.floor(safeSeconds / 3600)
     const mins = Math.floor((safeSeconds % 3600) / 60)
     const secs = safeSeconds % 60
-    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${hours}:${mins
+      .toString()
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
   // If 1 minute or more (but under 1 hour), show M:SS
@@ -129,17 +131,15 @@ export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
-  const { selectedRoutineId, refresh } = useLocalSearchParams<{
-    selectedRoutineId: string
-    refresh: string
+  const {
+    selectedRoutineId: selectedRoutineIdParam,
+    refresh: refreshParam,
+  } = useLocalSearchParams<{
+    selectedRoutineId?: string
+    refresh?: string
   }>()
-
-  // Handle routine selection from external screens
-  useEffect(() => {
-    if (selectedRoutineId) {
-      setPendingDraftRoutineId(selectedRoutineId)
-    }
-  }, [selectedRoutineId])
+  const selectedRoutineId = selectedRoutineIdParam ?? null
+  const refresh = refreshParam ?? null
 
   // =============================================================================
   // BASIC WORKOUT INPUT STATE
@@ -182,6 +182,9 @@ export default function CreatePostScreen() {
   >([])
   const [pendingDraftRoutineId, setPendingDraftRoutineId] = useState<
     string | null
+  >(null)
+  const [pendingRoutineSource, setPendingRoutineSource] = useState<
+    'route' | 'draft' | null
   >(null)
 
   const hasStructuredEntries = useMemo(() => {
@@ -387,7 +390,7 @@ export default function CreatePostScreen() {
   }, [user])
 
   useEffect(() => {
-    if (!pendingDraftRoutineId || !user?.id) {
+    if (!pendingDraftRoutineId) {
       return
     }
 
@@ -397,11 +400,21 @@ export default function CreatePostScreen() {
     }
 
     setSelectedRoutine(routine)
-    setPendingDraftRoutineId(null)
+    setIsStructuredMode(true)
+    setStructuredData([])
+    setLastRoutineWorkout(null)
+
+    if (pendingRoutineSource === 'route' || !titleRef.current.trim()) {
+      setWorkoutTitle(routine.name)
+    }
 
     let isMounted = true
 
     const hydrateLastWorkout = async () => {
+      if (!user?.id) {
+        return
+      }
+
       try {
         const lastWorkout = await database.workoutSessions.getLastForRoutine(
           user.id,
@@ -413,9 +426,17 @@ export default function CreatePostScreen() {
         }
       } catch (error) {
         console.error(
-          '[hydrateDraftRoutine] Error loading last workout for routine:',
+          '[applyPendingRoutine] Error loading last workout for routine:',
           error,
         )
+        if (isMounted) {
+          setLastRoutineWorkout(null)
+        }
+      } finally {
+        if (isMounted) {
+          setPendingDraftRoutineId(null)
+          setPendingRoutineSource(null)
+        }
       }
     }
 
@@ -424,7 +445,7 @@ export default function CreatePostScreen() {
     return () => {
       isMounted = false
     }
-  }, [pendingDraftRoutineId, routines, user])
+  }, [pendingDraftRoutineId, pendingRoutineSource, routines, user])
 
   // Track animation state to reset on each focus
   const [slideKey, setSlideKey] = useState(0)
@@ -434,7 +455,7 @@ export default function CreatePostScreen() {
   useFocusEffect(
     useCallback(() => {
       // Reset animation by changing key to force remount of SlideUpView
-      setSlideKey(prev => prev + 1)
+      setSlideKey((prev) => prev + 1)
       setShouldExit(false)
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -480,12 +501,7 @@ export default function CreatePostScreen() {
         }
         blurInputs()
       }
-    }, [
-      blurInputs,
-      trackEvent,
-      user,
-      loadRoutines,
-    ]),
+    }, [blurInputs, trackEvent, user, loadRoutines]),
   )
 
   // Blur inputs when component unmounts
@@ -517,10 +533,7 @@ export default function CreatePostScreen() {
         setWorkoutTitle(pending.title)
       }
 
-      if (
-        Array.isArray(draft?.structuredData) &&
-        draft.structuredData.length
-      ) {
+      if (Array.isArray(draft?.structuredData) && draft.structuredData.length) {
         setStructuredData(draft.structuredData)
         setIsStructuredMode(
           typeof draft.isStructuredMode === 'boolean'
@@ -533,14 +546,19 @@ export default function CreatePostScreen() {
 
       const routineIdFromDraft =
         draft?.selectedRoutineId ?? pending?.routineId ?? null
-      if (routineIdFromDraft) {
-        setPendingDraftRoutineId(routineIdFromDraft)
+      const effectiveRoutineId = selectedRoutineId || routineIdFromDraft || null
+
+      if (effectiveRoutineId) {
+        setPendingDraftRoutineId(effectiveRoutineId)
+        setPendingRoutineSource(selectedRoutineId ? 'route' : 'draft')
+      } else {
+        setPendingDraftRoutineId(null)
+        setPendingRoutineSource(null)
       }
 
       if (
         draft &&
-        (draft.timerStartedAt ||
-          typeof draft.timerElapsedSeconds === 'number')
+        (draft.timerStartedAt || typeof draft.timerElapsedSeconds === 'number')
       ) {
         hydrateWorkoutTimer(
           draft.timerStartedAt ?? null,
@@ -554,7 +572,7 @@ export default function CreatePostScreen() {
     } finally {
       isHydratingRef.current = false
     }
-  }, [hydrateWorkoutTimer, resetWorkoutTimer])
+  }, [hydrateWorkoutTimer, resetWorkoutTimer, selectedRoutineId])
 
   // Load saved draft on mount or when refresh param changes
   useEffect(() => {
@@ -643,7 +661,7 @@ export default function CreatePostScreen() {
 
   const handleExitComplete = useCallback(() => {
     router.back()
-  }, [router])
+  }, [])
 
   const handlePickImage = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -738,6 +756,7 @@ export default function CreatePostScreen() {
       setIsStructuredMode(false)
       setSelectedRoutine(null)
       setPendingDraftRoutineId(null)
+      setPendingRoutineSource(null)
       setStructuredData([])
       setLastRoutineWorkout(null)
       setShowRoutineSelector(false)
@@ -897,7 +916,6 @@ export default function CreatePostScreen() {
 
       // Set all states together so component renders with lastWorkout data
       setSelectedRoutine(routine)
-      setPendingDraftRoutineId(routine.id)
       setWorkoutTitle(routine.name)
       setIsStructuredMode(true)
       setLastRoutineWorkout(lastWorkout)
@@ -940,6 +958,7 @@ export default function CreatePostScreen() {
                   setLastRoutineWorkout(null)
                   setWorkoutTitle('')
                   setPendingDraftRoutineId(null)
+                  setPendingRoutineSource(null)
                 }
 
                 // Refresh routines list
@@ -1325,6 +1344,7 @@ export default function CreatePostScreen() {
       setLastRoutineWorkout(null)
       setIsStructuredMode(false)
       setPendingDraftRoutineId(null)
+      setPendingRoutineSource(null)
     }
 
     // Update previous length

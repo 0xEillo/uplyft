@@ -47,18 +47,13 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   >([])
   const [timeRange, setTimeRange] = useState<TimeRange>('week')
   const [isLoading, setIsLoading] = useState(false)
-  const [showInfoModal, setShowInfoModal] = useState(false)
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
 
   // Animation refs for modal
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const backdropAnim = useRef(new Animated.Value(0)).current
-  const infoSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
-  const infoBackdropAnim = useRef(new Animated.Value(0)).current
-  const infoScrollViewRef = useRef<ScrollView>(null)
-  const infoScrollOffsetRef = useRef(0)
-
+  
   const loadExercises = useCallback(async () => {
     try {
       const data = await database.exercises.getExercisesWithData(userId)
@@ -135,43 +130,6 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
     }
   }, [showExercisePicker, slideAnim, backdropAnim])
 
-  // Handle info modal animations
-  useEffect(() => {
-    if (showInfoModal) {
-      // Slide up
-      Animated.parallel([
-        Animated.spring(infoSlideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          damping: 25,
-          stiffness: 200,
-        }),
-        Animated.timing(infoBackdropAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    } else {
-      // Slide down
-      Animated.parallel([
-        Animated.timing(infoSlideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(infoBackdropAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start()
-      // Reset scroll offset when modal closes
-      infoScrollOffsetRef.current = 0
-      infoScrollViewRef.current?.scrollTo({ y: 0, animated: false })
-    }
-  }, [showInfoModal, infoSlideAnim, infoBackdropAnim])
-
   // Pan responder for exercise picker swipe-to-dismiss
   const panResponder = useRef(
     PanResponder.create({
@@ -189,36 +147,6 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
           setShowExercisePicker(false)
         } else {
           Animated.spring(slideAnim, {
-            toValue: 0,
-            useNativeDriver: true,
-            damping: 25,
-            stiffness: 200,
-          }).start()
-        }
-      },
-    }),
-  ).current
-
-  // Pan responder for info modal swipe-to-dismiss - allows swipe from handle/header area
-  const infoModalPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only intercept downward swipes
-        return (
-          gestureState.dy > 5 && gestureState.dy > Math.abs(gestureState.dx)
-        )
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          infoSlideAnim.setValue(gestureState.dy)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
-          setShowInfoModal(false)
-        } else {
-          Animated.spring(infoSlideAnim, {
             toValue: 0,
             useNativeDriver: true,
             damping: 25,
@@ -402,23 +330,15 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
           </View>
           <View>
             <Text style={styles.title}>Strength Progress</Text>
-            <Text style={styles.subtitle}>Estimated 1RM trends over time</Text>
+            <Text style={styles.subtitle}>Your maximum strength progression</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.infoButton}
-            onPress={(e) => {
-              e.stopPropagation()
-              setShowInfoModal(true)
-            }}
-          >
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors.textTertiary}
+          />
         </View>
       </View>
 
@@ -729,106 +649,6 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
           </Animated.View>
         </View>
       </Modal>
-
-      {/* Info Modal - Bottom Sheet */}
-      <Modal
-        visible={showInfoModal}
-        transparent
-        animationType="none"
-        onRequestClose={() => setShowInfoModal(false)}
-      >
-        <View style={styles.infoModalOverlay}>
-          <Animated.View
-            style={[
-              styles.infoBackdrop,
-              {
-                opacity: infoBackdropAnim,
-              },
-            ]}
-          >
-            <Pressable
-              style={StyleSheet.absoluteFill}
-              onPress={() => setShowInfoModal(false)}
-            />
-          </Animated.View>
-
-          <Animated.View
-            style={[
-              styles.infoModalContent,
-              {
-                transform: [{ translateY: infoSlideAnim }],
-              },
-            ]}
-          >
-            {/* Handle Bar */}
-            <View
-              style={styles.infoHandleContainer}
-              {...infoModalPanResponder.panHandlers}
-            >
-              <View
-                style={[
-                  styles.infoHandle,
-                  { backgroundColor: colors.textSecondary },
-                ]}
-              />
-            </View>
-
-            <View
-              style={styles.infoModalHeader}
-              {...infoModalPanResponder.panHandlers}
-            >
-              <Text style={styles.infoModalTitle}>Strength Progress</Text>
-            </View>
-
-            <ScrollView
-              ref={infoScrollViewRef}
-              style={styles.infoModalBody}
-              contentContainerStyle={styles.infoModalBodyContent}
-              showsVerticalScrollIndicator={true}
-              scrollEnabled={true}
-              nestedScrollEnabled={true}
-              bounces={true}
-              onScroll={(event) => {
-                infoScrollOffsetRef.current = event.nativeEvent.contentOffset.y
-              }}
-              scrollEventThrottle={16}
-            >
-              <Text style={styles.infoSectionTitle}>What this shows</Text>
-              <Text style={styles.infoSectionText}>
-                This chart surfaces your estimated one-rep max (1RM) peaks over
-                the selected range, so you can spot how your strength is
-                trending session to session.
-              </Text>
-
-              <Text style={styles.infoSectionTitle}>
-                How it&apos;s calculated
-              </Text>
-              <Text style={styles.infoSectionText}>
-                We derive 1RM estimates from your logged sets using the Epley
-                formula, prioritise the heaviest quality sets each session, and
-                smooth the trend to remove noisy outliers.
-              </Text>
-
-              <Text style={styles.infoSectionTitle}>What good looks like</Text>
-              <Text style={styles.infoSectionText}>
-                <Text style={styles.infoSectionBold}>Steady climb: </Text>
-                Fresh highs every few weeks show that your training is working
-                {'\n'}
-                <Text style={styles.infoSectionBold}>Controlled dips: </Text>
-                Short plateaus or dips after deloads are normal, just make sure
-                they rebound quickly
-              </Text>
-
-              <Text style={styles.infoSectionTitle}>How to improve it</Text>
-              <Text style={styles.infoSectionText}>
-                Log every heavy set, cycle intensity with planned deloads, and
-                chase small weekly weight or rep increases rather than big
-                jumps.
-              </Text>
-            </ScrollView>
-          </Animated.View>
-        </View>
-      </Modal>
     </TouchableOpacity>
   )
 })
@@ -857,7 +677,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
     },
     iconContainer: {
       width: 44,
@@ -1089,77 +908,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseItemTextSelected: {
       fontWeight: '600',
       color: colors.primary,
-    },
-    infoButton: {
-      padding: 4,
-      marginTop: -2,
-      marginRight: -4,
-    },
-    infoModalOverlay: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
-    infoBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    infoModalContent: {
-      backgroundColor: colors.white,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      maxHeight: SCREEN_HEIGHT * 0.75,
-      paddingBottom: 34,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 20,
-      elevation: 20,
-      flex: 1,
-      flexDirection: 'column',
-    },
-    infoHandleContainer: {
-      alignItems: 'center',
-      paddingTop: 12,
-      paddingBottom: 8,
-    },
-    infoHandle: {
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      opacity: 0.3,
-    },
-    infoModalHeader: {
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-    },
-    infoModalTitle: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: colors.text,
-      letterSpacing: -0.5,
-    },
-    infoModalBody: {
-      flex: 1,
-    },
-    infoModalBodyContent: {
-      paddingHorizontal: 20,
-      paddingBottom: 20,
-    },
-    infoSectionTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    infoSectionText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
-      marginBottom: 8,
-    },
-    infoSectionBold: {
-      fontWeight: '700',
-      color: colors.text,
     },
   })

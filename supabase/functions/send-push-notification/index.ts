@@ -12,6 +12,7 @@ interface NotificationPayload {
       | 'follow_request_received'
       | 'follow_request_approved'
       | 'follow_request_declined'
+      | 'follow_received'
     workout_id: string | null
     request_id: string | null
     actors: string[]
@@ -140,6 +141,15 @@ Deno.serve(async (req) => {
     } else if (notification.type === 'follow_request_declined') {
       title = 'Request Declined'
       body = `${firstActor} declined your follow request`
+    } else if (notification.type === 'follow_received') {
+      title = 'New Follower'
+      if (actorCount === 1) {
+        body = `${firstActor} started following you`
+      } else {
+        body = `${firstActor} and ${actorCount - 1} other${
+          actorCount > 2 ? 's' : ''
+        } started following you`
+      }
     } else {
       console.error(
         '[send-push-notification] Unknown notification type:',

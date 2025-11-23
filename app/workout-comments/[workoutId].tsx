@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface CommentWithProfile extends WorkoutComment {
   profile?: Profile
@@ -38,8 +38,25 @@ export default function WorkoutCommentsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [isPosting, setIsPosting] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   const styles = createStyles(colors)
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true),
+    )
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false),
+    )
+
+    return () => {
+      keyboardWillShow.remove()
+      keyboardWillHide.remove()
+    }
+  }, [])
 
   // Fetch comments
   useEffect(() => {
@@ -53,9 +70,7 @@ export default function WorkoutCommentsScreen() {
         )
 
         // Fetch profiles for all comment authors
-        const uniqueUserIds = [
-          ...new Set(commentsData.map((c) => c.user_id)),
-        ]
+        const uniqueUserIds = [...new Set(commentsData.map((c) => c.user_id))]
         const { data: profiles } = await supabase
           .from('profiles')
           .select('*')
@@ -174,82 +189,96 @@ export default function WorkoutCommentsScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={28} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Comments</Text>
-          <View style={styles.headerRight} />
-        </View>
-
-        {/* Comments List */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : (
-          <FlatList
-            data={comments}
-            renderItem={renderComment}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.commentsList}
-            ListEmptyComponent={renderEmptyState}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-          />
-        )}
-
-        {/* Input Section */}
-        <View
-          style={[
-            styles.inputContainer,
-            { paddingBottom: Math.max(insets.bottom, 8) },
-          ]}
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
-          <TextInput
-            style={styles.input}
-            value={commentText}
-            onChangeText={setCommentText}
-            placeholder="Add a comment..."
-            placeholderTextColor={colors.textPlaceholder}
-            multiline
-            maxLength={500}
-            editable={!isPosting}
-          />
-          <TouchableOpacity
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="chevron-back" size={28} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Comments</Text>
+            <View style={styles.headerRight} />
+          </View>
+
+          {/* Comments List */}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <FlatList
+              data={comments}
+              renderItem={renderComment}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.commentsList}
+              ListEmptyComponent={renderEmptyState}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            />
+          )}
+
+          {/* Input Section */}
+          <View
             style={[
-              styles.sendButton,
-              (!commentText.trim() || isPosting) && styles.sendButtonDisabled,
+              styles.inputContainer,
+              {
+                paddingBottom: isKeyboardVisible
+                  ? 8
+                  : Math.max(insets.bottom, 8),
+              },
             ]}
-            onPress={handlePostComment}
-            disabled={!commentText.trim() || isPosting}
           >
-            {isPosting ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Ionicons
-                name="arrow-up"
-                size={20}
-                color={
-                  commentText.trim() ? colors.white : colors.textPlaceholder
-                }
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <TextInput
+              style={styles.input}
+              value={commentText}
+              onChangeText={setCommentText}
+              placeholder="Add a comment..."
+              placeholderTextColor={colors.textPlaceholder}
+              multiline
+              maxLength={500}
+              editable={!isPosting}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!commentText.trim() || isPosting) && styles.sendButtonDisabled,
+              ]}
+              onPress={handlePostComment}
+              disabled={!commentText.trim() || isPosting}
+            >
+              {isPosting ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Ionicons
+                  name="arrow-up"
+                  size={20}
+                  color={
+                    commentText.trim() ? colors.white : colors.textPlaceholder
+                  }
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </View>
   )
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.white,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,

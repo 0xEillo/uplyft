@@ -5,18 +5,19 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -26,7 +27,7 @@ export default function ProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
 
-  // Profile data
+  const styles = useMemo(() => createStyles(colors), [colors])
   const [profile, setProfile] = useState<any>(null)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
@@ -85,13 +86,7 @@ export default function ProfileScreen() {
       // Sum up all volume (weight * reps) for this week
       let totalVolume = 0
       weeklyWorkouts.forEach((workout) => {
-        workout.workout_exercises?.forEach((exercise) => {
-          exercise.sets?.forEach((set) => {
-            if (set.weight && set.reps) {
-              totalVolume += set.weight * set.reps
-            }
-          })
-        })
+        totalVolume += calculateTotalVolume(workout, 'kg')
       })
       setWeeklyVolume(totalVolume)
     } catch (error) {
@@ -200,7 +195,7 @@ export default function ProfileScreen() {
         <ActivityIndicator size="small" color={colors.primary} />
       </View>
     )
-  }, [isLoadingMore, colors.primary])
+  }, [isLoadingMore, colors.primary, styles])
 
   const renderEmptyState = useCallback(() => {
     if (isLoading) return null
@@ -217,9 +212,7 @@ export default function ProfileScreen() {
         </Text>
       </View>
     )
-  }, [isLoading, colors])
-
-  const styles = createStyles(colors)
+  }, [isLoading, colors, styles])
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -285,7 +278,7 @@ export default function ProfileScreen() {
                       if (user?.id) {
                         router.push({
                           pathname: '/followers/[userId]',
-                          params: { userId: user.id }
+                          params: { userId: user.id },
                         })
                       }
                     }}
@@ -299,7 +292,7 @@ export default function ProfileScreen() {
                       if (user?.id) {
                         router.push({
                           pathname: '/following/[userId]',
-                          params: { userId: user.id }
+                          params: { userId: user.id },
                         })
                       }
                     }}
@@ -546,4 +539,3 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
     },
   })
-

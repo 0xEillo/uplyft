@@ -1084,7 +1084,29 @@ export const database = {
       if (error) {
         throwIfPrivacyViolation(error)
       }
-      return data as WorkoutSessionWithDetails[]
+
+      if (!data || data.length === 0) {
+        return []
+      }
+
+      // Fetch profile for the user to display avatar/name
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_tag, display_name, avatar_url')
+        .eq('id', userId)
+        .single()
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile for getRecent:', profileError)
+      }
+
+      // Attach profile to each workout
+      const workoutsWithProfile = data.map((workout) => ({
+        ...workout,
+        profile: profile || undefined,
+      }))
+
+      return workoutsWithProfile as WorkoutSessionWithDetails[]
     },
 
     async getSocialFeed(userId: string, limit = 10, offset = 0) {
@@ -1241,14 +1263,15 @@ export const database = {
         .single()
 
       if (error) {
-        console.log('[database.getLastForRoutine] Error:', {
-          code: error.code,
-          message: error.message,
-        })
         // If no workout found, return null instead of throwing
         if (error.code === 'PGRST116') {
           return null
         }
+
+        console.error('[database.getLastForRoutine] Error fetching workout:', {
+          code: error.code,
+          message: error.message,
+        })
         throw error
       }
 
@@ -1521,9 +1544,13 @@ export const database = {
       ;(data as TotalVolumeRow[])?.forEach((session) => {
         session.workout_exercises?.forEach((we) => {
           we.sets?.forEach((set) => {
-            if (set.reps && set.weight) {
-              totalVolume += set.reps * set.weight
-            }
+            const reps = set.reps || 0
+            if (!reps) return
+
+            const weight =
+              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
+
+            totalVolume += reps * weight
           })
         })
       })
@@ -1652,10 +1679,14 @@ export const database = {
 
         session.workout_exercises?.forEach((we) => {
           we.sets?.forEach((set) => {
-            if (set.reps && set.weight) {
-              // Volume = reps × weight (in kg)
-              totalVolume += set.reps * set.weight
-            }
+            const reps = set.reps || 0
+            if (!reps) return
+
+            const weight =
+              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
+
+            // Volume = reps × weight (in kg)
+            totalVolume += reps * weight
           })
         })
 
@@ -1702,11 +1733,15 @@ export const database = {
           if (!muscleGroup) return
 
           we.sets?.forEach((set: any) => {
-            if (set.reps) {
-              const volume = set.reps
-              const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
-              muscleGroupVolumes.set(muscleGroup, currentVolume + volume)
-            }
+            const reps = set.reps || 0
+            if (!reps) return
+
+            const weight =
+              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
+
+            const volume = reps * weight
+            const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
+            muscleGroupVolumes.set(muscleGroup, currentVolume + volume)
           })
         })
       })

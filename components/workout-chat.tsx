@@ -6,8 +6,8 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -19,36 +19,36 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -1024,84 +1024,90 @@ Please provide a structured routine template.`
       )
 
       // Resolve exercises and create routine exercises/sets
+
+      // Resolve all exercises at once using the AI agent
+      const exerciseNames = routineData.exercises.map((ex) => ex.name)
+      let resolutions: Record<
+        string,
+        { exerciseId: string; exerciseName: string; wasCreated: boolean }
+      > = {}
+
+      try {
+        const { callSupabaseFunction } = await import(
+          '@/lib/supabase-functions-client'
+        )
+        const response = await callSupabaseFunction(
+          'resolve-exercises',
+          'POST',
+          {
+            exerciseNames,
+            userId: user.id,
+          },
+          undefined,
+          session?.access_token,
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to resolve exercises')
+        }
+
+        const data = await response.json()
+        resolutions = data.resolutions
+      } catch (error) {
+        console.error('Error resolving exercises:', error)
+        // Fallback or error handling?
+        // If resolution fails, we might want to abort or try manual fallback.
+        // For now, let's throw to alert the user.
+        throw new Error('Failed to resolve exercises with AI')
+      }
+
+      // Create routine exercises/sets
       const routineSets: any[] = []
 
       for (let i = 0; i < routineData.exercises.length; i++) {
         const ex = routineData.exercises[i]
+        const resolution = resolutions[ex.name]
 
-        // Find exercise by name (fuzzy match)
-        const { data: foundExercises } = await supabase
-          .from('exercises')
-          .select('id, name')
-          .ilike('name', ex.name)
-          .limit(1)
-
-        let exerciseId = foundExercises?.[0]?.id
-
-        // If not found, try a broader search or fallback?
-        // For now, if not found, we skip it or maybe try to find "similar"?
-        // Let's try a broader search if exact match failed
-        if (!exerciseId) {
-          const { data: looseMatch } = await supabase
-            .from('exercises')
-            .select('id, name')
-            .textSearch('name', ex.name)
-            .limit(1)
-          exerciseId = looseMatch?.[0]?.id
+        if (!resolution || !resolution.exerciseId) {
+          console.warn(`Could not resolve exercise: ${ex.name}`)
+          continue
         }
 
-        if (exerciseId) {
-          // Add to routine exercises list (we'll insert them all at once)
-          // Wait, we need the ID of the inserted routine_exercise to insert sets.
-          // So we must insert them one by one or in a batch and then map them back.
-          // Let's do one by one for simplicity and reliability here.
-
-          const { data: insertedExercise, error: exError } = await supabase
-            .from('workout_routine_exercises')
-            .insert({
-              routine_id: routine.id,
-              exercise_id: exerciseId,
-              order_index: i,
-              notes: null,
-            })
-            .select()
-            .single()
-
-          if (exError || !insertedExercise) {
-            console.error('Error inserting routine exercise:', exError)
-            continue
-          }
-
-          // Prepare sets for this exercise
-          ex.sets.forEach((s, setIndex) => {
-            routineSets.push({
-              routine_exercise_id: insertedExercise.id,
-              set_number: setIndex + 1,
-              reps_min: s.repsMin || null,
-              reps_max: s.repsMax || null,
-              // If a single rep number was given as string "10", we could parse it.
-              // convertAiPlanToRoutine gives repsMin/Max if range, or we might put single number in min/max?
-              // The converter logic: if range "8-12", min=8, max=12. If "10", min=null, max=null, reps="10".
-              // But our database only supports reps_min/reps_max for routines usually?
-              // Let's check schema. workout_routine_sets has reps_min, reps_max, rest_seconds.
-              // It doesn't seem to have a fixed 'reps' column.
-              // So if we have a single target, we can set min=max=target? Or just leave it null?
-              // Usually for routines, we want ranges. If "10 reps", it implies target 10.
-              // Let's set min=max=10 if "10" is parsed.
-              // If the AI returns "reps" string, we need to parse it.
-            })
-
-            // Quick fix for the sets:
-            // We need to handle the 'reps' string if min/max are missing.
-            if (!s.repsMin && !s.repsMax && s.reps) {
-              const parsed = parseInt(s.reps)
-              if (!isNaN(parsed)) {
-                routineSets[routineSets.length - 1].reps_min = parsed
-                routineSets[routineSets.length - 1].reps_max = parsed
-              }
-            }
+        const { data: insertedExercise, error: exError } = await supabase
+          .from('workout_routine_exercises')
+          .insert({
+            routine_id: routine.id,
+            exercise_id: resolution.exerciseId,
+            order_index: i,
+            notes: null,
           })
+          .select()
+          .single()
+
+        if (exError || !insertedExercise) {
+          console.error('Error inserting routine exercise:', exError)
+          continue
         }
+
+        // Prepare sets for this exercise
+        ex.sets.forEach((s, setIndex) => {
+          routineSets.push({
+            routine_exercise_id: insertedExercise.id,
+            set_number: setIndex + 1,
+            reps_min: s.repsMin || null,
+            reps_max: s.repsMax || null,
+          })
+
+          // Quick fix for the sets:
+          // We need to handle the 'reps' string if min/max are missing.
+          if (!s.repsMin && !s.repsMax && s.reps) {
+            const parsed = parseInt(s.reps)
+            if (!isNaN(parsed)) {
+              routineSets[routineSets.length - 1].reps_min = parsed
+              routineSets[routineSets.length - 1].reps_max = parsed
+            }
+          }
+        })
       }
 
       if (routineSets.length > 0) {

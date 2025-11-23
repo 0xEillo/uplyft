@@ -65,6 +65,13 @@ export interface ExercisePercentileResult {
 }
 
 const DEFAULT_MAX_SESSIONS = 250
+const BODYWEIGHT_VOLUME_FALLBACK_KG = 1
+
+function getVolumeWeight(weight?: number | null): number {
+  return typeof weight === 'number' && weight > 0
+    ? weight
+    : BODYWEIGHT_VOLUME_FALLBACK_KG
+}
 
 function clampDaysBack(daysBack?: number): number | undefined {
   if (typeof daysBack !== 'number' || Number.isNaN(daysBack)) return undefined
@@ -318,10 +325,11 @@ export async function getMuscleGroupDistribution(
       if (!muscleGroup) return
 
       we.sets?.forEach((set) => {
-        if (typeof set.reps !== 'number') {
+        if (typeof set.reps !== 'number' || set.reps <= 0) {
           return
         }
-        const volume = set.reps
+        const weight = getVolumeWeight(set.weight)
+        const volume = set.reps * weight
         volumeByGroup.set(
           muscleGroup,
           (volumeByGroup.get(muscleGroup) ?? 0) + volume,

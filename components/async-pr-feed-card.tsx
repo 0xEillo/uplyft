@@ -4,6 +4,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
+import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
@@ -250,16 +251,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           ) || 0,
         prs,
         durationSeconds: workout.duration ?? undefined,
-        volume:
-          workout.workout_exercises?.reduce(
-            (sum, we) =>
-              sum +
-              (we.sets?.reduce(
-                (setSum, set) => setSum + (set.weight || 0) * (set.reps || 0),
-                0,
-              ) || 0),
-            0,
-          ) || 0,
+        volume: calculateTotalVolume(workout, 'kg'),
       }}
       userId={workout.user_id}
       workoutId={workout.id}

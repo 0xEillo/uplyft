@@ -203,7 +203,13 @@ export async function buildUserContextSummary(
   ;(totalVolumeData as any[])?.forEach((session) => {
     session.workout_exercises?.forEach((we: any) => {
       we.sets?.forEach((s: any) => {
-        if (s.reps && s.weight) totalVolumeAllTime += s.reps * s.weight
+        const reps = s.reps || 0
+        if (!reps) return
+
+        const weight =
+          typeof s.weight === 'number' && s.weight > 0 ? s.weight : 1
+
+        totalVolumeAllTime += reps * weight
       })
     })
   })

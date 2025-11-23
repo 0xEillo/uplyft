@@ -3,6 +3,7 @@ import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useCopyRoutine } from '@/hooks/useCopyRoutine'
 import { database } from '@/lib/database'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -26,6 +27,7 @@ export default function RoutineDetailScreen() {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const insets = useSafeAreaInsets()
+  const { copyRoutine, isCopying } = useCopyRoutine()
 
   const [routine, setRoutine] = useState<WorkoutRoutineWithDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -37,31 +39,26 @@ export default function RoutineDetailScreen() {
 
       try {
         setIsLoading(true)
-        // We need to fetch the routine with details.
-        // Assuming database.workoutRoutines.getById exists or we can use getAll and find.
-        // Since getAll is cached/fast enough usually, or we might need to add getById.
-        // Let's try to find it from getAll first as it's likely already loaded in previous screen,
-        // but for deep linking support we should probably fetch it.
-        // For now, let's use getAll(user.id) and find it, as that's what we have exposed in database.ts usually.
-        // Actually, let's check if we have getById. If not, we'll use getAll.
-        // Checking previous files, I saw database.workoutRoutines.getAll(user.id).
-        // I'll assume for now we can fetch it. If not, I'll implement a fetch.
-
-        // Wait, I should check database.ts first? No, I'll just try to use what I know.
-        // Actually, better to be safe. I'll use getAll and find for now.
-        const routines = await database.workoutRoutines.getAll(user.id)
-        const found = routines.find((r) => r.id === routineId)
-
-        if (found) {
-          setRoutine(found)
-        } else {
-          Alert.alert('Error', 'Routine not found')
-          router.back()
-        }
+        // Try to fetch directly by ID first since we might be viewing another user's routine
+        const data = await database.workoutRoutines.getById(routineId)
+        setRoutine(data)
       } catch (error) {
         console.error('Error loading routine:', error)
-        Alert.alert('Error', 'Failed to load routine')
-        router.back()
+        // Fallback to getAll if getById fails (though getById should work now with RLS changes)
+        try {
+          const routines = await database.workoutRoutines.getAll(user.id)
+          const found = routines.find((r) => r.id === routineId)
+          if (found) {
+            setRoutine(found)
+          } else {
+            Alert.alert('Error', 'Routine not found')
+            router.back()
+          }
+        } catch (e) {
+          console.error('Error fetching routines fallback:', e)
+          Alert.alert('Error', 'Failed to load routine')
+          router.back()
+        }
       } finally {
         setIsLoading(false)
       }
@@ -79,25 +76,47 @@ export default function RoutineDetailScreen() {
   }
 
   const handleStartRoutine = () => {
-    if (!routine) return
+    if (!routine) {
+      return
+    }
 
-    // Navigate back to create-post with the selected routine ID
-    // We use router.push to replace the stack or ensure we go to the right place?
-    // Actually, create-post is a tab. We should probably use router.navigate or router.push to the tab.
-    // But since we are likely coming from create-post (via the sheet), we might want to just go back?
-    // No, if we go back, we need to pass params.
-    // router.navigate('/(tabs)/create-post', { selectedRoutineId: routine.id }) might work.
-    // Let's try router.push for now, or router.replace if we want to clear this screen.
-    router.dismissAll()
-    router.push({
-      pathname: '/(tabs)/create-post',
-      params: { selectedRoutineId: routine.id },
-    })
+    router.replace(
+      `/(tabs)/create-post?selectedRoutineId=${
+        routine.id
+      }&refresh=${Date.now()}`,
+    )
   }
 
   const handleEditRoutine = () => {
     if (!routine) return
     router.push(`/create-routine?routineId=${routine.id}`)
+  }
+
+  const handleSaveRoutine = async () => {
+    if (!routine || !user) return
+
+    try {
+      const newRoutine = await copyRoutine(routine, user.id)
+      Alert.alert('Success', 'Routine saved to your library!', [
+        {
+          text: 'View Routine',
+          onPress: () => {
+            // Navigate to the new routine
+            router.push({
+              pathname: '/routine-detail',
+              params: { routineId: newRoutine.id },
+            })
+          },
+        },
+        {
+          text: 'OK',
+          style: 'cancel',
+        },
+      ])
+    } catch (error) {
+      console.error('Error saving routine copy:', error)
+      Alert.alert('Error', 'Failed to save routine')
+    }
   }
 
   if (isLoading) {
@@ -119,6 +138,7 @@ export default function RoutineDetailScreen() {
 
   if (!routine) return null
 
+  const isOwner = user?.id === routine.user_id
   const exerciseCount = routine.workout_routine_exercises?.length || 0
   const setCount =
     routine.workout_routine_exercises?.reduce(
@@ -126,10 +146,7 @@ export default function RoutineDetailScreen() {
       0,
     ) || 0
 
-  // Calculate estimated duration using industry standard:
-  // - 45 seconds per set for execution time
-  // - Actual rest times from sets (default 90 seconds if not set)
-  // - 30 seconds per exercise for transition time
+  // Estimate duration
   const DEFAULT_REST_SECONDS = 90
   const SET_EXECUTION_SECONDS = 45
   const EXERCISE_TRANSITION_SECONDS = 30
@@ -170,7 +187,12 @@ export default function RoutineDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
+      >
         <BaseNavbar
           leftContent={
             <>
@@ -194,7 +216,7 @@ export default function RoutineDetailScreen() {
               {routine.name}
             </Text>
             <Text style={[styles.creatorName, { color: colors.textSecondary }]}>
-              Created by you
+              {isOwner ? 'Created by you' : 'Shared routine'}
             </Text>
 
             {/* Notes */}
@@ -244,21 +266,36 @@ export default function RoutineDetailScreen() {
               </View>
             </View>
 
-            {/* Start Routine Button */}
-            <TouchableOpacity
-              style={[styles.startButton, { backgroundColor: colors.primary }]}
-              onPress={handleStartRoutine}
-            >
-              <Text style={styles.startButtonText}>Start Routine</Text>
-            </TouchableOpacity>
+            {/* Action Button */}
+            {isOwner ? (
+              <TouchableOpacity
+                style={[
+                  styles.startButton,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={handleStartRoutine}
+              >
+                <Text style={styles.startButtonText}>Start Routine</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.startButton,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={handleSaveRoutine}
+                disabled={isCopying}
+              >
+                {isCopying ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.startButtonText}>
+                    Save to My Routines
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
-
-          {/* Body Visualization (Full) - Optional, maybe just rely on the mini one or the list? 
-              The design shows a large placeholder or chart. Let's use the MuscleSplitChart if it looks good, 
-              or just the exercises list as the user asked for "visualize his routine (like in the image example)".
-              The image shows a "No data yet" chart, probably for history. 
-              I'll skip the history chart for now as we don't have history context here easily.
-          */}
 
           {/* Exercises List */}
           <View style={styles.exercisesSection}>
@@ -268,13 +305,15 @@ export default function RoutineDetailScreen() {
               >
                 Exercises
               </Text>
-              <TouchableOpacity onPress={handleEditRoutine}>
-                <Text
-                  style={[styles.editButtonText, { color: colors.primary }]}
-                >
-                  Edit Routine
-                </Text>
-              </TouchableOpacity>
+              {isOwner && (
+                <TouchableOpacity onPress={handleEditRoutine}>
+                  <Text
+                    style={[styles.editButtonText, { color: colors.primary }]}
+                  >
+                    Edit Routine
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {routine.workout_routine_exercises.map((routineExercise, index) => (
@@ -285,10 +324,6 @@ export default function RoutineDetailScreen() {
                   { backgroundColor: colors.feedCardBackground },
                 ]}
               >
-                {/* We can reuse ExerciseDetailCard but we need to adapt the data structure 
-                     or create a simple view here. ExerciseDetailCard expects WorkoutExerciseWithDetails.
-                     Let's create a simple view to match the design more closely.
-                 */}
                 <View style={styles.exerciseHeader}>
                   <Text
                     style={[styles.exerciseName, { color: colors.primary }]}

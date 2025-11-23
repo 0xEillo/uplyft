@@ -819,6 +819,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       color: colors.textSecondary,
       fontWeight: '400',
+      marginTop: 4,
     },
     setRow: {
       flexDirection: 'row',

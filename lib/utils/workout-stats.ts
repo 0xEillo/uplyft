@@ -1,5 +1,7 @@
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
+const BODYWEIGHT_VOLUME_FALLBACK_KG = 1
+
 export interface WorkoutStats {
   totalVolume: number // in kg
   totalSets: number
@@ -17,6 +19,12 @@ export interface WorkoutStats {
  * The weightUnit parameter is only used for the calculation context and is not applied
  * to the stored weights. Use formatVolume() to convert the result for display.
  */
+export function normalizeVolumeWeight(weight?: number | null): number {
+  return typeof weight === 'number' && weight > 0
+    ? weight
+    : BODYWEIGHT_VOLUME_FALLBACK_KG
+}
+
 export function calculateTotalVolume(
   workout: WorkoutSessionWithDetails,
   weightUnit: 'kg' | 'lb' = 'kg',
@@ -27,8 +35,10 @@ export function calculateTotalVolume(
 
   workout.workout_exercises.forEach((exercise) => {
     exercise.sets?.forEach((set) => {
-      const weight = set.weight || 0 // Already in kg
       const reps = set.reps || 0
+      if (!reps) return
+
+      const weight = normalizeVolumeWeight(set.weight)
 
       // Volume calculation: weight (kg) × reps
       totalVolume += weight * reps

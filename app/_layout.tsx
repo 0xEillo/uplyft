@@ -142,6 +142,13 @@ function RootLayoutNav() {
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
           <Stack.Screen
+            name="workout-comments/[workoutId]"
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal',
+            }}
+          />
+          <Stack.Screen
             name="(stand-alone)/create-routine"
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />

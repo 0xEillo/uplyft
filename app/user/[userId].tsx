@@ -7,6 +7,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
+import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import {
     FollowRelationshipStatus,
     WorkoutSessionWithDetails,
@@ -125,13 +126,7 @@ export default function UserProfileScreen() {
         workoutData.forEach((workout) => {
           const workoutDate = new Date(workout.date)
           if (workoutDate >= startOfWeek) {
-            workout.workout_exercises?.forEach((exercise) => {
-              exercise.sets?.forEach((set) => {
-                if (set.weight && set.reps) {
-                  totalVolume += set.weight * set.reps
-                }
-              })
-            })
+            totalVolume += calculateTotalVolume(workout, 'kg')
           }
         })
 
@@ -696,16 +691,7 @@ function AsyncPrFeedCard({
           ) || 0,
         prs,
         durationSeconds: workout.duration ?? undefined,
-        volume:
-          workout.workout_exercises?.reduce(
-            (sum, we) =>
-              sum +
-              (we.sets?.reduce(
-                (setSum, set) => setSum + (set.weight || 0) * (set.reps || 0),
-                0,
-              ) || 0),
-            0,
-          ) || 0,
+        volume: calculateTotalVolume(workout, 'kg'),
       }}
       workout={workout}
       onCardPress={handleCardPress}

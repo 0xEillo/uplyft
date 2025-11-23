@@ -1,4 +1,5 @@
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { normalizeVolumeWeight } from './workout-stats'
 
 export interface MuscleSplitData {
   muscleGroup: string
@@ -11,7 +12,7 @@ export interface MuscleSplitData {
  * Returns an array of muscle groups with their volume and percentage
  */
 export function calculateMuscleSplit(
-  workout: WorkoutSessionWithDetails
+  workout: WorkoutSessionWithDetails,
 ): MuscleSplitData[] {
   if (!workout.workout_exercises || workout.workout_exercises.length === 0) {
     return []
@@ -27,9 +28,10 @@ export function calculateMuscleSplit(
 
     // Calculate volume for this exercise
     const exerciseVolume = workoutExercise.sets.reduce((sum, set) => {
-      const weight = set.weight || 0
       const reps = set.reps || 0
-      return sum + weight * reps
+      if (!reps) return sum
+
+      return sum + normalizeVolumeWeight(set.weight) * reps
     }, 0)
 
     // Add to muscle group total
@@ -40,7 +42,7 @@ export function calculateMuscleSplit(
 
   // Convert to array and calculate percentages
   const muscleSplitData: MuscleSplitData[] = Array.from(
-    muscleGroupVolumes.entries()
+    muscleGroupVolumes.entries(),
   ).map(([muscleGroup, volume]) => ({
     muscleGroup,
     volume,
@@ -56,7 +58,7 @@ export function calculateMuscleSplit(
  * e.g., Biceps + Triceps = Arms, Quads + Hamstrings + Calves = Legs
  */
 export function calculateMuscleSplitGrouped(
-  workout: WorkoutSessionWithDetails
+  workout: WorkoutSessionWithDetails,
 ): MuscleSplitData[] {
   const detailedSplit = calculateMuscleSplit(workout)
 
@@ -84,7 +86,7 @@ export function calculateMuscleSplitGrouped(
 
   // Convert to array and calculate percentages
   const groupedSplitData: MuscleSplitData[] = Array.from(
-    groupedVolumes.entries()
+    groupedVolumes.entries(),
   ).map(([muscleGroup, volume]) => ({
     muscleGroup,
     volume,
@@ -101,7 +103,7 @@ export function calculateMuscleSplitGrouped(
  */
 export function getWorkoutMuscleGroups(
   workout: WorkoutSessionWithDetails,
-  limit: number = 3
+  limit: number = 3,
 ): string {
   const split = calculateMuscleSplitGrouped(workout)
   const topGroups = split.slice(0, limit).map((s) => s.muscleGroup)
