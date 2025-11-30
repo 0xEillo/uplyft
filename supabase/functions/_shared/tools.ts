@@ -1,5 +1,5 @@
-import { openai } from '@ai-sdk/openai'
-import { embed, generateObject } from 'ai'
+import { openai } from 'npm:@ai-sdk/openai'
+import { embed, generateObject } from 'npm:ai'
 import { z } from 'https://esm.sh/zod@3.25.76'
 
 import { createServiceClient } from './supabase.ts'
