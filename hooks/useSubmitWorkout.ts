@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import * as Crypto from 'expo-crypto'
 
 import { useAuth } from '@/contexts/auth-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -89,12 +90,16 @@ export function useSubmitWorkout() {
         }
       }
 
+      // Generate idempotency key to prevent duplicate submissions
+      const idempotencyKey = Crypto.randomUUID()
+
       const pending: PendingWorkout = {
         notes: trimmedNotes,
         title: trimmedTitle,
         imageUrl,
         weightUnit,
         userId: user.id,
+        idempotencyKey,
         routineId: routineId || null,
         durationSeconds: typeof durationSeconds === 'number' ? durationSeconds : null,
       }
@@ -155,6 +160,7 @@ export function useSubmitWorkout() {
           userId: pending.userId,
           workoutTitle: pending.title,
           imageUrl: pending.imageUrl,
+          idempotencyKey: pending.idempotencyKey,
           routineId: pending.routineId,
           durationSeconds: pending.durationSeconds ?? undefined,
         },

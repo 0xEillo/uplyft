@@ -1,7 +1,6 @@
 import { BaseNavbar } from '@/components/base-navbar'
 import { MuscleBalanceChart } from '@/components/muscle-balance-chart'
 import { StrengthScoreChart } from '@/components/strength-score-chart'
-import { WorkoutCalendarCard } from '@/components/workout-calendar-card'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -75,7 +74,6 @@ export default function AnalyticsScreen() {
       >
         {user && (
           <>
-            <WorkoutCalendarCard userId={user.id} />
             <StrengthScoreChart userId={user.id} />
             <MuscleBalanceChart userId={user.id} />
           </>

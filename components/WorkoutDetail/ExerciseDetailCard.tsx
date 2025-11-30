@@ -38,13 +38,6 @@ export function ExerciseDetailCard({ workoutExercise, prInfo }: ExerciseDetailCa
     return null
   }
 
-  // Detect warmup sets (sets that are significantly lighter than the working sets)
-  const weights = sets
-    .map((s) => s.weight)
-    .filter((w): w is number => w !== null)
-  const maxWeight = weights.length > 0 ? Math.max(...weights) : 0
-  const warmupThreshold = maxWeight * 0.7 // Sets below 70% of max weight are considered warmup
-
   const hasPR = prInfo && prInfo.prSetIndices.size > 0
 
   return (
@@ -75,18 +68,9 @@ export function ExerciseDetailCard({ workoutExercise, prInfo }: ExerciseDetailCa
       {sets.map((set, index) => {
         const weight = set.weight
         const reps = set.reps
-        const isWarmup = weight !== null && weight < warmupThreshold && maxWeight > 0
         const setHasPR = prInfo?.prSetIndices.has(index)
 
-        let setLabel: string
-        if (isWarmup) {
-          setLabel = 'W'
-        } else {
-          setLabel = String(index + 1 - sets.slice(0, index).filter((s) => {
-            const w = s.weight
-            return w !== null && w < warmupThreshold && maxWeight > 0
-          }).length)
-        }
+        const setLabel = String(index + 1)
 
         // Format weight and reps
         let weightRepsText: string

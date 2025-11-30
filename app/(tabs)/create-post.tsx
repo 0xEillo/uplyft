@@ -250,6 +250,7 @@ export default function CreatePostScreen() {
   const suppressDraftToastRef = useRef(false)
   const skipNextPersistRef = useRef(false)
   const isHydratingRef = useRef(true)
+  const isSubmittingRef = useRef(false)
   const convertButtonDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -815,13 +816,17 @@ export default function CreatePostScreen() {
         attachedImageUri,
         selectedRoutine?.id ?? null,
       )
+      // Success - reset loading state
+      isSubmittingRef.current = false
+      setIsLoading(false)
     } catch (error) {
       if (
         error instanceof SubmitWorkoutError &&
         error.code === 'IMAGE_UPLOAD'
       ) {
+        // IMAGE_UPLOAD error - show Alert and let user decide
+        // Don't reset loading state here - Alert handlers will do it
         console.error('Error uploading image:', error.originalError ?? error)
-        setIsLoading(false)
         Alert.alert(
           'Image Upload Failed',
           'Unable to upload your workout photo. Would you like to continue without it?',
@@ -829,11 +834,14 @@ export default function CreatePostScreen() {
             {
               text: 'Cancel',
               style: 'cancel',
+              onPress: () => {
+                isSubmittingRef.current = false
+                setIsLoading(false)
+              },
             },
             {
               text: 'Continue',
               onPress: async () => {
-                setIsLoading(true)
                 setAttachedImageUri(null)
                 try {
                   await performSubmission(
@@ -850,6 +858,7 @@ export default function CreatePostScreen() {
                     [{ text: 'OK' }],
                   )
                 } finally {
+                  isSubmittingRef.current = false
                   setIsLoading(false)
                 }
               },
@@ -859,14 +868,15 @@ export default function CreatePostScreen() {
         return
       }
 
+      // Generic error - reset loading state
       console.error('Error saving pending post:', error)
+      isSubmittingRef.current = false
+      setIsLoading(false)
       Alert.alert(
         'Save Failed',
         'Unable to save your workout. Please try again.',
         [{ text: 'OK' }],
       )
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -980,6 +990,12 @@ export default function CreatePostScreen() {
   )
 
   const handlePost = async () => {
+    // Prevent double-tap race condition using synchronous ref check
+    if (isSubmittingRef.current) {
+      return
+    }
+    isSubmittingRef.current = true
+
     // Immediate haptic feedback for responsive feel
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
@@ -1006,6 +1022,7 @@ export default function CreatePostScreen() {
 
     // Check freemium workout limit
     if (!canPostWorkout) {
+      isSubmittingRef.current = false
       setIsLoading(false)
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
@@ -1017,6 +1034,7 @@ export default function CreatePostScreen() {
     }
 
     if (!workoutTitle.trim()) {
+      isSubmittingRef.current = false
       setIsLoading(false)
       Alert.alert(
         'Title Required',
@@ -1035,6 +1053,7 @@ export default function CreatePostScreen() {
       )
 
     if (!notes.trim() && !hasStructuredData) {
+      isSubmittingRef.current = false
       setIsLoading(false)
       Alert.alert(
         'Workout Details Missing',
@@ -1045,6 +1064,7 @@ export default function CreatePostScreen() {
     }
 
     if (!user) {
+      isSubmittingRef.current = false
       setIsLoading(false)
       Alert.alert('Not Logged In', 'Sign in to save and track your workouts.', [
         { text: 'OK' },
@@ -1067,6 +1087,7 @@ export default function CreatePostScreen() {
               style: 'cancel',
               onPress: () => {
                 // User cancelled - re-enable button
+                isSubmittingRef.current = false
                 setIsLoading(false)
               },
             },

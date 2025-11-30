@@ -83,14 +83,18 @@ export default function SignupOptionsScreen() {
         }
       }
 
-      // Navigate directly to app (trial offer deactivated)
-      // router.replace({
-      //   pathname: '/(auth)/trial-offer',
-      //   params: {
-      //     onboarding_data: params.onboarding_data as string,
-      //   },
-      // })
-      router.replace('/(tabs)')
+      // If user wanted to start trial, show trial purchase flow
+      if (params.start_trial === 'true') {
+        router.replace({
+          pathname: '/(auth)/trial-offer',
+          params: {
+            onboarding_data: params.onboarding_data as string,
+            can_purchase: 'true',
+          },
+        })
+      } else {
+        router.replace('/(tabs)')
+      }
     } catch (error) {
       Alert.alert(
         'Error',
@@ -140,14 +144,18 @@ export default function SignupOptionsScreen() {
         }
       }
 
-      // Navigate directly to app (trial offer deactivated)
-      // router.replace({
-      //   pathname: '/(auth)/trial-offer',
-      //   params: {
-      //     onboarding_data: params.onboarding_data as string,
-      //   },
-      // })
-      router.replace('/(tabs)')
+      // If user wanted to start trial, show trial purchase flow
+      if (params.start_trial === 'true') {
+        router.replace({
+          pathname: '/(auth)/trial-offer',
+          params: {
+            onboarding_data: params.onboarding_data as string,
+            can_purchase: 'true',
+          },
+        })
+      } else {
+        router.replace('/(tabs)')
+      }
     } catch (error) {
       Alert.alert(
         'Error',

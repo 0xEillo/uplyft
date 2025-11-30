@@ -12,6 +12,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
+import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { isApiError, mapApiErrorToMessage } from '@/lib/api/errors'
 import { database } from '@/lib/database'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
@@ -19,7 +20,7 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -87,6 +88,8 @@ export default function FeedScreen() {
   const { unreadCount } = useNotifications()
   const { updateWorkoutData } = useSuccessOverlay()
   const { showPrompt } = useRatingPrompt()
+  const { registerScrollRef } = useScrollToTop()
+  const flatListRef = useRef<FlatList>(null)
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -99,6 +102,11 @@ export default function FeedScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
+
+  // Register FlatList ref for scroll-to-top functionality
+  useEffect(() => {
+    registerScrollRef('index', flatListRef)
+  }, [registerScrollRef])
 
   const loadWorkouts = useCallback(
     async (showLoading = false, loadMore = false) => {
@@ -200,7 +208,17 @@ export default function FeedScreen() {
       }
 
       if (result.status === 'success') {
-        const { workout } = result
+        let { workout } = result
+
+        // Ensure workout has profile attached for share screen
+        if (!workout.profile && user) {
+          try {
+            const profile = await database.profiles.getById(user.id)
+            workout = { ...workout, profile }
+          } catch (error) {
+            console.error('Error fetching profile for new workout:', error)
+          }
+        }
 
         // Update success overlay context with workout data for share screen
         updateWorkoutData(workout)
@@ -447,6 +465,7 @@ export default function FeedScreen() {
         <EmptyFeedState />
       ) : (
         <FlatList
+          ref={flatListRef}
           data={workouts}
           renderItem={renderWorkoutItem}
           keyExtractor={(item) => item.id}

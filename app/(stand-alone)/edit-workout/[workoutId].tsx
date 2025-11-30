@@ -10,6 +10,9 @@ import {
   uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from '@react-native-community/datetimepicker'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -20,6 +23,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   LayoutAnimation,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -86,6 +90,10 @@ export default function EditWorkoutScreen() {
   const [imageLoading, setImageLoading] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const imageOpacity = useRef(new Animated.Value(0)).current
+
+  // Date editing states
+  const [editedDate, setEditedDate] = useState<Date | null>(null)
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   // Slide in view state
   const [shouldExit, setShouldExit] = useState(false)
@@ -168,6 +176,10 @@ export default function EditWorkoutScreen() {
       setWorkout(data)
       setEditedTitle(data.type || '')
       setEditedNotes(data.notes || '')
+      // Initialize edited date from workout date
+      if (data.date) {
+        setEditedDate(new Date(data.date))
+      }
     } catch (error) {
       console.error('Error loading workout:', error)
       Alert.alert('Error', 'Failed to load workout')
@@ -176,6 +188,35 @@ export default function EditWorkoutScreen() {
       setIsLoading(false)
     }
   }, [handleExit, workoutId])
+
+  // Date picker handlers
+  const handleDateChange = useCallback(
+    (event: DateTimePickerEvent, selectedDate?: Date) => {
+      if (Platform.OS === 'android') {
+        setShowDatePicker(false)
+      }
+      if (event.type === 'set' && selectedDate) {
+        setEditedDate(selectedDate)
+      }
+    },
+    [],
+  )
+
+  const formatDisplayDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  const formatDisplayTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  }
 
   useEffect(() => {
     loadWorkout()
@@ -248,7 +289,7 @@ export default function EditWorkoutScreen() {
     try {
       setIsSaving(true)
 
-      // 1. Update workout session (title, notes, and image)
+      // 1. Update workout session (title, notes, image, and date)
       const updates: Record<string, any> = {}
 
       const titleValue = editedTitle.trim()
@@ -263,6 +304,11 @@ export default function EditWorkoutScreen() {
         updates.image_url = null
       } else if (editedImageUrl) {
         updates.image_url = editedImageUrl
+      }
+
+      // Handle date updates
+      if (editedDate) {
+        updates.date = editedDate.toISOString()
       }
 
       await database.workoutSessions.update(workoutId, updates)
@@ -360,6 +406,7 @@ export default function EditWorkoutScreen() {
     editedSets,
     editedTitle,
     editedImageUrl,
+    editedDate,
     imageDeleted,
     handleExit,
     workout,
@@ -567,6 +614,79 @@ export default function EditWorkoutScreen() {
                 maxLength={50}
               />
             </View>
+
+            {/* Date Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Date & Time</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <View style={styles.dateButtonContent}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.dateButtonText}>
+                    {editedDate
+                      ? `${formatDisplayDate(editedDate)} at ${formatDisplayTime(editedDate)}`
+                      : 'Select date'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Date Picker Modal (iOS) / Inline (Android) */}
+            {Platform.OS === 'ios' ? (
+              <Modal
+                visible={showDatePicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <View style={styles.datePickerModalOverlay}>
+                  <View style={styles.datePickerModalContent}>
+                    <View style={styles.datePickerHeader}>
+                      <TouchableOpacity
+                        onPress={() => setShowDatePicker(false)}
+                      >
+                        <Text style={styles.datePickerCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.datePickerTitle}>Select Date</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowDatePicker(false)}
+                      >
+                        <Text style={styles.datePickerDoneText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={editedDate || new Date()}
+                      mode="datetime"
+                      display="spinner"
+                      onChange={handleDateChange}
+                      maximumDate={new Date()}
+                      textColor={colors.text}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              showDatePicker && (
+                <DateTimePicker
+                  value={editedDate || new Date()}
+                  mode="datetime"
+                  display="default"
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                />
+              )
+            )}
 
             {/* Notes Section */}
             <View style={styles.section}>
@@ -896,6 +1016,58 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     textArea: {
       minHeight: 100,
       textAlignVertical: 'top',
+    },
+    dateButton: {
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    dateButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    dateButtonText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    datePickerModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    datePickerModalContent: {
+      backgroundColor: colors.white,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 20,
+    },
+    datePickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    datePickerTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    datePickerCancelText: {
+      fontSize: 17,
+      color: colors.textSecondary,
+    },
+    datePickerDoneText: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.primary,
     },
     imageContainer: {
       backgroundColor: colors.white,

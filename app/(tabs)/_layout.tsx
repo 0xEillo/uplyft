@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useRouter } from 'expo-router'
+import { useNavigation } from '@react-navigation/native'
 import React, { useEffect, useState } from 'react'
 import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -10,6 +11,10 @@ import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
+import {
+  ScrollToTopProvider,
+  useScrollToTop,
+} from '@/contexts/scroll-to-top-context'
 import {
   SuccessOverlayProvider,
   useSuccessOverlay,
@@ -65,6 +70,8 @@ function TabLayoutContent() {
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const navigation = useNavigation()
+  const { scrollToTop } = useScrollToTop()
   const {
     isVisible,
     data,
@@ -162,6 +169,20 @@ function TabLayoutContent() {
               <IconSymbol size={26} name="house.fill" color={color} />
             ),
           }}
+          listeners={{
+            tabPress: (e) => {
+              // If already on home tab (index route), scroll to top
+              const state = navigation.getState()
+              const currentRoute = state?.routes[state.index]
+              const isOnHomeTab = currentRoute?.name === '(tabs)' && 
+                (currentRoute.state?.routes[currentRoute.state.index]?.name === 'index' || 
+                 !currentRoute.state?.routes[currentRoute.state.index])
+              if (isOnHomeTab) {
+                e.preventDefault()
+                scrollToTop('index')
+              }
+            },
+          }}
         />
         {/* Progress tab */}
         <Tabs.Screen
@@ -217,6 +238,19 @@ function TabLayoutContent() {
               <Ionicons name="person-circle" size={26} color={color} />
             ),
           }}
+          listeners={{
+            tabPress: (e) => {
+              // If already on profile tab, scroll to top
+              const state = navigation.getState()
+              const currentRoute = state?.routes[state.index]
+              const isOnProfileTab = currentRoute?.name === '(tabs)' && 
+                currentRoute.state?.routes[currentRoute.state.index]?.name === 'profile'
+              if (isOnProfileTab) {
+                e.preventDefault()
+                scrollToTop('profile')
+              }
+            },
+          }}
         />
         {/* Hidden screens */}
         <Tabs.Screen
@@ -259,11 +293,13 @@ function TabLayoutContent() {
 
 export default function TabLayout() {
   return (
-    <SuccessOverlayProvider>
-      <RatingPromptProvider>
-        <TabLayoutContent />
-      </RatingPromptProvider>
-    </SuccessOverlayProvider>
+    <ScrollToTopProvider>
+      <SuccessOverlayProvider>
+        <RatingPromptProvider>
+          <TabLayoutContent />
+        </RatingPromptProvider>
+      </SuccessOverlayProvider>
+    </ScrollToTopProvider>
   )
 }
 

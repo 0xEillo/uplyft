@@ -1215,7 +1215,12 @@ export const database = {
 
     async update(
       sessionId: string,
-      updates: { type?: string; notes?: string; image_url?: string | null },
+      updates: {
+        type?: string | null
+        notes?: string | null
+        image_url?: string | null
+        date?: string
+      },
     ) {
       const { data, error } = await supabase
         .from('workout_sessions')

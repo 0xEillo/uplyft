@@ -162,9 +162,25 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
               <View
                 style={[styles.brandLine, hasPRs && styles.brandLineLight]}
               />
-              <Text style={[styles.brandText, hasPRs && styles.brandTextLight]}>
-                REP AI
-              </Text>
+              <View style={styles.brandContent}>
+                <Text
+                  style={[styles.brandText, hasPRs && styles.brandTextLight]}
+                >
+                  REP AI
+                </Text>
+                {(workout.profile?.user_tag ||
+                  workout.profile?.display_name) && (
+                  <Text
+                    style={[
+                      styles.userTagText,
+                      hasPRs && styles.userTagTextLight,
+                    ]}
+                  >
+                    @
+                    {workout.profile?.user_tag || workout.profile?.display_name}
+                  </Text>
+                )}
+              </View>
               <View
                 style={[styles.brandLine, hasPRs && styles.brandLineLight]}
               />
@@ -381,6 +397,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  brandContent: {
+    alignItems: 'center',
+    gap: 2,
+  },
   brandLine: {
     width: 40,
     height: 2,
@@ -397,5 +417,14 @@ const styles = StyleSheet.create({
   },
   brandTextLight: {
     color: '#FFFFFF',
+  },
+  userTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#8E8E93',
+    letterSpacing: 0.5,
+  },
+  userTagTextLight: {
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 })

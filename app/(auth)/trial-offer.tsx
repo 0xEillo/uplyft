@@ -1,4 +1,5 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { ProBadge } from '@/components/pro-badge'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
@@ -153,87 +154,94 @@ export default function TrialOfferScreen() {
     })
   }, [step, trackEvent])
 
+  // Check if user came back after logging in (can now make purchases)
+  const canPurchase = params.can_purchase === 'true' && user
+
   const handleStartTrial = async () => {
-    try {
-      setIsPurchasing(true)
+    // If user is logged in and can purchase, process the purchase
+    if (canPurchase) {
+      try {
+        setIsPurchasing(true)
 
-      // Track trial offer step completed before purchase
-      trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
-        step: 3,
-        step_name: 'payment_setup',
-      })
+        trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
+          step: 3,
+          step_name: 'payment_setup',
+        })
 
-      let targetPackage = selectedTrialPackage
-      if (!targetPackage) {
-        const fallback = offerings?.availablePackages?.[0]
-        if (!fallback) {
-          throw new Error(
-            'No subscription packages available. Please try again.',
+        let targetPackage = selectedTrialPackage
+        if (!targetPackage) {
+          const fallback = offerings?.availablePackages?.[0]
+          if (!fallback) {
+            throw new Error(
+              'No subscription packages available. Please try again.',
+            )
+          }
+          targetPackage = fallback
+        }
+
+        const updatedCustomerInfo = await purchasePackage(
+          targetPackage.identifier,
+        )
+
+        // Verify the Pro entitlement was actually granted
+        const hasProEntitlement = Boolean(
+          updatedCustomerInfo?.entitlements.active['Pro'],
+        )
+
+        if (!hasProEntitlement) {
+          Alert.alert(
+            'Subscription Pending',
+            "Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don't have access.",
+            [{ text: 'OK' }],
           )
         }
-        targetPackage = fallback
-      }
 
-      const updatedCustomerInfo = await purchasePackage(targetPackage.identifier)
-
-      // Verify the Pro entitlement was actually granted
-      const hasProEntitlement = Boolean(
-        updatedCustomerInfo?.entitlements.active['Pro'],
-      )
-
-      if (!hasProEntitlement) {
-        // Purchase succeeded but entitlement not granted - this is rare but possible
-        Alert.alert(
-          'Subscription Pending',
-          "Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don't have access.",
-          [{ text: 'OK' }],
-        )
-        // Continue with the flow anyway
-      }
-
-      // Request notification permission and schedule trial expiration notification
-      if (user) {
+        // Schedule trial expiration notification
         try {
-          // Request permission if not already granted
           if (!hasPermission) {
             await requestPermission()
           }
-
-          // Schedule the trial expiration notification
           const trialStartDate = new Date()
           await scheduleTrialExpirationNotification(user.id, trialStartDate)
         } catch (notificationError) {
-          // Don't block the flow if notification fails
           console.error(
             '[TrialOffer] Failed to schedule notification:',
             notificationError,
           )
         }
-      }
 
-      // Track trial offer accepted
+        trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
+        router.replace('/(tabs)')
+      } catch (error) {
+        const errorObj = error as any
+        if (errorObj?.userCancelled) {
+          return
+        }
+        console.error('[TrialOffer] Purchase error:', error)
+        Alert.alert(
+          'Unable to Start Trial',
+          errorObj?.message ||
+            'There was a problem starting your trial. Please try again.',
+          [{ text: 'OK' }],
+        )
+      } finally {
+        setIsPurchasing(false)
+      }
+    } else {
+      // User isn't logged in yet during onboarding, navigate to signup
+      trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
+        step: 3,
+        step_name: 'payment_setup',
+      })
       trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
 
-      // Navigate directly to app
-      router.replace('/(tabs)')
-    } catch (error) {
-      // Handle user cancellation (not an error)
-      const errorObj = error as any
-      if (errorObj?.userCancelled) {
-        return
-      }
-
-      console.error('[TrialOffer] Purchase error:', error)
-
-      // Show error to user
-      Alert.alert(
-        'Unable to Start Trial',
-        errorObj?.message ||
-          'There was a problem starting your trial. Please try again.',
-        [{ text: 'OK' }],
-      )
-    } finally {
-      setIsPurchasing(false)
+      router.push({
+        pathname: '/(auth)/signup-options',
+        params: {
+          onboarding_data: params.onboarding_data as string | undefined,
+          start_trial: 'true',
+        },
+      })
     }
   }
 
@@ -241,8 +249,17 @@ export default function TrialOfferScreen() {
     // Track that user skipped the trial
     trackEvent(AnalyticsEvents.TRIAL_OFFER_SKIPPED, {})
 
-    // Navigate directly to app
-    router.replace('/(tabs)')
+    // If user is already logged in, go to app; otherwise go to signup
+    if (canPurchase) {
+      router.replace('/(tabs)')
+    } else {
+      router.push({
+        pathname: '/(auth)/signup-options',
+        params: {
+          onboarding_data: params.onboarding_data as string | undefined,
+        },
+      })
+    }
   }
 
   const renderStep1 = () => (
@@ -258,12 +275,14 @@ export default function TrialOfferScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
-        <Animated.Text
-          style={styles.step1Title}
+        <Animated.View
+          style={styles.step1TitleContainer}
           entering={FadeInDown.delay(100).duration(600)}
         >
-          Try Pro for FREE
-        </Animated.Text>
+          <Text style={styles.step1Title}>Try </Text>
+          <ProBadge size="large" />
+          <Text style={styles.step1Title}> for FREE</Text>
+        </Animated.View>
 
         {/* Features */}
         <View style={styles.step1FeaturesContainer}>
@@ -792,13 +811,18 @@ function createStyles(colors: any, screenHeight: number = 800) {
       flexGrow: 1,
       justifyContent: 'center',
     },
+    step1TitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 64,
+      paddingHorizontal: 8,
+      flexWrap: 'wrap',
+    },
     step1Title: {
       fontSize: 34,
       fontWeight: '700',
       color: colors.text,
-      textAlign: 'center',
-      marginBottom: 64,
-      paddingHorizontal: 8,
       lineHeight: 40,
     },
     step1FeaturesContainer: {

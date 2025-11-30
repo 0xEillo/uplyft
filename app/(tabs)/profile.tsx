@@ -2,6 +2,7 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar } from '@/components/base-navbar'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { useAuth } from '@/contexts/auth-context'
+import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
@@ -9,7 +10,7 @@ import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -26,6 +27,8 @@ export default function ProfileScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
+  const { registerScrollRef } = useScrollToTop()
+  const flatListRef = useRef<FlatList>(null)
 
   const styles = useMemo(() => createStyles(colors), [colors])
   const [profile, setProfile] = useState<any>(null)
@@ -43,9 +46,17 @@ export default function ProfileScreen() {
     null,
   )
 
+  // Register FlatList ref for scroll-to-top functionality
+  useEffect(() => {
+    registerScrollRef('profile', flatListRef)
+  }, [registerScrollRef])
+
   // This week stats
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState(0)
+  const [weeklyActivity, setWeeklyActivity] = useState<boolean[]>(
+    new Array(7).fill(false),
+  )
 
   const loadProfileData = useCallback(async () => {
     if (!user) return
@@ -73,22 +84,28 @@ export default function ProfileScreen() {
       setWorkoutCount(totalWorkouts)
       setWeeklyWorkouts(weekCount)
 
-      // Calculate weekly volume
+      // Calculate weekly volume and activity
       const weekWorkouts = await database.workoutSessions.getRecent(
         user.id,
         100,
       )
-      const weeklyWorkouts = weekWorkouts.filter((w) => {
+      const weeklyWorkoutsList = weekWorkouts.filter((w) => {
         const workoutDate = new Date(w.date)
         return workoutDate >= startOfWeek
       })
 
       // Sum up all volume (weight * reps) for this week
       let totalVolume = 0
-      weeklyWorkouts.forEach((workout) => {
+      const activity = new Array(7).fill(false)
+
+      weeklyWorkoutsList.forEach((workout) => {
         totalVolume += calculateTotalVolume(workout, 'kg')
+        const dayIndex = new Date(workout.date).getDay()
+        activity[dayIndex] = true
       })
+
       setWeeklyVolume(totalVolume)
+      setWeeklyActivity(activity)
     } catch (error) {
       console.error('Error loading profile data:', error)
     }
@@ -234,6 +251,7 @@ export default function ProfileScreen() {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={workouts}
           renderItem={renderWorkoutItem}
           keyExtractor={(item) => item.id}
@@ -326,15 +344,27 @@ export default function ProfileScreen() {
               {user && <ProfileRoutines userId={user.id} />}
 
               {/* This Week Stats Section */}
-              <View style={styles.weeklyStatsSection}>
+              <TouchableOpacity
+                style={styles.weeklyStatsSection}
+                onPress={() => router.push('/workout-calendar')}
+                activeOpacity={0.7}
+              >
                 <View style={styles.weeklyStatsHeader}>
+                  <View style={styles.weeklyStatsTitleContainer}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color={colors.text}
+                    />
+                    <Text style={styles.weeklyStatsTitle}>This Week</Text>
+                  </View>
                   <Ionicons
-                    name="calendar-outline"
+                    name="chevron-forward"
                     size={20}
-                    color={colors.text}
+                    color={colors.textSecondary}
                   />
-                  <Text style={styles.weeklyStatsTitle}>This Week</Text>
                 </View>
+
                 <View style={styles.weeklyStats}>
                   <View style={styles.weeklyStat}>
                     <Text style={styles.weeklyStatNumber}>
@@ -356,10 +386,45 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                 </View>
-              </View>
 
-              {/* Workouts Divider */}
-              <View style={styles.divider} />
+                <View style={styles.weekDaysRow}>
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
+                    const isToday = new Date().getDay() === index
+                    return (
+                      <View key={index} style={styles.dayColumn}>
+                        <View
+                          style={[
+                            styles.activityDot,
+                            weeklyActivity[index] && styles.activityDotActive,
+                            !weeklyActivity[index] &&
+                              isToday &&
+                              styles.activityDotToday,
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.dayLabel,
+                            (isToday || weeklyActivity[index]) &&
+                              styles.dayLabelActive,
+                          ]}
+                        >
+                          {day}
+                        </Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              </TouchableOpacity>
+
+              {/* Workouts Header */}
+              <View style={styles.workoutsHeader}>
+                <Ionicons
+                  name="list-outline"
+                  size={20}
+                  color={colors.text}
+                />
+                <Text style={styles.workoutsTitle}>Recent Activity</Text>
+              </View>
             </View>
           }
           contentContainerStyle={styles.feedContent}
@@ -480,8 +545,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     weeklyStatsHeader: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    weeklyStatsTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 8,
-      marginBottom: 12,
     },
     weeklyStatsTitle: {
       fontSize: 16,
@@ -491,6 +561,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     weeklyStats: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginBottom: 16,
     },
     weeklyStat: {
       flex: 1,
@@ -511,6 +582,53 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 40,
       backgroundColor: colors.border,
       marginHorizontal: 16,
+    },
+    weekDaysRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: 4,
+    },
+    dayColumn: {
+      alignItems: 'center',
+      gap: 6,
+    },
+    activityDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.border,
+    },
+    activityDotActive: {
+      backgroundColor: colors.primary,
+    },
+    activityDotToday: {
+      borderWidth: 2,
+      borderColor: colors.primary,
+      backgroundColor: 'transparent',
+    },
+    dayLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    dayLabelActive: {
+      color: colors.text,
+      fontWeight: '700',
+    },
+    workoutsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: 8,
+      borderTopColor: colors.background,
+      backgroundColor: colors.feedCardBackground,
+    },
+    workoutsTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
     },
     divider: {
       height: 4,

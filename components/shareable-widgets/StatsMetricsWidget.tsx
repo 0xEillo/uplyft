@@ -143,7 +143,14 @@ export const StatsMetricsWidget = React.forwardRef<
         <View style={styles.bottomSection}>
           <View style={styles.brandContainer}>
             <View style={styles.brandLine} />
-            <Text style={styles.brandText}>REP AI</Text>
+            <View style={styles.brandContent}>
+              <Text style={styles.brandText}>REP AI</Text>
+              {(workout.profile?.user_tag || workout.profile?.display_name) && (
+                <Text style={styles.userTagText}>
+                  @{workout.profile?.user_tag || workout.profile?.display_name}
+                </Text>
+              )}
+            </View>
             <View style={styles.brandLine} />
           </View>
         </View>
@@ -320,6 +327,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  brandContent: {
+    alignItems: 'center',
+    gap: 2,
+  },
   brandLine: {
     width: 40,
     height: 2,
@@ -330,5 +341,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FF6B35',
     letterSpacing: 4,
+  },
+  userTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#A8A8A8',
+    letterSpacing: 0.5,
   },
 })
