@@ -5,6 +5,7 @@ interface SuccessOverlayData {
   message: string
   workoutNumber: number
   weeklyTarget: number
+  currentStreak?: number
   workout?: WorkoutSessionWithDetails
   workoutTitle?: string
 }

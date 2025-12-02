@@ -271,9 +271,9 @@ function TabLayoutContent() {
       <SubmitSuccessOverlay
         visible={isVisible}
         onAnimationComplete={handleAnimationComplete}
-        message={data.message}
         workoutNumber={data.workoutNumber}
         weeklyTarget={data.weeklyTarget}
+        currentStreak={data.currentStreak}
       />
       {data.workout && (
         <WorkoutShareScreen

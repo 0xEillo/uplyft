@@ -720,6 +720,7 @@ export default function CreatePostScreen() {
       let message = 'Well done on completing another workout!'
       let workoutNumber = 1
       let weeklyTarget = 3
+      let currentStreak = 0
 
       try {
         const profile = await database.profiles.getById(user.id)
@@ -736,6 +737,13 @@ export default function CreatePostScreen() {
         workoutNumber = workoutsThisWeek + 1
 
         weeklyTarget = parseCommitment(profile.commitment)
+
+        // Fetch current streak
+        const { currentStreak } = await database.stats.calculateStreak(
+          user.id,
+          weeklyTarget,
+        )
+
         message = generateWorkoutMessage({
           workoutNumber,
           weeklyTarget,
@@ -768,6 +776,7 @@ export default function CreatePostScreen() {
         message,
         workoutNumber,
         weeklyTarget,
+        currentStreak,
         workoutTitle: trimmedTitle || undefined,
       })
       router.replace('/(tabs)')
