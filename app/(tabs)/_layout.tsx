@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useRouter } from 'expo-router'
 import { useNavigation } from '@react-navigation/native'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -74,6 +74,8 @@ function TabLayoutContent() {
   const { scrollToTop } = useScrollToTop()
   const {
     isVisible,
+    overlayHasShown,
+    workoutPosted,
     data,
     hideOverlay,
     showShareScreen,
@@ -85,12 +87,13 @@ function TabLayoutContent() {
   // Track if we've already shown the share screen for this workout
   const shownWorkoutIdRef = React.useRef<string | null>(null)
 
-  // Watch for workout data updates and show share screen when workout is ready
+  // Watch for workout posting completion and show share screen
   React.useEffect(() => {
-    // If we have workout data and overlay is not visible (animation completed), show share screen
+    // Show share screen once the workout has been successfully posted and overlay is dismissed
     // Only show once per workout ID
     if (
       data.workout &&
+      workoutPosted &&
       !isVisible &&
       !showShareScreen &&
       shownWorkoutIdRef.current !== data.workout.id
@@ -98,12 +101,24 @@ function TabLayoutContent() {
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
-  }, [data.workout, isVisible, showShareScreen, setShowShareScreen])
+  }, [data.workout, workoutPosted, isVisible, showShareScreen, setShowShareScreen])
 
-  const handleAnimationComplete = () => {
+  const handleAnimationComplete = useCallback(() => {
     hideOverlay()
     // Note: Share screen will be shown by the useEffect above when workout data arrives
-  }
+  }, [hideOverlay])
+
+  // Auto-close overlay when workout has been successfully posted
+  React.useEffect(() => {
+    if (workoutPosted && isVisible) {
+      // Add a small delay then close
+      const timeout = setTimeout(() => {
+        handleAnimationComplete()
+      }, 300)
+
+      return () => clearTimeout(timeout)
+    }
+  }, [workoutPosted, isVisible, handleAnimationComplete])
 
   const handleShare = async (
     widgetIndex: number,

@@ -1,5 +1,4 @@
 import { Paywall } from '@/components/paywall'
-import { ProBadge } from '@/components/pro-badge'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -57,8 +56,10 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
   const { weightUnit, formatWeight } = useWeightUnits()
   const { isProMember } = useSubscription()
 
-  // Unified time range for all stats
-  const [timeRange, setTimeRange] = useState<TimeRange>('30D')
+  // Unified time range for all stats (default to 7D for free users, 30D for pro)
+  const [timeRange, setTimeRange] = useState<TimeRange>(() =>
+    isProMember ? '30D' : '7D'
+  )
 
   // Strength Progress State
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -535,25 +536,47 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
       {/* Unified Time Range Selector */}
       <View style={styles.timeRangeHeader}>
         <View style={styles.timeRangeContainer}>
-          {(['7D', '30D', '3M', '6M', 'ALL'] as TimeRange[]).map((range) => (
-            <TouchableOpacity
-              key={range}
-              style={[
-                styles.timeRangeButton,
-                timeRange === range && styles.timeRangeButtonActive,
-              ]}
-              onPress={() => setTimeRange(range)}
-            >
-              <Text
+          {(['7D', '30D', '3M', '6M', 'ALL'] as TimeRange[]).map((range) => {
+            const isRestricted = !isProMember && range !== '7D'
+            return (
+              <TouchableOpacity
+                key={range}
                 style={[
-                  styles.timeRangeText,
-                  timeRange === range && styles.timeRangeTextActive,
+                  styles.timeRangeButton,
+                  timeRange === range && styles.timeRangeButtonActive,
+                  isRestricted && styles.timeRangeButtonRestricted,
                 ]}
+                onPress={() => {
+                  if (isRestricted) {
+                    setPaywallVisible(true)
+                  } else {
+                    setTimeRange(range)
+                  }
+                }}
+                disabled={isRestricted && timeRange === range}
               >
-                {range}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.timeRangeButtonContent}>
+                  <Text
+                    style={[
+                      styles.timeRangeText,
+                      timeRange === range && styles.timeRangeTextActive,
+                      isRestricted && styles.timeRangeTextRestricted,
+                    ]}
+                  >
+                    {range}
+                  </Text>
+                  {isRestricted && (
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={10}
+                      color={colors.textTertiary}
+                      style={styles.lockIcon}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
         </View>
       </View>
 
@@ -762,46 +785,34 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
       </View>
 
       <View style={styles.card}>
-        {!isProMember ? (
-          <TouchableOpacity
-            onPress={() => setPaywallVisible(true)}
-            style={styles.proOnlyContainer}
-          >
-            <ProBadge size="medium" />
-            <Text style={styles.proOnlySubtext}>
-              Track your volume progression over time
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            {/* Stats Cards */}
-            {volumeProgressData.length > 0 && (
-              <View style={styles.statsContainer}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Latest Volume</Text>
-                  <Text style={styles.statValue}>
-                    {formatVolume(latestVolume)} {weightUnit}
-                  </Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Change</Text>
-                  <Text
-                    style={[
-                      styles.statValue,
-                      volumeChange >= 0
-                        ? styles.statPositive
-                        : styles.statNegative,
-                    ]}
-                  >
-                    {volumeChange >= 0 ? '+' : ''}
-                    {volumePercentChange}%
-                  </Text>
-                </View>
-              </View>
-            )}
+        {/* Stats Cards */}
+        {volumeProgressData.length > 0 && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Latest Volume</Text>
+              <Text style={styles.statValue}>
+                {formatVolume(latestVolume)} {weightUnit}
+              </Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Change</Text>
+              <Text
+                style={[
+                  styles.statValue,
+                  volumeChange >= 0
+                    ? styles.statPositive
+                    : styles.statNegative,
+                ]}
+              >
+                {volumeChange >= 0 ? '+' : ''}
+                {volumePercentChange}%
+              </Text>
+            </View>
+          </View>
+        )}
 
-            {/* Volume Chart */}
-            <View style={styles.chartContainer}>
+        {/* Volume Chart */}
+        <View style={styles.chartContainer}>
               {isLoadingVolume ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
@@ -884,8 +895,6 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                 </>
               )}
             </View>
-          </>
-        )}
       </View>
 
       {/* Exercise Picker Modal */}
@@ -1080,6 +1089,21 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     timeRangeTextActive: {
       color: colors.white,
+    },
+    timeRangeButtonRestricted: {
+      opacity: 0.6,
+    },
+    timeRangeTextRestricted: {
+      color: colors.textTertiary,
+    },
+    timeRangeButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    lockIcon: {
+      marginLeft: 2,
     },
     statsContainer: {
       flexDirection: 'row',

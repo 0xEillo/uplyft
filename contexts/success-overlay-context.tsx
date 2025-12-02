@@ -15,6 +15,8 @@ interface SuccessOverlayContextType {
   hideOverlay: () => void
   updateWorkoutData: (workout: WorkoutSessionWithDetails) => void
   isVisible: boolean
+  overlayHasShown: boolean
+  workoutPosted: boolean
   data: SuccessOverlayData
   showShareScreen: boolean
   setShowShareScreen: (show: boolean) => void
@@ -31,6 +33,8 @@ export function SuccessOverlayProvider({
 }) {
   const [isVisible, setIsVisible] = useState(false)
   const [showShareScreen, setShowShareScreen] = useState(false)
+  const [overlayHasShown, setOverlayHasShown] = useState(false)
+  const [workoutPosted, setWorkoutPosted] = useState(false)
   const [data, setData] = useState<SuccessOverlayData>({
     message: 'Well done on completing another workout!',
     workoutNumber: 1,
@@ -38,34 +42,30 @@ export function SuccessOverlayProvider({
   })
 
   const showOverlay = (overlayData: SuccessOverlayData) => {
-    console.log('[SuccessOverlay] showOverlay called with:', overlayData)
     setData(overlayData)
     setIsVisible(true)
-    // Reset share screen state when showing new overlay
+    setOverlayHasShown(true)
+    // Reset workout posted flag and share screen state when showing new overlay
+    setWorkoutPosted(false)
     setShowShareScreen(false)
   }
 
   const hideOverlay = () => {
-    console.log('[SuccessOverlay] hideOverlay called')
     setIsVisible(false)
+    // Mark that the overlay animation has completed
+    setOverlayHasShown(false)
   }
 
   const updateWorkoutData = (workout: WorkoutSessionWithDetails) => {
-    console.log('[SuccessOverlay] updateWorkoutData called with workout:', {
-      id: workout.id,
-      exerciseCount: workout.workout_exercises?.length,
-    })
     setData((prevData) => {
       const newData = {
         ...prevData,
         workout,
       }
-      console.log('[SuccessOverlay] Updated data:', {
-        hasWorkout: Boolean(newData.workout),
-        workoutId: newData.workout?.id,
-      })
       return newData
     })
+    // Mark that the workout has been successfully posted to the server
+    setWorkoutPosted(true)
   }
 
   return (
@@ -75,6 +75,8 @@ export function SuccessOverlayProvider({
         hideOverlay,
         updateWorkoutData,
         isVisible,
+        overlayHasShown,
+        workoutPosted,
         data,
         showShareScreen,
         setShowShareScreen,

@@ -1,11 +1,12 @@
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import {
   Animated,
   Dimensions,
   Easing,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -26,7 +27,7 @@ interface SubmitSuccessOverlayProps {
  * Shows achievement stats with a mini calendar week view.
  * Strava-like minimal design with smooth staggered animations.
  */
-export function SubmitSuccessOverlay({
+function SubmitSuccessOverlayComponent({
   visible,
   onAnimationComplete,
   workoutNumber = 1,
@@ -35,12 +36,14 @@ export function SubmitSuccessOverlay({
 }: SubmitSuccessOverlayProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const numberSlideAnim = useRef(new Animated.Value(20)).current
   const statsSlideAnim = useRef(new Animated.Value(20)).current
   const weekSlideAnim = useRef(new Animated.Value(20)).current
   const latestFadeValue = useRef(0)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (visible) {
@@ -98,25 +101,8 @@ export function SubmitSuccessOverlay({
         }).start()
       }, 450)
 
-      // Wait for user to see, then fade out
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 500,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(scaleAnim, {
-            toValue: 0.8,
-            duration: 500,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          onAnimationComplete?.()
-        })
-      }, 3500)
+      // Wait for workout to post, then auto-close
+      // Don't set a timer - wait for workoutPosted prop to trigger close
     } else {
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
@@ -132,8 +118,40 @@ export function SubmitSuccessOverlay({
     })
     return () => {
       fadeAnim.removeListener(id)
+      // Clean up timeout on unmount
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     }
   }, [fadeAnim])
+
+  // Note: Overlay stays open indefinitely until user closes it or parent calls onAnimationComplete
+  // The parent component (_layout.tsx) handles closing when workoutPosted becomes true
+
+  const handleClose = () => {
+    // Clear the auto-dismiss timeout if it's still pending
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+
+    // Trigger fade out animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 500,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onAnimationComplete?.()
+    })
+  }
 
   if (!visible && latestFadeValue.current === 0) {
     return null
@@ -180,7 +198,7 @@ export function SubmitSuccessOverlay({
           },
         ]}
       >
-        {/* Header with Icon */}
+        {/* Header with Icon and Close Button */}
         <View style={styles.header}>
           <View
             style={[
@@ -190,6 +208,13 @@ export function SubmitSuccessOverlay({
           >
             <Ionicons name="checkmark" size={24} color={colors.primary} />
           </View>
+          <Pressable
+            style={styles.closeButton}
+            onPress={handleClose}
+            hitSlop={8}
+          >
+            <Ionicons name="close" size={20} color={colors.textSecondary} />
+          </Pressable>
         </View>
 
         {/* Workout Number Section */}
@@ -321,6 +346,9 @@ export function SubmitSuccessOverlay({
   )
 }
 
+// Memoize to prevent re-renders from parent state changes
+export const SubmitSuccessOverlay = memo(SubmitSuccessOverlayComponent)
+
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     overlay: {
@@ -347,7 +375,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       elevation: 12,
     },
     header: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       marginBottom: 20,
     },
     iconCircle: {
@@ -356,6 +386,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    closeButton: {
+      padding: 8,
+      marginRight: -8,
     },
     numberSection: {
       alignItems: 'center',
