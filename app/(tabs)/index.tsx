@@ -2,17 +2,18 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar } from '@/components/base-navbar'
 import { EmptyFeedState } from '@/components/empty-feed-state'
 import { NotificationBadge } from '@/components/notification-badge'
+import { Paywall } from '@/components/paywall'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useRatingPrompt } from '@/contexts/rating-prompt-context'
+import { useScrollToTop } from '@/contexts/scroll-to-top-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
-import { useTheme } from '@/contexts/theme-context'
+import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { registerForPushNotifications } from '@/hooks/usePushNotifications'
-import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { isApiError, mapApiErrorToMessage } from '@/lib/api/errors'
 import { database } from '@/lib/database'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
@@ -20,12 +21,11 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { useCallback, useState, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   LayoutAnimation,
   Platform,
   RefreshControl,
@@ -83,7 +83,7 @@ export default function FeedScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
-  const { isDark } = useTheme()
+  const { isProMember } = useSubscription()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
   const { updateWorkoutData } = useSuccessOverlay()
@@ -93,6 +93,7 @@ export default function FeedScreen() {
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [showPaywall, setShowPaywall] = useState(false)
   const [newWorkoutId, setNewWorkoutId] = useState<string | null>(null)
   const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
     null,
@@ -234,19 +235,30 @@ export default function FeedScreen() {
 
         // Show rating prompt if applicable (after first workout, then every 10 workouts)
         try {
-          const workoutCount = await database.workoutSessions.getCountByUserId(user.id)
+          const workoutCount = await database.workoutSessions.getCountByUserId(
+            user.id,
+          )
           await showPrompt(workoutCount)
         } catch (error) {
-          console.error('Error checking workout count for rating prompt:', error)
+          console.error(
+            'Error checking workout count for rating prompt:',
+            error,
+          )
         }
 
         // Check if this is the first workout and prompt for push notifications
         try {
           const profile = await database.profiles.getById(user.id)
-          const workoutCount = await database.workoutSessions.getCountByUserId(user.id)
+          const workoutCount = await database.workoutSessions.getCountByUserId(
+            user.id,
+          )
 
           // Only prompt if this is the first workout and we haven't asked before
-          if (workoutCount === 1 && profile && !profile.has_requested_push_notifications) {
+          if (
+            workoutCount === 1 &&
+            profile &&
+            !profile.has_requested_push_notifications
+          ) {
             // Delay the prompt slightly so the success animation completes first
             setTimeout(() => {
               Alert.alert(
@@ -259,7 +271,7 @@ export default function FeedScreen() {
                     onPress: async () => {
                       // Mark as requested even if they decline
                       await database.profiles.update(user.id, {
-                        has_requested_push_notifications: true
+                        has_requested_push_notifications: true,
                       })
                     },
                   },
@@ -268,7 +280,7 @@ export default function FeedScreen() {
                     onPress: async () => {
                       await registerForPushNotifications()
                       await database.profiles.update(user.id, {
-                        has_requested_push_notifications: true
+                        has_requested_push_notifications: true,
                       })
                     },
                   },
@@ -323,7 +335,14 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('Error processing pending post:', error)
     }
-  }, [user, isProcessingPending, processPendingWorkout, router, updateWorkoutData, showPrompt])
+  }, [
+    user,
+    isProcessingPending,
+    processPendingWorkout,
+    router,
+    updateWorkoutData,
+    showPrompt,
+  ])
 
   const handleLoadMore = useCallback(() => {
     if (!isLoadingMore && hasMore && !isLoading) {
@@ -347,7 +366,10 @@ export default function FeedScreen() {
           setWorkouts((prev) => {
             // Remove any existing placeholder first
             const filtered = prev.filter((w: any) => !w.isPending)
-            return [(placeholder as unknown) as WorkoutSessionWithDetails, ...filtered]
+            return [
+              (placeholder as unknown) as WorkoutSessionWithDetails,
+              ...filtered,
+            ]
           })
         }
       }
@@ -422,16 +444,15 @@ export default function FeedScreen() {
       <BaseNavbar
         leftContent={
           <View style={styles.headerTitleContainer}>
-            <Image
-              source={
-                isDark
-                  ? require('@/llm/repai-logo-white.png')
-                  : require('@/llm/repai-logo-black.png')
-              }
-              style={styles.headerIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.headerTitle}>Rep AI</Text>
+            {!isProMember && (
+              <TouchableOpacity
+                style={styles.proBadge}
+                onPress={() => setShowPaywall(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
         rightContent={
@@ -447,7 +468,9 @@ export default function FeedScreen() {
               style={{ position: 'relative' }}
             >
               <Ionicons
-                name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+                name={
+                  unreadCount > 0 ? 'notifications' : 'notifications-outline'
+                }
                 size={24}
                 color={colors.text}
               />
@@ -482,6 +505,7 @@ export default function FeedScreen() {
           }
         />
       )}
+      <Paywall visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   )
 }
@@ -497,14 +521,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       gap: 0,
     },
-    headerIcon: {
-      width: 27,
-      height: 27,
+    proBadge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
     },
-    headerTitle: {
-      fontSize: 20,
+    proBadgeText: {
+      fontSize: 14,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.buttonText,
     },
     headerActions: {
       flexDirection: 'row',

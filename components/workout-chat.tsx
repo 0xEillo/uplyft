@@ -59,11 +59,6 @@ interface Message {
   images?: string[] // Image URIs for display
 }
 
-interface ExamplePrompt {
-  text: string
-  requiresImage: boolean
-}
-
 interface WorkoutPlanningState {
   isActive: boolean
   step: 'muscles' | 'duration' | 'intensity' | 'specifics' | 'none'
@@ -86,57 +81,12 @@ interface RoutinePlanningState {
   }
 }
 
-const TEXT_EXAMPLES: ExamplePrompt[] = [
-  { text: "What's my 1 rep max for squat?", requiresImage: false },
-  { text: "What's my strongest exercise?", requiresImage: false },
-  { text: "How's my strength trending?", requiresImage: false },
-  { text: 'Where do I rank on bench?', requiresImage: false },
-  { text: 'What muscle groups am I neglecting?', requiresImage: false },
-  { text: 'How much progress have I made this month?', requiresImage: false },
-  { text: 'What should I focus on in my next workout?', requiresImage: false },
-  { text: 'How often am I training each muscle group?', requiresImage: false },
-  { text: 'When did I last hit a PR on deadlift?', requiresImage: false },
-  { text: 'Am I training consistently enough?', requiresImage: false },
-  { text: "What's my total training volume been?", requiresImage: false },
-  { text: 'How do my lifts compare to my body weight?', requiresImage: false },
-  { text: 'What exercises am I improving fastest on?', requiresImage: false },
-]
-
-const IMAGE_EXAMPLES: ExamplePrompt[] = [
-  { text: 'What does this gym machine do?', requiresImage: true },
-  { text: 'Can you analyze my form?', requiresImage: true },
-  { text: 'Should I add this to my routine?', requiresImage: true },
-  { text: 'Which muscles does this exercise target?', requiresImage: true },
-  { text: 'Is my setup safe for this exercise?', requiresImage: true },
-  { text: 'Suggest a workout using these machines', requiresImage: true },
-]
-
-const ALL_EXAMPLES = [...TEXT_EXAMPLES, ...IMAGE_EXAMPLES]
-
-const FIXED_EXAMPLES: ExamplePrompt[] = [
-  { text: 'Plan Workout', requiresImage: false },
-  { text: 'Create Routine', requiresImage: false },
-]
-
 const MAX_IMAGES = 10
-
-// Fisher-Yates shuffle to get random examples
-function getRandomExamples(count: number): ExamplePrompt[] {
-  const shuffled = [...ALL_EXAMPLES]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled.slice(0, count)
-}
 
 export function WorkoutChat() {
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [displayedExamples] = useState<ExamplePrompt[]>(() =>
-    getRandomExamples(4),
-  )
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -1169,34 +1119,53 @@ Please provide a structured routine template.`
               <Text style={styles.welcomeTitle}>
                 Plan your workouts with AI
               </Text>
+              <Text style={styles.welcomeSubtitle}>
+                Select an option below to get started
+              </Text>
             </View>
 
-            <View style={styles.examplesContainer}>
-              <View style={styles.examplesGrid}>
-                {displayedExamples.map((example, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.exampleCard}
-                    onPress={() => handleExampleQuestion(example.text)}
-                  >
-                    {example.requiresImage && (
-                      <View style={styles.exampleIconContainer}>
-                        <Ionicons
-                          name="camera"
-                          size={16}
-                          color={colors.primary}
-                        />
-                      </View>
-                    )}
-                    <Text style={styles.exampleText}>{example.text}</Text>
-                    <Ionicons
-                      name="arrow-forward"
-                      size={16}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <View style={styles.actionCardsContainer}>
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleExampleQuestion('Plan Workout')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.actionCardIcon}>
+                  <Ionicons name="flash" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.actionCardContent}>
+                  <Text style={styles.actionCardTitle}>Plan Workout</Text>
+                  <Text style={styles.actionCardSubtitle}>
+                    Generate a workout for today
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleExampleQuestion('Create Routine')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.actionCardIcon}>
+                  <Ionicons name="calendar" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.actionCardContent}>
+                  <Text style={styles.actionCardTitle}>Create Routine</Text>
+                  <Text style={styles.actionCardSubtitle}>
+                    Build a reusable weekly plan
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
             </View>
           </View>
         ) : (
@@ -1392,24 +1361,6 @@ Please provide a structured routine template.`
           </View>
         )}
       </ScrollView>
-
-      {/* Fixed Example Buttons - Plan Workout & Create Routine - Pinned above input */}
-      {messages.length === 0 &&
-        !workoutPlanning.isActive &&
-        !routinePlanning.isActive && (
-          <View style={styles.fixedExamplesRow}>
-            {FIXED_EXAMPLES.map((example, index) => (
-              <TouchableOpacity
-                key={`fixed-${index}`}
-                style={styles.fixedExampleCard}
-                onPress={() => handleExampleQuestion(example.text)}
-              >
-                <Text style={styles.fixedExampleText}>{example.text}</Text>
-                <Ionicons name="add" size={18} color={colors.primary} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
 
       {/* Input Area */}
       <View
@@ -1675,7 +1626,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     welcomeSection: {
       alignItems: 'center',
-      marginBottom: 24,
+      marginBottom: 32,
       marginTop: 20,
     },
     welcomeTitle: {
@@ -1691,80 +1642,45 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
       paddingHorizontal: 32,
     },
-    examplesContainer: {
-      marginTop: 8,
+    actionCardsContainer: {
+      paddingHorizontal: 16,
+      gap: 12,
     },
-    examplesTitle: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: 12,
-    },
-    examplesGrid: {
-      gap: 8,
-    },
-    exampleCard: {
+    actionCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.white,
-      padding: 16,
-      borderRadius: 9999,
+      backgroundColor: colors.backgroundWhite,
+      padding: 20,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
+      shadowRadius: 8,
+      elevation: 2,
     },
-    exampleIconContainer: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+    actionCardIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: `${colors.primary}15`,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 8,
     },
-    exampleText: {
-      fontSize: 15,
+    actionCardContent: {
+      flex: 1,
+      marginLeft: 16,
+    },
+    actionCardTitle: {
+      fontSize: 17,
+      fontWeight: '700',
       color: colors.text,
-      flex: 1,
-      marginRight: 12,
+      marginBottom: 4,
     },
-    fixedExamplesRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 8,
-    },
-    fixedExampleCard: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.white,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 9999,
-      borderWidth: 1.5,
-      borderColor: colors.primary,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    fixedExampleText: {
+    actionCardSubtitle: {
       fontSize: 14,
-      fontWeight: '600',
-      color: colors.primary,
-      flex: 1,
-      marginRight: 8,
+      color: colors.textSecondary,
     },
     chatMessages: {
       gap: 24,

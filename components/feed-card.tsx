@@ -60,6 +60,7 @@ interface SetDetail {
 }
 
 interface ExerciseDisplay {
+  id: string // exercise ID for navigation
   name: string
   sets: number
   reps: string

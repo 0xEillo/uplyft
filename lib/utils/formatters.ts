@@ -2,6 +2,7 @@ import { WeightUnit, kgToPreferred } from '@/contexts/unit-context'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
 export interface ExerciseDisplay {
+  id: string // exercise ID for navigation
   name: string
   sets: number
   reps: string
@@ -68,6 +69,7 @@ export function formatWorkoutForDisplay(
 
       if (sets.length === 0) {
         return {
+          id: exercise.id,
           name: exercise.name,
           sets: 0,
           reps: '-',
@@ -105,6 +107,7 @@ export function formatWorkoutForDisplay(
       }
 
       return {
+        id: exercise.id,
         name: exercise.name,
         sets: sets.length,
         reps: repsDisplay,

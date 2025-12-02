@@ -54,6 +54,7 @@ interface WorkoutDetailViewProps {
   onEdit?: () => void
   onDelete?: () => void
   onCreateRoutine?: () => void
+  onExercisePress?: (exerciseId: string) => void
   // Loading state
   isLoading?: boolean
 }
@@ -70,6 +71,7 @@ export function WorkoutDetailView({
   onEdit,
   onDelete,
   onCreateRoutine,
+  onExercisePress,
   isLoading = false,
 }: WorkoutDetailViewProps) {
   const { isDark } = useTheme()
@@ -456,6 +458,7 @@ export function WorkoutDetailView({
                     key={workoutExercise.id || index}
                     workoutExercise={workoutExercise}
                     prInfo={exercisePR}
+                    onExercisePress={onExercisePress}
                   />
                 )
               })}

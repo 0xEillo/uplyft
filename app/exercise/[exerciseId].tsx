@@ -1,0 +1,951 @@
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Image
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+
+import { Paywall } from '@/components/paywall'
+import { SlideInView } from '@/components/slide-in-view'
+import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { database } from '@/lib/database'
+import {
+  getStandardsLadder,
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel,
+} from '@/lib/strength-standards'
+import { Profile } from '@/types/database.types'
+
+interface ExerciseRecord {
+  weight: number
+  maxReps: number
+  date: string
+  estimated1RM: number
+}
+
+interface WorkoutSessionRecord {
+  date: string
+  sets: {
+    weight: number | null
+    reps: number | null
+  }[]
+}
+
+interface LeaderboardEntry {
+  rank: number
+  userId: string
+  displayName: string
+  userTag: string
+  avatarUrl: string | null
+  maxWeight: number
+  isCurrentUser: boolean
+  strengthLevel: StrengthLevel | null
+}
+
+type TabType = 'records' | 'history' | 'leaderboard'
+
+export default function ExerciseDetailScreen() {
+  const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
+  const { user } = useAuth()
+  const { isProMember } = useSubscription()
+  const colors = useThemedColors()
+  const { weightUnit, formatWeight } = useWeightUnits()
+  const router = useRouter()
+
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [exerciseName, setExerciseName] = useState<string>('')
+  const [max1RM, setMax1RM] = useState<number>(0)
+  const [personalRecords, setPersonalRecords] = useState<{
+    heaviestWeight: number
+    best1RM: number
+    bestSetVolume: { weight: number; reps: number; volume: number } | null
+    bestSessionVolume: number
+  }>({
+    heaviestWeight: 0,
+    best1RM: 0,
+    bestSetVolume: null,
+    bestSessionVolume: 0,
+  })
+  const [recordsList, setRecordsList] = useState<ExerciseRecord[]>([])
+  const [history, setHistory] = useState<WorkoutSessionRecord[]>([])
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabType>('records')
+  const [paywallVisible, setPaywallVisible] = useState(false)
+  const [shouldExit, setShouldExit] = useState(false)
+  const insets = useSafeAreaInsets()
+
+  const loadData = useCallback(async () => {
+    if (!user?.id || !exerciseId) return
+
+    try {
+      // Load profile
+      const profileData = await database.profiles.getById(user.id)
+      setProfile(profileData)
+
+      // Load all exercises to find name (TODO: optimize to fetch single exercise)
+      const allExercises = await database.exercises.getAll()
+      const exercise = allExercises.find((e) => e.id === exerciseId)
+      if (exercise) {
+        setExerciseName(exercise.name)
+      }
+
+      // Load max 1RM
+      const records = await database.stats.getExerciseRecordsByWeight(
+        user.id,
+        exerciseId,
+      )
+      if (records.length > 0) {
+        setRecordsList(records)
+        const best1RM = Math.max(...records.map((r) => r.estimated1RM))
+        const heaviestWeight = Math.max(...records.map((r) => r.weight))
+        setMax1RM(best1RM)
+        
+        // Calculate other PRs
+        // Best Set Volume
+        let bestSetVol = { weight: 0, reps: 0, volume: 0 }
+        records.forEach(r => {
+            const vol = r.weight * r.maxReps
+            if(vol > bestSetVol.volume) {
+                bestSetVol = { weight: r.weight, reps: r.maxReps, volume: vol }
+            }
+        })
+
+        setPersonalRecords(prev => ({
+            ...prev,
+            heaviestWeight,
+            best1RM,
+            bestSetVolume: bestSetVol.volume > 0 ? bestSetVol : null
+        }))
+      }
+
+      // Load History (Sessions)
+      if (exercise && exercise.name) {
+        const historyData = await database.stats.getExerciseHistory(
+          user.id,
+          exercise?.name || '',
+        )
+        
+        // Calculate Best Session Volume from history
+        let maxSessionVol = 0
+        const formattedHistory = historyData.map((session: any) => {
+            let sessionVol = 0
+            const sessionSets: { weight: number | null; reps: number | null }[] = []
+            
+            session.workout_exercises?.forEach((we: any) => {
+                we.sets?.forEach((set: any) => {
+                    sessionSets.push({ weight: set.weight, reps: set.reps })
+                    if(set.weight && set.reps) {
+                        sessionVol += (set.weight * set.reps)
+                    }
+                })
+            })
+
+            if(sessionVol > maxSessionVol) maxSessionVol = sessionVol
+
+            return {
+                date: session.date,
+                sets: sessionSets
+            }
+        }).reverse() // Newest first
+
+        setHistory(formattedHistory)
+        setPersonalRecords(prev => ({ ...prev, bestSessionVolume: maxSessionVol }))
+      }
+
+      // Load Leaderboard Data
+      // 1. Get following list
+      const following = await database.follows.listFollowing(user.id)
+      const followingIds = following.map(f => f.followee_id)
+      
+      // 2. Add current user to the list
+      const allUserIds = [...followingIds, user.id]
+
+      // 3. Get max weight for each user on this exercise
+      // We need to fetch max weight for each user. Since we don't have a batch function for this specific query across users yet,
+      // we'll iterate for now. In production, a dedicated RPC or view would be better.
+      
+      const leaderboardData: LeaderboardEntry[] = []
+
+      // Get current user's max weight (already fetched in records above, but let's be consistent)
+      // We use heaviest weight lifted, not estimated 1RM, to match "Heaviest Weight" title in screenshot
+      // For strength standards, we need 1RM though.
+      const myMaxWeight = records.length > 0 ? Math.max(...records.map(r => r.weight)) : 0
+      const myEstimated1RM = records.length > 0 ? Math.max(...records.map(r => r.estimated1RM)) : 0
+      
+      if (profileData) {
+        let strengthLevel: StrengthLevel | null = null
+        if (exercise && exercise.name && profileData.weight_kg && profileData.gender) {
+             const info = getStrengthStandard(
+                exercise.name,
+                profileData.gender as 'male' | 'female',
+                profileData.weight_kg,
+                myEstimated1RM
+             )
+             if (info) strengthLevel = info.level
+        }
+
+        leaderboardData.push({
+            rank: 0, // temporary
+            userId: user.id,
+            displayName: 'You', // Display "You" for current user
+            userTag: profileData.user_tag || '',
+            avatarUrl: profileData.avatar_url,
+            maxWeight: myMaxWeight,
+            isCurrentUser: true,
+            strengthLevel
+        })
+      }
+
+      // Get friends' max weights
+      // Limit concurrent requests
+      await Promise.all(following.map(async (follow) => {
+          const friendId = follow.followee_id
+          const friendProfile = follow.followee
+          
+          try {
+              // Need profile details for standards calculation (gender, weight)
+              const fullFriendProfile = await database.profiles.getById(friendId)
+
+              const friendRecords = await database.stats.getExerciseRecordsByWeight(friendId, exerciseId)
+              const friendMaxWeight = friendRecords.length > 0 ? Math.max(...friendRecords.map(r => r.weight)) : 0
+              const friendEstimated1RM = friendRecords.length > 0 ? Math.max(...friendRecords.map(r => r.estimated1RM)) : 0
+              
+              if (friendMaxWeight > 0) { // Only include if they have lifted this weight
+                  let strengthLevel: StrengthLevel | null = null
+                  if (exercise && exercise.name && fullFriendProfile?.weight_kg && fullFriendProfile?.gender) {
+                       const info = getStrengthStandard(
+                          exercise.name,
+                          fullFriendProfile.gender as 'male' | 'female',
+                          fullFriendProfile.weight_kg,
+                          friendEstimated1RM
+                       )
+                       if (info) strengthLevel = info.level
+                  }
+
+                  leaderboardData.push({
+                      rank: 0,
+                      userId: friendId,
+                      displayName: friendProfile.display_name || 'User',
+                      userTag: friendProfile.user_tag || '',
+                      avatarUrl: friendProfile.avatar_url,
+                      maxWeight: friendMaxWeight,
+                      isCurrentUser: false,
+                      strengthLevel
+                  })
+              }
+          } catch (e) {
+              console.warn(`Could not fetch stats for user ${friendId}`, e)
+          }
+      }))
+
+      // Sort by max weight descending
+      leaderboardData.sort((a, b) => b.maxWeight - a.maxWeight)
+
+      // Assign ranks
+      leaderboardData.forEach((entry, index) => {
+          entry.rank = index + 1
+      })
+
+      setLeaderboard(leaderboardData)
+
+    } catch (error) {
+      console.error('Error loading exercise details:', error)
+    } finally {
+      setIsLoading(false)
+      setRefreshing(false)
+    }
+  }, [user?.id, exerciseId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    loadData()
+  }, [loadData])
+
+  const getStrengthInfo = useCallback(() => {
+    if (!profile?.gender || !profile?.weight_kg || !exerciseName || !max1RM) {
+      return null
+    }
+
+    if (!hasStrengthStandards(exerciseName)) {
+      return null
+    }
+
+    return getStrengthStandard(
+      exerciseName,
+      profile.gender as 'male' | 'female',
+      profile.weight_kg,
+      max1RM,
+    )
+  }, [profile, exerciseName, max1RM])
+
+  const getLevelColor = (level: StrengthLevel): string => {
+    const colors = {
+      Beginner: '#9CA3AF',
+      Novice: '#3B82F6',
+      Intermediate: '#10B981',
+      Advanced: '#8B5CF6',
+      Elite: '#F59E0B',
+      'World Class': '#EF4444',
+    }
+    return colors[level]
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+  
+  const formatDateTime = (dateString: string) => {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+      })
+  }
+
+  const handleBack = () => {
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace('/(tabs)')
+    }
+  }
+
+  const styles = createStyles(colors)
+  const strengthInfo = getStrengthInfo()
+
+  return (
+    <SlideInView
+      style={styles.container}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <View style={[styles.innerContainer, { paddingTop: insets.top }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.headerBackButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {exerciseName || 'Exercise Details'}
+          </Text>
+          <View style={styles.headerRightSpacer} />
+        </View>
+
+        {/* Tabs */}
+        <View style={styles.tabs}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'records' && styles.activeTab]}
+            onPress={() => setActiveTab('records')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'records' && styles.activeTabText,
+              ]}
+            >
+              Records
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+            onPress={() => setActiveTab('history')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'history' && styles.activeTabText,
+              ]}
+            >
+              History
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'leaderboard' && styles.activeTab]}
+            onPress={() => setActiveTab('leaderboard')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'leaderboard' && styles.activeTabText,
+              ]}
+            >
+              Leaderboard
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+          >
+          {activeTab === 'records' ? (
+            <View style={styles.summaryContainer}>
+              {/* Stats Section */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Stats</Text>
+              </View>
+
+              <View style={styles.statsGrid}>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>1RM</Text>
+                  <Text style={styles.statValue}>
+                    {formatWeight(personalRecords.best1RM, { maximumFractionDigits: 1 })}
+                  </Text>
+                </View>
+                <View style={styles.separator} />
+                
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Heaviest Weight</Text>
+                  <Text style={styles.statValue}>
+                    {formatWeight(personalRecords.heaviestWeight, { maximumFractionDigits: 1 })}
+                  </Text>
+                </View>
+                <View style={styles.separator} />
+
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Best Set</Text>
+                  <Text style={styles.statValue}>
+                    {personalRecords.bestSetVolume 
+                        ? `${formatWeight(personalRecords.bestSetVolume.weight, { maximumFractionDigits: 0 })} x ${personalRecords.bestSetVolume.reps}` 
+                        : '-'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* All Records Section */}
+              <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+                <Text style={styles.sectionTitle}>All Records</Text>
+              </View>
+
+              <View style={styles.recordsList}>
+                {recordsList.length === 0 ? (
+                  <Text style={styles.emptyText}>No records tracked yet</Text>
+                ) : (
+                  recordsList.map((record, index) => (
+                    <View key={index} style={styles.recordRow}>
+                      <View style={styles.recordLeft}>
+                        <Text style={styles.recordWeight}>
+                          {formatWeight(record.weight, {
+                            maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                          })}
+                        </Text>
+                        <Text style={styles.recordReps}>
+                          {record.maxReps} rep{record.maxReps !== 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.recordRight}>
+                        <Text style={styles.recordDate}>
+                          {formatDate(record.date)}
+                        </Text>
+                        {record.estimated1RM > 0 && (
+                          <Text style={styles.recordEstimate}>
+                            1RM: {formatWeight(record.estimated1RM, { maximumFractionDigits: 0 })}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
+          ) : activeTab === 'leaderboard' ? (
+            <View style={styles.leaderboardContainer}>
+                <Text style={styles.leaderboardSubtitle}>Following</Text>
+
+                <View style={styles.leaderboardList}>
+                    {leaderboard.map((entry) => (
+                        <View key={entry.userId} style={styles.leaderboardItem}>
+                            <View style={styles.rankContainer}>
+                                <View style={[styles.rankBadge, entry.rank <= 3 ? styles[`rankBadge${entry.rank}` as keyof typeof styles] : styles.rankBadgeDefault]}>
+                                    <Text style={[styles.rankText, entry.rank <= 3 ? styles.rankTextTop : styles.rankTextDefault]}>{entry.rank}</Text>
+                                </View>
+                            </View>
+                            <View style={styles.userContainer}>
+                                {entry.avatarUrl ? (
+                                    <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} />
+                                ) : (
+                                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                                        <Text style={styles.avatarInitial}>{entry.displayName.charAt(0)}</Text>
+                                    </View>
+                                )}
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.userName} numberOfLines={1}>
+                                        {entry.displayName}
+                                    </Text>
+                                    {entry.strengthLevel && (
+                                        <View style={[styles.miniLevelBadge, { backgroundColor: getLevelColor(entry.strengthLevel) }]}>
+                                            <Text style={styles.miniLevelText}>{entry.strengthLevel}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                            <Text style={styles.leaderboardValue}>
+                                {formatWeight(entry.maxWeight, { maximumFractionDigits: 1 })}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+          ) : (
+            <View style={styles.historyContainer}>
+                {history.length === 0 ? (
+                    <Text style={styles.emptyText}>No history found for this exercise.</Text>
+                ) : (
+                    history.map((session, index) => (
+                        <View key={index} style={styles.historyItem}>
+                            <View style={styles.historyHeader}>
+                                <Text style={styles.historyDate}>{formatDateTime(session.date)}</Text>
+                            </View>
+                            <Text style={styles.exerciseNameSmall}>{exerciseName}</Text>
+                            <View style={styles.setsContainer}>
+                                <View style={styles.setHeader}>
+                                    <Text style={styles.setHeaderText}>SET</Text>
+                                    <Text style={styles.setHeaderText}>WEIGHT & REPS</Text>
+                                </View>
+                                {session.sets.map((set, setIndex) => (
+                                    <View key={setIndex} style={styles.setRow}>
+                                        <Text style={styles.setNumber}>{setIndex + 1}</Text>
+                                        <Text style={styles.setDetails}>
+                                            {set.weight ? formatWeight(set.weight, { maximumFractionDigits: 1 }) : '-'} x {set.reps || 0} reps
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    ))
+                )}
+            </View>
+          )}
+          </ScrollView>
+        )}
+
+        <Paywall
+          visible={paywallVisible}
+          onClose={() => setPaywallVisible(false)}
+          title="Unlock Advanced Stats"
+          message="See detailed strength analytics and progress charts."
+        />
+      </View>
+    </SlideInView>
+  )
+}
+
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    innerContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.background,
+    },
+    headerBackButton: {
+      padding: 4,
+      marginLeft: -4,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    headerRightSpacer: {
+      width: 32,
+      alignItems: 'flex-end'
+    },
+    tabs: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 16,
+      alignItems: 'center',
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    activeTab: {
+      borderBottomColor: colors.primary,
+    },
+    tabText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    activeTabText: {
+      color: colors.primary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 16,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    summaryContainer: {
+      gap: 16,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    statsGrid: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+    },
+    statRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+    },
+    separator: {
+        height: 1,
+        backgroundColor: colors.border,
+    },
+    statLabel: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    statValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    infoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      padding: 16,
+      gap: 16,
+    },
+    infoCircle: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    infoStep: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    infoContent: {
+      flex: 1,
+    },
+    infoText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 20,
+    },
+    levelCard: {
+        backgroundColor: colors.backgroundLight,
+        borderRadius: 12,
+        padding: 20,
+        alignItems: 'center',
+        gap: 12
+    },
+    levelBadgeLarge: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginBottom: 8
+    },
+    levelBadgeTextLarge: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16
+    },
+    levelDescription: {
+        fontSize: 14,
+        color: colors.text,
+        textAlign: 'center',
+        marginBottom: 8
+    },
+    progressBarContainer: {
+        width: '100%',
+        gap: 8
+    },
+    progressBarBackground: {
+        height: 8,
+        backgroundColor: colors.border,
+        borderRadius: 4,
+        overflow: 'hidden'
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 4
+    },
+    progressText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        textAlign: 'center'
+    },
+    historyContainer: {
+        gap: 16
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: colors.textSecondary,
+        marginTop: 32
+    },
+    historyItem: {
+        backgroundColor: colors.backgroundLight,
+        borderRadius: 12,
+        padding: 16,
+        gap: 12
+    },
+    historyHeader: {
+    },
+    historyDate: {
+        fontSize: 14,
+        color: colors.textSecondary,
+    },
+    exerciseNameSmall: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text
+    },
+    setsContainer: {
+        gap: 8
+    },
+    setHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4
+    },
+    setHeaderText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.textSecondary
+    },
+    setRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    },
+    setNumber: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        width: 30,
+        textAlign: 'center'
+    },
+    setDetails: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text
+    },
+    recordsList: {
+        backgroundColor: colors.backgroundLight,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingBottom: 8
+    },
+    recordRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 0,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.border,
+    },
+    recordLeft: {
+      gap: 3,
+    },
+    recordWeight: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.3,
+    },
+    recordReps: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    recordRight: {
+      alignItems: 'flex-end',
+      gap: 3,
+    },
+    recordDate: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    recordEstimate: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    leaderboardContainer: {
+        gap: 16,
+    },
+    leaderboardSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginBottom: 8
+    },
+    leaderboardList: {
+        backgroundColor: colors.backgroundLight,
+        borderRadius: 12,
+        overflow: 'hidden'
+    },
+    leaderboardItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.border
+    },
+    rankContainer: {
+        width: 32,
+        alignItems: 'center',
+        marginRight: 12
+    },
+    rankBadge: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    rankBadge1: {
+        backgroundColor: '#FFD700' // Gold
+    },
+    rankBadge2: {
+        backgroundColor: '#C0C0C0' // Silver
+    },
+    rankBadge3: {
+        backgroundColor: '#CD7F32' // Bronze
+    },
+    rankBadgeDefault: {
+        backgroundColor: 'transparent'
+    },
+    rankText: {
+        fontSize: 12,
+        fontWeight: '700'
+    },
+    rankTextTop: {
+        color: '#FFFFFF'
+    },
+    rankTextDefault: {
+        color: colors.text
+    },
+    userContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12
+    },
+    avatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: colors.backgroundLight
+    },
+    avatarPlaceholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: colors.primary
+    },
+    avatarInitial: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF'
+    },
+    userName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text
+    },
+    leaderboardValue: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text
+    },
+    miniLevelBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginTop: 4
+    },
+    miniLevelText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFFFFF'
+    }
+  })

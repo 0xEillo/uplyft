@@ -21,7 +21,9 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
 import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
+import { LockedResultsOverlay } from '@/components/LockedResultsOverlay'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
@@ -85,6 +87,9 @@ export default function BodyLogDetailScreen() {
   const [weightModalVisible, setWeightModalVisible] = useState(false)
   const [paywallVisible, setPaywallVisible] = useState(false)
   const [isRunningBodyScan, setIsRunningBodyScan] = useState(false)
+  const [showTeaserResults, setShowTeaserResults] = useState(false)
+  const [showProcessingModal, setShowProcessingModal] = useState(false)
+  const [processingComplete, setProcessingComplete] = useState(false)
   const [selectedMetric, setSelectedMetric] = useState<{
     type: 'bodyFat' | 'bmi' | 'weight'
     value: string
@@ -617,18 +622,11 @@ export default function BodyLogDetailScreen() {
   }
 
   const handleRunBodyScan = async () => {
-    // Check if user is Pro member first
-    if (!isProMember) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-      setPaywallVisible(true)
-      return
-    }
-
     if (!entry || !entryId || entryId === 'new') return
 
-    // Check if body scan has already been run for this entry
+    // Check if body scan has already been run for this entry (for Pro users)
     const alreadyScanned = entry.body_fat_percentage !== null || entry.bmi !== null
-    if (alreadyScanned) {
+    if (alreadyScanned && isProMember) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       Alert.alert(
         'Body Scan Already Completed',
@@ -663,6 +661,20 @@ export default function BodyLogDetailScreen() {
     }
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+
+    // For free users: Show teaser flow (fake processing, then locked results)
+    if (!isProMember) {
+      setProcessingComplete(false)
+      setShowProcessingModal(true)
+
+      // Simulate processing time (3 seconds)
+      setTimeout(() => {
+        setProcessingComplete(true)
+      }, 3000)
+      return
+    }
+
+    // For Pro users: Run actual body scan
     setIsRunningBodyScan(true)
 
     try {
@@ -733,6 +745,21 @@ export default function BodyLogDetailScreen() {
     } finally {
       setIsRunningBodyScan(false)
     }
+  }
+
+  // Handle teaser processing completion
+  const handleTeaserProcessingComplete = () => {
+    setShowProcessingModal(false)
+    setProcessingComplete(false)
+    // Don't set fake metrics - keep them null so they show "--"
+    // Just show the locked results overlay
+    setShowTeaserResults(true)
+  }
+
+  // Handle unlock button press (opens paywall)
+  const handleUnlockResults = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setPaywallVisible(true)
   }
 
   const handleDelete = async () => {
@@ -860,7 +887,10 @@ export default function BodyLogDetailScreen() {
         <ScrollView
           bounces={false}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            showTeaserResults && { paddingBottom: insets.bottom + 40 },
+          ]}
         >
         {/* Hero Image Section with Carousel */}
         <View style={[styles.heroContainer, { backgroundColor: colors.background }]}>
@@ -968,88 +998,97 @@ export default function BodyLogDetailScreen() {
 
         {/* Content Section */}
         <View style={styles.contentSection}>
-          {/* Metrics List */}
-          <View style={styles.metricsList}>
-            <Text style={[styles.overviewTitle, { color: colors.textSecondary }]}>
-              OVERVIEW
-            </Text>
+          {/* Metrics List - with locked overlay for teaser results */}
+          <View style={styles.metricsContainer}>
+            <View style={styles.metricsList}>
+              <Text style={[styles.overviewTitle, { color: colors.textSecondary }]}>
+                OVERVIEW
+              </Text>
 
-            {/* Weight */}
-            <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
-              <View style={styles.metricRowLeft}>
-                <Ionicons name="barbell-outline" size={20} color={colors.primary} />
-                <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                  Weight
+              {/* Weight */}
+              <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
+                <View style={styles.metricRowLeft}>
+                  <Ionicons name="barbell-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
+                    Weight
+                  </Text>
+                </View>
+                <Text style={[styles.metricRowValue, { color: colors.text }]}>
+                  {formatWeight(metrics.weight_kg)}
                 </Text>
               </View>
-              <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                {formatWeight(metrics.weight_kg)}
-              </Text>
+
+              {/* Body Fat */}
+              <TouchableOpacity
+                style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}
+                onPress={() =>
+                  metrics.body_fat_percentage !== null &&
+                  !showTeaserResults &&
+                  handleInfoPress(
+                    'bodyFat',
+                    formatBodyFat(metrics.body_fat_percentage),
+                    bodyFatStatus,
+                  )
+                }
+                disabled={metrics.body_fat_percentage === null || showTeaserResults}
+                activeOpacity={0.7}
+              >
+                <View style={styles.metricRowLeft}>
+                  <Ionicons
+                    name="body-outline"
+                    size={20}
+                    color={
+                      bodyFatStatus
+                        ? getStatusColor(bodyFatStatus.color).primary
+                        : colors.primary
+                    }
+                  />
+                  <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
+                    Body Fat
+                  </Text>
+                </View>
+                <Text style={[styles.metricRowValue, { color: colors.text }]}>
+                  {formatBodyFat(metrics.body_fat_percentage)}
+                </Text>
+              </TouchableOpacity>
+
+              {/* BMI */}
+              <TouchableOpacity
+                style={[styles.metricRow, { borderBottomWidth: 0 }]}
+                onPress={() =>
+                  metrics.bmi !== null &&
+                  !showTeaserResults &&
+                  handleInfoPress('bmi', formatBMI(metrics.bmi), bmiStatus)
+                }
+                disabled={metrics.bmi === null || showTeaserResults}
+                activeOpacity={0.7}
+              >
+                <View style={styles.metricRowLeft}>
+                  <Ionicons
+                    name="analytics-outline"
+                    size={20}
+                    color={
+                      bmiStatus ? getStatusColor(bmiStatus.color).primary : colors.primary
+                    }
+                  />
+                  <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
+                    BMI
+                  </Text>
+                </View>
+                <Text style={[styles.metricRowValue, { color: colors.text }]}>
+                  {formatBMI(metrics.bmi)}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Body Fat */}
-            <TouchableOpacity
-              style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}
-              onPress={() =>
-                metrics.body_fat_percentage !== null &&
-                handleInfoPress(
-                  'bodyFat',
-                  formatBodyFat(metrics.body_fat_percentage),
-                  bodyFatStatus,
-                )
-              }
-              disabled={metrics.body_fat_percentage === null}
-              activeOpacity={0.7}
-            >
-              <View style={styles.metricRowLeft}>
-                <Ionicons
-                  name="body-outline"
-                  size={20}
-                  color={
-                    bodyFatStatus
-                      ? getStatusColor(bodyFatStatus.color).primary
-                      : colors.primary
-                  }
-                />
-                <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                  Body Fat
-                </Text>
-              </View>
-              <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                {formatBodyFat(metrics.body_fat_percentage)}
-              </Text>
-            </TouchableOpacity>
-
-            {/* BMI */}
-            <TouchableOpacity
-              style={[styles.metricRow, { borderBottomWidth: 0 }]}
-              onPress={() =>
-                metrics.bmi !== null &&
-                handleInfoPress('bmi', formatBMI(metrics.bmi), bmiStatus)
-              }
-              disabled={metrics.bmi === null}
-              activeOpacity={0.7}
-            >
-              <View style={styles.metricRowLeft}>
-                <Ionicons
-                  name="analytics-outline"
-                  size={20}
-                  color={
-                    bmiStatus ? getStatusColor(bmiStatus.color).primary : colors.primary
-                  }
-                />
-                <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                  BMI
-                </Text>
-              </View>
-              <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                {formatBMI(metrics.bmi)}
-              </Text>
-            </TouchableOpacity>
+            {/* Locked Results Overlay for free users teaser */}
+            {showTeaserResults && (
+              <LockedResultsOverlay onUnlock={handleUnlockResults} />
+            )}
           </View>
 
-          {/* AI Summary Card */}
-          {summaryText && (
+          {/* AI Summary Card - hide when showing teaser results */}
+          {summaryText && !showTeaserResults && (
             <View
               style={[
                 styles.overallStatusCard,
@@ -1225,7 +1264,8 @@ export default function BodyLogDetailScreen() {
         </Modal>
       )}
 
-      {/* Bottom Action Buttons */}
+      {/* Bottom Action Buttons - hide when showing teaser results */}
+      {!showTeaserResults && (
       <View style={[
         styles.actionBarContainer,
         styles.buttonContainer,
@@ -1287,6 +1327,7 @@ export default function BodyLogDetailScreen() {
           )}
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Weight Input Modal */}
       <WeightInputModal
@@ -1318,6 +1359,14 @@ export default function BodyLogDetailScreen() {
         onClose={() => setPaywallVisible(false)}
         title="Body Scan - Premium Feature"
         message="Body scan analysis is a premium feature. Upgrade to unlock AI-powered body composition analysis."
+      />
+
+      {/* Body Scan Processing Modal (for teaser flow) */}
+      <BodyLogProcessingModal
+        visible={showProcessingModal}
+        imageUri={imageUrls[0] ?? null}
+        isComplete={processingComplete}
+        onComplete={handleTeaserProcessingComplete}
       />
     </View>
     </SlideInView>
@@ -1432,6 +1481,12 @@ const styles = StyleSheet.create({
   },
 
   // Metrics List
+  metricsContainer: {
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+    minHeight: 320,
+  },
   metricsList: {
     gap: 1,
   },
@@ -1441,6 +1496,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
+    paddingLeft: 4,
   },
   metricRow: {
     flexDirection: 'row',

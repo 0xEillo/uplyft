@@ -109,6 +109,16 @@ export default function StrengthStatsScreen() {
     })
   }, [])
 
+  const navigateToExercise = useCallback(
+    (exerciseId: string) => {
+      router.push({
+        pathname: '/exercise/[exerciseId]',
+        params: { exerciseId },
+      })
+    },
+    [router],
+  )
+
   const getStrengthInfo = useCallback(
     (exerciseName: string, max1RM: number) => {
       if (!profile?.gender || !profile?.weight_kg) {
@@ -261,7 +271,7 @@ export default function StrengthStatsScreen() {
                   {/* Exercise Header - Clickable */}
                   <TouchableOpacity
                     style={styles.exerciseHeader}
-                    onPress={() => toggleExercise(exercise.exerciseId)}
+                    onPress={() => navigateToExercise(exercise.exerciseId)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.exerciseHeaderLeft}>
@@ -303,11 +313,19 @@ export default function StrengthStatsScreen() {
                           </Text>
                         </View>
                       ) : null}
-                      <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
-                        color={colors.textSecondary}
-                      />
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation()
+                          toggleExercise(exercise.exerciseId)
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
 
@@ -410,7 +428,7 @@ export default function StrengthStatsScreen() {
                   {/* Exercise Header */}
                   <TouchableOpacity
                     style={styles.exerciseHeader}
-                    onPress={() => toggleExercise(exercise.exerciseId)}
+                    onPress={() => navigateToExercise(exercise.exerciseId)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.exerciseHeaderLeft}>
@@ -432,11 +450,19 @@ export default function StrengthStatsScreen() {
                       </View>
                     </View>
                     <View style={styles.exerciseHeaderRight}>
-                      <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
-                        color={colors.textSecondary}
-                      />
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation()
+                          toggleExercise(exercise.exerciseId)
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
 

@@ -18,12 +18,15 @@ import {
   Alert,
   Dimensions,
   Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { Circle, Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg'
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -81,11 +84,202 @@ function AnimatedButton({
 export default function TrialOfferScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
-  const screenHeight = Dimensions.get('window').height
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
   const styles = createStyles(colors, screenHeight)
   const { trackEvent } = useAnalytics()
   const [step, setStep] = useState(1)
   const [isPurchasing, setIsPurchasing] = useState(false)
+  const [activeSlide, setActiveSlide] = useState(0)
+
+  const handleCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const slide = Math.round(event.nativeEvent.contentOffset.x / screenWidth)
+    setActiveSlide(slide)
+  }
+
+  // Feature items for the carousel (matching paywall)
+  const FEATURES = [
+    {
+      id: 'unlimited_workouts',
+      title: 'Unlimited Workouts',
+      description: 'Log as many workouts as you want.',
+      renderVisual: () => (
+        <View style={[styles.visualContainer, { width: screenWidth - 48 }]}>
+          <View style={styles.workoutsVisual}>
+            {/* Calendar Week View */}
+            <View style={styles.calendarWeek}>
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                <View key={index} style={styles.calendarDay}>
+                  <Text style={styles.calendarDayLabel}>{day}</Text>
+                  <View
+                    style={[
+                      styles.calendarDayCircle,
+                      index < 5 && styles.calendarDayActive,
+                    ]}
+                  >
+                    {index < 5 && (
+                      <Ionicons name="checkmark" size={16} color="white" />
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Workout Cards - Vertically stacked */}
+            <View style={styles.workoutCardsList}>
+              <View style={styles.workoutListCard}>
+                <View style={styles.workoutStackDot} />
+                <Text style={styles.workoutStackText}>Leg Day</Text>
+                <View style={styles.workoutStackBadge}>
+                  <Ionicons name="flame" size={12} color={colors.primary} />
+                  <Text style={styles.workoutStackBadgeText}>5</Text>
+                </View>
+              </View>
+              <View
+                style={[styles.workoutListCard, styles.workoutListCardFaded]}
+              >
+                <View style={styles.workoutStackDot} />
+                <Text style={styles.workoutStackText}>Back & Biceps</Text>
+              </View>
+              <View
+                style={[
+                  styles.workoutListCard,
+                  styles.workoutListCardMoreFaded,
+                ]}
+              >
+                <View style={styles.workoutStackDot} />
+                <Text style={styles.workoutStackText}>Chest & Triceps</Text>
+              </View>
+            </View>
+
+            {/* Infinity Badge */}
+            <View style={styles.workoutsInfinityBadge}>
+              <Ionicons name="infinite" size={28} color="white" />
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'ai_coach',
+      title: 'AI Workout Coach',
+      description: 'Generate personalized workouts and routines instantly with AI.',
+      renderVisual: () => (
+        <View style={[styles.visualContainer, { width: screenWidth - 48 }]}>
+          <View style={styles.aiChatVisual}>
+            {/* Chat Bubbles - Compact Layout */}
+            <View style={styles.chatBubblesContainer}>
+              <View style={[styles.chatBubble, styles.chatBubbleUser]}>
+                <Text style={styles.chatTextUser}>
+                  Build me a chest day routine
+                </Text>
+              </View>
+              <View style={[styles.chatBubble, styles.chatBubbleAI]}>
+                <View style={styles.aiAvatar}>
+                  <Ionicons name="sparkles" size={12} color="white" />
+                </View>
+                <Text style={styles.chatTextAI} numberOfLines={2}>
+                  I&apos;ve created a chest routine focusing on hypertrophy...
+                </Text>
+              </View>
+            </View>
+
+            {/* Workout Card Snippet - Compact */}
+            <View style={styles.workoutCardSnippet}>
+              <View style={styles.workoutSnippetHeader}>
+                <Text style={styles.workoutSnippetTitle}>
+                  Chest Hypertrophy
+                </Text>
+                <View style={styles.workoutSnippetBadge}>
+                  <Text style={styles.workoutSnippetBadgeText}>AI</Text>
+                </View>
+              </View>
+              <View style={styles.workoutSnippetRow}>
+                <Text style={styles.workoutSnippetExercise}>Bench Press</Text>
+                <Text style={styles.workoutSnippetSets}>3 x 8-12</Text>
+              </View>
+              <View style={styles.workoutSnippetRow}>
+                <Text style={styles.workoutSnippetExercise}>
+                  Incline DB Press
+                </Text>
+                <Text style={styles.workoutSnippetSets}>3 x 10-12</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'stats',
+      title: 'Advanced Analytics',
+      description: 'Visualize your progress with detailed charts and volume tracking.',
+      renderVisual: () => (
+        <View style={[styles.visualContainer, { width: screenWidth - 48 }]}>
+          <View style={styles.statsVisual}>
+            <Svg height="120" width="100%" viewBox="0 0 300 120">
+              <Defs>
+                <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop
+                    offset="0"
+                    stopColor={colors.primary}
+                    stopOpacity="0.8"
+                  />
+                  <Stop offset="1" stopColor={colors.primary} stopOpacity="0" />
+                </LinearGradient>
+              </Defs>
+              <Path
+                d="M0,100 C40,80 80,110 120,60 S200,40 300,10 L300,120 L0,120 Z"
+                fill="url(#grad)"
+              />
+              <Path
+                d="M0,100 C40,80 80,110 120,60 S200,40 300,10"
+                fill="none"
+                stroke={colors.primary}
+                strokeWidth="4"
+              />
+              <Circle
+                cx="120"
+                cy="60"
+                r="6"
+                fill="white"
+                stroke={colors.primary}
+                strokeWidth="2"
+              />
+              <Circle
+                cx="300"
+                cy="10"
+                r="6"
+                fill="white"
+                stroke={colors.primary}
+                strokeWidth="2"
+              />
+            </Svg>
+            <View style={styles.statsOverlay}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Volume</Text>
+                <Text style={styles.statValue}>+15%</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'body_scan',
+      title: 'Body Scan',
+      description: 'Track your physique with AI-powered body analysis.',
+      renderVisual: () => (
+        <View style={[styles.visualContainer, { width: screenWidth - 48 }]}>
+          <View style={styles.supportVisual}>
+            <View style={styles.bodyScanContainer}>
+              <Ionicons name="body" size={80} color={colors.primary} />
+              <View style={styles.scanLineTop} />
+              <View style={styles.scanLineBottom} />
+            </View>
+          </View>
+        </View>
+      ),
+    },
+  ]
 
   const { user } = useAuth()
   const {
@@ -104,7 +298,7 @@ export default function TrialOfferScreen() {
   )
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>(
-    'monthly',
+    'yearly',
   )
 
   useEffect(() => {
@@ -270,10 +464,7 @@ export default function TrialOfferScreen() {
         <View style={styles.step1HeaderSpacer} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.step1ScrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.step1Content}>
         {/* Title */}
         <Animated.View
           style={styles.step1TitleContainer}
@@ -284,42 +475,46 @@ export default function TrialOfferScreen() {
           <Text style={styles.step1Title}> for FREE</Text>
         </Animated.View>
 
-        {/* Features */}
-        <View style={styles.step1FeaturesContainer}>
-          <Animated.View entering={FadeInDown.delay(200).duration(600)}>
-            <Feature
-              icon="infinite"
-              title="Unlimited Workouts"
-              description="Log as many workouts as you want"
-              colors={colors}
-            />
-          </Animated.View>
-          <Animated.View entering={FadeInDown.delay(280).duration(600)}>
-            <Feature
-              icon="analytics"
-              title="AI-Powered Chat"
-              description="AI assistant with all your workout data"
-              colors={colors}
-            />
-          </Animated.View>
-          <Animated.View entering={FadeInDown.delay(360).duration(600)}>
-            <Feature
-              icon="body"
-              title="Body Scan"
-              description="Track your physique with body analysis"
-              colors={colors}
-            />
-          </Animated.View>
-          <Animated.View entering={FadeInDown.delay(440).duration(600)}>
-            <Feature
-              icon="trending-up"
-              title="Track Your Progress"
-              description="View detailed stats and records"
-              colors={colors}
-            />
-          </Animated.View>
-        </View>
-      </ScrollView>
+        {/* Feature Carousel */}
+        <Animated.View
+          style={styles.carouselContainer}
+          entering={FadeInDown.delay(200).duration(600)}
+        >
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleCarouselScroll}
+            scrollEventThrottle={16}
+            decelerationRate="fast"
+            snapToInterval={screenWidth}
+            contentContainerStyle={{ width: screenWidth * FEATURES.length }}
+          >
+            {FEATURES.map((feature) => (
+              <View key={feature.id} style={[styles.slide, { width: screenWidth }]}>
+                {feature.renderVisual()}
+                <Text style={styles.slideTitle}>{feature.title}</Text>
+                <Text style={styles.slideDescription}>{feature.description}</Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          {/* Pagination Dots */}
+          <View style={styles.pagination}>
+            {FEATURES.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === activeSlide
+                    ? { backgroundColor: colors.primary, width: 20 }
+                    : { backgroundColor: colors.textSecondary, opacity: 0.3 },
+                ]}
+              />
+            ))}
+          </View>
+        </Animated.View>
+      </View>
 
       {/* Button */}
       <Animated.View
@@ -454,11 +649,6 @@ export default function TrialOfferScreen() {
           <Text style={styles.startButtonText}>Continue for FREE</Text>
         </AnimatedButton>
 
-        {/* Skip Button */}
-        <AnimatedButton style={styles.skipButton} onPress={handleSkipTrial}>
-          <Text style={styles.skipButtonText}>Skip</Text>
-        </AnimatedButton>
-
         {/* Terms of Service Link */}
         <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
           <Text style={styles.termsText}>Terms of Service</Text>
@@ -559,16 +749,6 @@ export default function TrialOfferScreen() {
                         Billed monthly
                       </Text>
                     </View>
-                    <View
-                      style={[
-                        styles.radioButton,
-                        selectedPlan === 'monthly' && styles.radioButtonSelected,
-                      ]}
-                    >
-                      {selectedPlan === 'monthly' && (
-                        <View style={styles.radioButtonInner} />
-                      )}
-                    </View>
                   </TouchableOpacity>
                 )}
 
@@ -596,16 +776,6 @@ export default function TrialOfferScreen() {
                       <Text style={styles.pricingOptionSubtext}>
                         Billed annually
                       </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.radioButton,
-                        selectedPlan === 'yearly' && styles.radioButtonSelected,
-                      ]}
-                    >
-                      {selectedPlan === 'yearly' && (
-                        <View style={styles.radioButtonInner} />
-                      )}
                     </View>
                   </TouchableOpacity>
                 )}
@@ -644,15 +814,6 @@ export default function TrialOfferScreen() {
           <Text style={styles.footerSubtext}>
             7 days free, then {trialPriceText}
           </Text>
-
-          {/* Skip Button */}
-          <AnimatedButton
-            style={styles.skipButton}
-            onPress={handleSkipTrial}
-            disabled={isPurchasing || subscriptionLoading}
-          >
-            <Text style={styles.skipButtonText}>Skip</Text>
-          </AnimatedButton>
 
           {/* Terms of Service Link */}
           <TouchableOpacity onPress={handleOpenTerms} style={styles.termsLink}>
@@ -732,7 +893,7 @@ function TimelineItem({
             },
           ]}
         >
-          <Ionicons name={icon} size={24} color={colors.buttonText} />
+          <Ionicons name={icon} size={22} color={colors.buttonText} />
         </View>
         {!isLast && <View style={styles.timelineLine} />}
       </View>
@@ -815,7 +976,7 @@ function createStyles(colors: any, screenHeight: number = 800) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 64,
+      marginBottom: 60,
       paddingHorizontal: 8,
       flexWrap: 'wrap',
     },
@@ -829,16 +990,331 @@ function createStyles(colors: any, screenHeight: number = 800) {
       gap: 24,
       paddingTop: 8,
     },
+    step1Content: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    // Carousel styles
+    carouselContainer: {
+      width: '100%',
+      paddingTop: 0,
+      paddingBottom: 0,
+      alignItems: 'center',
+    },
+    slide: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      justifyContent: 'flex-start',
+    },
+    slideTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 12,
+      letterSpacing: -0.5,
+      marginTop: 24,
+    },
+    slideDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      paddingHorizontal: 24,
+      minHeight: 48,
+    },
+    pagination: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    paginationDot: {
+      height: 8,
+      width: 8,
+      borderRadius: 4,
+    },
+    // Visual container styles (matching paywall)
+    visualContainer: {
+      marginBottom: 24,
+      marginTop: -20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 180,
+    },
+    workoutsVisual: {
+      width: '100%',
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      position: 'relative',
+      marginTop: 40,
+    },
+    calendarWeek: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    calendarDay: {
+      alignItems: 'center',
+      gap: 6,
+    },
+    calendarDayLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    calendarDayCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    calendarDayActive: {
+      backgroundColor: colors.primary,
+    },
+    workoutCardsList: {
+      width: '100%',
+      alignItems: 'center',
+      gap: 6,
+    },
+    workoutListCard: {
+      width: '85%',
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    workoutListCardFaded: {
+      opacity: 0.6,
+    },
+    workoutListCardMoreFaded: {
+      opacity: 0.35,
+    },
+    workoutStackDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+      marginRight: 10,
+    },
+    workoutStackText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+    },
+    workoutStackBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary + '15',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+    workoutStackBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    workoutsInfinityBadge: {
+      position: 'absolute',
+      bottom: 4,
+      right: 32,
+      backgroundColor: colors.primary,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: colors.background,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    // AI Chat Visual
+    aiChatVisual: {
+      width: '100%',
+      height: '100%',
+      maxWidth: 320,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      paddingTop: 24,
+      gap: 12,
+    },
+    chatBubblesContainer: {
+      width: '100%',
+      gap: 8,
+      marginBottom: 4,
+    },
+    chatBubble: {
+      padding: 12,
+      borderRadius: 16,
+      maxWidth: '85%',
+    },
+    chatBubbleUser: {
+      backgroundColor: colors.primary,
+      alignSelf: 'flex-end',
+      borderBottomRightRadius: 4,
+    },
+    chatBubbleAI: {
+      backgroundColor: colors.card,
+      alignSelf: 'flex-start',
+      borderBottomLeftRadius: 4,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    chatTextUser: {
+      color: colors.buttonText,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    chatTextAI: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 18,
+      flex: 1,
+    },
+    aiAvatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: -2,
+    },
+    workoutCardSnippet: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 12,
+      width: '90%',
+      alignSelf: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    workoutSnippetHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    workoutSnippetTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    workoutSnippetBadge: {
+      backgroundColor: colors.primary + '20',
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 4,
+    },
+    workoutSnippetBadgeText: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    workoutSnippetRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    workoutSnippetExercise: {
+      fontSize: 12,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    workoutSnippetSets: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    // Stats Visual
+    statsVisual: {
+      width: '100%',
+      height: 160,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      marginTop: 48,
+    },
+    statsOverlay: {
+      position: 'absolute',
+      top: -12,
+      right: 24,
+    },
+    statBox: {
+      backgroundColor: colors.card,
+      padding: 10,
+      borderRadius: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    statValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    // Body Scan Visual
+    bodyScanContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    scanLineTop: {
+      position: 'absolute',
+      top: 10,
+      width: 100,
+      height: 2,
+      backgroundColor: colors.primary,
+      opacity: 0.6,
+    },
+    scanLineBottom: {
+      position: 'absolute',
+      bottom: 10,
+      width: 100,
+      height: 2,
+      backgroundColor: colors.primary,
+      opacity: 0.6,
+    },
+    supportVisual: {
+      width: '100%',
+      height: 160,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      marginTop: 48,
+    },
     // Step 3 specific styles
     step3ContentWrapper: {
       flex: 1,
     },
     step3ScrollContent: {
       paddingHorizontal: 24,
-      paddingTop: 24,
-      paddingBottom: 20,
+      paddingTop: 0,
+      paddingBottom: 8,
       flexGrow: 1,
-      justifyContent: 'center',
+      justifyContent: 'space-between',
     },
     step3Title: {
       fontSize: 26,
@@ -847,8 +1323,8 @@ function createStyles(colors: any, screenHeight: number = 800) {
       textAlign: 'center',
       paddingHorizontal: 16,
       lineHeight: 32,
-      marginTop: 8,
-      marginBottom: titleMarginBottom,
+      marginTop: 0,
+      marginBottom: 20,
     },
     step3PricingSection: {
       paddingHorizontal: 24,
@@ -950,88 +1426,90 @@ function createStyles(colors: any, screenHeight: number = 800) {
     timelineContainer: {
       paddingHorizontal: 8,
       paddingTop: 0,
-      marginBottom: 24,
+      marginBottom: 20,
     },
     timelineItem: {
       flexDirection: 'row',
-      marginBottom: 12,
+      marginBottom: 4,
     },
     timelineIconContainer: {
       alignItems: 'center',
-      marginRight: 16,
+      marginRight: 12,
     },
     timelineIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+      width: 50,
+      height: 50,
+      borderRadius: 25,
       justifyContent: 'center',
       alignItems: 'center',
     },
     timelineLine: {
-      width: 3,
+      width: 2,
       flex: 1,
       backgroundColor: colors.border,
-      marginVertical: 4,
+      marginVertical: 2,
     },
     timelineContent: {
       flex: 1,
-      paddingTop: 6,
-      paddingBottom: 18,
+      paddingTop: 2,
+      paddingBottom: 10,
     },
     timelineTitle: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 4,
+      marginBottom: 3,
     },
     timelineDescription: {
-      fontSize: 15,
+      fontSize: 14,
       color: colors.textSecondary,
-      lineHeight: 22,
+      lineHeight: 20,
     },
     // Pricing Cards
     pricingCardsContainer: {
-      gap: 16,
-      marginBottom: 24,
-      marginTop: 8,
+      gap: 12,
+      marginBottom: 0,
+      marginTop: 0,
+      flexDirection: 'row',
+      justifyContent: 'center',
     },
     pricingOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 8,
+      flex: 1,
+      maxWidth: 160,
+      backgroundColor: colors.background,
       borderWidth: 2,
       borderColor: colors.border,
-      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 10,
       position: 'relative',
-      gap: 12,
     },
     pricingOptionYearly: {
       position: 'relative',
       borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.background,
     },
     pricingOptionSelected: {
       borderColor: colors.primary,
+      borderWidth: 2,
     },
     pricingOptionContent: {
-      flex: 1,
+      alignItems: 'flex-start',
     },
     pricingOptionLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 2,
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 8,
     },
     pricingOptionPrice: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
+      marginBottom: 4,
     },
     pricingOptionSubtext: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.textSecondary,
     },
     radioButton: {
@@ -1056,11 +1534,11 @@ function createStyles(colors: any, screenHeight: number = 800) {
     freeBadge: {
       position: 'absolute',
       top: -10,
-      right: 16,
+      right: 12,
       backgroundColor: colors.primary,
-      paddingHorizontal: 12,
+      paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 16,
+      borderRadius: 8,
       zIndex: 10,
     },
     freeBadgeText: {
@@ -1104,8 +1582,8 @@ function createStyles(colors: any, screenHeight: number = 800) {
     },
     footer: {
       paddingHorizontal: 24,
-      paddingTop: 4,
-      paddingBottom: 24,
+      paddingTop: 24,
+      paddingBottom: 8,
       gap: 8,
     },
     footerSubtext: {

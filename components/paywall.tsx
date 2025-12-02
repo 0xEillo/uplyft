@@ -11,14 +11,18 @@ import {
   Alert,
   Linking,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import { PACKAGE_TYPE } from 'react-native-purchases'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Circle, Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg'
 
 const PLAN_PLACEHOLDERS = new Set(['monthly_placeholder', 'yearly_placeholder'])
 
@@ -27,6 +31,14 @@ type PaywallProps = {
   onClose: () => void
   title?: string
   message?: string
+}
+
+type FeatureItem = {
+  id: string
+  title: string
+  description: string
+  // We will use a custom render function for the visual part
+  renderVisual: (width: number, colors: any) => React.ReactNode
 }
 
 export function Paywall({
@@ -38,6 +50,7 @@ export function Paywall({
   const colors = useThemedColors()
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
+  const { width } = useWindowDimensions()
   const {
     purchasePackage,
     restorePurchases,
@@ -48,10 +61,283 @@ export function Paywall({
   const [isRestoring, setIsRestoring] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+  const [activeSlide, setActiveSlide] = useState(0)
+
+  const FEATURES: FeatureItem[] = [
+    {
+      id: 'unlimited_workouts',
+      title: 'Unlimited Workouts',
+      description: 'Log as many workouts as you want.',
+      renderVisual: (width, colors) => (
+        <View style={[styles.visualContainer, { width: width - 48 }]}>
+          <View style={styles.workoutsVisual}>
+            {/* Calendar Week View */}
+            <View style={styles.calendarWeek}>
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                <View key={index} style={styles.calendarDay}>
+                  <Text style={styles.calendarDayLabel}>{day}</Text>
+                  <View
+                    style={[
+                      styles.calendarDayCircle,
+                      index < 5 && styles.calendarDayActive,
+                    ]}
+                  >
+                    {index < 5 && (
+                      <Ionicons name="checkmark" size={16} color="white" />
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Workout Cards - Vertically stacked */}
+            <View style={styles.workoutCardsList}>
+              <View style={styles.workoutListCard}>
+                <View style={styles.workoutStackDot} />
+                <Text style={styles.workoutStackText}>Leg Day</Text>
+                <View style={styles.workoutStackBadge}>
+                  <Ionicons name="flame" size={12} color={colors.primary} />
+                  <Text style={styles.workoutStackBadgeText}>5</Text>
+                </View>
+              </View>
+              <View
+                style={[styles.workoutListCard, styles.workoutListCardFaded]}
+              >
+                <View style={styles.workoutStackDot} />
+                <Text style={styles.workoutStackText}>Back & Biceps</Text>
+              </View>
+              <View
+                style={[
+                  styles.workoutListCard,
+                  styles.workoutListCardMoreFaded,
+                ]}
+              >
+                <View style={styles.workoutStackDot} />
+                <Text style={styles.workoutStackText}>Chest & Triceps</Text>
+              </View>
+            </View>
+
+            {/* Infinity Badge */}
+            <View style={styles.workoutsInfinityBadge}>
+              <Ionicons name="infinite" size={28} color="white" />
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'ai_coach',
+      title: 'AI Workout Coach',
+      description:
+        'Generate personalized workouts and routines instantly with AI.',
+      renderVisual: (width, colors) => (
+        <View style={[styles.visualContainer, { width: width - 48 }]}>
+          <View style={styles.aiChatVisual}>
+            {/* Chat Bubbles - Compact Layout */}
+            <View style={styles.chatBubblesContainer}>
+              <View style={[styles.chatBubble, styles.chatBubbleUser]}>
+                <Text style={styles.chatTextUser}>
+                  Build me a chest day routine
+                </Text>
+              </View>
+              <View style={[styles.chatBubble, styles.chatBubbleAI]}>
+                <View style={styles.aiAvatar}>
+                  <Ionicons name="sparkles" size={12} color="white" />
+                </View>
+                <Text style={styles.chatTextAI} numberOfLines={2}>
+                  I&apos;ve created a chest routine focusing on hypertrophy...
+                </Text>
+              </View>
+            </View>
+
+            {/* Workout Card Snippet - Compact */}
+            <View style={styles.workoutCardSnippet}>
+              <View style={styles.workoutSnippetHeader}>
+                <Text style={styles.workoutSnippetTitle}>
+                  Chest Hypertrophy
+                </Text>
+                <View style={styles.workoutSnippetBadge}>
+                  <Text style={styles.workoutSnippetBadgeText}>AI</Text>
+                </View>
+              </View>
+              <View style={styles.workoutSnippetRow}>
+                <Text style={styles.workoutSnippetExercise}>Bench Press</Text>
+                <Text style={styles.workoutSnippetSets}>3 x 8-12</Text>
+              </View>
+              <View style={styles.workoutSnippetRow}>
+                <Text style={styles.workoutSnippetExercise}>
+                  Incline DB Press
+                </Text>
+                <Text style={styles.workoutSnippetSets}>3 x 10-12</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'routines',
+      title: 'Unlimited Routines',
+      description:
+        'Create as many routines as you want.\nFree limit: 4 routines',
+      renderVisual: (width, colors) => (
+        <View style={[styles.visualContainer, { width: width - 48 }]}>
+          <View style={styles.routinesVisual}>
+            {/* Grid of Routine Cards */}
+            <View style={styles.routineGrid}>
+              <View
+                style={[
+                  styles.routineGridCard,
+                  { transform: [{ rotate: '-2deg' }] },
+                ]}
+              >
+                <Text style={styles.routineGridTitle}>Push Day</Text>
+                <View style={styles.routineGridLine} />
+              </View>
+              <View
+                style={[
+                  styles.routineGridCard,
+                  { marginTop: 12, transform: [{ rotate: '1deg' }] },
+                ]}
+              >
+                <Text style={styles.routineGridTitle}>Pull Day</Text>
+                <View style={styles.routineGridLine} />
+              </View>
+              <View
+                style={[
+                  styles.routineGridCard,
+                  { transform: [{ rotate: '-1deg' }] },
+                ]}
+              >
+                <Text style={styles.routineGridTitle}>Legs & Core</Text>
+                <View style={styles.routineGridLine} />
+              </View>
+              <View
+                style={[
+                  styles.routineGridCard,
+                  { marginTop: 12, transform: [{ rotate: '2deg' }] },
+                ]}
+              >
+                <Text style={styles.routineGridTitle}>Full Body</Text>
+                <View style={styles.routineGridLine} />
+              </View>
+            </View>
+
+            {/* Infinity Badge Overlay */}
+            <View style={styles.infinityBadgeCentered}>
+              <Ionicons name="infinite" size={32} color="white" />
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'stats',
+      title: 'Advanced Analytics',
+      description:
+        'Visualize your progress with detailed charts and volume tracking.',
+      renderVisual: (width, colors) => (
+        <View style={[styles.visualContainer, { width: width - 48 }]}>
+          <View style={styles.statsVisual}>
+            <Svg height="120" width="100%" viewBox="0 0 300 120">
+              <Defs>
+                <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop
+                    offset="0"
+                    stopColor={colors.primary}
+                    stopOpacity="0.8"
+                  />
+                  <Stop offset="1" stopColor={colors.primary} stopOpacity="0" />
+                </LinearGradient>
+              </Defs>
+              <Path
+                d="M0,100 C40,80 80,110 120,60 S200,40 300,10 L300,120 L0,120 Z"
+                fill="url(#grad)"
+              />
+              <Path
+                d="M0,100 C40,80 80,110 120,60 S200,40 300,10"
+                fill="none"
+                stroke={colors.primary}
+                strokeWidth="4"
+              />
+              <Circle
+                cx="120"
+                cy="60"
+                r="6"
+                fill="white"
+                stroke={colors.primary}
+                strokeWidth="2"
+              />
+              <Circle
+                cx="300"
+                cy="10"
+                r="6"
+                fill="white"
+                stroke={colors.primary}
+                strokeWidth="2"
+              />
+            </Svg>
+            <View style={styles.statsOverlay}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Volume</Text>
+                <Text style={styles.statValue}>+15%</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ),
+    },
+    {
+      id: 'support',
+      title: 'Support our small dedicated team',
+      description: 'Your help keeps Rep AI growing!',
+      renderVisual: (width, colors) => (
+        <View style={[styles.visualContainer, { width: width - 48 }]}>
+          <View style={styles.supportVisual}>
+            <View style={styles.heartContainer}>
+              <Ionicons name="heart" size={80} color={colors.primary} />
+              <View style={styles.miniHeartLeft}>
+                <Ionicons name="heart" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.miniHeartRight}>
+                <Ionicons name="heart" size={32} color={colors.primary} />
+              </View>
+            </View>
+            <View style={styles.avatarsRow}>
+              <View style={[styles.teamAvatar, { backgroundColor: '#FF6B6B' }]}>
+                <Text style={styles.teamAvatarText}>O</Text>
+              </View>
+              <View
+                style={[
+                  styles.teamAvatar,
+                  { backgroundColor: '#4ECDC4', marginLeft: -12 },
+                ]}
+              >
+                <Text style={styles.teamAvatarText}>M</Text>
+              </View>
+              <View
+                style={[
+                  styles.teamAvatar,
+                  { backgroundColor: '#45B7D1', marginLeft: -12 },
+                ]}
+              >
+                <Text style={styles.teamAvatarText}>N</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ),
+    },
+  ]
 
   const { monthly, yearly, lifetime, available } = useRevenueCatPackages(
     offerings,
   )
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const slide = Math.round(event.nativeEvent.contentOffset.x / width)
+    setActiveSlide(slide)
+  }
 
   useEffect(() => {
     const selectedExists =
@@ -63,12 +349,15 @@ export function Paywall({
       !PLAN_PLACEHOLDERS.has(selectedPlan)
     ) {
       const fallbackId =
-        monthly?.identifier ?? yearly?.identifier ?? lifetime?.identifier ?? null
+        yearly?.identifier ??
+        monthly?.identifier ??
+        lifetime?.identifier ??
+        null
 
       if (fallbackId && fallbackId !== selectedPlan) {
         setSelectedPlan(fallbackId)
-      } else if (!fallbackId && selectedPlan !== 'monthly_placeholder') {
-        setSelectedPlan('monthly_placeholder')
+      } else if (!fallbackId && selectedPlan !== 'yearly_placeholder') {
+        setSelectedPlan('yearly_placeholder')
       }
       return
     }
@@ -84,28 +373,22 @@ export function Paywall({
     }
 
     if (!selectedPlan) {
-      if (monthly) {
-        setSelectedPlan(monthly.identifier)
-      } else if (yearly) {
+      if (yearly) {
         setSelectedPlan(yearly.identifier)
+      } else if (monthly) {
+        setSelectedPlan(monthly.identifier)
       } else if (lifetime) {
         setSelectedPlan(lifetime.identifier)
-      } else if (selectedPlan !== 'monthly_placeholder') {
-        setSelectedPlan('monthly_placeholder')
+      } else if (selectedPlan !== 'yearly_placeholder') {
+        setSelectedPlan('yearly_placeholder')
       }
     }
-  }, [
-    available,
-    lifetime?.identifier,
+  }, [available, lifetime?.identifier, monthly, selectedPlan, yearly])
+
+  const yearlySavings = useMemo(() => calculateYearlySavings(monthly, yearly), [
     monthly,
-    selectedPlan,
     yearly,
   ])
-
-  const yearlySavings = useMemo(
-    () => calculateYearlySavings(monthly, yearly),
-    [monthly, yearly],
-  )
 
   const selectedPackage = useMemo(() => {
     if (!selectedPlan) return null
@@ -183,7 +466,7 @@ export function Paywall({
           [{ text: 'OK' }],
         )
       }
-    } catch (error: any) {
+    } catch (error) {
       // Handle user cancellation
       if (error?.userCancelled) {
         return
@@ -267,24 +550,47 @@ export function Paywall({
             scrollIndicatorInsets={{ right: 4 }}
             persistentScrollbar={true}
           >
-            {/* Top Section - Title */}
-            <View style={styles.topSection}>
-              <View style={styles.brandHeader}>
-                <Text style={styles.brandName}>Rep AI</Text>
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
+            {/* Feature Carousel */}
+            <View style={styles.carouselContainer}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                decelerationRate="fast"
+                snapToInterval={width}
+                contentContainerStyle={{ width: width * FEATURES.length }}
+              >
+                {FEATURES.map((feature) => (
+                  <View key={feature.id} style={[styles.slide, { width }]}>
+                    {feature.renderVisual(width, colors)}
+                    <Text style={styles.slideTitle}>{feature.title}</Text>
+                    <Text style={styles.slideDescription}>
+                      {feature.description}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Pagination Dots */}
+              <View style={styles.pagination}>
+                {FEATURES.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === activeSlide
+                        ? { backgroundColor: colors.primary, width: 20 }
+                        : {
+                            backgroundColor: colors.textSecondary,
+                            opacity: 0.3,
+                          },
+                    ]}
+                  />
+                ))}
               </View>
             </View>
-
-            {/* Heading */}
-            <Text style={styles.heading}>Full Access</Text>
-
-            {/* Description */}
-            <Text style={styles.description}>
-              Get access to all PRO features and take your training to the next
-              level.
-            </Text>
 
             {/* Subscription Plans */}
             <View style={styles.plansContainer}>
@@ -742,7 +1048,7 @@ function createStyles(colors: any) {
       justifyContent: 'flex-end',
       paddingHorizontal: 16,
       paddingTop: 16,
-      paddingBottom: 20,
+      paddingBottom: 8,
       width: '100%',
       backgroundColor: colors.background,
     },
@@ -752,58 +1058,63 @@ function createStyles(colors: any) {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    topSection: {
-      paddingTop: 60,
-      paddingBottom: 24,
+    carouselContainer: {
       width: '100%',
+      paddingTop: 20,
+      paddingBottom: 32,
       alignItems: 'center',
     },
-    brandHeader: {
-      flexDirection: 'row',
+    slide: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      justifyContent: 'flex-start',
+    },
+    iconContainer: {
+      marginBottom: 32,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    iconBackground: {
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    slideTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 12,
+      letterSpacing: -0.5,
+      marginTop: 48,
+    },
+    slideDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      paddingHorizontal: 24,
+      minHeight: 48,
+    },
+    pagination: {
+      flexDirection: 'row',
       gap: 8,
+      marginTop: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    paginationDot: {
+      height: 8,
+      width: 8,
+      borderRadius: 4,
     },
     scrollableContent: {
       flex: 1,
     },
     scrollContentContainer: {
-      paddingHorizontal: 24,
       paddingBottom: 40,
-      alignItems: 'center',
-    },
-    brandName: {
-      fontSize: 48,
-      fontWeight: '700',
-      color: colors.text,
-      letterSpacing: -1,
-    },
-    proBadge: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    proBadgeText: {
-      fontSize: 26,
-      fontWeight: '700',
-      color: colors.buttonText,
-    },
-    heading: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.text,
-      textAlign: 'center',
-      marginTop: 112,
-      marginBottom: 12,
-    },
-    description: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginBottom: 48,
-      lineHeight: 22,
-      paddingHorizontal: 8,
     },
     plansContainer: {
       width: '100%',
@@ -811,7 +1122,7 @@ function createStyles(colors: any) {
       justifyContent: 'center',
       gap: 12,
       marginBottom: 16,
-      paddingHorizontal: 0,
+      paddingHorizontal: 24,
     },
     planCard: {
       flex: 1,
@@ -820,7 +1131,7 @@ function createStyles(colors: any) {
       borderWidth: 3,
       borderColor: colors.border,
       borderRadius: 20,
-      padding: 16,
+      padding: 12,
       position: 'relative',
     },
     planCardSelected: {
@@ -849,7 +1160,7 @@ function createStyles(colors: any) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      marginBottom: 16,
+      marginBottom: 12,
     },
     planTitleYellow: {
       fontSize: 12,
@@ -867,7 +1178,7 @@ function createStyles(colors: any) {
       fontSize: 24,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     planBilling: {
       fontSize: 12,
@@ -960,10 +1271,12 @@ function createStyles(colors: any) {
       color: colors.textSecondary,
     },
     reviewsScrollView: {
-      marginHorizontal: -24,
+      marginLeft: -24,
+      marginRight: -24,
     },
     reviewsScrollContainer: {
-      paddingHorizontal: 24,
+      paddingLeft: 24,
+      paddingRight: 24,
       gap: 12,
     },
     reviewCard: {
@@ -1078,6 +1391,7 @@ function createStyles(colors: any) {
       width: '100%',
       paddingTop: 0,
       paddingBottom: 32,
+      paddingHorizontal: 24,
       gap: 0,
     },
     trialInfoText: {
@@ -1136,6 +1450,394 @@ function createStyles(colors: any) {
       color: colors.textSecondary,
       textDecorationLine: 'underline',
       opacity: 0.7,
+    },
+    visualContainer: {
+      marginBottom: 24,
+      marginTop: -20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 180,
+    },
+    aiChatVisual: {
+      width: '100%',
+      height: '100%',
+      maxWidth: 320,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      paddingTop: 24,
+      gap: 12,
+    },
+    chatBubblesContainer: {
+      width: '100%',
+      gap: 8,
+      marginBottom: 4,
+    },
+    chatBubble: {
+      padding: 12,
+      borderRadius: 16,
+      maxWidth: '85%',
+    },
+    chatBubbleUser: {
+      backgroundColor: colors.primary,
+      alignSelf: 'flex-end',
+      borderBottomRightRadius: 4,
+    },
+    chatBubbleAI: {
+      backgroundColor: colors.card,
+      alignSelf: 'flex-start',
+      borderBottomLeftRadius: 4,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    chatTextUser: {
+      color: colors.buttonText,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    chatTextAI: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 18,
+      flex: 1,
+    },
+    aiAvatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: -2,
+    },
+    workoutCardSnippet: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 12,
+      width: '90%',
+      alignSelf: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    workoutSnippetHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    workoutSnippetTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    workoutSnippetBadge: {
+      backgroundColor: colors.primary + '20',
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 4,
+    },
+    workoutSnippetBadgeText: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    workoutSnippetRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    workoutSnippetExercise: {
+      fontSize: 12,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    workoutSnippetSets: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    workoutsVisual: {
+      width: '100%',
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      position: 'relative',
+      marginTop: 40,
+    },
+    calendarWeek: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    calendarDay: {
+      alignItems: 'center',
+      gap: 6,
+    },
+    calendarDayLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    calendarDayCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    calendarDayActive: {
+      backgroundColor: colors.primary,
+    },
+    workoutCardsList: {
+      width: '100%',
+      alignItems: 'center',
+      gap: 6,
+    },
+    workoutListCard: {
+      width: '85%',
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    workoutListCardFaded: {
+      opacity: 0.6,
+    },
+    workoutListCardMoreFaded: {
+      opacity: 0.35,
+    },
+    workoutStackDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+      marginRight: 10,
+    },
+    workoutStackText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+    },
+    workoutStackBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary + '15',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+    workoutStackBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    workoutsInfinityBadge: {
+      position: 'absolute',
+      bottom: 4,
+      right: 32,
+      backgroundColor: colors.primary,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: colors.background,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    routinesVisual: {
+      width: '100%',
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      marginTop: 48,
+    },
+    routineGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 12,
+      width: '100%',
+      paddingHorizontal: 12,
+    },
+    routineGridCard: {
+      width: '45%',
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    routineGridTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    routineGridLine: {
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      width: '60%',
+    },
+    infinityBadgeCentered: {
+      position: 'absolute',
+      backgroundColor: colors.primary,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 4,
+      borderColor: colors.background,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    statsVisual: {
+      width: '100%',
+      height: 160,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      marginTop: 48,
+    },
+    statsOverlay: {
+      position: 'absolute',
+      top: -12,
+      right: 24,
+    },
+    statBox: {
+      backgroundColor: colors.card,
+      padding: 10,
+      borderRadius: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    statValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    customExerciseVisual: {
+      width: '100%',
+      maxWidth: 260,
+      gap: 0,
+      marginTop: 48,
+    },
+    exerciseCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      padding: 12,
+      borderRadius: 12,
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    exerciseIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    exerciseTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    exerciseSubtitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    addBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    supportVisual: {
+      width: '100%',
+      height: 160,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      marginTop: 48,
+    },
+    heartContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    miniHeartLeft: {
+      position: 'absolute',
+      left: -32,
+      top: 16,
+      transform: [{ rotate: '-15deg' }],
+      opacity: 0.6,
+    },
+    miniHeartRight: {
+      position: 'absolute',
+      right: -36,
+      top: 8,
+      transform: [{ rotate: '15deg' }],
+      opacity: 0.8,
+    },
+    avatarsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingLeft: 12, // Offset for negative margin
+    },
+    teamAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: colors.card,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    teamAvatarText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: 'white',
     },
   })
 }

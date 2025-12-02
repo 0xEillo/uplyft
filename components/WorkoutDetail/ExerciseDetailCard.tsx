@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { WorkoutExerciseWithDetails } from '@/types/database.types'
 import { useTheme } from '@/contexts/theme-context'
 import { getColors } from '@/constants/colors'
@@ -24,9 +24,10 @@ export interface ExercisePRInfo {
 interface ExerciseDetailCardProps {
   workoutExercise: WorkoutExerciseWithDetails
   prInfo?: ExercisePRInfo
+  onExercisePress?: (exerciseId: string) => void
 }
 
-export function ExerciseDetailCard({ workoutExercise, prInfo }: ExerciseDetailCardProps) {
+export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }: ExerciseDetailCardProps) {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
@@ -43,11 +44,16 @@ export function ExerciseDetailCard({ workoutExercise, prInfo }: ExerciseDetailCa
   return (
     <View style={[styles.container, { borderBottomColor: colors.border }]}>
       {/* Exercise name */}
-      <View style={styles.exerciseHeader}>
+      <TouchableOpacity
+        style={styles.exerciseHeader}
+        onPress={() => onExercisePress?.(exercise.id)}
+        disabled={!onExercisePress}
+        activeOpacity={0.7}
+      >
         <Text style={[styles.exerciseName, { color: colors.primary }]}>
           {exercise.name}
         </Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Sets header */}
       <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>

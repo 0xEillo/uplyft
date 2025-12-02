@@ -1,4 +1,3 @@
-import { useSubscription } from '@/contexts/subscription-context'
 import { useUnit, type WeightUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
@@ -42,7 +41,6 @@ const WEIGHT_UNITS: WeightUnit[] = ['kg', 'lb']
 export default function BodyLogCaptureScreen() {
   const colors = useThemedColors()
   const router = useRouter()
-  const { isProMember } = useSubscription()
   const { entryId } = useLocalSearchParams<{ entryId?: string }>()
 
   const [photos, setPhotos] = useState<(CapturedPhoto | null)[]>([null, null, null])
@@ -56,16 +54,6 @@ export default function BodyLogCaptureScreen() {
 
   const handleTakePhoto = async (slotIndex: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-
-    // Check if user is pro member
-    if (!isProMember) {
-      Alert.alert(
-        'Premium Feature',
-        'Body scan photos are a premium feature. Upgrade to unlock, or continue with weight-only entries.',
-        [{ text: 'OK', style: 'cancel' }],
-      )
-      return
-    }
 
     try {
       // Check current permission status

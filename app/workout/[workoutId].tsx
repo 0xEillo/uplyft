@@ -242,6 +242,11 @@ export default function WorkoutDetailScreen() {
     })
   }, [workoutId, router])
 
+  // Handle exercise press - navigate to exercise detail
+  const handleExercisePress = useCallback((exerciseId: string) => {
+    router.push(`/exercise/${exerciseId}`)
+  }, [router])
+
   // Only show edit/delete/create routine for own workouts
   const isOwnWorkout = workout ? user?.id === workout.user_id : false
 
@@ -262,6 +267,7 @@ export default function WorkoutDetailScreen() {
         onEdit={isOwnWorkout ? handleEdit : undefined}
         onDelete={isOwnWorkout ? handleDelete : undefined}
         onCreateRoutine={handleCreateRoutine}
+        onExercisePress={handleExercisePress}
         isLoading={isLoading}
       />
 

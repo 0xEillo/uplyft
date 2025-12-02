@@ -1933,6 +1933,7 @@ const createStyles = (
     statContainer: {
       alignItems: 'center',
       marginVertical: 24,
+      marginTop: -100,
     },
     statNumber: {
       fontSize: 32,

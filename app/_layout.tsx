@@ -142,6 +142,10 @@ function RootLayoutNav() {
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
           <Stack.Screen
+            name="exercise/[exerciseId]"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
             name="workout-comments/[workoutId]"
             options={{
               headerShown: false,

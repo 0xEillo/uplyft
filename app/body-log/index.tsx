@@ -139,23 +139,28 @@ const BodyLogEntryItem = memo(
                 <ActivityIndicator size="small" color={colors.primary} />
               </View>
             )}
-            {imageCount > 1 && (
-              <View style={[styles.imageBadge, { backgroundColor: `${colors.primary}E6` }]}>
-                <Text style={styles.imageBadgeText}>{imageCount}</Text>
+            <View style={styles.overlaysContainer}>
+              <View style={styles.topBadgesRow}>
+                {hasBodyScan && (
+                  <View style={styles.scanBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.white} />
+                    <Text style={styles.scanBadgeText}>Scanned</Text>
+                  </View>
+                )}
+                {imageCount > 1 && (
+                  <View style={[styles.imageBadge, { marginLeft: 'auto' }]}>
+                    <Ionicons name="images" size={12} color={colors.white} style={{ marginRight: 4 }} />
+                    <Text style={styles.imageBadgeText}>{imageCount}</Text>
+                  </View>
+                )}
               </View>
-            )}
-            {hasWeight && formattedWeight && (
-              <View style={styles.weightOverlay}>
-                <Text style={styles.weightOverlayLabel}>Weight</Text>
-                <Text style={styles.weightOverlayValue}>{formattedWeight}</Text>
-              </View>
-            )}
-            {hasBodyScan && (
-              <View style={[styles.scanBadge, { backgroundColor: colors.success }]}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.white} />
-                <Text style={styles.scanBadgeText}>Scanned</Text>
-              </View>
-            )}
+
+              {hasWeight && formattedWeight && (
+                <View style={styles.weightPill}>
+                  <Text style={styles.weightPillValue}>{formattedWeight}</Text>
+                </View>
+              )}
+            </View>
           </>
         ) : hasImages ? (
           <View style={styles.imageLoadingOverlay}>
@@ -163,25 +168,16 @@ const BodyLogEntryItem = memo(
           </View>
         ) : hasWeight && formattedWeight ? (
           <View style={styles.weightCard}>
-            <Ionicons
-              name="barbell-outline"
-              size={20}
-              color={colors.primary}
-              style={styles.weightCardIcon}
-            />
-            <Text style={styles.weightCardLabel}>Weight logged</Text>
             <Text style={styles.weightCardValue}>{formattedWeight}</Text>
+            <Text style={styles.weightCardLabel}>Weight</Text>
           </View>
         ) : isEmpty ? (
           <View style={styles.emptyEntryCard}>
             <Ionicons
-              name="add-circle-outline"
-              size={32}
-              color={colors.textSecondary}
-              style={styles.emptyEntryIcon}
+              name="add"
+              size={28}
+              color={colors.primary}
             />
-            <Text style={styles.emptyEntryLabel}>Empty Entry</Text>
-            <Text style={styles.emptyEntryHint}>Tap to add data</Text>
           </View>
         ) : (
           <View style={styles.imageLoadingOverlay}>
@@ -541,11 +537,12 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 2,
       overflow: 'hidden',
       backgroundColor: colors.backgroundLight,
-      shadowColor: colors.shadow,
+      // Smoother shadow
+      shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 2,
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
     image: {
       width: '100%',
@@ -557,65 +554,54 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       backgroundColor: colors.backgroundLight,
     },
+    overlaysContainer: {
+      ...StyleSheet.absoluteFillObject,
+      padding: 8,
+      justifyContent: 'space-between',
+    },
+    topBadgesRow: {
+      flexDirection: 'row',
+      width: '100%',
+    },
     imageBadge: {
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      minWidth: 26,
-      height: 26,
+      flexDirection: 'row',
+      height: 22,
       paddingHorizontal: 8,
-      borderRadius: 13,
+      borderRadius: 11,
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
-      elevation: 2,
     },
     imageBadgeText: {
       color: colors.white,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
-      letterSpacing: -0.1,
+      textShadowColor: 'rgba(0, 0, 0, 0.75)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
-    weightOverlay: {
-      position: 'absolute',
-      left: 10,
-      bottom: 10,
+    weightPill: {
+      alignSelf: 'flex-start',
       paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 12,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      paddingVertical: 5,
+      borderRadius: 16,
     },
-    weightOverlayLabel: {
-      fontSize: 10,
-      color: 'rgba(255, 255, 255, 0.9)',
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      marginBottom: 2,
-      fontWeight: '500',
-    },
-    weightOverlayValue: {
-      fontSize: 14,
+    weightPillValue: {
+      fontSize: 13,
       fontWeight: '700',
       color: '#FFFFFF',
-      letterSpacing: -0.2,
+      textShadowColor: 'rgba(0, 0, 0, 0.75)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
+    
     weightCard: {
       flex: 1,
       width: '100%',
       height: '100%',
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 16,
-      gap: 6,
       backgroundColor: colors.backgroundLight,
-      borderWidth: 1.5,
-      borderColor: `${colors.primary}30`,
+      padding: 12,
     },
     weightCardIcon: {
       marginBottom: 4,
@@ -626,35 +612,31 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textTransform: 'uppercase',
       letterSpacing: 1.0,
       fontWeight: '600',
+      marginTop: 4,
     },
     weightCardValue: {
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: '800',
       color: colors.text,
       letterSpacing: -0.5,
     },
     scanBadge: {
-      position: 'absolute',
-      top: 8,
-      left: 8,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 7,
+      paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
-      gap: 3,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 3,
-      elevation: 3,
+      borderRadius: 12,
+      gap: 4,
+      height: 22,
     },
     scanBadgeText: {
       color: '#FFFFFF',
       fontSize: 10,
-      fontWeight: '600',
-      letterSpacing: 0.2,
+      fontWeight: '700',
       textTransform: 'uppercase',
+      textShadowColor: 'rgba(0, 0, 0, 0.75)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
     emptyEntryCard: {
       flex: 1,
@@ -662,27 +644,15 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: '100%',
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 16,
-      gap: 8,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.background, // Match screen background for "hole" effect or light for card
+      borderRadius: 12,
       borderWidth: 2,
       borderColor: colors.border,
+      borderStyle: 'dashed',
     },
-    emptyEntryIcon: {
-      marginBottom: 4,
-    },
-    emptyEntryLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '700',
-      letterSpacing: -0.2,
-    },
-    emptyEntryHint: {
-      fontSize: 11,
-      color: colors.textSecondary,
-      opacity: 0.7,
-    },
+    emptyEntryIcon: {},
+    emptyEntryLabel: {},
+    emptyEntryHint: {},
   })
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
@@ -728,16 +698,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     sectionHeader: {
       backgroundColor: colors.background,
-      paddingTop: 20,
+      paddingTop: 24,
       paddingBottom: 12,
       paddingHorizontal: 0,
-      borderBottomWidth: 0,
     },
     sectionHeaderText: {
-      fontSize: 22,
-      fontWeight: '600',
+      fontSize: 18,
+      fontWeight: '700',
       color: colors.text,
-      letterSpacing: 0.35,
+      letterSpacing: -0.4,
     },
     addNewEntryContainer: {
       paddingHorizontal: GRID_PADDING,
