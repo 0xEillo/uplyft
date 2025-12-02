@@ -3,11 +3,15 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native'
 
@@ -425,25 +429,29 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   )
 
   const renderSpecificsStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={[styles.stepTitle, { color: colors.text }]}>
-        Any specific requests or limitations?
-      </Text>
-      <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-        Optional - skip if none
-      </Text>
-      <View style={[styles.specificsInputContainer, { backgroundColor: colors.backgroundLight }]}>
-        <TextInput
-          style={[styles.specificsInput, { color: colors.text }]}
-          placeholder="e.g., No jumping, include warm-up, focus on compound lifts, include supersets..."
-          placeholderTextColor={colors.textSecondary}
-          value={data.specifics}
-          onChangeText={(text) => setData((prev) => ({ ...prev, specifics: text }))}
-          multiline
-          numberOfLines={3}
-        />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.stepContent}>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Any specific requests or limitations?
+        </Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+          Optional - skip if none
+        </Text>
+        <View style={[styles.specificsInputContainer, { backgroundColor: colors.backgroundLight }]}>
+          <TextInput
+            style={[styles.specificsInput, { color: colors.text }]}
+            placeholder="e.g., No jumping, include warm-up, focus on compound lifts, include supersets..."
+            placeholderTextColor={colors.textSecondary}
+            value={data.specifics}
+            onChangeText={(text) => setData((prev) => ({ ...prev, specifics: text }))}
+            multiline
+            numberOfLines={3}
+            blurOnSubmit
+            returnKeyType="done"
+          />
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   )
 
   const renderConfirmStep = () => {
@@ -514,7 +522,11 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const styles = createStyles(colors)
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+    >
       {renderStepIndicator()}
       {renderCurrentStep()}
       <View style={styles.navigationContainer}>
@@ -581,7 +593,7 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 

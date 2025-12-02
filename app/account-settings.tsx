@@ -1027,11 +1027,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
     },
     sectionTitle: {
-      fontSize: 13,
-      fontWeight: '600',
+      fontSize: 11,
+      fontWeight: '700',
       color: colors.textSecondary,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 1,
       marginBottom: 12,
     },
     profileCard: {

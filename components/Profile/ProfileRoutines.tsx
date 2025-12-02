@@ -120,8 +120,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="albums-outline" size={20} color={colors.text} />
-        <Text style={styles.title}>Routines</Text>
+        <Text style={styles.title}>ROUTINES</Text>
       </View>
       
       <FlatList
@@ -142,16 +141,14 @@ const createStyles = (colors: any) =>
       marginBottom: 24,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
       paddingHorizontal: 20,
       marginBottom: 12,
-      gap: 8,
     },
     title: {
-      fontSize: 16,
+      fontSize: 11,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textSecondary,
+      letterSpacing: 1,
     },
     listContent: {
       paddingHorizontal: 20,

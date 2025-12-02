@@ -444,12 +444,7 @@ export default function UserProfileScreen() {
             {/* This Week Stats Section */}
             <View style={styles.weeklyStatsSection}>
               <View style={styles.weeklyStatsHeader}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.weeklyStatsTitle}>This Week</Text>
+                <Text style={styles.weeklyStatsTitle}>THIS WEEK</Text>
               </View>
               <View style={styles.weeklyStats}>
                 <View style={styles.weeklyStat}>
@@ -800,15 +795,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 12,
     },
     weeklyStatsHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
       marginBottom: 12,
     },
     weeklyStatsTitle: {
-      fontSize: 16,
+      fontSize: 11,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textSecondary,
+      letterSpacing: 1,
     },
     weeklyStats: {
       flexDirection: 'row',

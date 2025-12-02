@@ -3,11 +3,15 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native'
 
@@ -441,25 +445,29 @@ export function PlanWorkoutWizard({ colors, onComplete, onCancel }: PlanWorkoutW
   )
 
   const renderSpecificsStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={[styles.stepTitle, { color: colors.text }]}>
-        Any specific requests or injuries?
-      </Text>
-      <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-        Optional - skip if none
-      </Text>
-      <View style={[styles.specificsInputContainer, { backgroundColor: colors.backgroundLight }]}>
-        <TextInput
-          style={[styles.specificsInput, { color: colors.text }]}
-          placeholder="e.g., No deadlifts, focus on compound movements, include supersets..."
-          placeholderTextColor={colors.textSecondary}
-          value={data.specifics}
-          onChangeText={(text) => setData((prev) => ({ ...prev, specifics: text }))}
-          multiline
-          numberOfLines={3}
-        />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.stepContent}>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Any specific requests or injuries?
+        </Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+          Optional - skip if none
+        </Text>
+        <View style={[styles.specificsInputContainer, { backgroundColor: colors.backgroundLight }]}>
+          <TextInput
+            style={[styles.specificsInput, { color: colors.text }]}
+            placeholder="e.g., No deadlifts, focus on compound movements, include supersets..."
+            placeholderTextColor={colors.textSecondary}
+            value={data.specifics}
+            onChangeText={(text) => setData((prev) => ({ ...prev, specifics: text }))}
+            multiline
+            numberOfLines={3}
+            blurOnSubmit
+            returnKeyType="done"
+          />
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   )
 
   const renderConfirmStep = () => {
@@ -530,7 +538,11 @@ export function PlanWorkoutWizard({ colors, onComplete, onCancel }: PlanWorkoutW
   const styles = createStyles(colors)
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+    >
       {renderStepIndicator()}
       {renderCurrentStep()}
       <View style={styles.navigationContainer}>
@@ -597,7 +609,7 @@ export function PlanWorkoutWizard({ colors, onComplete, onCancel }: PlanWorkoutW
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 

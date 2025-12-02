@@ -350,14 +350,7 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.weeklyStatsHeader}>
-                  <View style={styles.weeklyStatsTitleContainer}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={20}
-                      color={colors.text}
-                    />
-                    <Text style={styles.weeklyStatsTitle}>This Week</Text>
-                  </View>
+                  <Text style={styles.weeklyStatsTitle}>THIS WEEK</Text>
                   <Ionicons
                     name="chevron-forward"
                     size={20}
@@ -418,12 +411,7 @@ export default function ProfileScreen() {
 
               {/* Workouts Header */}
               <View style={styles.workoutsHeader}>
-                <Ionicons
-                  name="list-outline"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.workoutsTitle}>Recent Activity</Text>
+                <Text style={styles.workoutsTitle}>RECENT ACTIVITY</Text>
               </View>
             </View>
           }
@@ -548,15 +536,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       marginBottom: 16,
     },
-    weeklyStatsTitleContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
     weeklyStatsTitle: {
-      fontSize: 16,
+      fontSize: 11,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textSecondary,
+      letterSpacing: 1,
     },
     weeklyStats: {
       flexDirection: 'row',
@@ -616,9 +600,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
     },
     workoutsHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
       paddingHorizontal: 20,
       paddingVertical: 16,
       borderTopWidth: 8,
@@ -626,9 +607,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.feedCardBackground,
     },
     workoutsTitle: {
-      fontSize: 16,
+      fontSize: 11,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textSecondary,
+      letterSpacing: 1,
     },
     divider: {
       height: 4,

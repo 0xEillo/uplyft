@@ -292,10 +292,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 16,
     },
     sectionTitle: {
-      fontSize: 13,
-      fontWeight: '600',
+      fontSize: 11,
+      fontWeight: '700',
       color: colors.textSecondary,
-      letterSpacing: 0.5,
+      letterSpacing: 1,
       textTransform: 'uppercase',
       marginBottom: 12,
     },

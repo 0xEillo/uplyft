@@ -444,7 +444,15 @@ export default function FeedScreen() {
       <BaseNavbar
         leftContent={
           <View style={styles.headerTitleContainer}>
-            {!isProMember && (
+            {isProMember ? (
+              <TouchableOpacity
+                style={styles.repAiBadge}
+                onPress={() => router.push('/(tabs)/chat')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.repAiBadgeText}>Rep AI</Text>
+              </TouchableOpacity>
+            ) : (
               <TouchableOpacity
                 style={styles.proBadge}
                 onPress={() => setShowPaywall(true)}
@@ -531,6 +539,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       fontWeight: '700',
       color: colors.buttonText,
+    },
+    repAiBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    repAiBadgeText: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
     },
     headerActions: {
       flexDirection: 'row',
