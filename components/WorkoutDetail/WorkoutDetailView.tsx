@@ -584,8 +584,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1,
     marginBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 16,
