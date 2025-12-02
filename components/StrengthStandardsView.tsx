@@ -1,5 +1,4 @@
 import { Paywall } from '@/components/paywall'
-import { ProBadge } from '@/components/pro-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -24,6 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ExerciseRecord {
   weight: number
@@ -63,6 +63,7 @@ export function StrengthStandardsView() {
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [exerciseData, setExerciseData] = useState<ExerciseData[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -209,7 +210,10 @@ export function StrengthStandardsView() {
       ) : (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: 100 + insets.bottom }, // Extra padding for tab bar
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -226,42 +230,59 @@ export function StrengthStandardsView() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionHeaderText}>LIFTER LEVEL</Text>
               </View>
-              <View style={styles.heroCard}>
-                <View style={styles.heroContent}>
-                  <View style={styles.heroLeft}>
-                    <Text style={styles.heroLevel}>
-                      {overallLevel.currentLevel}
-                    </Text>
+              <TouchableOpacity 
+                style={[styles.heroCard, !isProMember && styles.heroCardLocked]}
+                onPress={() => !isProMember && setPaywallVisible(true)}
+                activeOpacity={isProMember ? 1 : 0.7}
+              >
+                {isProMember ? (
+                  <>
+                    <View style={styles.heroContent}>
+                      <View style={styles.heroLeft}>
+                        <Text style={styles.heroLevel}>
+                          {overallLevel.currentLevel}
+                        </Text>
+                      </View>
+                    </View>
+                    {overallLevel.nextLevel && (
+                      <View style={styles.heroProgress}>
+                        <View style={styles.heroProgressLabels}>
+                          <Text style={styles.heroProgressCurrent}>
+                            {overallLevel.currentLevel}
+                          </Text>
+                          <Text style={styles.heroProgressNext}>
+                            {overallLevel.nextLevel}
+                          </Text>
+                        </View>
+                        <View style={styles.heroProgressBar}>
+                          <View
+                            style={[
+                              styles.heroProgressFill,
+                              {
+                                width: `${overallLevel.progress}%`,
+                                backgroundColor: colors.primary,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.heroProgressPercent}>
+                          {Math.round(overallLevel.progress)}% to next level
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.lockedHeroContainer}>
+                    <View style={[styles.lockedHeroBlur, { backgroundColor: colors.feedCardBackground + 'E0' }]} />
+                    <View style={styles.lockedHeroContent}>
+                      <View style={styles.lockedIconCircle}>
+                        <Ionicons name="lock-closed" size={24} color={colors.primary} />
+                      </View>
+                      <Text style={styles.unlockTitle}>Unlock Lifter Level</Text>
+                    </View>
                   </View>
-              </View>
-
-              {overallLevel.nextLevel && (
-                <View style={styles.heroProgress}>
-                  <View style={styles.heroProgressLabels}>
-                    <Text style={styles.heroProgressCurrent}>
-                      {overallLevel.currentLevel}
-                    </Text>
-                    <Text style={styles.heroProgressNext}>
-                      {overallLevel.nextLevel}
-                    </Text>
-                  </View>
-                  <View style={styles.heroProgressBar}>
-                    <View
-                      style={[
-                        styles.heroProgressFill,
-                        {
-                          width: `${overallLevel.progress}%`,
-                          backgroundColor: colors.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.heroProgressPercent}>
-                    {Math.round(overallLevel.progress)}% to next level
-                  </Text>
-                </View>
-              )}
-            </View>
+                )}
+              </TouchableOpacity>
             </>
           )}
 
@@ -318,24 +339,24 @@ export function StrengthStandardsView() {
                       <Text style={styles.exerciseName}>
                         {exercise.exerciseName}
                       </Text>
-                      {isProMember && (
-                        <View style={styles.exerciseStats}>
-                          <Text style={styles.exerciseStatValue}>
-                            {formatWeight(exercise.max1RM, {
-                              maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                            })}
-                          </Text>
-                          <Text style={styles.exerciseStatLabel}>1RM</Text>
-                        </View>
-                      )}
+                      <View style={styles.exerciseStats}>
+                        <Text style={styles.exerciseStatValue}>
+                          {formatWeight(exercise.max1RM, {
+                            maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                          })}
+                        </Text>
+                        <Text style={styles.exerciseStatLabel}>1RM</Text>
+                      </View>
                     </View>
 
                     <View style={styles.exerciseRight}>
                       {strengthInfo && !isProMember ? (
-                        <ProBadge
+                        <TouchableOpacity 
+                          style={styles.lockedBadge}
                           onPress={() => setPaywallVisible(true)}
-                          size="small"
-                        />
+                        >
+                          <Ionicons name="lock-closed" size={14} color={colors.primary} />
+                        </TouchableOpacity>
                       ) : strengthInfo ? (
                         <View
                           style={[
@@ -392,13 +413,15 @@ export function StrengthStandardsView() {
                           const targetWeight = Math.ceil(
                             (profile.weight_kg || 0) * levelStandard.multiplier,
                           )
+                          // Only show current level / passed status if PRO
                           const isCurrentLevel =
-                            strengthInfo?.level === levelStandard.level
-                          const isPassed = strengthInfo
-                            ? allLevels.findIndex(
-                                (l) => l.level === strengthInfo.level,
-                              ) >= idx
-                            : false
+                            isProMember && strengthInfo?.level === levelStandard.level
+                          const isPassed =
+                            isProMember && strengthInfo
+                              ? allLevels.findIndex(
+                                  (l) => l.level === strengthInfo.level,
+                                ) >= idx
+                              : false
 
                           return (
                             <View
@@ -467,10 +490,10 @@ export function StrengthStandardsView() {
                                     })}
                                   </Text>
                                 ) : (
-                                  <ProBadge
-                                    onPress={() => setPaywallVisible(true)}
-                                    size="small"
-                                  />
+                                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6}}>
+                                    <Ionicons name="lock-closed" size={12} color={colors.textSecondary} />
+                                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>PRO</Text>
+                                  </View>
                                 )}
                               </View>
                             </View>
@@ -576,6 +599,79 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textTertiary,
       marginTop: 6,
       textAlign: 'center',
+    },
+
+    // Locked Hero
+    heroCardLocked: {
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+      overflow: 'hidden',
+      minHeight: 140,
+    },
+    lockedHeroContainer: {
+      flex: 1,
+      padding: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'relative',
+    },
+    lockedHeroBlur: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 1,
+    },
+    lockedHeroContent: {
+      alignItems: 'center',
+      zIndex: 2,
+      position: 'relative',
+    },
+    lockedIconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    unlockTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    unlockSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+
+    // Redacted / Locked Elements
+    redactedContainer: {
+      justifyContent: 'center',
+      gap: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    redactedLine: {
+      width: 60,
+      height: 16,
+      backgroundColor: colors.border,
+      borderRadius: 4,
+    },
+    lockedBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.primary + '15',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
     },
 
     // Section Header
