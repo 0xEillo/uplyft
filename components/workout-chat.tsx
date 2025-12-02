@@ -1,4 +1,12 @@
 import { Paywall } from '@/components/paywall'
+import {
+  PlanWorkoutWizard,
+  PlanWorkoutData,
+} from '@/components/plan-workout-wizard'
+import {
+  CreateRoutineWizard,
+  CreateRoutineData,
+} from '@/components/create-routine-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -61,23 +69,25 @@ interface Message {
 
 interface WorkoutPlanningState {
   isActive: boolean
-  step: 'muscles' | 'duration' | 'intensity' | 'specifics' | 'none'
+  step: 'muscles' | 'duration' | 'intensity' | 'specifics' | 'none' | 'wizard'
   data: {
     muscles?: string
     duration?: string
     intensity?: string
     specifics?: string
+    equipment?: string
   }
 }
 
 interface RoutinePlanningState {
   isActive: boolean
-  step: 'focus' | 'muscles' | 'duration' | 'specifics' | 'none'
+  step: 'focus' | 'muscles' | 'duration' | 'specifics' | 'none' | 'wizard'
   data: {
     focus?: string
     muscles?: string
     duration?: string
     specifics?: string
+    equipment?: string
   }
 }
 
@@ -795,58 +805,22 @@ Please provide a structured routine template.`
     }
 
     if (question === 'Plan Workout') {
+      // Launch the new wizard UI instead of text-based flow
       setWorkoutPlanning({
         isActive: true,
-        step: 'muscles',
+        step: 'wizard',
         data: {},
       })
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'user',
-          content: question,
-        },
-      ])
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content:
-              'Sure, I can help with that. What muscle groups do you want to train? (e.g., Upper Body, Legs, Push, Pull)',
-          },
-        ])
-      }, 500)
       return
     }
 
     if (question === 'Create Routine') {
+      // Launch the new wizard UI instead of text-based flow
       setRoutinePlanning({
         isActive: true,
-        step: 'focus',
+        step: 'wizard',
         data: {},
       })
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'user',
-          content: question,
-        },
-      ])
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content:
-              'I can help you create a reusable routine. What is the primary focus or goal of this routine? (e.g., Strength, Hypertrophy, Fat Loss, Sport Specific)',
-          },
-        ])
-      }, 500)
       return
     }
 
@@ -872,6 +846,492 @@ Please provide a structured routine template.`
     setIsRoutineGenerated(false)
     inputRef.current?.clear()
     Keyboard.dismiss()
+  }
+
+  const handleWizardComplete = async (wizardData: PlanWorkoutData) => {
+    // Reset wizard state
+    setWorkoutPlanning({
+      isActive: false,
+      step: 'none',
+      data: {},
+    })
+
+    // Build the equipment label for display
+    const equipmentLabels: Record<string, string> = {
+      full_gym: 'Full Gym',
+      dumbbells_only: 'Dumbbells Only',
+      home_minimal: 'Home / Minimal Equipment',
+      bodyweight: 'Bodyweight Only',
+      barbell_only: 'Barbell Only',
+    }
+    const equipmentLabel = equipmentLabels[wizardData.equipment] || wizardData.equipment
+
+    // Add user message summarizing the request
+    const userSummary = `Plan a ${wizardData.muscles} workout for ${wizardData.duration}, ${wizardData.intensity}. Equipment: ${equipmentLabel}.${wizardData.specifics ? ` Notes: ${wizardData.specifics}` : ''}`
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userSummary,
+    }
+    setMessages((prev) => [...prev, userMessage])
+
+    // Construct the hidden prompt for the AI
+    const finalPrompt = `Plan a workout for me.
+Muscle Groups: ${wizardData.muscles}
+Duration: ${wizardData.duration}
+Intensity/Style: ${wizardData.intensity}
+Equipment Available: ${equipmentLabel}
+Specific Requests: ${wizardData.specifics || 'None'}
+Please provide a detailed workout routine based on these preferences.`
+
+    // Now call the API
+    setIsLoading(true)
+
+    try {
+      const { getSupabaseFunctionBaseUrl } = await import(
+        '@/lib/supabase-functions-client'
+      )
+
+      const formattedMessages = [
+        ...messages,
+        { role: 'user', content: finalPrompt },
+      ]
+
+      const requestBody: any = {
+        messages: formattedMessages,
+        userId: user?.id,
+        weightUnit,
+      }
+
+      const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-no-stream': '1',
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Chat API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        })
+        throw new Error(
+          `Failed to get response: ${response.status} ${response.statusText}`,
+        )
+      }
+
+      const assistantMessageId = (Date.now() + 1).toString()
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        const assistantContent = await response.text()
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: assistantContent || 'I received an empty response. Please try again.',
+          },
+        ])
+      } else {
+        // Create placeholder message for streaming
+        setMessages((prev) => [
+          ...prev,
+          { id: assistantMessageId, role: 'assistant', content: '' },
+        ])
+
+        const decoder = new TextDecoder()
+        let acc = ''
+        let buffer = ''
+        // Use null to indicate "not yet determined" - fixes NDJSON detection bug
+        let ndjsonMode: boolean | null = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+
+          // Auto-detect mode on first chunk
+          if (ndjsonMode === null) {
+            const firstNonWs = chunk.trimStart()[0]
+            ndjsonMode = firstNonWs === '{' || chunk.startsWith('data:')
+          }
+
+          if (!ndjsonMode) {
+            // Plain text mode - accumulate all chunks
+            acc += chunk
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
+            continue
+          }
+
+          buffer += chunk
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            let trimmed = line.trim()
+            if (!trimmed || trimmed === '[DONE]') continue
+
+            // Handle SSE format
+            if (trimmed.startsWith('data:')) trimmed = trimmed.slice(5).trim()
+            if (!trimmed || trimmed === '[DONE]') continue
+
+            try {
+              const evt = JSON.parse(trimmed)
+              if (
+                evt.type === 'text-delta' &&
+                typeof evt.textDelta === 'string'
+              ) {
+                acc += evt.textDelta
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId ? { ...m, content: acc } : m,
+                  ),
+                )
+              } else if (
+                evt.type === 'message' &&
+                typeof evt.text === 'string'
+              ) {
+                acc += evt.text
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId ? { ...m, content: acc } : m,
+                  ),
+                )
+              }
+            } catch {
+              // Not JSON, treat as plain text
+              acc += trimmed
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId ? { ...m, content: acc } : m,
+                ),
+              )
+            }
+          }
+        }
+
+        // Flush remaining buffer
+        if (buffer && ndjsonMode) {
+          let line = buffer.trim()
+          if (line.startsWith('data:')) line = line.slice(5).trim()
+          if (line && line !== '[DONE]') {
+            try {
+              const evt = JSON.parse(line)
+              if (
+                evt.type === 'text-delta' &&
+                typeof evt.textDelta === 'string'
+              ) {
+                acc += evt.textDelta
+              } else if (
+                evt.type === 'message' &&
+                typeof evt.text === 'string'
+              ) {
+                acc += evt.text
+              }
+            } catch {
+              acc += line
+            }
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat error:', error)
+      // Only add error message - don't create duplicate placeholder
+      setMessages((prev) => {
+        // Check if last message is an empty assistant placeholder we created
+        const lastMsg = prev[prev.length - 1]
+        if (lastMsg?.role === 'assistant' && lastMsg.content === '') {
+          // Update the empty placeholder with error message
+          return prev.map((m, idx) =>
+            idx === prev.length - 1
+              ? { ...m, content: "Sorry, I couldn't process that request. Please try again." }
+              : m
+          )
+        }
+        // Otherwise add new error message
+        return [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: "Sorry, I couldn't process that request. Please try again.",
+          },
+        ]
+      })
+    } finally {
+      setIsLoading(false)
+      setIsWorkoutGenerated(true)
+    }
+  }
+
+  const handleWizardCancel = () => {
+    setWorkoutPlanning({
+      isActive: false,
+      step: 'none',
+      data: {},
+    })
+  }
+
+  const handleRoutineWizardComplete = async (wizardData: CreateRoutineData) => {
+    // Reset wizard state
+    setRoutinePlanning({
+      isActive: false,
+      step: 'none',
+      data: {},
+    })
+
+    // Build the equipment label for display
+    const equipmentLabels: Record<string, string> = {
+      full_gym: 'Full Gym',
+      dumbbells_only: 'Dumbbells Only',
+      home_minimal: 'Home / Minimal Equipment',
+      bodyweight: 'Bodyweight Only',
+      barbell_only: 'Barbell Only',
+    }
+    const equipmentLabel = equipmentLabels[wizardData.equipment] || wizardData.equipment
+
+    // Add user message summarizing the request
+    const userSummary = `Create a ${wizardData.muscles} routine (${wizardData.focus}), ${wizardData.duration}. Equipment: ${equipmentLabel}.${wizardData.specifics ? ` Notes: ${wizardData.specifics}` : ''}`
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userSummary,
+    }
+    setMessages((prev) => [...prev, userMessage])
+
+    // Construct the hidden prompt for the AI
+    const finalPrompt = `Create a reusable workout routine (a single workout template the user can save and reuse).
+Focus/Goal: ${wizardData.focus}
+Muscle Groups: ${wizardData.muscles}
+Target Duration: ${wizardData.duration}
+Equipment Available: ${equipmentLabel}
+Custom Specifications: ${wizardData.specifics || 'None'}
+Please provide a structured routine with exercises, sets, and rep ranges.`
+
+    // Now call the API
+    setIsLoading(true)
+
+    try {
+      const { getSupabaseFunctionBaseUrl } = await import(
+        '@/lib/supabase-functions-client'
+      )
+
+      const formattedMessages = [
+        ...messages,
+        { role: 'user', content: finalPrompt },
+      ]
+
+      const requestBody: any = {
+        messages: formattedMessages,
+        userId: user?.id,
+        weightUnit,
+      }
+
+      const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-no-stream': '1',
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Chat API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        })
+        throw new Error(
+          `Failed to get response: ${response.status} ${response.statusText}`,
+        )
+      }
+
+      const assistantMessageId = (Date.now() + 1).toString()
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        const assistantContent = await response.text()
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: assistantContent || 'I received an empty response. Please try again.',
+          },
+        ])
+      } else {
+        // Create placeholder message for streaming
+        setMessages((prev) => [
+          ...prev,
+          { id: assistantMessageId, role: 'assistant', content: '' },
+        ])
+
+        const decoder = new TextDecoder()
+        let acc = ''
+        let buffer = ''
+        // Use null to indicate "not yet determined" - fixes NDJSON detection bug
+        let ndjsonMode: boolean | null = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+
+          // Auto-detect mode on first chunk
+          if (ndjsonMode === null) {
+            const firstNonWs = chunk.trimStart()[0]
+            ndjsonMode = firstNonWs === '{' || chunk.startsWith('data:')
+          }
+
+          if (!ndjsonMode) {
+            // Plain text mode - accumulate all chunks
+            acc += chunk
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
+            continue
+          }
+
+          buffer += chunk
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            let trimmed = line.trim()
+            if (!trimmed || trimmed === '[DONE]') continue
+
+            // Handle SSE format
+            if (trimmed.startsWith('data:')) trimmed = trimmed.slice(5).trim()
+            if (!trimmed || trimmed === '[DONE]') continue
+
+            try {
+              const evt = JSON.parse(trimmed)
+              if (
+                evt.type === 'text-delta' &&
+                typeof evt.textDelta === 'string'
+              ) {
+                acc += evt.textDelta
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId ? { ...m, content: acc } : m,
+                  ),
+                )
+              } else if (
+                evt.type === 'message' &&
+                typeof evt.text === 'string'
+              ) {
+                acc += evt.text
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId ? { ...m, content: acc } : m,
+                  ),
+                )
+              }
+            } catch {
+              // Not JSON, treat as plain text
+              acc += trimmed
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId ? { ...m, content: acc } : m,
+                ),
+              )
+            }
+          }
+        }
+
+        // Flush remaining buffer
+        if (buffer && ndjsonMode) {
+          let line = buffer.trim()
+          if (line.startsWith('data:')) line = line.slice(5).trim()
+          if (line && line !== '[DONE]') {
+            try {
+              const evt = JSON.parse(line)
+              if (
+                evt.type === 'text-delta' &&
+                typeof evt.textDelta === 'string'
+              ) {
+                acc += evt.textDelta
+              } else if (
+                evt.type === 'message' &&
+                typeof evt.text === 'string'
+              ) {
+                acc += evt.text
+              }
+            } catch {
+              acc += line
+            }
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat error:', error)
+      // Only add error message - don't create duplicate placeholder
+      setMessages((prev) => {
+        // Check if last message is an empty assistant placeholder we created
+        const lastMsg = prev[prev.length - 1]
+        if (lastMsg?.role === 'assistant' && lastMsg.content === '') {
+          // Update the empty placeholder with error message
+          return prev.map((m, idx) =>
+            idx === prev.length - 1
+              ? { ...m, content: "Sorry, I couldn't process that request. Please try again." }
+              : m
+          )
+        }
+        // Otherwise add new error message
+        return [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: "Sorry, I couldn't process that request. Please try again.",
+          },
+        ]
+      })
+    } finally {
+      setIsLoading(false)
+      setIsRoutineGenerated(true)
+    }
+  }
+
+  const handleRoutineWizardCancel = () => {
+    setRoutinePlanning({
+      isActive: false,
+      step: 'none',
+      data: {},
+    })
   }
 
   const handleStartWorkout = async () => {
@@ -956,6 +1416,8 @@ Please provide a structured routine template.`
     setIsLoading(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
+    let createdRoutineId: string | null = null
+
     try {
       if (!user?.id) throw new Error('User not found')
 
@@ -972,8 +1434,7 @@ Please provide a structured routine template.`
         routineData.title || 'AI Generated Routine',
         routineData.description || 'Generated from AI Chat',
       )
-
-      // Resolve exercises and create routine exercises/sets
+      createdRoutineId = routine.id
 
       // Resolve all exercises at once using the AI agent
       const exerciseNames = routineData.exercises.map((ex) => ex.name)
@@ -982,81 +1443,111 @@ Please provide a structured routine template.`
         { exerciseId: string; exerciseName: string; wasCreated: boolean }
       > = {}
 
-      try {
-        const { callSupabaseFunction } = await import(
-          '@/lib/supabase-functions-client'
-        )
-        const response = await callSupabaseFunction(
-          'resolve-exercises',
-          'POST',
-          {
-            exerciseNames,
-            userId: user.id,
-          },
-          undefined,
-          session?.access_token,
-        )
+      const { callSupabaseFunction } = await import(
+        '@/lib/supabase-functions-client'
+      )
+      const response = await callSupabaseFunction(
+        'resolve-exercises',
+        'POST',
+        {
+          exerciseNames,
+          userId: user.id,
+        },
+        undefined,
+        session?.access_token,
+      )
 
-        if (!response.ok) {
-          throw new Error('Failed to resolve exercises')
-        }
-
-        const data = await response.json()
-        resolutions = data.resolutions
-      } catch (error) {
-        console.error('Error resolving exercises:', error)
-        // Fallback or error handling?
-        // If resolution fails, we might want to abort or try manual fallback.
-        // For now, let's throw to alert the user.
-        throw new Error('Failed to resolve exercises with AI')
+      if (!response.ok) {
+        throw new Error('Failed to resolve exercises')
       }
 
-      // Create routine exercises/sets
-      const routineSets: any[] = []
+      const data = await response.json()
+      resolutions = data.resolutions
+
+      // Helper to find resolution with case-insensitive matching
+      const findResolution = (name: string) => {
+        // Try exact match first
+        if (resolutions[name]) return resolutions[name]
+        // Try case-insensitive match
+        const lowerName = name.toLowerCase()
+        for (const key of Object.keys(resolutions)) {
+          if (key.toLowerCase() === lowerName) {
+            return resolutions[key]
+          }
+        }
+        return null
+      }
+
+      // Collect all routine exercises to insert
+      const routineExercisesToInsert = []
+      const exerciseIndexMap: { originalIndex: number; exerciseId: string }[] = []
 
       for (let i = 0; i < routineData.exercises.length; i++) {
         const ex = routineData.exercises[i]
-        const resolution = resolutions[ex.name]
+        const resolution = findResolution(ex.name)
 
         if (!resolution || !resolution.exerciseId) {
           console.warn(`Could not resolve exercise: ${ex.name}`)
           continue
         }
 
-        const { data: insertedExercise, error: exError } = await supabase
-          .from('workout_routine_exercises')
-          .insert({
-            routine_id: routine.id,
-            exercise_id: resolution.exerciseId,
-            order_index: i,
-            notes: null,
-          })
-          .select()
-          .single()
+        routineExercisesToInsert.push({
+          routine_id: routine.id,
+          exercise_id: resolution.exerciseId,
+          order_index: i,
+          notes: null,
+        })
+        exerciseIndexMap.push({ originalIndex: i, exerciseId: resolution.exerciseId })
+      }
 
-        if (exError || !insertedExercise) {
-          console.error('Error inserting routine exercise:', exError)
-          continue
-        }
+      if (routineExercisesToInsert.length === 0) {
+        throw new Error('No exercises could be resolved')
+      }
 
-        // Prepare sets for this exercise
+      // Batch insert all routine exercises
+      const { data: insertedExercises, error: exError } = await supabase
+        .from('workout_routine_exercises')
+        .insert(routineExercisesToInsert)
+        .select()
+
+      if (exError || !insertedExercises) {
+        throw new Error('Failed to create routine exercises')
+      }
+
+      // Prepare all sets for batch insert
+      const routineSets: {
+        routine_exercise_id: string
+        set_number: number
+        reps_min: number | null
+        reps_max: number | null
+      }[] = []
+
+      for (let idx = 0; idx < insertedExercises.length; idx++) {
+        const insertedExercise = insertedExercises[idx]
+        const originalIndex = exerciseIndexMap[idx].originalIndex
+        const ex = routineData.exercises[originalIndex]
+
         ex.sets.forEach((s, setIndex) => {
+          // Determine reps_min and reps_max
+          // Use explicit check for undefined/null to allow 0 as valid value
+          let repsMin: number | null = s.repsMin !== undefined && s.repsMin !== null ? s.repsMin : null
+          let repsMax: number | null = s.repsMax !== undefined && s.repsMax !== null ? s.repsMax : null
+
+          // If min/max are both null but we have a reps string, parse it
+          if (repsMin === null && repsMax === null && s.reps) {
+            const parsed = parseInt(s.reps)
+            if (!isNaN(parsed)) {
+              repsMin = parsed
+              repsMax = parsed
+            }
+          }
+
           routineSets.push({
             routine_exercise_id: insertedExercise.id,
             set_number: setIndex + 1,
-            reps_min: s.repsMin || null,
-            reps_max: s.repsMax || null,
+            reps_min: repsMin,
+            reps_max: repsMax,
           })
-
-          // Quick fix for the sets:
-          // We need to handle the 'reps' string if min/max are missing.
-          if (!s.repsMin && !s.repsMax && s.reps) {
-            const parsed = parseInt(s.reps)
-            if (!isNaN(parsed)) {
-              routineSets[routineSets.length - 1].reps_min = parsed
-              routineSets[routineSets.length - 1].reps_max = parsed
-            }
-          }
         })
       }
 
@@ -1075,13 +1566,53 @@ Please provide a structured routine template.`
       })
     } catch (error) {
       console.error('Error creating routine:', error)
-      Alert.alert('Error', 'Failed to create routine. Please try again.')
+
+      // Clean up orphaned routine if it was created
+      if (createdRoutineId) {
+        try {
+          await supabase
+            .from('workout_routines')
+            .delete()
+            .eq('id', createdRoutineId)
+        } catch (cleanupError) {
+          console.error('Failed to cleanup orphaned routine:', cleanupError)
+        }
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create routine'
+      Alert.alert('Error', `${errorMessage}. Please try again.`)
     } finally {
       setIsLoading(false)
     }
   }
 
   const styles = createStyles(colors)
+
+  // Show workout wizard when in wizard step
+  if (workoutPlanning.isActive && workoutPlanning.step === 'wizard') {
+    return (
+      <View style={styles.container}>
+        <PlanWorkoutWizard
+          colors={colors}
+          onComplete={handleWizardComplete}
+          onCancel={handleWizardCancel}
+        />
+      </View>
+    )
+  }
+
+  // Show routine wizard when in wizard step
+  if (routinePlanning.isActive && routinePlanning.step === 'wizard') {
+    return (
+      <View style={styles.container}>
+        <CreateRoutineWizard
+          colors={colors}
+          onComplete={handleRoutineWizardComplete}
+          onCancel={handleRoutineWizardCancel}
+        />
+      </View>
+    )
+  }
 
   return (
     <KeyboardAvoidingView
@@ -1118,9 +1649,6 @@ Please provide a structured routine template.`
               />
               <Text style={styles.welcomeTitle}>
                 Plan your workouts with AI
-              </Text>
-              <Text style={styles.welcomeSubtitle}>
-                Select an option below to get started
               </Text>
             </View>
 
@@ -1419,7 +1947,13 @@ Please provide a structured routine template.`
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Ask about your workouts..."
+            placeholder={
+              isWorkoutGenerated
+                ? 'Make changes to your workout...'
+                : isRoutineGenerated
+                  ? 'Make changes to your routine...'
+                  : 'Ask about your workouts...'
+            }
             placeholderTextColor={colors.textPlaceholder}
             value={input}
             onChangeText={setInput}

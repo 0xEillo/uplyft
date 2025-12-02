@@ -34,6 +34,172 @@ interface ConvertAiPlanParams {
   token?: string
 }
 
+/**
+ * Extract JSON from AI response, handling various formats:
+ * - Plain JSON
+ * - Markdown code blocks (```json ... ```)
+ * - Text before/after JSON
+ */
+function extractJsonFromResponse(text: string): string {
+  // Try to find JSON in markdown code block first
+  const codeBlockMatch = text.match(/```(?:json|typescript)?\s*([\s\S]*?)```/)
+  if (codeBlockMatch) {
+    return codeBlockMatch[1].trim()
+  }
+
+  // Try to find raw JSON object
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    return jsonMatch[0].trim()
+  }
+
+  // Fallback: clean up common markdown artifacts
+  return text.replace(/```json/g, '').replace(/```/g, '').trim()
+}
+
+/**
+ * Validate workout data structure
+ */
+function validateWorkoutData(data: unknown): AiWorkoutConversionResult {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid workout data: not an object')
+  }
+
+  const workout = data as Record<string, unknown>
+
+  // Validate title
+  if (typeof workout.title !== 'string' || !workout.title.trim()) {
+    throw new Error('Invalid workout data: missing or empty title')
+  }
+
+  // Validate exercises array
+  if (!Array.isArray(workout.exercises)) {
+    throw new Error('Invalid workout data: exercises must be an array')
+  }
+
+  if (workout.exercises.length === 0) {
+    throw new Error('Invalid workout data: no exercises found')
+  }
+
+  // Validate each exercise
+  const validatedExercises = workout.exercises.map((ex: unknown, index: number) => {
+    if (!ex || typeof ex !== 'object') {
+      throw new Error(`Invalid exercise at index ${index}: not an object`)
+    }
+
+    const exercise = ex as Record<string, unknown>
+
+    if (typeof exercise.name !== 'string' || !exercise.name.trim()) {
+      throw new Error(`Invalid exercise at index ${index}: missing or empty name`)
+    }
+
+    if (!Array.isArray(exercise.sets)) {
+      throw new Error(`Invalid exercise "${exercise.name}": sets must be an array`)
+    }
+
+    if (exercise.sets.length === 0) {
+      throw new Error(`Invalid exercise "${exercise.name}": no sets found`)
+    }
+
+    const validatedSets = exercise.sets.map((s: unknown, setIndex: number) => {
+      if (!s || typeof s !== 'object') {
+        throw new Error(`Invalid set at index ${setIndex} for "${exercise.name}"`)
+      }
+
+      const set = s as Record<string, unknown>
+
+      return {
+        reps: typeof set.reps === 'string' ? set.reps : String(set.reps ?? ''),
+        weight: typeof set.weight === 'string' ? set.weight : String(set.weight ?? ''),
+        repsMin: typeof set.repsMin === 'number' ? set.repsMin : undefined,
+        repsMax: typeof set.repsMax === 'number' ? set.repsMax : undefined,
+      }
+    })
+
+    return {
+      name: exercise.name.trim(),
+      sets: validatedSets,
+    }
+  })
+
+  return {
+    title: workout.title.trim(),
+    description: typeof workout.description === 'string' ? workout.description : undefined,
+    exercises: validatedExercises,
+  }
+}
+
+/**
+ * Validate routine data structure
+ */
+function validateRoutineData(data: unknown): AiRoutineConversionResult {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid routine data: not an object')
+  }
+
+  const routine = data as Record<string, unknown>
+
+  // Validate title
+  if (typeof routine.title !== 'string' || !routine.title.trim()) {
+    throw new Error('Invalid routine data: missing or empty title')
+  }
+
+  // Validate exercises array
+  if (!Array.isArray(routine.exercises)) {
+    throw new Error('Invalid routine data: exercises must be an array')
+  }
+
+  if (routine.exercises.length === 0) {
+    throw new Error('Invalid routine data: no exercises found')
+  }
+
+  // Validate each exercise
+  const validatedExercises = routine.exercises.map((ex: unknown, index: number) => {
+    if (!ex || typeof ex !== 'object') {
+      throw new Error(`Invalid exercise at index ${index}: not an object`)
+    }
+
+    const exercise = ex as Record<string, unknown>
+
+    if (typeof exercise.name !== 'string' || !exercise.name.trim()) {
+      throw new Error(`Invalid exercise at index ${index}: missing or empty name`)
+    }
+
+    if (!Array.isArray(exercise.sets)) {
+      throw new Error(`Invalid exercise "${exercise.name}": sets must be an array`)
+    }
+
+    if (exercise.sets.length === 0) {
+      throw new Error(`Invalid exercise "${exercise.name}": no sets found`)
+    }
+
+    const validatedSets = exercise.sets.map((s: unknown, setIndex: number) => {
+      if (!s || typeof s !== 'object') {
+        throw new Error(`Invalid set at index ${setIndex} for "${exercise.name}"`)
+      }
+
+      const set = s as Record<string, unknown>
+
+      return {
+        repsMin: typeof set.repsMin === 'number' ? set.repsMin : undefined,
+        repsMax: typeof set.repsMax === 'number' ? set.repsMax : undefined,
+        reps: typeof set.reps === 'string' ? set.reps : undefined,
+      }
+    })
+
+    return {
+      name: exercise.name.trim(),
+      sets: validatedSets,
+    }
+  })
+
+  return {
+    title: routine.title.trim(),
+    description: typeof routine.description === 'string' ? routine.description : undefined,
+    exercises: validatedExercises,
+  }
+}
+
 export async function convertAiPlanToWorkout({
   text,
   userId,
@@ -100,14 +266,18 @@ export async function convertAiPlanToWorkout({
 
   const jsonText = await response.text()
 
-  // Clean up response if it contains markdown code blocks
-  const cleanJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim()
+  // Extract JSON from response (handles markdown blocks, text before/after, etc.)
+  const cleanJson = extractJsonFromResponse(jsonText)
 
   try {
-    const workoutData = JSON.parse(cleanJson)
-    return workoutData as AiWorkoutConversionResult
+    const rawData = JSON.parse(cleanJson)
+    // Validate and normalize the data structure
+    return validateWorkoutData(rawData)
   } catch (error) {
     console.error('Failed to parse AI response as JSON:', cleanJson)
+    if (error instanceof Error && error.message.startsWith('Invalid workout')) {
+      throw error
+    }
     throw new Error('Failed to parse workout data')
   }
 }
@@ -178,14 +348,18 @@ export async function convertAiPlanToRoutine({
 
   const jsonText = await response.text()
 
-  // Clean up response if it contains markdown code blocks
-  const cleanJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim()
+  // Extract JSON from response (handles markdown blocks, text before/after, etc.)
+  const cleanJson = extractJsonFromResponse(jsonText)
 
   try {
-    const routineData = JSON.parse(cleanJson)
-    return routineData as AiRoutineConversionResult
+    const rawData = JSON.parse(cleanJson)
+    // Validate and normalize the data structure
+    return validateRoutineData(rawData)
   } catch (error) {
     console.error('Failed to parse AI response as JSON:', cleanJson)
+    if (error instanceof Error && error.message.startsWith('Invalid routine')) {
+      throw error
+    }
     throw new Error('Failed to parse routine data')
   }
 }
