@@ -1687,8 +1687,11 @@ export const database = {
             const reps = set.reps || 0
             if (!reps) return
 
-            // Volume = reps (total reps)
-            totalVolume += reps
+            const weight =
+              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
+
+            // Volume = reps * weight
+            totalVolume += reps * weight
           })
         })
 
@@ -1738,10 +1741,10 @@ export const database = {
             const reps = set.reps || 0
             if (!reps) return
 
-            const weight =
-              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
+            // const weight =
+            //   typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
 
-            const volume = reps * weight
+            const volume = reps // Muscle balance based on reps only
             const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
             muscleGroupVolumes.set(muscleGroup, currentVolume + volume)
           })

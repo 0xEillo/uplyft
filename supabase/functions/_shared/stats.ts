@@ -328,8 +328,8 @@ export async function getMuscleGroupDistribution(
         if (typeof set.reps !== 'number' || set.reps <= 0) {
           return
         }
-        const weight = getVolumeWeight(set.weight)
-        const volume = set.reps * weight
+        // Muscle balance based on reps only
+        const volume = set.reps
         volumeByGroup.set(
           muscleGroup,
           (volumeByGroup.get(muscleGroup) ?? 0) + volume,
