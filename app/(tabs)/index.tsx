@@ -543,6 +543,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     repAiBadge: {
       paddingHorizontal: 12,
       paddingVertical: 6,
+      marginLeft: -8,
     },
     repAiBadgeText: {
       fontSize: 20,
