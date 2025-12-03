@@ -1687,17 +1687,14 @@ export const database = {
             const reps = set.reps || 0
             if (!reps) return
 
-            const weight =
-              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
-
-            // Volume = reps × weight (in kg)
-            totalVolume += reps * weight
+            // Volume = reps (total reps)
+            totalVolume += reps
           })
         })
 
         return {
           date: session.created_at,
-          volume: Math.round(totalVolume), // Round to whole number
+          volume: totalVolume,
         }
       })
 
