@@ -188,7 +188,7 @@ function SubmitSuccessOverlayComponent({
             : 'rgba(255, 255, 255, 0.95)',
         },
       ]}
-      pointerEvents="none"
+      pointerEvents="box-none"
     >
       <Animated.View
         style={[

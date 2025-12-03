@@ -4,16 +4,20 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
   Image,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import { PrTooltip } from './pr-tooltip'
@@ -142,6 +146,7 @@ export const FeedCard = memo(function FeedCard({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
 
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [
@@ -149,6 +154,24 @@ export const FeedCard = memo(function FeedCard({
     setSelectedExercisePR,
   ] = useState<ExercisePRInfo | null>(null)
   const [showShareScreen, setShowShareScreen] = useState(false)
+  const [activeSlide, setActiveSlide] = useState(0)
+  const [infoHeight, setInfoHeight] = useState(0)
+
+  // Calculate carousel width (screen width - card padding * 2)
+  // Card padding is 20 horizontal
+  const cardPadding = 20
+  const carouselWidth = windowWidth - cardPadding * 2
+  // Max height for the image to prevent it from growing too large (infinity zoom effect)
+  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.6, 500)
+
+  const handleCarouselScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const slide = Math.round(event.nativeEvent.contentOffset.x / carouselWidth)
+    if (slide !== activeSlide) {
+      setActiveSlide(slide)
+    }
+  }
 
   // Image loading states and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
@@ -166,7 +189,8 @@ export const FeedCard = memo(function FeedCard({
 
   const styles = createStyles(colors, isDark)
 
-  const PREVIEW_LIMIT = 3 // Show first 3 exercises
+  // Show more exercises if image exists to match height (up to 8), otherwise just 3
+  const PREVIEW_LIMIT = workoutImageUrl ? 10 : 3
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
@@ -267,6 +291,165 @@ export const FeedCard = memo(function FeedCard({
     await shareWorkoutWidget(widgetRef, shareType)
   }
 
+  // Memoize info content to prevent unnecessary re-layouts
+  const infoContent = useMemo(
+    () => (
+      <>
+        {/* Stats Summary */}
+        {!isPending && (
+          <Pressable
+            onPress={onCardPress}
+            disabled={!onCardPress}
+            style={styles.statsContainer}
+          >
+            {stats.durationSeconds !== undefined && stats.durationSeconds > 0 && (
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Duration</Text>
+                <Text style={styles.statValue}>
+                  {formatDurationCompact(stats.durationSeconds)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Sets</Text>
+              <Text style={styles.statValue}>{stats.sets}</Text>
+            </View>
+            {stats.volume !== undefined && stats.volume > 0 && (
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Volume</Text>
+                <Text style={styles.statValue}>
+                  {formatVolumeCompact(stats.volume, weightUnit)}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        )}
+
+        {/* Exercises List */}
+        <Pressable
+          onPress={onCardPress}
+          disabled={!onCardPress || isPending}
+          style={styles.exercisesContainer}
+        >
+          {/* Skeleton Rows (when pending) */}
+          {isPending && (
+            <>
+              {[60, 80, 70].map((width, index) => (
+                <View key={`skeleton-${index}`} style={styles.exerciseRow}>
+                  <Animated.View
+                    style={[
+                      styles.skeletonBar,
+                      styles.skeletonBarExercise,
+                      { opacity: shimmerOpacity, width: `${width}%` },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.skeletonBar,
+                      styles.skeletonBarSets,
+                      { opacity: shimmerOpacity },
+                    ]}
+                  />
+                </View>
+              ))}
+            </>
+          )}
+
+          {/* Real Exercise Rows (fade in when loaded) */}
+          {!isPending && (
+            <Animated.View style={{ opacity: exercisesFadeAnim }}>
+              {displayedExercises.map((exercise, index) => {
+                const exercisePR = prInfo.find(
+                  (pr) => pr.exerciseName === exercise.name,
+                )
+                const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
+
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.exerciseRow,
+                      index === displayedExercises.length - 1 &&
+                        styles.lastExerciseRow,
+                    ]}
+                  >
+                    <View style={styles.exerciseNameContainer}>
+                      <Text style={styles.exerciseNameSimple} numberOfLines={1}>
+                        {exercise.name}
+                      </Text>
+                      {hasPR && exercisePR && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedExercisePR(exercisePR)
+                            setTooltipVisible(true)
+                          }}
+                          activeOpacity={0.7}
+                          style={[
+                            styles.prBadge,
+                            !exercisePR.hasCurrentPR &&
+                              styles.prBadgeHistorical,
+                          ]}
+                        >
+                          <Text style={styles.prBadgeText}>PR</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <Text style={styles.setsText}>
+                      {exercise.sets} {exercise.sets === 1 ? 'set' : 'sets'}
+                    </Text>
+                  </View>
+                )
+              })}
+              {hasMoreExercises && (
+                <TouchableOpacity
+                  onPress={onCardPress}
+                  activeOpacity={0.7}
+                  style={styles.seeMoreButton}
+                >
+                  <Text style={styles.seeMoreText}>
+                    See {exercises.length - PREVIEW_LIMIT} more{' '}
+                    {exercises.length - PREVIEW_LIMIT === 1
+                      ? 'exercise'
+                      : 'exercises'}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          )}
+        </Pressable>
+
+        {/* Footer message for pending state */}
+        {isPending && (
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Parsing your workout and identifying exercises...
+            </Text>
+          </View>
+        )}
+      </>
+    ),
+    [
+      isPending,
+      onCardPress,
+      stats,
+      shimmerOpacity,
+      exercisesFadeAnim,
+      displayedExercises,
+      hasMoreExercises,
+      prInfo,
+      weightUnit,
+      colors.primary,
+      exercises.length,
+      styles,
+      PREVIEW_LIMIT,
+    ],
+  )
+
   return (
     <View style={styles.card}>
       {/* Header */}
@@ -315,176 +498,96 @@ export const FeedCard = memo(function FeedCard({
         )}
       </Pressable>
 
-      {/* Workout Image */}
-      {workoutImageUrl && (
-        <TouchableOpacity
-          style={styles.workoutImageContainer}
-          onPress={() => setImageModalVisible(true)}
-          activeOpacity={0.9}
-        >
-          <Animated.Image
-            source={{ uri: workoutImageUrl }}
-            style={[styles.workoutImage, { opacity: imageOpacity }]}
-            resizeMode="cover"
-            onLoadStart={() => setImageLoading(true)}
-            onLoad={() => {
-              setImageLoading(false)
-              Animated.timing(imageOpacity, {
-                toValue: 1,
-                duration: IMAGE_FADE_DURATION,
-                useNativeDriver: true,
-              }).start()
-            }}
-            onError={(error) => {
-              console.error(
-                'Failed to load workout image:',
-                error.nativeEvent.error,
-              )
-              setImageLoading(false)
-            }}
-          />
-          {imageLoading && (
-            <View style={styles.imageLoadingOverlay}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          )}
-        </TouchableOpacity>
-      )}
-
-      {/* Stats Summary */}
-      {!isPending && (
-        <Pressable
-          onPress={onCardPress}
-          disabled={!onCardPress}
-          style={styles.statsContainer}
-        >
-          {stats.durationSeconds !== undefined && stats.durationSeconds > 0 && (
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Duration</Text>
-              <Text style={styles.statValue}>
-                {formatDurationCompact(stats.durationSeconds)}
-              </Text>
-            </View>
-          )}
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Sets</Text>
-            <Text style={styles.statValue}>{stats.sets}</Text>
-          </View>
-          {stats.volume !== undefined && stats.volume > 0 && (
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Volume</Text>
-              <Text style={styles.statValue}>
-                {formatVolumeCompact(stats.volume, weightUnit)}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      )}
-
-      {/* Exercises List */}
-      <Pressable
-        onPress={onCardPress}
-        disabled={!onCardPress || isPending}
-        style={styles.exercisesContainer}
-      >
-        {/* Skeleton Rows (when pending) */}
-        {isPending && (
-          <>
-            {[60, 80, 70].map((width, index) => (
-              <View key={`skeleton-${index}`} style={styles.exerciseRow}>
-                <Animated.View
-                  style={[
-                    styles.skeletonBar,
-                    styles.skeletonBarExercise,
-                    { opacity: shimmerOpacity, width: `${width}%` },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.skeletonBar,
-                    styles.skeletonBarSets,
-                    { opacity: shimmerOpacity },
-                  ]}
-                />
-              </View>
-            ))}
-          </>
-        )}
-
-        {/* Real Exercise Rows (fade in when loaded) */}
-        {!isPending && (
-          <Animated.View style={{ opacity: exercisesFadeAnim }}>
-            {displayedExercises.map((exercise, index) => {
-              const exercisePR = prInfo.find(
-                (pr) => pr.exerciseName === exercise.name,
-              )
-              const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
-
-              return (
-                <View
-                  key={index}
-                  style={[
-                    styles.exerciseRow,
-                    index === displayedExercises.length - 1 &&
-                      styles.lastExerciseRow,
-                  ]}
-                >
-                  <View style={styles.exerciseNameContainer}>
-                    <Text style={styles.exerciseNameSimple} numberOfLines={1}>
-                      {exercise.name}
-                    </Text>
-                    {hasPR && exercisePR && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedExercisePR(exercisePR)
-                          setTooltipVisible(true)
-                        }}
-                        activeOpacity={0.7}
-                        style={[
-                          styles.prBadge,
-                          !exercisePR.hasCurrentPR && styles.prBadgeHistorical,
-                        ]}
-                      >
-                        <Text style={styles.prBadgeText}>PR</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <Text style={styles.setsText}>
-                    {exercise.sets} {exercise.sets === 1 ? 'set' : 'sets'}
-                  </Text>
-                </View>
-              )
-            })}
-            {hasMoreExercises && (
+      {/* Carousel or Info */}
+      {workoutImageUrl ? (
+        <View>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleCarouselScroll}
+            scrollEventThrottle={16}
+            decelerationRate="fast"
+            snapToInterval={carouselWidth}
+            contentContainerStyle={{ width: carouselWidth * 2 }}
+          >
+            {/* Slide 1: Image */}
+            <View style={{ width: carouselWidth }}>
               <TouchableOpacity
-                onPress={onCardPress}
-                activeOpacity={0.7}
-                style={styles.seeMoreButton}
+                style={[
+                  styles.workoutImageContainer,
+                  infoHeight > 0 && {
+                    height: infoHeight,
+                    aspectRatio: undefined,
+                    maxHeight: undefined,
+                  },
+                ]}
+                onPress={() => setImageModalVisible(true)}
+                activeOpacity={0.9}
               >
-                <Text style={styles.seeMoreText}>
-                  See {exercises.length - PREVIEW_LIMIT} more{' '}
-                  {exercises.length - PREVIEW_LIMIT === 1
-                    ? 'exercise'
-                    : 'exercises'}
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={colors.primary}
+                <Animated.Image
+                  source={{ uri: workoutImageUrl }}
+                  style={[styles.workoutImage, { opacity: imageOpacity }]}
+                  resizeMode="cover"
+                  onLoadStart={() => setImageLoading(true)}
+                  onLoad={() => {
+                    setImageLoading(false)
+                    Animated.timing(imageOpacity, {
+                      toValue: 1,
+                      duration: IMAGE_FADE_DURATION,
+                      useNativeDriver: true,
+                    }).start()
+                  }}
+                  onError={(error) => {
+                    console.error(
+                      'Failed to load workout image:',
+                      error.nativeEvent.error,
+                    )
+                    setImageLoading(false)
+                  }}
                 />
+                {imageLoading && (
+                  <View style={styles.imageLoadingOverlay}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
+                )}
               </TouchableOpacity>
-            )}
-          </Animated.View>
-        )}
-      </Pressable>
+            </View>
 
-      {/* Footer message for pending state */}
-      {isPending && (
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Parsing your workout and identifying exercises...
-          </Text>
+            {/* Slide 2: Info */}
+            <View
+              style={{ width: carouselWidth }}
+              onLayout={(event) => {
+                const { height } = event.nativeEvent.layout
+                // Update height if it differs by more than 2 pixels to avoid loops
+                // Also cap at MAX_IMAGE_HEIGHT to prevent runaway growth
+                if (Math.abs(height - infoHeight) > 2) {
+                  const newHeight = Math.min(height, MAX_IMAGE_HEIGHT)
+                  setInfoHeight(newHeight)
+                }
+              }}
+            >
+              {infoContent}
+            </View>
+          </ScrollView>
+
+          {/* Pagination Dots */}
+          <View style={styles.pagination}>
+            {[0, 1].map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === activeSlide
+                    ? { backgroundColor: colors.primary, width: 20 }
+                    : { backgroundColor: colors.textSecondary, opacity: 0.3 },
+                ]}
+              />
+            ))}
+          </View>
         </View>
+      ) : (
+        <View>{infoContent}</View>
       )}
 
       {/* Social Actions Bar */}
@@ -1019,5 +1122,17 @@ const createStyles = (
       fontSize: 13,
       color: colors.textSecondary,
       fontWeight: '500',
+    },
+    pagination: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: 8,
+      marginBottom: 4, // reduced margin as social bar has top margin
+      gap: 6,
+    },
+    paginationDot: {
+      height: 6,
+      width: 6,
+      borderRadius: 3,
     },
   })

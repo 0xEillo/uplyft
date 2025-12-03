@@ -12,6 +12,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { PrService } from '@/lib/pr'
+import { markWorkoutAsDeleted } from '@/lib/utils/deleted-workouts'
 
 interface PrDetailForDisplay {
   label: string
@@ -227,6 +228,7 @@ export default function WorkoutDetailScreen() {
 
     try {
       await database.workoutSessions.delete(workoutId)
+      markWorkoutAsDeleted(workoutId)
       router.back()
     } catch (error) {
       console.error('Error deleting workout:', error)

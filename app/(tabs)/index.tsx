@@ -16,6 +16,7 @@ import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { isApiError, mapApiErrorToMessage } from '@/lib/api/errors'
 import { database } from '@/lib/database'
+import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -356,6 +357,13 @@ export default function FeedScreen() {
         timestamp: Date.now(),
         workoutCount: workouts.length,
       })
+
+      // Remove any workouts that were deleted from detail pages
+      const deletedIds = getAndClearDeletedWorkoutIds()
+      if (deletedIds.length > 0) {
+        LayoutAnimation.configureNext(CardDeleteAnimation)
+        setWorkouts((prev) => prev.filter((w) => !deletedIds.includes(w.id)))
+      }
 
       // Check for placeholder and load it before processing
       const checkAndLoadPlaceholder = async () => {
