@@ -2,19 +2,19 @@ import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  Exercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  WorkoutComment,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    Exercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    WorkoutComment,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -1893,7 +1893,7 @@ export const database = {
           `
           workout_exercises!inner (
             exercise_id,
-            exercise:exercises!inner (id, name),
+            exercise:exercises!inner (id, name, muscle_group),
             sets!inner (reps, weight)
           )
         `,
@@ -1906,7 +1906,7 @@ export const database = {
       // Calculate max 1RM for each exercise
       const exerciseMax1RMs = new Map<
         string,
-        { name: string; max1RM: number }
+        { name: string; muscleGroup: string | null; max1RM: number }
       >()
 
       ;(data as any)?.forEach((session: any) => {
@@ -1922,6 +1922,7 @@ export const database = {
               if (!current || estimated1RM > current.max1RM) {
                 exerciseMax1RMs.set(we.exercise_id, {
                   name: we.exercise.name,
+                  muscleGroup: we.exercise.muscle_group,
                   max1RM: Math.round(estimated1RM),
                 })
               }
@@ -1934,6 +1935,7 @@ export const database = {
         ([exerciseId, data]) => ({
           exerciseId,
           exerciseName: data.name,
+          muscleGroup: data.muscleGroup,
           max1RM: data.max1RM,
         }),
       )
@@ -2031,6 +2033,7 @@ export const database = {
           return {
             exerciseId: lift.exerciseId,
             exerciseName: lift.exerciseName,
+            muscleGroup: lift.muscleGroup,
             max1RM: lift.max1RM,
             records,
           }

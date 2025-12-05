@@ -5,25 +5,26 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  getStandardsLadder,
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel,
+    getStandardsLadder,
+    getStrengthStandard,
+    hasStrengthStandards,
+    type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Circle } from 'react-native-svg'
 
 interface ExerciseRecord {
   weight: number
@@ -35,8 +36,17 @@ interface ExerciseRecord {
 interface ExerciseData {
   exerciseId: string
   exerciseName: string
+  muscleGroup: string | null
   max1RM: number
   records: ExerciseRecord[]
+}
+
+interface MuscleGroupData {
+  name: string
+  level: StrengthLevel
+  progress: number
+  exercises: ExerciseData[]
+  averageScore: number
 }
 
 const LEVEL_ORDER: StrengthLevel[] = [
@@ -57,6 +67,53 @@ const LEVEL_SCORES: Record<StrengthLevel, number> = {
   'World Class': 6,
 }
 
+const ProgressRing = ({
+  progress,
+  size = 32,
+  strokeWidth = 3,
+  color,
+  trackColor,
+  children,
+}: {
+  progress: number
+  size?: number
+  strokeWidth?: number
+  color: string
+  trackColor: string
+  children?: React.ReactNode
+}) => {
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const strokeDashoffset = circumference - (progress / 100) * circumference
+
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+        />
+      </Svg>
+      {children}
+    </View>
+  )
+}
+
 export function StrengthStandardsView() {
   const { user } = useAuth()
   const { isProMember } = useSubscription()
@@ -68,6 +125,7 @@ export function StrengthStandardsView() {
   const [exerciseData, setExerciseData] = useState<ExerciseData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   )
@@ -102,6 +160,18 @@ export function StrengthStandardsView() {
     setRefreshing(true)
     loadData()
   }, [loadData])
+
+  const toggleGroup = useCallback((groupName: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupName)) {
+        next.delete(groupName)
+      } else {
+        next.add(groupName)
+      }
+      return next
+    })
+  }, [])
 
   const toggleExercise = useCallback((exerciseId: string) => {
     setExpandedExercises((prev) => {
@@ -183,6 +253,62 @@ export function StrengthStandardsView() {
       progress,
       liftsTracked: count,
     }
+  }, [exerciseData, profile, getStrengthInfo])
+
+  const muscleGroups = useMemo(() => {
+    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+      return []
+    }
+
+    const groups = new Map<string, ExerciseData[]>()
+    
+    // Group exercises
+    exerciseData.forEach((exercise) => {
+      const groupName = exercise.muscleGroup || 'Other'
+      if (!groups.has(groupName)) {
+        groups.set(groupName, [])
+      }
+      groups.get(groupName)?.push(exercise)
+    })
+
+    // Calculate stats for each group
+    const result: MuscleGroupData[] = []
+
+    groups.forEach((exercises, name) => {
+      let totalScore = 0
+      let count = 0
+
+      exercises.forEach((exercise) => {
+        const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
+        if (info) {
+          const baseScore = LEVEL_SCORES[info.level]
+          const exactScore = baseScore + info.progress / 100
+          totalScore += exactScore
+          count++
+        }
+      })
+
+      if (count > 0) {
+        const averageScore = totalScore / count
+        const levelIndex = Math.floor(averageScore) - 1
+        const currentLevel =
+          LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
+        
+        const progress =
+          averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
+
+        result.push({
+          name,
+          level: currentLevel,
+          progress,
+          exercises,
+          averageScore,
+        })
+      }
+    })
+
+    // Sort by average score descending
+    return result.sort((a, b) => b.averageScore - a.averageScore)
   }, [exerciseData, profile, getStrengthInfo])
 
   const getLevelColor = (level: StrengthLevel): string => {
@@ -291,8 +417,8 @@ export function StrengthStandardsView() {
             <Text style={styles.sectionHeaderText}>YOUR LIFTS</Text>
           </View>
 
-          {/* Exercise Cards */}
-          {exerciseData.length === 0 ? (
+          {/* Muscle Groups */}
+          {muscleGroups.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
                 <Ionicons
@@ -308,200 +434,269 @@ export function StrengthStandardsView() {
               </Text>
             </View>
           ) : (
-            exerciseData.map((exercise, index) => {
-              const strengthInfo = getStrengthInfo(
-                exercise.exerciseName,
-                exercise.max1RM,
-              )
-              const isExpanded = expandedExercises.has(exercise.exerciseId)
-              const allLevels = profile?.gender
-                ? getStandardsLadder(
-                    exercise.exerciseName,
-                    profile.gender as 'male' | 'female',
-                  )
-                : null
-
+            muscleGroups.map((group) => {
+              const isGroupExpanded = expandedGroups.has(group.name)
+              
               return (
-                <View
-                  key={exercise.exerciseId}
-                  style={[
-                    styles.exerciseCard,
-                    index === exerciseData.length - 1 && styles.lastCard,
-                  ]}
-                >
-                  {/* Exercise Header */}
+                <View key={group.name} style={styles.groupContainer}>
                   <TouchableOpacity
-                    style={styles.exerciseHeader}
-                    onPress={() => navigateToExercise(exercise.exerciseId)}
+                    style={styles.groupHeader}
+                    onPress={() => toggleGroup(group.name)}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.exerciseMain}>
-                      <Text style={styles.exerciseName}>
-                        {exercise.exerciseName}
-                      </Text>
-                      <View style={styles.exerciseStats}>
-                        <Text style={styles.exerciseStatValue}>
-                          {formatWeight(exercise.max1RM, {
-                            maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                          })}
-                        </Text>
-                        <Text style={styles.exerciseStatLabel}>1RM</Text>
-                      </View>
+                    <View style={styles.groupInfo}>
+                      <Text style={styles.groupName}>{group.name}</Text>
                     </View>
-
-                    <View style={styles.exerciseRight}>
-                      {strengthInfo && !isProMember ? (
-                        <TouchableOpacity 
-                          style={styles.lockedBadge}
-                          onPress={() => setPaywallVisible(true)}
-                        >
-                          <Ionicons name="lock-closed" size={14} color={colors.primary} />
-                        </TouchableOpacity>
-                      ) : strengthInfo ? (
-                        <View
-                          style={[
-                            styles.levelBadge,
-                            {
-                              backgroundColor: getLevelColor(strengthInfo.level),
-                            },
-                          ]}
-                        >
-                          <Text style={styles.levelBadgeText}>
-                            {strengthInfo.level}
-                          </Text>
+                    <View style={styles.groupRight}>
+                      {isProMember ? (
+                        !isGroupExpanded && (
+                          <View
+                            style={[
+                              styles.levelBadge,
+                              { backgroundColor: getLevelColor(group.level) },
+                            ]}
+                          >
+                            <Text style={styles.levelBadgeText}>{group.level}</Text>
+                          </View>
+                        )
+                      ) : (
+                        <View style={styles.lockedBadge}>
+                          <Ionicons name="lock-closed" size={12} color={colors.primary} />
                         </View>
-                      ) : null}
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation()
-                          toggleExercise(exercise.exerciseId)
-                        }}
-                        style={styles.expandButton}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
+                      )}
+                      
+                      {isProMember && group.level !== 'World Class' ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          {isGroupExpanded && (
+                            <Text style={styles.groupProgressText}>
+                              {Math.round(group.progress)}%
+                            </Text>
+                          )}
+                          <ProgressRing
+                            progress={group.progress}
+                            size={32}
+                            strokeWidth={3}
+                            color={colors.primary}
+                            trackColor={colors.border}
+                          >
+                            <Ionicons
+                              name={isGroupExpanded ? 'chevron-up' : 'chevron-down'}
+                              size={16}
+                              color={colors.textSecondary}
+                            />
+                          </ProgressRing>
+                        </View>
+                      ) : (
                         <Ionicons
-                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          name={isGroupExpanded ? 'chevron-up' : 'chevron-down'}
                           size={20}
                           color={colors.textSecondary}
                         />
-                      </TouchableOpacity>
+                      )}
                     </View>
                   </TouchableOpacity>
 
-                  {/* Expanded Content: All Standards */}
-                  {isExpanded && allLevels && profile?.weight_kg && (
-                    <>
-                      {/* Progress bar for current level */}
-                      {strengthInfo && isProMember && (
-                        <View style={styles.exerciseProgressContainer}>
-                          <View style={styles.exerciseProgressBar}>
-                            <View
-                              style={[
-                                styles.exerciseProgressFill,
-                                {
-                                  width: `${strengthInfo.progress}%`,
-                                  backgroundColor: colors.primary,
-                                },
-                              ]}
-                            />
-                          </View>
-                        </View>
-                      )}
-                    <View style={styles.expandedContent}>
-                      <View style={styles.standardsGrid}>
-                        {allLevels.map((levelStandard, idx) => {
-                          const targetWeight = Math.ceil(
-                            (profile.weight_kg || 0) * levelStandard.multiplier,
-                          )
-                          // Only show current level / passed status if PRO
-                          const isCurrentLevel =
-                            isProMember && strengthInfo?.level === levelStandard.level
-                          const isPassed =
-                            isProMember && strengthInfo
-                              ? allLevels.findIndex(
-                                  (l) => l.level === strengthInfo.level,
-                                ) >= idx
-                              : false
+                  {isGroupExpanded && (
+                    <View style={styles.groupContent}>
+                      {group.exercises.map((exercise, index) => {
+                        const strengthInfo = getStrengthInfo(
+                          exercise.exerciseName,
+                          exercise.max1RM,
+                        )
+                        const isExpanded = expandedExercises.has(exercise.exerciseId)
+                        const allLevels = profile?.gender
+                          ? getStandardsLadder(
+                              exercise.exerciseName,
+                              profile.gender as 'male' | 'female',
+                            )
+                          : null
 
-                          return (
-                            <View
-                              key={levelStandard.level}
-                              style={[
-                                styles.standardRow,
-                                idx === allLevels.length - 1 &&
-                                  styles.standardRowLast,
-                              ]}
+                        return (
+                          <View
+                            key={exercise.exerciseId}
+                            style={[
+                              styles.exerciseCard,
+                              index === group.exercises.length - 1 && styles.lastCard,
+                            ]}
+                          >
+                            {/* Exercise Header */}
+                            <TouchableOpacity
+                              style={styles.exerciseHeader}
+                              onPress={() => navigateToExercise(exercise.exerciseId)}
+                              activeOpacity={0.7}
                             >
-                              <View style={styles.standardLeft}>
-                                <View
-                                  style={[
-                                    styles.standardIndicator,
-                                    {
-                                      backgroundColor: isPassed
-                                        ? getLevelColor(levelStandard.level)
-                                        : colors.backgroundLight,
-                                      borderColor: getLevelColor(
-                                        levelStandard.level,
-                                      ),
-                                    },
-                                  ]}
-                                >
-                                  {isPassed && (
-                                    <Ionicons
-                                      name="checkmark"
-                                      size={10}
-                                      color="#FFF"
-                                    />
-                                  )}
-                                </View>
-                                <View style={styles.standardInfo}>
-                                  <Text
-                                    style={[
-                                      styles.standardLevel,
-                                      isCurrentLevel && {
-                                        color: getLevelColor(
-                                          levelStandard.level,
-                                        ),
-                                      },
-                                    ]}
-                                  >
-                                    {levelStandard.level}
-                                  </Text>
-                                  <Text style={styles.standardDesc}>
-                                    {levelStandard.description}
-                                  </Text>
-                                </View>
-                              </View>
-                              <View style={styles.standardRight}>
-                                {isProMember ? (
-                                  <Text
-                                    style={[
-                                      styles.standardWeight,
-                                      isCurrentLevel && {
-                                        color: getLevelColor(
-                                          levelStandard.level,
-                                        ),
-                                      },
-                                    ]}
-                                  >
-                                    {formatWeight(targetWeight, {
-                                      maximumFractionDigits:
-                                        weightUnit === 'kg' ? 0 : 0,
+                              <View style={styles.exerciseMain}>
+                                <Text style={styles.exerciseName}>
+                                  {exercise.exerciseName}
+                                </Text>
+                                <View style={styles.exerciseStats}>
+                                  <Text style={styles.exerciseStatValue}>
+                                    {formatWeight(exercise.max1RM, {
+                                      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
                                     })}
                                   </Text>
-                                ) : (
-                                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6}}>
-                                    <Ionicons name="lock-closed" size={12} color={colors.textSecondary} />
-                                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>PRO</Text>
+                                  <Text style={styles.exerciseStatLabel}>1RM</Text>
+                                </View>
+                              </View>
+
+                              <View style={styles.exerciseRight}>
+                                {strengthInfo && !isProMember ? (
+                                  <TouchableOpacity 
+                                    style={styles.lockedBadge}
+                                    onPress={() => setPaywallVisible(true)}
+                                  >
+                                    <Ionicons name="lock-closed" size={14} color={colors.primary} />
+                                  </TouchableOpacity>
+                                ) : strengthInfo ? (
+                                  <View
+                                    style={[
+                                      styles.levelBadge,
+                                      {
+                                        backgroundColor: getLevelColor(strengthInfo.level),
+                                      },
+                                    ]}
+                                  >
+                                    <Text style={styles.levelBadgeText}>
+                                      {strengthInfo.level}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                                <TouchableOpacity
+                                  onPress={(e) => {
+                                    e.stopPropagation()
+                                    toggleExercise(exercise.exerciseId)
+                                  }}
+                                  style={styles.expandButton}
+                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                  <Ionicons
+                                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                    size={20}
+                                    color={colors.textSecondary}
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            </TouchableOpacity>
+
+                            {/* Expanded Content: All Standards */}
+                            {isExpanded && allLevels && profile?.weight_kg && (
+                              <>
+                                {/* Progress bar for current level */}
+                                {strengthInfo && isProMember && (
+                                  <View style={styles.exerciseProgressContainer}>
+                                    <View style={styles.exerciseProgressBar}>
+                                      <View
+                                        style={[
+                                          styles.exerciseProgressFill,
+                                          {
+                                            width: `${strengthInfo.progress}%`,
+                                            backgroundColor: colors.primary,
+                                          },
+                                        ]}
+                                      />
+                                    </View>
                                   </View>
                                 )}
+                              <View style={styles.expandedContent}>
+                                <View style={styles.standardsGrid}>
+                                  {allLevels.map((levelStandard, idx) => {
+                                    const targetWeight = Math.ceil(
+                                      (profile.weight_kg || 0) * levelStandard.multiplier,
+                                    )
+                                    // Only show current level / passed status if PRO
+                                    const isCurrentLevel =
+                                      isProMember && strengthInfo?.level === levelStandard.level
+                                    const isPassed =
+                                      isProMember && strengthInfo
+                                        ? allLevels.findIndex(
+                                            (l) => l.level === strengthInfo.level,
+                                          ) >= idx
+                                        : false
+
+                                    return (
+                                      <View
+                                        key={levelStandard.level}
+                                        style={[
+                                          styles.standardRow,
+                                          idx === allLevels.length - 1 &&
+                                            styles.standardRowLast,
+                                        ]}
+                                      >
+                                        <View style={styles.standardLeft}>
+                                          <View
+                                            style={[
+                                              styles.standardIndicator,
+                                              {
+                                                backgroundColor: isPassed
+                                                  ? getLevelColor(levelStandard.level)
+                                                  : colors.backgroundLight,
+                                                borderColor: getLevelColor(
+                                                  levelStandard.level,
+                                                ),
+                                              },
+                                            ]}
+                                          >
+                                            {isPassed && (
+                                              <Ionicons
+                                                name="checkmark"
+                                                size={10}
+                                                color="#FFF"
+                                              />
+                                            )}
+                                          </View>
+                                          <View style={styles.standardInfo}>
+                                            <Text
+                                              style={[
+                                                styles.standardLevel,
+                                                isCurrentLevel && {
+                                                  color: getLevelColor(
+                                                    levelStandard.level,
+                                                  ),
+                                                },
+                                              ]}
+                                            >
+                                              {levelStandard.level}
+                                            </Text>
+                                            <Text style={styles.standardDesc}>
+                                              {levelStandard.description}
+                                            </Text>
+                                          </View>
+                                        </View>
+                                        <View style={styles.standardRight}>
+                                          {isProMember ? (
+                                            <Text
+                                              style={[
+                                                styles.standardWeight,
+                                                isCurrentLevel && {
+                                                  color: getLevelColor(
+                                                    levelStandard.level,
+                                                  ),
+                                                },
+                                              ]}
+                                            >
+                                              {formatWeight(targetWeight, {
+                                                maximumFractionDigits:
+                                                  weightUnit === 'kg' ? 0 : 0,
+                                              })}
+                                            </Text>
+                                          ) : (
+                                            <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6}}>
+                                              <Ionicons name="lock-closed" size={12} color={colors.textSecondary} />
+                                              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>PRO</Text>
+                                            </View>
+                                          )}
+                                        </View>
+                                      </View>
+                                    )
+                                  })}
+                                </View>
                               </View>
-                            </View>
-                          )
-                        })}
-                      </View>
+                              </>
+                            )}
+                          </View>
+                        )
+                      })}
                     </View>
-                    </>
                   )}
                 </View>
               )
@@ -847,5 +1042,47 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 20,
+    },
+
+    // Muscle Groups
+    groupContainer: {
+      backgroundColor: colors.feedCardBackground,
+      marginBottom: 2,
+    },
+    groupHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    groupInfo: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    groupName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    groupLevelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    groupRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    groupProgressText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    groupContent: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
   })
