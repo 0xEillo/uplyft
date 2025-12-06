@@ -742,7 +742,7 @@ export function Paywall({
                 {/* Feature Rows */}
                 <ComparisonRow
                   feature="Unlimited Workouts"
-                  free="3 per week"
+                  free="2 per week"
                   pro={true}
                   colors={colors}
                 />

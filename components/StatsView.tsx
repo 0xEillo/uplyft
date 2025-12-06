@@ -1240,18 +1240,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 11,
       color: colors.textSecondary,
     },
-    proOnlyContainer: {
-      paddingVertical: 40,
-      paddingHorizontal: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    proOnlySubtext: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginTop: 8,
-      textAlign: 'center',
-    },
     modalOverlay: {
       flex: 1,
       justifyContent: 'flex-end',

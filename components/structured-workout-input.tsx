@@ -5,7 +5,7 @@ import {
     WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { Audio } from 'expo-av'
+import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -74,6 +74,8 @@ export function StructuredWorkoutInput({
   const styles = createStyles(colors)
   const isInitialMount = useRef(true)
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
+  
+  const beepPlayer = useAudioPlayer('https://actions.google.com/sounds/v1/alarms/beep_short.ogg')
 
   // Get the display unit text (kg or lbs)
   const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
@@ -350,48 +352,23 @@ export function StructuredWorkoutInput({
 
     // Play stopwatch-style completion sound - two quick beeps
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      })
-
       // First beep
-      const { sound: sound1 } = await Audio.Sound.createAsync(
-        { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
-        { shouldPlay: true, volume: 1.0 },
-      )
+      beepPlayer.play()
 
       // Second beep after short delay
-      setTimeout(async () => {
+      setTimeout(() => {
         try {
-          const { sound: sound2 } = await Audio.Sound.createAsync(
-            {
-              uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
-            },
-            { shouldPlay: true, volume: 1.0 },
-          )
-
-          sound2.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              void sound2.unloadAsync()
-            }
-          })
+          beepPlayer.seekTo(0)
+          beepPlayer.play()
         } catch (e) {
           // Ignore second beep error
         }
       }, 200)
-
-      // Unload first sound after playing
-      sound1.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          void sound1.unloadAsync()
-        }
-      })
     } catch (error) {
       // If sound fails, just continue with haptics
       console.log('Sound not available, using haptics only')
     }
-  }, [])
+  }, [beepPlayer])
 
   const restartRestTimer = useCallback(
     (exerciseId: string, targetSeconds: number | null, setIndex: number) => {

@@ -31,7 +31,7 @@ function SubmitSuccessOverlayComponent({
   visible,
   onAnimationComplete,
   workoutNumber = 1,
-  weeklyTarget = 3,
+  weeklyTarget = 2,
   currentStreak = 0,
 }: SubmitSuccessOverlayProps) {
   const colors = useThemedColors()

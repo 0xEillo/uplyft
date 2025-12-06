@@ -394,7 +394,13 @@ export default function ExerciseDetailScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'leaderboard' && styles.activeTab]}
-            onPress={() => setActiveTab('leaderboard')}
+            onPress={() => {
+              if (!isProMember) {
+                setPaywallVisible(true)
+              } else {
+                setActiveTab('leaderboard')
+              }
+            }}
           >
             <Text
               style={[
@@ -568,8 +574,8 @@ export default function ExerciseDetailScreen() {
         <Paywall
           visible={paywallVisible}
           onClose={() => setPaywallVisible(false)}
-          title="Unlock Advanced Stats"
-          message="See detailed strength analytics and progress charts."
+          title="Unlock Leaderboard"
+          message="See how you rank against friends on every exercise."
         />
       </View>
     </SlideInView>

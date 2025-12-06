@@ -28,13 +28,13 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
   const [currentStreak, setCurrentStreak] = useState(0)
   const [monthWorkoutCount, setMonthWorkoutCount] = useState(0)
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [weeklyGoal, setWeeklyGoal] = useState(3)
+  const [weeklyGoal, setWeeklyGoal] = useState(2)
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      // Load user profile to get weekly goal (default to 3)
-      const goal = 3 // TODO: Add weekly_workout_goal to Profile type
+      // Load user profile to get weekly goal (default to 2)
+      const goal = 2 // TODO: Add weekly_workout_goal to Profile type
       setWeeklyGoal(goal)
 
       // Get first and last day of current month

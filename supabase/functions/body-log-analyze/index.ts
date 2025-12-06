@@ -10,8 +10,8 @@ import OpenAI from 'https://esm.sh/openai@4.55.3'
 import { z } from 'https://esm.sh/zod@3.23.8'
 
 import {
-  buildBodyLogPrompt,
-  parseBodyLogMetrics,
+    buildBodyLogPrompt,
+    parseBodyLogMetrics,
 } from '../_shared/body-log-analysis.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
@@ -28,10 +28,28 @@ const BODY_LOG_RESPONSE_FORMAT = {
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['body_fat_percentage', 'bmi', 'analysis_summary'],
+      required: [
+        'body_fat_percentage',
+        'bmi',
+        'score_v_taper',
+        'score_chest',
+        'score_shoulders',
+        'score_abs',
+        'score_arms',
+        'score_back',
+        'score_legs',
+        'analysis_summary',
+      ],
       properties: {
         body_fat_percentage: { type: ['number', 'null'] },
         bmi: { type: ['number', 'null'] },
+        score_v_taper: { type: ['number', 'null'] },
+        score_chest: { type: ['number', 'null'] },
+        score_shoulders: { type: ['number', 'null'] },
+        score_abs: { type: ['number', 'null'] },
+        score_arms: { type: ['number', 'null'] },
+        score_back: { type: ['number', 'null'] },
+        score_legs: { type: ['number', 'null'] },
         analysis_summary: {
           type: 'string',
           minLength: 8,
@@ -42,45 +60,7 @@ const BODY_LOG_RESPONSE_FORMAT = {
   },
 }
 
-async function downloadImageBase64(
-  serviceClient: ReturnType<typeof createServiceClient>,
-  filePath: string,
-): Promise<{ base64: string; mimeType: string }> {
-  const { data: signed, error: signedError } = await serviceClient.storage
-    .from(BODY_LOG_BUCKET)
-    .createSignedUrl(filePath, 60)
-
-  if (signedError || !signed?.signedUrl) {
-    throw new Error(
-      `Failed to resolve body log image URL: ${
-        signedError?.message || 'Unknown error'
-      }`,
-    )
-  }
-
-  const response = await fetch(signed.signedUrl)
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch body log image: ${response.status}`)
-  }
-
-  const mimeType = response.headers.get('content-type') || 'image/jpeg'
-  const arrayBuffer = await response.arrayBuffer()
-
-  // Convert ArrayBuffer to base64
-  const bytes = new Uint8Array(arrayBuffer)
-  const chunkSize = 0x8000
-  const chunks: string[] = []
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const slice = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
-    chunks.push(String.fromCharCode(...slice))
-  }
-  const base64 = btoa(chunks.join(''))
-
-  return { base64, mimeType }
-}
-
-serve(async (req) => {
+serve(async (req: Request) => {
   const cors = handleCors(req)
   if (cors) return cors
 
@@ -160,9 +140,23 @@ serve(async (req) => {
       return errorResponse(404, 'No images found for this entry')
     }
 
-    // Download all images from storage
-    const imageDownloads = await Promise.all(
-      images.map((img) => downloadImageBase64(serviceClient, img.file_path)),
+    // Generate signed URLs for all images
+    // We use a longer expiry (5 minutes) to ensure OpenAI has time to process them
+    const signedUrls = await Promise.all(
+      images.map(async (img: any) => {
+        const { data, error } = await serviceClient.storage
+          .from(BODY_LOG_BUCKET)
+          .createSignedUrl(img.file_path, 300)
+
+        if (error || !data?.signedUrl) {
+          throw new Error(
+            `Failed to create signed URL for ${img.file_path}: ${
+              error?.message || 'Unknown error'
+            }`,
+          )
+        }
+        return data.signedUrl
+      }),
     )
 
     const openai = new OpenAI({ apiKey })
@@ -177,7 +171,7 @@ serve(async (req) => {
     })
 
     // Add multi-image instruction if applicable
-    if (imageDownloads.length > 1) {
+    if (signedUrls.length > 1) {
       systemPrompt +=
         '\n\nIMPORTANT: You are analyzing MULTIPLE photos of the same person from different angles. Combine information from all photos to provide a SINGLE, more accurate assessment. Use triangulation between photos to improve accuracy of body fat %, BMI, and weight estimates.'
     }
@@ -187,18 +181,18 @@ serve(async (req) => {
       {
         type: 'text',
         text:
-          imageDownloads.length > 1
+          signedUrls.length > 1
             ? 'Analyze these body composition photos from multiple angles and return combined JSON metrics.'
             : 'Analyze this body composition photo and return JSON metrics.',
       },
     ]
 
     // Add all images to the message
-    for (const { base64, mimeType } of imageDownloads) {
+    for (const url of signedUrls) {
       userContent.push({
         type: 'image_url',
         image_url: {
-          url: `data:${mimeType};base64,${base64}`,
+          url: url,
           detail: 'high',
         },
       })
@@ -222,18 +216,40 @@ serve(async (req) => {
     })
 
     const content = completion.choices[0]?.message?.content
+    console.log('[BODY_LOG] AI Response Content:', content)
 
     // Parse the metrics from the response
     const metrics = parseBodyLogMetrics(content)
+    console.log('[BODY_LOG] Parsed Metrics:', JSON.stringify(metrics))
+
+    // Calculate lean mass and fat mass if possible
+    const weight =
+      typeof profile.weight_kg === 'number'
+        ? profile.weight_kg
+        : typeof entry.weight_kg === 'number'
+        ? entry.weight_kg
+        : null
+
+    let leanMass: number | null = null
+    let fatMass: number | null = null
+
+    if (
+      weight !== null &&
+      metrics.body_fat_percentage !== null &&
+      metrics.body_fat_percentage !== undefined
+    ) {
+      const fatPercent = metrics.body_fat_percentage / 100
+      fatMass = Number((weight * fatPercent).toFixed(2))
+      leanMass = Number((weight * (1 - fatPercent)).toFixed(2))
+    }
+
     const updatePayload = {
       ...metrics,
-      weight_kg:
-        typeof profile.weight_kg === 'number'
-          ? profile.weight_kg
-          : typeof entry.weight_kg === 'number'
-          ? entry.weight_kg
-          : null,
+      weight_kg: weight,
+      lean_mass_kg: leanMass,
+      fat_mass_kg: fatMass,
     }
+    console.log('[BODY_LOG] Update Payload:', JSON.stringify(updatePayload))
 
     // Update entry metrics
     const { data: updated, error: updateError } = await supabase
@@ -241,16 +257,17 @@ serve(async (req) => {
       .update(updatePayload)
       .eq('id', entryId)
       .select(
-        'id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg, analysis_summary',
+        'id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg, lean_mass_kg, fat_mass_kg, score_v_taper, score_chest, score_shoulders, score_abs, score_arms, score_back, score_legs, analysis_summary',
       )
       .single()
 
     if (updateError || !updated) {
+      console.error('[BODY_LOG] Update Error:', updateError)
       throw updateError || new Error('Failed to update body log entry metrics')
     }
 
     return jsonResponse({ metrics: updated })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error analyzing body log image:', error)
 
     if (error instanceof z.ZodError) {

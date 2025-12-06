@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
+import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
@@ -7,10 +8,8 @@ import { useEffect, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
-    Animated,
     Dimensions,
     FlatList,
-    Image,
     Modal,
     Pressable,
     ScrollView,
@@ -51,7 +50,10 @@ import {
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { getBodyLogImageUrls } from '@/lib/utils/body-log-storage'
+import {
+    getBodyLogImageUrls,
+    prefetchBodyLogImages,
+} from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.58
@@ -104,14 +106,22 @@ export default function BodyLogDetailScreen() {
       ? parseFloat(bodyFatPercentage)
       : null,
     bmi: bmi ? parseFloat(bmi) : null,
+    lean_mass_kg: null as number | null,
+    fat_mass_kg: null as number | null,
+    score_v_taper: null as number | null,
+    score_chest: null as number | null,
+    score_shoulders: null as number | null,
+    score_abs: null as number | null,
+    score_arms: null as number | null,
+    score_back: null as number | null,
+    score_legs: null as number | null,
   })
 
-  // Image modal state and animations
+  // Image modal state
   const [imageModalVisible, setImageModalVisible] = useState(false)
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const fullscreenOpacity = useRef(new Animated.Value(0)).current
-  const scrollX = useRef(new Animated.Value(0)).current
+  const scrollXRef = useRef(0)
 
   // Fetch entry data
   useEffect(() => {
@@ -152,6 +162,15 @@ export default function BodyLogDetailScreen() {
             body_fat_percentage,
             bmi,
             muscle_mass_kg,
+            lean_mass_kg,
+            fat_mass_kg,
+            score_v_taper,
+            score_chest,
+            score_shoulders,
+            score_abs,
+            score_arms,
+            score_back,
+            score_legs,
             analysis_summary,
             body_log_images (
               id,
@@ -189,6 +208,15 @@ export default function BodyLogDetailScreen() {
           bmi: entryData.bmi,
           analysis_summary: entryData.analysis_summary,
           muscle_mass_kg: entryData.muscle_mass_kg,
+          lean_mass_kg: entryData.lean_mass_kg,
+          fat_mass_kg: entryData.fat_mass_kg,
+          score_v_taper: entryData.score_v_taper,
+          score_chest: entryData.score_chest,
+          score_shoulders: entryData.score_shoulders,
+          score_abs: entryData.score_abs,
+          score_arms: entryData.score_arms,
+          score_back: entryData.score_back,
+          score_legs: entryData.score_legs,
           images: (entryData.body_log_images || []).sort(
             (a: any, b: any) => a.sequence - b.sequence,
           ),
@@ -201,18 +229,29 @@ export default function BodyLogDetailScreen() {
           weight_kg: entryData.weight_kg,
           body_fat_percentage: entryData.body_fat_percentage,
           bmi: entryData.bmi,
+          lean_mass_kg: entryData.lean_mass_kg,
+          fat_mass_kg: entryData.fat_mass_kg,
+          score_v_taper: entryData.score_v_taper,
+          score_chest: entryData.score_chest,
+          score_shoulders: entryData.score_shoulders,
+          score_abs: entryData.score_abs,
+          score_arms: entryData.score_arms,
+          score_back: entryData.score_back,
+          score_legs: entryData.score_legs,
         })
 
-        // Fetch signed URLs for all images
+        // Fetch signed URLs for all images (hero size for detail view)
         if (transformedEntry.images.length > 0) {
           if (!cancelled) {
             setImagesLoading(true)
           }
           const filePaths = transformedEntry.images.map((img) => img.file_path)
-          const urls = await getBodyLogImageUrls(filePaths)
+          const urls = await getBodyLogImageUrls(filePaths, 'hero')
           if (!cancelled) {
             setImageUrls(urls)
             setImagesLoading(false)
+            // Prefetch images for smooth carousel experience
+            prefetchBodyLogImages(urls)
           }
         }
       } catch (error) {
@@ -368,6 +407,15 @@ export default function BodyLogDetailScreen() {
             weight_kg: fullEntry.weight_kg,
             body_fat_percentage: fullEntry.body_fat_percentage,
             bmi: fullEntry.bmi,
+            lean_mass_kg: fullEntry.lean_mass_kg,
+            fat_mass_kg: fullEntry.fat_mass_kg,
+            score_v_taper: fullEntry.score_v_taper,
+            score_chest: fullEntry.score_chest,
+            score_shoulders: fullEntry.score_shoulders,
+            score_abs: fullEntry.score_abs,
+            score_arms: fullEntry.score_arms,
+            score_back: fullEntry.score_back,
+            score_legs: fullEntry.score_legs,
           })
         }
 
@@ -496,13 +544,14 @@ export default function BodyLogDetailScreen() {
                 : null
             )
 
-            // Refresh image URLs - map to file paths
+            // Refresh image URLs - map to file paths (hero size)
             if (images.length > 0) {
               setImagesLoading(true)
               const filePaths = images.map((img: any) => img.file_path)
-              const newUrls = await getBodyLogImageUrls(filePaths)
+              const newUrls = await getBodyLogImageUrls(filePaths, 'hero')
               setImageUrls(newUrls)
               setImagesLoading(false)
+              prefetchBodyLogImages(newUrls)
             }
           }
 
@@ -597,13 +646,14 @@ export default function BodyLogDetailScreen() {
                     : null
                 )
 
-                // Refresh image URLs
+                // Refresh image URLs (hero size)
                 if (images.length > 0) {
                   setImagesLoading(true)
                   const filePaths = images.map((img: any) => img.file_path)
-                  const newUrls = await getBodyLogImageUrls(filePaths)
+                  const newUrls = await getBodyLogImageUrls(filePaths, 'hero')
                   setImageUrls(newUrls)
                   setImagesLoading(false)
+                  prefetchBodyLogImages(newUrls)
                 } else {
                   setImageUrls([])
                 }
@@ -717,6 +767,15 @@ export default function BodyLogDetailScreen() {
         weight_kg: analysisMetrics.weight_kg ?? entry.weight_kg,
         body_fat_percentage: analysisMetrics.body_fat_percentage,
         bmi: analysisMetrics.bmi,
+        lean_mass_kg: analysisMetrics.lean_mass_kg,
+        fat_mass_kg: analysisMetrics.fat_mass_kg,
+        score_v_taper: analysisMetrics.score_v_taper,
+        score_chest: analysisMetrics.score_chest,
+        score_shoulders: analysisMetrics.score_shoulders,
+        score_abs: analysisMetrics.score_abs,
+        score_arms: analysisMetrics.score_arms,
+        score_back: analysisMetrics.score_back,
+        score_legs: analysisMetrics.score_legs,
       })
 
       // Refresh entry to get updated data
@@ -832,7 +891,10 @@ export default function BodyLogDetailScreen() {
       <Image
         source={{ uri: item }}
         style={styles.heroImage}
-        resizeMode="cover"
+        contentFit="cover"
+        cachePolicy="disk"
+        transition={200}
+        recyclingKey={`hero-${index}`}
       />
       <LinearGradient
         colors={['transparent', 'transparent', 'rgba(0,0,0,0.6)']}
@@ -912,7 +974,7 @@ export default function BodyLogDetailScreen() {
                 showsHorizontalScrollIndicator={false}
                 onScroll={(event) => {
                   const offsetX = event.nativeEvent.contentOffset.x
-                  scrollX.setValue(offsetX)
+                  scrollXRef.current = offsetX
                   const index = Math.round(offsetX / SCREEN_WIDTH)
                   if (index !== currentImageIndex && index >= 0 && index < imageCount) {
                     setCurrentImageIndex(index)
@@ -999,12 +1061,10 @@ export default function BodyLogDetailScreen() {
         {/* Content Section */}
         <View style={styles.contentSection}>
           {/* Metrics List - with locked overlay for teaser results */}
-          <View style={styles.metricsContainer}>
-            <View style={styles.metricsList}>
-              <Text style={[styles.overviewTitle, { color: colors.textSecondary }]}>
-                OVERVIEW
-              </Text>
-
+          {/* Body Composition Section */}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Body Composition</Text>
+            <View style={[styles.metricsCard, { backgroundColor: colors.backgroundWhite }]}>
               {/* Weight */}
               <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
                 <View style={styles.metricRowLeft}>
@@ -1052,6 +1112,36 @@ export default function BodyLogDetailScreen() {
                 </Text>
               </TouchableOpacity>
 
+              {/* Lean Mass */}
+              {metrics.lean_mass_kg !== null && (
+                <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
+                  <View style={styles.metricRowLeft}>
+                    <Ionicons name="fitness-outline" size={20} color={colors.success} />
+                    <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
+                      Lean Mass
+                    </Text>
+                  </View>
+                  <Text style={[styles.metricRowValue, { color: colors.text }]}>
+                    {formatWeight(metrics.lean_mass_kg)}
+                  </Text>
+                </View>
+              )}
+
+              {/* Fat Mass */}
+              {metrics.fat_mass_kg !== null && (
+                <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
+                  <View style={styles.metricRowLeft}>
+                    <Ionicons name="water-outline" size={20} color={colors.warning} />
+                    <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
+                      Fat Mass
+                    </Text>
+                  </View>
+                  <Text style={[styles.metricRowValue, { color: colors.text }]}>
+                    {formatWeight(metrics.fat_mass_kg)}
+                  </Text>
+                </View>
+              )}
+
               {/* BMI */}
               <TouchableOpacity
                 style={[styles.metricRow, { borderBottomWidth: 0 }]}
@@ -1080,7 +1170,56 @@ export default function BodyLogDetailScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
 
+          {/* Physique Analysis Section */}
+          {/* Physique Analysis Section */}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Physique Analysis</Text>
+            <View style={styles.scoresGrid}>
+              {[
+                { label: 'V-Taper', score: metrics.score_v_taper },
+                { label: 'Chest', score: metrics.score_chest },
+                { label: 'Shoulders', score: metrics.score_shoulders },
+                { label: 'Abs', score: metrics.score_abs },
+                { label: 'Arms', score: metrics.score_arms },
+                { label: 'Back', score: metrics.score_back },
+                { label: 'Legs', score: metrics.score_legs },
+              ].map((item, index) => {
+                const hasScore = item.score !== null
+                const score = item.score ?? 0
+                
+                let scoreColor: string = colors.border // Default/Empty color
+                if (hasScore) {
+                  scoreColor = colors.error // < 50
+                  if (score >= 75) scoreColor = colors.success
+                  else if (score >= 50) scoreColor = colors.warning
+                }
+
+                return (
+                  <View key={index} style={[styles.scoreCard, { backgroundColor: colors.backgroundWhite }]}>
+                    <View style={[styles.scoreValueContainer, { borderColor: scoreColor }]}>
+                      <Text style={[styles.scoreValue, { color: hasScore ? colors.text : colors.textSecondary }]}>
+                        {hasScore ? score : '--'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                    <View style={[styles.scoreBarBg, { backgroundColor: colors.border }]}>
+                      <View
+                        style={[
+                          styles.scoreBarFill,
+                          { 
+                            width: `${hasScore ? score : 0}%`, 
+                            backgroundColor: hasScore ? scoreColor : 'transparent' 
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                )
+              })}
+            </View>
+            
             {/* Locked Results Overlay for free users teaser */}
             {showTeaserResults && (
               <LockedResultsOverlay onUnlock={handleUnlockResults} />
@@ -1207,32 +1346,22 @@ export default function BodyLogDetailScreen() {
 
             <FlatList
               data={imageUrls}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <Pressable
                   style={styles.fullscreenImageWrapper}
                   onPress={() => setImageModalVisible(false)}
                 >
-                  <Animated.Image
+                  <Image
                     source={{ uri: item }}
-                    style={[
-                      styles.fullscreenImage,
-                      { opacity: fullscreenOpacity },
-                    ]}
-                    resizeMode="contain"
+                    style={styles.fullscreenImage}
+                    contentFit="contain"
+                    cachePolicy="disk"
+                    transition={300}
+                    recyclingKey={`fullscreen-${index}`}
                     onLoadStart={() => setFullscreenImageLoading(true)}
-                    onLoad={() => {
-                      setFullscreenImageLoading(false)
-                      Animated.timing(fullscreenOpacity, {
-                        toValue: 1,
-                        duration: 300,
-                        useNativeDriver: true,
-                      }).start()
-                    }}
+                    onLoad={() => setFullscreenImageLoading(false)}
                     onError={(error) => {
-                      console.error(
-                        'Failed to load fullscreen image:',
-                        error.nativeEvent.error,
-                      )
+                      console.error('Failed to load fullscreen image:', error)
                       setFullscreenImageLoading(false)
                     }}
                   />
@@ -1577,6 +1706,65 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+  },
+
+  // New Sections
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8E8E93', // textSecondary - keeping hardcoded for specific look or use colors.textSecondary
+    marginBottom: 12,
+    paddingLeft: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  metricsCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingHorizontal: 16, // Add horizontal padding to container
+  },
+  scoresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  scoreCard: {
+    flex: 1,
+    minWidth: '45%',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  scoreValueContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+  },
+  scoreValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  scoreLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  scoreBarBg: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    marginTop: 4,
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 2,
   },
 
   // Image Modal

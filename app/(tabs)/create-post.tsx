@@ -34,6 +34,7 @@ import {
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -248,7 +249,8 @@ export default function CreatePostScreen() {
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
   const suppressDraftToastRef = useRef(false)
-  const skipNextPersistRef = useRef(false)
+  // Skip counter - decrements each time auto-save would run, skips while > 0
+  const skipPersistCountRef = useRef(0)
   const isHydratingRef = useRef(true)
   const isSubmittingRef = useRef(false)
   const convertButtonDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -323,6 +325,7 @@ export default function CreatePostScreen() {
     handleScanWithLibrary,
     handleAttachWithCamera,
     handleAttachWithLibrary,
+    handleScanEquipment,
   } = useImageTranscription({
     onExtractionComplete: (data) => {
       // Set title if extracted
@@ -338,6 +341,29 @@ export default function CreatePostScreen() {
     onImageAttached: (uri) => {
       imageOpacity.setValue(0)
       setAttachedImageUri(uri)
+    },
+    onEquipmentIdentified: (equipmentName) => {
+      const newExercise: StructuredExerciseDraft = {
+        id: `auto-${Date.now()}`,
+        name: equipmentName,
+        sets: [
+          {
+            weight: '',
+            reps: '',
+            lastWorkoutWeight: null,
+            lastWorkoutReps: null,
+            targetRepsMin: null,
+            targetRepsMax: null,
+            targetRestSeconds: null,
+          },
+        ],
+      }
+
+      setStructuredData((prev) => [...prev, newExercise])
+      setIsStructuredMode(true)
+
+      // Feedback to user
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     },
   })
 
@@ -386,28 +412,67 @@ export default function CreatePostScreen() {
         setRoutines(userRoutines)
       }
     } catch (error) {
-      console.error('Error loading routines:', error)
+      console.error('[Routine] Error loading routines:', error)
     }
   }, [user])
 
+  // Track if we're waiting for routines to load before applying pending routine
+  const pendingRoutineWaitingForLoad = useRef(false)
+
   useEffect(() => {
     if (!pendingDraftRoutineId) {
+      pendingRoutineWaitingForLoad.current = false
       return
     }
 
     const routine = routines.find((item) => item.id === pendingDraftRoutineId)
+
     if (!routine) {
+      // Routines might not be loaded yet - mark that we're waiting
+      if (routines.length === 0) {
+        pendingRoutineWaitingForLoad.current = true
+      } else {
+        // Routines loaded but routine not found - routine may have been deleted
+        console.warn('[Routine] Not found:', pendingDraftRoutineId)
+        pendingRoutineWaitingForLoad.current = false
+        setPendingDraftRoutineId(null)
+        setPendingRoutineSource(null)
+      }
       return
     }
 
+    console.log(
+      '[Routine] Applied:',
+      routine.name,
+      '| source:',
+      pendingRoutineSource,
+    )
+    pendingRoutineWaitingForLoad.current = false
+
     setSelectedRoutine(routine)
     setIsStructuredMode(true)
-    setStructuredData([])
+    // Only clear structuredData if this is a fresh routine start (from route, not draft)
+    if (pendingRoutineSource === 'route') {
+      setStructuredData([])
+    }
     setLastRoutineWorkout(null)
 
     if (pendingRoutineSource === 'route' || !titleRef.current.trim()) {
       setWorkoutTitle(routine.name)
     }
+
+    // Persist the routine selection immediately to avoid losing it on navigation
+    void saveWorkoutDraft({
+      notes,
+      title: titleRef.current,
+      structuredData,
+      isStructuredMode: true,
+      selectedRoutineId: routine.id,
+      timerStartedAt: workoutTimerSerializableState.timerStartedAt,
+      timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
+    }).catch((error) =>
+      console.error('[Routine] Immediate persist failed:', error),
+    )
 
     let isMounted = true
 
@@ -426,10 +491,7 @@ export default function CreatePostScreen() {
           setLastRoutineWorkout(lastWorkout)
         }
       } catch (error) {
-        console.error(
-          '[applyPendingRoutine] Error loading last workout for routine:',
-          error,
-        )
+        console.error('[Routine] Error loading last workout:', error)
         if (isMounted) {
           setLastRoutineWorkout(null)
         }
@@ -446,7 +508,16 @@ export default function CreatePostScreen() {
     return () => {
       isMounted = false
     }
-  }, [pendingDraftRoutineId, pendingRoutineSource, routines, user])
+  }, [
+    pendingDraftRoutineId,
+    pendingRoutineSource,
+    routines,
+    user,
+    notes,
+    structuredData,
+    workoutTimerSerializableState.timerElapsedSeconds,
+    workoutTimerSerializableState.timerStartedAt,
+  ])
 
   // Track animation state to reset on each focus
   const [slideKey, setSlideKey] = useState(0)
@@ -550,8 +621,9 @@ export default function CreatePostScreen() {
       const effectiveRoutineId = selectedRoutineId || routineIdFromDraft || null
 
       if (effectiveRoutineId) {
+        const source = selectedRoutineId ? 'route' : 'draft'
         setPendingDraftRoutineId(effectiveRoutineId)
-        setPendingRoutineSource(selectedRoutineId ? 'route' : 'draft')
+        setPendingRoutineSource(source)
       } else {
         setPendingDraftRoutineId(null)
         setPendingRoutineSource(null)
@@ -569,7 +641,8 @@ export default function CreatePostScreen() {
         resetWorkoutTimer()
       }
 
-      skipNextPersistRef.current = true
+      // Skip the next 3 auto-saves to allow all hydration state changes to settle
+      skipPersistCountRef.current = 3
     } finally {
       isHydratingRef.current = false
     }
@@ -586,23 +659,24 @@ export default function CreatePostScreen() {
       return
     }
 
-    if (skipNextPersistRef.current) {
-      skipNextPersistRef.current = false
+    if (skipPersistCountRef.current > 0) {
+      skipPersistCountRef.current--
       return
     }
 
-    const selectedRoutineId =
-      selectedRoutine?.id ?? pendingDraftRoutineId ?? null
+    // Use selectedRoutine.id if available, fall back to pendingDraftRoutineId
+    // This ensures we persist the routine ID even while waiting for routines to load
+    const routineIdToSave = selectedRoutine?.id ?? pendingDraftRoutineId ?? null
 
     void saveWorkoutDraft({
       notes,
       title: workoutTitle,
       structuredData,
       isStructuredMode,
-      selectedRoutineId,
+      selectedRoutineId: routineIdToSave,
       timerStartedAt: workoutTimerSerializableState.timerStartedAt,
       timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-    }).catch((error) => console.error('Failed to save workout draft', error))
+    }).catch((error) => console.error('[Draft] Save failed:', error))
   }, [
     notes,
     workoutTitle,
@@ -681,6 +755,47 @@ export default function CreatePostScreen() {
     await toggleRecording()
   }
 
+  const handleDumbbellPress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    blurInputs()
+
+    try {
+      const hasSeenPrompt = await AsyncStorage.getItem(
+        '@has_seen_scan_equipment_prompt',
+      )
+
+      if (hasSeenPrompt) {
+        handleScanEquipment()
+        return
+      }
+
+      Alert.alert(
+        'Scan Equipment',
+        "Take a photo of the equipment you're using, and we'll add it to your workout.",
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Scan',
+            onPress: async () => {
+              await AsyncStorage.setItem(
+                '@has_seen_scan_equipment_prompt',
+                'true',
+              )
+              handleScanEquipment()
+            },
+          },
+        ],
+      )
+    } catch (error) {
+      console.error('Error checking scan prompt status:', error)
+      // Fallback to opening directly if storage fails
+      handleScanEquipment()
+    }
+  }
+
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
@@ -719,7 +834,7 @@ export default function CreatePostScreen() {
 
       let message = 'Well done on completing another workout!'
       let workoutNumber = 1
-      let weeklyTarget = 3
+      let weeklyTarget = 2
       let currentStreak = 0
 
       try {
@@ -739,10 +854,11 @@ export default function CreatePostScreen() {
         weeklyTarget = parseCommitment(profile.commitment)
 
         // Fetch current streak
-        const { currentStreak } = await database.stats.calculateStreak(
+        const streakResult = await database.stats.calculateStreak(
           user.id,
           weeklyTarget,
         )
+        currentStreak = streakResult.currentStreak ?? 0
 
         message = generateWorkoutMessage({
           workoutNumber,
@@ -754,7 +870,7 @@ export default function CreatePostScreen() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-      skipNextPersistRef.current = true
+      skipPersistCountRef.current = 1
       suppressDraftToastRef.current = true
       await clearWorkoutDraft()
       resetWorkoutTimer()
@@ -1615,6 +1731,23 @@ export default function CreatePostScreen() {
           </View>
         )}
 
+        {/* Floating Dumbbell Button */}
+        <TouchableOpacity
+          style={styles.dumbbellFab}
+          onPress={handleDumbbellPress}
+          disabled={isLoading || isProcessingImage || isTranscribing}
+        >
+          {isProcessingImage ? (
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <View style={styles.loaderRing}>
+                <View style={styles.loaderArc} />
+              </View>
+            </Animated.View>
+          ) : (
+            <Ionicons name="barbell" size={28} color={colors.white} />
+          )}
+        </TouchableOpacity>
+
         {/* Floating Microphone Button */}
         <TouchableOpacity
           style={[styles.micFab, isRecording && styles.micFabActive]}
@@ -1644,15 +1777,7 @@ export default function CreatePostScreen() {
             isProcessingImage || isRecording || isTranscribing || isLoading
           }
         >
-          {isProcessingImage ? (
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <View style={styles.loaderRing}>
-                <View style={styles.loaderArc} />
-              </View>
-            </Animated.View>
-          ) : (
-            <Ionicons name="camera" size={28} color={colors.white} />
-          )}
+          <Ionicons name="camera" size={28} color={colors.white} />
         </TouchableOpacity>
 
         {/* Image Picker Modal */}
@@ -1781,6 +1906,22 @@ const createStyles = (
       borderColor: 'transparent',
       borderTopColor: '#ffffff',
       borderRightColor: '#ffffff',
+    },
+    dumbbellFab: {
+      position: 'absolute',
+      bottom: 112 + insets.bottom,
+      right: 24,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
     },
     micFab: {
       position: 'absolute',

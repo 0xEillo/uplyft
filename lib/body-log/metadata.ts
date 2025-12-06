@@ -3,6 +3,15 @@ export interface BodyLogMetrics {
   body_fat_percentage: number | null
   bmi: number | null
   muscle_mass_kg?: number | null
+  lean_mass_kg?: number | null
+  fat_mass_kg?: number | null
+  score_v_taper?: number | null
+  score_chest?: number | null
+  score_shoulders?: number | null
+  score_abs?: number | null
+  score_arms?: number | null
+  score_back?: number | null
+  score_legs?: number | null
   analysis_summary?: string | null
 }
 
@@ -23,6 +32,15 @@ export interface BodyLogEntry {
   body_fat_percentage: number | null
   bmi: number | null
   muscle_mass_kg?: number | null
+  lean_mass_kg?: number | null
+  fat_mass_kg?: number | null
+  score_v_taper?: number | null
+  score_chest?: number | null
+  score_shoulders?: number | null
+  score_abs?: number | null
+  score_arms?: number | null
+  score_back?: number | null
+  score_legs?: number | null
   analysis_summary: string | null
 }
 

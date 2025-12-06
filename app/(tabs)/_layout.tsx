@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
-import { Tabs, useRouter } from 'expo-router'
 import { useNavigation } from '@react-navigation/native'
+import { Tabs, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -101,7 +101,13 @@ function TabLayoutContent() {
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
-  }, [data.workout, workoutPosted, isVisible, showShareScreen, setShowShareScreen])
+  }, [
+    data.workout,
+    workoutPosted,
+    isVisible,
+    showShareScreen,
+    setShowShareScreen,
+  ])
 
   const handleAnimationComplete = useCallback(() => {
     hideOverlay()
@@ -189,9 +195,13 @@ function TabLayoutContent() {
               // If already on home tab (index route), scroll to top
               const state = navigation.getState()
               const currentRoute = state?.routes[state.index]
-              const isOnHomeTab = currentRoute?.name === '(tabs)' && 
-                (currentRoute.state?.routes[currentRoute.state.index]?.name === 'index' || 
-                 !currentRoute.state?.routes[currentRoute.state.index])
+              const currentRouteState = currentRoute?.state
+              const isOnHomeTab =
+                currentRoute?.name === '(tabs)' &&
+                (currentRouteState?.index !== undefined
+                  ? currentRouteState.routes[currentRouteState.index]?.name ===
+                    'index'
+                  : true)
               if (isOnHomeTab) {
                 e.preventDefault()
                 scrollToTop('index')
@@ -258,8 +268,13 @@ function TabLayoutContent() {
               // If already on profile tab, scroll to top
               const state = navigation.getState()
               const currentRoute = state?.routes[state.index]
-              const isOnProfileTab = currentRoute?.name === '(tabs)' && 
-                currentRoute.state?.routes[currentRoute.state.index]?.name === 'profile'
+              const currentRouteState = currentRoute?.state
+              const isOnProfileTab =
+                currentRoute?.name === '(tabs)' &&
+                currentRouteState?.index !== undefined &&
+                currentRouteState.routes[currentRouteState.index]?.name ===
+                  'profile'
+
               if (isOnProfileTab) {
                 e.preventDefault()
                 scrollToTop('profile')

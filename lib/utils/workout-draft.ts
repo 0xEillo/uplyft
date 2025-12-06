@@ -64,15 +64,32 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
 
   const notesLength = draft.notes?.trim().length ?? 0
   const titleLength = draft.title?.trim().length ?? 0
-  
-  // Check if structured data has actual content (sets with weight or reps)
-  const hasStructuredContent = Array.isArray(draft.structuredData) &&
-    draft.structuredData.length > 0 &&
-    draft.structuredData.some((exercise) =>
-      exercise.sets.some((set) => set.weight.trim() || set.reps.trim())
-    )
 
-  return notesLength > 0 || titleLength > 0 || hasStructuredContent
+  // Consider a routine/template selection as content so we don't drop it on navigation
+  const hasRoutineSelection =
+    typeof draft.selectedRoutineId === 'string' &&
+    draft.selectedRoutineId.trim().length > 0
+
+  // Consider structured template rows as content, even if sets are still empty
+  const hasStructuredSkeleton =
+    Array.isArray(draft.structuredData) && draft.structuredData.length > 0
+
+  // Stronger signal: user started entering set data
+  const hasStructuredContent =
+    hasStructuredSkeleton &&
+    (draft.structuredData?.some((exercise) =>
+      exercise.sets.some((set) => set.weight.trim() || set.reps.trim()),
+    ) ??
+      false)
+
+  // Explicit check: only count as "draft" if there's actual data input or a routine selected
+  // Merely being in "structured mode" with an empty list isn't a draft.
+  return (
+    notesLength > 0 ||
+    titleLength > 0 ||
+    hasStructuredContent ||
+    hasRoutineSelection
+  )
 }
 
 export async function hasStoredDraft(): Promise<boolean> {

@@ -1,27 +1,27 @@
-import { Paywall } from '@/components/paywall'
+import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { useAuth } from '@/contexts/auth-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    getStandardsLadder,
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel,
+  getStandardsLadder,
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
@@ -65,6 +65,15 @@ const LEVEL_SCORES: Record<StrengthLevel, number> = {
   Advanced: 4,
   Elite: 5,
   'World Class': 6,
+}
+
+const LEVEL_IMAGES: Record<StrengthLevel, any> = {
+  Beginner: require('@/assets/images/lifter-levels/1.png'),
+  Novice: require('@/assets/images/lifter-levels/2.png'),
+  Intermediate: require('@/assets/images/lifter-levels/3.png'),
+  Advanced: require('@/assets/images/lifter-levels/4.png'),
+  Elite: require('@/assets/images/lifter-levels/5.png'),
+  'World Class': require('@/assets/images/lifter-levels/6.png'),
 }
 
 const ProgressRing = ({
@@ -116,7 +125,6 @@ const ProgressRing = ({
 
 export function StrengthStandardsView() {
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const router = useRouter()
@@ -129,7 +137,7 @@ export function StrengthStandardsView() {
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   )
-  const [paywallVisible, setPaywallVisible] = useState(false)
+  const [showLevelsSheet, setShowLevelsSheet] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -357,55 +365,46 @@ export function StrengthStandardsView() {
                 <Text style={styles.sectionHeaderText}>LIFTER LEVEL</Text>
               </View>
               <TouchableOpacity 
-                style={[styles.heroCard, !isProMember && styles.heroCardLocked]}
-                onPress={() => !isProMember && setPaywallVisible(true)}
-                activeOpacity={isProMember ? 1 : 0.7}
+                style={styles.heroCard}
+                activeOpacity={0.9}
+                onPress={() => setShowLevelsSheet(true)}
               >
-                {isProMember ? (
-                  <>
-                    <View style={styles.heroContent}>
-                      <View style={styles.heroLeft}>
-                        <Text style={styles.heroLevel}>
-                          {overallLevel.currentLevel}
-                        </Text>
-                      </View>
+                <View style={styles.heroContent}>
+                  <View style={[styles.heroLeft, styles.heroLevelContainer]}>
+                    <Text style={styles.heroLevel}>
+                      {overallLevel.currentLevel}
+                    </Text>
+                    <Image
+                      source={LEVEL_IMAGES[overallLevel.currentLevel]}
+                      style={styles.heroLevelImage}
+                      contentFit="contain"
+                    />
+                  </View>
+                </View>
+                {overallLevel.nextLevel && (
+                  <View style={styles.heroProgress}>
+                    <View style={styles.heroProgressLabels}>
+                      <Text style={styles.heroProgressCurrent}>
+                        {overallLevel.currentLevel}
+                      </Text>
+                      <Text style={styles.heroProgressNext}>
+                        {overallLevel.nextLevel}
+                      </Text>
                     </View>
-                    {overallLevel.nextLevel && (
-                      <View style={styles.heroProgress}>
-                        <View style={styles.heroProgressLabels}>
-                          <Text style={styles.heroProgressCurrent}>
-                            {overallLevel.currentLevel}
-                          </Text>
-                          <Text style={styles.heroProgressNext}>
-                            {overallLevel.nextLevel}
-                          </Text>
-                        </View>
-                        <View style={styles.heroProgressBar}>
-                          <View
-                            style={[
-                              styles.heroProgressFill,
-                              {
-                                width: `${overallLevel.progress}%`,
-                                backgroundColor: colors.primary,
-                              },
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.heroProgressPercent}>
-                          {Math.round(overallLevel.progress)}% to next level
-                        </Text>
-                      </View>
-                    )}
-                  </>
-                ) : (
-                  <View style={styles.lockedHeroContainer}>
-                    <View style={[styles.lockedHeroBlur, { backgroundColor: colors.feedCardBackground + 'E0' }]} />
-                    <View style={styles.lockedHeroContent}>
-                      <View style={styles.lockedIconCircle}>
-                        <Ionicons name="lock-closed" size={24} color={colors.primary} />
-                      </View>
-                      <Text style={styles.unlockTitle}>Unlock Lifter Level</Text>
+                    <View style={styles.heroProgressBar}>
+                      <View
+                        style={[
+                          styles.heroProgressFill,
+                          {
+                            width: `${overallLevel.progress}%`,
+                            backgroundColor: colors.primary,
+                          },
+                        ]}
+                      />
                     </View>
+                    <Text style={styles.heroProgressPercent}>
+                      {Math.round(overallLevel.progress)}% to next level
+                    </Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -448,24 +447,18 @@ export function StrengthStandardsView() {
                       <Text style={styles.groupName}>{group.name}</Text>
                     </View>
                     <View style={styles.groupRight}>
-                      {isProMember ? (
-                        !isGroupExpanded && (
-                          <View
-                            style={[
-                              styles.levelBadge,
-                              { backgroundColor: getLevelColor(group.level) },
-                            ]}
-                          >
-                            <Text style={styles.levelBadgeText}>{group.level}</Text>
-                          </View>
-                        )
-                      ) : (
-                        <View style={styles.lockedBadge}>
-                          <Ionicons name="lock-closed" size={12} color={colors.primary} />
+                      {!isGroupExpanded && (
+                        <View
+                          style={[
+                            styles.levelBadge,
+                            { backgroundColor: getLevelColor(group.level) },
+                          ]}
+                        >
+                          <Text style={styles.levelBadgeText}>{group.level}</Text>
                         </View>
                       )}
                       
-                      {isProMember && group.level !== 'World Class' ? (
+                      {group.level !== 'World Class' ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                           {isGroupExpanded && (
                             <Text style={styles.groupProgressText}>
@@ -540,14 +533,7 @@ export function StrengthStandardsView() {
                               </View>
 
                               <View style={styles.exerciseRight}>
-                                {strengthInfo && !isProMember ? (
-                                  <TouchableOpacity 
-                                    style={styles.lockedBadge}
-                                    onPress={() => setPaywallVisible(true)}
-                                  >
-                                    <Ionicons name="lock-closed" size={14} color={colors.primary} />
-                                  </TouchableOpacity>
-                                ) : strengthInfo ? (
+                                {strengthInfo ? (
                                   <View
                                     style={[
                                       styles.levelBadge,
@@ -582,7 +568,7 @@ export function StrengthStandardsView() {
                             {isExpanded && allLevels && profile?.weight_kg && (
                               <>
                                 {/* Progress bar for current level */}
-                                {strengthInfo && isProMember && (
+                                {strengthInfo && (
                                   <View style={styles.exerciseProgressContainer}>
                                     <View style={styles.exerciseProgressBar}>
                                       <View
@@ -603,11 +589,11 @@ export function StrengthStandardsView() {
                                     const targetWeight = Math.ceil(
                                       (profile.weight_kg || 0) * levelStandard.multiplier,
                                     )
-                                    // Only show current level / passed status if PRO
+                                    
                                     const isCurrentLevel =
-                                      isProMember && strengthInfo?.level === levelStandard.level
+                                      strengthInfo?.level === levelStandard.level
                                     const isPassed =
-                                      isProMember && strengthInfo
+                                      strengthInfo
                                         ? allLevels.findIndex(
                                             (l) => l.level === strengthInfo.level,
                                           ) >= idx
@@ -663,28 +649,21 @@ export function StrengthStandardsView() {
                                           </View>
                                         </View>
                                         <View style={styles.standardRight}>
-                                          {isProMember ? (
-                                            <Text
-                                              style={[
-                                                styles.standardWeight,
-                                                isCurrentLevel && {
-                                                  color: getLevelColor(
-                                                    levelStandard.level,
-                                                  ),
-                                                },
-                                              ]}
-                                            >
-                                              {formatWeight(targetWeight, {
-                                                maximumFractionDigits:
-                                                  weightUnit === 'kg' ? 0 : 0,
-                                              })}
-                                            </Text>
-                                          ) : (
-                                            <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6}}>
-                                              <Ionicons name="lock-closed" size={12} color={colors.textSecondary} />
-                                              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>PRO</Text>
-                                            </View>
-                                          )}
+                                          <Text
+                                            style={[
+                                              styles.standardWeight,
+                                              isCurrentLevel && {
+                                                color: getLevelColor(
+                                                  levelStandard.level,
+                                                ),
+                                              },
+                                            ]}
+                                          >
+                                            {formatWeight(targetWeight, {
+                                              maximumFractionDigits:
+                                                weightUnit === 'kg' ? 0 : 0,
+                                            })}
+                                          </Text>
                                         </View>
                                       </View>
                                     )
@@ -705,13 +684,15 @@ export function StrengthStandardsView() {
         </ScrollView>
       )}
 
-      {/* Paywall Modal */}
-      <Paywall
-        visible={paywallVisible}
-        onClose={() => setPaywallVisible(false)}
-        title="Unlock Strength Standards"
-        message="See your strength level for each lift and track your progress towards Elite."
-      />
+      {/* Lifter Levels Sheet */}
+      {overallLevel && (
+        <LifterLevelsSheet
+          isVisible={showLevelsSheet}
+          onClose={() => setShowLevelsSheet(false)}
+          currentLevel={overallLevel.currentLevel}
+          progressToNext={overallLevel.progress}
+        />
+      )}
     </View>
   )
 }
@@ -750,10 +731,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     heroContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      alignItems: 'center',
     },
     heroLeft: {
       flex: 1,
+    },
+    heroLevelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    heroLevelImage: {
+      width: 120,
+      height: 120,
+      marginTop: -20,
+      marginBottom: -20,
+      marginRight: -10,
     },
     heroLevel: {
       fontSize: 32,
@@ -797,77 +790,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
 
     // Locked Hero
-    heroCardLocked: {
-      paddingHorizontal: 0,
-      paddingVertical: 0,
-      overflow: 'hidden',
-      minHeight: 140,
-    },
-    lockedHeroContainer: {
-      flex: 1,
-      padding: 20,
-      justifyContent: 'center',
-      alignItems: 'center',
-      position: 'relative',
-    },
-    lockedHeroBlur: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 1,
-    },
-    lockedHeroContent: {
-      alignItems: 'center',
-      zIndex: 2,
-      position: 'relative',
-    },
-    lockedIconCircle: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.background,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    unlockTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    unlockSubtitle: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-
+    
     // Redacted / Locked Elements
-    redactedContainer: {
-      justifyContent: 'center',
-      gap: 6,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    redactedLine: {
-      width: 60,
-      height: 16,
-      backgroundColor: colors.border,
-      borderRadius: 4,
-    },
-    lockedBadge: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: colors.primary + '15',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.primary + '30',
-    },
 
     // Section Header
     sectionHeader: {

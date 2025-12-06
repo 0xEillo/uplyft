@@ -2300,6 +2300,14 @@ export const database = {
         throw error
       }
 
+      // Sync weight to user profile if provided
+      if (payload.weight_kg !== undefined) {
+        await supabase
+          .from('profiles')
+          .update({ weight_kg: payload.weight_kg })
+          .eq('id', userId)
+      }
+
       return data
     },
 
@@ -2409,6 +2417,62 @@ export const database = {
     },
 
     /**
+     * Get paginated entries for a user with their images
+     * Returns entries and whether there are more to load
+     */
+    async getEntriesPage(
+      userId: string,
+      page: number = 0,
+      pageSize: number = 40,
+    ): Promise<{
+      entries: any[]
+      hasMore: boolean
+    }> {
+      const from = page * pageSize
+      const to = from + pageSize
+
+      const { data, error, count } = await supabase
+        .from('body_log_entries')
+        .select(
+          `
+          id,
+          user_id,
+          created_at,
+          weight_kg,
+          body_fat_percentage,
+          bmi,
+          muscle_mass_kg,
+          analysis_summary,
+          body_log_images (
+            id,
+            entry_id,
+            user_id,
+            file_path,
+            sequence,
+            created_at
+          )
+        `,
+          { count: 'exact' },
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(from, to - 1)
+
+      if (error) throw error
+
+      // Transform body_log_images to images for consistency
+      const transformedData = (data ?? []).map((entry: any) => ({
+        ...entry,
+        images: entry.body_log_images || [],
+      }))
+
+      return {
+        entries: transformedData,
+        hasMore: count !== null ? from + transformedData.length < count : false,
+      }
+    },
+
+    /**
      * Update entry metrics (weight, body fat %, BMI)
      */
     async updateEntryMetrics(
@@ -2429,6 +2493,14 @@ export const database = {
 
       if (error) {
         throw error
+      }
+
+      // Sync weight to user profile if provided
+      if (metrics.weight_kg !== undefined && data?.user_id) {
+        await supabase
+          .from('profiles')
+          .update({ weight_kg: metrics.weight_kg })
+          .eq('id', data.user_id)
       }
 
       return data

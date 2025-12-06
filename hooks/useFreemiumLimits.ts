@@ -3,7 +3,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { supabase } from '@/lib/supabase'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-const FREE_TIER_WEEKLY_LIMIT = 3
+const FREE_TIER_WEEKLY_LIMIT = 2
 
 export function useFreemiumLimits() {
   const { user } = useAuth()

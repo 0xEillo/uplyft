@@ -5,20 +5,18 @@ import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
-import { supabase } from '@/lib/supabase'
-import {
-  getBodyLogImageUrls,
-} from '@/lib/utils/body-log-storage'
+import { getThumbnailUrlsWithPrefetch } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Image } from 'expo-image'
 import * as Haptics from 'expo-haptics'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
-  SectionList,
+  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -31,7 +29,10 @@ const IMAGE_SPACING = 4
 const NUM_COLUMNS = 2
 const GRID_PADDING = 16
 const IMAGE_SIZE =
-  (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_SPACING) / NUM_COLUMNS
+  (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_SPACING * (NUM_COLUMNS - 1)) /
+  NUM_COLUMNS
+
+const PAGE_SIZE = 40
 
 // Tutorial storage key (must match the one in profile page)
 const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
@@ -43,20 +44,35 @@ function formatSectionDate(dateString: string): string {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
-  const imageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const imageDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  )
 
   if (imageDate.getTime() === today.getTime()) {
     return 'Today'
   } else if (imageDate.getTime() === yesterday.getTime()) {
     return 'Yesterday'
   } else {
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December']
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ]
     const month = monthNames[date.getMonth()]
     const day = date.getDate()
     const year = date.getFullYear()
 
-    // Show year only if not current year
     if (year === now.getFullYear()) {
       return `${month} ${day}`
     } else {
@@ -71,52 +87,39 @@ function getDateKey(dateString: string): string {
   return date.toISOString().split('T')[0]
 }
 
-type ImageLoadStatus = 'idle' | 'loading' | 'loaded' | 'error'
-
-interface EntryWithSignedUrls extends BodyLogEntryWithImages {
-  signedUrls: (string | null)[]
-  imageLoadStatus: ImageLoadStatus
+interface EntryWithSignedUrl extends BodyLogEntryWithImages {
+  thumbnailUrl: string | null
 }
 
-interface EntrySection {
+interface Section {
   title: string
   dateKey: string
-  data: EntryWithSignedUrls[]
+  entries: EntryWithSignedUrl[]
 }
 
 interface BodyLogEntryItemProps {
-  entry: EntryWithSignedUrls
-  onPress: (entry: EntryWithSignedUrls) => void
-  onLoadStart: (entryId: string) => void
-  onLoadSuccess: (entryId: string) => void
-  onLoadError: (entryId: string) => void
+  entry: EntryWithSignedUrl
+  onPress: (entry: EntryWithSignedUrl) => void
 }
 
 const BodyLogEntryItem = memo(
-  ({
-    entry,
-    onPress,
-    onLoadStart,
-    onLoadSuccess,
-    onLoadError,
-  }: BodyLogEntryItemProps) => {
+  ({ entry, onPress }: BodyLogEntryItemProps) => {
     const colors = useThemedColors()
     const { formatWeight } = useUnit()
     const styles = useMemo(() => createImageItemStyles(colors), [colors])
 
     const hasImages = entry.images.length > 0
     const handlePress = useCallback(() => {
-      // Allow opening all entries (including empty ones for editing)
       onPress(entry)
     }, [entry, onPress])
 
-    const primaryImageUrl = entry.signedUrls[0]
+    const thumbnailUrl = entry.thumbnailUrl
     const imageCount = entry.images.length
-    const hasWeight =
-      entry.weight_kg !== null && entry.weight_kg !== undefined
+    const hasWeight = entry.weight_kg !== null && entry.weight_kg !== undefined
     const formattedWeight = hasWeight ? formatWeight(entry.weight_kg) : null
     const isEmpty = !hasImages && !hasWeight
-    const hasBodyScan = entry.body_fat_percentage !== null || entry.bmi !== null
+    const hasBodyScan =
+      entry.body_fat_percentage !== null || entry.bmi !== null
 
     return (
       <TouchableOpacity
@@ -124,32 +127,36 @@ const BodyLogEntryItem = memo(
         onPress={handlePress}
         activeOpacity={0.9}
       >
-        {primaryImageUrl ? (
+        {thumbnailUrl ? (
           <>
             <Image
-              source={{ uri: primaryImageUrl }}
+              source={{ uri: thumbnailUrl }}
               style={styles.image}
-              resizeMode="cover"
-              onLoadStart={() => onLoadStart(entry.id)}
-              onLoad={() => onLoadSuccess(entry.id)}
-              onError={() => onLoadError(entry.id)}
+              contentFit="cover"
+              cachePolicy="disk"
+              transition={200}
+              recyclingKey={entry.id}
             />
-            {entry.imageLoadStatus !== 'loaded' && (
-              <View style={styles.imageLoadingOverlay}>
-                <ActivityIndicator size="small" color={colors.primary} />
-              </View>
-            )}
             <View style={styles.overlaysContainer}>
               <View style={styles.topBadgesRow}>
                 {hasBodyScan && (
                   <View style={styles.scanBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color={colors.white} />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color={colors.white}
+                    />
                     <Text style={styles.scanBadgeText}>Scanned</Text>
                   </View>
                 )}
                 {imageCount > 1 && (
                   <View style={[styles.imageBadge, { marginLeft: 'auto' }]}>
-                    <Ionicons name="images" size={12} color={colors.white} style={{ marginRight: 4 }} />
+                    <Ionicons
+                      name="images"
+                      size={12}
+                      color={colors.white}
+                      style={{ marginRight: 4 }}
+                    />
                     <Text style={styles.imageBadgeText}>{imageCount}</Text>
                   </View>
                 )}
@@ -173,11 +180,7 @@ const BodyLogEntryItem = memo(
           </View>
         ) : isEmpty ? (
           <View style={styles.emptyEntryCard}>
-            <Ionicons
-              name="add"
-              size={28}
-              color={colors.primary}
-            />
+            <Ionicons name="add" size={28} color={colors.primary} />
           </View>
         ) : (
           <View style={styles.imageLoadingOverlay}>
@@ -190,10 +193,10 @@ const BodyLogEntryItem = memo(
   (prevProps, nextProps) => {
     return (
       prevProps.entry.id === nextProps.entry.id &&
-      prevProps.entry.signedUrls[0] === nextProps.entry.signedUrls[0] &&
-      prevProps.entry.imageLoadStatus === nextProps.entry.imageLoadStatus &&
+      prevProps.entry.thumbnailUrl === nextProps.entry.thumbnailUrl &&
       prevProps.entry.weight_kg === nextProps.entry.weight_kg &&
-      prevProps.entry.body_fat_percentage === nextProps.entry.body_fat_percentage &&
+      prevProps.entry.body_fat_percentage ===
+        nextProps.entry.body_fat_percentage &&
       prevProps.entry.bmi === nextProps.entry.bmi
     )
   },
@@ -201,42 +204,93 @@ const BodyLogEntryItem = memo(
 
 BodyLogEntryItem.displayName = 'BodyLogEntryItem'
 
+interface SectionItemProps {
+  section: Section
+  onEntryPress: (entry: EntryWithSignedUrl) => void
+}
+
+const SectionItem = memo(
+  ({ section, onEntryPress }: SectionItemProps) => {
+    const colors = useThemedColors()
+
+    return (
+      <View>
+        <View
+          style={[sectionStyles.header, { backgroundColor: colors.background }]}
+        >
+          <Text style={[sectionStyles.headerText, { color: colors.text }]}>
+            {section.title}
+          </Text>
+        </View>
+        <View style={sectionStyles.grid}>
+          {section.entries.map((entry) => (
+            <BodyLogEntryItem
+              key={entry.id}
+              entry={entry}
+              onPress={onEntryPress}
+            />
+          ))}
+        </View>
+      </View>
+    )
+  },
+  (prevProps, nextProps) => {
+    if (prevProps.section.dateKey !== nextProps.section.dateKey) return false
+    if (prevProps.section.entries.length !== nextProps.section.entries.length)
+      return false
+    // Compare entry IDs and thumbnail URLs
+    for (let i = 0; i < prevProps.section.entries.length; i++) {
+      const prev = prevProps.section.entries[i]
+      const next = nextProps.section.entries[i]
+      if (
+        prev.id !== next.id ||
+        prev.thumbnailUrl !== next.thumbnailUrl ||
+        prev.weight_kg !== next.weight_kg
+      ) {
+        return false
+      }
+    }
+    return true
+  },
+)
+
+SectionItem.displayName = 'SectionItem'
+
+const sectionStyles = StyleSheet.create({
+  header: {
+    paddingTop: 24,
+    paddingBottom: 12,
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: IMAGE_SPACING,
+  },
+})
+
 export default function BodyLogScreen() {
   const colors = useThemedColors()
   const { user } = useAuth()
   const router = useRouter()
-  const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
 
-  const [userGender, setUserGender] = useState<'male' | 'female' | null>(null)
   const [shouldExit, setShouldExit] = useState(false)
-
-  // Mark tutorial as completed when user visits body log for the first time
-  useEffect(() => {
-    const markTutorialCompleted = async () => {
-      try {
-        await AsyncStorage.setItem(HAS_VISITED_BODY_LOG_KEY, 'true')
-      } catch (error) {
-        console.error('Error marking tutorial as completed:', error)
-      }
-    }
-
-    markTutorialCompleted()
-  }, [])
-
-  const [entryOrder, setEntryOrder] = useState<string[]>([])
-  const [entryStore, setEntryStore] = useState<
-    Record<string, EntryWithSignedUrls>
-  >({})
+  const [entries, setEntries] = useState<EntryWithSignedUrl[]>([])
   const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const pageRef = useRef(0)
 
+  // Build sections from entries
   const sections = useMemo(() => {
-    const entries = entryOrder
-      .map((id) => entryStore[id])
-      .filter((entry): entry is EntryWithSignedUrls => Boolean(entry))
+    const grouped = new Map<string, EntryWithSignedUrl[]>()
 
-    // Group entries by date
-    const grouped = new Map<string, EntryWithSignedUrls[]>()
     entries.forEach((entry) => {
       const dateKey = getDateKey(entry.created_at)
       if (!grouped.has(dateKey)) {
@@ -245,131 +299,132 @@ export default function BodyLogScreen() {
       grouped.get(dateKey)!.push(entry)
     })
 
-    // Convert to sections array and sort by date (newest first)
-    const sectionsArray: EntrySection[] = Array.from(grouped.entries())
-      .map(([dateKey, data]) => ({
-        title: formatSectionDate(data[0].created_at),
+    const result: Section[] = Array.from(grouped.entries())
+      .map(([dateKey, sectionEntries]) => ({
         dateKey,
-        data,
+        title: formatSectionDate(sectionEntries[0].created_at),
+        entries: sectionEntries,
       }))
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
 
-    return sectionsArray
-  }, [entryOrder, entryStore])
+    return result
+  }, [entries])
 
-  // Load entries function that can be called on mount and on focus
-  const loadEntries = useCallback(async () => {
-    if (!user) {
-      setEntryOrder([])
-      setEntryStore({})
-      setIsInitialLoading(false)
-      setUserGender(null)
-      return
-    }
+  // Fetch signed URLs for entries
+  const fetchThumbnailUrls = useCallback(
+    async (
+      rawEntries: BodyLogEntryWithImages[],
+    ): Promise<EntryWithSignedUrl[]> => {
+      // Collect all first-image file paths
+      const pathIndexMap = new Map<string, number>()
+      const paths: string[] = []
 
-    setIsInitialLoading(true)
-
-    try {
-      // Fetch user profile for gender
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('gender')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.gender) {
-        if (profile.gender === 'male' || profile.gender === 'female') {
-          setUserGender(profile.gender)
+      rawEntries.forEach((entry, index) => {
+        if (entry.images.length > 0) {
+          const path = entry.images[0].file_path
+          if (!pathIndexMap.has(path)) {
+            pathIndexMap.set(path, paths.length)
+            paths.push(path)
+          }
         }
+      })
+
+      // Get thumbnail URLs with prefetch
+      let urls: string[] = []
+      if (paths.length > 0) {
+        urls = await getThumbnailUrlsWithPrefetch(paths)
       }
 
-      const entries = await database.bodyLog.getAllEntries(user.id)
+      // Map URLs back to entries
+      return rawEntries.map((entry) => {
+        if (entry.images.length > 0) {
+          const path = entry.images[0].file_path
+          const pathIndex = pathIndexMap.get(path)
+          return {
+            ...entry,
+            thumbnailUrl: pathIndex !== undefined ? urls[pathIndex] : null,
+          }
+        }
+        return { ...entry, thumbnailUrl: null }
+      })
+    },
+    [],
+  )
 
-      if (!entries || entries.length === 0) {
-        setEntryOrder([])
-        setEntryStore({})
+  // Load initial entries
+  const loadEntries = useCallback(
+    async (refresh = false) => {
+      if (!user) {
+        setEntries([])
         setIsInitialLoading(false)
         return
       }
 
-      // Collect all image file paths from all entries
-      const allFilePaths: string[] = []
-      const filePathToEntryMap: Record<string, { entryId: string; imageIndex: number }> = {}
+      if (refresh) {
+        setIsRefreshing(true)
+        pageRef.current = 0
+      } else {
+        setIsInitialLoading(true)
+      }
 
-      entries.forEach((entry: any) => {
-        const images = entry.images || []
-        if (Array.isArray(images)) {
-          images.forEach((image, imageIndex) => {
-            allFilePaths.push(image.file_path)
-            filePathToEntryMap[image.file_path] = { entryId: entry.id, imageIndex }
-          })
+      try {
+        // Mark tutorial as completed
+        await AsyncStorage.setItem(HAS_VISITED_BODY_LOG_KEY, 'true')
+
+        const { entries: rawEntries, hasMore: more } =
+          await database.bodyLog.getEntriesPage(user.id, 0, PAGE_SIZE)
+
+        if (!rawEntries || rawEntries.length === 0) {
+          setEntries([])
+          setHasMore(false)
+          return
         }
-      })
 
-      // Get all signed URLs in one call
-      const signedUrls = allFilePaths.length > 0 ? await getBodyLogImageUrls(allFilePaths) : []
-
-      // Build entries with signed URLs
-      const entriesWithUrls: EntryWithSignedUrls[] = entries.map((entry: any) => {
-        const images = entry.images || []
-        return {
-          ...entry,
-          images: Array.isArray(images) ? images : [],
-          signedUrls: Array.isArray(images)
-            ? images.map((image) => {
-                const filePathIndex = allFilePaths.indexOf(image.file_path)
-                return filePathIndex >= 0 ? signedUrls[filePathIndex] ?? null : null
-              })
-            : [],
-          imageLoadStatus: 'idle' as ImageLoadStatus,
-        }
-      })
-
-      setEntryStore(() => {
-        const next: Record<string, EntryWithSignedUrls> = {}
-        entriesWithUrls.forEach((entry) => {
-          next[entry.id] = entry
-        })
-        return next
-      })
-      setEntryOrder(entriesWithUrls.map((entry) => entry.id))
-    } catch (error) {
-      console.error('Error loading body log entries:', error)
-    } finally {
-      setIsInitialLoading(false)
-    }
-  }, [user])
-
-  // Reload data when screen comes into focus (user navigates back)
-  useFocusEffect(
-    useCallback(() => {
-      loadEntries()
-    }, [loadEntries])
+        const entriesWithUrls = await fetchThumbnailUrls(rawEntries)
+        setEntries(entriesWithUrls)
+        setHasMore(more)
+        pageRef.current = 1
+      } catch (error) {
+        console.error('Error loading body log entries:', error)
+      } finally {
+        setIsInitialLoading(false)
+        setIsRefreshing(false)
+      }
+    },
+    [user, fetchThumbnailUrls],
   )
 
-  const markEntryImageStatus = useCallback(
-    (entryId: string, status: ImageLoadStatus) => {
-      setEntryStore((prev) => {
-        const current = prev[entryId]
-        if (!current || current.imageLoadStatus === status) {
-          return prev
-        }
+  // Load more entries (pagination)
+  const loadMoreEntries = useCallback(async () => {
+    if (!user || isLoadingMore || !hasMore) return
 
-        if (current.imageLoadStatus === 'loaded' && status === 'loading') {
-          // Keep loaded thumbnails from regressing when FlatList re-renders.
-          return prev
-        }
+    setIsLoadingMore(true)
+    try {
+      const { entries: rawEntries, hasMore: more } =
+        await database.bodyLog.getEntriesPage(
+          user.id,
+          pageRef.current,
+          PAGE_SIZE,
+        )
 
-        return {
-          ...prev,
-          [entryId]: {
-            ...current,
-            imageLoadStatus: status,
-          },
-        }
-      })
-    },
-    [],
+      if (rawEntries.length > 0) {
+        const entriesWithUrls = await fetchThumbnailUrls(rawEntries)
+        setEntries((prev) => [...prev, ...entriesWithUrls])
+        pageRef.current += 1
+      }
+      setHasMore(more)
+    } catch (error) {
+      console.error('Error loading more entries:', error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [user, isLoadingMore, hasMore, fetchThumbnailUrls])
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadEntries(true)
+    }, [loadEntries]),
   )
 
   const handleBackPress = useCallback(() => {
@@ -381,13 +436,16 @@ export default function BodyLogScreen() {
   }, [router])
 
   const handleEntryOpen = useCallback(
-    (entry: EntryWithSignedUrls) => {
-      const params: { entryId: string; createdAt: string; [key: string]: string } = {
+    (entry: EntryWithSignedUrl) => {
+      const params: {
+        entryId: string
+        createdAt: string
+        [key: string]: string
+      } = {
         entryId: entry.id,
         createdAt: entry.created_at,
       }
 
-      // Add metrics if they exist
       if (entry.weight_kg !== null) {
         params.weightKg = entry.weight_kg.toString()
       }
@@ -406,27 +464,6 @@ export default function BodyLogScreen() {
     [router],
   )
 
-  const handleImageLoadStart = useCallback(
-    (entryId: string) => {
-      markEntryImageStatus(entryId, 'loading')
-    },
-    [markEntryImageStatus],
-  )
-
-  const handleImageLoadSuccess = useCallback(
-    (entryId: string) => {
-      markEntryImageStatus(entryId, 'loaded')
-    },
-    [markEntryImageStatus],
-  )
-
-  const handleImageLoadError = useCallback(
-    (entryId: string) => {
-      markEntryImageStatus(entryId, 'error')
-    },
-    [markEntryImageStatus],
-  )
-
   const handleAddNewEntry = useCallback(async () => {
     if (!user) {
       alert('You must be logged in to add entries')
@@ -435,8 +472,6 @@ export default function BodyLogScreen() {
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
-    // Navigate to detail page with special "new" ID
-    // Entry will be created when user adds data
     router.push({
       pathname: '/body-log/[entryId]',
       params: {
@@ -445,38 +480,35 @@ export default function BodyLogScreen() {
     })
   }, [user, router])
 
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: EntrySection }) => (
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>{section.title}</Text>
-      </View>
+  const handleRefresh = useCallback(() => {
+    loadEntries(true)
+  }, [loadEntries])
+
+  const handleEndReached = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      loadMoreEntries()
+    }
+  }, [isLoadingMore, hasMore, loadMoreEntries])
+
+  const renderSection = useCallback(
+    ({ item }: { item: Section }) => (
+      <SectionItem section={item} onEntryPress={handleEntryOpen} />
     ),
-    [styles],
+    [handleEntryOpen],
   )
 
-  const renderSectionContent = useCallback(
-    ({ section }: { section: EntrySection }) => (
-      <View style={styles.sectionContent}>
-        {section.data.map((item) => (
-          <BodyLogEntryItem
-            key={item.id}
-            entry={item}
-            onPress={handleEntryOpen}
-            onLoadStart={handleImageLoadStart}
-            onLoadSuccess={handleImageLoadSuccess}
-            onLoadError={handleImageLoadError}
-          />
-        ))}
+  const keyExtractor = useCallback((item: Section) => item.dateKey, [])
+
+  const ListFooterComponent = useCallback(() => {
+    if (!isLoadingMore) return null
+    return (
+      <View style={footerStyles.loader}>
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
-    ),
-    [
-      handleImageLoadError,
-      handleImageLoadStart,
-      handleImageLoadSuccess,
-      handleEntryOpen,
-      styles,
-    ],
-  )
+    )
+  }, [isLoadingMore, colors.primary])
+
+  const dynamicStyles = useMemo(() => createStyles(colors), [colors])
 
   return (
     <SlideInView
@@ -484,60 +516,70 @@ export default function BodyLogScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScreenHeader
-        title="Body log"
-        onLeftPress={handleBackPress}
-        leftIcon="arrow-back"
-        rightIcon="add"
-        onRightPress={handleAddNewEntry}
-      />
-
-      {isInitialLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : sections.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <View style={styles.addNewEntryContainer}>
-          </View>
-          <View style={styles.emptyStateContent}>
-            <Text style={styles.emptyStateDescription}>
-              Track your fitness journey with weight and progress photos.
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          renderItem={() => null}
-          renderSectionHeader={renderSectionHeader}
-          renderSectionFooter={renderSectionContent}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={true}
-          ListHeaderComponent={
-            <View style={styles.addNewEntryContainer} />
-          }
+      <View style={[dynamicStyles.container, { paddingTop: insets.top }]}>
+        <ScreenHeader
+          title="Body log"
+          onLeftPress={handleBackPress}
+          leftIcon="arrow-back"
+          rightIcon="add"
+          onRightPress={handleAddNewEntry}
         />
-      )}
 
-    </View>
+        {isInitialLoading ? (
+          <View style={dynamicStyles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : entries.length === 0 ? (
+          <View style={dynamicStyles.emptyStateContainer}>
+            <View style={dynamicStyles.emptyStateContent}>
+              <Text style={dynamicStyles.emptyStateDescription}>
+                Track your fitness journey with weight and progress photos.
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <FlatList
+            data={sections}
+            renderItem={renderSection}
+            keyExtractor={keyExtractor}
+            contentContainerStyle={dynamicStyles.gridContent}
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={5}
+            windowSize={5}
+            initialNumToRender={3}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={ListFooterComponent}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+              />
+            }
+          />
+        )}
+      </View>
     </SlideInView>
   )
 }
+
+const footerStyles = StyleSheet.create({
+  loader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+})
 
 const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     imageContainer: {
       width: IMAGE_SIZE,
       height: IMAGE_SIZE,
-      margin: IMAGE_SPACING / 2,
       borderRadius: 2,
       overflow: 'hidden',
       backgroundColor: colors.backgroundLight,
-      // Smoother shadow
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -593,7 +635,6 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 2,
     },
-    
     weightCard: {
       flex: 1,
       width: '100%',
@@ -602,9 +643,6 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       backgroundColor: colors.backgroundLight,
       padding: 12,
-    },
-    weightCardIcon: {
-      marginBottom: 4,
     },
     weightCardLabel: {
       fontSize: 11,
@@ -644,15 +682,12 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: '100%',
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background, // Match screen background for "hole" effect or light for card
+      backgroundColor: colors.background,
       borderRadius: 12,
       borderWidth: 2,
       borderColor: colors.border,
       borderStyle: 'dashed',
     },
-    emptyEntryIcon: {},
-    emptyEntryLabel: {},
-    emptyEntryHint: {},
   })
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
@@ -689,28 +724,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: GRID_PADDING,
       paddingVertical: 8,
       paddingBottom: 120,
-    },
-    sectionContent: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginLeft: -IMAGE_SPACING / 2,
-      marginRight: -IMAGE_SPACING / 2,
-    },
-    sectionHeader: {
-      backgroundColor: colors.background,
-      paddingTop: 24,
-      paddingBottom: 12,
-      paddingHorizontal: 0,
-    },
-    sectionHeaderText: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.text,
-      letterSpacing: -0.4,
-    },
-    addNewEntryContainer: {
-      paddingHorizontal: GRID_PADDING,
-      paddingTop: 8,
-      paddingBottom: 12,
     },
   })
