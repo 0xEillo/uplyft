@@ -20,8 +20,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import { EXERCISE_IMAGE_URL } from '@/constants/assets'
 
 export default function SelectExerciseScreen() {
   const colors = useThemedColors()
@@ -312,6 +315,11 @@ export default function SelectExerciseScreen() {
                   onPress={() => handleSelectExercise(exercise)}
                   disabled={isCurrentExercise}
                 >
+                  <Image
+                    source={{ uri: EXERCISE_IMAGE_URL }}
+                    style={styles.exerciseThumbnail}
+                    resizeMode="contain"
+                  />
                   <View style={styles.exerciseItemContent}>
                     <Text
                       style={[
@@ -433,6 +441,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     exerciseItemSelected: {
       backgroundColor: colors.primaryLight,
+    },
+    exerciseThumbnail: {
+      width: 40,
+      height: 40,
+      marginRight: 12,
+      borderRadius: 4,
     },
     exerciseItemContent: {
       flex: 1,

@@ -26,6 +26,7 @@ import {
   TouchableOpacity,
   UIManager,
   View,
+  Image,
 } from 'react-native'
 import Animated, {
   Easing,
@@ -36,6 +37,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import { EXERCISE_IMAGE_URL } from '@/constants/assets'
 
 // Enable LayoutAnimation on Android
 if (
@@ -144,14 +147,21 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
             isDragging && styles.exerciseHeaderLeftDragging,
           ]}
         >
-          <Text
-            style={styles.exerciseName}
-            numberOfLines={isDragging ? 1 : undefined}
-            ellipsizeMode={isDragging ? 'tail' : undefined}
-          >
-            {exercise.exerciseName}
-          </Text>
-          <Text style={styles.setCount}>{exercise.sets.length} sets</Text>
+          <Image
+            source={{ uri: EXERCISE_IMAGE_URL }}
+            style={styles.exerciseThumbnail}
+            resizeMode="contain"
+          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={styles.exerciseName}
+              numberOfLines={isDragging ? 1 : undefined}
+              ellipsizeMode={isDragging ? 'tail' : undefined}
+            >
+              {exercise.exerciseName}
+            </Text>
+            <Text style={styles.setCount}>{exercise.sets.length} sets</Text>
+          </View>
         </View>
         <View style={styles.exerciseHeaderRight}>
           {!isDragging && (
@@ -1329,6 +1339,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       marginRight: 12,
       minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    exerciseThumbnail: {
+      width: 40,
+      height: 40,
+      marginRight: 12,
+      borderRadius: 4,
     },
     exerciseHeaderLeftDragging: {
       marginRight: 120,

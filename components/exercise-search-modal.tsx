@@ -19,6 +19,7 @@ import { Exercise } from '@/types/database.types'
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native'
 import {
   Gesture,
@@ -33,6 +34,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import { EXERCISE_IMAGE_URL } from '@/constants/assets'
 
 interface ExerciseSearchModalProps {
   visible: boolean
@@ -409,6 +412,11 @@ export function ExerciseSearchModal({
                             style={styles.rowContentContainer}
                             onPress={() => handleSelectExercise(exercise)}
                           >
+                            <Image
+                                source={{ uri: EXERCISE_IMAGE_URL }}
+                                style={styles.exerciseThumbnail}
+                                resizeMode="contain"
+                            />
                             <View style={styles.rowContent}>
                               <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
                                 {exercise.name}
@@ -627,8 +635,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: any) =
     },
     rowContentContainer: {
       flex: 1,
-      justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingVertical: 4,
+    },
+    exerciseThumbnail: {
+      width: 40,
+      height: 40,
+      marginRight: 12,
+      borderRadius: 4,
     },
     rowSelected: {
       backgroundColor: colors.primary + '08',
