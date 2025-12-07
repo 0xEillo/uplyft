@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
   getStandardsLadder,
   getStrengthStandard,
@@ -231,6 +232,12 @@ export function StrengthStandardsView() {
     let totalScore = 0
     let count = 0
 
+    const groupTotals: Record<ExerciseGroup | string, { total: number; count: number }> = {
+      'Upper Push': { total: 0, count: 0 },
+      'Upper Pull': { total: 0, count: 0 },
+      'Lower': { total: 0, count: 0 },
+    }
+
     exerciseData.forEach((exercise) => {
       const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
       if (info) {
@@ -239,6 +246,12 @@ export function StrengthStandardsView() {
         const exactScore = baseScore + info.progress / 100
         totalScore += exactScore
         count++
+
+        const group = getExerciseGroup(exercise.exerciseName)
+        if (group in groupTotals) {
+          groupTotals[group].total += exactScore
+          groupTotals[group].count++
+        }
       }
     })
 
@@ -255,11 +268,65 @@ export function StrengthStandardsView() {
     const progress =
       averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
 
+    // Calculate Balanced Level (Harmonic Mean of group averages)
+    // This penalizes neglect of major groups (e.g. strong upper, weak legs)
+    const validGroups = Object.entries(groupTotals)
+      .filter(([_, data]) => data.count > 0)
+      .map(([name, data]) => ({
+        name,
+        average: data.total / data.count,
+      }))
+
+    let balancedScore = 0
+    let balancedLevel: StrengthLevel = currentLevel
+    let weakestGroup: string | null = null
+
+    if (validGroups.length > 0) {
+      // Harmonic mean: n / (1/x1 + 1/x2 + ... + 1/xn)
+      const denominator = validGroups.reduce(
+        (sum, g) => sum + 1 / g.average,
+        0,
+      )
+      balancedScore = validGroups.length / denominator
+
+      // Find weakest group
+      const weakest = validGroups.reduce(
+        (min, g) => (g.average < min.average ? g : min),
+        validGroups[0],
+      )
+      
+      const strongest = validGroups.reduce(
+        (max, g) => (g.average > max.average ? g : max),
+        validGroups[0],
+      )
+
+      // Only flag as weak if it's significantly dragging down the score (>= 1 full level difference)
+      if (strongest.average - weakest.average >= 1.0) {
+        weakestGroup = weakest.name
+      }
+
+      const balancedIndex = Math.floor(balancedScore) - 1
+      balancedLevel =
+        LEVEL_ORDER[Math.max(0, Math.min(balancedIndex, LEVEL_ORDER.length - 1))]
+    }
+
+    const balancedProgress =
+        balancedScore >= 6 ? 100 : (balancedScore - Math.floor(balancedScore)) * 100
+    
+    const balancedLevelIndex = LEVEL_ORDER.indexOf(balancedLevel)
+    const balancedNextLevel = 
+        balancedLevelIndex < LEVEL_ORDER.length - 1 ? LEVEL_ORDER[balancedLevelIndex + 1] : null
+
     return {
       currentLevel,
       nextLevel: currentLevel === 'World Class' ? null : nextLevel,
       progress,
       liftsTracked: count,
+      balancedLevel,
+      balancedNextLevel,
+      balancedProgress,
+      balancedScore,
+      weakestGroup,
     }
   }, [exerciseData, profile, getStrengthInfo])
 
@@ -364,7 +431,7 @@ export function StrengthStandardsView() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionHeaderText}>LIFTER LEVEL</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.heroCard}
                 activeOpacity={0.9}
                 onPress={() => setShowLevelsSheet(true)}
@@ -372,23 +439,44 @@ export function StrengthStandardsView() {
                 <View style={styles.heroContent}>
                   <View style={[styles.heroLeft, styles.heroLevelContainer]}>
                     <Text style={styles.heroLevel}>
-                      {overallLevel.currentLevel}
+                      {overallLevel.balancedLevel}
                     </Text>
+                    {overallLevel.weakestGroup && (
+                      <View
+                        style={{
+                          marginTop: 4,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Ionicons
+                          name="warning-outline"
+                          size={14}
+                          color="#F59E0B"
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          style={{ color: colors.textSecondary, fontSize: 12 }}
+                        >
+                          Held back by {overallLevel.weakestGroup}
+                        </Text>
+                      </View>
+                    )}
                     <Image
-                      source={LEVEL_IMAGES[overallLevel.currentLevel]}
+                      source={LEVEL_IMAGES[overallLevel.balancedLevel]}
                       style={styles.heroLevelImage}
                       contentFit="contain"
                     />
                   </View>
                 </View>
-                {overallLevel.nextLevel && (
+                {overallLevel.balancedNextLevel && (
                   <View style={styles.heroProgress}>
                     <View style={styles.heroProgressLabels}>
                       <Text style={styles.heroProgressCurrent}>
-                        {overallLevel.currentLevel}
+                        {overallLevel.balancedLevel}
                       </Text>
                       <Text style={styles.heroProgressNext}>
-                        {overallLevel.nextLevel}
+                        {overallLevel.balancedNextLevel}
                       </Text>
                     </View>
                     <View style={styles.heroProgressBar}>
@@ -396,15 +484,62 @@ export function StrengthStandardsView() {
                         style={[
                           styles.heroProgressFill,
                           {
-                            width: `${overallLevel.progress}%`,
-                            backgroundColor: colors.primary,
+                            width: `${overallLevel.balancedProgress}%`,
+                            backgroundColor: getLevelColor(
+                              overallLevel.balancedLevel,
+                            ),
                           },
                         ]}
                       />
                     </View>
                     <Text style={styles.heroProgressPercent}>
-                      {Math.round(overallLevel.progress)}% to next level
+                      {Math.round(overallLevel.balancedProgress)}% to next level
                     </Text>
+                  </View>
+                )}
+
+                {overallLevel.currentLevel !== overallLevel.balancedLevel && (
+                  <View
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      Peak Potential
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: colors.text,
+                          fontWeight: '600',
+                          fontSize: 13,
+                        }}
+                      >
+                        {overallLevel.currentLevel}
+                      </Text>
+                      <View
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: getLevelColor(
+                            overallLevel.currentLevel,
+                          ),
+                        }}
+                      />
+                    </View>
                   </View>
                 )}
               </TouchableOpacity>
@@ -689,8 +824,8 @@ export function StrengthStandardsView() {
         <LifterLevelsSheet
           isVisible={showLevelsSheet}
           onClose={() => setShowLevelsSheet(false)}
-          currentLevel={overallLevel.currentLevel}
-          progressToNext={overallLevel.progress}
+          currentLevel={overallLevel.balancedLevel}
+          progressToNext={overallLevel.balancedProgress}
         />
       )}
     </View>

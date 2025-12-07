@@ -635,13 +635,13 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
       {
         level: 'Elite',
-        multiplier: 2.25,
+        multiplier: 2.75,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 2.5,
+        multiplier: 3.25,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -649,13 +649,13 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     female: [
       {
         level: 'Beginner',
-        multiplier: 0.4,
+        multiplier: 0.5,
         color: '#9CA3AF',
         description: 'Just starting out',
       },
       {
         level: 'Novice',
-        multiplier: 0.6,
+        multiplier: 0.75,
         color: '#3B82F6',
         description: 'A few months training',
       },
@@ -1587,6 +1587,498 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+
+  // Dumbbell Bulgarian Split Squat
+  {
+    name: 'Dumbbell Bulgarian Split Squat',
+    aliases: ['Bulgarian Split Squat', 'DB Bulgarian Split Squat'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.25,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.6,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.8,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.3,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.45,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.6,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Hip Thrust
+  {
+    name: 'Hip Thrust',
+    aliases: ['Barbell Hip Thrust'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.0,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 3.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 4.25,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.0,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.5,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 3.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Dumbbell Row
+  {
+    name: 'Dumbbell Row',
+    aliases: ['DB Row', 'One Arm Dumbbell Row'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.8,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.05,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.3,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.35,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.65,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.8,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Seated Cable Row
+  {
+    name: 'Seated Cable Row',
+    aliases: ['Cable Row'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.3,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.0,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.35,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.7,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Close Grip Bench Press
+  {
+    name: 'Close Grip Bench Press',
+    aliases: ['Close-Grip Bench Press', 'CGBP'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.4,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.3,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.05,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.35,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.6,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Tricep Pushdown
+  {
+    name: 'Tricep Pushdown',
+    aliases: ['Cable Tricep Pushdown'],
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.0,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.8,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.25,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.5,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.05,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.3,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
 ]
 
 /**
@@ -1597,6 +2089,58 @@ export function getLeaderboardExercises(): string[] {
     config.name,
     ...config.aliases,
   ])
+}
+
+export type ExerciseGroup = 'Upper Push' | 'Upper Pull' | 'Lower' | 'Other'
+
+const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
+  'Bench Press': 'Upper Push',
+  'Incline Bench Press': 'Upper Push',
+  'Dumbbell Bench Press': 'Upper Push',
+  'Incline Dumbbell Press': 'Upper Push',
+  'Overhead Press': 'Upper Push',
+  'Dumbbell Shoulder Press': 'Upper Push',
+  Dips: 'Upper Push',
+  'Weighted Dips': 'Upper Push',
+
+  'Barbell Rows': 'Upper Pull',
+  'Lat Pulldown': 'Upper Pull',
+  'Pull-Up': 'Upper Pull',
+  'Weighted Pull-Ups': 'Upper Pull',
+  'Dumbbell Curl': 'Upper Pull',
+  'Barbell Curl': 'Upper Pull',
+  'Dumbbell Row': 'Upper Pull',
+  'Seated Cable Row': 'Upper Pull',
+
+  Squat: 'Lower',
+  'Front Squat': 'Lower',
+  Deadlift: 'Lower',
+  'Romanian Deadlift': 'Lower',
+  'Leg Press': 'Lower',
+  'Dumbbell Bulgarian Split Squat': 'Lower',
+  'Hip Thrust': 'Lower',
+
+  'Close Grip Bench Press': 'Upper Push',
+  'Tricep Pushdown': 'Upper Push',
+}
+
+/**
+ * Get the muscle group category for an exercise
+ */
+export function getExerciseGroup(exerciseName: string): ExerciseGroup {
+  // Check direct match first
+  if (exerciseName in EXERCISE_GROUPS) {
+    return EXERCISE_GROUPS[exerciseName]
+  }
+
+  // Check aliases by resolving to main name
+  const map = getExerciseNameMap()
+  const config = map.get(exerciseName)
+  if (config && config.name in EXERCISE_GROUPS) {
+    return EXERCISE_GROUPS[config.name]
+  }
+
+  return 'Other'
 }
 
 /**
