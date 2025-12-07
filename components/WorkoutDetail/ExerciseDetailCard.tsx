@@ -1,10 +1,9 @@
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { WorkoutExerciseWithDetails } from '@/types/database.types'
 import { useTheme } from '@/contexts/theme-context'
 import { getColors } from '@/constants/colors'
 import { useUnit , kgToPreferred } from '@/contexts/unit-context'
-import { EXERCISE_IMAGE_URL } from '@/constants/assets'
 
 interface PrDetailForDisplay {
   label: string
@@ -51,11 +50,6 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
         disabled={!onExercisePress}
         activeOpacity={0.7}
       >
-        <Image
-          source={{ uri: EXERCISE_IMAGE_URL }}
-          style={styles.exerciseThumbnail}
-          resizeMode="contain"
-        />
         <Text style={[styles.exerciseName, { color: colors.primary }]}>
           {exercise.name}
         </Text>
@@ -156,11 +150,6 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  exerciseThumbnail: {
-    width: 32,
-    height: 32,
-    borderRadius: 4,
   },
   tableHeader: {
     flexDirection: 'row',

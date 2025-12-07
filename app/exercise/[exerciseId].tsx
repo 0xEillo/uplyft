@@ -1,30 +1,30 @@
-import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Image
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
-import { EXERCISE_IMAGE_URL } from '@/constants/assets'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel
+  getStandardsLadder,
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 
@@ -364,15 +364,6 @@ export default function ExerciseDetailScreen() {
           <View style={styles.headerRightSpacer} />
         </View>
 
-        {/* Exercise Image */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: EXERCISE_IMAGE_URL }}
-            style={styles.exerciseImage}
-            resizeMode="contain"
-          />
-        </View>
-
         {/* Tabs */}
         <View style={styles.tabs}>
           <TouchableOpacity
@@ -622,15 +613,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerRightSpacer: {
       width: 32,
       alignItems: 'flex-end'
-    },
-    imageContainer: {
-      alignItems: 'center',
-      paddingVertical: 16,
-      backgroundColor: colors.background,
-    },
-    exerciseImage: {
-      width: 200,
-      height: 200,
     },
     tabs: {
       flexDirection: 'row',
