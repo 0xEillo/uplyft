@@ -2,10 +2,11 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
-import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
+  import { Ionicons } from '@expo/vector-icons'
+  import * as Haptics from 'expo-haptics'
+  import { router } from 'expo-router'
+  import { useCallback, useEffect, useMemo, useState } from 'react'
+  import {
   ActivityIndicator,
   Alert,
   Keyboard,
@@ -31,6 +32,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ExerciseSearchModalProps {
   visible: boolean
@@ -47,44 +49,72 @@ export function ExerciseSearchModal({
 }: ExerciseSearchModalProps) {
   const colors = useThemedColors()
   const { user } = useAuth()
+  const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState('')
   const [exercises, setExercises] = useState<Exercise[]>([])
+  const [recentExercises, setRecentExercises] = useState<Exercise[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  
+  // Filters
   const [muscleGroups, setMuscleGroups] = useState<string[]>([])
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
-  const translateY = useSharedValue(0)
+  const [equipmentTypes, setEquipmentTypes] = useState<string[]>([])
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
 
-  const styles = createStyles(colors)
+  const translateY = useSharedValue(0)
+  const styles = createStyles(colors, insets)
+
   const trimmedQuery = searchQuery.trim()
   const normalizedQuery = trimmedQuery.toLowerCase()
+  
   const hasExactMatch = trimmedQuery
     ? exercises.some(
         (exercise) => exercise.name.toLowerCase() === normalizedQuery,
       )
     : false
-  const hasMuscleFilter = selectedMuscleGroups.length > 0
+
+  const hasFilters = selectedMuscleGroups.length > 0 || selectedEquipment.length > 0
+
   const filteredExercises = useMemo(() => {
-    if (!hasMuscleFilter) return exercises
-    const selectedSet = new Set(selectedMuscleGroups)
     return exercises.filter((exercise) => {
-      if (!exercise.muscle_group) return false
-      return selectedSet.has(exercise.muscle_group)
+      // Name filter
+      if (normalizedQuery && !exercise.name.toLowerCase().includes(normalizedQuery)) {
+        return false
+      }
+
+      // Muscle group filter
+      if (selectedMuscleGroups.length > 0) {
+        if (!exercise.muscle_group || !selectedMuscleGroups.includes(exercise.muscle_group)) {
+          return false
+        }
+      }
+
+      // Equipment filter
+      if (selectedEquipment.length > 0) {
+        if (!exercise.equipment || !selectedEquipment.includes(exercise.equipment)) {
+          return false
+        }
+      }
+
+      return true
     })
-  }, [exercises, selectedMuscleGroups, hasMuscleFilter])
+  }, [exercises, normalizedQuery, selectedMuscleGroups, selectedEquipment])
+
   const emptyStateText = (() => {
     if (trimmedQuery) {
-      return hasMuscleFilter
-        ? `No exercises found for "${trimmedQuery}" in selected groups`
+      return hasFilters
+        ? `No exercises found for "${trimmedQuery}" with selected filters`
         : `No exercises found for "${trimmedQuery}"`
     }
-    if (hasMuscleFilter) {
-      return 'No exercises match the selected muscle groups'
+    if (hasFilters) {
+      return 'No exercises match the selected filters'
     }
-    return 'Start typing to search'
+    return 'Start typing to search or use filters'
   })()
 
+  // Effects
   useEffect(() => {
     if (visible) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -92,82 +122,64 @@ export function ExerciseSearchModal({
     }
   }, [visible, translateY])
 
-  // Handle keyboard events
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height)
-      },
+      (e) => setKeyboardHeight(e.endCoordinates.height)
     )
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0)
-      },
+      () => setKeyboardHeight(0)
     )
-
     return () => {
       keyboardWillShow.remove()
       keyboardWillHide.remove()
     }
   }, [])
 
-  // Load exercises when modal opens or search query changes
+  // Initial Data Load
   useEffect(() => {
     if (!visible) {
       setSearchQuery('')
-      setExercises([])
-      setKeyboardHeight(0)
+      // Don't clear exercises to keep cache
       setSelectedMuscleGroups([])
+      setSelectedEquipment([])
       Keyboard.dismiss()
       return
     }
 
-    const loadExercises = async () => {
+    const loadData = async () => {
+      if (exercises.length > 0) return // Already loaded
+
       try {
         setIsLoading(true)
-        if (trimmedQuery) {
-          const results = await database.exercises.findByName(trimmedQuery)
-          setExercises(results)
-        } else {
-          const allExercises = await database.exercises.getAll()
-          setExercises(allExercises)
-        }
+        const [allExercises, muscles, equipment, recent] = await Promise.all([
+          database.exercises.getAll(),
+          database.exercises.getMuscleGroups(),
+          database.exercises.getEquipment(),
+          user ? database.exercises.getRecent(user.id) : Promise.resolve([]),
+        ])
+        
+        setExercises(allExercises)
+        setMuscleGroups(muscles)
+        setEquipmentTypes(equipment)
+        setRecentExercises(recent)
       } catch (error) {
-        console.error('Error loading exercises:', error)
-        setExercises([])
+        console.error('Error loading exercise data:', error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    // Debounce search
-    const timeoutId = setTimeout(loadExercises, 300)
-    return () => clearTimeout(timeoutId)
-  }, [visible, searchQuery])
+    loadData()
+  }, [visible, user]) // Remove exercises.length dependency to allow refresh on re-open if needed, but here we cache
 
-  useEffect(() => {
-    if (!visible) return
-
-    let isMounted = true
-    const fetchMuscleGroups = async () => {
-      try {
-        const groups = await database.exercises.getMuscleGroups()
-        if (isMounted) {
-          setMuscleGroups(groups)
-        }
-      } catch (error) {
-        console.error('Error loading muscle groups:', error)
-      }
-    }
-
-    fetchMuscleGroups()
-
-    return () => {
-      isMounted = false
-    }
-  }, [visible])
+  const handleInfoPress = (exerciseId: string) => {
+    Haptics.selectionAsync()
+    // Close the modal before navigating to ensure clean state when returning
+    onClose()
+    router.push(`/exercise/${exerciseId}`)
+  }
 
   const closeSheet = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -199,6 +211,7 @@ export function ExerciseSearchModal({
 
   const handleSelectExercise = useCallback(
     (exercise: Exercise) => {
+      Haptics.selectionAsync()
       onSelectExercise(exercise)
       onClose()
     },
@@ -210,153 +223,141 @@ export function ExerciseSearchModal({
     if (!name || isCreating) return
 
     if (!user) {
-      Alert.alert(
-        'Login Required',
-        'You must be logged in to create exercises.',
-      )
+      Alert.alert('Login Required', 'You must be logged in to create exercises.')
       return
     }
 
     try {
       setIsCreating(true)
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       const newExercise = await database.exercises.getOrCreate(name, user.id)
       setExercises((prev) => {
-        if (prev.some((exercise) => exercise.id === newExercise.id)) {
-          return prev
-        }
+        if (prev.some((e) => e.id === newExercise.id)) return prev
         return [newExercise, ...prev]
       })
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       handleSelectExercise(newExercise)
     } catch (error) {
       console.error('Error creating exercise:', error)
-      Alert.alert(
-        'Error',
-        error instanceof Error
-          ? error.message
-          : 'Failed to create exercise. Please try again.',
-      )
+      Alert.alert('Error', 'Failed to create exercise.')
     } finally {
       setIsCreating(false)
     }
   }, [trimmedQuery, isCreating, user, handleSelectExercise])
 
-  const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    onClose()
+  const toggleMuscleGroup = (group: string) => {
+    Haptics.selectionAsync()
+    setSelectedMuscleGroups((prev) =>
+      prev.includes(group) ? prev.filter((i) => i !== group) : [...prev, group]
+    )
   }
 
-  const toggleMuscleGroup = useCallback((group: string) => {
-    setSelectedMuscleGroups((prev) => {
-      if (prev.includes(group)) {
-        return prev.filter((item) => item !== group)
-      }
-      return [...prev, group]
-    })
-  }, [])
-
-  const clearMuscleGroups = useCallback(() => {
-    setSelectedMuscleGroups([])
-  }, [])
+  const toggleEquipment = (type: string) => {
+    Haptics.selectionAsync()
+    setSelectedEquipment((prev) =>
+      prev.includes(type) ? prev.filter((i) => i !== type) : [...prev, type]
+    )
+  }
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={handleClose}
+      onRequestClose={closeSheet}
     >
       <GestureHandlerRootView style={styles.container}>
-        {/* Backdrop */}
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet}>
           <View style={styles.backdrop} />
         </Pressable>
 
-        {/* Bottom Sheet */}
         <GestureDetector gesture={pan}>
           <Animated.View
             style={[
               styles.bottomSheet,
               animatedStyle,
-              { paddingBottom: keyboardHeight > 0 ? keyboardHeight : 34 },
+              { paddingBottom: Math.max(insets.bottom, keyboardHeight) },
             ]}
           >
-            {/* Handle */}
             <View style={styles.sheetHandle}>
               <View style={styles.handle} />
             </View>
 
-            {/* Header */}
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Select Exercise</Text>
+            <View style={styles.header}>
+              <Text style={styles.title}>Select Exercise</Text>
             </View>
 
-            {/* Search Input */}
-            <TextInput
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search exercises..."
-              placeholderTextColor={colors.textPlaceholder}
-              autoCapitalize="words"
-            />
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search exercises..."
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="words"
+                clearButtonMode="while-editing"
+              />
+            </View>
 
-            {muscleGroups.length > 0 && (
-              <View style={styles.muscleFilterContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.muscleFilterChip,
-                    !hasMuscleFilter && styles.muscleFilterChipActive,
-                  ]}
-                  onPress={clearMuscleGroups}
-                >
-                  <Text
-                    style={[
-                      styles.muscleFilterChipText,
-                      !hasMuscleFilter && styles.muscleFilterChipTextActive,
-                    ]}
-                  >
-                    All
-                  </Text>
-                </TouchableOpacity>
+            {/* Filters */}
+            <View style={styles.filtersContainer}>
+              {/* Muscle Groups */}
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={styles.filterScroll}
+                style={styles.filterRow}
+              >
+                <Text style={styles.filterLabel}>Muscles:</Text>
                 {muscleGroups.map((group) => {
                   const isSelected = selectedMuscleGroups.includes(group)
                   return (
                     <TouchableOpacity
                       key={group}
-                      style={[
-                        styles.muscleFilterChip,
-                        isSelected && styles.muscleFilterChipActive,
-                      ]}
+                      style={[styles.chip, isSelected && styles.chipActive]}
                       onPress={() => toggleMuscleGroup(group)}
                     >
-                      <Text
-                        style={[
-                          styles.muscleFilterChipText,
-                          isSelected && styles.muscleFilterChipTextActive,
-                        ]}
-                      >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                         {group}
                       </Text>
                     </TouchableOpacity>
                   )
                 })}
-              </View>
-            )}
+              </ScrollView>
 
-            {/* Results */}
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
+              {/* Equipment */}
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={styles.filterScroll}
+                style={styles.filterRow}
+              >
+                <Text style={styles.filterLabel}>Equipment:</Text>
+                {equipmentTypes.map((type) => {
+                  const isSelected = selectedEquipment.includes(type)
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.chip, isSelected && styles.chipActive]}
+                      onPress={() => toggleEquipment(type)}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            </View>
+
+            {/* List */}
+            {isLoading && exercises.length === 0 ? (
+              <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : filteredExercises.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="barbell-outline"
-                  size={48}
-                  color={colors.textTertiary}
-                />
+            ) : filteredExercises.length === 0 && !(!trimmedQuery && !hasFilters && recentExercises.length > 0) ? (
+              <View style={styles.centerContainer}>
                 <Text style={styles.emptyText}>{emptyStateText}</Text>
                 {trimmedQuery && !hasExactMatch && (
                   <TouchableOpacity
@@ -365,88 +366,137 @@ export function ExerciseSearchModal({
                     disabled={isCreating}
                   >
                     {isCreating ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
+                      <ActivityIndicator color={colors.primary} />
                     ) : (
-                      <>
-                        <Ionicons
-                          name="add-circle"
-                          size={20}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.createButtonText}>
-                          Create &quot;{trimmedQuery}&quot;
-                        </Text>
-                      </>
+                      <Text style={styles.createButtonText}>Create "{trimmedQuery}"</Text>
                     )}
                   </TouchableOpacity>
                 )}
               </View>
             ) : (
-              <ScrollView
-                style={styles.exerciseList}
+              <ScrollView 
+                style={styles.list}
                 keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.listContent}
               >
-                {trimmedQuery && !hasExactMatch && (
+                 {trimmedQuery && !hasExactMatch && (
                   <TouchableOpacity
-                    style={styles.createExerciseItem}
+                    style={styles.createRow}
                     onPress={handleCreateExercise}
-                    disabled={isCreating}
                   >
-                    <Ionicons
-                      name="add-circle"
-                      size={20}
-                      color={colors.primary}
-                    />
-                    <View style={styles.exerciseItemContent}>
-                      <Text style={styles.createExerciseText}>
-                        Create &quot;{trimmedQuery}&quot;
-                      </Text>
-                      <Text style={styles.exerciseMuscleGroup}>
-                        New exercise
-                      </Text>
+                    <View style={styles.createIcon}>
+                        <Ionicons name="add" size={24} color={colors.white} />
                     </View>
-                    {isCreating && (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    )}
+                    <View>
+                        <Text style={styles.createRowText}>Create "{trimmedQuery}"</Text>
+                        <Text style={styles.createRowSubtext}>New custom exercise</Text>
+                    </View>
                   </TouchableOpacity>
-                )}
-                {filteredExercises.map((exercise) => {
-                  const isCurrentExercise =
-                    exercise.name === currentExerciseName
-                  return (
-                    <TouchableOpacity
-                      key={exercise.id}
-                      style={[
-                        styles.exerciseItem,
-                        isCurrentExercise && styles.exerciseItemSelected,
-                      ]}
-                      onPress={() => handleSelectExercise(exercise)}
-                      disabled={isCurrentExercise}
-                    >
-                      <View style={styles.exerciseItemContent}>
-                        <Text
-                          style={[
-                            styles.exerciseItemText,
-                            isCurrentExercise &&
-                              styles.exerciseItemTextSelected,
-                          ]}
+                 )}
+
+                {/* Recent Exercises Section */}
+                {!trimmedQuery && !hasFilters && recentExercises.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionHeader}>Recently Used</Text>
+                    {recentExercises.map((exercise) => {
+                      const isSelected = exercise.name === currentExerciseName
+                      return (
+                        <View
+                          key={`recent-${exercise.id}`}
+                          style={[styles.row, isSelected && styles.rowSelected]}
                         >
-                          {exercise.name}
-                        </Text>
-                        {exercise.muscle_group && (
-                          <Text style={styles.exerciseMuscleGroup}>
-                            {exercise.muscle_group}
+                          <TouchableOpacity
+                            style={styles.rowContentContainer}
+                            onPress={() => handleSelectExercise(exercise)}
+                          >
+                            <View style={styles.rowContent}>
+                              <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
+                                {exercise.name}
+                              </Text>
+                              <View style={styles.rowMeta}>
+                                {exercise.muscle_group && (
+                                  <Text style={styles.rowSubtitle}>{exercise.muscle_group}</Text>
+                                )}
+                                {exercise.muscle_group && exercise.equipment && (
+                                   <Text style={styles.rowDot}>•</Text>
+                                )}
+                                {exercise.equipment && (
+                                  <Text style={styles.rowSubtitle}>{exercise.equipment}</Text>
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                          
+                          <View style={styles.rowActions}>
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={20} color={colors.primary} style={styles.checkIcon} />
+                            )}
+                            <TouchableOpacity 
+                              onPress={() => handleInfoPress(exercise.id)}
+                              style={styles.infoButton}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                              <Ionicons 
+                                name="information-circle-outline" 
+                                size={24} 
+                                color={colors.textSecondary} 
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )
+                    })}
+                    {/* Removed sectionDivider as requested */}
+                    <Text style={styles.sectionHeader}>All Exercises</Text>
+                  </View>
+                )}
+
+                {filteredExercises.map((exercise) => {
+                  const isSelected = exercise.name === currentExerciseName
+                  return (
+                    <View
+                      key={exercise.id}
+                      style={[styles.row, isSelected && styles.rowSelected]}
+                    >
+                      <TouchableOpacity
+                        style={styles.rowContentContainer}
+                        onPress={() => handleSelectExercise(exercise)}
+                      >
+                        <View style={styles.rowContent}>
+                          <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
+                            {exercise.name}
                           </Text>
+                          <View style={styles.rowMeta}>
+                            {exercise.muscle_group && (
+                              <Text style={styles.rowSubtitle}>{exercise.muscle_group}</Text>
+                            )}
+                            {exercise.muscle_group && exercise.equipment && (
+                               <Text style={styles.rowDot}>•</Text>
+                            )}
+                            {exercise.equipment && (
+                              <Text style={styles.rowSubtitle}>{exercise.equipment}</Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+
+                      <View style={styles.rowActions}>
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={20} color={colors.primary} style={styles.checkIcon} />
                         )}
+                        <TouchableOpacity 
+                          onPress={() => handleInfoPress(exercise.id)}
+                          style={styles.infoButton}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Ionicons 
+                            name="information-circle-outline" 
+                            size={24} 
+                            color={colors.textSecondary} 
+                          />
+                        </TouchableOpacity>
                       </View>
-                      {isCurrentExercise && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color={colors.primary}
-                        />
-                      )}
-                    </TouchableOpacity>
+                    </View>
                   )
                 })}
               </ScrollView>
@@ -458,7 +508,7 @@ export function ExerciseSearchModal({
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -466,159 +516,220 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0,0,0,0.4)',
     },
     bottomSheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      maxHeight: '80%',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 12,
+      maxHeight: '90%',
+      height: '80%', // Fixed height for consistency
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 5,
     },
     sheetHandle: {
       alignItems: 'center',
       paddingTop: 12,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     handle: {
-      width: 36,
+      width: 40,
       height: 4,
       borderRadius: 2,
-      backgroundColor: colors.border,
+      backgroundColor: colors.gray300,
     },
-    sheetHeader: {
+    header: {
+      paddingHorizontal: 20,
+      paddingBottom: 16,
       alignItems: 'center',
-      paddingTop: 12,
-      paddingBottom: 8,
-      paddingHorizontal: 24,
     },
-    sheetTitle: {
-      fontSize: 20,
-      fontWeight: '700',
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
       color: colors.text,
-      letterSpacing: 0.3,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+      marginHorizontal: 20,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      height: 44,
+      marginBottom: 16,
+    },
+    searchIcon: {
+      marginRight: 8,
     },
     searchInput: {
-      margin: 16,
-      marginBottom: 8,
-      padding: 12,
-      backgroundColor: colors.backgroundLight,
-      borderRadius: 8,
+      flex: 1,
       fontSize: 16,
       color: colors.text,
+      height: '100%',
     },
-    muscleFilterContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      paddingHorizontal: 16,
+    filtersContainer: {
       marginBottom: 8,
     },
-    muscleFilterChip: {
-      paddingVertical: 6,
+    filterRow: {
+      marginBottom: 12,
+      paddingHorizontal: 20,
+      maxHeight: 36,
+    },
+    filterScroll: {
+      alignItems: 'center',
+      paddingRight: 20,
+    },
+    filterLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginRight: 8,
+    },
+    chip: {
       paddingHorizontal: 12,
+      paddingVertical: 6,
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.backgroundLight,
       marginRight: 8,
-      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: 'transparent',
     },
-    muscleFilterChipActive: {
+    chipActive: {
+      backgroundColor: colors.primary + '15', // 10% opacity
       borderColor: colors.primary,
-      backgroundColor: colors.primaryLight,
     },
-    muscleFilterChipText: {
-      fontSize: 14,
+    chipText: {
+      fontSize: 13,
       color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    chipTextActive: {
+      color: colors.primary,
       fontWeight: '600',
     },
-    muscleFilterChipTextActive: {
-      color: colors.primary,
-    },
-    exerciseList: {
-      paddingHorizontal: 16,
-    },
-    exerciseItem: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 16,
-      borderRadius: 8,
-      marginBottom: 4,
-    },
-    exerciseItemSelected: {
-      backgroundColor: colors.primaryLight,
-    },
-    exerciseItemContent: {
+    list: {
       flex: 1,
     },
-    exerciseItemText: {
+    listContent: {
+      paddingBottom: 20,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 20,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      minHeight: 60,
+    },
+    rowContentContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingVertical: 4,
+    },
+    rowSelected: {
+      backgroundColor: colors.primary + '08',
+    },
+    rowContent: {
+      justifyContent: 'center',
+    },
+    rowActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginLeft: 12,
+    },
+    infoButton: {
+      padding: 4,
+    },
+    checkIcon: {
+      marginRight: 4,
+    },
+    rowTitle: {
       fontSize: 16,
+      fontWeight: '500',
       color: colors.text,
       marginBottom: 2,
     },
-    exerciseItemTextSelected: {
-      fontWeight: '600',
+    rowTitleSelected: {
       color: colors.primary,
+      fontWeight: '600',
     },
-    exerciseMuscleGroup: {
+    rowMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    rowSubtitle: {
       fontSize: 13,
-      color: colors.textSecondary,
+      color: colors.textTertiary,
     },
-    loadingContainer: {
-      paddingVertical: 60,
+    rowDot: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginHorizontal: 4,
+    },
+    centerContainer: {
+      flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    emptyContainer: {
-      paddingVertical: 60,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 32,
+      padding: 32,
     },
     emptyText: {
-      fontSize: 14,
-      color: colors.textTertiary,
+      fontSize: 15,
+      color: colors.textSecondary,
       textAlign: 'center',
-      marginTop: 12,
+      marginBottom: 20,
     },
     createButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 16,
       paddingVertical: 12,
-      paddingHorizontal: 18,
-      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 24,
+      backgroundColor: colors.primary + '15',
       borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.primary,
     },
     createButtonText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.primary,
     },
-    createExerciseItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      borderRadius: 10,
-      backgroundColor: colors.primaryLight,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      marginBottom: 8,
-      gap: 12,
+    createRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        marginHorizontal: 16,
+        marginBottom: 8,
+        backgroundColor: colors.primary + '10',
+        borderRadius: 12,
     },
-    createExerciseText: {
-      fontSize: 16,
+    createIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    createRowText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text,
+    },
+    createRowSubtext: {
+        fontSize: 13,
+        color: colors.textSecondary,
+    },
+    section: {
+      marginTop: 8,
+    },
+    sectionHeader: {
+      fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
-      marginBottom: 2,
+      color: colors.textSecondary,
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      backgroundColor: colors.backgroundLight,
     },
   })

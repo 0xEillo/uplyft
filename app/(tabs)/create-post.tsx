@@ -1,5 +1,6 @@
+import { ExerciseSearchModal } from '@/components/exercise-search-modal'
 import { ImagePickerModal } from '@/components/ImagePickerModal'
-import { KeyboardAccessory } from '@/components/keyboard-accessory'
+import { KeyboardAccessoryBar } from '@/components/keyboard-accessory'
 import { Paywall } from '@/components/paywall'
 import { RoutineSelectorSheet } from '@/components/routine-selector-sheet'
 import { SlideUpView } from '@/components/slide-up-view'
@@ -32,6 +33,7 @@ import {
 import {
   WorkoutRoutineWithDetails,
   WorkoutSessionWithDetails,
+  Exercise,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -59,7 +61,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const IMAGE_FADE_DURATION = 200
-const KEYBOARD_ACCESSORY_ID = 'workout-notes-accessory'
 
 const formatTimerDisplay = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -128,6 +129,42 @@ Finished with 10min cardio. Shoulder felt great today!`,
   },
 ]
 
+// Helper function moved outside component to avoid hoisting issues
+// Detect if current line looks like an exercise name
+const detectExerciseName = (text: string, cursorPos: number) => {
+  // Only check if we have text
+  if (!text) return false
+  
+  // Find text before cursor without full substring/split if possible, 
+  // but cursor might be in middle. 
+  // Optimization: find start of current line
+  const textBeforeCursor = text.substring(0, cursorPos)
+  const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+  const currentLine = textBeforeCursor.substring(lastNewlineIndex + 1).trim()
+
+  // Simple heuristic: if current line is non-empty and doesn't look like a set (no numbers/weights)
+  // and is on its own line or at start of text, it might be an exercise name
+  if (!currentLine) return false
+
+  // Check if line looks like a set (has numbers, x, lbs/kg, etc)
+  const setPattern = /(\d+|\d+\.\d+)\s*(x|×|lbs?|kg|reps?)/i
+  if (setPattern.test(currentLine)) return false
+
+  // Check if it's a reasonable length for an exercise name (2-50 chars)
+  if (currentLine.length < 2 || currentLine.length > 50) return false
+
+  // Check if previous line is empty or doesn't exist (exercise names are usually on their own line)
+  // Find end of previous line
+  if (lastNewlineIndex > 0) {
+      const textBeforeCurrentLine = text.substring(0, lastNewlineIndex)
+      const prevLineLastNewline = textBeforeCurrentLine.lastIndexOf('\n')
+      const prevLine = textBeforeCurrentLine.substring(prevLineLastNewline + 1).trim()
+      if (prevLine && !prevLine.match(setPattern)) return false
+  }
+
+  return true
+}
+
 export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
@@ -163,6 +200,7 @@ export default function CreatePostScreen() {
   // =============================================================================
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
   const [showRoutineSelector, setShowRoutineSelector] = useState(false)
+  const [showExerciseSearch, setShowExerciseSearch] = useState(false)
   const [isStructuredMode, setIsStructuredMode] = useState(false)
   const [
     selectedRoutine,
@@ -211,7 +249,6 @@ export default function CreatePostScreen() {
     Math.max(1, workoutElapsedSeconds ?? 0),
   )
 
-  // Wrapper to log structuredData changes
   const handleStructuredDataChange = useCallback(
     (newData: StructuredExerciseDraft[]) => {
       setStructuredData(newData)
@@ -227,7 +264,11 @@ export default function CreatePostScreen() {
   // TEXT-TO-STRUCTURED CONVERSION STATE
   // =============================================================================
   const [cursorPosition, setCursorPosition] = useState(0)
-  const [showConvertButton, setShowConvertButton] = useState(false)
+
+  const showConvertButton = useMemo(() => {
+    return isNotesFocused && detectExerciseName(notes, cursorPosition)
+  }, [notes, cursorPosition, isNotesFocused])
+
   const previousLineCount = useRef(0)
 
   // =============================================================================
@@ -253,9 +294,6 @@ export default function CreatePostScreen() {
   const skipPersistCountRef = useRef(0)
   const isHydratingRef = useRef(true)
   const isSubmittingRef = useRef(false)
-  const convertButtonDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  )
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
@@ -522,17 +560,28 @@ export default function CreatePostScreen() {
   // Track animation state to reset on each focus
   const [slideKey, setSlideKey] = useState(0)
   const [shouldExit, setShouldExit] = useState(false)
+  const showExerciseSearchRef = useRef(showExerciseSearch)
+  
+  useEffect(() => {
+    showExerciseSearchRef.current = showExerciseSearch
+  }, [showExerciseSearch])
 
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
-      // Reset animation by changing key to force remount of SlideUpView
-      setSlideKey((prev) => prev + 1)
+      // Only reset key if not showing exercise search (prevent remount when returning from detail)
+      // Use ref to avoid re-running effect when modal state changes
+      if (!showExerciseSearchRef.current) {
+        setSlideKey((prev) => prev + 1)
+      }
       setShouldExit(false)
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
-      blurInputs()
+      // Don't blur inputs immediately when returning from exercise search
+      if (!showExerciseSearchRef.current) {
+        blurInputs()
+      }
 
       trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
         mode: 'text',
@@ -540,10 +589,17 @@ export default function CreatePostScreen() {
         hasTitle: Boolean(titleRef.current.trim()),
       })
 
-      const timeoutId = setTimeout(blurInputs, 0)
-      const interactionHandle = InteractionManager.runAfterInteractions(
-        blurInputs,
-      )
+      const timeoutId = setTimeout(() => {
+        if (!showExerciseSearchRef.current) {
+          blurInputs()
+        }
+      }, 0)
+      
+      const interactionHandle = InteractionManager.runAfterInteractions(() => {
+        if (!showExerciseSearchRef.current) {
+          blurInputs()
+        }
+      })
 
       const randomExample =
         EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
@@ -571,7 +627,6 @@ export default function CreatePostScreen() {
         if (interactionHandle) {
           interactionHandle.cancel?.()
         }
-        blurInputs()
       }
     }, [blurInputs, trackEvent, user, loadRoutines]),
   )
@@ -1268,30 +1323,6 @@ export default function CreatePostScreen() {
     [weightUnit],
   )
 
-  // Detect if current line looks like an exercise name
-  const detectExerciseName = useCallback((text: string, cursorPos: number) => {
-    const textBeforeCursor = text.substring(0, cursorPos)
-    const lines = textBeforeCursor.split('\n')
-    const currentLine = lines[lines.length - 1].trim()
-
-    // Simple heuristic: if current line is non-empty and doesn't look like a set (no numbers/weights)
-    // and is on its own line or at start of text, it might be an exercise name
-    if (!currentLine) return false
-
-    // Check if line looks like a set (has numbers, x, lbs/kg, etc)
-    const setPattern = /(\d+|\d+\.\d+)\s*(x|×|lbs?|kg|reps?)/i
-    if (setPattern.test(currentLine)) return false
-
-    // Check if it's a reasonable length for an exercise name (2-50 chars)
-    if (currentLine.length < 2 || currentLine.length > 50) return false
-
-    // Check if previous line is empty or doesn't exist (exercise names are usually on their own line)
-    const prevLine = lines.length > 1 ? lines[lines.length - 2].trim() : ''
-    if (prevLine && !prevLine.match(setPattern)) return false
-
-    return true
-  }, [])
-
   // Parse text around cursor to extract exercise name and sets
   const parseExerciseFromText = useCallback(
     (text: string, cursorPos: number) => {
@@ -1341,29 +1372,13 @@ export default function CreatePostScreen() {
     [],
   )
 
-  // Handle cursor position changes to show convert button
+  // Handle cursor position changes
   const handleNotesSelectionChange = useCallback(
     (event: { nativeEvent: { selection: { start: number; end: number } } }) => {
       const cursorPos = event.nativeEvent.selection.start
       setCursorPosition(cursorPos)
-
-      // Clear any existing debounce
-      if (convertButtonDebounceRef.current) {
-        clearTimeout(convertButtonDebounceRef.current)
-        convertButtonDebounceRef.current = null
-      }
-
-      // Hide button immediately when selection changes
-      setShowConvertButton(false)
-
-      // Debounce showing the convert button
-      convertButtonDebounceRef.current = setTimeout(() => {
-        // Check if we should show convert button in keyboard accessory
-        const shouldShow = detectExerciseName(notes, cursorPos)
-        setShowConvertButton(shouldShow)
-      }, 500) // 0.5 second debounce
     },
-    [notes, detectExerciseName],
+    [],
   )
 
   // Calculate dynamic height of structured content
@@ -1417,16 +1432,13 @@ export default function CreatePostScreen() {
     [notes, cursorPosition, isNotesFocused, calculateStructuredContentHeight],
   )
 
-  // Handle text change - update convert button visibility
+  // Handle text change
   const handleNotesChange = useCallback((text: string) => {
     setNotes(text)
-    // Clear debounce when text changes
-    if (convertButtonDebounceRef.current) {
-      clearTimeout(convertButtonDebounceRef.current)
-      convertButtonDebounceRef.current = null
-    }
-    // Hide button immediately when typing
-    setShowConvertButton(false)
+  }, [])
+
+  const handleChooseExercisePress = useCallback(() => {
+    setShowExerciseSearch(true)
   }, [])
 
   // Convert text to structured format
@@ -1472,8 +1484,38 @@ export default function CreatePostScreen() {
     ]
     const newNotes = newLines.join('\n')
     setNotes(newNotes)
-    setShowConvertButton(false)
+    // showConvertButton will automatically update via useMemo
   }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode])
+
+  const handleSelectExerciseFromModal = useCallback(
+    (exercise: Exercise) => {
+      // Create new structured exercise
+      const newExercise: StructuredExerciseDraft = {
+        id: `manual-${Date.now()}`,
+        name: exercise.name,
+        sets: [
+          {
+            weight: '',
+            reps: '',
+            lastWorkoutWeight: null,
+            lastWorkoutReps: null,
+            targetRepsMin: null,
+            targetRepsMax: null,
+            targetRestSeconds: null,
+          },
+        ],
+      }
+
+      setStructuredData((prev) => [...prev, newExercise])
+      setIsStructuredMode(true)
+
+      // Scroll to bottom after a short delay to allow render
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true })
+      }, 100)
+    },
+    [],
+  )
 
   // Track previous structured data length to detect deletions
   const previousStructuredDataLength = useRef(0)
@@ -1651,15 +1693,7 @@ export default function CreatePostScreen() {
                 }}
                 onBlur={() => {
                   setIsNotesFocused(false)
-                  // Hide convert button when blurring
-                  setShowConvertButton(false)
-                  // Clear debounce
-                  if (convertButtonDebounceRef.current) {
-                    clearTimeout(convertButtonDebounceRef.current)
-                    convertButtonDebounceRef.current = null
-                  }
                 }}
-                inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
               />
               {!isNotesFocused && (
                 <Pressable
@@ -1790,6 +1824,12 @@ export default function CreatePostScreen() {
           onAttachWithLibrary={handleAttachWithLibrary}
         />
 
+        <ExerciseSearchModal
+          visible={showExerciseSearch}
+          onClose={() => setShowExerciseSearch(false)}
+          onSelectExercise={handleSelectExerciseFromModal}
+        />
+
         {/* Routine Selector Modal */}
         <RoutineSelectorSheet
           visible={showRoutineSelector}
@@ -1811,10 +1851,11 @@ export default function CreatePostScreen() {
       </SlideUpView>
 
       {/* Keyboard Accessory for adding exercises */}
-      <KeyboardAccessory
-        nativeID={KEYBOARD_ACCESSORY_ID}
+      <KeyboardAccessoryBar
         onConvertPress={handleConvertToStructured}
-        showConvertButton={showConvertButton && isNotesFocused}
+        onChooseExercisePress={handleChooseExercisePress}
+        showConvertButton={showConvertButton}
+        visible={isNotesFocused}
       />
     </SafeAreaView>
   )
@@ -2115,5 +2156,15 @@ const createStyles = (
       color: colors.textSecondary,
       marginTop: 8,
       textAlign: 'center',
+    },
+    staticAccessoryBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.white,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingBottom: insets.bottom,
     },
   })

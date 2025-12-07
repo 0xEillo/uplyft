@@ -722,6 +722,63 @@ export const database = {
       return groups
     },
 
+    async getEquipment() {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('equipment')
+        .not('equipment', 'is', null)
+        .order('equipment', { ascending: true })
+
+      if (error) throw error
+      const equipment = Array.from(
+        new Set(
+          (data || [])
+            .map((row) => row.equipment)
+            .filter((item): item is string => Boolean(item)),
+        ),
+      )
+      return equipment
+    },
+
+    async getRecent(userId: string, limit = 5) {
+      // Get recent workout sessions for the user
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          workout_exercises!inner (
+            exercise_id,
+            created_at,
+            exercise:exercises!inner (*)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20) // Fetch last 20 workouts to get a good spread
+
+      if (sessionsError) throw sessionsError
+
+      // Flatten and extract unique exercises
+      const exerciseMap = new Map<string, Exercise>()
+      const recentExercises: Exercise[] = []
+
+      // Iterate through sessions (newest first)
+      sessions?.forEach((session: any) => {
+        // Sort exercises in session by created_at (though usually consistent)
+        const sessionExercises = session.workout_exercises || []
+        
+        sessionExercises.forEach((we: any) => {
+          if (we.exercise && !exerciseMap.has(we.exercise.id)) {
+            exerciseMap.set(we.exercise.id, we.exercise)
+            recentExercises.push(we.exercise)
+          }
+        })
+      })
+
+      return recentExercises.slice(0, limit)
+    },
+
     async getExercisesWithData(userId: string) {
       const { data, error } = await supabase
         .from('exercises')
