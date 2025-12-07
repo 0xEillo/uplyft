@@ -31,9 +31,9 @@ import {
   parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
+  Exercise,
   WorkoutRoutineWithDetails,
   WorkoutSessionWithDetails,
-  Exercise,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -134,9 +134,9 @@ Finished with 10min cardio. Shoulder felt great today!`,
 const detectExerciseName = (text: string, cursorPos: number) => {
   // Only check if we have text
   if (!text) return false
-  
-  // Find text before cursor without full substring/split if possible, 
-  // but cursor might be in middle. 
+
+  // Find text before cursor without full substring/split if possible,
+  // but cursor might be in middle.
   // Optimization: find start of current line
   const textBeforeCursor = text.substring(0, cursorPos)
   const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
@@ -156,13 +156,65 @@ const detectExerciseName = (text: string, cursorPos: number) => {
   // Check if previous line is empty or doesn't exist (exercise names are usually on their own line)
   // Find end of previous line
   if (lastNewlineIndex > 0) {
-      const textBeforeCurrentLine = text.substring(0, lastNewlineIndex)
-      const prevLineLastNewline = textBeforeCurrentLine.lastIndexOf('\n')
-      const prevLine = textBeforeCurrentLine.substring(prevLineLastNewline + 1).trim()
-      if (prevLine && !prevLine.match(setPattern)) return false
+    const textBeforeCurrentLine = text.substring(0, lastNewlineIndex)
+    const prevLineLastNewline = textBeforeCurrentLine.lastIndexOf('\n')
+    const prevLine = textBeforeCurrentLine
+      .substring(prevLineLastNewline + 1)
+      .trim()
+    if (prevLine && !prevLine.match(setPattern)) return false
   }
 
   return true
+}
+
+const getExerciseSuggestion = (
+  text: string,
+  cursorPos: number,
+  exercises: Exercise[],
+): { name: string; inputLength: number } | null => {
+  if (!text || !exercises.length) return null
+
+  // Find start of current line
+  const textBeforeCursor = text.substring(0, cursorPos)
+  const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+  const currentLineStart = lastNewlineIndex + 1
+
+  // Get text from start of line to cursor
+  const currentLinePrefix = textBeforeCursor.substring(currentLineStart)
+  const trimmedPrefix = currentLinePrefix.trimStart() // Allow indentation but trim for matching
+
+  // Check text AFTER cursor on the current line
+  const textAfterCursor = text.substring(cursorPos)
+  const nextNewlineIndex = textAfterCursor.indexOf('\n')
+  const currentLineSuffix =
+    nextNewlineIndex === -1
+      ? textAfterCursor
+      : textAfterCursor.substring(0, nextNewlineIndex)
+
+  // Only suggest if the cursor is at the end of the line or followed by whitespace
+  // This prevents ghost text from overlaying existing text in the middle of a line
+  if (currentLineSuffix.trim().length > 0) return null
+
+  // Only suggest if at least 2 chars typed and prefix doesn't look like a set/numbers
+  if (trimmedPrefix.length < 2) return null
+  if (/^[\d\sxX.]+$/.test(trimmedPrefix)) return null
+  if (/(\d+(?:\.\d+)?)\s*(?:x|×|lbs?|kg)/i.test(trimmedPrefix)) return null
+
+  const normalizedInput = trimmedPrefix.toLowerCase()
+
+  // Find best match
+  // 1. Exact start match
+  // 2. Word boundary match (optional, but start match is standard for autocomplete)
+  const match = exercises.find((ex) =>
+    ex.name.toLowerCase().startsWith(normalizedInput),
+  )
+
+  // Only return if it's a strictly longer match
+  if (match && match.name.toLowerCase() !== normalizedInput) {
+    return { name: match.name, inputLength: trimmedPrefix.length }
+  }
+
+  return null
 }
 
 export default function CreatePostScreen() {
@@ -202,6 +254,7 @@ export default function CreatePostScreen() {
   const [showRoutineSelector, setShowRoutineSelector] = useState(false)
   const [showExerciseSearch, setShowExerciseSearch] = useState(false)
   const [isStructuredMode, setIsStructuredMode] = useState(false)
+  const [allExercises, setAllExercises] = useState<Exercise[]>([])
   const [
     selectedRoutine,
     setSelectedRoutine,
@@ -442,15 +495,33 @@ export default function CreatePostScreen() {
     }
   }, [isProcessingImage, isTranscribing, spinValue])
 
-  // Load user's routines
-  const loadRoutines = useCallback(async () => {
+  // Load user's routines and exercises
+  const loadRoutinesAndExercises = useCallback(async () => {
     try {
       if (user?.id) {
-        const userRoutines = await database.workoutRoutines.getAll(user.id)
+        const [
+          userRoutines,
+          allExercisesList,
+          recentExercises,
+        ] = await Promise.all([
+          database.workoutRoutines.getAll(user.id),
+          database.exercises.getAll(),
+          database.exercises.getRecent(user.id, 50), // Fetch last 50 unique recent exercises
+        ])
+
         setRoutines(userRoutines)
+
+        // Sort exercises: Recent ones first, then alphabetical
+        // This ensures autocomplete suggests frequently used exercises first
+        const recentIds = new Set(recentExercises.map((e) => e.id))
+        const otherExercises = allExercisesList.filter(
+          (e) => !recentIds.has(e.id),
+        )
+
+        setAllExercises([...recentExercises, ...otherExercises])
       }
     } catch (error) {
-      console.error('[Routine] Error loading routines:', error)
+      console.error('[CreatePost] Error loading data:', error)
     }
   }, [user])
 
@@ -561,7 +632,7 @@ export default function CreatePostScreen() {
   const [slideKey, setSlideKey] = useState(0)
   const [shouldExit, setShouldExit] = useState(false)
   const showExerciseSearchRef = useRef(showExerciseSearch)
-  
+
   useEffect(() => {
     showExerciseSearchRef.current = showExerciseSearch
   }, [showExerciseSearch])
@@ -594,7 +665,7 @@ export default function CreatePostScreen() {
           blurInputs()
         }
       }, 0)
-      
+
       const interactionHandle = InteractionManager.runAfterInteractions(() => {
         if (!showExerciseSearchRef.current) {
           blurInputs()
@@ -620,7 +691,7 @@ export default function CreatePostScreen() {
       }
       loadWorkoutCount()
 
-      loadRoutines()
+      loadRoutinesAndExercises()
 
       return () => {
         clearTimeout(timeoutId)
@@ -628,7 +699,7 @@ export default function CreatePostScreen() {
           interactionHandle.cancel?.()
         }
       }
-    }, [blurInputs, trackEvent, user, loadRoutines]),
+    }, [blurInputs, trackEvent, user, loadRoutinesAndExercises]),
   )
 
   // Blur inputs when component unmounts
@@ -1152,7 +1223,7 @@ export default function CreatePostScreen() {
                 }
 
                 // Refresh routines list
-                await loadRoutines()
+                await loadRoutinesAndExercises()
                 Alert.alert('Success', 'Routine deleted successfully')
               } catch (error) {
                 console.error('Error deleting routine:', error)
@@ -1166,7 +1237,7 @@ export default function CreatePostScreen() {
         ],
       )
     },
-    [loadRoutines, selectedRoutine],
+    [loadRoutinesAndExercises, selectedRoutine],
   )
 
   const handlePost = async () => {
@@ -1432,10 +1503,109 @@ export default function CreatePostScreen() {
     [notes, cursorPosition, isNotesFocused, calculateStructuredContentHeight],
   )
 
+  // =============================================================================
+  // AUTOCOMPLETE STATE
+  // =============================================================================
+  const currentSuggestion = useMemo(() => {
+    return isNotesFocused
+      ? getExerciseSuggestion(notes, cursorPosition, allExercises)
+      : null
+  }, [notes, cursorPosition, allExercises, isNotesFocused])
+
+  const handleAcceptSuggestion = useCallback(() => {
+    if (!currentSuggestion) return
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+
+    // 1. Create structured workout entry
+    const newExercise: StructuredExerciseDraft = {
+      id: `manual-${Date.now()}`,
+      name: currentSuggestion.name,
+      sets: [
+        {
+          weight: '',
+          reps: '',
+          lastWorkoutWeight: null,
+          lastWorkoutReps: null,
+          targetRepsMin: null,
+          targetRepsMax: null,
+          targetRestSeconds: null,
+        },
+      ],
+    }
+
+    setStructuredData((prev) => [...prev, newExercise])
+    setIsStructuredMode(true)
+
+    // 2. Remove the text that triggered the suggestion from the notes
+    // Find current line start/end
+    const textBeforeCursor = notes.substring(0, cursorPosition)
+    const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+    const startOfLine = lastNewlineIndex + 1
+
+    // We simply remove the line where the user was typing
+    const newText =
+      notes.substring(0, startOfLine) + notes.substring(cursorPosition)
+
+    setNotes(newText)
+  }, [currentSuggestion, notes, cursorPosition])
+
   // Handle text change
-  const handleNotesChange = useCallback((text: string) => {
-    setNotes(text)
-  }, [])
+  const handleNotesChange = useCallback(
+    (text: string) => {
+      // Check for Enter key press (newline addition) when a suggestion is active
+      const isNewlineAdded =
+        text.length > notes.length &&
+        text.slice(cursorPosition, cursorPosition + 1) === '\n'
+
+      if (isNewlineAdded) {
+        const suggestion = getExerciseSuggestion(
+          notes,
+          cursorPosition,
+          allExercises,
+        )
+        if (suggestion) {
+          // Manually call accept suggestion logic with the calculated suggestion
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+
+          // 1. Create structured workout entry
+          const newExercise: StructuredExerciseDraft = {
+            id: `manual-${Date.now()}`,
+            name: suggestion.name,
+            sets: [
+              {
+                weight: '',
+                reps: '',
+                lastWorkoutWeight: null,
+                lastWorkoutReps: null,
+                targetRepsMin: null,
+                targetRepsMax: null,
+                targetRestSeconds: null,
+              },
+            ],
+          }
+
+          setStructuredData((prev) => [...prev, newExercise])
+          setIsStructuredMode(true)
+
+          // 2. Remove the text line
+          const textBeforeCursor = notes.substring(0, cursorPosition)
+          const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+          const startOfLine = lastNewlineIndex + 1
+
+          const newText =
+            notes.substring(0, startOfLine) + notes.substring(cursorPosition)
+
+          setNotes(newText)
+
+          return
+        }
+      }
+
+      setNotes(text)
+    },
+    [notes, cursorPosition, allExercises],
+  )
 
   const handleChooseExercisePress = useCallback(() => {
     setShowExerciseSearch(true)
@@ -1487,35 +1657,32 @@ export default function CreatePostScreen() {
     // showConvertButton will automatically update via useMemo
   }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode])
 
-  const handleSelectExerciseFromModal = useCallback(
-    (exercise: Exercise) => {
-      // Create new structured exercise
-      const newExercise: StructuredExerciseDraft = {
-        id: `manual-${Date.now()}`,
-        name: exercise.name,
-        sets: [
-          {
-            weight: '',
-            reps: '',
-            lastWorkoutWeight: null,
-            lastWorkoutReps: null,
-            targetRepsMin: null,
-            targetRepsMax: null,
-            targetRestSeconds: null,
-          },
-        ],
-      }
+  const handleSelectExerciseFromModal = useCallback((exercise: Exercise) => {
+    // Create new structured exercise
+    const newExercise: StructuredExerciseDraft = {
+      id: `manual-${Date.now()}`,
+      name: exercise.name,
+      sets: [
+        {
+          weight: '',
+          reps: '',
+          lastWorkoutWeight: null,
+          lastWorkoutReps: null,
+          targetRepsMin: null,
+          targetRepsMax: null,
+          targetRestSeconds: null,
+        },
+      ],
+    }
 
-      setStructuredData((prev) => [...prev, newExercise])
-      setIsStructuredMode(true)
+    setStructuredData((prev) => [...prev, newExercise])
+    setIsStructuredMode(true)
 
-      // Scroll to bottom after a short delay to allow render
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
-    },
-    [],
-  )
+    // Scroll to bottom after a short delay to allow render
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true })
+    }, 100)
+  }, [])
 
   // Track previous structured data length to detect deletions
   const previousStructuredDataLength = useRef(0)
@@ -1672,6 +1839,8 @@ export default function CreatePostScreen() {
                     (structuredData.length > 0 || selectedRoutine) &&
                     styles.notesInputWithStructured,
                 ]}
+                // Android alignment fix
+                {...Platform.select({ android: { includeFontPadding: false } })}
                 placeholder={
                   isStructuredMode
                     ? 'Add notes about your workout...'
@@ -1695,6 +1864,55 @@ export default function CreatePostScreen() {
                   setIsNotesFocused(false)
                 }}
               />
+
+              {/* Ghost Text Overlay - Rendered AFTER TextInput to allow touch interception on suffix */}
+              {currentSuggestion && isNotesFocused && (
+                <View
+                  style={[
+                    styles.notesInput,
+                    {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 10, // Ensure it sits on top
+                    },
+                    isStructuredMode &&
+                      (structuredData.length > 0 || selectedRoutine) &&
+                      styles.notesInputWithStructured,
+                  ]}
+                  pointerEvents="box-none"
+                >
+                  <Text
+                    style={{
+                      color: 'transparent',
+                      textAlignVertical: 'top',
+                      fontSize: 17,
+                      lineHeight: 24,
+                      paddingTop: Platform.OS === 'android' ? 0 : 2,
+                    }}
+                  >
+                    {notes.substring(0, cursorPosition)}
+                    <Text
+                      style={{ color: colors.textTertiary }}
+                      onPress={() => {
+                        console.log(
+                          '[Autocomplete] Ghost text tapped:',
+                          currentSuggestion.name,
+                        )
+                        handleAcceptSuggestion()
+                      }}
+                      suppressHighlighting={true}
+                    >
+                      {currentSuggestion.name.slice(
+                        currentSuggestion.inputLength,
+                      )}
+                    </Text>
+                    {notes.substring(cursorPosition)}
+                  </Text>
+                </View>
+              )}
               {!isNotesFocused && (
                 <Pressable
                   style={styles.notesOverlay}
