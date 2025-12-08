@@ -795,15 +795,6 @@ Please provide a structured routine template.`
   }
 
   const handleExampleQuestion = (question: string) => {
-    // Check if user is pro member
-    if (!isProMember) {
-      setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'ai_chat',
-      })
-      return
-    }
-
     if (question === 'Plan Workout') {
       // Launch the new wizard UI instead of text-based flow
       setWorkoutPlanning({
@@ -820,6 +811,15 @@ Please provide a structured routine template.`
         isActive: true,
         step: 'wizard',
         data: {},
+      })
+      return
+    }
+
+    // For other questions, check pro status first
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        feature: 'ai_chat',
       })
       return
     }
@@ -849,6 +849,15 @@ Please provide a structured routine template.`
   }
 
   const handleWizardComplete = async (wizardData: PlanWorkoutData) => {
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        feature: 'ai_workout_generation',
+      })
+      return
+    }
+
     // Reset wizard state
     setWorkoutPlanning({
       isActive: false,
@@ -1092,6 +1101,15 @@ Please provide a detailed workout routine based on these preferences.`
   }
 
   const handleRoutineWizardComplete = async (wizardData: CreateRoutineData) => {
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        feature: 'ai_routine_generation',
+      })
+      return
+    }
+
     // Reset wizard state
     setRoutinePlanning({
       isActive: false,
@@ -1597,6 +1615,12 @@ Please provide a structured routine with exercises, sets, and rep ranges.`
           onComplete={handleWizardComplete}
           onCancel={handleWizardCancel}
         />
+        <Paywall
+          visible={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          title="Try Pro for FREE!"
+          message="AI workout planning is a Pro feature"
+        />
       </View>
     )
   }
@@ -1609,6 +1633,12 @@ Please provide a structured routine with exercises, sets, and rep ranges.`
           colors={colors}
           onComplete={handleRoutineWizardComplete}
           onCancel={handleRoutineWizardCancel}
+        />
+        <Paywall
+          visible={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          title="Try Pro for FREE!"
+          message="AI routine creation is a Pro feature"
         />
       </View>
     )
