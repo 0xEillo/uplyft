@@ -1896,13 +1896,7 @@ export default function CreatePostScreen() {
                     {notes.substring(0, cursorPosition)}
                     <Text
                       style={{ color: colors.textTertiary }}
-                      onPress={() => {
-                        console.log(
-                          '[Autocomplete] Ghost text tapped:',
-                          currentSuggestion.name,
-                        )
-                        handleAcceptSuggestion()
-                      }}
+                      onPress={handleAcceptSuggestion}
                       suppressHighlighting={true}
                     >
                       {currentSuggestion.name.slice(
