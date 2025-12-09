@@ -55,51 +55,116 @@ type WizardStep =
   | 'specifics'
   | 'confirm'
 
+// Enhanced options with icons and cleaner values
 const GOAL_OPTIONS = [
   {
     label: 'Strength',
-    value: 'Strength (heavy weight, low reps, progressive overload)',
+    value: 'Strength',
+    icon: 'barbell',
+    description: 'Heavy weight, lower reps',
   },
   {
     label: 'Hypertrophy',
-    value: 'Hypertrophy (muscle building, moderate weight, 8-12 reps)',
+    value: 'Hypertrophy',
+    icon: 'body',
+    description: 'Build muscle size',
   },
   {
-    label: 'Fat Loss / HIIT',
-    value: 'Fat Loss / HIIT (high intensity, circuit style)',
+    label: 'Fat Loss',
+    value: 'Fat Loss / HIIT',
+    icon: 'flame',
+    description: 'High intensity circuits',
   },
-  { label: 'Endurance', value: 'Endurance (lighter weight, high reps)' },
+  {
+    label: 'Endurance',
+    value: 'Endurance',
+    icon: 'stopwatch',
+    description: 'Stamina & conditioning',
+  },
   {
     label: 'Powerlifting',
-    value: 'Powerlifting (squat, bench, deadlift focus)',
+    value: 'Powerlifting',
+    icon: 'trophy',
+    description: 'S/B/D focus',
   },
   {
     label: 'Athletic',
-    value: 'Athletic Performance (power, speed, conditioning)',
+    value: 'Athletic Performance',
+    icon: 'flash',
+    description: 'Speed & agility',
   },
-  { label: 'General Fitness', value: 'General Fitness (balanced approach)' },
+  {
+    label: 'General Fitness',
+    value: 'General Fitness',
+    icon: 'heart',
+    description: 'Stay healthy & active',
+  },
 ]
 
 const MUSCLE_OPTIONS = [
-  { label: 'Push', value: 'Push (Chest, Shoulders, Triceps)' },
-  { label: 'Pull', value: 'Pull (Back, Biceps)' },
-  { label: 'Legs', value: 'Legs (Quads, Hamstrings, Glutes, Calves)' },
-  { label: 'Upper Body', value: 'Upper Body' },
-  { label: 'Lower Body', value: 'Lower Body' },
-  { label: 'Full Body', value: 'Full Body' },
-  { label: 'Chest', value: 'Chest' },
-  { label: 'Back', value: 'Back' },
-  { label: 'Shoulders', value: 'Shoulders' },
-  { label: 'Arms', value: 'Arms (Biceps, Triceps)' },
-  { label: 'Core', value: 'Core / Abs' },
+  {
+    label: 'Push',
+    value: 'Push',
+    description: 'Chest, Shoulders, Triceps',
+  },
+  {
+    label: 'Pull',
+    value: 'Pull',
+    description: 'Back, Biceps',
+  },
+  {
+    label: 'Legs',
+    value: 'Legs',
+    description: 'Quads, Hamstrings, Glutes',
+  },
+  {
+    label: 'Full Body',
+    value: 'Full Body',
+    description: 'Hit everything',
+  },
+  {
+    label: 'Upper Body',
+    value: 'Upper Body',
+    description: 'Torso & Arms',
+  },
+  {
+    label: 'Lower Body',
+    value: 'Lower Body',
+    description: 'Legs & Core',
+  },
+  {
+    label: 'Chest',
+    value: 'Chest',
+    description: 'Pectorals',
+  },
+  {
+    label: 'Back',
+    value: 'Back',
+    description: 'Lats & Traps',
+  },
+  {
+    label: 'Shoulders',
+    value: 'Shoulders',
+    description: 'Deltoids',
+  },
+  {
+    label: 'Arms',
+    value: 'Arms',
+    description: 'Biceps & Triceps',
+  },
+  {
+    label: 'Core',
+    value: 'Core',
+    description: 'Abs & Obliques',
+  },
 ]
 
 const DURATION_OPTIONS = [
-  { label: '20 min', value: '20 minutes' },
-  { label: '30 min', value: '30 minutes' },
-  { label: '45 min', value: '45 minutes' },
-  { label: '1 hour', value: '1 hour' },
-  { label: '90 min', value: '90 minutes' },
+  { label: '20 min', value: '20 minutes', icon: 'timer-outline' },
+  { label: '30 min', value: '30 minutes', icon: 'timer-outline' },
+  { label: '45 min', value: '45 minutes', icon: 'timer-outline' },
+  { label: '1 hour', value: '1 hour', icon: 'time-outline' },
+  { label: '90 min', value: '90 minutes', icon: 'time-outline' },
 ]
 
 const EQUIPMENT_OPTIONS: {
@@ -132,6 +197,16 @@ const EQUIPMENT_OPTIONS: {
     value: 'barbell_only',
     description: 'Barbell & plates',
   },
+]
+
+const SPECIFICS_TAGS = [
+  'No Jumping',
+  'Knee Friendly',
+  'Low Back Friendly',
+  'Quiet',
+  'Supersets',
+  'No Machines',
+  'Focus on Form',
 ]
 
 const STEPS: WizardStep[] = [
@@ -246,7 +321,16 @@ export function WorkoutPlanningWizard({
     if (showCustomInput && customInput.trim()) {
       const field = currentStep as keyof WorkoutPlanningData
       if (field !== 'equipment') {
-        setData((prev) => ({ ...prev, [field]: customInput.trim() }))
+        if (field === 'muscles') {
+          // Add custom muscle to list
+          const current = data.muscles ? data.muscles.split(', ') : []
+          if (!current.includes(customInput.trim())) {
+            const newSelection = [...current, customInput.trim()]
+            setData((prev) => ({ ...prev, muscles: newSelection.join(', ') }))
+          }
+        } else {
+          setData((prev) => ({ ...prev, [field]: customInput.trim() }))
+        }
       }
       setCustomInput('')
       setShowCustomInput(false)
@@ -274,9 +358,25 @@ export function WorkoutPlanningWizard({
   const handleSelectOption = (
     field: keyof WorkoutPlanningData,
     value: string,
+    multiSelect = false,
   ) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setData((prev) => ({ ...prev, [field]: value }))
+
+    if (multiSelect && typeof value === 'string') {
+      const current = data[field] ? (data[field] as string).split(', ') : []
+      let newSelection
+      if (current.includes(value)) {
+        newSelection = current.filter((m) => m !== value)
+      } else {
+        newSelection = [...current, value]
+      }
+      setData((prev) => ({ ...prev, [field]: newSelection.join(', ') }))
+    } else {
+      setData((prev) => ({ ...prev, [field]: value }))
+      // Only auto-advance if it's not multi-select and not specifics
+      // Actually, let's keep it manual next for better control unless it's duration
+    }
+
     setShowCustomInput(false)
     setCustomInput('')
   }
@@ -285,15 +385,6 @@ export function WorkoutPlanningWizard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     await savePreferences(data)
     onComplete(data)
-  }
-
-  const handleSkip = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    // For specifics step, just move to next without requiring input
-    if (currentStep === 'specifics') {
-      setData((prev) => ({ ...prev, specifics: '' }))
-    }
-    handleNext()
   }
 
   const renderStepIndicator = () => (
@@ -306,6 +397,7 @@ export function WorkoutPlanningWizard({
             {
               backgroundColor:
                 index <= currentStepIndex ? colors.primary : colors.border,
+              width: index === currentStepIndex ? 18 : 6,
             },
           ]}
         />
@@ -313,88 +405,115 @@ export function WorkoutPlanningWizard({
     </View>
   )
 
-  const renderChips = (
-    options: { label: string; value: string; description?: string }[],
+  const renderOptionCards = (
+    options: {
+      label: string
+      value: string
+      description?: string
+      icon?: string
+    }[],
     field: keyof WorkoutPlanningData,
-    allowCustom = true,
+    multiSelect = false,
   ) => (
-    <View style={styles.chipsContainer}>
-      {options.map((option) => {
-        const isSelected = data[field] === option.value
+    <View style={[styles.cardsContainer, { backgroundColor: colors.backgroundLight, borderRadius: 12, overflow: 'hidden' }]}>
+      {options.map((option, index) => {
+        let isSelected = false
+        if (multiSelect) {
+          const current = data[field] ? (data[field] as string).split(', ') : []
+          isSelected = current.includes(option.value)
+        } else {
+          isSelected = data[field] === option.value
+        }
+        const isLast = index === options.length - 1
+
         return (
           <TouchableOpacity
             key={option.value}
             style={[
-              styles.chip,
+              styles.card,
               {
                 backgroundColor: isSelected
-                  ? colors.primary
-                  : colors.backgroundLight,
-                borderColor: isSelected ? colors.primary : colors.border,
+                  ? `${colors.primary}12`
+                  : 'transparent',
+                borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                borderBottomColor: colors.border,
               },
             ]}
-            onPress={() => handleSelectOption(field, option.value)}
-            activeOpacity={0.7}
+            onPress={() => handleSelectOption(field, option.value, multiSelect)}
+            activeOpacity={0.6}
           >
-            <Text
-              style={[
-                styles.chipText,
-                { color: isSelected ? colors.white : colors.text },
-              ]}
-            >
-              {option.label}
-            </Text>
-            {option.description && (
+            {option.icon && (
+              <Ionicons
+                name={option.icon as any}
+                size={18}
+                color={isSelected ? colors.primary : colors.textSecondary}
+                style={styles.cardIcon}
+              />
+            )}
+            <View style={styles.cardContent}>
               <Text
                 style={[
-                  styles.chipDescription,
-                  { color: isSelected ? colors.white : colors.textSecondary },
+                  styles.cardTitle,
+                  { color: isSelected ? colors.primary : colors.text },
                 ]}
               >
-                {option.description}
+                {option.label}
               </Text>
+              {option.description && (
+                <Text
+                  style={[
+                    styles.cardDescription,
+                    { color: colors.textSecondary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {option.description}
+                </Text>
+              )}
+            </View>
+            {multiSelect ? (
+              <View
+                style={[
+                  styles.checkbox,
+                  {
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    backgroundColor: isSelected ? colors.primary : 'transparent',
+                  },
+                ]}
+              >
+                {isSelected && (
+                  <Ionicons name="checkmark" size={12} color={colors.white} />
+                )}
+              </View>
+            ) : (
+              isSelected && (
+                <Ionicons name="checkmark" size={18} color={colors.primary} />
+              )
             )}
           </TouchableOpacity>
         )
       })}
-      {allowCustom && (
-        <TouchableOpacity
-          style={[
-            styles.chip,
-            styles.customChip,
-            {
-              backgroundColor: showCustomInput
-                ? colors.primary
-                : colors.backgroundLight,
-              borderColor: showCustomInput ? colors.primary : colors.border,
-            },
-          ]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-            setShowCustomInput(!showCustomInput)
-          }}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="add"
-            size={16}
-            color={showCustomInput ? colors.white : colors.primary}
-          />
-          <Text
-            style={[
-              styles.chipText,
-              { color: showCustomInput ? colors.white : colors.primary },
-            ]}
-          >
-            Custom
-          </Text>
-        </TouchableOpacity>
-      )}
     </View>
   )
 
-  const renderCustomInput = (placeholder: string) => {
-    if (!showCustomInput) return null
+  const renderCustomInput = (placeholder: string, field: WizardStep) => {
+    if (!showCustomInput) {
+      return (
+        <TouchableOpacity
+          style={styles.customTrigger}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            setShowCustomInput(true)
+          }}
+        >
+          <Ionicons name="add" size={16} color={colors.primary} />
+          <Text style={[styles.customTriggerText, { color: colors.primary }]}>
+            Custom
+          </Text>
+        </TouchableOpacity>
+      )
+    }
+
     return (
       <View
         style={[
@@ -407,152 +526,196 @@ export function WorkoutPlanningWizard({
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
           value={customInput}
-          onChangeText={(text) => {
-            setCustomInput(text)
-            // Also update data so canGoNext works
-            const field = currentStep as keyof WorkoutPlanningData
-            if (field !== 'equipment') {
-              setData((prev) => ({ ...prev, [field]: text }))
-            }
-          }}
+          onChangeText={setCustomInput}
           autoFocus
+          onSubmitEditing={handleNext} // Allow submit to add
+          returnKeyType="done"
         />
+        <TouchableOpacity
+          style={styles.customInputSubmit}
+          onPress={handleNext} // Re-use next handler to add custom input
+        >
+          <Ionicons name="checkmark-circle" size={28} color={colors.primary} />
+        </TouchableOpacity>
       </View>
     )
   }
 
   const renderGoalStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={[styles.stepTitle, { color: colors.text }]}>
-        What's your primary goal?
-      </Text>
-      <ScrollView
-        style={styles.optionsScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderChips(GOAL_OPTIONS, 'goal')}
-        {renderCustomInput('e.g., Rehab, Mobility, Sport-specific...')}
-      </ScrollView>
-    </View>
+    <ScrollView
+      style={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContentContainer}
+    >
+      <View style={styles.headerContainer}>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Primary Goal
+        </Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+          What do you want to achieve today?
+        </Text>
+      </View>
+      {renderOptionCards(GOAL_OPTIONS, 'goal')}
+      {renderCustomInput('e.g., Rehab, Sport-specific...', 'goal')}
+    </ScrollView>
   )
 
   const renderMusclesStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={[styles.stepTitle, { color: colors.text }]}>
-        What muscle groups do you want to train?
-      </Text>
-      <ScrollView
-        style={styles.optionsScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderChips(MUSCLE_OPTIONS, 'muscles')}
-        {renderCustomInput('e.g., Chest and Back, Glutes only...')}
-      </ScrollView>
-    </View>
+    <ScrollView
+      style={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContentContainer}
+    >
+      <View style={styles.headerContainer}>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Target Muscles
+        </Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+          Select one or more areas to focus on.
+        </Text>
+      </View>
+      {renderOptionCards(MUSCLE_OPTIONS, 'muscles', true)}
+      {renderCustomInput('e.g., Calves, Neck...', 'muscles')}
+    </ScrollView>
   )
 
   const renderDurationStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={[styles.stepTitle, { color: colors.text }]}>
-        How much time do you have?
-      </Text>
-      <ScrollView
-        style={styles.optionsScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderChips(DURATION_OPTIONS, 'duration')}
-        {renderCustomInput('e.g., 40 minutes, 2 hours...')}
-      </ScrollView>
-    </View>
+    <ScrollView
+      style={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContentContainer}
+    >
+      <View style={styles.headerContainer}>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Duration
+        </Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+          How much time do you have?
+        </Text>
+      </View>
+      {renderOptionCards(DURATION_OPTIONS, 'duration')}
+      {renderCustomInput('e.g., 2 hours, 15 mins...', 'duration')}
+    </ScrollView>
   )
 
   const renderEquipmentStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={[styles.stepTitle, { color: colors.text }]}>
-        What equipment do you have access to?
-      </Text>
-      {savedEquipment && (
-        <Text style={[styles.savedHint, { color: colors.textSecondary }]}>
-          Your saved preference:{' '}
-          {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
+    <ScrollView
+      style={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContentContainer}
+    >
+      <View style={styles.headerContainer}>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Equipment
         </Text>
-      )}
-      <ScrollView
-        style={styles.optionsScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.chipsContainer}>
-          {EQUIPMENT_OPTIONS.map((option) => {
-            const isSelected = data.equipment === option.value
-            return (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.chip,
-                  styles.equipmentChip,
-                  {
-                    backgroundColor: isSelected
-                      ? colors.primary
-                      : colors.backgroundLight,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => handleSelectOption('equipment', option.value)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    { color: isSelected ? colors.white : colors.text },
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.chipDescription,
-                    { color: isSelected ? colors.white : colors.textSecondary },
-                  ]}
-                >
-                  {option.description}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+          What's available to you right now?
+        </Text>
+      </View>
+      {savedEquipment && (
+        <View
+          style={[
+            styles.savedBadge,
+            { backgroundColor: `${colors.primary}15` },
+          ]}
+        >
+          <Ionicons name="save-outline" size={14} color={colors.primary} />
+          <Text style={[styles.savedBadgeText, { color: colors.primary }]}>
+            Saved: {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
+          </Text>
         </View>
-      </ScrollView>
-    </View>
+      )}
+      {renderOptionCards(EQUIPMENT_OPTIONS, 'equipment')}
+    </ScrollView>
   )
 
   const renderSpecificsStep = () => (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.stepContent}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>
-          Any specific requests or injuries?
-        </Text>
-        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-          Optional - skip if none
-        </Text>
-        <View
-          style={[
-            styles.specificsInputContainer,
-            { backgroundColor: colors.backgroundLight },
-          ]}
+        <ScrollView
+          style={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContentContainer}
         >
-          <TextInput
-            style={[styles.specificsInput, { color: colors.text }]}
-            placeholder="e.g., No deadlifts, focus on compound movements, include supersets..."
-            placeholderTextColor={colors.textSecondary}
-            value={data.specifics}
-            onChangeText={(text) =>
-              setData((prev) => ({ ...prev, specifics: text }))
-            }
-            multiline
-            numberOfLines={3}
-            blurOnSubmit
-            returnKeyType="done"
-          />
-        </View>
+          <View style={styles.headerContainer}>
+            <Text style={[styles.stepTitle, { color: colors.text }]}>
+              Specifics
+            </Text>
+            <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+              Any injuries or preferences? (Optional)
+            </Text>
+          </View>
+
+          <View style={styles.tagsContainer}>
+            {SPECIFICS_TAGS.map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={[
+                  styles.tag,
+                  {
+                    backgroundColor: data.specifics.includes(tag)
+                      ? colors.primary
+                      : colors.backgroundLight,
+                    borderColor: data.specifics.includes(tag)
+                      ? colors.primary
+                      : colors.border,
+                  },
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  const current = data.specifics
+                  if (current.includes(tag)) {
+                    // Remove tag
+                    setData((prev) => ({
+                      ...prev,
+                      specifics: prev.specifics.replace(tag, '').replace(', ,', ',').replace(/^, /, '').replace(/, $/, '').trim(),
+                    }))
+                  } else {
+                    // Add tag
+                    setData((prev) => ({
+                      ...prev,
+                      specifics: prev.specifics ? `${prev.specifics}, ${tag}` : tag,
+                    }))
+                  }
+                }}
+              >
+                <Text
+                  style={[
+                    styles.tagText,
+                    {
+                      color: data.specifics.includes(tag)
+                        ? colors.white
+                        : colors.text,
+                    },
+                  ]}
+                >
+                  {tag}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View
+            style={[
+              styles.specificsInputContainer,
+              { backgroundColor: colors.backgroundLight },
+            ]}
+          >
+            <TextInput
+              style={[styles.specificsInput, { color: colors.text }]}
+              placeholder="e.g., I have a bad shoulder, include some cardio..."
+              placeholderTextColor={colors.textSecondary}
+              value={data.specifics}
+              onChangeText={(text) =>
+                setData((prev) => ({ ...prev, specifics: text }))
+              }
+              multiline
+              numberOfLines={4}
+              blurOnSubmit
+              returnKeyType="done"
+            />
+          </View>
+        </ScrollView>
       </View>
     </TouchableWithoutFeedback>
   )
@@ -562,11 +725,24 @@ export function WorkoutPlanningWizard({
       EQUIPMENT_OPTIONS.find((o) => o.value === data.equipment)?.label ||
       data.equipment
 
+    const goalOption = GOAL_OPTIONS.find((o) => o.value === data.goal)
+    const goalIcon = goalOption?.icon || 'barbell'
+
     return (
-      <View style={styles.stepContent}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>
-          Ready to generate your plan?
-        </Text>
+      <ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContentContainer}
+      >
+        <View style={styles.headerContainer}>
+          <Text style={[styles.stepTitle, { color: colors.text }]}>
+            Summary
+          </Text>
+          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+            Ready to generate your plan?
+          </Text>
+        </View>
+
         <View
           style={[
             styles.summaryCard,
@@ -576,24 +752,28 @@ export function WorkoutPlanningWizard({
           <SummaryRow
             label="Goal"
             value={data.goal}
+            icon={goalIcon}
             colors={colors}
             onEdit={() => setCurrentStep('goal')}
           />
           <SummaryRow
             label="Muscles"
             value={data.muscles}
+            icon="body"
             colors={colors}
             onEdit={() => setCurrentStep('muscles')}
           />
           <SummaryRow
             label="Duration"
             value={data.duration}
+            icon="time"
             colors={colors}
             onEdit={() => setCurrentStep('duration')}
           />
           <SummaryRow
             label="Equipment"
             value={equipmentLabel}
+            icon="fitness"
             colors={colors}
             onEdit={() => setCurrentStep('equipment')}
           />
@@ -601,12 +781,13 @@ export function WorkoutPlanningWizard({
             <SummaryRow
               label="Notes"
               value={data.specifics}
+              icon="document-text"
               colors={colors}
               onEdit={() => setCurrentStep('specifics')}
             />
           ) : null}
         </View>
-      </View>
+      </ScrollView>
     )
   }
 
@@ -635,10 +816,11 @@ export function WorkoutPlanningWizard({
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
       {renderStepIndicator()}
       {renderCurrentStep()}
+
       <View style={styles.navigationContainer}>
         <TouchableOpacity
           style={[
@@ -647,31 +829,10 @@ export function WorkoutPlanningWizard({
             { borderColor: colors.border },
           ]}
           onPress={handleBack}
-          activeOpacity={0.7}
+          activeOpacity={0.6}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-          <Text style={[styles.navButtonText, { color: colors.text }]}>
-            {currentStepIndex === 0 ? 'Cancel' : 'Back'}
-          </Text>
+          <Ionicons name="chevron-back" size={18} color={colors.text} />
         </TouchableOpacity>
-
-        {currentStep === 'specifics' && (
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              styles.skipButton,
-              { borderColor: colors.border },
-            ]}
-            onPress={handleSkip}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[styles.navButtonText, { color: colors.textSecondary }]}
-            >
-              Skip
-            </Text>
-          </TouchableOpacity>
-        )}
 
         {currentStep === 'confirm' ? (
           <TouchableOpacity
@@ -681,12 +842,12 @@ export function WorkoutPlanningWizard({
               { backgroundColor: colors.primary },
             ]}
             onPress={handleConfirm}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
-            <Ionicons name="flash" size={20} color={colors.white} />
             <Text style={[styles.navButtonText, { color: colors.white }]}>
               Generate
             </Text>
+            <Ionicons name="sparkles" size={16} color={colors.white} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -697,11 +858,12 @@ export function WorkoutPlanningWizard({
                 backgroundColor: canGoNext()
                   ? colors.primary
                   : colors.backgroundLight,
+                opacity: canGoNext() ? 1 : 0.5,
               },
             ]}
             onPress={handleNext}
             disabled={!canGoNext()}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
             <Text
               style={[
@@ -712,8 +874,8 @@ export function WorkoutPlanningWizard({
               Next
             </Text>
             <Ionicons
-              name="arrow-forward"
-              size={20}
+              name="chevron-forward"
+              size={16}
               color={canGoNext() ? colors.white : colors.textSecondary}
             />
           </TouchableOpacity>
@@ -726,17 +888,26 @@ export function WorkoutPlanningWizard({
 function SummaryRow({
   label,
   value,
+  icon,
   colors,
   onEdit,
 }: {
   label: string
   value: string
+  icon: string
   colors: WorkoutPlanningWizardProps['colors']
   onEdit: () => void
 }) {
   return (
-    <View style={summaryStyles.row}>
-      <View style={summaryStyles.labelContainer}>
+    <TouchableOpacity
+      style={summaryStyles.row}
+      onPress={onEdit}
+      activeOpacity={0.6}
+    >
+      <View style={summaryStyles.iconContainer}>
+        <Ionicons name={icon as any} size={16} color={colors.primary} />
+      </View>
+      <View style={summaryStyles.contentContainer}>
         <Text style={[summaryStyles.label, { color: colors.textSecondary }]}>
           {label}
         </Text>
@@ -747,13 +918,8 @@ function SummaryRow({
           {value}
         </Text>
       </View>
-      <TouchableOpacity
-        onPress={onEdit}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons name="pencil" size={16} color={colors.primary} />
-      </TouchableOpacity>
-    </View>
+      <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+    </TouchableOpacity>
   )
 }
 
@@ -761,19 +927,25 @@ const summaryStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
+    borderBottomColor: 'rgba(128, 128, 128, 0.1)',
   },
-  labelContainer: {
-    flex: 1,
+  iconContainer: {
     marginRight: 12,
+    width: 24,
+    alignItems: 'center',
+  },
+  contentContainer: {
+    flex: 1,
+    marginRight: 10,
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   value: {
     fontSize: 15,
@@ -785,121 +957,175 @@ const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
   StyleSheet.create({
     container: {
       flex: 1,
+    },
+    scrollContent: {
+      flex: 1,
+    },
+    scrollContentContainer: {
       paddingHorizontal: 16,
+      paddingBottom: 16,
     },
     stepIndicatorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 16,
-      gap: 6,
+      paddingVertical: 14,
+      gap: 5,
     },
     stepDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    stepText: {
-      fontSize: 12,
-      marginLeft: 8,
+      height: 4,
+      borderRadius: 2,
     },
     stepContent: {
       flex: 1,
     },
+    headerContainer: {
+      marginBottom: 16,
+    },
     stepTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
-      marginBottom: 8,
+      marginBottom: 4,
     },
     stepSubtitle: {
       fontSize: 14,
-      marginBottom: 16,
+      opacity: 0.8,
     },
-    savedHint: {
-      fontSize: 13,
-      marginBottom: 12,
-      fontStyle: 'italic',
+    cardsContainer: {
+      gap: 0,
     },
-    optionsScroll: {
-      flex: 1,
-    },
-    chipsContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-      paddingBottom: 16,
-    },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      minWidth: 80,
-    },
-    equipmentChip: {
-      width: '100%',
-      flexDirection: 'column',
-      alignItems: 'flex-start',
-    },
-    customChip: {
+    card: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
     },
-    chipText: {
+    cardIcon: {
+      marginRight: 12,
+      width: 20,
+    },
+    cardContent: {
+      flex: 1,
+    },
+    cardTitle: {
       fontSize: 15,
-      fontWeight: '600',
+      fontWeight: '500',
     },
-    chipDescription: {
+    cardDescription: {
       fontSize: 12,
-      marginTop: 2,
+      marginTop: 1,
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 10,
+    },
+    // Custom Input
+    customTrigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      marginTop: 12,
+      gap: 6,
+    },
+    customTriggerText: {
+      fontSize: 14,
+      fontWeight: '500',
     },
     customInputContainer: {
-      borderRadius: 12,
-      padding: 12,
-      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 10,
+      padding: 6,
+      marginTop: 12,
     },
     customInput: {
+      flex: 1,
       fontSize: 15,
-      minHeight: 40,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      minHeight: 44,
+    },
+    customInputSubmit: {
+      padding: 6,
+    },
+    // Saved Equipment Badge
+    savedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 6,
+      alignSelf: 'flex-start',
+      marginBottom: 12,
+      gap: 5,
+    },
+    savedBadgeText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    // Specifics Tags
+    tagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginBottom: 12,
+    },
+    tag: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
+    },
+    tagText: {
+      fontSize: 13,
+      fontWeight: '500',
     },
     specificsInputContainer: {
       borderRadius: 12,
       padding: 12,
-      marginTop: 8,
+      minHeight: 100,
     },
     specificsInput: {
       fontSize: 15,
-      minHeight: 80,
+      lineHeight: 22,
       textAlignVertical: 'top',
+      flex: 1,
     },
+    // Summary
     summaryCard: {
-      borderRadius: 16,
-      padding: 16,
-      marginTop: 16,
+      borderRadius: 12,
+      padding: 4,
+      paddingHorizontal: 14,
     },
+    // Navigation
     navigationContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingVertical: 16,
-      gap: 12,
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: Platform.OS === 'ios' ? 16 : 16,
+      gap: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
     },
     navButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 20,
-      borderRadius: 12,
+      height: 46,
+      borderRadius: 23,
       gap: 6,
     },
     backButton: {
+      width: 46,
       borderWidth: 1,
-      flex: 1,
-    },
-    skipButton: {
-      borderWidth: 1,
-      paddingHorizontal: 16,
     },
     nextButton: {
       flex: 1,
@@ -908,7 +1134,8 @@ const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
       flex: 1,
     },
     navButtonText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
     },
   })
+

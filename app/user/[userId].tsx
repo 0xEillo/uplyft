@@ -71,6 +71,7 @@ export default function UserProfileScreen() {
   )
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState(0)
+  const [currentStreak, setCurrentStreak] = useState(0)
 
   useEffect(() => {
     return () => {
@@ -132,12 +133,17 @@ export default function UserProfileScreen() {
 
         setWeeklyWorkouts(weekCount)
         setWeeklyVolume(totalVolume)
+
+        // Calculate streak
+        const streakResult = await database.stats.calculateStreak(userId)
+        setCurrentStreak(streakResult.currentStreak)
       } catch (workoutError) {
         if (workoutError instanceof PrivacyError) {
           setPrivacyLocked(true)
           setWorkouts([])
           setWeeklyWorkouts(0)
           setWeeklyVolume(0)
+          setCurrentStreak(0)
         } else {
           throw workoutError
         }
@@ -447,6 +453,11 @@ export default function UserProfileScreen() {
                 <Text style={styles.weeklyStatsTitle}>THIS WEEK</Text>
               </View>
               <View style={styles.weeklyStats}>
+                <View style={styles.weeklyStat}>
+                  <Text style={styles.weeklyStatNumber}>{currentStreak}</Text>
+                  <Text style={styles.weeklyStatLabel}>Streak</Text>
+                </View>
+                <View style={styles.weeklyStatDivider} />
                 <View style={styles.weeklyStat}>
                   <Text style={styles.weeklyStatNumber}>{weeklyWorkouts}</Text>
                   <Text style={styles.weeklyStatLabel}>Workouts</Text>

@@ -532,7 +532,7 @@ export function StrengthStandardsView() {
 
           {/* Section Header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>YOUR LIFTS</Text>
+            <Text style={styles.sectionHeaderText}>YOUR MUSCLES</Text>
           </View>
 
           {/* Muscle Groups */}

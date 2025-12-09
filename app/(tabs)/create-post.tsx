@@ -979,10 +979,11 @@ export default function CreatePostScreen() {
 
         weeklyTarget = parseCommitment(profile.commitment)
 
-        // Fetch current streak
+        // Fetch current streak (includeCurrentWeek=true since we're submitting a workout now)
         const streakResult = await database.stats.calculateStreak(
           user.id,
           weeklyTarget,
+          true, // Include current week since workout is being submitted
         )
         currentStreak = streakResult.currentStreak ?? 0
 

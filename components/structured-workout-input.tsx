@@ -766,8 +766,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       marginLeft: 'auto',
-      gap: 4,
-      minWidth: 80,
+      gap: 2,
+      minWidth: 50,
       justifyContent: 'flex-end',
     },
     timerText: {
@@ -811,8 +811,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 24,
     },
     inlineInput: {
-      minWidth: 50,
-      paddingHorizontal: 8,
+      minWidth: 40,
+      paddingHorizontal: 2,
       paddingTop: 0,
       paddingBottom: 0,
       fontSize: 17,
@@ -826,8 +826,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '500',
     },
     deleteSetButtonContainer: {
-      width: 34,
-      marginLeft: 8,
+      width: 28,
+      marginLeft: 4,
       alignItems: 'center',
       justifyContent: 'center',
     },

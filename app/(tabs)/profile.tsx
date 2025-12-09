@@ -54,6 +54,7 @@ export default function ProfileScreen() {
   // This week stats
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState(0)
+  const [currentStreak, setCurrentStreak] = useState(0)
   const [weeklyActivity, setWeeklyActivity] = useState<boolean[]>(
     new Array(7).fill(false),
   )
@@ -73,16 +74,18 @@ export default function ProfileScreen() {
       startOfWeek.setHours(0, 0, 0, 0)
 
       // Load stats
-      const [counts, totalWorkouts, weekCount] = await Promise.all([
+      const [counts, totalWorkouts, weekCount, streakResult] = await Promise.all([
         database.follows.getCounts(user.id),
         database.workoutSessions.getTotalCount(user.id),
         database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
+        database.stats.calculateStreak(user.id),
       ])
 
       setFollowerCount(counts.followers)
       setFollowingCount(counts.following)
       setWorkoutCount(totalWorkouts)
       setWeeklyWorkouts(weekCount)
+      setCurrentStreak(streakResult.currentStreak)
 
       // Calculate weekly volume and activity
       const weekWorkouts = await database.workoutSessions.getRecent(
@@ -368,6 +371,13 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.weeklyStats}>
+                  <View style={styles.weeklyStat}>
+                    <Text style={styles.weeklyStatNumber}>
+                      {currentStreak}
+                    </Text>
+                    <Text style={styles.weeklyStatLabel}>Streak</Text>
+                  </View>
+                  <View style={styles.weeklyStatDivider} />
                   <View style={styles.weeklyStat}>
                     <Text style={styles.weeklyStatNumber}>
                       {weeklyWorkouts}

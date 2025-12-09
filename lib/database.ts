@@ -2241,10 +2241,14 @@ export const database = {
     /**
      * Calculate workout streak based on consecutive weeks with at least one workout
      * Returns current streak in weeks and last workout date
+     *
+     * @param includeCurrentWeek - If true, assume the current week counts (for when
+     *        calculating streak while submitting a workout that hasn't been saved yet)
      */
     async calculateStreak(
       userId: string,
       weeklyGoal: number = 3,
+      includeCurrentWeek: boolean = false,
     ): Promise<{ currentStreak: number; lastWorkoutDate: string | null }> {
       try {
         // Fetch all workout dates
@@ -2255,7 +2259,12 @@ export const database = {
           .order('date', { ascending: false })
 
         if (error) throw error
+
+        // If no workouts but we're including current week (submitting now), streak is 1
         if (!data || data.length === 0) {
+          if (includeCurrentWeek) {
+            return { currentStreak: 1, lastWorkoutDate: null }
+          }
           return { currentStreak: 0, lastWorkoutDate: null }
         }
 
@@ -2283,6 +2292,18 @@ export const database = {
           weeksWithWorkouts.add(weekKey)
         })
 
+        // If includeCurrentWeek is true, add the current week to the set
+        // (this handles the case when we're submitting a workout that hasn't been saved yet)
+        const today = new Date()
+        const currentWeekStart = new Date(today)
+        currentWeekStart.setDate(today.getDate() - today.getDay())
+        currentWeekStart.setHours(0, 0, 0, 0)
+        const currentWeekKey = currentWeekStart.toISOString().split('T')[0]
+
+        if (includeCurrentWeek) {
+          weeksWithWorkouts.add(currentWeekKey)
+        }
+
         // Sort weeks descending
         const weeks = Array.from(weeksWithWorkouts).sort((a, b) =>
           b.localeCompare(a),
@@ -2290,10 +2311,6 @@ export const database = {
 
         // Calculate current streak - consecutive weeks with at least one workout
         let currentStreak = 0
-        const today = new Date()
-        const currentWeekStart = new Date(today)
-        currentWeekStart.setDate(today.getDate() - today.getDay())
-        currentWeekStart.setHours(0, 0, 0, 0)
         // Start from current week and go backwards
         for (let i = 0; i < weeks.length; i++) {
           const week = weeks[i]
