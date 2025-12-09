@@ -558,15 +558,23 @@ export default function CreatePostScreen() {
     )
     pendingRoutineWaitingForLoad.current = false
 
+    // Capture source before clearing to use in logic below
+    const source = pendingRoutineSource
+
+    // Clear pending state synchronously BEFORE other state updates to prevent re-triggers
+    // (structuredData/notes in deps would cause infinite loops if cleared async)
+    setPendingDraftRoutineId(null)
+    setPendingRoutineSource(null)
+
     setSelectedRoutine(routine)
     setIsStructuredMode(true)
     // Only clear structuredData if this is a fresh routine start (from route, not draft)
-    if (pendingRoutineSource === 'route') {
+    if (source === 'route') {
       setStructuredData([])
     }
     setLastRoutineWorkout(null)
 
-    if (pendingRoutineSource === 'route' || !titleRef.current.trim()) {
+    if (source === 'route' || !titleRef.current.trim()) {
       setWorkoutTitle(routine.name)
     }
 
@@ -583,39 +591,17 @@ export default function CreatePostScreen() {
       console.error('[Routine] Immediate persist failed:', error),
     )
 
-    let isMounted = true
-
-    const hydrateLastWorkout = async () => {
-      if (!user?.id) {
-        return
-      }
-
-      try {
-        const lastWorkout = await database.workoutSessions.getLastForRoutine(
-          user.id,
-          routine.id,
-        )
-
-        if (isMounted) {
+    // Hydrate last workout data (async, but no longer controls loop prevention)
+    if (user?.id) {
+      database.workoutSessions
+        .getLastForRoutine(user.id, routine.id)
+        .then((lastWorkout) => {
           setLastRoutineWorkout(lastWorkout)
-        }
-      } catch (error) {
-        console.error('[Routine] Error loading last workout:', error)
-        if (isMounted) {
+        })
+        .catch((error) => {
+          console.error('[Routine] Error loading last workout:', error)
           setLastRoutineWorkout(null)
-        }
-      } finally {
-        if (isMounted) {
-          setPendingDraftRoutineId(null)
-          setPendingRoutineSource(null)
-        }
-      }
-    }
-
-    hydrateLastWorkout()
-
-    return () => {
-      isMounted = false
+        })
     }
   }, [
     pendingDraftRoutineId,
@@ -1727,7 +1713,7 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="chevron-down" size={28} color={colors.text} />
+            <Ionicons name="chevron-down" size={30} color={colors.text} />
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.headerCenter}>
@@ -1759,7 +1745,7 @@ export default function CreatePostScreen() {
                 transform: [{ scale: buttonScaleAnim }],
               }}
             >
-              <Ionicons name="checkmark" size={28} color={colors.white} />
+              <Ionicons name="checkmark" size={30} color={colors.white} />
             </Animated.View>
           </TouchableOpacity>
         </Pressable>
@@ -2230,10 +2216,10 @@ const createStyles = (
     },
     titleInput: {
       flex: 1,
-      fontSize: 28,
+      fontSize: 30,
       fontWeight: '600',
       color: colors.text,
-      lineHeight: Platform.OS === 'ios' ? 34 : 32,
+      lineHeight: Platform.OS === 'ios' ? 36 : 34,
       paddingVertical: Platform.OS === 'ios' ? 6 : 4,
     },
     routineSelectorButton: {

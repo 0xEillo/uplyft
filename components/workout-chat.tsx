@@ -1218,7 +1218,7 @@ export function WorkoutChat() {
         onPress={handleNewChat}
         activeOpacity={0.7}
       >
-        <Ionicons name="create-outline" size={26} color={colors.primary} />
+        <Ionicons name="create-outline" size={28} color={colors.primary} />
       </TouchableOpacity>
 
       <ScrollView

@@ -51,7 +51,7 @@ export default function AnalyticsScreen() {
             >
               <Ionicons
                 name={viewMode === 'standards' ? 'stats-chart' : 'barbell'}
-                size={22}
+                size={24}
                 color={colors.text}
               />
             </TouchableOpacity>
@@ -59,7 +59,7 @@ export default function AnalyticsScreen() {
               onPress={() => router.push('/body-log')}
               style={{ padding: 4 }}
             >
-              <Ionicons name="body-outline" size={22} color={colors.text} />
+              <Ionicons name="body-outline" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
         }
@@ -81,7 +81,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
     },

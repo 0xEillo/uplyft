@@ -44,7 +44,7 @@ export function ScreenHeader({
         style={styles.headerButton}
         disabled={leftDisabled}
       >
-        {leftIcon && <Ionicons name={leftIcon} size={28} color={colors.text} />}
+        {leftIcon && <Ionicons name={leftIcon} size={30} color={colors.text} />}
       </TouchableOpacity>
 
       {centerComponent ? (
@@ -71,7 +71,7 @@ export function ScreenHeader({
           ) : rightIcon ? (
             <Ionicons
               name={rightIcon}
-              size={28}
+              size={30}
               color={rightStyle === 'primary' ? colors.white : colors.text}
             />
           ) : null}
@@ -102,7 +102,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 16,
     },
     headerTitle: {
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: '600',
       color: colors.text,
     },

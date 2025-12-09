@@ -1127,6 +1127,7 @@ export const database = {
         .select(
           `
           *,
+          routine:workout_routines (id, name),
           workout_exercises (
             *,
             exercise:exercises (*),
@@ -1187,6 +1188,7 @@ export const database = {
         .select(
           `
           *,
+          routine:workout_routines (id, name),
           workout_exercises (
             *,
             exercise:exercises (*),
@@ -1254,6 +1256,7 @@ export const database = {
         .select(
           `
           *,
+          routine:workout_routines (id, name),
           workout_exercises (
             *,
             exercise:exercises (*),
@@ -1311,6 +1314,7 @@ export const database = {
         .select(
           `
           *,
+          routine:workout_routines (id, name),
           workout_exercises (
             *,
             exercise:exercises (*),

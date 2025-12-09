@@ -294,7 +294,7 @@ export default function SearchScreen() {
                 activeOpacity={0.6}
                 hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               >
-                <Ionicons name="chevron-back" size={22} color={colors.text} />
+                <Ionicons name="chevron-back" size={24} color={colors.text} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -500,7 +500,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 1,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',

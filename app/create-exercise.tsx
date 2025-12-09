@@ -205,7 +205,7 @@ export default function CreateExerciseScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+            <Ionicons name="chevron-back" size={26} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create Exercise</Text>
           <View style={styles.backButton} />
@@ -481,7 +481,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginLeft: -8,
     },
     headerTitle: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: '600',
       color: colors.text,
     },

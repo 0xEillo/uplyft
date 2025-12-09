@@ -124,6 +124,10 @@ export interface WorkoutExerciseWithDetails extends WorkoutExercise {
 
 export interface WorkoutSessionWithDetails extends WorkoutSession {
   workout_exercises: WorkoutExerciseWithDetails[]
+  routine?: {
+    id: string
+    name: string
+  }
   isPending?: boolean // Flag for placeholder workouts being processed
   profile?: Profile // Profile of the user who created the workout (for social feed)
 }

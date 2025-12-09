@@ -479,7 +479,7 @@ export default function FeedScreen() {
               onPress={() => router.push('/search')}
               style={styles.iconButton}
             >
-              <Ionicons name="search-outline" size={22} color={colors.text} />
+              <Ionicons name="search-outline" size={24} color={colors.text} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/notifications')}
@@ -489,7 +489,7 @@ export default function FeedScreen() {
                 name={
                   unreadCount > 0 ? 'notifications' : 'notifications-outline'
                 }
-                size={22}
+                size={24}
                 color={colors.text}
               />
               <NotificationBadge count={unreadCount} />
@@ -556,7 +556,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginLeft: 0,
     },
     repAiBadgeText: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
     },

@@ -678,6 +678,12 @@ function AsyncPrFeedCard({
     })
   }, [workout.id, router, pathname, onNavigateAway])
 
+  const handleRoutinePress = useCallback(() => {
+    if (workout.routine?.id) {
+      router.push(`/routine-detail?routineId=${workout.routine.id}`)
+    }
+  }, [workout.routine, router])
+
   return (
     <FeedCard
       userName={userName}
@@ -702,6 +708,7 @@ function AsyncPrFeedCard({
       workout={workout}
       onCardPress={handleCardPress}
       onCreateRoutine={handleCreateRoutine}
+      onRoutinePress={handleRoutinePress}
       prInfo={prInfo}
       likeCount={likeCount}
       commentCount={commentCount}

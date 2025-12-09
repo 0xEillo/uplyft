@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
@@ -195,14 +195,16 @@ export default function RoutineDetailScreen() {
       >
         <BaseNavbar
           leftContent={
-            <>
+            <NavbarIsland>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={26} color={colors.text} />
               </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>
-                Routine
-              </Text>
-            </>
+            </NavbarIsland>
+          }
+          centerContent={
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Routine
+            </Text>
           }
         />
 
@@ -422,13 +424,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    color: colors.text,
     textAlign: 'center',
-    pointerEvents: 'none',
   },
   scrollView: {
     flex: 1,

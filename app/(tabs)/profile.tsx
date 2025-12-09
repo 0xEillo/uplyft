@@ -249,7 +249,7 @@ export default function ProfileScreen() {
             onPress={() => router.push('/account-settings')}
             style={{ padding: 4 }}
           >
-            <Ionicons name="settings-outline" size={22} color={colors.text} />
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         }
       />
@@ -453,7 +453,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
     },

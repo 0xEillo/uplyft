@@ -114,6 +114,8 @@ export interface FeedCardProps {
   onEdit?: () => void
   onDelete?: () => void
   onCreateRoutine?: () => void
+  routine?: { id: string; name: string } | null
+  onRoutinePress?: () => void
 }
 
 /**
@@ -141,12 +143,16 @@ export const FeedCard = memo(function FeedCard({
   isLiked = false,
   onLike,
   onComment,
+  routine,
+  onRoutinePress,
 }: FeedCardProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+
+  const displayRoutine = routine || workout?.routine
 
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [
@@ -469,7 +475,24 @@ export const FeedCard = memo(function FeedCard({
           )}
           <View>
             <Text style={styles.userName}>{userName}</Text>
-            <Text style={styles.timeAgo}>{timeAgo}</Text>
+            {displayRoutine ? (
+              <View style={styles.routineContainer}>
+                <Text style={styles.actionText}>finished </Text>
+                <TouchableOpacity
+                  onPress={onRoutinePress}
+                  disabled={!onRoutinePress}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.routineLink}>
+                    {displayRoutine.name} ›
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.timeAgo}> • {timeAgo}</Text>
+              </View>
+            ) : (
+              <Text style={styles.timeAgo}>{timeAgo}</Text>
+            )}
           </View>
         </TouchableOpacity>
         {isPending && (
@@ -765,6 +788,21 @@ const createStyles = (
       fontSize: 13,
       color: colors.textTertiary,
       marginTop: 2,
+    },
+    routineContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+      flexWrap: 'wrap',
+    },
+    actionText: {
+      fontSize: 13,
+      color: colors.textTertiary,
+    },
+    routineLink: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
     },
     titleContainer: {
       // Container for clickable title/description area

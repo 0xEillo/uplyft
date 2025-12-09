@@ -187,7 +187,7 @@ export default function NotificationsScreen() {
                 accessibilityRole="button"
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={22} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -461,7 +461,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       zIndex: 1,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',

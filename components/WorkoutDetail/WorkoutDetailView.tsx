@@ -168,7 +168,7 @@ export function WorkoutDetailView({
           leftContent={
             <NavbarIsland>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={22} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -184,7 +184,7 @@ export function WorkoutDetailView({
             >
               <Ionicons
                 name="ellipsis-horizontal"
-                size={22}
+                size={24}
                 color={colors.text}
               />
             </TouchableOpacity>
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
   },

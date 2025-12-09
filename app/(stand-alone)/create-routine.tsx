@@ -1231,7 +1231,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 1,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
       position: 'absolute',

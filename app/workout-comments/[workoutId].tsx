@@ -205,7 +205,7 @@ export default function WorkoutCommentsScreen() {
               onPress={() => router.back()}
               style={styles.backButton}
             >
-                  <Ionicons name="chevron-back" size={22} color={colors.text} />
+                  <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
               </NavbarIsland>
             }
@@ -294,7 +294,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 1,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
