@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native'
 
-const ROUTINE_PREFS_KEY = '@create_routine_preferences'
+const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
 const EQUIPMENT_PREF_KEY = '@equipment_preference'
 
 export type EquipmentType =
@@ -25,15 +25,15 @@ export type EquipmentType =
   | 'bodyweight'
   | 'barbell_only'
 
-export interface CreateRoutineData {
-  focus: string
+export interface WorkoutPlanningData {
+  goal: string
   muscles: string
   duration: string
   equipment: EquipmentType
   specifics: string
 }
 
-interface CreateRoutineWizardProps {
+interface WorkoutPlanningWizardProps {
   colors: {
     background: string
     backgroundLight: string
@@ -43,19 +43,41 @@ interface CreateRoutineWizardProps {
     border: string
     white: string
   }
-  onComplete: (data: CreateRoutineData) => void
+  onComplete: (data: WorkoutPlanningData) => void
   onCancel: () => void
 }
 
-type WizardStep = 'focus' | 'muscles' | 'duration' | 'equipment' | 'specifics' | 'confirm'
+type WizardStep =
+  | 'goal'
+  | 'muscles'
+  | 'duration'
+  | 'equipment'
+  | 'specifics'
+  | 'confirm'
 
-const FOCUS_OPTIONS = [
-  { label: 'Strength', value: 'Strength (heavy weight, low reps, progressive overload)' },
-  { label: 'Hypertrophy', value: 'Hypertrophy (muscle building, moderate weight, 8-12 reps)' },
-  { label: 'Fat Loss', value: 'Fat Loss (higher intensity, shorter rest, circuit-style)' },
+const GOAL_OPTIONS = [
+  {
+    label: 'Strength',
+    value: 'Strength (heavy weight, low reps, progressive overload)',
+  },
+  {
+    label: 'Hypertrophy',
+    value: 'Hypertrophy (muscle building, moderate weight, 8-12 reps)',
+  },
+  {
+    label: 'Fat Loss / HIIT',
+    value: 'Fat Loss / HIIT (high intensity, circuit style)',
+  },
+  { label: 'Endurance', value: 'Endurance (lighter weight, high reps)' },
+  {
+    label: 'Powerlifting',
+    value: 'Powerlifting (squat, bench, deadlift focus)',
+  },
+  {
+    label: 'Athletic',
+    value: 'Athletic Performance (power, speed, conditioning)',
+  },
   { label: 'General Fitness', value: 'General Fitness (balanced approach)' },
-  { label: 'Powerlifting', value: 'Powerlifting (squat, bench, deadlift focus)' },
-  { label: 'Athletic', value: 'Athletic Performance (power, speed, conditioning)' },
 ]
 
 const MUSCLE_OPTIONS = [
@@ -73,26 +95,62 @@ const MUSCLE_OPTIONS = [
 ]
 
 const DURATION_OPTIONS = [
-  { label: '30 min', value: '30 minutes per session' },
-  { label: '45 min', value: '45 minutes per session' },
-  { label: '1 hour', value: '1 hour per session' },
-  { label: '90 min', value: '90 minutes per session' },
+  { label: '20 min', value: '20 minutes' },
+  { label: '30 min', value: '30 minutes' },
+  { label: '45 min', value: '45 minutes' },
+  { label: '1 hour', value: '1 hour' },
+  { label: '90 min', value: '90 minutes' },
 ]
 
-const EQUIPMENT_OPTIONS: { label: string; value: EquipmentType; description: string }[] = [
-  { label: 'Full Gym', value: 'full_gym', description: 'All machines & free weights' },
-  { label: 'Dumbbells Only', value: 'dumbbells_only', description: 'Just dumbbells' },
-  { label: 'Home / Minimal', value: 'home_minimal', description: 'Basic home equipment' },
-  { label: 'Bodyweight', value: 'bodyweight', description: 'No equipment needed' },
-  { label: 'Barbell Only', value: 'barbell_only', description: 'Barbell & plates' },
+const EQUIPMENT_OPTIONS: {
+  label: string
+  value: EquipmentType
+  description: string
+}[] = [
+  {
+    label: 'Full Gym',
+    value: 'full_gym',
+    description: 'All machines & free weights',
+  },
+  {
+    label: 'Dumbbells Only',
+    value: 'dumbbells_only',
+    description: 'Just dumbbells',
+  },
+  {
+    label: 'Home / Minimal',
+    value: 'home_minimal',
+    description: 'Basic home equipment',
+  },
+  {
+    label: 'Bodyweight',
+    value: 'bodyweight',
+    description: 'No equipment needed',
+  },
+  {
+    label: 'Barbell Only',
+    value: 'barbell_only',
+    description: 'Barbell & plates',
+  },
 ]
 
-const STEPS: WizardStep[] = ['focus', 'muscles', 'duration', 'equipment', 'specifics', 'confirm']
+const STEPS: WizardStep[] = [
+  'goal',
+  'muscles',
+  'duration',
+  'equipment',
+  'specifics',
+  'confirm',
+]
 
-export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRoutineWizardProps) {
-  const [currentStep, setCurrentStep] = useState<WizardStep>('focus')
-  const [data, setData] = useState<CreateRoutineData>({
-    focus: '',
+export function WorkoutPlanningWizard({
+  colors,
+  onComplete,
+  onCancel,
+}: WorkoutPlanningWizardProps) {
+  const [currentStep, setCurrentStep] = useState<WizardStep>('goal')
+  const [data, setData] = useState<WorkoutPlanningData>({
+    goal: '',
     muscles: '',
     duration: '',
     equipment: 'full_gym',
@@ -100,8 +158,11 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   })
   const [customInput, setCustomInput] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
-  const [savedEquipment, setSavedEquipment] = useState<EquipmentType | null>(null)
+  const [savedEquipment, setSavedEquipment] = useState<EquipmentType | null>(
+    null,
+  )
 
+  // Load saved preferences on mount
   useEffect(() => {
     loadSavedPreferences()
   }, [])
@@ -109,15 +170,15 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const loadSavedPreferences = async () => {
     try {
       const [prefsJson, equipmentJson] = await Promise.all([
-        AsyncStorage.getItem(ROUTINE_PREFS_KEY),
+        AsyncStorage.getItem(WORKOUT_PLANNING_PREFS_KEY),
         AsyncStorage.getItem(EQUIPMENT_PREF_KEY),
       ])
 
       if (prefsJson) {
-        const prefs = JSON.parse(prefsJson) as Partial<CreateRoutineData>
+        const prefs = JSON.parse(prefsJson) as Partial<WorkoutPlanningData>
         setData((prev) => ({
           ...prev,
-          focus: prefs.focus || '',
+          goal: prefs.goal || '',
           muscles: prefs.muscles || '',
           duration: prefs.duration || '',
           specifics: prefs.specifics || '',
@@ -130,33 +191,38 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
         setData((prev) => ({ ...prev, equipment }))
       }
     } catch (error) {
-      console.error('Error loading routine preferences:', error)
+      console.error('Error loading workout planning preferences:', error)
     }
   }
 
-  const savePreferences = async (finalData: CreateRoutineData) => {
+  const savePreferences = async (finalData: WorkoutPlanningData) => {
     try {
       await Promise.all([
-        AsyncStorage.setItem(ROUTINE_PREFS_KEY, JSON.stringify({
-          focus: finalData.focus,
-          muscles: finalData.muscles,
-          duration: finalData.duration,
-          specifics: finalData.specifics,
-        })),
-        AsyncStorage.setItem(EQUIPMENT_PREF_KEY, JSON.stringify(finalData.equipment)),
+        AsyncStorage.setItem(
+          WORKOUT_PLANNING_PREFS_KEY,
+          JSON.stringify({
+            goal: finalData.goal,
+            muscles: finalData.muscles,
+            duration: finalData.duration,
+            specifics: finalData.specifics,
+          }),
+        ),
+        AsyncStorage.setItem(
+          EQUIPMENT_PREF_KEY,
+          JSON.stringify(finalData.equipment),
+        ),
       ])
     } catch (error) {
-      console.error('Error saving routine preferences:', error)
+      console.error('Error saving workout planning preferences:', error)
     }
   }
 
   const currentStepIndex = STEPS.indexOf(currentStep)
-  const totalSteps = STEPS.length
 
   const canGoNext = () => {
     switch (currentStep) {
-      case 'focus':
-        return data.focus.length > 0
+      case 'goal':
+        return data.goal.length > 0
       case 'muscles':
         return data.muscles.length > 0
       case 'duration':
@@ -164,7 +230,7 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
       case 'equipment':
         return data.equipment.length > 0
       case 'specifics':
-        return true
+        return true // Optional
       case 'confirm':
         return true
       default:
@@ -175,9 +241,10 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const handleNext = () => {
     if (!canGoNext()) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    
+
+    // If using custom input, apply it
     if (showCustomInput && customInput.trim()) {
-      const field = currentStep as keyof CreateRoutineData
+      const field = currentStep as keyof WorkoutPlanningData
       if (field !== 'equipment') {
         setData((prev) => ({ ...prev, [field]: customInput.trim() }))
       }
@@ -195,7 +262,7 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setShowCustomInput(false)
     setCustomInput('')
-    
+
     const prevIndex = currentStepIndex - 1
     if (prevIndex >= 0) {
       setCurrentStep(STEPS[prevIndex])
@@ -204,7 +271,10 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
     }
   }
 
-  const handleSelectOption = (field: keyof CreateRoutineData, value: string) => {
+  const handleSelectOption = (
+    field: keyof WorkoutPlanningData,
+    value: string,
+  ) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setData((prev) => ({ ...prev, [field]: value }))
     setShowCustomInput(false)
@@ -219,6 +289,7 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
 
   const handleSkip = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    // For specifics step, just move to next without requiring input
     if (currentStep === 'specifics') {
       setData((prev) => ({ ...prev, specifics: '' }))
     }
@@ -244,8 +315,8 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
 
   const renderChips = (
     options: { label: string; value: string; description?: string }[],
-    field: keyof CreateRoutineData,
-    allowCustom = true
+    field: keyof WorkoutPlanningData,
+    allowCustom = true,
   ) => (
     <View style={styles.chipsContainer}>
       {options.map((option) => {
@@ -256,7 +327,9 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
             style={[
               styles.chip,
               {
-                backgroundColor: isSelected ? colors.primary : colors.backgroundLight,
+                backgroundColor: isSelected
+                  ? colors.primary
+                  : colors.backgroundLight,
                 borderColor: isSelected ? colors.primary : colors.border,
               },
             ]}
@@ -290,7 +363,9 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
             styles.chip,
             styles.customChip,
             {
-              backgroundColor: showCustomInput ? colors.primary : colors.backgroundLight,
+              backgroundColor: showCustomInput
+                ? colors.primary
+                : colors.backgroundLight,
               borderColor: showCustomInput ? colors.primary : colors.border,
             },
           ]}
@@ -321,7 +396,12 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const renderCustomInput = (placeholder: string) => {
     if (!showCustomInput) return null
     return (
-      <View style={[styles.customInputContainer, { backgroundColor: colors.backgroundLight }]}>
+      <View
+        style={[
+          styles.customInputContainer,
+          { backgroundColor: colors.backgroundLight },
+        ]}
+      >
         <TextInput
           style={[styles.customInput, { color: colors.text }]}
           placeholder={placeholder}
@@ -329,7 +409,8 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
           value={customInput}
           onChangeText={(text) => {
             setCustomInput(text)
-            const field = currentStep as keyof CreateRoutineData
+            // Also update data so canGoNext works
+            const field = currentStep as keyof WorkoutPlanningData
             if (field !== 'equipment') {
               setData((prev) => ({ ...prev, [field]: text }))
             }
@@ -340,14 +421,17 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
     )
   }
 
-  const renderFocusStep = () => (
+  const renderGoalStep = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        What's the primary goal of this routine?
+        What's your primary goal?
       </Text>
-      <ScrollView style={styles.optionsScroll} showsVerticalScrollIndicator={false}>
-        {renderChips(FOCUS_OPTIONS, 'focus')}
-        {renderCustomInput('e.g., Bodybuilding prep, Rehab, Sport-specific...')}
+      <ScrollView
+        style={styles.optionsScroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderChips(GOAL_OPTIONS, 'goal')}
+        {renderCustomInput('e.g., Rehab, Mobility, Sport-specific...')}
       </ScrollView>
     </View>
   )
@@ -355,11 +439,14 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const renderMusclesStep = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        What muscle groups will this routine target?
+        What muscle groups do you want to train?
       </Text>
-      <ScrollView style={styles.optionsScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.optionsScroll}
+        showsVerticalScrollIndicator={false}
+      >
         {renderChips(MUSCLE_OPTIONS, 'muscles')}
-        {renderCustomInput('e.g., Chest & Triceps, Glutes only...')}
+        {renderCustomInput('e.g., Chest and Back, Glutes only...')}
       </ScrollView>
     </View>
   )
@@ -367,11 +454,14 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const renderDurationStep = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        How long should this routine take?
+        How much time do you have?
       </Text>
-      <ScrollView style={styles.optionsScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.optionsScroll}
+        showsVerticalScrollIndicator={false}
+      >
         {renderChips(DURATION_OPTIONS, 'duration')}
-        {renderCustomInput('e.g., 20 minutes, 2 hours...')}
+        {renderCustomInput('e.g., 40 minutes, 2 hours...')}
       </ScrollView>
     </View>
   )
@@ -379,14 +469,18 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   const renderEquipmentStep = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        What equipment will you use?
+        What equipment do you have access to?
       </Text>
       {savedEquipment && (
         <Text style={[styles.savedHint, { color: colors.textSecondary }]}>
-          Your saved preference: {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
+          Your saved preference:{' '}
+          {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
         </Text>
       )}
-      <ScrollView style={styles.optionsScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.optionsScroll}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.chipsContainer}>
           {EQUIPMENT_OPTIONS.map((option) => {
             const isSelected = data.equipment === option.value
@@ -397,7 +491,9 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
                   styles.chip,
                   styles.equipmentChip,
                   {
-                    backgroundColor: isSelected ? colors.primary : colors.backgroundLight,
+                    backgroundColor: isSelected
+                      ? colors.primary
+                      : colors.backgroundLight,
                     borderColor: isSelected ? colors.primary : colors.border,
                   },
                 ]}
@@ -432,18 +528,25 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.stepContent}>
         <Text style={[styles.stepTitle, { color: colors.text }]}>
-          Any specific requests or limitations?
+          Any specific requests or injuries?
         </Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
           Optional - skip if none
         </Text>
-        <View style={[styles.specificsInputContainer, { backgroundColor: colors.backgroundLight }]}>
+        <View
+          style={[
+            styles.specificsInputContainer,
+            { backgroundColor: colors.backgroundLight },
+          ]}
+        >
           <TextInput
             style={[styles.specificsInput, { color: colors.text }]}
-            placeholder="e.g., No jumping, include warm-up, focus on compound lifts, include supersets..."
+            placeholder="e.g., No deadlifts, focus on compound movements, include supersets..."
             placeholderTextColor={colors.textSecondary}
             value={data.specifics}
-            onChangeText={(text) => setData((prev) => ({ ...prev, specifics: text }))}
+            onChangeText={(text) =>
+              setData((prev) => ({ ...prev, specifics: text }))
+            }
             multiline
             numberOfLines={3}
             blurOnSubmit
@@ -455,19 +558,26 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
   )
 
   const renderConfirmStep = () => {
-    const equipmentLabel = EQUIPMENT_OPTIONS.find((o) => o.value === data.equipment)?.label || data.equipment
-    
+    const equipmentLabel =
+      EQUIPMENT_OPTIONS.find((o) => o.value === data.equipment)?.label ||
+      data.equipment
+
     return (
       <View style={styles.stepContent}>
         <Text style={[styles.stepTitle, { color: colors.text }]}>
-          Ready to create your routine?
+          Ready to generate your plan?
         </Text>
-        <View style={[styles.summaryCard, { backgroundColor: colors.backgroundLight }]}>
+        <View
+          style={[
+            styles.summaryCard,
+            { backgroundColor: colors.backgroundLight },
+          ]}
+        >
           <SummaryRow
             label="Goal"
-            value={data.focus}
+            value={data.goal}
             colors={colors}
-            onEdit={() => setCurrentStep('focus')}
+            onEdit={() => setCurrentStep('goal')}
           />
           <SummaryRow
             label="Muscles"
@@ -502,8 +612,8 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
 
   const renderCurrentStep = () => {
     switch (currentStep) {
-      case 'focus':
-        return renderFocusStep()
+      case 'goal':
+        return renderGoalStep()
       case 'muscles':
         return renderMusclesStep()
       case 'duration':
@@ -531,7 +641,11 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
       {renderCurrentStep()}
       <View style={styles.navigationContainer}>
         <TouchableOpacity
-          style={[styles.navButton, styles.backButton, { borderColor: colors.border }]}
+          style={[
+            styles.navButton,
+            styles.backButton,
+            { borderColor: colors.border },
+          ]}
           onPress={handleBack}
           activeOpacity={0.7}
         >
@@ -543,11 +657,17 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
 
         {currentStep === 'specifics' && (
           <TouchableOpacity
-            style={[styles.navButton, styles.skipButton, { borderColor: colors.border }]}
+            style={[
+              styles.navButton,
+              styles.skipButton,
+              { borderColor: colors.border },
+            ]}
             onPress={handleSkip}
             activeOpacity={0.7}
           >
-            <Text style={[styles.navButtonText, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.navButtonText, { color: colors.textSecondary }]}
+            >
               Skip
             </Text>
           </TouchableOpacity>
@@ -555,13 +675,17 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
 
         {currentStep === 'confirm' ? (
           <TouchableOpacity
-            style={[styles.navButton, styles.confirmButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.navButton,
+              styles.confirmButton,
+              { backgroundColor: colors.primary },
+            ]}
             onPress={handleConfirm}
             activeOpacity={0.7}
           >
-            <Ionicons name="calendar" size={20} color={colors.white} />
+            <Ionicons name="flash" size={20} color={colors.white} />
             <Text style={[styles.navButtonText, { color: colors.white }]}>
-              Create
+              Generate
             </Text>
           </TouchableOpacity>
         ) : (
@@ -570,7 +694,9 @@ export function CreateRoutineWizard({ colors, onComplete, onCancel }: CreateRout
               styles.navButton,
               styles.nextButton,
               {
-                backgroundColor: canGoNext() ? colors.primary : colors.backgroundLight,
+                backgroundColor: canGoNext()
+                  ? colors.primary
+                  : colors.backgroundLight,
               },
             ]}
             onPress={handleNext}
@@ -605,7 +731,7 @@ function SummaryRow({
 }: {
   label: string
   value: string
-  colors: CreateRoutineWizardProps['colors']
+  colors: WorkoutPlanningWizardProps['colors']
   onEdit: () => void
 }) {
   return (
@@ -614,11 +740,17 @@ function SummaryRow({
         <Text style={[summaryStyles.label, { color: colors.textSecondary }]}>
           {label}
         </Text>
-        <Text style={[summaryStyles.value, { color: colors.text }]} numberOfLines={2}>
+        <Text
+          style={[summaryStyles.value, { color: colors.text }]}
+          numberOfLines={2}
+        >
           {value}
         </Text>
       </View>
-      <TouchableOpacity onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity
+        onPress={onEdit}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <Ionicons name="pencil" size={16} color={colors.primary} />
       </TouchableOpacity>
     </View>
@@ -649,7 +781,7 @@ const summaryStyles = StyleSheet.create({
   },
 })
 
-const createStyles = (colors: CreateRoutineWizardProps['colors']) =>
+const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -780,4 +912,3 @@ const createStyles = (colors: CreateRoutineWizardProps['colors']) =>
       fontWeight: '600',
     },
   })
-
