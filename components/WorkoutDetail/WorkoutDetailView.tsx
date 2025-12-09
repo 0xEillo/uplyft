@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
@@ -166,14 +166,16 @@ export function WorkoutDetailView({
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
-            <>
+            <NavbarIsland>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={22} color={colors.text} />
               </TouchableOpacity>
+            </NavbarIsland>
+          }
+          centerContent={
               <Text style={[styles.headerTitle, { color: colors.text }]}>
                 Workout Detail
               </Text>
-            </>
           }
           rightContent={
             <TouchableOpacity
@@ -182,7 +184,7 @@ export function WorkoutDetailView({
             >
               <Ionicons
                 name="ellipsis-horizontal"
-                size={24}
+                size={22}
                 color={colors.text}
               />
             </TouchableOpacity>
@@ -474,19 +476,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backButton: {
-    zIndex: 1,
-  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    position: 'absolute',
-    left: 0,
-    right: 0,
     textAlign: 'center',
-    pointerEvents: 'none',
   },
   menuButton: {
+      zIndex: 1,
+      padding: 4,
+    },
+    backButton: {
     zIndex: 1,
   },
   menuDropdown: {

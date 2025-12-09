@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 interface BaseNavbarProps {
   leftContent: ReactNode
   rightContent?: ReactNode
+  centerContent?: ReactNode
   paddingVertical?: number
 }
 
@@ -16,6 +17,7 @@ interface BaseNavbarProps {
 export function BaseNavbar({
   leftContent,
   rightContent,
+  centerContent,
   paddingVertical = 8,
 }: BaseNavbarProps) {
   const colors = useThemedColors()
@@ -24,17 +26,24 @@ export function BaseNavbar({
   const styles = createStyles(colors, paddingVertical)
 
   return (
-    <>
-      {/* Status bar background to match navbar */}
-      <View style={[styles.statusBarBackground, { height: insets.top }]} />
+    <View style={styles.header}>
+      <View style={styles.leftContainer}>{leftContent}</View>
 
-      {/* Header */}
-      <View style={styles.header}>
-        {leftContent}
+      {centerContent && (
+        <View style={styles.centerContainer} pointerEvents="box-none">
+          {centerContent}
+        </View>
+      )}
+
+      <View style={styles.rightContainer}>
         {rightContent && <View style={styles.rightContent}>{rightContent}</View>}
       </View>
-    </>
+    </View>
   )
+}
+
+export function NavbarIsland({ children, style }: { children: ReactNode; style?: any }) {
+  return <View style={style}>{children}</View>
 }
 
 const createStyles = (
@@ -42,23 +51,31 @@ const createStyles = (
   paddingVertical: number,
 ) =>
   StyleSheet.create({
-    statusBarBackground: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: colors.white,
-      zIndex: 0,
-    },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
-      height: 50,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: paddingVertical,
+      minHeight: 60,
+      backgroundColor: 'transparent',
+      zIndex: 10,
+    },
+    leftContainer: {
+      zIndex: 2,
+    },
+    rightContainer: {
+      zIndex: 2,
+    },
+    centerContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1,
     },
     rightContent: {
       flexDirection: 'row',

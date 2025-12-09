@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -287,18 +287,18 @@ export default function SearchScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
-            <>
+            <NavbarIsland>
               <TouchableOpacity
                 onPress={handleBack}
                 style={styles.backButton}
                 activeOpacity={0.6}
                 hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               >
-                <Ionicons name="chevron-back" size={28} color={colors.text} />
+                <Ionicons name="chevron-back" size={22} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Search</Text>
-            </>
+            </NavbarIsland>
           }
+          centerContent={<Text style={styles.headerTitle}>Search</Text>}
         />
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -503,11 +503,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
-      position: 'absolute',
-      left: 0,
-      right: 0,
       textAlign: 'center',
-      pointerEvents: 'none',
     },
     contentWrapper: {
       flex: 1,

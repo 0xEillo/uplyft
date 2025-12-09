@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -180,18 +180,18 @@ export default function NotificationsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
-            <>
+            <NavbarIsland>
               <TouchableOpacity
                 onPress={handleBackPress}
                 accessibilityLabel="Go back"
                 accessibilityRole="button"
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={22} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Notifications</Text>
-            </>
+            </NavbarIsland>
           }
+          centerContent={<Text style={styles.headerTitle}>Notifications</Text>}
           rightContent={
             unreadCount > 0 ? (
               <TouchableOpacity
@@ -455,7 +455,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
     },
     backButton: {
       zIndex: 1,
@@ -464,11 +464,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
-      position: 'absolute',
-      left: 0,
-      right: 0,
       textAlign: 'center',
-      pointerEvents: 'none',
     },
     markAllButton: {
       padding: 4,

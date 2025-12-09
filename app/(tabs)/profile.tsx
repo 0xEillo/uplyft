@@ -1,5 +1,5 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
@@ -236,13 +236,17 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <BaseNavbar
-        leftContent={<Text style={styles.headerTitle}>Profile</Text>}
+        leftContent={
+          <NavbarIsland>
+            <Text style={styles.headerTitle}>Profile</Text>
+          </NavbarIsland>
+        }
         rightContent={
           <TouchableOpacity
             onPress={() => router.push('/account-settings')}
-            style={{ padding: 8 }}
+            style={{ padding: 4 }}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.text} />
+            <Ionicons name="settings-outline" size={22} color={colors.text} />
           </TouchableOpacity>
         }
       />

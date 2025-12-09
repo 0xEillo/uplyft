@@ -1,5 +1,5 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyFeedState } from '@/components/empty-feed-state'
 import { NotificationBadge } from '@/components/notification-badge'
 import { Paywall } from '@/components/paywall'
@@ -453,6 +453,7 @@ export default function FeedScreen() {
         leftContent={
           <View style={styles.headerTitleContainer}>
             {isProMember ? (
+              <NavbarIsland>
               <TouchableOpacity
                 style={styles.repAiBadge}
                 onPress={() => router.push('/(tabs)/chat')}
@@ -460,6 +461,7 @@ export default function FeedScreen() {
               >
                 <Text style={styles.repAiBadgeText}>Rep AI</Text>
               </TouchableOpacity>
+              </NavbarIsland>
             ) : (
               <TouchableOpacity
                 style={styles.proBadge}
@@ -477,17 +479,17 @@ export default function FeedScreen() {
               onPress={() => router.push('/search')}
               style={styles.iconButton}
             >
-              <Ionicons name="search-outline" size={24} color={colors.text} />
+              <Ionicons name="search-outline" size={22} color={colors.text} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/notifications')}
-              style={{ position: 'relative' }}
+              style={{ position: 'relative', padding: 4 }}
             >
               <Ionicons
                 name={
                   unreadCount > 0 ? 'notifications' : 'notifications-outline'
                 }
-                size={24}
+                size={22}
                 color={colors.text}
               />
               <NotificationBadge count={unreadCount} />
@@ -549,9 +551,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.buttonText,
     },
     repAiBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      marginLeft: -8,
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+      marginLeft: 0,
     },
     repAiBadgeText: {
       fontSize: 20,
@@ -561,10 +563,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: 8,
     },
     iconButton: {
-      padding: 0,
+      padding: 4,
     },
     content: {
       flex: 1,

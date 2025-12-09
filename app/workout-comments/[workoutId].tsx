@@ -1,3 +1,4 @@
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -197,16 +198,19 @@ export default function WorkoutCommentsScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           {/* Header */}
-          <View style={styles.header}>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
             <TouchableOpacity
               onPress={() => router.back()}
               style={styles.backButton}
             >
-              <Ionicons name="chevron-back" size={28} color={colors.text} />
+                  <Ionicons name="chevron-back" size={22} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Comments</Text>
-            <View style={styles.headerRight} />
-          </View>
+              </NavbarIsland>
+            }
+            centerContent={<Text style={styles.headerTitle}>Comments</Text>}
+          />
 
           {/* Comments List */}
           {isLoading ? (
@@ -277,7 +281,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
     },
     container: {
       flex: 1,
@@ -286,26 +290,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     keyboardAvoid: {
       flex: 1,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
     backButton: {
-      padding: 4,
+      zIndex: 1,
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 20,
+      fontWeight: '700',
       color: colors.text,
-    },
-    headerRight: {
-      width: 36,
+      textAlign: 'center',
     },
     loadingContainer: {
       flex: 1,

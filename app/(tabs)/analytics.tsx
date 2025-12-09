@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { StatsView } from '@/components/StatsView'
 import { StrengthStandardsView } from '@/components/StrengthStandardsView'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -38,24 +38,28 @@ export default function AnalyticsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <BaseNavbar
-        leftContent={<Text style={styles.headerTitle}>Progress</Text>}
+        leftContent={
+          <NavbarIsland>
+            <Text style={styles.headerTitle}>Progress</Text>
+          </NavbarIsland>
+        }
         rightContent={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 4 }}>
             <TouchableOpacity
               onPress={() => setViewMode(viewMode === 'standards' ? 'stats' : 'standards')}
-              style={{ padding: 8 }}
+              style={{ padding: 4 }}
             >
               <Ionicons
                 name={viewMode === 'standards' ? 'stats-chart' : 'barbell'}
-                size={24}
+                size={22}
                 color={colors.text}
               />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/body-log')}
-              style={{ padding: 8 }}
+              style={{ padding: 4 }}
             >
-              <Ionicons name="body-outline" size={24} color={colors.text} />
+              <Ionicons name="body-outline" size={22} color={colors.text} />
             </TouchableOpacity>
           </View>
         }
