@@ -63,8 +63,14 @@ export default function ProfileScreen() {
     if (!user) return
 
     try {
-      // Load profile
-      const profileData = await database.profiles.getById(user.id)
+      // Load profile - signInAnonymously should have created one for anonymous users
+      const profileData = await database.profiles.getByIdOrNull(user.id)
+      
+      if (!profileData) {
+        console.error('[Profile] Profile not found for user:', user.id)
+        return
+      }
+      
       setProfile(profileData)
 
       // Calculate start of week (Sunday)

@@ -1246,7 +1246,7 @@ export function WorkoutChat() {
                 style={{ opacity: 0.5 }}
               />
               <Text style={styles.welcomeText}>
-                the more you workout, the better I get
+                the more you workout, the smarter your AI gets.
               </Text>
             </View>
           </View>

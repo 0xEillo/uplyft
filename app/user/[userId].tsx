@@ -42,7 +42,7 @@ const consumeProfileEntrySkipFlag = () => {
 
 export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
@@ -187,6 +187,22 @@ export default function UserProfileScreen() {
     if (!user || !userId || relationshipBusy) return
     if (!relationship) return
 
+    // Block social features for guest users
+    if (isAnonymous) {
+      Alert.alert(
+        'Create an Account',
+        'Sign up to follow other athletes and join the community.',
+        [
+          { text: 'Not Now', style: 'cancel' },
+          {
+            text: 'Create Account',
+            onPress: () => router.push('/(auth)/create-account'),
+          },
+        ],
+      )
+      return
+    }
+
     try {
       setRelationshipBusy(true)
       if (relationship.is_following) {
@@ -245,6 +261,8 @@ export default function UserProfileScreen() {
     relationshipBusy,
     loadUserData,
     loadFollowCounts,
+    isAnonymous,
+    router,
   ])
 
   useFocusEffect(

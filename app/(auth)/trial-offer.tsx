@@ -1,5 +1,5 @@
-import { AnalyticsEvents } from '@/constants/analytics-events'
 import { ProBadge } from '@/components/pro-badge'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
@@ -9,7 +9,10 @@ import {
   useRevenueCatPackages,
 } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { database } from '@/lib/database'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
+import { supabase } from '@/lib/supabase'
+import { Gender, Goal, TrainingYears } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -26,7 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { Circle, Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg'
+import { PACKAGE_TYPE } from 'react-native-purchases'
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -34,7 +37,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { PACKAGE_TYPE } from 'react-native-purchases'
+import { Circle, Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg'
 
 // Animated TouchableOpacity with press animation
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
@@ -91,7 +94,9 @@ export default function TrialOfferScreen() {
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
 
-  const handleCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleCarouselScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / screenWidth)
     setActiveSlide(slide)
   }
@@ -162,7 +167,8 @@ export default function TrialOfferScreen() {
     {
       id: 'ai_coach',
       title: 'AI Workout Coach',
-      description: 'Generate personalized workouts and routines instantly with AI.',
+      description:
+        'Generate personalized workouts and routines instantly with AI.',
       renderVisual: () => (
         <View style={[styles.visualContainer, { width: screenWidth - 48 }]}>
           <View style={styles.aiChatVisual}>
@@ -211,7 +217,8 @@ export default function TrialOfferScreen() {
     {
       id: 'stats',
       title: 'Advanced Analytics',
-      description: 'Visualize your progress with detailed charts and volume tracking.',
+      description:
+        'Visualize your progress with detailed charts and volume tracking.',
       renderVisual: () => (
         <View style={[styles.visualContainer, { width: screenWidth - 48 }]}>
           <View style={styles.statsVisual}>
@@ -281,7 +288,7 @@ export default function TrialOfferScreen() {
     },
   ]
 
-  const { user } = useAuth()
+  const { user, signInAnonymously } = useAuth()
   const {
     offerings,
     purchasePackage,
@@ -289,8 +296,77 @@ export default function TrialOfferScreen() {
   } = useSubscription()
   const { requestPermission, hasPermission } = useNotifications()
 
-  const { monthly: monthlyPackage, yearly: yearlyPackage } =
-    useRevenueCatPackages(offerings)
+  // Parse onboarding data for profile creation
+  type OnboardingData = {
+    name: string
+    gender: Gender | null
+    height_cm: number | null
+    weight_kg: number | null
+    age: number | null
+    goal: Goal[]
+    commitment: string | null
+    training_years: TrainingYears | null
+    bio: string | null
+  }
+
+  const onboardingData: OnboardingData | null = params.onboarding_data
+    ? JSON.parse(params.onboarding_data as string)
+    : null
+
+  // Helper to update profile with onboarding data for anonymous user
+  // Note: signInAnonymously in auth-context creates the basic profile
+  const setupGuestProfile = async (userId: string) => {
+    if (!onboardingData) return
+
+    try {
+      // Generate a unique user_tag based on the display name
+      const userTag = await database.profiles.generateUniqueUserTag(
+        onboardingData.name || 'Guest',
+      )
+
+      // Use upsert to ensure profile is created if it doesn't exist
+      const profileUpdates: any = {
+        id: userId,
+        user_tag: userTag,
+        display_name: onboardingData.name || 'Guest',
+        gender: onboardingData.gender,
+        height_cm: onboardingData.height_cm,
+        weight_kg: onboardingData.weight_kg,
+        age: onboardingData.age,
+        goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
+        commitment: onboardingData.commitment,
+        training_years: onboardingData.training_years,
+        bio: onboardingData.bio,
+        is_guest: true,
+      }
+
+      const { error } = await supabase.from('profiles').upsert(profileUpdates)
+
+      if (error) {
+        // Handle missing column (migration not run yet)
+        if (error.code === 'PGRST204' && profileUpdates.is_guest) {
+          console.warn(
+            '[TrialOffer] is_guest column missing, retrying without it.',
+          )
+          delete profileUpdates.is_guest
+          const { error: retryError } = await supabase
+            .from('profiles')
+            .upsert(profileUpdates)
+          if (retryError) throw retryError
+        } else {
+          throw error
+        }
+      }
+    } catch (error) {
+      console.error('[TrialOffer] Error setting up guest profile:', error)
+      // Non-fatal - user can still use the app
+    }
+  }
+
+  const {
+    monthly: monthlyPackage,
+    yearly: yearlyPackage,
+  } = useRevenueCatPackages(offerings)
 
   const yearlySavings = useMemo(
     () => calculateYearlySavings(monthlyPackage, yearlyPackage),
@@ -348,111 +424,113 @@ export default function TrialOfferScreen() {
     })
   }, [step, trackEvent])
 
-  // Check if user came back after logging in (can now make purchases)
-  const canPurchase = params.can_purchase === 'true' && user
+  // Note: canPurchase check removed - users now sign in anonymously directly
 
   const handleStartTrial = async () => {
-    // If user is logged in and can purchase, process the purchase
-    if (canPurchase) {
-      try {
-        setIsPurchasing(true)
+    try {
+      setIsPurchasing(true)
 
-        trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
-          step: 3,
-          step_name: 'payment_setup',
-        })
-
-        let targetPackage = selectedTrialPackage
-        if (!targetPackage) {
-          const fallback = offerings?.availablePackages?.[0]
-          if (!fallback) {
-            throw new Error(
-              'No subscription packages available. Please try again.',
-            )
-          }
-          targetPackage = fallback
-        }
-
-        const updatedCustomerInfo = await purchasePackage(
-          targetPackage.identifier,
-        )
-
-        // Verify the Pro entitlement was actually granted
-        const hasProEntitlement = Boolean(
-          updatedCustomerInfo?.entitlements.active['Pro'],
-        )
-
-        if (!hasProEntitlement) {
-          Alert.alert(
-            'Subscription Pending',
-            "Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don't have access.",
-            [{ text: 'OK' }],
-          )
-        }
-
-        // Schedule trial expiration notification
-        try {
-          if (!hasPermission) {
-            await requestPermission()
-          }
-          const trialStartDate = new Date()
-          await scheduleTrialExpirationNotification(user.id, trialStartDate)
-        } catch (notificationError) {
-          console.error(
-            '[TrialOffer] Failed to schedule notification:',
-            notificationError,
-          )
-        }
-
-        trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
-        router.replace('/(tabs)')
-      } catch (error) {
-        const errorObj = error as any
-        if (errorObj?.userCancelled) {
-          return
-        }
-        console.error('[TrialOffer] Purchase error:', error)
-        Alert.alert(
-          'Unable to Start Trial',
-          errorObj?.message ||
-            'There was a problem starting your trial. Please try again.',
-          [{ text: 'OK' }],
-        )
-      } finally {
-        setIsPurchasing(false)
-      }
-    } else {
-      // User isn't logged in yet during onboarding, navigate to signup
       trackEvent(AnalyticsEvents.TRIAL_OFFER_STEP_COMPLETED, {
         step: 3,
         step_name: 'payment_setup',
       })
-      trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
 
-      router.push({
-        pathname: '/(auth)/signup-options',
-        params: {
-          onboarding_data: params.onboarding_data as string | undefined,
-          start_trial: 'true',
-        },
-      })
+      // If user isn't logged in, sign in anonymously first
+      let currentUserId = user?.id
+      if (!user) {
+        const { userId } = await signInAnonymously()
+        currentUserId = userId
+        await setupGuestProfile(userId)
+      }
+
+      let targetPackage = selectedTrialPackage
+      if (!targetPackage) {
+        const fallback = offerings?.availablePackages?.[0]
+        if (!fallback) {
+          throw new Error(
+            'No subscription packages available. Please try again.',
+          )
+        }
+        targetPackage = fallback
+      }
+
+      const updatedCustomerInfo = await purchasePackage(
+        targetPackage.identifier,
+      )
+
+      // Verify the Pro entitlement was actually granted
+      const hasProEntitlement = Boolean(
+        updatedCustomerInfo?.entitlements.active['Pro'],
+      )
+
+      if (!hasProEntitlement) {
+        Alert.alert(
+          'Subscription Pending',
+          "Your purchase was successful, but it may take a moment to activate. Please restart the app if you still don't have access.",
+          [{ text: 'OK' }],
+        )
+      }
+
+      // Schedule trial expiration notification
+      try {
+        if (!hasPermission) {
+          await requestPermission()
+        }
+        if (currentUserId) {
+          const trialStartDate = new Date()
+          await scheduleTrialExpirationNotification(
+            currentUserId,
+            trialStartDate,
+          )
+        }
+      } catch (notificationError) {
+        console.error(
+          '[TrialOffer] Failed to schedule notification:',
+          notificationError,
+        )
+      }
+
+      trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, {})
+      router.replace('/(tabs)')
+    } catch (error) {
+      const errorObj = error as any
+      if (errorObj?.userCancelled) {
+        return
+      }
+      console.error('[TrialOffer] Purchase error:', error)
+      Alert.alert(
+        'Unable to Start Trial',
+        errorObj?.message ||
+          'There was a problem starting your trial. Please try again.',
+        [{ text: 'OK' }],
+      )
+    } finally {
+      setIsPurchasing(false)
     }
   }
 
-  const handleSkipTrial = () => {
+  const handleSkipTrial = async () => {
     // Track that user skipped the trial
     trackEvent(AnalyticsEvents.TRIAL_OFFER_SKIPPED, {})
 
-    // If user is already logged in, go to app; otherwise go to signup
-    if (canPurchase) {
+    // If user is already logged in (including anonymous), go to app
+    if (user) {
       router.replace('/(tabs)')
-    } else {
-      router.push({
-        pathname: '/(auth)/signup-options',
-        params: {
-          onboarding_data: params.onboarding_data as string | undefined,
-        },
-      })
+      return
+    }
+
+    // Sign in anonymously and go to app
+    try {
+      setIsPurchasing(true) // Reuse loading state
+      const { userId } = await signInAnonymously()
+      await setupGuestProfile(userId)
+      router.replace('/(tabs)')
+    } catch (error) {
+      console.error('[TrialOffer] Anonymous sign-in error:', error)
+      // Fallback: still try to enter the app
+      router.replace('/(tabs)')
+    } finally {
+      setIsPurchasing(false)
     }
   }
 
@@ -491,10 +569,15 @@ export default function TrialOfferScreen() {
             contentContainerStyle={{ width: screenWidth * FEATURES.length }}
           >
             {FEATURES.map((feature) => (
-              <View key={feature.id} style={[styles.slide, { width: screenWidth }]}>
+              <View
+                key={feature.id}
+                style={[styles.slide, { width: screenWidth }]}
+              >
                 {feature.renderVisual()}
                 <Text style={styles.slideTitle}>{feature.title}</Text>
-                <Text style={styles.slideDescription}>{feature.description}</Text>
+                <Text style={styles.slideDescription}>
+                  {feature.description}
+                </Text>
               </View>
             ))}
           </ScrollView>
@@ -735,7 +818,8 @@ export default function TrialOfferScreen() {
                   <TouchableOpacity
                     style={[
                       styles.pricingOption,
-                      selectedPlan === 'monthly' && styles.pricingOptionSelected,
+                      selectedPlan === 'monthly' &&
+                        styles.pricingOptionSelected,
                     ]}
                     onPress={() => setSelectedPlan('monthly')}
                     activeOpacity={0.9}
@@ -833,32 +917,6 @@ export default function TrialOfferScreen() {
   )
 }
 
-function Feature({
-  icon,
-  title,
-  description,
-  colors,
-}: {
-  icon: any
-  title: string
-  description: string
-  colors: any
-}) {
-  const styles = createStyles(colors)
-
-  return (
-    <View style={styles.feature}>
-      <View style={styles.featureIcon}>
-        <Ionicons name={icon} size={24} color={colors.primary} />
-      </View>
-      <View style={styles.featureContent}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
-      </View>
-    </View>
-  )
-}
-
 function TimelineItem({
   icon,
   iconColor,
@@ -905,11 +963,7 @@ function TimelineItem({
   )
 }
 
-function createStyles(colors: any, screenHeight: number = 800) {
-  // Calculate dynamic spacing based on screen height
-  // Use ~12% of screen height for title margin, but cap between 64-120px
-  const titleMarginBottom = Math.max(64, Math.min(120, screenHeight * 0.12))
-
+function createStyles(colors: any, _screenHeight: number = 800) {
   return StyleSheet.create({
     container: {
       flex: 1,

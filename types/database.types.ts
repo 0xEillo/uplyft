@@ -14,6 +14,7 @@ export interface Profile {
   profile_description: string | null
   avatar_url: string | null
   is_private: boolean
+  is_guest: boolean
   gender: Gender | null
   height_cm: number | null
   weight_kg: number | null

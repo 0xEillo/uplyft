@@ -29,7 +29,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, isAnonymous } = useAuth()
   const router = useRouter()
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const { themePreference, setThemePreference, isDark } = useTheme()
@@ -49,12 +49,27 @@ export default function SettingsScreen() {
     Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
   const loadProfile = useCallback(async () => {
-    if (!user?.email) return
+    if (!user?.id) return
 
     try {
       setIsLoading(true)
-      const data = await database.profiles.getOrCreate(user.id, user.email)
-      setProfile(data)
+      // Try to get existing profile - signInAnonymously should have created one for anonymous users
+      const data = await database.profiles.getByIdOrNull(user.id)
+      
+      if (!data) {
+        // Profile doesn't exist - try to create one (fallback)
+        if (user.email) {
+          const createdData = await database.profiles.getOrCreate(
+            user.id,
+            user.email,
+          )
+          setProfile(createdData)
+        } else {
+          console.error('Profile not found for anonymous user:', user.id)
+        }
+      } else {
+        setProfile(data)
+      }
     } catch (error) {
       console.error('Error loading profile:', error)
     } finally {
@@ -120,6 +135,40 @@ export default function SettingsScreen() {
   const styles = createStyles(colors)
 
   const handleSignOut = async () => {
+    // Different warning for guest users
+    if (isAnonymous) {
+      Alert.alert(
+        'Warning: Data Will Be Lost',
+        'As a guest, signing out will permanently delete all your workouts and progress. Create an account first to save your data.',
+        [
+          {
+            text: 'Create Account',
+            onPress: () => router.push('/(auth)/create-account'),
+          },
+          {
+            text: 'Sign Out Anyway',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await signOut()
+                router.replace('/(auth)/welcome')
+              } catch (error) {
+                Alert.alert(
+                  'Error',
+                  error instanceof Error ? error.message : 'Failed to sign out',
+                )
+              }
+            },
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+      )
+      return
+    }
+
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       {
         text: 'Cancel',
@@ -492,6 +541,32 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Guest Banner */}
+        {isAnonymous && (
+          <TouchableOpacity
+            style={styles.guestBanner}
+            onPress={() => router.push('/(auth)/create-account')}
+            activeOpacity={0.9}
+          >
+            <View style={styles.guestBannerContent}>
+              <View style={styles.guestBannerIconContainer}>
+                <Ionicons name="cloud-upload" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.guestBannerText}>
+                <Text style={styles.guestBannerTitle}>Create an Account</Text>
+                <Text style={styles.guestBannerSubtitle}>
+                  Sync your data across devices and never lose your progress
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.primary}
+              />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Profile Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile</Text>
@@ -571,9 +646,19 @@ export default function SettingsScreen() {
                   />
                   <Text style={styles.detailLabel}>Email</Text>
                 </View>
-                <Text style={styles.detailValue}>
-                  {user?.email || 'Not set'}
-                </Text>
+                {isAnonymous ? (
+                  <TouchableOpacity
+                    onPress={() => router.push('/(auth)/create-account')}
+                    style={styles.linkAccountButton}
+                  >
+                    <Text style={styles.linkAccountText}>Link Account</Text>
+                    <Ionicons name="add-circle" size={18} color={colors.primary} />
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.detailValue}>
+                    {user?.email || 'Not set'}
+                  </Text>
+                )}
               </View>
             </View>
           </View>
@@ -1371,5 +1456,52 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 1,
       backgroundColor: colors.border,
       marginVertical: 16,
+    },
+    guestBanner: {
+      marginHorizontal: 20,
+      marginTop: 16,
+      backgroundColor: colors.primary + '12',
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.primary + '30',
+      overflow: 'hidden',
+    },
+    guestBannerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      gap: 12,
+    },
+    guestBannerIconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary + '20',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    guestBannerText: {
+      flex: 1,
+    },
+    guestBannerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    guestBannerSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    linkAccountButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    linkAccountText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary,
     },
   })

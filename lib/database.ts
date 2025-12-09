@@ -87,10 +87,24 @@ export const database = {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
+      if (!data) {
+        throw new Error(`Profile not found for user ${userId}`)
+      }
       return data as Profile
+    },
+    
+    async getByIdOrNull(userId: string) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+      return data as Profile | null
     },
 
     async getOrCreate(userId: string, email: string) {
@@ -247,9 +261,19 @@ export const database = {
           'trial_notification_id, trial_notification_scheduled_at, trial_start_date',
         )
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
+      
+      // Return nulls if profile doesn't exist yet (e.g., for new anonymous users)
+      if (!data) {
+        return {
+          trial_notification_id: null,
+          trial_notification_scheduled_at: null,
+          trial_start_date: null,
+        }
+      }
+      
       return data as {
         trial_notification_id: string | null
         trial_notification_scheduled_at: string | null

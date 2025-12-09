@@ -79,18 +79,22 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)'
     const authRoute = segments[1] as string | undefined
-    // Allow authenticated users to stay on signup-options and trial-offer
-    const allowedPostSignupRoutes = ['signup-options', 'trial-offer']
+    // Allow authenticated users (including anonymous) to stay on signup-options and trial-offer
+    const allowedPostSignupRoutes = [
+      'signup-options',
+      'trial-offer',
+      'create-account',
+    ]
 
     if (!user && !inAuthGroup) {
-      // Redirect to welcome screen if not authenticated
+      // Redirect to welcome screen if not authenticated (no session at all)
       router.replace('/(auth)/welcome')
     } else if (
       user &&
       inAuthGroup &&
       !allowedPostSignupRoutes.includes(authRoute || '')
     ) {
-      // Redirect to app if authenticated, unless on post-signup routes
+      // Redirect to app if authenticated (including anonymous users), unless on post-signup routes
       router.replace('/(tabs)')
     }
   }, [user, segments, isLoading, router])
