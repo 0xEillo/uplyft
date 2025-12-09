@@ -21,7 +21,6 @@ import {
 import {
   buildWorkoutCreationPrompt,
   buildWorkoutModificationSuffix,
-  isWorkoutRequest,
 } from '@/lib/ai/workoutPrompt'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -526,9 +525,8 @@ export function WorkoutChat() {
 
     let hiddenPromptContent: string | undefined
 
-    if (isWorkoutRequest(messageContent)) {
-      hiddenPromptContent = `${messageContent}${buildWorkoutModificationSuffix()}`
-    }
+    // We let the AI decide if it should generate a workout plan based on the system prompt.
+    // hiddenPromptContent is only set by specific planning flows (like the wizard).
 
     setIsLoading(true)
 
@@ -1220,7 +1218,7 @@ export function WorkoutChat() {
         onPress={handleNewChat}
         activeOpacity={0.7}
       >
-        <Ionicons name="create-outline" size={22} color={colors.primary} />
+        <Ionicons name="create-outline" size={26} color={colors.primary} />
       </TouchableOpacity>
 
       <ScrollView
@@ -1243,10 +1241,13 @@ export function WorkoutChat() {
             <View style={styles.welcomeSection}>
               <Ionicons
                 name="chatbubbles-outline"
-                size={56}
+                size={96}
                 color={colors.textSecondary}
                 style={{ opacity: 0.5 }}
               />
+              <Text style={styles.welcomeText}>
+                the more you workout, the better I get
+              </Text>
             </View>
           </View>
         ) : (
@@ -1318,8 +1319,8 @@ export function WorkoutChat() {
                         <Markdown
                           style={{
                             body: {
-                              fontSize: 15,
-                              lineHeight: 22,
+                              fontSize: 17,
+                              lineHeight: 24,
                               color: colors.text,
                               margin: 0,
                             },
@@ -1328,21 +1329,21 @@ export function WorkoutChat() {
                               marginBottom: 12,
                             },
                             heading1: {
-                              fontSize: 20,
+                              fontSize: 22,
                               fontWeight: '700',
                               color: colors.text,
                               marginTop: 16,
                               marginBottom: 8,
                             },
                             heading2: {
-                              fontSize: 18,
+                              fontSize: 20,
                               fontWeight: '700',
                               color: colors.text,
                               marginTop: 14,
                               marginBottom: 6,
                             },
                             heading3: {
-                              fontSize: 16,
+                              fontSize: 18,
                               fontWeight: '600',
                               color: colors.text,
                               marginTop: 12,
@@ -1353,7 +1354,7 @@ export function WorkoutChat() {
                               paddingHorizontal: 4,
                               paddingVertical: 2,
                               borderRadius: 4,
-                              fontSize: 14,
+                              fontSize: 16,
                               fontFamily:
                                 Platform.OS === 'ios' ? 'Menlo' : 'monospace',
                               color: colors.text,
@@ -1362,7 +1363,7 @@ export function WorkoutChat() {
                               backgroundColor: colors.backgroundLight,
                               padding: 12,
                               borderRadius: 8,
-                              fontSize: 14,
+                              fontSize: 16,
                               fontFamily:
                                 Platform.OS === 'ios' ? 'Menlo' : 'monospace',
                               color: colors.text,
@@ -1373,7 +1374,7 @@ export function WorkoutChat() {
                               backgroundColor: colors.backgroundLight,
                               padding: 12,
                               borderRadius: 8,
-                              fontSize: 14,
+                              fontSize: 16,
                               fontFamily:
                                 Platform.OS === 'ios' ? 'Menlo' : 'monospace',
                               color: colors.text,
@@ -1750,9 +1751,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     newChatButton: {
       position: 'absolute',
       left: 16,
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: colors.backgroundLight,
       justifyContent: 'center',
       alignItems: 'center',
@@ -1791,12 +1792,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     actionButtonText: {
       color: colors.white,
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
     },
     secondaryActionButtonText: {
       color: colors.primary,
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
     },
     messagesContainer: {
@@ -1816,6 +1817,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     welcomeSection: {
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    welcomeText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.textSecondary,
+      opacity: 0.6,
+      textAlign: 'center',
     },
     chatMessages: {
       gap: 24,
@@ -1840,8 +1848,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderBottomRightRadius: 4,
     },
     userMessageText: {
-      fontSize: 15,
-      lineHeight: 20,
+      fontSize: 17,
+      lineHeight: 22,
       color: colors.white,
     },
     assistantMessageContent: {
@@ -1867,8 +1875,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 16,
       paddingTop: 10,
       paddingBottom: 10,
-      fontSize: 15,
-      lineHeight: 20,
+      fontSize: 17,
+      lineHeight: 22,
       color: colors.text,
       maxHeight: 100,
       textAlignVertical: 'center',
@@ -1891,7 +1899,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 8,
     },
     loadingText: {
-      fontSize: 14,
+      fontSize: 15,
       color: colors.textSecondary,
       fontStyle: 'italic',
     },
@@ -1934,7 +1942,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: colors.border,
     },
     suggestionText: {
-      fontSize: 14,
+      fontSize: 15,
       color: colors.text,
       fontWeight: '500',
     },
@@ -1982,7 +1990,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     imageCountText: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: '600',
       color: colors.textSecondary,
     },
@@ -2112,7 +2120,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     imageViewerCounterText: {
       color: colors.white,
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: '600',
     },
   })

@@ -115,4 +115,3 @@ export function isWorkoutRequest(text: string) {
 
   return false
 }
-

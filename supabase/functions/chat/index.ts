@@ -1,8 +1,8 @@
 // deno-lint-ignore-file no-explicit-any
-import { openai } from '@ai-sdk/openai'
-import { streamText, tool } from 'ai'
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
+import { openai } from 'npm:@ai-sdk/openai@2.0.42'
+import { streamText, tool } from 'npm:ai@5.0.60'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
@@ -795,17 +795,39 @@ async function buildUserContext(
   return { summary, tools }
 }
 
+const WORKOUT_JSON_SCHEMA = `{
+  "title": "Workout Title",
+  "description": "Brief description",
+  "estimatedDuration": 45,
+  "exercises": [
+    {
+      "name": "Exercise Name",
+      "sets": [
+        {
+          "type": "warmup" | "working",
+          "reps": "12" | "8-10",
+          "restSeconds": 60
+        }
+      ]
+    }
+  ]
+}`
+
 function buildSystemPrompt(
   summary: Awaited<ReturnType<typeof buildUserContextSummary>>,
   weightUnit: 'kg' | 'lb' = 'kg',
 ): string {
   return [
-    "You are the Rep AI gym training copilot. Ground every answer in the user's actual data. If the data is missing, say so.",
+    "You are the Rep AI gym training copilot. Keep responses short, digestible, and conversational—like you're texting between sets. Don't dump all your knowledge at once. Start with the essentials, and if they want more detail, they'll ask.",
     'User context:\n' + userContextToPrompt(summary),
     `Weight preferences: The user prefers ${
       weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
-    "When suggesting next steps, keep them actionable, succinct and tied to the metrics you have. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
+    "Ground answers in the user's actual data when relevant. If the data is missing, say so. Keep suggestions actionable and tied to their metrics. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
     'If the user asks about saved routines or templates by name, call the getWorkoutRoutines tool with the routineName parameter. The user context above shows available routine names.',
+    'WORKOUT GENERATION:',
+    "If (and ONLY if) the user explicitly asks you to create, plan, or generate a workout/routine (e.g. 'Create a chest workout', 'Plan a leg day'), you MUST output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
+    "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
+    `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
   ].join('\n\n')
 }
