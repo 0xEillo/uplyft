@@ -5,10 +5,9 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-  getStandardsLadder,
   getStrengthStandard,
   hasStrengthStandards,
-  type StrengthLevel,
+  type StrengthLevel
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -135,9 +134,6 @@ export function StrengthStandardsView() {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
-    new Set(),
-  )
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -177,18 +173,6 @@ export function StrengthStandardsView() {
         next.delete(groupName)
       } else {
         next.add(groupName)
-      }
-      return next
-    })
-  }, [])
-
-  const toggleExercise = useCallback((exerciseId: string) => {
-    setExpandedExercises((prev) => {
-      const next = new Set(prev)
-      if (next.has(exerciseId)) {
-        next.delete(exerciseId)
-      } else {
-        next.add(exerciseId)
       }
       return next
     })
@@ -631,13 +615,6 @@ export function StrengthStandardsView() {
                           exercise.exerciseName,
                           exercise.max1RM,
                         )
-                        const isExpanded = expandedExercises.has(exercise.exerciseId)
-                        const allLevels = profile?.gender
-                          ? getStandardsLadder(
-                              exercise.exerciseName,
-                              profile.gender as 'male' | 'female',
-                            )
-                          : null
 
                         return (
                           <View
@@ -682,131 +659,8 @@ export function StrengthStandardsView() {
                                     </Text>
                                   </View>
                                 ) : null}
-                                <TouchableOpacity
-                                  onPress={(e) => {
-                                    e.stopPropagation()
-                                    toggleExercise(exercise.exerciseId)
-                                  }}
-                                  style={styles.expandButton}
-                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                  <Ionicons
-                                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                                    size={20}
-                                    color={colors.textSecondary}
-                                  />
-                                </TouchableOpacity>
                               </View>
                             </TouchableOpacity>
-
-                            {/* Expanded Content: All Standards */}
-                            {isExpanded && allLevels && profile?.weight_kg && (
-                              <>
-                                {/* Progress bar for current level */}
-                                {strengthInfo && (
-                                  <View style={styles.exerciseProgressContainer}>
-                                    <View style={styles.exerciseProgressBar}>
-                                      <View
-                                        style={[
-                                          styles.exerciseProgressFill,
-                                          {
-                                            width: `${strengthInfo.progress}%`,
-                                            backgroundColor: colors.primary,
-                                          },
-                                        ]}
-                                      />
-                                    </View>
-                                  </View>
-                                )}
-                              <View style={styles.expandedContent}>
-                                <View style={styles.standardsGrid}>
-                                  {allLevels.map((levelStandard, idx) => {
-                                    const targetWeight = Math.ceil(
-                                      (profile.weight_kg || 0) * levelStandard.multiplier,
-                                    )
-                                    
-                                    const isCurrentLevel =
-                                      strengthInfo?.level === levelStandard.level
-                                    const isPassed =
-                                      strengthInfo
-                                        ? allLevels.findIndex(
-                                            (l) => l.level === strengthInfo.level,
-                                          ) >= idx
-                                        : false
-
-                                    return (
-                                      <View
-                                        key={levelStandard.level}
-                                        style={[
-                                          styles.standardRow,
-                                          idx === allLevels.length - 1 &&
-                                            styles.standardRowLast,
-                                        ]}
-                                      >
-                                        <View style={styles.standardLeft}>
-                                          <View
-                                            style={[
-                                              styles.standardIndicator,
-                                              {
-                                                backgroundColor: isPassed
-                                                  ? getLevelColor(levelStandard.level)
-                                                  : colors.backgroundLight,
-                                                borderColor: getLevelColor(
-                                                  levelStandard.level,
-                                                ),
-                                              },
-                                            ]}
-                                          >
-                                            {isPassed && (
-                                              <Ionicons
-                                                name="checkmark"
-                                                size={10}
-                                                color="#FFF"
-                                              />
-                                            )}
-                                          </View>
-                                          <View style={styles.standardInfo}>
-                                            <Text
-                                              style={[
-                                                styles.standardLevel,
-                                                isCurrentLevel && {
-                                                  color: getLevelColor(
-                                                    levelStandard.level,
-                                                  ),
-                                                },
-                                              ]}
-                                            >
-                                              {levelStandard.level}
-                                            </Text>
-                                            <Text style={styles.standardDesc}>
-                                              {levelStandard.description}
-                                            </Text>
-                                          </View>
-                                        </View>
-                                        <View style={styles.standardRight}>
-                                          <Text
-                                            style={[
-                                              styles.standardWeight,
-                                              isCurrentLevel && {
-                                                color: getLevelColor(
-                                                  levelStandard.level,
-                                                ),
-                                              },
-                                            ]}
-                                          >
-                                            {formatWeight(targetWeight, {
-                                              maximumFractionDigits:
-                                                weightUnit === 'kg' ? 0 : 0,
-                                            })}
-                                          </Text>
-                                        </View>
-                                      </View>
-                                    )
-                                  })}
-                                </View>
-                              </View>
-                              </>
-                            )}
                           </View>
                         )
                       })}

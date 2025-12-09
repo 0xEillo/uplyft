@@ -438,6 +438,55 @@ export default function ExerciseDetailScreen() {
               </View>
 
               <View style={styles.statsGrid}>
+                {strengthInfo && (
+                  <>
+                    <View style={styles.statRow}>
+                      <Text style={styles.statLabel}>Level</Text>
+                      <View
+                        style={{
+                          backgroundColor: getLevelColor(strengthInfo.level),
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: '#fff',
+                            fontSize: 12,
+                            fontWeight: '700',
+                          }}
+                        >
+                          {strengthInfo.level}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.separator} />
+
+                    {strengthInfo.nextLevel && (
+                      <>
+                        <View style={styles.statRow}>
+                          <Text style={styles.statLabel}>
+                            Next Level ({strengthInfo.nextLevel.level})
+                          </Text>
+                          <Text style={styles.statValue}>
+                            {['Pull-Up', 'Dips'].includes(exerciseName)
+                              ? `${Math.ceil(strengthInfo.nextLevel.multiplier)} reps`
+                              : formatWeight(
+                                  Math.ceil(
+                                    (profile?.weight_kg || 0) *
+                                      strengthInfo.nextLevel.multiplier,
+                                  ),
+                                  { maximumFractionDigits: 0 },
+                                )}
+                          </Text>
+                        </View>
+                        <View style={styles.separator} />
+                      </>
+                    )}
+                  </>
+                )}
+
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>1RM</Text>
                   <Text style={styles.statValue}>

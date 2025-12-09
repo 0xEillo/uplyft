@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
     ActivityIndicator,
@@ -74,6 +74,7 @@ export default function BodyLogDetailScreen() {
   const { user } = useAuth()
   const { isProMember } = useSubscription()
   const router = useRouter()
+  const navigation = useNavigation()
   const insets = useSafeAreaInsets()
 
   const [entry, setEntry] = useState<BodyLogEntryWithImages | null>(null)
@@ -635,7 +636,11 @@ export default function BodyLogDetailScreen() {
                   await database.bodyLog.deleteEntry(entryId)
                   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
                   // Navigate back to body log list
-                  router.push('/body-log')
+                  if (navigation.canGoBack()) {
+                    router.back()
+                  } else {
+                    router.replace('/body-log')
+                  }
                   return
                 }
 
@@ -865,7 +870,11 @@ export default function BodyLogDetailScreen() {
             )
 
             // Navigate back to body log listing
-            router.push('/body-log')
+            if (navigation.canGoBack()) {
+              router.back()
+            } else {
+              router.replace('/body-log')
+            }
           } catch (error) {
             console.error('Error deleting body log entry:', error)
             Alert.alert(

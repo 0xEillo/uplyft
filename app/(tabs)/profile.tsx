@@ -186,21 +186,23 @@ export default function ProfileScreen() {
       item: WorkoutSessionWithDetails
       index: number
     }) => (
-      <AnimatedFeedCard
-        key={workout.id}
-        workout={workout}
-        index={index}
-        isNew={false}
-        isDeleting={workout.id === deletingWorkoutId}
-        onDelete={() => {
-          if (workout.id === deletingWorkoutId) {
-            setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
-            setDeletingWorkoutId(null)
-          } else {
-            setDeletingWorkoutId(workout.id)
-          }
-        }}
-      />
+      <View style={[index === 0 && { marginTop: -12 }]}>
+        <AnimatedFeedCard
+          key={workout.id}
+          workout={workout}
+          index={index}
+          isNew={false}
+          isDeleting={workout.id === deletingWorkoutId}
+          onDelete={() => {
+            if (workout.id === deletingWorkoutId) {
+              setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
+              setDeletingWorkoutId(null)
+            } else {
+              setDeletingWorkoutId(workout.id)
+            }
+          }}
+        />
+      </View>
     ),
     [deletingWorkoutId],
   )
@@ -344,6 +346,9 @@ export default function ProfileScreen() {
               {user && <ProfileRoutines userId={user.id} />}
 
               {/* This Week Stats Section */}
+              <View style={styles.calendarHeader}>
+                <Text style={styles.calendarTitle}>CALENDAR</Text>
+              </View>
               <TouchableOpacity
                 style={styles.weeklyStatsSection}
                 onPress={() => router.push('/workout-calendar')}
@@ -445,7 +450,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     feedContent: {
       flexGrow: 1,
-      paddingTop: 2,
+      paddingTop: 0,
       paddingBottom: 2,
     },
     profileHeader: {
@@ -523,10 +528,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       color: colors.text,
     },
+    calendarHeader: {
+      paddingHorizontal: 20,
+      marginBottom: 12,
+    },
+    calendarTitle: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      letterSpacing: 1,
+    },
     weeklyStatsSection: {
       backgroundColor: colors.backgroundLight,
       marginHorizontal: 20,
-      marginBottom: 8,
+      marginBottom: 0,
       borderRadius: 12,
       padding: 16,
     },
@@ -601,10 +616,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     workoutsHeader: {
       paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderTopWidth: 8,
-      borderTopColor: colors.background,
+      paddingTop: 24,
+      paddingBottom: 0,
       backgroundColor: colors.feedCardBackground,
+      zIndex: 10,
     },
     workoutsTitle: {
       fontSize: 11,
