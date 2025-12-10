@@ -8,6 +8,33 @@ import {
     View,
     ViewStyle,
 } from 'react-native'
+import Svg, {
+    Circle,
+    Defs,
+    Stop,
+    LinearGradient as SvgLinearGradient,
+} from 'react-native-svg'
+
+// Helper to lighten a hex color
+function lightenColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = (num >> 16) + amt
+  const B = ((num >> 8) & 0x00ff) + amt
+  const G = (num & 0x00ff) + amt
+
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255) * 0x100 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  )
+}
 
 export type StrengthLevel =
   | 'Beginner'
@@ -50,7 +77,7 @@ export function LevelBadge({
     small: { container: 26, icon: 16, border: 2, fontSize: 10 },
     medium: { container: 34, icon: 20, border: 2.5, fontSize: 11 },
     large: { container: 48, icon: 28, border: 3, fontSize: 12 },
-    xl: { container: 120, icon: 70, border: 6, fontSize: 24 },
+    xl: { container: 120, icon: 84, border: 6, fontSize: 24 },
   }
 
   const dim = dimensions[size]
@@ -92,7 +119,7 @@ export function LevelBadge({
           height: dim.icon,
           tintColor: color,
         },
-        style,
+        style as any,
       ]}
       resizeMode="contain"
     />
@@ -103,14 +130,34 @@ export function LevelBadge({
         {
           width: dim.container,
           height: dim.container,
-          borderRadius: dim.container / 2,
-          borderWidth: dim.border,
-          borderColor: color,
-          backgroundColor: color + '15',
         },
         style,
       ]}
     >
+      <Svg
+        height={dim.container}
+        width={dim.container}
+        style={StyleSheet.absoluteFill}
+      >
+        <Defs>
+          <SvgLinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity="1" />
+            <Stop
+              offset="1"
+              stopColor={lightenColor(color, 40)}
+              stopOpacity="1"
+            />
+          </SvgLinearGradient>
+        </Defs>
+        <Circle
+          cx={dim.container / 2}
+          cy={dim.container / 2}
+          r={(dim.container - dim.border) / 2}
+          stroke="url(#grad)"
+          strokeWidth={dim.border}
+          fill={color + '15'}
+        />
+      </Svg>
       <Image
         source={require('../assets/images/bicep-icon.png')}
         style={{
