@@ -1,9 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { LevelBadge } from '@/components/LevelBadge'
 import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
-import { useUserLevel } from '@/hooks/useUserLevel'
 import { formatTimeAgo } from '@/lib/utils/formatters'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -12,12 +10,6 @@ import type { Href } from 'expo-router'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useMemo, useState } from 'react'
 
-// Helper function to determine badge size based on text fontSize
-const getBadgeSizeFromFontSize = (fontSize: number): 'small' | 'medium' | 'large' | 'xl' => {
-  if (fontSize >= 20) return 'large'
-  if (fontSize >= 15) return 'medium'
-  return 'small'
-}
 import {
   ActivityIndicator,
   Alert,
@@ -87,7 +79,6 @@ export function WorkoutDetailView({
   const colors = getColors(isDark)
   const router = useRouter()
   const params = useLocalSearchParams<{ returnTo?: string }>()
-  const { level: userLevel } = useUserLevel(workout?.user_id)
   const insets = useSafeAreaInsets()
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
@@ -355,13 +346,6 @@ export function WorkoutDetailView({
                     <Text style={[styles.userName, { color: colors.text }]}>
                       {profile?.display_name || 'User'}
                     </Text>
-                    {userLevel && (
-                      <LevelBadge
-                        level={userLevel}
-                        size={getBadgeSizeFromFontSize(styles.userName.fontSize)}
-                        iconOnly={true}
-                      />
-                    )}
                   </View>
                   <Text
                     style={[styles.timeAgo, { color: colors.textSecondary }]}

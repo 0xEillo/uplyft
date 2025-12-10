@@ -118,7 +118,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     card: {
       backgroundColor: colors.feedCardBackground,
-      borderRadius: 24,
+      borderRadius: 12,
       padding: 16,
       shadowColor: '#000',
       shadowOffset: {
