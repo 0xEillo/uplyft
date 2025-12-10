@@ -5,8 +5,8 @@ import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-  calculateYearlySavings,
-  useRevenueCatPackages,
+    calculateYearlySavings,
+    useRevenueCatPackages,
 } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -17,24 +17,24 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Linking,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { PACKAGE_TYPE } from 'react-native-purchases'
 import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Circle, Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg'
@@ -307,6 +307,7 @@ export default function TrialOfferScreen() {
     commitment: string | null
     training_years: TrainingYears | null
     bio: string | null
+    coach: string | null
   }
 
   const onboardingData: OnboardingData | null = params.onboarding_data
@@ -337,6 +338,7 @@ export default function TrialOfferScreen() {
         commitment: onboardingData.commitment,
         training_years: onboardingData.training_years,
         bio: onboardingData.bio,
+        coach: onboardingData.coach,
         is_guest: true,
       }
 
@@ -1035,10 +1037,11 @@ function createStyles(colors: any, _screenHeight: number = 800) {
       flexWrap: 'wrap',
     },
     step1Title: {
-      fontSize: 34,
-      fontWeight: '700',
+      fontSize: 32,
+      fontWeight: '800',
       color: colors.text,
       lineHeight: 40,
+      letterSpacing: -0.5,
     },
     step1FeaturesContainer: {
       gap: 24,
@@ -1065,7 +1068,7 @@ function createStyles(colors: any, _screenHeight: number = 800) {
       fontWeight: '800',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
       letterSpacing: -0.5,
       marginTop: 24,
     },
@@ -1371,14 +1374,15 @@ function createStyles(colors: any, _screenHeight: number = 800) {
       justifyContent: 'space-between',
     },
     step3Title: {
-      fontSize: 26,
-      fontWeight: '700',
+      fontSize: 32,
+      fontWeight: '800',
       color: colors.text,
       textAlign: 'center',
       paddingHorizontal: 16,
-      lineHeight: 32,
+      lineHeight: 38,
       marginTop: 0,
-      marginBottom: 20,
+      marginBottom: 24,
+      letterSpacing: -0.5,
     },
     step3PricingSection: {
       paddingHorizontal: 24,
@@ -1397,11 +1401,12 @@ function createStyles(colors: any, _screenHeight: number = 800) {
     },
     title: {
       fontSize: 32,
-      fontWeight: '700',
+      fontWeight: '800',
       color: colors.text,
       textAlign: 'center',
       marginBottom: 12,
       paddingHorizontal: 16,
+      letterSpacing: -0.5,
     },
     subtitle: {
       fontSize: 16,
@@ -1636,43 +1641,45 @@ function createStyles(colors: any, _screenHeight: number = 800) {
     },
     footer: {
       paddingHorizontal: 24,
-      paddingTop: 24,
-      paddingBottom: 8,
+      paddingTop: 16,
+      paddingBottom: 40,
       gap: 8,
     },
     footerSubtext: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textSecondary,
       textAlign: 'center',
+      marginTop: 4,
     },
     startButton: {
-      height: 56,
-      backgroundColor: colors.primary,
-      borderRadius: 28,
+      height: 64,
+      backgroundColor: colors.text,
+      borderRadius: 32,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
       gap: 8,
+      shadowColor: colors.text,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
     startButtonText: {
-      color: colors.buttonText,
+      color: colors.background,
       fontSize: 18,
       fontWeight: '700',
     },
     skipButton: {
       height: 56,
-      backgroundColor: colors.background,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 28,
+      backgroundColor: 'transparent',
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 2,
     },
     skipButtonText: {
-      color: colors.text,
-      fontSize: 18,
-      fontWeight: '700',
+      color: colors.textSecondary,
+      fontSize: 16,
+      fontWeight: '600',
     },
     termsLink: {
       marginTop: 4,

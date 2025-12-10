@@ -25,6 +25,7 @@ import {
   buildWorkoutCreationPrompt,
   buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { saveDraft } from '@/lib/utils/workout-draft'
@@ -144,6 +145,7 @@ export function WorkoutChat() {
     parsedWorkout,
     setParsedWorkout,
   ] = useState<ParsedWorkoutDisplay | null>(null)
+  const [coachId, setCoachId] = useState<string>('ross')
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
@@ -166,16 +168,6 @@ export function WorkoutChat() {
     data: { x: number; y: number; width: number; height: number },
   ) => {
     layoutRef.current[label] = data.height
-    const { root, scrollView, inputContainer } = layoutRef.current
-    const sum = scrollView + inputContainer
-    const diff = root - sum
-    console.log('[chat-layout]', label, data, {
-      root,
-      scrollView,
-      inputContainer,
-      sum,
-      diff,
-    })
   }
 
   // Auto-focus input when screen comes into focus
@@ -200,6 +192,22 @@ export function WorkoutChat() {
     }
   }, [messages.length])
 
+  // Fetch user's coach preference
+  useEffect(() => {
+    async function loadCoach() {
+      if (!user?.id) return
+      try {
+        const profile = await database.profiles.getByIdOrNull(user.id)
+        if (profile?.coach) {
+          setCoachId(profile.coach)
+        }
+      } catch (error) {
+        console.error('Error loading coach:', error)
+      }
+    }
+    loadCoach()
+  }, [user?.id])
+
   // Scroll to bottom when buttons appear (to ensure they're visible)
   useEffect(() => {
     if (generatedPlanContent) {
@@ -215,10 +223,6 @@ export function WorkoutChat() {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
-        console.log('[keyboard] show', {
-          height: event.endCoordinates?.height,
-          screenY: event.endCoordinates?.screenY,
-        })
         setIsKeyboardVisible(true)
         setTimeout(() => scrollToBottom(), 100)
       },
@@ -227,10 +231,6 @@ export function WorkoutChat() {
     const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (event) => {
-        console.log('[keyboard] hide', {
-          height: event.endCoordinates?.height,
-          screenY: event.endCoordinates?.screenY,
-        })
         setIsKeyboardVisible(false)
       },
     )
@@ -600,10 +600,17 @@ export function WorkoutChat() {
       }
 
       // Format messages for API - keep content as string
-      const formattedMessages = [...messages, userMessage].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
+      const systemMessage = {
+        role: 'system',
+        content: getCoach(coachId).systemPrompt,
+      }
+
+      const formattedMessages = [systemMessage, ...messages, userMessage].map(
+        (m) => ({
+          role: m.role,
+          content: m.content,
+        }),
+      )
 
       // Check if we have a hidden prompt content from the planning flows
       if (typeof hiddenPromptContent !== 'undefined') {
@@ -888,7 +895,13 @@ export function WorkoutChat() {
         '@/lib/supabase-functions-client'
       )
 
+      const systemMessage = {
+        role: 'system',
+        content: getCoach(coachId).systemPrompt,
+      }
+
       const formattedMessages = [
+        systemMessage,
         ...messages,
         { role: 'user', content: finalPrompt },
       ]
@@ -1377,21 +1390,24 @@ export function WorkoutChat() {
             contentInsetAdjustmentBehavior="never"
             onLayout={(e) => logLayout('scrollView', e.nativeEvent.layout)}
             onContentSizeChange={(w, h) => {
-              console.log('[chat-layout] contentSize', { w, h })
               ;(messages.length > 0 || isLoading) && scrollToBottom()
             }}
           >
             {messages.length === 0 && !isLoading ? (
               <View style={styles.emptyState}>
                 <View style={styles.welcomeSection}>
-                  <Ionicons
-                    name="chatbubbles-outline"
-                    size={96}
-                    color={colors.textSecondary}
-                    style={{ opacity: 0.5 }}
-                  />
+                  <View style={styles.coachWelcomeContainer}>
+                    <Image
+                      source={getCoach(coachId).image}
+                      style={styles.coachWelcomeImage}
+                      resizeMode="cover"
+                    />
+                  </View>
                   <Text style={styles.welcomeText}>
-                    The more you workout, the smarter your AI gets.
+                    Ask{' '}
+                    {getCoach(coachId).name.split(' ')[1] ||
+                      getCoach(coachId).name}
+                    ...
                   </Text>
                 </View>
               </View>
@@ -1991,14 +2007,30 @@ const createStyles = (
       justifyContent: 'center',
     },
     welcomeText: {
-      marginTop: 16,
-      fontSize: 16,
-      color: colors.textSecondary,
-      opacity: 0.6,
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.text,
       textAlign: 'center',
+      marginTop: 16,
+      opacity: 0.8,
+    },
+    coachWelcomeContainer: {
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 5,
+      marginBottom: 8,
+    },
+    coachWelcomeImage: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      borderWidth: 4,
+      borderColor: colors.background,
     },
     chatMessages: {
-      gap: 24,
+      paddingBottom: 20,
     },
     userMessageContainer: {
       flexDirection: 'row',

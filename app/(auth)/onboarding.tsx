@@ -1,35 +1,32 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
-import { PrDetailForTooltip, PrTooltip } from '@/components/pr-tooltip'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
-  COMMITMENTS,
-  GENDERS,
-  GOALS,
-  TRAINING_YEARS,
+    COMMITMENTS,
+    GENDERS,
+    GOALS,
+    TRAINING_YEARS,
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { Gender, Goal, TrainingYears } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { Picker } from '@react-native-picker/picker'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  KeyboardAvoidingView,
-  LayoutChangeEvent,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
-import { LineChart } from 'react-native-gifted-charts'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 type OnboardingData = {
@@ -43,64 +40,25 @@ type OnboardingData = {
   birth_month: string
   birth_year: string
   goal: Goal[]
-  commitment: string | null
+  commitment: string[]
   training_years: TrainingYears | null
   bio: string
+  coach: string
 }
-
-// Generate wavy upward-trending data for the line chart
-const generateChartData = () => {
-  const baseValue = 120
-  const increments = [0, 14, 32, 54, 82, 115]
-  const monthNames = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ]
-  const now = new Date()
-  const points = increments.length
-
-  return increments.map((increment, index) => {
-    const monthsAgo = points - 1 - index
-    const date = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
-    const label = monthNames[date.getMonth()]
-
-    return {
-      value: baseValue + increment,
-      label,
-    }
-  })
-}
-
-const CHART_HORIZONTAL_PADDING = 16
-const CHART_VERTICAL_PADDING = 6
-const CHART_SPACING_TIGHTENING = 0.85
 
 // Map step numbers to their human-readable names
 const STEP_NAMES: { [key: number]: string } = {
-  1: 'feature_demo',
-  2: 'name_entry',
-  3: 'gender_selection',
-  4: 'height_weight',
-  5: 'birth_date',
-  6: 'progress_tracking',
-  7: 'goals_selection',
-  8: 'commitment_level',
-  9: 'experience_level',
-  10: 'training_bio',
+  2: 'coach_selection',
+  3: 'goals_selection',
+  4: 'name_entry',
+  5: 'gender_selection',
+  6: 'commitment_level',
+  7: 'experience_level',
+  8: 'training_bio',
 }
 
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(2)
   const [data, setData] = useState<OnboardingData>({
     name: '',
     gender: null,
@@ -112,87 +70,15 @@ export default function OnboardingScreen() {
     birth_month: '1',
     birth_year: '2000',
     goal: [],
-    commitment: null,
+    commitment: [],
     training_years: null,
     bio: '',
+    coach: DEFAULT_COACH_ID,
   })
-  const [prTooltipVisible, setPrTooltipVisible] = useState(false)
   const colors = useThemedColors()
-  const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
+  const { weightUnit, convertInputToKg } = useWeightUnits()
   const { trackEvent } = useAnalytics()
   const styles = createStyles(colors, weightUnit)
-
-  const chartDataPoints = useMemo(() => generateChartData(), [])
-  const chartValues = useMemo(
-    () => chartDataPoints.map((point) => point.value),
-    [chartDataPoints],
-  )
-  const chartLabels = useMemo(
-    () => chartDataPoints.map((point) => point.label),
-    [chartDataPoints],
-  )
-
-  const chartBounds = useMemo(() => {
-    if (chartValues.length === 0) {
-      return {
-        min: 0,
-        max: 0,
-        paddedMin: 0,
-        paddedMax: 0,
-        stepValue: 10,
-      }
-    }
-
-    const minValue = Math.min(...chartValues)
-    const maxValue = Math.max(...chartValues)
-    const range = Math.max(1, maxValue - minValue)
-    const padding = Math.max(10, Math.round(range * 0.12))
-    const paddedMin = Math.max(0, Math.floor((minValue - padding) / 10) * 10)
-    const paddedMax = Math.ceil((maxValue + padding) / 10) * 10
-    const stepValue = Math.max(
-      5,
-      Math.round((paddedMax - paddedMin) / 4 / 5) * 5,
-    )
-
-    return {
-      min: minValue,
-      max: maxValue,
-      paddedMin,
-      paddedMax,
-      stepValue,
-    }
-  }, [chartValues])
-
-  const [chartWidth, setChartWidth] = useState(0)
-
-  const handleChartLayout = (event: LayoutChangeEvent) => {
-    const { width } = event.nativeEvent.layout
-    setChartWidth(width)
-  }
-
-  const chartInnerWidth = useMemo(() => {
-    if (chartWidth === 0) return 0
-    const innerWidth = chartWidth - CHART_HORIZONTAL_PADDING * 2
-    return innerWidth > 0 ? innerWidth : 0
-  }, [chartWidth])
-
-  useEffect(() => {
-    if (step !== 6 && chartWidth !== 0) {
-      setChartWidth(0)
-    }
-  }, [step, chartWidth, setChartWidth])
-
-  const chartSpacing = useMemo(() => {
-    if (chartInnerWidth === 0) return undefined
-    const points = chartValues.length
-    if (points <= 1) return undefined
-    return (chartInnerWidth / (points - 1)) * CHART_SPACING_TIGHTENING
-  }, [chartInnerWidth, chartValues.length])
-
-  const chartEdgeSpacing = useMemo(() => {
-    if (!chartSpacing) return 12
-    return Math.max(8, chartSpacing * 0.35)
-  }, [chartSpacing])
 
   // Animation refs for step transitions
   const fadeAnim = useRef(new Animated.Value(1)).current
@@ -201,23 +87,13 @@ export default function OnboardingScreen() {
 
   // Progress dot animations
   const progressDotAnims = useRef(
-    Array.from({ length: 10 }, () => new Animated.Value(1)),
+    Array.from({ length: 7 }, () => new Animated.Value(1)),
   ).current
-
-  // Mock PR data for the demo (hardcoded to lb to match the demo table)
-  const mockPrDetails: PrDetailForTooltip[] = [
-    {
-      label: '1RM',
-      weight: 185,
-      currentReps: 8,
-      isCurrent: true,
-    },
-  ]
 
   // Animate step transitions
   useEffect(() => {
     if (prevStep.current !== step) {
-      const targetHasNativePicker = step === 4 || step === 5
+      const targetHasNativePicker = false
 
       // Start from right, slide and fade in
       fadeAnim.stopAnimation()
@@ -245,15 +121,15 @@ export default function OnboardingScreen() {
       }
 
       // Animate progress dot
-      if (step >= 1 && step <= 10) {
+      if (step >= 2 && step <= 8) {
         Animated.sequence([
-          Animated.spring(progressDotAnims[step - 1], {
+          Animated.spring(progressDotAnims[step - 2], {
             toValue: 1.3,
             useNativeDriver: true,
             tension: 200,
             friction: 10,
           }),
-          Animated.spring(progressDotAnims[step - 1], {
+          Animated.spring(progressDotAnims[step - 2], {
             toValue: 1,
             useNativeDriver: true,
             tension: 200,
@@ -267,13 +143,11 @@ export default function OnboardingScreen() {
   }, [step, fadeAnim, slideAnim, progressDotAnims])
 
   // Avoid transform animations on steps with native Picker to prevent layout glitches (iOS)
-  const stepHasNativePicker = step === 4 || step === 5
+  const stepHasNativePicker = false
 
-  // Reset slide animation for step 5 only to prevent shift when coming from step 6
+  // Reset slide animation for native picker steps
   useEffect(() => {
-    if (step === 5) {
-      slideAnim.setValue(0)
-    }
+    // No native picker steps remaining
   }, [step, slideAnim])
 
   // Track step views
@@ -290,7 +164,7 @@ export default function OnboardingScreen() {
       step_name: STEP_NAMES[step],
     })
 
-    if (step < 10) {
+    if (step < 8) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -331,9 +205,9 @@ export default function OnboardingScreen() {
         ? convertInputToKg(parseFloat(data.weight_kg))
         : null
 
-      // Navigate to processing screen with onboarding data
+      // Navigate to trial offer screen with onboarding data
       router.push({
-        pathname: '/(auth)/processing',
+        pathname: '/(auth)/trial-offer',
         params: {
           onboarding_data: JSON.stringify({
             name: data.name,
@@ -345,6 +219,7 @@ export default function OnboardingScreen() {
             commitment: data.commitment,
             training_years: data.training_years,
             bio: data.bio.trim() || null,
+            coach: data.coach,
           }),
         },
       })
@@ -359,6 +234,7 @@ export default function OnboardingScreen() {
         commitment: data.commitment,
         training_years: data.training_years,
         bio: data.bio,
+        coach: data.coach,
       })
     }
   }
@@ -367,7 +243,7 @@ export default function OnboardingScreen() {
     // Strong haptic for back navigation
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
-    if (step > 1) {
+    if (step > 2) {
       setStep(step - 1)
     } else {
       router.back()
@@ -375,79 +251,26 @@ export default function OnboardingScreen() {
   }
 
   const hasAutoSwipe = () => {
-    // Steps 3, 8, and 9 auto-swipe when an option is selected
-    return step === 3 || step === 8 || step === 9
+    // Steps 5 (gender) and 7 (experience) auto-swipe when an option is selected
+    // Step 6 (commitment) is now multi-select, so it requires manual "Next"
+    return step === 5 || step === 7
   }
 
   const canProceed = () => {
     switch (step) {
-      case 1:
-        return true // Feature screen
       case 2:
-        return data.name.trim() !== ''
+        return true // Coach selection
       case 3:
-        return data.gender !== null
-      case 4:
-        const weight = parseFloat(data.weight_kg)
-        const weightKg = convertInputToKg(isNaN(weight) ? null : weight)
-
-        let heightValid = false
-        if (weightUnit === 'kg') {
-          const height = parseFloat(data.height_cm)
-          heightValid =
-            data.height_cm !== '' &&
-            !isNaN(height) &&
-            height >= 50 &&
-            height <= 300
-        } else {
-          const feet = parseFloat(data.height_feet)
-          const inches = parseFloat(data.height_inches)
-          heightValid =
-            data.height_feet !== '' &&
-            data.height_inches !== '' &&
-            !isNaN(feet) &&
-            !isNaN(inches) &&
-            feet >= 3 &&
-            feet <= 9 &&
-            inches >= 0 &&
-            inches < 12
-        }
-
-        return (
-          heightValid &&
-          data.weight_kg !== '' &&
-          weightKg !== null &&
-          weightKg >= 20 &&
-          weightKg <= 500
-        )
-      case 5:
-        if (!data.birth_day || !data.birth_month || !data.birth_year) {
-          return false
-        }
-        const day = parseInt(data.birth_day)
-        const month = parseInt(data.birth_month)
-        const year = parseInt(data.birth_year)
-        const currentYear = new Date().getFullYear()
-        return (
-          !isNaN(day) &&
-          day >= 1 &&
-          day <= 31 &&
-          !isNaN(month) &&
-          month >= 1 &&
-          month <= 12 &&
-          !isNaN(year) &&
-          year >= currentYear - 120 &&
-          year <= currentYear - 13
-        )
-      case 6:
-        return true // Info screen
-      case 7:
         return data.goal.length > 0
-      case 8:
-        return data.commitment !== null
-      case 9:
+      case 4:
+        return data.name.trim() !== ''
+      case 5:
+        return data.gender !== null
+      case 6:
+        return data.commitment.length > 0
+      case 7:
         return data.training_years !== null
-      case 10:
+      case 8:
         return true // Optional step
       default:
         return false
@@ -456,113 +279,125 @@ export default function OnboardingScreen() {
 
   const renderStep = () => {
     switch (step) {
-      case 1:
+      case 2:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Log workouts in seconds</Text>
-              <Text style={styles.stepSubtitle}>
-                Use <Text style={styles.stepSubtitleBold}>notes</Text>,{' '}
-                <Text style={styles.stepSubtitleBold}>camera</Text>, or{' '}
-                <Text style={styles.stepSubtitleBold}>voice</Text> to log your
-                workouts
+              <Text style={styles.stepTitle}>Choose your Coach</Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+              >
+                {COACH_OPTIONS.map((coach) => (
+                  <HapticButton
+                    key={coach.id}
+                    style={[
+                      styles.card,
+                      data.coach === coach.id && styles.cardSelected,
+                    ]}
+                    onPress={() => {
+                      setData({ ...data, coach: coach.id })
+                    }}
+                    hapticStyle="light"
+                  >
+                    <View style={styles.coachContent}>
+                      <View style={styles.coachAvatar}>
+                        <Image
+                          source={coach.image}
+                          style={styles.coachImage}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.emojiBadge}>
+                          <Text style={styles.emojiText}>
+                            {coach.id === 'ross'
+                              ? '📋'
+                              : coach.id === 'kino'
+                              ? '😤'
+                              : '💪'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.textContainer}>
+                        <Text style={styles.cardTitle}>{coach.name}</Text>
+                        <Text style={styles.cardSubtitle}>{coach.title}</Text>
+                      </View>
+                    </View>
+                  </HapticButton>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        )
+      case 3:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>
+                What&rsquo;s your main fitness goal?
               </Text>
             </View>
 
             <View style={styles.stepContent}>
-              <View style={styles.featureExampleContainer}>
-                <View style={styles.featureBubble}>
-                  <Text style={styles.featureBubbleText}>
-                    &ldquo;I did 3 sets of bench, 8 reps at 185lbs&rdquo;
-                  </Text>
-                </View>
-
-                <View style={styles.featureArrow}>
-                  <Text style={styles.featureArrowText}>↓</Text>
-                </View>
-
-                <View style={styles.workoutGridPreview}>
-                  {/* Table Header */}
-                  <View style={styles.workoutTableHeader}>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutExerciseCol,
-                      ]}
-                    >
-                      Exercise
-                    </Text>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutSetsCol,
-                      ]}
-                    >
-                      Sets
-                    </Text>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutRepsCol,
-                      ]}
-                    >
-                      Reps
-                    </Text>
-                    <Text
-                      style={[
-                        styles.workoutTableHeaderText,
-                        styles.workoutWeightCol,
-                      ]}
-                    >
-                      Wt (lb)
-                    </Text>
-                  </View>
-                  <View style={styles.workoutHeaderDivider} />
-
-                  {/* Table Row */}
-                  <View style={styles.workoutTableRow}>
-                    <View
-                      style={[
-                        styles.workoutExerciseCol,
-                        styles.workoutExerciseCell,
-                      ]}
-                    >
-                      <Text
-                        style={styles.workoutExerciseName}
-                        numberOfLines={1}
+              <View style={styles.multiSelectContainer}>
+                {GOALS.map((goal) => (
+                  <HapticButton
+                    key={goal.value}
+                    style={[
+                      styles.card,
+                      data.goal.includes(goal.value) && styles.cardSelected,
+                    ]}
+                    onPress={() => {
+                      const newGoals = data.goal.includes(goal.value)
+                        ? data.goal.filter((g) => g !== goal.value)
+                        : [...data.goal, goal.value]
+                      setData({ ...data, goal: newGoals })
+                    }}
+                    hapticStyle="light"
+                  >
+                    <View style={styles.cardContent}>
+                      <View style={styles.iconContainer}>
+                        <Ionicons
+                          name={goal.icon}
+                          size={24}
+                          color={
+                            goal.value === 'lose_fat'
+                              ? '#3B82F6' // Blue
+                              : goal.value === 'build_muscle'
+                              ? '#F59E0B' // Amber
+                              : goal.value === 'gain_strength'
+                              ? '#EF4444' // Red
+                              : goal.value === 'improve_cardio'
+                              ? '#EC4899' // Pink
+                              : goal.value === 'become_flexible'
+                              ? '#8B5CF6' // Purple
+                              : '#10B981' // Green
+                          }
+                        />
+                      </View>
+                      <Text style={styles.cardLabel}>{goal.label}</Text>
+                      <View
+                        style={[
+                          styles.radioButton,
+                          data.goal.includes(goal.value) &&
+                            styles.radioButtonSelected,
+                        ]}
                       >
-                        Bench Press
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.workoutPrBadge}
-                        onPress={() => setPrTooltipVisible(true)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.workoutPrBadgeText}>PR</Text>
-                      </TouchableOpacity>
+                        {data.goal.includes(goal.value) && (
+                          <View style={styles.radioButtonInner} />
+                        )}
+                      </View>
                     </View>
-                    <Text
-                      style={[styles.workoutTableCell, styles.workoutSetsCol]}
-                    >
-                      3
-                    </Text>
-                    <Text
-                      style={[styles.workoutTableCell, styles.workoutRepsCol]}
-                    >
-                      8
-                    </Text>
-                    <Text
-                      style={[styles.workoutTableCell, styles.workoutWeightCol]}
-                    >
-                      185
-                    </Text>
-                  </View>
-                </View>
+                  </HapticButton>
+                ))}
               </View>
             </View>
           </View>
         )
-      case 2:
+      case 4:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -584,7 +419,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 3:
+      case 5:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -597,9 +432,8 @@ export default function OnboardingScreen() {
                   <HapticButton
                     key={gender.value}
                     style={[
-                      styles.optionButton,
-                      data.gender === gender.value &&
-                        styles.optionButtonSelected,
+                      styles.card,
+                      data.gender === gender.value && styles.cardSelected,
                     ]}
                     onPress={() => {
                       setData({ ...data, gender: gender.value })
@@ -607,288 +441,22 @@ export default function OnboardingScreen() {
                     }}
                     hapticStyle="light"
                   >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        data.gender === gender.value &&
-                          styles.optionTextSelected,
-                      ]}
-                    >
-                      {gender.label}
-                    </Text>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardLabel}>{gender.label}</Text>
+                      <View
+                        style={[
+                          styles.radioButton,
+                          data.gender === gender.value &&
+                            styles.radioButtonSelected,
+                        ]}
+                      >
+                        {data.gender === gender.value && (
+                          <View style={styles.radioButtonInner} />
+                        )}
+                      </View>
+                    </View>
                   </HapticButton>
                 ))}
-              </View>
-            </View>
-          </View>
-        )
-      case 4:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Height & Weight</Text>
-              <Text style={styles.stepSubtitle}>
-                This helps personalize your fitness goals
-              </Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              {/* Unit System Toggle */}
-              <View style={styles.unitToggleContainer}>
-                <Text
-                  style={[
-                    styles.unitToggleLabel,
-                    weightUnit === 'kg' && styles.unitToggleLabelActive,
-                  ]}
-                >
-                  Metric
-                </Text>
-                <Switch
-                  value={weightUnit === 'lb'}
-                  onValueChange={(value) => {
-                    Haptics.selectionAsync()
-                    setWeightUnit(value ? 'lb' : 'kg')
-                  }}
-                  trackColor={{
-                    false: colors.primary,
-                    true: colors.primary,
-                  }}
-                  thumbColor={colors.buttonText}
-                  ios_backgroundColor={colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.unitToggleLabel,
-                    weightUnit === 'lb' && styles.unitToggleLabelActive,
-                  ]}
-                >
-                  Imperial
-                </Text>
-              </View>
-
-              {weightUnit === 'kg' ? (
-                // Metric: Single height picker (cm) + weight (kg)
-                <View style={styles.pickerRow}>
-                  <View style={styles.pickerColumn}>
-                    <Text style={styles.pickerLabel}>Height</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={data.height_cm || '170'}
-                        onValueChange={(value) =>
-                          setData({ ...data, height_cm: value })
-                        }
-                        style={styles.picker}
-                        itemStyle={styles.pickerItem}
-                      >
-                        {Array.from({ length: 251 }, (_, i) => i + 50).map(
-                          (height) => (
-                            <Picker.Item
-                              key={height}
-                              label={`${height} cm`}
-                              value={`${height}`}
-                            />
-                          ),
-                        )}
-                      </Picker>
-                    </View>
-                  </View>
-                  <View style={styles.pickerColumn}>
-                    <Text style={styles.pickerLabel}>Weight</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={data.weight_kg || '70'}
-                        onValueChange={(value) =>
-                          setData({ ...data, weight_kg: value })
-                        }
-                        style={styles.picker}
-                        itemStyle={styles.pickerItem}
-                      >
-                        {Array.from({ length: 481 }, (_, i) => i + 20).map(
-                          (weight) => (
-                            <Picker.Item
-                              key={weight}
-                              label={`${weight} kg`}
-                              value={`${weight}`}
-                            />
-                          ),
-                        )}
-                      </Picker>
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                // Imperial: Height (feet + inches) and Weight
-                <View style={styles.imperialContainer}>
-                  <View style={styles.imperialHeightGroup}>
-                    <Text style={styles.pickerLabel}>Height</Text>
-                    <View style={styles.imperialHeightPickers}>
-                      <View style={styles.imperialHeightPickerWrapper}>
-                        <View style={styles.pickerContainer}>
-                          <Picker
-                            selectedValue={data.height_feet || '5'}
-                            onValueChange={(value) =>
-                              setData({ ...data, height_feet: value })
-                            }
-                            style={styles.picker}
-                            itemStyle={styles.pickerItem}
-                          >
-                            {Array.from({ length: 7 }, (_, i) => i + 3).map(
-                              (feet) => (
-                                <Picker.Item
-                                  key={feet}
-                                  label={`${feet} ft`}
-                                  value={`${feet}`}
-                                />
-                              ),
-                            )}
-                          </Picker>
-                        </View>
-                      </View>
-                      <View style={styles.imperialHeightPickerWrapper}>
-                        <View style={styles.pickerContainer}>
-                          <Picker
-                            selectedValue={data.height_inches || '8'}
-                            onValueChange={(value) =>
-                              setData({ ...data, height_inches: value })
-                            }
-                            style={styles.picker}
-                            itemStyle={styles.pickerItem}
-                          >
-                            {Array.from({ length: 12 }, (_, i) => i).map(
-                              (inches) => (
-                                <Picker.Item
-                                  key={inches}
-                                  label={`${inches} in`}
-                                  value={`${inches}`}
-                                />
-                              ),
-                            )}
-                          </Picker>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.imperialWeightColumn}>
-                    <Text style={styles.pickerLabel}>Weight</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={data.weight_kg || '154'}
-                        onValueChange={(value) =>
-                          setData({ ...data, weight_kg: value })
-                        }
-                        style={styles.picker}
-                        itemStyle={styles.pickerItem}
-                      >
-                        {Array.from({ length: 551 }, (_, i) => i + 50).map(
-                          (weight) => (
-                            <Picker.Item
-                              key={weight}
-                              label={`${weight} lb`}
-                              value={`${weight}`}
-                            />
-                          ),
-                        )}
-                      </Picker>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
-          </View>
-        )
-      case 5:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>When were you born?</Text>
-              <Text style={styles.stepSubtitle}>
-                This helps calculate your body composition
-              </Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              <View key={`birthdate-${step}`} style={styles.birthDateRow}>
-                <View style={styles.birthDateColumnSmall}>
-                  <Text style={styles.pickerLabel}>Day</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={data.birth_day || '1'}
-                      onValueChange={(value) =>
-                        setData({ ...data, birth_day: value })
-                      }
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                    >
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(
-                        (day) => (
-                          <Picker.Item
-                            key={day}
-                            label={`${day}`}
-                            value={`${day}`}
-                          />
-                        ),
-                      )}
-                    </Picker>
-                  </View>
-                </View>
-                <View style={styles.birthDateColumnSmall}>
-                  <Text style={styles.pickerLabel}>Month</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={data.birth_month || '1'}
-                      onValueChange={(value) =>
-                        setData({ ...data, birth_month: value })
-                      }
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                    >
-                      {[
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec',
-                      ].map((month, index) => (
-                        <Picker.Item
-                          key={index + 1}
-                          label={month}
-                          value={`${index + 1}`}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-                <View style={styles.birthDateColumnYear}>
-                  <Text style={styles.pickerLabel}>Year</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={data.birth_year || '2000'}
-                      onValueChange={(value) =>
-                        setData({ ...data, birth_year: value })
-                      }
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                    >
-                      {Array.from(
-                        { length: 108 },
-                        (_, i) => new Date().getFullYear() - 13 - i,
-                      ).map((year) => (
-                        <Picker.Item
-                          key={year}
-                          label={`${year}`}
-                          value={`${year}`}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
               </View>
             </View>
           </View>
@@ -897,184 +465,9 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Track your progress</Text>
-              <Text style={styles.stepSubtitle}>
-                Consistency beats everything. Here&rsquo;s why.
-              </Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              <View style={styles.trackingBenefitsContainer}>
-                {/* Animated Progress Chart */}
-                <View
-                  style={styles.chartContainer}
-                  onLayout={handleChartLayout}
-                >
-                  <LineChart
-                    data={chartValues.map((value) => ({
-                      value,
-                    }))}
-                    xAxisLabelTexts={chartLabels}
-                    isAnimated
-                    animationDuration={2500}
-                    curved
-                    curvature={0.25}
-                    thickness={3}
-                    color={colors.primary}
-                    areaChart
-                    startFillColor={colors.primary + '25'}
-                    endFillColor={colors.primary + '02'}
-                    startOpacity={0.6}
-                    endOpacity={0.05}
-                    dataPointsColor={colors.primary}
-                    dataPointsRadius={5}
-                    hideDataPoints={false}
-                    yAxisColor={colors.border}
-                    xAxisColor={colors.border}
-                    rulesType="solid"
-                    rulesColor={colors.border}
-                    rulesThickness={1}
-                    xAxisLabelTextStyle={{
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                      fontWeight: '600',
-                    }}
-                    yAxisLabelWidth={0}
-                    xAxisTextNumberOfLines={1}
-                    hideYAxisText
-                    noOfSections={4}
-                    yAxisOffset={chartBounds.paddedMin}
-                    stepValue={chartBounds.stepValue}
-                    maxValue={chartBounds.paddedMax}
-                    pointerConfig={{
-                      pointerStripColor: colors.primary + '24',
-                      pointerStripHeight: 120,
-                      pointerColor: colors.primary,
-                      radius: 6,
-                      shiftPointerLabelX: -12,
-                      pointerLabelComponent: (items: any[]) => {
-                        const item = items[0]
-                        if (!item) return null
-                        const pointIndex = item.index ?? 0
-                        const label = chartLabels[pointIndex] || ''
-                        return (
-                          <View
-                            style={{
-                              backgroundColor: colors.background,
-                              borderColor: colors.primary,
-                              borderWidth: 1,
-                              paddingVertical: 4,
-                              paddingHorizontal: 8,
-                              borderRadius: 8,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: colors.primary,
-                                fontWeight: '700',
-                                fontSize: 12,
-                              }}
-                            >
-                              {`${label} · ${item.value}`}
-                            </Text>
-                          </View>
-                        )
-                      },
-                    }}
-                    disableScroll
-                    adjustToWidth
-                    initialSpacing={chartEdgeSpacing}
-                    endSpacing={chartEdgeSpacing}
-                    spacing={chartSpacing}
-                    width={chartInnerWidth > 0 ? chartInnerWidth : undefined}
-                    height={
-                      chartInnerWidth > 0
-                        ? Math.max(130, chartInnerWidth * 0.45)
-                        : 150
-                    }
-                  />
-                </View>
-
-                {/* Key Statistic */}
-                <View style={styles.statContainer}>
-                  <Text style={styles.statNumber}>25%</Text>
-                  <Text style={styles.statDescription}>
-                    Greater strength gains in just 6 months
-                  </Text>
-                </View>
-
-                {/* Subtext */}
-                <View style={styles.trackingFooter}>
-                  <Text style={styles.trackingFooterText}>
-                    Studies show that lifters who log their workouts build more
-                    muscle and increase their lifts by 25%.
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )
-      case 7:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>
-                What would you like to accomplish?
+                How often do you want to exercise?
               </Text>
-              <Text style={styles.stepSubtitle}>
-                Select as many as you&rsquo;d like
-              </Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              <View style={styles.multiSelectContainer}>
-                {GOALS.map((goal) => (
-                  <HapticButton
-                    key={goal.value}
-                    style={[
-                      styles.goalButton,
-                      data.goal.includes(goal.value) &&
-                        styles.goalButtonSelected,
-                    ]}
-                    onPress={() => {
-                      const newGoals = data.goal.includes(goal.value)
-                        ? data.goal.filter((g) => g !== goal.value)
-                        : [...data.goal, goal.value]
-                      setData({ ...data, goal: newGoals })
-                    }}
-                    hapticStyle="light"
-                  >
-                    <View style={styles.goalButtonContent}>
-                      <View style={styles.checkmarkContainer}>
-                        {data.goal.includes(goal.value) && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={20}
-                            color={colors.buttonText}
-                          />
-                        )}
-                      </View>
-                      <Text
-                        style={[
-                          styles.goalText,
-                          data.goal.includes(goal.value) &&
-                            styles.goalTextSelected,
-                        ]}
-                      >
-                        {goal.label}
-                      </Text>
-                    </View>
-                  </HapticButton>
-                ))}
-              </View>
-            </View>
-          </View>
-        )
-      case 8:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>How often do you work out?</Text>
             </View>
 
             <View style={styles.stepContent}>
@@ -1083,32 +476,53 @@ export default function OnboardingScreen() {
                   <HapticButton
                     key={commitment.value}
                     style={[
-                      styles.goalButton,
-                      data.commitment === commitment.value &&
-                        styles.goalButtonSelected,
+                      styles.card,
+                      data.commitment.includes(commitment.value) &&
+                        styles.cardSelected,
                     ]}
                     onPress={() => {
-                      setData({ ...data, commitment: commitment.value })
-                      setTimeout(() => setStep(step + 1), 300)
+                      let newCommitment: string[]
+                      if (commitment.value === 'not_sure') {
+                        // If "not sure" is selected, clear others
+                        newCommitment = ['not_sure']
+                      } else {
+                        // If a day is selected, remove "not_sure" if present
+                        const withoutNotSure = data.commitment.filter(
+                          (c) => c !== 'not_sure',
+                        )
+                        if (withoutNotSure.includes(commitment.value)) {
+                          newCommitment = withoutNotSure.filter(
+                            (c) => c !== commitment.value,
+                          )
+                        } else {
+                          newCommitment = [...withoutNotSure, commitment.value]
+                        }
+                      }
+                      setData({ ...data, commitment: newCommitment })
                     }}
                     hapticStyle="light"
                   >
-                    <Text
-                      style={[
-                        styles.simpleOptionText,
-                        data.commitment === commitment.value &&
-                          styles.simpleOptionTextSelected,
-                      ]}
-                    >
-                      {commitment.label}
-                    </Text>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardLabel}>{commitment.label}</Text>
+                      <View
+                        style={[
+                          styles.radioButton,
+                          data.commitment.includes(commitment.value) &&
+                            styles.radioButtonSelected,
+                        ]}
+                      >
+                        {data.commitment.includes(commitment.value) && (
+                          <View style={styles.radioButtonInner} />
+                        )}
+                      </View>
+                    </View>
                   </HapticButton>
                 ))}
               </View>
             </View>
           </View>
         )
-      case 9:
+      case 7:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -1123,9 +537,8 @@ export default function OnboardingScreen() {
                   <HapticButton
                     key={item.value}
                     style={[
-                      styles.goalButton,
-                      data.training_years === item.value &&
-                        styles.goalButtonSelected,
+                      styles.card,
+                      data.training_years === item.value && styles.cardSelected,
                     ]}
                     onPress={() => {
                       setData({ ...data, training_years: item.value })
@@ -1133,29 +546,36 @@ export default function OnboardingScreen() {
                     }}
                     hapticStyle="light"
                   >
-                    <Text
-                      style={[
-                        styles.simpleOptionText,
-                        data.training_years === item.value &&
-                          styles.simpleOptionTextSelected,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardLabel}>{item.label}</Text>
+                      <View
+                        style={[
+                          styles.radioButton,
+                          data.training_years === item.value &&
+                            styles.radioButtonSelected,
+                        ]}
+                      >
+                        {data.training_years === item.value && (
+                          <View style={styles.radioButtonInner} />
+                        )}
+                      </View>
+                    </View>
                   </HapticButton>
                 ))}
               </View>
             </View>
           </View>
         )
-      case 10:
+      case 8:
+        // Get the selected coach's first name for personalization
+        const selectedCoach = COACH_OPTIONS.find((c) => c.id === data.coach)
+        const coachFirstName = selectedCoach?.name.split(' ').pop() || 'your coach'
+
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>How do you like to train?</Text>
-              <Text style={styles.stepSubtitle}>
-                <Text style={{ fontWeight: '700' }}>Optional</Text> - Helps
-                personalize your experience
+              <Text style={styles.stepTitle}>
+                Anything {coachFirstName} should know about you?
               </Text>
             </View>
 
@@ -1163,7 +583,7 @@ export default function OnboardingScreen() {
               <View>
                 <AnimatedInput
                   style={styles.bioInput}
-                  placeholder="e.g., I like compound movements with free weights, usually in the 8-12 rep range for hypertrophy."
+                  placeholder="e.g., I have a lower back injury, prefer morning workouts, and want to focus on building my chest..."
                   placeholderTextColor={colors.textSecondary}
                   value={data.bio}
                   onChangeText={(text) => setData({ ...data, bio: text })}
@@ -1193,7 +613,7 @@ export default function OnboardingScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+            {[2, 3, 4, 5, 6, 7, 8].map((i) => (
               <Animated.View
                 key={i}
                 style={[
@@ -1202,7 +622,7 @@ export default function OnboardingScreen() {
                   {
                     transform: [
                       {
-                        scale: i === step ? progressDotAnims[i - 1] : 1,
+                        scale: i === step ? progressDotAnims[i - 2] : 1,
                       },
                     ],
                   },
@@ -1221,11 +641,14 @@ export default function OnboardingScreen() {
         >
           <ScrollView
             style={styles.content}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[
+              styles.contentContainer,
+              !hasAutoSwipe() && { paddingBottom: 140 },
+            ]}
             showsVerticalScrollIndicator={false}
-            scrollEnabled={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            bounces={true}
           >
             <View style={styles.contentWrapper}>
               <Animated.View
@@ -1263,15 +686,6 @@ export default function OnboardingScreen() {
           )}
         </KeyboardAvoidingView>
       </View>
-
-      {/* PR Tooltip for demo */}
-      <PrTooltip
-        visible={prTooltipVisible}
-        onClose={() => setPrTooltipVisible(false)}
-        prDetails={mockPrDetails}
-        exerciseName="Bench Press"
-        weightUnitOverride="lb"
-      />
     </SafeAreaView>
   )
 }
@@ -1283,7 +697,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.background, // Light/Dark background
     },
     wrapper: {
       flex: 1,
@@ -1296,7 +710,7 @@ const createStyles = (
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingTop: 40,
+      paddingTop: 20,
       paddingBottom: 16,
     },
     backButton: {
@@ -1304,13 +718,17 @@ const createStyles = (
     },
     progressContainer: {
       flexDirection: 'row',
-      gap: 8,
+      gap: 6,
+      height: 4,
+      borderRadius: 2,
+      overflow: 'hidden',
+      backgroundColor: colors.border,
+      width: 120,
     },
     progressDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.border,
+      flex: 1,
+      height: '100%',
+      backgroundColor: 'transparent',
     },
     progressDotActive: {
       backgroundColor: colors.primary,
@@ -1323,187 +741,175 @@ const createStyles = (
     },
     contentContainer: {
       flexGrow: 1,
-      paddingHorizontal: 32,
+      paddingHorizontal: 24,
+      paddingBottom: 40,
     },
     contentWrapper: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: 'flex-start', // Top aligned
+      paddingTop: 20,
     },
     animatedContent: {
       flex: 1,
     },
     stepContainer: {
       flex: 1,
-      justifyContent: 'flex-start',
     },
     stepHeader: {
-      paddingTop: 0,
-      paddingBottom: 24,
+      paddingBottom: 32,
     },
     stepTitle: {
-      fontSize: 28,
-      fontWeight: '700',
+      fontSize: 32,
+      fontWeight: '800',
       color: colors.text,
       textAlign: 'left',
       marginBottom: 8,
-    },
-    stepSubtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'left',
-      lineHeight: 22,
-    },
-    stepSubtitleBold: {
-      fontWeight: '700',
-      color: colors.text,
+      letterSpacing: -0.5,
     },
     stepContent: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'stretch',
-    },
-    stepContentInner: {
-      // Natural size, centered by parent
     },
     optionsContainer: {
       gap: 12,
     },
     multiSelectContainer: {
-      gap: 12,
-      flexDirection: 'column',
+      gap: 8,
     },
-    optionButton: {
-      height: 56,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 28,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.background,
+
+    // Card Styles (New)
+    card: {
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 2,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: 'transparent',
     },
-    optionButtonSelected: {
+    cardSelected: {
       borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.backgroundWhite, // Keep white background
     },
-    optionText: {
+    cardContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+    },
+    cardLabel: {
       fontSize: 17,
       fontWeight: '600',
       color: colors.text,
+      flex: 1,
     },
-    optionTextSelected: {
-      color: colors.buttonText,
+    iconContainer: {
+      width: 40,
+      justifyContent: 'center',
+      alignItems: 'flex-start',
     },
-    inputContainer: {
+
+    // Coach Specific
+    coachContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      width: '100%',
     },
-    input: {
+    coachAvatar: {
+      marginRight: 16,
+      position: 'relative',
+    },
+    coachImage: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.textSecondary,
+    },
+    emojiBadge: {
+      position: 'absolute',
+      bottom: -4,
+      right: -4,
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 12,
+      width: 24,
+      height: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    emojiText: {
+      fontSize: 14,
+    },
+    textContainer: {
       flex: 1,
-      height: 64,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 32,
-      paddingHorizontal: 20,
-      fontSize: 24,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
     },
-    inputLabel: {
-      fontSize: 20,
-      fontWeight: '600',
+    cardTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    cardSubtitle: {
+      fontSize: 14,
       color: colors.textSecondary,
+      fontWeight: '500',
+    },
+
+    // Radio Button
+    radioButton: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: colors.border, // Inactive border
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 12,
+    },
+    radioButtonSelected: {
+      borderColor: colors.primary, // Active border
+      backgroundColor: colors.backgroundWhite,
+    },
+    radioButtonInner: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: colors.primary,
+    },
+
+    // Input
+    inputContainer: {
+      marginBottom: 24,
     },
     nameInput: {
       height: 64,
       borderWidth: 2,
       borderColor: colors.border,
-      borderRadius: 32,
-      paddingHorizontal: 20,
-      fontSize: 20,
+      borderRadius: 20,
+      paddingHorizontal: 24,
+      fontSize: 22,
       fontWeight: '600',
       color: colors.text,
-      textAlign: 'center',
-    },
-    goalButton: {
-      height: 64,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      paddingHorizontal: 20,
-    },
-    goalButtonSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
-    },
-    goalText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
-      flex: 1,
-    },
-    goalTextSelected: {
-      color: colors.buttonText,
-    },
-    simpleOptionText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
-    },
-    simpleOptionTextSelected: {
-      color: colors.buttonText,
-    },
-    goalButtonContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      justifyContent: 'center',
-    },
-    checkmarkContainer: {
-      position: 'absolute',
-      left: 16,
-      width: 24,
-      height: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      flexShrink: 0,
-    },
-    footer: {
-      paddingHorizontal: 32,
-      paddingVertical: 16,
-      paddingBottom: 45,
-    },
-    nextButton: {
-      height: 56,
-      backgroundColor: colors.primary,
-      borderRadius: 28,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    nextButtonDisabled: {
-      opacity: 0.4,
-    },
-    nextButtonText: {
-      color: colors.buttonText,
-      fontSize: 18,
-      fontWeight: '700',
+      backgroundColor: colors.backgroundWhite,
     },
     bioInput: {
-      minHeight: 150,
+      minHeight: 160,
       borderWidth: 2,
       borderColor: colors.border,
-      borderRadius: 24,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      borderRadius: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 20,
       fontSize: 16,
       color: colors.text,
-      backgroundColor: colors.inputBackground,
+      backgroundColor: colors.backgroundWhite,
+      textAlignVertical: 'top',
     },
     characterCount: {
       fontSize: 14,
@@ -1511,181 +917,37 @@ const createStyles = (
       textAlign: 'right',
       marginTop: 8,
     },
-    commitmentNote: {
-      marginTop: 16,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      backgroundColor: colors.primary + '10',
-      borderRadius: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
-    },
-    commitmentNoteText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.text,
-      textAlign: 'center',
-    },
-    optionalText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.textSecondary,
-      marginBottom: 8,
-    },
-    aiProfileHeader: {
-      alignItems: 'center',
-      marginBottom: 48,
-    },
-    sparkleContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.primary + '15',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-    aiProfileTitle: {
-      fontSize: 30,
-      fontWeight: '700',
-      color: colors.text,
-      textAlign: 'center',
-      marginBottom: 8,
-    },
-    aiProfileSubtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 22,
-      paddingHorizontal: 20,
-    },
-    aiFeaturesList: {
-      gap: 18,
-      marginBottom: 40,
-    },
-    aiFeatureItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      paddingHorizontal: 4,
-    },
-    aiFeatureIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.primary + '15',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    aiFeatureContent: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    aiFeatureTitle: {
-      fontSize: 19,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    aiFeatureDescription: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      lineHeight: 21,
-    },
-    aiProfileFooter: {
-      paddingTop: 28,
-      paddingHorizontal: 8,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      marginTop: 8,
-    },
-    aiProfileFooterText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.primary,
-      textAlign: 'center',
-      lineHeight: 21,
-    },
-    featureScreenHeader: {
-      alignItems: 'center',
-      marginBottom: 48,
-    },
-    featureIconContainer: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-      backgroundColor: colors.primary + '15',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 32,
-    },
-    featureHook: {
-      fontSize: 36,
-      fontWeight: '700',
-      color: colors.text,
-      textAlign: 'center',
-      marginBottom: 8,
-    },
-    featureSubhook: {
-      fontSize: 28,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-    featureExampleContainer: {
-      alignItems: 'stretch',
-      paddingHorizontal: 0,
-    },
-    featureBubble: {
-      backgroundColor: colors.primary + '15',
-      paddingHorizontal: 20,
+
+    // Footer
+    footer: {
+      paddingHorizontal: 24,
       paddingVertical: 16,
-      borderRadius: 16,
-      borderWidth: 2,
-      borderColor: colors.primary + '30',
-      marginBottom: 16,
-      alignSelf: 'center',
+      paddingBottom: 40,
     },
-    featureBubbleText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: colors.text,
-      textAlign: 'center',
-      lineHeight: 24,
+    nextButton: {
+      height: 64,
+      backgroundColor: colors.text, // Black/Dark button
+      borderRadius: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.text,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
-    featureArrow: {
-      marginBottom: 16,
-      alignSelf: 'center',
+    nextButtonDisabled: {
+      opacity: 0.5,
+      shadowOpacity: 0,
     },
-    featureArrowText: {
-      fontSize: 32,
-      color: colors.primary,
-      textAlign: 'center',
+    nextButtonText: {
+      color: colors.background, // White/Light text
+      fontSize: 18,
+      fontWeight: '700',
     },
-    featureResult: {
-      backgroundColor: '#10B98115',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: '#10B981',
-    },
-    featureResultText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
-    },
-    featureFooter: {
-      paddingTop: 24,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    featureFooterText: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 22,
-    },
+
+    // Remaining styles
+    stepContentInner: {},
     pickerRow: {
       flexDirection: 'row',
       gap: 12,
@@ -1706,8 +968,11 @@ const createStyles = (
     },
     pickerContainer: {
       width: '100%',
-      backgroundColor: colors.background,
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 16,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     picker: {
       width: '100%',
@@ -1718,91 +983,6 @@ const createStyles = (
       fontWeight: '600',
       color: colors.text,
       height: 200,
-    },
-    birthDateRow: {
-      flexDirection: 'row',
-      gap: 6,
-      justifyContent: 'center',
-      paddingHorizontal: 4,
-      alignSelf: 'center',
-      width: '100%',
-      maxWidth: 360,
-    },
-    birthDateColumnSmall: {
-      flex: 1,
-      alignItems: 'center',
-      minWidth: 100,
-    },
-    birthDateColumnYear: {
-      flex: 1.3,
-      alignItems: 'center',
-      minWidth: 130,
-    },
-    thankYouHeader: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 40,
-      paddingBottom: 20,
-    },
-    clappingIconContainer: {
-      marginBottom: 32,
-    },
-    thankYouTitle: {
-      fontSize: 32,
-      fontWeight: '700',
-      color: colors.text,
-      textAlign: 'center',
-      marginBottom: 12,
-      paddingHorizontal: 20,
-    },
-    thankYouSubtitle: {
-      fontSize: 17,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 24,
-      paddingHorizontal: 24,
-    },
-    privacyFooter: {
-      position: 'relative',
-      marginHorizontal: 20,
-      marginTop: 24,
-      marginBottom: 0,
-      paddingTop: 28,
-      paddingBottom: 20,
-      paddingHorizontal: 24,
-      backgroundColor: colors.primary + '08',
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: colors.primary + '20',
-      alignItems: 'center',
-    },
-    privacyIconBadge: {
-      position: 'absolute',
-      top: -21,
-      alignSelf: 'center',
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.primary + '20',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    privacyTitle: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: colors.text,
-      textAlign: 'center',
-      marginBottom: 8,
-    },
-    privacySubtitle: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 21,
-      paddingHorizontal: 4,
     },
     unitToggleContainer: {
       flexDirection: 'row',
@@ -1840,128 +1020,70 @@ const createStyles = (
       alignItems: 'center',
       width: 110,
     },
-    workoutGridPreview: {
-      borderRadius: 12,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.white,
-    },
-    workoutTableHeader: {
+    birthDateRow: {
       flexDirection: 'row',
-      paddingVertical: 8,
-      paddingHorizontal: 4,
-      backgroundColor: colors.backgroundLight,
+      gap: 8,
+      justifyContent: 'center',
     },
-    workoutTableHeaderText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    workoutHeaderDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-    },
-    workoutTableRow: {
-      flexDirection: 'row',
-      paddingVertical: 10,
-      paddingHorizontal: 4,
-      backgroundColor: colors.backgroundLight,
-    },
-    workoutTableCell: {
-      fontSize: 14,
-      color: colors.text,
-    },
-    workoutExerciseCol: {
-      flex: 3,
-    },
-    workoutSetsCol: {
+    birthDateColumnSmall: {
       flex: 1,
-      textAlign: 'center',
     },
-    workoutRepsCol: {
-      flex: 1.5,
-      textAlign: 'center',
+    birthDateColumnYear: {
+      flex: 1.2,
     },
-    workoutWeightCol: {
-      flex: 1.5,
-      textAlign: 'right',
-    },
-    workoutExerciseName: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    workoutExerciseCell: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    workoutPrBadge: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      marginLeft: 2,
-    },
-    workoutPrBadgeText: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: colors.white,
-      letterSpacing: 0.5,
-    },
+
+    // Stats & Chart (Keeping references but simplifying if needed)
     trackingBenefitsContainer: {
       flex: 1,
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       alignItems: 'center',
     },
     chartContainer: {
       width: '100%',
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.backgroundLight,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: CHART_VERTICAL_PADDING,
-      paddingHorizontal: CHART_HORIZONTAL_PADDING,
+      borderRadius: 24,
+      backgroundColor: colors.backgroundWhite,
+      paddingVertical: 20,
+      paddingHorizontal: 16,
       marginBottom: 32,
-      overflow: 'hidden',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 12,
+      elevation: 2,
     },
     statContainer: {
       alignItems: 'center',
-      marginVertical: 24,
-      marginTop: -100,
+      marginBottom: 32,
     },
     statNumber: {
-      fontSize: 32,
-      fontWeight: '700',
+      fontSize: 48,
+      fontWeight: '800',
       color: colors.primary,
       marginBottom: 8,
+      letterSpacing: -1,
     },
     statDescription: {
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
-      lineHeight: 24,
-      paddingHorizontal: 12,
+      lineHeight: 26,
     },
     trackingFooter: {
-      backgroundColor: colors.primary + '08',
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.primary + '20',
-      padding: 18,
-      marginHorizontal: 8,
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
     },
     trackingFooterText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '500',
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 22,
+      lineHeight: 24,
     },
   })

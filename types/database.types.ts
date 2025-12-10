@@ -3,6 +3,8 @@ export type Goal =
   | 'build_muscle'
   | 'lose_fat'
   | 'gain_strength'
+  | 'improve_cardio'
+  | 'become_flexible'
   | 'general_fitness'
 export type TrainingYears = 'less_than_1' | '1_to_3' | '3_to_5' | '5_plus'
 
@@ -20,12 +22,13 @@ export interface Profile {
   weight_kg: number | null
   age: number | null
   goals: Goal[] | null
-  commitment: string | null
+  commitment: string[] | null
   training_years: TrainingYears | null
   expo_push_token: string | null
   has_requested_push_notifications: boolean
   created_at: string
   updated_at: string
+  coach: string | null
 }
 
 export interface Exercise {

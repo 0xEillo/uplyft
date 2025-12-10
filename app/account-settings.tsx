@@ -4,6 +4,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { COACH_OPTIONS, getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types/database.types'
@@ -11,17 +12,16 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Linking,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -38,6 +38,7 @@ export default function SettingsScreen() {
   const [isRestoring, setIsRestoring] = useState(false)
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
+  const [isCoachUpdating, setIsCoachUpdating] = useState(false)
   const resolvedReturnTo =
     Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
@@ -99,6 +100,24 @@ export default function SettingsScreen() {
       )
     } finally {
       setIsPrivacyUpdating(false)
+    }
+  }, [user, profile])
+
+  const handleUpdateCoach = useCallback(async (coachId: string) => {
+    if (!user || !profile) return
+    if (profile.coach === coachId) return
+
+    try {
+      setIsCoachUpdating(true)
+      const updated = await database.profiles.update(user.id, {
+        coach: coachId,
+      })
+      setProfile(updated)
+    } catch (error) {
+      console.error('Error updating coach:', error)
+      Alert.alert('Error', 'Unable to update coach. Please try again.')
+    } finally {
+      setIsCoachUpdating(false)
     }
   }, [user, profile])
 
@@ -637,6 +656,44 @@ export default function SettingsScreen() {
                     lbs
                   </Text>
                 </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.preferenceDivider} />
+
+            {/* Coach Selector */}
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <View>
+                  <Text style={styles.preferenceTitle}>AI Coach</Text>
+                  <Text style={styles.preferenceDescription}>
+                    {getCoach(profile?.coach).name}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.unitToggleContainer}>
+                {COACH_OPTIONS.map((coach) => (
+                  <TouchableOpacity
+                    key={coach.id}
+                    style={[
+                      styles.unitButton,
+                      profile?.coach === coach.id && styles.unitButtonActive,
+                    ]}
+                    onPress={() => handleUpdateCoach(coach.id)}
+                    disabled={isCoachUpdating}
+                  >
+                    <Text
+                      style={[
+                        styles.unitButtonText,
+                        profile?.coach === coach.id &&
+                          styles.unitButtonTextActive,
+                      ]}
+                    >
+                      {coach.id.charAt(0).toUpperCase() + coach.id.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 

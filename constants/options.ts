@@ -11,10 +11,12 @@ export const GOALS: {
   label: string
   icon: keyof typeof Ionicons.glyphMap
 }[] = [
-  { value: 'build_muscle', label: 'Build more muscle', icon: 'body' },
-  { value: 'gain_strength', label: 'Get stronger', icon: 'barbell' },
-  { value: 'lose_fat', label: 'Lose body fat', icon: 'flame' },
-  { value: 'general_fitness', label: 'Improve overall fitness', icon: 'heart' },
+  { value: 'gain_strength', label: 'Get stronger', icon: 'flash' },
+  { value: 'build_muscle', label: 'Build muscle', icon: 'arrow-up' },
+  { value: 'lose_fat', label: 'Lose fat', icon: 'arrow-down' },
+  { value: 'improve_cardio', label: 'Improve cardio', icon: 'heart' },
+  { value: 'become_flexible', label: 'Become flexible', icon: 'sync' },
+  { value: 'general_fitness', label: 'General fitness', icon: 'ellipse' },
 ]
 
 export const GENDERS: { value: Gender; label: string }[] = [
@@ -26,12 +28,15 @@ export const GENDERS: { value: Gender; label: string }[] = [
 export const COMMITMENTS: {
   value: string
   label: string
-  icon: keyof typeof Ionicons.glyphMap
 }[] = [
-  { value: '2_times', label: '2x per week', icon: 'calendar' },
-  { value: '3_times', label: '3x per week', icon: 'calendar' },
-  { value: '4_times', label: '4x per week', icon: 'calendar' },
-  { value: '5_plus', label: '5+ per week', icon: 'flame' },
+  { value: 'sunday', label: 'Sunday' },
+  { value: 'monday', label: 'Monday' },
+  { value: 'tuesday', label: 'Tuesday' },
+  { value: 'wednesday', label: 'Wednesday' },
+  { value: 'thursday', label: 'Thursday' },
+  { value: 'friday', label: 'Friday' },
+  { value: 'saturday', label: 'Saturday' },
+  { value: 'not_sure', label: 'Not sure' },
 ]
 
 export const TRAINING_YEARS: {

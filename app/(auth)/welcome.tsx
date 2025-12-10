@@ -3,6 +3,7 @@ import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
@@ -13,31 +14,37 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
-import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   Easing,
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withDecay,
-  withDelay,
   withRepeat,
-  withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+const IMAGES = [
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_08PM.jpeg'),
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_14PM.jpeg'),
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_12PM.jpeg'),
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_15PM.jpeg'),
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_16PM.jpeg'),
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_17PM.jpeg'),
+  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_12PM (1).jpeg'),
+]
+
+// Duplicate images to create infinite scroll effect
+const CAROUSEL_IMAGES = [...IMAGES, ...IMAGES, ...IMAGES]
+const ITEM_WIDTH = 200
+const ITEM_SPACING = 20
+
 export default function WelcomeScreen() {
   const colors = useThemedColors()
   const { width } = useWindowDimensions()
-  const styles = createStyles(colors)
   const [showSignInSheet, setShowSignInSheet] = useState(false)
   const { trackEvent } = useAnalytics()
 
   const translateX = useSharedValue(0)
-  const savedOffset = useSharedValue(0)
-  const isAutoPlaying = useSharedValue(true)
 
   useEffect(() => {
     trackEvent(AnalyticsEvents.AUTH_WELCOME_VIEWED, {
@@ -47,92 +54,16 @@ export default function WelcomeScreen() {
   }, [trackEvent])
 
   useEffect(() => {
+    const totalWidth = IMAGES.length * (ITEM_WIDTH + ITEM_SPACING)
     translateX.value = withRepeat(
-      withSequence(
-        withDelay(
-          2500,
-          withTiming(-width, {
-            duration: 800,
-            easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
-          }),
-        ),
-        withDelay(
-          2500,
-          withTiming(0, {
-            duration: 800,
-            easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
-          }),
-        ),
-      ),
-      -1,
-      false,
+      withTiming(-totalWidth, {
+        duration: 20000,
+        easing: Easing.linear,
+      }),
+      -1, // Infinite repeat
+      false, // Do not reverse
     )
-  }, [width, translateX])
-
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      isAutoPlaying.value = false
-      cancelAnimation(translateX)
-      savedOffset.value = translateX.value
-    })
-    .onUpdate((event) => {
-      translateX.value = savedOffset.value + event.translationX
-    })
-    .onEnd((event) => {
-      const velocity = event.velocityX
-
-      // Use decay for momentum, then snap to nearest screen
-      translateX.value = withDecay(
-        {
-          velocity: velocity,
-          deceleration: 0.998,
-          clamp: [-width, 0],
-        },
-        (finished) => {
-          if (finished) {
-            // Snap to nearest screen
-            const currentPosition = translateX.value
-            const targetPosition = currentPosition < -width / 2 ? -width : 0
-
-            translateX.value = withSpring(targetPosition, {
-              damping: 15,
-              stiffness: 100,
-              overshootClamping: false,
-            })
-
-            savedOffset.value = targetPosition
-
-            // Restart auto-animation after 3 seconds
-            translateX.value = withDelay(
-              3000,
-              withSequence(
-                withTiming(translateX.value, { duration: 0 }),
-                withRepeat(
-                  withSequence(
-                    withDelay(
-                      2500,
-                      withTiming(targetPosition === 0 ? -width : 0, {
-                        duration: 800,
-                        easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
-                      }),
-                    ),
-                    withDelay(
-                      2500,
-                      withTiming(targetPosition === 0 ? 0 : -width, {
-                        duration: 800,
-                        easing: Easing.bezier(0.43, 0.13, 0.23, 0.96),
-                      }),
-                    ),
-                  ),
-                  -1,
-                  false,
-                ),
-              ),
-            )
-          }
-        },
-      )
-    })
+  }, [translateX])
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -141,132 +72,174 @@ export default function WelcomeScreen() {
   })
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Hero Image */}
-        <View style={[styles.header, { width }]}>
-          <GestureDetector gesture={panGesture}>
-            <Animated.View style={[styles.imageContainer, animatedStyle]}>
-              <Image
-                source={require('@/docs/notes-screen.png')}
-                style={[styles.heroImage, { width }]}
-                resizeMode="contain"
-              />
-              <Image
-                source={require('@/docs/workout-screen.png')}
-                style={[styles.heroImage, { width }]}
-                resizeMode="contain"
-              />
+    <LinearGradient
+      colors={['#FFF5F0', '#FFFFFF', '#FFFFFF']}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.logoText}>Rep AI</Text>
+          </View>
+
+          {/* Carousel */}
+          <View style={styles.carouselContainer}>
+            <Animated.View style={[styles.carouselTrack, animatedStyle]}>
+              {CAROUSEL_IMAGES.map((img, index) => {
+                // Add some rotation to mimic the "scattered" look
+                const rotate = index % 2 === 0 ? '-6deg' : '6deg'
+                const translateY = index % 2 === 0 ? -20 : 20
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.cardContainer,
+                      {
+                        transform: [{ rotate }, { translateY }],
+                      },
+                    ]}
+                  >
+                    <Image
+                      source={img}
+                      style={styles.cardImage}
+                      resizeMode="cover"
+                    />
+                    {/* Add a subtle overlay for better text contrast if needed, or just the image */}
+                    {/* Name tag could be added here if desired, like in the screenshot "@danielnavas" */}
+                  </View>
+                )
+              })}
             </Animated.View>
-          </GestureDetector>
+          </View>
+
+          {/* Bottom Actions */}
+          <View style={styles.actions}>
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>Your AI personal trainer.</Text>
+              <Text style={styles.subtitle}>
+                Champions aren't born. They're trained.
+              </Text>
+            </View>
+
+            <HapticButton
+              style={styles.getStartedButton}
+              onPress={() => router.push('/(auth)/onboarding')}
+            >
+              <Text style={styles.getStartedText}>Get Started for Free</Text>
+            </HapticButton>
+
+            <View style={styles.signInRow}>
+              <TouchableOpacity onPress={() => setShowSignInSheet(true)}>
+                <Text style={styles.signInPrompt}>Already a member?</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        {/* Hook & CTA */}
-        <View style={styles.actions}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.subtitle}>Workout tracking</Text>
-            <Text style={[styles.subtitle, styles.highlightedText]}>made easy</Text>
-          </View>
-          <HapticButton
-            style={styles.getStartedButton}
-            onPress={() => router.push('/(auth)/onboarding')}
-          >
-            <Text style={styles.getStartedText}>Get Started</Text>
-          </HapticButton>
-          <View style={styles.signInRow}>
-            <Text style={styles.signInPrompt}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => setShowSignInSheet(true)}>
-              <Text style={styles.signInLink}>Sign in</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      <SignInBottomSheet
-        visible={showSignInSheet}
-        onClose={() => setShowSignInSheet(false)}
-      />
-    </SafeAreaView>
+        <SignInBottomSheet
+          visible={showSignInSheet}
+          onClose={() => setShowSignInSheet(false)}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    content: {
-      flex: 1,
-    },
-    header: {
-      height: '64%',
-      alignItems: 'flex-start',
-      justifyContent: 'flex-start',
-      paddingTop: 24,
-      overflow: 'hidden',
-    },
-    imageContainer: {
-      flexDirection: 'row',
-      height: '100%',
-    },
-    heroImage: {
-      height: '100%',
-    },
-    titleContainer: {
-      marginTop: 20,
-      marginBottom: 10,
-      alignItems: 'center',
-    },
-    subtitle: {
-      fontSize: 30,
-      color: colors.text,
-      fontWeight: '700',
-      textAlign: 'center',
-    },
-    highlightedText: {
-      color: colors.primary,
-    },
-    actions: {
-      gap: 16,
-      paddingHorizontal: 32,
-      paddingTop: 32,
-      paddingBottom: 48,
-    },
-    signInRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    signInPrompt: {
-      fontSize: 14,
-      color: colors.textSecondary,
-    },
-    signInLink: {
-      fontSize: 14,
-      color: colors.primary,
-      fontWeight: '600',
-    },
-    getStartedButton: {
-      height: 56,
-      backgroundColor: colors.primary,
-      borderRadius: 28,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    getStartedText: {
-      color: colors.buttonText,
-      fontSize: 18,
-      fontWeight: '700',
-    },
-    signInButton: {
-      height: 56,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    signInText: {
-      color: colors.primary,
-      fontSize: 16,
-      fontWeight: '600',
-    },
-  })
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  header: {
+    alignItems: 'center',
+    paddingTop: 20,
+    zIndex: 10,
+  },
+  logoText: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 8,
+    color: '#000',
+  },
+  carouselContainer: {
+    height: 450,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginTop: -40, // Pull up a bit
+  },
+  carouselTrack: {
+    flexDirection: 'row',
+    paddingLeft: 20,
+    alignItems: 'center',
+  },
+  cardContainer: {
+    width: ITEM_WIDTH,
+    height: 300,
+    marginRight: ITEM_SPACING,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 5,
+    backgroundColor: '#fff',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  actions: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  textContainer: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 8,
+    textAlign: 'left',
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: '500',
+    textAlign: 'left',
+  },
+  getStartedButton: {
+    height: 56,
+    backgroundColor: '#000',
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  getStartedText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  signInRow: {
+    alignItems: 'center',
+  },
+  signInPrompt: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+  },
+})
