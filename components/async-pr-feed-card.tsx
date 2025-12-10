@@ -39,7 +39,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   workout,
   onDelete,
 }: AsyncPrFeedCardProps) {
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
@@ -108,6 +108,12 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const handleLike = useCallback(async () => {
     if (!user || !workout.id) return
 
+    // Block anonymous users from liking
+    if (isAnonymous) {
+      router.push('/(auth)/create-account')
+      return
+    }
+
     try {
       if (isLiked) {
         await database.workoutLikes.unlike(workout.id, user.id)
@@ -121,7 +127,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     } catch (error) {
       console.error('Error toggling like:', error)
     }
-  }, [user, workout.id, isLiked])
+  }, [user, workout.id, isLiked, isAnonymous, router])
 
   // Handle comment - navigate to comments screen
   const handleComment = useCallback(() => {

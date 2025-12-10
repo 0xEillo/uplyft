@@ -1,30 +1,32 @@
 import { FeedCard } from '@/components/feed-card'
+import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import {
-    FollowRelationshipStatus,
-    WorkoutSessionWithDetails,
+  FollowRelationshipStatus,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -47,6 +49,7 @@ export default function UserProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+  const { level: userLevel } = useUserLevel(userId)
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [userName, setUserName] = useState('')
@@ -189,17 +192,7 @@ export default function UserProfileScreen() {
 
     // Block social features for guest users
     if (isAnonymous) {
-      Alert.alert(
-        'Create an Account',
-        'Sign up to follow other athletes and join the community.',
-        [
-          { text: 'Not Now', style: 'cancel' },
-          {
-            text: 'Create Account',
-            onPress: () => router.push('/(auth)/create-account'),
-          },
-        ],
-      )
+      router.push('/(auth)/create-account')
       return
     }
 
@@ -411,7 +404,16 @@ export default function UserProfileScreen() {
 
                 {/* Name */}
                 <View style={styles.nameContainer}>
-                  <Text style={styles.displayName}>{userName || 'User'}</Text>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.displayName}>{userName || 'User'}</Text>
+                    {userLevel && (
+                      <LevelBadge
+                        level={userLevel}
+                        size="small"
+                        style={styles.levelBadge}
+                      />
+                    )}
+                  </View>
                   {userTag && <Text style={styles.userTag}>@{userTag}</Text>}
                 </View>
               </View>
@@ -424,20 +426,24 @@ export default function UserProfileScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.stat}
-                  onPress={() => router.push({
-                    pathname: '/followers/[userId]',
-                    params: { userId, returnTo: `/user/${userId}` }
-                  })}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/followers/[userId]',
+                      params: { userId, returnTo: `/user/${userId}` },
+                    })
+                  }
                 >
                   <Text style={styles.statNumber}>{followerCount}</Text>
                   <Text style={styles.statLabel}>Followers</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.stat}
-                  onPress={() => router.push({
-                    pathname: '/following/[userId]',
-                    params: { userId, returnTo: `/user/${userId}` }
-                  })}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/following/[userId]',
+                      params: { userId, returnTo: `/user/${userId}` },
+                    })
+                  }
                 >
                   <Text style={styles.statNumber}>{followingCount}</Text>
                   <Text style={styles.statLabel}>Following</Text>
@@ -463,7 +469,9 @@ export default function UserProfileScreen() {
             </View>
 
             {/* Routines Section */}
-            {(!privacyLocked || isOwnProfile) && <ProfileRoutines userId={userId} />}
+            {(!privacyLocked || isOwnProfile) && (
+              <ProfileRoutines userId={userId} />
+            )}
 
             {/* This Week Stats Section */}
             <View style={styles.weeklyStatsSection}>
@@ -782,6 +790,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     nameContainer: {
       marginLeft: 16,
       justifyContent: 'center',
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    levelBadge: {
+      transform: [{ scale: 0.85 }],
     },
     displayName: {
       fontSize: 20,

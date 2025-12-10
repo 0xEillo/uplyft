@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { Tabs, useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -12,12 +12,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
-  ScrollToTopProvider,
-  useScrollToTop,
+    ScrollToTopProvider,
+    useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
 import {
-  SuccessOverlayProvider,
-  useSuccessOverlay,
+    SuccessOverlayProvider,
+    useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -58,7 +58,7 @@ function ElevatedPlusButton() {
     >
       <Ionicons
         name={hasDraft ? 'document-text' : 'add'}
-        size={25}
+        size={24}
         color={colors.white}
       />
     </TouchableOpacity>
@@ -74,8 +74,6 @@ function TabLayoutContent() {
   const { scrollToTop } = useScrollToTop()
   const {
     isVisible,
-    overlayHasShown,
-    workoutPosted,
     data,
     hideOverlay,
     showShareScreen,
@@ -87,13 +85,12 @@ function TabLayoutContent() {
   // Track if we've already shown the share screen for this workout
   const shownWorkoutIdRef = React.useRef<string | null>(null)
 
-  // Watch for workout posting completion and show share screen
+  // Watch for workout data updates and show share screen when workout is ready
   React.useEffect(() => {
-    // Show share screen once the workout has been successfully posted and overlay is dismissed
+    // If we have workout data and overlay is not visible (animation completed), show share screen
     // Only show once per workout ID
     if (
       data.workout &&
-      workoutPosted &&
       !isVisible &&
       !showShareScreen &&
       shownWorkoutIdRef.current !== data.workout.id
@@ -101,30 +98,12 @@ function TabLayoutContent() {
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
-  }, [
-    data.workout,
-    workoutPosted,
-    isVisible,
-    showShareScreen,
-    setShowShareScreen,
-  ])
+  }, [data.workout, isVisible, showShareScreen, setShowShareScreen])
 
-  const handleAnimationComplete = useCallback(() => {
+  const handleAnimationComplete = () => {
     hideOverlay()
     // Note: Share screen will be shown by the useEffect above when workout data arrives
-  }, [hideOverlay])
-
-  // Auto-close overlay when workout has been successfully posted
-  React.useEffect(() => {
-    if (workoutPosted && isVisible) {
-      // Add a small delay then close
-      const timeout = setTimeout(() => {
-        handleAnimationComplete()
-      }, 300)
-
-      return () => clearTimeout(timeout)
-    }
-  }, [workoutPosted, isVisible, handleAnimationComplete])
+  }
 
   const handleShare = async (
     widgetIndex: number,
@@ -163,22 +142,18 @@ function TabLayoutContent() {
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
           headerShown: false,
-          tabBarHideOnKeyboard: true,
+          tabBarHideOnKeyboard: false,
           tabBarButton: HapticTab,
+          tabBarShowLabel: false,
           tabBarStyle: {
             backgroundColor: colors.white,
             borderTopWidth: 1,
             borderTopColor: 'rgba(0, 0, 0, 0.08)',
-            height: 84,
-            paddingBottom: 24,
-            paddingTop: 2,
+            height: 80,
+            paddingBottom: 28,
+            paddingTop: 6,
           },
           tabBarInactiveTintColor: colors.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '500',
-            marginTop: 4,
-          },
         }}
       >
         {/* Home tab */}
@@ -187,7 +162,7 @@ function TabLayoutContent() {
           options={{
             title: 'Home',
             tabBarIcon: ({ color }) => (
-              <IconSymbol size={26} name="house.fill" color={color} />
+              <IconSymbol size={28} name="house.fill" color={color} />
             ),
           }}
           listeners={{
@@ -215,7 +190,7 @@ function TabLayoutContent() {
           options={{
             title: 'Progress',
             tabBarIcon: ({ color }) => (
-              <Ionicons name="bar-chart" size={26} color={color} />
+              <Ionicons name="bar-chart" size={28} color={color} />
             ),
           }}
         />
@@ -231,7 +206,7 @@ function TabLayoutContent() {
                   flex: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  marginTop: -4,
+                  marginTop: -8,
                 }}
               >
                 <ElevatedPlusButton />
@@ -250,7 +225,7 @@ function TabLayoutContent() {
           options={{
             title: 'Plan',
             tabBarIcon: ({ color }) => (
-              <Ionicons name="chatbubble-ellipses" size={26} color={color} />
+              <Ionicons name="chatbubble-ellipses" size={28} color={color} />
             ),
           }}
         />
@@ -260,7 +235,7 @@ function TabLayoutContent() {
           options={{
             title: 'Profile',
             tabBarIcon: ({ color }) => (
-              <Ionicons name="person-circle" size={26} color={color} />
+              <Ionicons name="person-circle" size={30} color={color} />
             ),
           }}
           listeners={{
@@ -303,7 +278,6 @@ function TabLayoutContent() {
         onAnimationComplete={handleAnimationComplete}
         workoutNumber={data.workoutNumber}
         weeklyTarget={data.weeklyTarget}
-        currentStreak={data.currentStreak}
       />
       {data.workout && (
         <WorkoutShareScreen
@@ -339,9 +313,9 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     elevatedButton: {
-      width: 54,
-      height: 54,
-      borderRadius: 27,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: hasDraft ? '#EF4444' : colors.primary,
       justifyContent: 'center',
       alignItems: 'center',

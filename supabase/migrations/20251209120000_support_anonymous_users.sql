@@ -48,13 +48,13 @@ BEGIN
   unique_tag := base_tag;
 
   -- Try up to 999 numbers like Twitter (1-999)
-  WHILE counter <= 999 AND EXISTS (SELECT 1 FROM profiles WHERE user_tag = unique_tag) LOOP
+  WHILE counter <= 999 AND EXISTS (SELECT 1 FROM public.profiles WHERE user_tag = unique_tag) LOOP
     counter := counter + 1;
     unique_tag := base_tag || counter;
   END LOOP;
 
   -- Create profile with generated user_tag
-  INSERT INTO profiles (id, user_tag, display_name, is_guest)
+  INSERT INTO public.profiles (id, user_tag, display_name, is_guest)
   VALUES (
     NEW.id,
     unique_tag,
@@ -64,7 +64,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Recreate the trigger
 CREATE TRIGGER create_profile_on_signup_trigger

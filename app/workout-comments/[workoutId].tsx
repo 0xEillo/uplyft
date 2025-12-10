@@ -30,7 +30,7 @@ interface CommentWithProfile extends WorkoutComment {
 
 export default function WorkoutCommentsScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -42,6 +42,13 @@ export default function WorkoutCommentsScreen() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   const styles = createStyles(colors)
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -188,6 +195,9 @@ export default function WorkoutCommentsScreen() {
     ),
     [user, styles],
   )
+
+  // Early return for anonymous users (after all hooks)
+  if (isAnonymous) return null
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>

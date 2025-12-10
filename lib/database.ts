@@ -800,8 +800,48 @@ export const database = {
         })
       })
 
+      // Sort by recency (already sorted by session date)
       return recentExercises.slice(0, limit)
     },
+
+    async getMostFrequentMuscleGroups(userId: string, limit = 4) {
+      // Get recent workout sessions for the user to analyze muscle usage
+      const { data: sessions, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          workout_exercises!inner (
+            exercise:exercises!inner (
+              muscle_group
+            )
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20) // Analyze last 20 workouts
+
+      if (error) throw error
+
+      const muscleCounts = new Map<string, number>()
+
+      sessions?.forEach((session: any) => {
+        session.workout_exercises?.forEach((we: any) => {
+          const muscle = we.exercise?.muscle_group
+          if (muscle) {
+            muscleCounts.set(muscle, (muscleCounts.get(muscle) || 0) + 1)
+          }
+        })
+      })
+
+      // Sort by frequency
+      return Array.from(muscleCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([muscle]) => muscle)
+    },
+
+
 
     async getExercisesWithData(userId: string) {
       const { data, error } = await supabase
@@ -1081,10 +1121,6 @@ export const database = {
 
       if (sessionError) throw sessionError
 
-      // Validate exercises array
-      if (!Array.isArray(parsedWorkout.exercises)) {
-        throw new Error('Invalid workout data: exercises must be an array')
-      }
 
       // Process exercises one by one to avoid duplicate key violations
       const exerciseMap = new Map<string, Exercise>()

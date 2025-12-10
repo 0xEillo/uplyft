@@ -25,8 +25,12 @@ export default function CreateAccountScreen() {
   const [isAppleLoading, setIsAppleLoading] = useState(false)
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     router.back()
+  }
+
+  const handleEmailSignup = () => {
+    router.push('/(auth)/signup-email')
   }
 
   const handleLinkApple = async () => {
@@ -39,7 +43,6 @@ export default function CreateAccountScreen() {
     try {
       await linkWithApple()
 
-      // Update profile to mark as non-guest
       if (user?.id) {
         try {
           await database.profiles.update(user.id, {
@@ -76,7 +79,6 @@ export default function CreateAccountScreen() {
     try {
       await linkWithGoogle()
 
-      // Update profile to mark as non-guest
       if (user?.id) {
         try {
           await database.profiles.update(user.id, {
@@ -108,10 +110,9 @@ export default function CreateAccountScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.wrapper}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <View style={styles.placeholder} />
           </View>
           <View style={styles.centeredContent}>
             <Ionicons
@@ -133,141 +134,116 @@ export default function CreateAccountScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.wrapper}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.placeholder} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.content}>
+        {/* Top Section: Logos and Text */}
+        <View style={styles.topSection}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoRow}>
+              <Ionicons
+                name="arrow-up"
+                size={32}
+                color="#E8F953"
+                style={[styles.icon, { transform: [{ rotate: '-15deg' }] }]}
+              />
+              <Ionicons
+                name="arrow-undo"
+                size={32}
+                color="#9C5BF5"
+                style={[styles.icon, { transform: [{ rotate: '15deg' }] }]}
+              />
+            </View>
+            <View style={styles.logoRow}>
+              <Ionicons
+                name="heart"
+                size={32}
+                color="#FF5F85"
+                style={[styles.icon, { transform: [{ rotate: '-10deg' }] }]}
+              />
+              <Ionicons
+                name="ellipse"
+                size={32}
+                color="#3DDA67"
+                style={styles.icon}
+              />
+            </View>
+          </View>
+
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>
+              Sign up now for the full experience. It&apos;s free!
+            </Text>
+            <Text style={styles.subtitle}>
+              With an account, you will be able to sync your workouts, track
+              your progress, share workouts with others, and do a lot more.
+            </Text>
+          </View>
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.stepContainer}>
-            <View style={styles.iconContainer}>
-              <View style={styles.iconWrapper}>
-                <Ionicons
-                  name="cloud-upload"
-                  size={48}
-                  color={colors.primary}
-                />
-              </View>
-            </View>
+        {/* Bottom Section: Buttons and Footer */}
+        <View style={styles.bottomSection}>
+          <View style={styles.buttonsContainer}>
+            <HapticButton
+              style={styles.emailButton}
+              onPress={handleEmailSignup}
+              hapticStyle="medium"
+            >
+              <Text style={styles.emailButtonText}>Sign up with Email</Text>
+            </HapticButton>
 
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Sync Your Data</Text>
-              <Text style={styles.stepSubtitle}>
-                Create an account to backup your workouts and access them on any
-                device. Your existing data will be preserved.
-              </Text>
-            </View>
-
-            {/* Benefits */}
-            <View style={styles.benefitsList}>
-              <View style={styles.benefitItem}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text style={styles.benefitText}>
-                  Keep all your workout history
-                </Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text style={styles.benefitText}>
-                  Access your data on any device
-                </Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text style={styles.benefitText}>
-                  Connect with other athletes
-                </Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text style={styles.benefitText}>
-                  Keep your subscription if you switch phones
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.buttonsWrapper}>
-              <View style={styles.stepContent}>
-                {Platform.OS === 'ios' && (
+            <View style={styles.socialRow}>
+              {Platform.OS === 'ios' && (
+                <View style={styles.socialButtonWrapper}>
                   <HapticButton
-                    style={[
-                      styles.appleButton,
-                      isAppleLoading && styles.buttonDisabled,
-                    ]}
+                    style={styles.socialButton}
                     onPress={handleLinkApple}
                     disabled={isAppleLoading || isGoogleLoading}
-                    hapticEnabled={!isAppleLoading && !isGoogleLoading}
                   >
                     {isAppleLoading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
                       <>
-                        <Ionicons name="logo-apple" size={30} color="#FFFFFF" />
-                        <Text style={styles.appleButtonText}>
-                          Continue with Apple
-                        </Text>
+                        <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
+                        <Text style={styles.socialButtonText}>Apple</Text>
                       </>
                     )}
                   </HapticButton>
-                )}
+                </View>
+              )}
 
+              <View style={styles.socialButtonWrapper}>
                 <HapticButton
-                  style={[
-                    styles.googleButton,
-                    isGoogleLoading && styles.buttonDisabled,
-                  ]}
+                  style={styles.socialButton}
                   onPress={handleLinkGoogle}
                   disabled={isAppleLoading || isGoogleLoading}
-                  hapticEnabled={!isAppleLoading && !isGoogleLoading}
                 >
                   {isGoogleLoading ? (
-                    <ActivityIndicator color={colors.text} />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
                     <>
-                      <Ionicons name="logo-google" size={30} />
-                      <Text style={styles.googleButtonText}>
-                        Continue with Google
-                      </Text>
+                      <Ionicons name="logo-google" size={24} color="#FFFFFF" />
+                      <Text style={styles.socialButtonText}>Google</Text>
                     </>
                   )}
                 </HapticButton>
               </View>
             </View>
           </View>
-        </View>
 
-        {/* Warning */}
-        <View style={styles.warningContainer}>
-          <Ionicons
-            name="information-circle"
-            size={20}
-            color={colors.textSecondary}
-          />
-          <Text style={styles.warningText}>
-            Without an account, your data is only stored on this device.
-            Deleting the app will permanently delete your workouts.
-          </Text>
+          <View style={styles.footer}>
+            <Text style={styles.termsText}>
+              By signing in, you agree to Privacy Policy and Terms of Use
+            </Text>
+
+            <TouchableOpacity onPress={handleBack} style={styles.notNowButton}>
+              <Text style={styles.notNowText}>Not Now</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -285,125 +261,117 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     header: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      justifyContent: 'flex-end',
       paddingHorizontal: 20,
       paddingTop: 8,
-      paddingBottom: 16,
+      paddingBottom: 8,
     },
-    backButton: {
-      padding: 4,
-    },
-    placeholder: {
-      width: 32,
+    closeButton: {
+      padding: 8,
     },
     content: {
       flex: 1,
-      paddingHorizontal: 32,
+      paddingHorizontal: 24,
     },
-    stepContainer: {
+    topSection: {
       flex: 1,
-      justifyContent: 'flex-start',
-    },
-    iconContainer: {
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    iconWrapper: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-      backgroundColor: colors.primary + '15',
       justifyContent: 'center',
       alignItems: 'center',
+      paddingBottom: 40,
     },
-    stepHeader: {
-      paddingTop: 0,
+    bottomSection: {
+      justifyContent: 'flex-end',
       paddingBottom: 24,
+      gap: 32,
     },
-    stepTitle: {
+    logoContainer: {
+      marginBottom: 32,
+      gap: 8,
+    },
+    logoRow: {
+      flexDirection: 'row',
+      gap: 12,
+      justifyContent: 'center',
+    },
+    icon: {
+      // Add subtle shadow or glow if needed
+    },
+    textContainer: {
+      alignItems: 'center',
+      gap: 12,
+    },
+    title: {
       fontSize: 28,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 12,
+      lineHeight: 34,
     },
-    stepSubtitle: {
+    subtitle: {
       fontSize: 16,
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 22,
+      lineHeight: 24,
+      paddingHorizontal: 16,
     },
-    benefitsList: {
+    buttonsContainer: {
+      width: '100%',
       gap: 12,
-      marginBottom: 32,
     },
-    benefitItem: {
-      flexDirection: 'row',
+    emailButton: {
+      height: 56,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 28,
+      justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
+      width: '100%',
     },
-    benefitText: {
-      fontSize: 15,
-      color: colors.text,
+    emailButtonText: {
+      color: '#000000',
+      fontSize: 17,
+      fontWeight: '600',
+    },
+    socialRow: {
+      flexDirection: 'row',
+      gap: 12,
+      width: '100%',
+    },
+    socialButtonWrapper: {
       flex: 1,
     },
-    buttonsWrapper: {
-      justifyContent: 'center',
-      alignItems: 'stretch',
-    },
-    stepContent: {
-      gap: 16,
-    },
-    appleButton: {
-      height: 64,
-      backgroundColor: '#000000',
-      borderRadius: 32,
+    socialButton: {
+      height: 56,
+      backgroundColor: '#1C1C1E',
+      borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
+      gap: 8,
     },
-    appleButtonText: {
+    socialButtonText: {
       color: '#FFFFFF',
       fontSize: 17,
       fontWeight: '600',
     },
-    googleButton: {
-      height: 64,
-      backgroundColor: colors.inputBackground,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 32,
-      flexDirection: 'row',
-      justifyContent: 'center',
+    footer: {
       alignItems: 'center',
-      gap: 12,
+      gap: 24,
     },
-    googleButtonText: {
-      color: colors.text,
-      fontSize: 17,
-      fontWeight: '600',
-    },
-    buttonDisabled: {
-      opacity: 0.6,
-    },
-    warningContainer: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-      paddingHorizontal: 32,
-      paddingVertical: 16,
-      marginBottom: 24,
-      backgroundColor: colors.backgroundLight,
-      marginHorizontal: 20,
-      borderRadius: 12,
-    },
-    warningText: {
-      flex: 1,
-      fontSize: 13,
+    termsText: {
+      fontSize: 12,
       color: colors.textSecondary,
-      lineHeight: 18,
+      textAlign: 'center',
+      opacity: 0.6,
+      paddingHorizontal: 16,
+    },
+    notNowButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+    },
+    notNowText: {
+      fontSize: 17,
+      color: colors.textSecondary,
+      fontWeight: '600',
     },
     centeredContent: {
       flex: 1,

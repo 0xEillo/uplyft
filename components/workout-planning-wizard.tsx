@@ -3,20 +3,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native'
 
-const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
-const EQUIPMENT_PREF_KEY = '@equipment_preference'
+export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
+export const EQUIPMENT_PREF_KEY = '@equipment_preference'
 
 export type EquipmentType =
   | 'full_gym'
@@ -45,6 +45,8 @@ interface WorkoutPlanningWizardProps {
   }
   onComplete: (data: WorkoutPlanningData) => void
   onCancel: () => void
+  initialData?: Partial<WorkoutPlanningData>
+  commonMuscles?: string[]
 }
 
 type WizardStep =
@@ -101,7 +103,7 @@ const GOAL_OPTIONS = [
   },
 ]
 
-const MUSCLE_OPTIONS = [
+export const MUSCLE_OPTIONS = [
   {
     label: 'Push',
     value: 'Push',
@@ -222,14 +224,17 @@ export function WorkoutPlanningWizard({
   colors,
   onComplete,
   onCancel,
+  initialData,
+  commonMuscles,
 }: WorkoutPlanningWizardProps) {
-  const [currentStep, setCurrentStep] = useState<WizardStep>('goal')
+  const [editingField, setEditingField] = useState<WizardStep | null>(null)
   const [data, setData] = useState<WorkoutPlanningData>({
     goal: '',
     muscles: '',
     duration: '',
     equipment: 'full_gym',
     specifics: '',
+    ...initialData,
   })
   const [customInput, setCustomInput] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
@@ -248,6 +253,24 @@ export function WorkoutPlanningWizard({
         AsyncStorage.getItem(WORKOUT_PLANNING_PREFS_KEY),
         AsyncStorage.getItem(EQUIPMENT_PREF_KEY),
       ])
+
+      // If initialData is provided, it takes precedence over saved prefs for those fields
+      // But we still want to load saved prefs for fields not in initialData (if any)
+      // Actually, for the "Smart Start" flow, initialData usually COMES from saved prefs + profile
+      // So we might not need to load from AsyncStorage again if initialData is present.
+      // However, to be safe and consistent:
+      
+      if (initialData && Object.keys(initialData).length > 0) {
+        // If we have initial data passed in (e.g. from Smart Start), use it and don't overwrite with AsyncStorage
+        // unless we want to merge? Let's assume initialData is the "proposed" state.
+        // But we might want to load saved equipment if not in initialData?
+        if (!initialData.equipment && equipmentJson) {
+             const equipment = JSON.parse(equipmentJson) as EquipmentType
+             setSavedEquipment(equipment)
+             setData(prev => ({ ...prev, equipment }))
+        }
+        return
+      }
 
       if (prefsJson) {
         const prefs = JSON.parse(prefsJson) as Partial<WorkoutPlanningData>
@@ -292,10 +315,11 @@ export function WorkoutPlanningWizard({
     }
   }
 
-  const currentStepIndex = STEPS.indexOf(currentStep)
+  // const currentStepIndex = STEPS.indexOf(currentStep)
 
-  const canGoNext = () => {
-    switch (currentStep) {
+  const canSaveField = () => {
+    if (!editingField) return false
+    switch (editingField) {
       case 'goal':
         return data.goal.length > 0
       case 'muscles':
@@ -305,21 +329,19 @@ export function WorkoutPlanningWizard({
       case 'equipment':
         return data.equipment.length > 0
       case 'specifics':
-        return true // Optional
-      case 'confirm':
         return true
       default:
-        return false
+        return true
     }
   }
 
-  const handleNext = () => {
-    if (!canGoNext()) return
+  const handleDoneEditing = () => {
+    if (!canSaveField()) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
     // If using custom input, apply it
     if (showCustomInput && customInput.trim()) {
-      const field = currentStep as keyof WorkoutPlanningData
+      const field = editingField as keyof WorkoutPlanningData
       if (field !== 'equipment') {
         if (field === 'muscles') {
           // Add custom muscle to list
@@ -336,10 +358,7 @@ export function WorkoutPlanningWizard({
       setShowCustomInput(false)
     }
 
-    const nextIndex = currentStepIndex + 1
-    if (nextIndex < STEPS.length) {
-      setCurrentStep(STEPS[nextIndex])
-    }
+    setEditingField(null)
   }
 
   const handleBack = () => {
@@ -347,9 +366,8 @@ export function WorkoutPlanningWizard({
     setShowCustomInput(false)
     setCustomInput('')
 
-    const prevIndex = currentStepIndex - 1
-    if (prevIndex >= 0) {
-      setCurrentStep(STEPS[prevIndex])
+    if (editingField) {
+      setEditingField(null)
     } else {
       onCancel()
     }
@@ -363,7 +381,9 @@ export function WorkoutPlanningWizard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
     if (multiSelect && typeof value === 'string') {
-      const current = data[field] ? (data[field] as string).split(', ') : []
+      const current = data[field] 
+        ? (data[field] as string).split(', ').map(v => v.trim()).filter(v => v.length > 0)
+        : []
       let newSelection
       if (current.includes(value)) {
         newSelection = current.filter((m) => m !== value)
@@ -387,23 +407,7 @@ export function WorkoutPlanningWizard({
     onComplete(data)
   }
 
-  const renderStepIndicator = () => (
-    <View style={styles.stepIndicatorContainer}>
-      {STEPS.map((step, index) => (
-        <View
-          key={step}
-          style={[
-            styles.stepDot,
-            {
-              backgroundColor:
-                index <= currentStepIndex ? colors.primary : colors.border,
-              width: index === currentStepIndex ? 18 : 6,
-            },
-          ]}
-        />
-      ))}
-    </View>
-  )
+  // Removed renderStepIndicator as it's no longer needed for menu flow
 
   const renderOptionCards = (
     options: {
@@ -419,7 +423,9 @@ export function WorkoutPlanningWizard({
       {options.map((option, index) => {
         let isSelected = false
         if (multiSelect) {
-          const current = data[field] ? (data[field] as string).split(', ') : []
+          const current = data[field] 
+            ? (data[field] as string).split(', ').map(v => v.trim()).filter(v => v.length > 0)
+            : []
           isSelected = current.includes(option.value)
         } else {
           isSelected = data[field] === option.value
@@ -528,12 +534,12 @@ export function WorkoutPlanningWizard({
           value={customInput}
           onChangeText={setCustomInput}
           autoFocus
-          onSubmitEditing={handleNext} // Allow submit to add
+          onSubmitEditing={handleDoneEditing} // Allow submit to add
           returnKeyType="done"
         />
         <TouchableOpacity
           style={styles.customInputSubmit}
-          onPress={handleNext} // Re-use next handler to add custom input
+          onPress={handleDoneEditing} // Re-use next handler to add custom input
         >
           <Ionicons name="checkmark-circle" size={28} color={colors.primary} />
         </TouchableOpacity>
@@ -574,6 +580,89 @@ export function WorkoutPlanningWizard({
           Select one or more areas to focus on.
         </Text>
       </View>
+
+      {/* Selected Muscles Chips */}
+      {data.muscles.length > 0 && (
+        <View style={styles.tagsContainer}>
+          {data.muscles
+            .split(', ')
+            .map((m) => m.trim())
+            .filter((m) => m.length > 0)
+            .map((muscle) => (
+              <TouchableOpacity
+                key={muscle}
+                style={[
+                  styles.tag,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  },
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  handleSelectOption('muscles', muscle, true)
+                }}
+              >
+                <Text style={[styles.tagText, { color: colors.white }]}>
+                  {muscle}
+                </Text>
+                <Ionicons name="close-circle" size={16} color={colors.white} />
+              </TouchableOpacity>
+            ))}
+        </View>
+      )}
+
+      {commonMuscles && commonMuscles.length > 0 && (
+        <View style={styles.commonMusclesContainer}>
+           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+            Quick Select (Based on your history)
+          </Text>
+          <View style={styles.tagsContainer}>
+            {commonMuscles.map((muscle) => {
+              const current = data.muscles 
+                ? (data.muscles as string).split(', ').map(v => v.trim()).filter(v => v.length > 0)
+                : []
+              const isSelected = current.includes(muscle)
+              return (
+                <TouchableOpacity
+                  key={muscle}
+                  style={[
+                    styles.tag,
+                    {
+                      backgroundColor: isSelected
+                        ? colors.primary
+                        : colors.backgroundLight,
+                      borderColor: isSelected
+                        ? colors.primary
+                        : colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    handleSelectOption('muscles', muscle, true)
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      {
+                        color: isSelected
+                          ? colors.white
+                          : colors.text,
+                      },
+                    ]}
+                  >
+                    {muscle}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </View>
+      )}
       {renderOptionCards(MUSCLE_OPTIONS, 'muscles', true)}
       {renderCustomInput('e.g., Calves, Neck...', 'muscles')}
     </ScrollView>
@@ -720,13 +809,26 @@ export function WorkoutPlanningWizard({
     </TouchableWithoutFeedback>
   )
 
-  const renderConfirmStep = () => {
+  const renderMenu = () => {
     const equipmentLabel =
       EQUIPMENT_OPTIONS.find((o) => o.value === data.equipment)?.label ||
       data.equipment
 
     const goalOption = GOAL_OPTIONS.find((o) => o.value === data.goal)
     const goalIcon = goalOption?.icon || 'barbell'
+
+    // Format muscles display: convert values to labels
+    const musclesLabel = data.muscles && data.muscles.trim()
+      ? data.muscles
+          .split(', ')
+          .map((val) => val.trim())
+          .filter((val) => val.length > 0)
+          .map((val) => {
+            const option = MUSCLE_OPTIONS.find((o) => o.value === val)
+            return option ? option.label : val
+          })
+          .join(', ')
+      : 'Select Muscles'
 
     return (
       <ScrollView
@@ -736,10 +838,10 @@ export function WorkoutPlanningWizard({
       >
         <View style={styles.headerContainer}>
           <Text style={[styles.stepTitle, { color: colors.text }]}>
-            Summary
+            Workout Plan
           </Text>
           <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-            Ready to generate your plan?
+            Customize your session details below.
           </Text>
         </View>
 
@@ -751,48 +853,74 @@ export function WorkoutPlanningWizard({
         >
           <SummaryRow
             label="Goal"
-            value={data.goal}
+            value={data.goal || 'Select Goal'}
             icon={goalIcon}
             colors={colors}
-            onEdit={() => setCurrentStep('goal')}
+            onEdit={() => setEditingField('goal')}
           />
           <SummaryRow
             label="Muscles"
-            value={data.muscles}
+            value={musclesLabel}
             icon="body"
             colors={colors}
-            onEdit={() => setCurrentStep('muscles')}
+            onEdit={() => setEditingField('muscles')}
           />
           <SummaryRow
             label="Duration"
-            value={data.duration}
+            value={data.duration || 'Select Duration'}
             icon="time"
             colors={colors}
-            onEdit={() => setCurrentStep('duration')}
+            onEdit={() => setEditingField('duration')}
           />
           <SummaryRow
             label="Equipment"
-            value={equipmentLabel}
+            value={equipmentLabel || 'Select Equipment'}
             icon="fitness"
             colors={colors}
-            onEdit={() => setCurrentStep('equipment')}
+            onEdit={() => setEditingField('equipment')}
           />
-          {data.specifics ? (
-            <SummaryRow
-              label="Notes"
-              value={data.specifics}
-              icon="document-text"
-              colors={colors}
-              onEdit={() => setCurrentStep('specifics')}
-            />
-          ) : null}
+          <SummaryRow
+            label="Notes"
+            value={data.specifics || 'Add Notes'}
+            icon="document-text"
+            colors={colors}
+            onEdit={() => setEditingField('specifics')}
+          />
         </View>
+
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            styles.confirmButton,
+            { backgroundColor: colors.primary, marginTop: 24 },
+          ]}
+          onPress={handleConfirm}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.navButtonText, { color: colors.white }]}>
+            Generate Workout
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={{ marginTop: 16, padding: 12, alignItems: 'center', marginBottom: 32 }}
+          onPress={onCancel}
+          activeOpacity={0.6}
+        >
+          <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
+            Cancel
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     )
   }
 
-  const renderCurrentStep = () => {
-    switch (currentStep) {
+  const renderCurrentView = () => {
+    if (!editingField) {
+      return renderMenu()
+    }
+
+    switch (editingField) {
       case 'goal':
         return renderGoalStep()
       case 'muscles':
@@ -803,10 +931,8 @@ export function WorkoutPlanningWizard({
         return renderEquipmentStep()
       case 'specifics':
         return renderSpecificsStep()
-      case 'confirm':
-        return renderConfirmStep()
       default:
-        return null
+        return renderMenu()
     }
   }
 
@@ -818,69 +944,54 @@ export function WorkoutPlanningWizard({
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      {renderStepIndicator()}
-      {renderCurrentStep()}
+      {renderCurrentView()}
 
-      <View style={styles.navigationContainer}>
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            styles.backButton,
-            { borderColor: colors.border },
-          ]}
-          onPress={handleBack}
-          activeOpacity={0.6}
-        >
-          <Ionicons name="chevron-back" size={18} color={colors.text} />
-        </TouchableOpacity>
-
-        {currentStep === 'confirm' ? (
+      {/* Only show navigation bar when editing a field */}
+      {editingField && (
+        <View style={styles.navigationContainer}>
           <TouchableOpacity
             style={[
               styles.navButton,
-              styles.confirmButton,
-              { backgroundColor: colors.primary },
+              styles.backButton,
+              { borderColor: colors.border },
             ]}
-            onPress={handleConfirm}
+            onPress={handleBack}
             activeOpacity={0.6}
           >
-            <Text style={[styles.navButtonText, { color: colors.white }]}>
-              Generate
-            </Text>
-            <Ionicons name="sparkles" size={16} color={colors.white} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </TouchableOpacity>
-        ) : (
+
           <TouchableOpacity
             style={[
               styles.navButton,
               styles.nextButton,
               {
-                backgroundColor: canGoNext()
+                backgroundColor: canSaveField()
                   ? colors.primary
                   : colors.backgroundLight,
-                opacity: canGoNext() ? 1 : 0.5,
+                opacity: canSaveField() ? 1 : 0.5,
               },
             ]}
-            onPress={handleNext}
-            disabled={!canGoNext()}
+            onPress={handleDoneEditing}
+            disabled={!canSaveField()}
             activeOpacity={0.6}
           >
             <Text
               style={[
                 styles.navButtonText,
-                { color: canGoNext() ? colors.white : colors.textSecondary },
+                { color: canSaveField() ? colors.white : colors.textSecondary },
               ]}
             >
-              Next
+              Done
             </Text>
             <Ionicons
-              name="chevron-forward"
+              name="checkmark"
               size={16}
-              color={canGoNext() ? colors.white : colors.textSecondary}
+              color={canSaveField() ? colors.white : colors.textSecondary}
             />
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   )
 }
@@ -1068,6 +1179,17 @@ const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
     savedBadgeText: {
       fontSize: 12,
       fontWeight: '500',
+    },
+    // Common Muscles
+    commonMusclesContainer: {
+      marginBottom: 16,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
     // Specifics Tags
     tagsContainer: {

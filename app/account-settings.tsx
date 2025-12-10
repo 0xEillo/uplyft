@@ -8,15 +8,12 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Linking,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -38,10 +35,6 @@ export default function SettingsScreen() {
   const { isProMember, customerInfo, restorePurchases } = useSubscription()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false)
-  const [editedName, setEditedName] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
@@ -190,103 +183,6 @@ export default function SettingsScreen() {
         },
       },
     ])
-  }
-
-  const handleEditName = () => {
-    setEditedName(profile?.display_name || '')
-    setIsEditModalVisible(true)
-  }
-
-  const handleSaveName = async () => {
-    if (!user || !editedName.trim()) return
-
-    try {
-      setIsSaving(true)
-      const updated = await database.profiles.update(user.id, {
-        display_name: editedName.trim(),
-      })
-      setProfile(updated)
-      setIsEditModalVisible(false)
-    } catch (error) {
-      console.error('Error updating name:', error)
-      Alert.alert('Error', 'Failed to update username. Please try again.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handlePickImage = async () => {
-    try {
-      // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please grant camera roll permissions to upload a profile picture.',
-        )
-        return
-      }
-
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      })
-
-      if (!result.canceled && result.assets[0]) {
-        await uploadImage(result.assets[0].uri)
-      }
-    } catch (error) {
-      console.error('Error picking image:', error)
-      Alert.alert('Error', 'Failed to pick image. Please try again.')
-    }
-  }
-
-  const uploadImage = async (uri: string) => {
-    if (!user) return
-
-    try {
-      setIsUploadingImage(true)
-
-      // Fetch the image as array buffer
-      const response = await fetch(uri)
-      const arrayBuffer = await response.arrayBuffer()
-      const fileData = new Uint8Array(arrayBuffer)
-
-      // Create file name
-      const fileExt = uri.split('.').pop()?.split('?')[0] || 'jpg'
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
-
-      // Upload to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, fileData, {
-          contentType: `image/${fileExt}`,
-        })
-
-      if (uploadError) throw uploadError
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-
-      // Update profile with new avatar URL
-      const updated = await database.profiles.update(user.id, {
-        avatar_url: urlData.publicUrl,
-      })
-
-      setProfile(updated)
-    } catch (error) {
-      console.error('Error uploading image:', error)
-      Alert.alert('Error', 'Failed to upload image. Please try again.')
-    } finally {
-      setIsUploadingImage(false)
-    }
   }
 
   const handleDeleteAccount = async () => {
@@ -569,64 +465,10 @@ export default function SettingsScreen() {
 
         {/* Profile Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile</Text>
+          <Text style={styles.sectionTitle}>Account</Text>
 
-          {/* Avatar */}
           <View style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarWrapper}>
-                {profile?.avatar_url ? (
-                  <Image
-                    source={{ uri: profile.avatar_url }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={48} color="#fff" />
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={styles.avatarEditButton}
-                  onPress={handlePickImage}
-                  disabled={isUploadingImage}
-                >
-                  {isUploadingImage ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Ionicons name="camera" size={20} color={colors.white} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Profile Details */}
             <View style={styles.profileDetails}>
-              <View style={styles.detailRow}>
-                <View style={styles.detailLabelContainer}>
-                  <Ionicons
-                    name="person-outline"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                  <Text style={styles.detailLabel}>Username</Text>
-                </View>
-                <View style={styles.detailValueContainer}>
-                  <Text style={styles.detailValue}>
-                    {profile?.display_name || 'Not set'}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={handleEditName}
-                    style={styles.editButton}
-                  >
-                    <Ionicons
-                      name="create-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
               <View style={styles.detailRow}>
                 <View style={styles.detailLabelContainer}>
                   <Ionicons name="at" size={20} color={colors.textSecondary} />
@@ -1009,62 +851,6 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Edit Username Modal */}
-      <Modal
-        visible={isEditModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsEditModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Username</Text>
-              <TouchableOpacity
-                onPress={() => setIsEditModalVisible(false)}
-                style={styles.modalCloseButton}
-              >
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.modalInput}
-              value={editedName}
-              onChangeText={setEditedName}
-              placeholder="Enter username"
-              placeholderTextColor={colors.textPlaceholder}
-              autoFocus
-              maxLength={50}
-            />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setIsEditModalVisible(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modalSaveButton,
-                  (!editedName.trim() || isSaving) &&
-                    styles.modalSaveButtonDisabled,
-                ]}
-                onPress={handleSaveName}
-                disabled={!editedName.trim() || isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.modalSaveText}>Save</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   )
 }

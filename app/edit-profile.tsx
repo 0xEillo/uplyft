@@ -8,13 +8,16 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
 import { Gender, Goal, TrainingYears } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -33,24 +36,34 @@ export default function EditProfileScreen() {
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
+  const [editedDisplayName, setEditedDisplayName] = useState('')
+  const [editedAvatarUrl, setEditedAvatarUrl] = useState<string | null>(null)
   const [editedGender, setEditedGender] = useState<Gender | null>(null)
   const [editedHeight, setEditedHeight] = useState('')
   const [editedWeight, setEditedWeight] = useState('')
   const [editedAge, setEditedAge] = useState('')
   const [editedGoals, setEditedGoals] = useState<Goal[]>([])
   const [editedCommitment, setEditedCommitment] = useState<string | null>(null)
-  const [editedTrainingYears, setEditedTrainingYears] =
-    useState<TrainingYears | null>(null)
+  const [
+    editedTrainingYears,
+    setEditedTrainingYears,
+  ] = useState<TrainingYears | null>(null)
   const [editedBio, setEditedBio] = useState('')
   const [editedProfileDescription, setEditedProfileDescription] = useState('')
 
   const loadProfile = useCallback(async () => {
-    if (!user?.email) return
+    if (!user?.id) return
 
     try {
       setIsLoading(true)
-      const profile = await database.profiles.getOrCreate(user.id, user.email)
+      // Use getByIdOrNull for anonymous users (no email), getOrCreate for regular users
+      const profile = user.email
+        ? await database.profiles.getOrCreate(user.id, user.email)
+        : await database.profiles.getByIdOrNull(user.id)
+      setEditedDisplayName(profile?.display_name || '')
+      setEditedAvatarUrl(profile?.avatar_url || null)
       setEditedGender(profile?.gender || null)
       setEditedHeight(profile?.height_cm?.toString() || '')
       setEditedWeight(
@@ -79,12 +92,81 @@ export default function EditProfileScreen() {
 
   const styles = createStyles(colors, weightUnit)
 
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant camera roll permissions to upload a profile picture.',
+        )
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      })
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.error('Error picking image:', error)
+      Alert.alert('Error', 'Failed to pick image. Please try again.')
+    }
+  }
+
+  const uploadImage = async (uri: string) => {
+    if (!user) return
+
+    try {
+      setIsUploadingImage(true)
+
+      const response = await fetch(uri)
+      const arrayBuffer = await response.arrayBuffer()
+      const fileData = new Uint8Array(arrayBuffer)
+
+      const fileExt = uri.split('.').pop()?.split('?')[0] || 'jpg'
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, fileData, {
+          contentType: `image/${fileExt}`,
+        })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      setEditedAvatarUrl(urlData.publicUrl)
+
+      // Also update the profile immediately so the avatar persists
+      await database.profiles.update(user.id, {
+        avatar_url: urlData.publicUrl,
+      })
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      Alert.alert('Error', 'Failed to upload image. Please try again.')
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!user) return
 
     try {
       setIsSaving(true)
       await database.profiles.update(user.id, {
+        display_name: editedDisplayName.trim() || undefined,
         gender: editedGender,
         height_cm: editedHeight ? parseFloat(editedHeight) : null,
         weight_kg: editedWeight
@@ -150,202 +232,245 @@ export default function EditProfileScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        {/* Gender Selection */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Gender</Text>
-          <View style={styles.genderOptions}>
-            {GENDERS.map((gender) => (
+          {/* Avatar */}
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarWrapper}>
+              {editedAvatarUrl ? (
+                <Image
+                  source={{ uri: editedAvatarUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={48} color="#fff" />
+                </View>
+              )}
               <TouchableOpacity
-                key={gender.value}
-                style={[
-                  styles.genderOption,
-                  editedGender === gender.value && styles.genderOptionSelected,
-                ]}
-                onPress={() => setEditedGender(gender.value)}
+                style={styles.avatarEditButton}
+                onPress={handlePickImage}
+                disabled={isUploadingImage}
               >
-                <Text
+                {isUploadingImage ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Ionicons name="camera" size={20} color={colors.white} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Display Name */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Username</Text>
+            <TextInput
+              style={styles.input}
+              value={editedDisplayName}
+              onChangeText={setEditedDisplayName}
+              placeholder="Enter your username"
+              placeholderTextColor={colors.textPlaceholder}
+              maxLength={50}
+            />
+          </View>
+
+          {/* Gender Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Gender</Text>
+            <View style={styles.genderOptions}>
+              {GENDERS.map((gender) => (
+                <TouchableOpacity
+                  key={gender.value}
                   style={[
-                    styles.genderOptionText,
+                    styles.genderOption,
                     editedGender === gender.value &&
-                      styles.genderOptionTextSelected,
+                      styles.genderOptionSelected,
                   ]}
+                  onPress={() => setEditedGender(gender.value)}
                 >
-                  {gender.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.genderOptionText,
+                      editedGender === gender.value &&
+                        styles.genderOptionTextSelected,
+                    ]}
+                  >
+                    {gender.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Height Input */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Height (cm)</Text>
-          <TextInput
-            style={styles.input}
-            value={editedHeight}
-            onChangeText={setEditedHeight}
-            placeholder="e.g., 175"
-            placeholderTextColor={colors.textPlaceholder}
-            keyboardType="decimal-pad"
-          />
-        </View>
+          {/* Height Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Height (cm)</Text>
+            <TextInput
+              style={styles.input}
+              value={editedHeight}
+              onChangeText={setEditedHeight}
+              placeholder="e.g., 175"
+              placeholderTextColor={colors.textPlaceholder}
+              keyboardType="decimal-pad"
+            />
+          </View>
 
-        {/* Weight Input */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{`Weight (${weightUnit})`}</Text>
-          <TextInput
-            style={styles.input}
-            value={editedWeight}
-            onChangeText={setEditedWeight}
-            placeholder="e.g., 70"
-            placeholderTextColor={colors.textPlaceholder}
-            keyboardType="decimal-pad"
-          />
-        </View>
+          {/* Weight Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>{`Weight (${weightUnit})`}</Text>
+            <TextInput
+              style={styles.input}
+              value={editedWeight}
+              onChangeText={setEditedWeight}
+              placeholder="e.g., 70"
+              placeholderTextColor={colors.textPlaceholder}
+              keyboardType="decimal-pad"
+            />
+          </View>
 
-        {/* Age Input */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Age</Text>
-          <TextInput
-            style={styles.input}
-            value={editedAge}
-            onChangeText={setEditedAge}
-            placeholder="e.g., 25"
-            placeholderTextColor={colors.textPlaceholder}
-            keyboardType="number-pad"
-          />
-        </View>
+          {/* Age Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Age</Text>
+            <TextInput
+              style={styles.input}
+              value={editedAge}
+              onChangeText={setEditedAge}
+              placeholder="e.g., 25"
+              placeholderTextColor={colors.textPlaceholder}
+              keyboardType="number-pad"
+            />
+          </View>
 
-        {/* Goal Selection */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Goals (select all that apply)</Text>
-          <View style={styles.goalOptions}>
-            {GOALS.map((goal) => (
-              <TouchableOpacity
-                key={goal.value}
-                style={[
-                  styles.goalOption,
-                  editedGoals.includes(goal.value) && styles.goalOptionSelected,
-                ]}
-                onPress={() => {
-                  const newGoals = editedGoals.includes(goal.value)
-                    ? editedGoals.filter((g) => g !== goal.value)
-                    : [...editedGoals, goal.value]
-                  setEditedGoals(newGoals)
-                }}
-              >
-                <Text
+          {/* Goal Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Goals (select all that apply)</Text>
+            <View style={styles.goalOptions}>
+              {GOALS.map((goal) => (
+                <TouchableOpacity
+                  key={goal.value}
                   style={[
-                    styles.goalOptionText,
-                    editedGoals.includes(goal.value) && styles.goalOptionTextSelected,
+                    styles.goalOption,
+                    editedGoals.includes(goal.value) &&
+                      styles.goalOptionSelected,
                   ]}
+                  onPress={() => {
+                    const newGoals = editedGoals.includes(goal.value)
+                      ? editedGoals.filter((g) => g !== goal.value)
+                      : [...editedGoals, goal.value]
+                    setEditedGoals(newGoals)
+                  }}
                 >
-                  {goal.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.goalOptionText,
+                      editedGoals.includes(goal.value) &&
+                        styles.goalOptionTextSelected,
+                    ]}
+                  >
+                    {goal.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Commitment Selection */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Commitment</Text>
-          <View style={styles.goalOptions}>
-            {COMMITMENTS.map((commitment) => (
-              <TouchableOpacity
-                key={commitment.value}
-                style={[
-                  styles.goalOption,
-                  editedCommitment === commitment.value &&
-                    styles.goalOptionSelected,
-                ]}
-                onPress={() => setEditedCommitment(commitment.value)}
-              >
-                <Text
+          {/* Commitment Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Commitment</Text>
+            <View style={styles.goalOptions}>
+              {COMMITMENTS.map((commitment) => (
+                <TouchableOpacity
+                  key={commitment.value}
                   style={[
-                    styles.goalOptionText,
+                    styles.goalOption,
                     editedCommitment === commitment.value &&
-                      styles.goalOptionTextSelected,
+                      styles.goalOptionSelected,
                   ]}
+                  onPress={() => setEditedCommitment(commitment.value)}
                 >
-                  {commitment.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.goalOptionText,
+                      editedCommitment === commitment.value &&
+                        styles.goalOptionTextSelected,
+                    ]}
+                  >
+                    {commitment.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Training Years Selection */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Years of Training</Text>
-          <View style={styles.goalOptions}>
-            {TRAINING_YEARS.map((item) => (
-              <TouchableOpacity
-                key={item.value}
-                style={[
-                  styles.goalOption,
-                  editedTrainingYears === item.value &&
-                    styles.goalOptionSelected,
-                ]}
-                onPress={() => setEditedTrainingYears(item.value)}
-              >
-                <Text
+          {/* Training Years Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Years of Training</Text>
+            <View style={styles.goalOptions}>
+              {TRAINING_YEARS.map((item) => (
+                <TouchableOpacity
+                  key={item.value}
                   style={[
-                    styles.goalOptionText,
+                    styles.goalOption,
                     editedTrainingYears === item.value &&
-                      styles.goalOptionTextSelected,
+                      styles.goalOptionSelected,
                   ]}
+                  onPress={() => setEditedTrainingYears(item.value)}
                 >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.goalOptionText,
+                      editedTrainingYears === item.value &&
+                        styles.goalOptionTextSelected,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Profile Description */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Profile Description</Text>
-          <Text style={styles.description}>
-            This shows under your name on your public profile.
-          </Text>
-          <TextInput
-            style={[styles.bioInput, styles.profileDescriptionInput]}
-            value={editedProfileDescription}
-            onChangeText={setEditedProfileDescription}
-            placeholder="E.g., Hybrid athlete. Coffee & deadlifts."
-            placeholderTextColor={colors.textPlaceholder}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-            maxLength={160}
-          />
-          <Text style={styles.characterCount}>
-            {editedProfileDescription.length}/160
-          </Text>
-        </View>
+          {/* Profile Description */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Profile Description</Text>
+            <Text style={styles.description}>
+              This shows under your name on your public profile.
+            </Text>
+            <TextInput
+              style={[styles.bioInput, styles.profileDescriptionInput]}
+              value={editedProfileDescription}
+              onChangeText={setEditedProfileDescription}
+              placeholder="E.g., Hybrid athlete. Coffee & deadlifts."
+              placeholderTextColor={colors.textPlaceholder}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              maxLength={160}
+            />
+            <Text style={styles.characterCount}>
+              {editedProfileDescription.length}/160
+            </Text>
+          </View>
 
-        {/* Bio Input */}
-        <View style={styles.section}>
-          <Text style={styles.label}>AI Context (Optional)</Text>
-          <Text style={styles.description}>
-            This information helps our AI provide personalized workout
-            recommendations
-          </Text>
-          <TextInput
-            style={styles.bioInput}
-            value={editedBio}
-            onChangeText={setEditedBio}
-            placeholder="E.g., I have a knee injury, I do powerlifting, I'm a beginner..."
-            placeholderTextColor={colors.textPlaceholder}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-            maxLength={500}
-          />
-          <Text style={styles.characterCount}>{editedBio.length}/500</Text>
-        </View>
-      </ScrollView>
+          {/* Bio Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>AI Context (Optional)</Text>
+            <Text style={styles.description}>
+              This information helps our AI provide personalized workout
+              recommendations
+            </Text>
+            <TextInput
+              style={styles.bioInput}
+              value={editedBio}
+              onChangeText={setEditedBio}
+              placeholder="E.g., I have a knee injury, I do powerlifting, I'm a beginner..."
+              placeholderTextColor={colors.textPlaceholder}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              maxLength={500}
+            />
+            <Text style={styles.characterCount}>{editedBio.length}/500</Text>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -396,6 +521,39 @@ const createStyles = (
     },
     scrollContent: {
       paddingBottom: 40,
+    },
+    avatarSection: {
+      alignItems: 'center',
+      paddingVertical: 24,
+    },
+    avatarWrapper: {
+      position: 'relative',
+    },
+    avatar: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+    },
+    avatarPlaceholder: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarEditButton: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 3,
+      borderColor: colors.background,
     },
     section: {
       marginTop: 24,

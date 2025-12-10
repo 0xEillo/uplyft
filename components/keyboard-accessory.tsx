@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
 } from 'react-native'
 
 interface KeyboardAccessoryBarProps {
@@ -30,8 +29,10 @@ export function KeyboardAccessoryBar({
   const translateY = React.useRef(new Animated.Value(100)).current
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
 
     const showSub = Keyboard.addListener(showEvent, (e) => {
       setKeyboardHeight(e.endCoordinates.height)
@@ -85,7 +86,7 @@ export function KeyboardAccessoryBar({
           activeOpacity={0.7}
         >
           <Ionicons name="search" size={20} color={colors.primary} />
-          <Text style={styles.actionButtonText}>Choose exercise</Text>
+          <Text style={styles.actionButtonText}>Search exercise</Text>
         </TouchableOpacity>
       )}
     </Animated.View>

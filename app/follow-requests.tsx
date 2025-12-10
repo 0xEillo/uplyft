@@ -4,7 +4,7 @@ import { database } from '@/lib/database'
 import { FollowRequest, Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -23,10 +23,19 @@ type IncomingRequest = FollowRequest & { follower?: RequestProfile }
 type OutgoingRequest = FollowRequest & { followee?: RequestProfile }
 
 export default function FollowRequestsScreen() {
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const styles = createStyles(colors)
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
+
+  if (isAnonymous) return null
 
   const [incoming, setIncoming] = useState<IncomingRequest[]>([])
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([])

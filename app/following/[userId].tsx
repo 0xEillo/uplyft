@@ -27,11 +27,20 @@ export default function FollowingScreen() {
     userId: string
     returnTo?: string
   }>()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isAnonymous } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const styles = createStyles(colors)
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
+
+  if (isAnonymous) return null
 
   const [following, setFollowing] = useState<FollowingItem[]>([])
   const [isLoading, setIsLoading] = useState(true)

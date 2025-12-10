@@ -1,9 +1,11 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
@@ -29,6 +31,7 @@ export default function ProfileScreen() {
   const { weightUnit } = useWeightUnits()
   const { registerScrollRef } = useScrollToTop()
   const flatListRef = useRef<FlatList>(null)
+  const { level: userLevel } = useUserLevel(user?.id)
 
   const styles = useMemo(() => createStyles(colors), [colors])
   const [profile, setProfile] = useState<any>(null)
@@ -65,12 +68,12 @@ export default function ProfileScreen() {
     try {
       // Load profile - signInAnonymously should have created one for anonymous users
       const profileData = await database.profiles.getByIdOrNull(user.id)
-      
+
       if (!profileData) {
         console.error('[Profile] Profile not found for user:', user.id)
         return
       }
-      
+
       setProfile(profileData)
 
       // Calculate start of week (Sunday)
@@ -80,7 +83,12 @@ export default function ProfileScreen() {
       startOfWeek.setHours(0, 0, 0, 0)
 
       // Load stats
-      const [counts, totalWorkouts, weekCount, streakResult] = await Promise.all([
+      const [
+        counts,
+        totalWorkouts,
+        weekCount,
+        streakResult,
+      ] = await Promise.all([
         database.follows.getCounts(user.id),
         database.workoutSessions.getTotalCount(user.id),
         database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
@@ -290,9 +298,18 @@ export default function ProfileScreen() {
 
                   {/* Name */}
                   <View style={styles.nameContainer}>
-                    <Text style={styles.displayName}>
-                      {profile?.display_name || 'User'}
-                    </Text>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.displayName}>
+                        {profile?.display_name || 'User'}
+                      </Text>
+                      {userLevel && (
+                        <LevelBadge
+                          level={userLevel}
+                          size="small"
+                          style={styles.levelBadge}
+                        />
+                      )}
+                    </View>
                     {profile?.user_tag && (
                       <Text style={styles.userTag}>@{profile.user_tag}</Text>
                     )}
@@ -378,9 +395,7 @@ export default function ProfileScreen() {
 
                 <View style={styles.weeklyStats}>
                   <View style={styles.weeklyStat}>
-                    <Text style={styles.weeklyStatNumber}>
-                      {currentStreak}
-                    </Text>
+                    <Text style={styles.weeklyStatNumber}>{currentStreak}</Text>
                     <Text style={styles.weeklyStatLabel}>Streak</Text>
                   </View>
                   <View style={styles.weeklyStatDivider} />
@@ -499,6 +514,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     nameContainer: {
       marginLeft: 16,
       justifyContent: 'center',
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    levelBadge: {
+      transform: [{ scale: 0.85 }],
     },
     displayName: {
       fontSize: 20,
@@ -637,7 +660,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     workoutsHeader: {
       paddingHorizontal: 20,
       paddingTop: 24,
-      paddingBottom: 0,
+      paddingBottom: 12,
       backgroundColor: colors.feedCardBackground,
       zIndex: 10,
     },

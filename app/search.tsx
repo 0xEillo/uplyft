@@ -47,9 +47,17 @@ interface UserWithFollowStatus extends Profile {
 
 export default function SearchScreen() {
   const colors = useThemedColors()
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
+
   const [searchQuery, setSearchQuery] = useState('')
   const [users, setUsers] = useState<UserWithFollowStatus[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -83,6 +91,9 @@ export default function SearchScreen() {
       }
     }, [shouldSkipNextEntryRef]),
   )
+
+  // Early return for anonymous users (after all hooks)
+  if (isAnonymous) return null
 
   const styles = createStyles(colors)
   const trimmedQuery = searchQuery.trim()

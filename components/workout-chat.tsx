@@ -1,6 +1,9 @@
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
+  EQUIPMENT_PREF_KEY,
+  MUSCLE_OPTIONS,
+  WORKOUT_PLANNING_PREFS_KEY,
   WorkoutPlanningData,
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
@@ -26,11 +29,13 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { saveDraft } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useFocusEffect } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -76,6 +81,7 @@ interface PlanningState {
   isActive: boolean
   step: 'wizard' | 'none'
   data: Partial<WorkoutPlanningData>
+  commonMuscles?: string[]
 }
 
 type SuggestionMode = 'main' | 'tell_me_about' | 'how_to'
@@ -129,6 +135,7 @@ export function WorkoutChat() {
     isActive: false,
     step: 'none',
     data: {},
+    commonMuscles: [],
   })
   const [generatedPlanContent, setGeneratedPlanContent] = useState<
     string | null
@@ -145,6 +152,42 @@ export function WorkoutChat() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+  const TAB_BAR_HEIGHT = 45
+  const keyboardVerticalOffset = insets.bottom + TAB_BAR_HEIGHT
+
+  const layoutRef = useRef({
+    root: 0,
+    scrollView: 0,
+    inputContainer: 0,
+  })
+
+  const logLayout = (
+    label: 'root' | 'scrollView' | 'inputContainer',
+    data: { x: number; y: number; width: number; height: number },
+  ) => {
+    layoutRef.current[label] = data.height
+    const { root, scrollView, inputContainer } = layoutRef.current
+    const sum = scrollView + inputContainer
+    const diff = root - sum
+    console.log('[chat-layout]', label, data, {
+      root,
+      scrollView,
+      inputContainer,
+      sum,
+      diff,
+    })
+  }
+
+  // Auto-focus input when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const timeoutId = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
+    }, []),
+  )
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
@@ -171,7 +214,11 @@ export function WorkoutChat() {
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
+      (event) => {
+        console.log('[keyboard] show', {
+          height: event.endCoordinates?.height,
+          screenY: event.endCoordinates?.screenY,
+        })
         setIsKeyboardVisible(true)
         setTimeout(() => scrollToBottom(), 100)
       },
@@ -179,7 +226,11 @@ export function WorkoutChat() {
 
     const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
+      (event) => {
+        console.log('[keyboard] hide', {
+          height: event.endCoordinates?.height,
+          screenY: event.endCoordinates?.screenY,
+        })
         setIsKeyboardVisible(false)
       },
     )
@@ -672,12 +723,98 @@ export function WorkoutChat() {
       isActive: false,
       step: 'none',
       data: {},
+      commonMuscles: [],
     })
     setGeneratedPlanContent(null)
     setParsedWorkout(null)
     setSuggestionMode('main')
     inputRef.current?.clear()
     Keyboard.dismiss()
+  }
+
+  const handlePlanWorkout = async () => {
+    // 1. Fetch user profile for goal
+    // 2. Fetch saved prefs
+    // 3. Fetch common muscles
+    // 4. Decide if we can show recap
+
+    setIsLoading(true)
+    try {
+      const [
+        profile,
+        prefsJson,
+        equipmentJson,
+        commonMuscles,
+      ] = await Promise.all([
+        user?.id ? database.profiles.getById(user.id) : null,
+        AsyncStorage.getItem(WORKOUT_PLANNING_PREFS_KEY),
+        AsyncStorage.getItem(EQUIPMENT_PREF_KEY),
+        user?.id ? database.exercises.getMostFrequentMuscleGroups(user.id) : [],
+      ])
+
+      // Filter common muscles to only include valid options from the wizard
+      const validMuscleValues = new Set(MUSCLE_OPTIONS.map((o) => o.value))
+      const filteredCommonMuscles = (commonMuscles || []).filter((m: string) =>
+        validMuscleValues.has(m),
+      )
+
+      const savedPrefs = prefsJson ? JSON.parse(prefsJson) : {}
+
+      // Sanitize saved muscles to remove invalid/legacy values
+      if (savedPrefs.muscles) {
+        const muscles = (savedPrefs.muscles as string)
+          .split(',')
+          .map((m) => m.trim())
+          .filter((m) => validMuscleValues.has(m))
+        savedPrefs.muscles = muscles.join(', ')
+      }
+
+      const savedEquipment = equipmentJson ? JSON.parse(equipmentJson) : null
+
+      // Map profile goal to wizard goal
+      let profileGoal = ''
+      if (profile?.goals && profile.goals.length > 0) {
+        const goalMap: Record<string, string> = {
+          build_muscle: 'Hypertrophy',
+          lose_fat: 'Fat Loss / HIIT',
+          gain_strength: 'Strength',
+          general_fitness: 'General Fitness',
+        }
+        profileGoal = goalMap[profile.goals[0]] || ''
+      }
+
+      const proposedData: Partial<WorkoutPlanningData> = {
+        ...savedPrefs,
+        goal: savedPrefs.goal || profileGoal,
+        equipment: savedEquipment || savedPrefs.equipment || 'full_gym',
+      }
+
+      // If we have enough data to show a recap (at least goal and equipment)
+      // we show the recap screen. Otherwise, we go straight to wizard.
+      // Actually, let's show recap if we have ANY saved prefs OR a profile goal.
+      // const hasData =
+      //   !!proposedData.goal || !!savedPrefs.muscles || !!savedPrefs.duration
+
+      // With the new menu-based wizard, we always go straight to the wizard
+      // which now acts as the recap/menu itself.
+      setPlanningState({
+        isActive: true,
+        step: 'wizard',
+        data: proposedData,
+        commonMuscles: filteredCommonMuscles,
+      })
+    } catch (error) {
+      console.error('Error preparing workout plan:', error)
+      // Fallback to wizard
+      setPlanningState({
+        isActive: true,
+        step: 'wizard',
+        data: {},
+        commonMuscles: [],
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSuggestionClick = (
@@ -687,11 +824,7 @@ export function WorkoutChat() {
 
     if (suggestionMode === 'main' && typeof item === 'object') {
       if (item.id === 'plan_workout') {
-        setPlanningState({
-          isActive: true,
-          step: 'wizard',
-          data: {},
-        })
+        handlePlanWorkout()
       } else if (item.id === 'tell_me_about') {
         setSuggestionMode('tell_me_about')
         setInput('Tell me about ')
@@ -716,7 +849,7 @@ export function WorkoutChat() {
     }
   }
 
-  const handleWizardComplete = async (wizardData: WorkoutPlanningData) => {
+  const handleWizardComplete = async (data: WorkoutPlanningData) => {
     // Check if user is pro member
     if (!isProMember) {
       setShowPaywall(true)
@@ -726,11 +859,12 @@ export function WorkoutChat() {
       return
     }
 
-    // Reset wizard state
+    // Otherwise, this is the final completion, so generate the workout
     setPlanningState({
       isActive: false,
       step: 'none',
       data: {},
+      commonMuscles: [],
     })
 
     // Build the equipment label for display
@@ -741,11 +875,10 @@ export function WorkoutChat() {
       bodyweight: 'Bodyweight Only',
       barbell_only: 'Barbell Only',
     }
-    const equipmentLabel =
-      equipmentLabels[wizardData.equipment] || wizardData.equipment
+    const equipmentLabel = equipmentLabels[data.equipment] || data.equipment
 
     // Construct the hidden prompt for the AI
-    const finalPrompt = buildWorkoutCreationPrompt(wizardData, equipmentLabel)
+    const finalPrompt = buildWorkoutCreationPrompt(data, equipmentLabel)
 
     // Now call the API
     setIsLoading(true)
@@ -1185,564 +1318,603 @@ export function WorkoutChat() {
     }
   }
 
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, insets)
 
-  // Show unified workout planning wizard
-  if (planningState.isActive && planningState.step === 'wizard') {
-    return (
-      <View style={styles.container}>
-        <WorkoutPlanningWizard
-          colors={colors}
-          onComplete={handleWizardComplete}
-          onCancel={handleWizardCancel}
-        />
-        <Paywall
-          visible={showPaywall}
-          onClose={() => setShowPaywall(false)}
-          title="Try Pro for FREE!"
-          message="AI workout planning is a Pro feature"
-        />
-      </View>
-    )
+  const renderRecap = () => {
+    // Deprecated: The wizard itself is now the recap/menu
+    return null
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+      onLayout={(e) => logLayout('root', e.nativeEvent.layout)}
     >
-      {/* New Chat Button - Positioned absolutely */}
-      <TouchableOpacity
-        style={[styles.newChatButton, { top: Math.max(insets.top - 38, 0) }]}
-        onPress={handleNewChat}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="create-outline" size={28} color={colors.primary} />
-      </TouchableOpacity>
+      {planningState.isActive && planningState.step === 'wizard' ? (
+        <WorkoutPlanningWizard
+          colors={colors}
+          onComplete={handleWizardComplete}
+          onCancel={() =>
+            setPlanningState({
+              isActive: false,
+              step: 'none',
+              data: {},
+              commonMuscles: [],
+            })
+          }
+          initialData={planningState.data}
+          commonMuscles={planningState.commonMuscles}
+        />
+      ) : (
+        <>
+          {/* New Chat Button - Positioned absolutely */}
+          <TouchableOpacity
+            style={[
+              styles.newChatButton,
+              { top: Math.max(insets.top - 38, 0) },
+            ]}
+            onPress={handleNewChat}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={28} color={colors.primary} />
+          </TouchableOpacity>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={[
-          styles.messagesContent,
-          { paddingTop: messages.length === 0 && !isLoading ? 16 : 80 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        showsVerticalScrollIndicator={false}
-        automaticallyAdjustKeyboardInsets={false}
-        onContentSizeChange={() =>
-          (messages.length > 0 || isLoading) && scrollToBottom()
-        }
-      >
-        {messages.length === 0 && !isLoading ? (
-          <View style={styles.emptyState}>
-            <View style={styles.welcomeSection}>
-              <Ionicons
-                name="chatbubbles-outline"
-                size={96}
-                color={colors.textSecondary}
-                style={{ opacity: 0.5 }}
-              />
-              <Text style={styles.welcomeText}>
-                the more you workout, the smarter your AI gets.
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.chatMessages}>
-            {messages.map((message) => (
-              <View
-                key={message.id}
-                style={[
-                  message.role === 'user'
-                    ? styles.userMessageContainer
-                    : styles.assistantMessageContainer,
-                ]}
-              >
-                {message.role === 'user' ? (
-                  <View style={styles.userMessageBubble}>
-                    <View style={styles.userMessageContent}>
-                      {/* Display images for user messages */}
-                      {message.images && message.images.length > 0 && (
-                        <View style={styles.messageImagesGrid}>
-                          {message.images.map((imageUri, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.messageImageThumbnail}
-                              onPress={() =>
-                                openImageViewer(message.images!, index)
-                              }
-                            >
-                              <Image
-                                source={{ uri: imageUri }}
-                                style={styles.messageImage}
-                                resizeMode="cover"
-                              />
-                            </TouchableOpacity>
-                          ))}
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={[
+              styles.messagesContent,
+              { paddingTop: messages.length === 0 && !isLoading ? 16 : 80 },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={
+              Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+            }
+            showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets={false}
+            contentInsetAdjustmentBehavior="never"
+            onLayout={(e) => logLayout('scrollView', e.nativeEvent.layout)}
+            onContentSizeChange={(w, h) => {
+              console.log('[chat-layout] contentSize', { w, h })
+              ;(messages.length > 0 || isLoading) && scrollToBottom()
+            }}
+          >
+            {messages.length === 0 && !isLoading ? (
+              <View style={styles.emptyState}>
+                <View style={styles.welcomeSection}>
+                  <Ionicons
+                    name="chatbubbles-outline"
+                    size={96}
+                    color={colors.textSecondary}
+                    style={{ opacity: 0.5 }}
+                  />
+                  <Text style={styles.welcomeText}>
+                    The more you workout, the smarter your AI gets.
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.chatMessages}>
+                {messages.map((message) => (
+                  <View
+                    key={message.id}
+                    style={[
+                      message.role === 'user'
+                        ? styles.userMessageContainer
+                        : styles.assistantMessageContainer,
+                    ]}
+                  >
+                    {message.role === 'user' ? (
+                      <View style={styles.userMessageBubble}>
+                        <View style={styles.userMessageContent}>
+                          {/* Display images for user messages */}
+                          {message.images && message.images.length > 0 && (
+                            <View style={styles.messageImagesGrid}>
+                              {message.images.map((imageUri, index) => (
+                                <TouchableOpacity
+                                  key={index}
+                                  style={styles.messageImageThumbnail}
+                                  onPress={() =>
+                                    openImageViewer(message.images!, index)
+                                  }
+                                >
+                                  <Image
+                                    source={{ uri: imageUri }}
+                                    style={styles.messageImage}
+                                    resizeMode="cover"
+                                  />
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                          <Text style={styles.userMessageText}>
+                            {message.content}
+                          </Text>
                         </View>
-                      )}
-                      <Text style={styles.userMessageText}>
-                        {message.content}
-                      </Text>
-                    </View>
+                      </View>
+                    ) : (
+                      <View style={styles.assistantMessageContent}>
+                        {/* Check if this message contains a parsed workout plan, even if it's not the very last message */}
+                        {(() => {
+                          const messageParsedWorkout = parseWorkoutForDisplay(
+                            message.content,
+                          )
+
+                          if (messageParsedWorkout) {
+                            return (
+                              <WorkoutCard
+                                workout={messageParsedWorkout}
+                                onStartWorkout={() => {
+                                  setParsedWorkout(messageParsedWorkout)
+                                  setGeneratedPlanContent(message.content)
+                                  setTimeout(handleStartWorkout, 0)
+                                }}
+                                onSaveRoutine={() => {
+                                  setParsedWorkout(messageParsedWorkout)
+                                  setGeneratedPlanContent(message.content)
+                                  setTimeout(handleSaveRoutine, 0)
+                                }}
+                              />
+                            )
+                          }
+
+                          return (
+                            <Markdown
+                              style={{
+                                body: {
+                                  fontSize: 17,
+                                  lineHeight: 24,
+                                  color: colors.text,
+                                  margin: 0,
+                                },
+                                paragraph: {
+                                  marginTop: 0,
+                                  marginBottom: 12,
+                                },
+                                heading1: {
+                                  fontSize: 22,
+                                  fontWeight: '700',
+                                  color: colors.text,
+                                  marginTop: 16,
+                                  marginBottom: 8,
+                                },
+                                heading2: {
+                                  fontSize: 20,
+                                  fontWeight: '700',
+                                  color: colors.text,
+                                  marginTop: 14,
+                                  marginBottom: 6,
+                                },
+                                heading3: {
+                                  fontSize: 18,
+                                  fontWeight: '600',
+                                  color: colors.text,
+                                  marginTop: 12,
+                                  marginBottom: 6,
+                                },
+                                code_inline: {
+                                  backgroundColor: colors.backgroundLight,
+                                  paddingHorizontal: 4,
+                                  paddingVertical: 2,
+                                  borderRadius: 4,
+                                  fontSize: 16,
+                                  fontFamily:
+                                    Platform.OS === 'ios'
+                                      ? 'Menlo'
+                                      : 'monospace',
+                                  color: colors.text,
+                                },
+                                code_block: {
+                                  backgroundColor: colors.backgroundLight,
+                                  padding: 12,
+                                  borderRadius: 8,
+                                  fontSize: 16,
+                                  fontFamily:
+                                    Platform.OS === 'ios'
+                                      ? 'Menlo'
+                                      : 'monospace',
+                                  color: colors.text,
+                                  marginVertical: 8,
+                                  overflow: 'hidden',
+                                },
+                                fence: {
+                                  backgroundColor: colors.backgroundLight,
+                                  padding: 12,
+                                  borderRadius: 8,
+                                  fontSize: 16,
+                                  fontFamily:
+                                    Platform.OS === 'ios'
+                                      ? 'Menlo'
+                                      : 'monospace',
+                                  color: colors.text,
+                                  marginVertical: 8,
+                                },
+                                strong: {
+                                  fontWeight: '600',
+                                  color: colors.text,
+                                },
+                                em: {
+                                  fontStyle: 'italic',
+                                },
+                                bullet_list: {
+                                  marginTop: 0,
+                                  marginBottom: 12,
+                                },
+                                ordered_list: {
+                                  marginTop: 0,
+                                  marginBottom: 12,
+                                },
+                                list_item: {
+                                  marginTop: 4,
+                                  marginBottom: 4,
+                                },
+                                hr: {
+                                  backgroundColor: colors.border,
+                                  height: 1,
+                                  marginVertical: 16,
+                                },
+                                blockquote: {
+                                  borderLeftWidth: 3,
+                                  borderLeftColor: colors.primary,
+                                  paddingLeft: 12,
+                                  marginVertical: 8,
+                                  backgroundColor: colors.backgroundLight,
+                                  paddingVertical: 8,
+                                  paddingRight: 8,
+                                },
+                                link: {
+                                  color: colors.primary,
+                                  textDecorationLine: 'underline',
+                                },
+                              }}
+                            >
+                              {message.content}
+                            </Markdown>
+                          )
+                        })()}
+                      </View>
+                    )}
                   </View>
-                ) : (
-                  <View style={styles.assistantMessageContent}>
-                    {/* Check if this message contains a parsed workout plan, even if it's not the very last message */}
-                    {(() => {
-                      const messageParsedWorkout = parseWorkoutForDisplay(
-                        message.content,
-                      )
-
-                      if (messageParsedWorkout) {
-                        return (
-                          <WorkoutCard
-                            workout={messageParsedWorkout}
-                            onStartWorkout={() => {
-                              setParsedWorkout(messageParsedWorkout)
-                              setGeneratedPlanContent(message.content)
-                              setTimeout(handleStartWorkout, 0)
-                            }}
-                            onSaveRoutine={() => {
-                              setParsedWorkout(messageParsedWorkout)
-                              setGeneratedPlanContent(message.content)
-                              setTimeout(handleSaveRoutine, 0)
-                            }}
-                          />
-                        )
-                      }
-
-                      return (
-                        <Markdown
-                          style={{
-                            body: {
-                              fontSize: 17,
-                              lineHeight: 24,
-                              color: colors.text,
-                              margin: 0,
-                            },
-                            paragraph: {
-                              marginTop: 0,
-                              marginBottom: 12,
-                            },
-                            heading1: {
-                              fontSize: 22,
-                              fontWeight: '700',
-                              color: colors.text,
-                              marginTop: 16,
-                              marginBottom: 8,
-                            },
-                            heading2: {
-                              fontSize: 20,
-                              fontWeight: '700',
-                              color: colors.text,
-                              marginTop: 14,
-                              marginBottom: 6,
-                            },
-                            heading3: {
-                              fontSize: 18,
-                              fontWeight: '600',
-                              color: colors.text,
-                              marginTop: 12,
-                              marginBottom: 6,
-                            },
-                            code_inline: {
-                              backgroundColor: colors.backgroundLight,
-                              paddingHorizontal: 4,
-                              paddingVertical: 2,
-                              borderRadius: 4,
-                              fontSize: 16,
-                              fontFamily:
-                                Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                              color: colors.text,
-                            },
-                            code_block: {
-                              backgroundColor: colors.backgroundLight,
-                              padding: 12,
-                              borderRadius: 8,
-                              fontSize: 16,
-                              fontFamily:
-                                Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                              color: colors.text,
-                              marginVertical: 8,
-                              overflow: 'hidden',
-                            },
-                            fence: {
-                              backgroundColor: colors.backgroundLight,
-                              padding: 12,
-                              borderRadius: 8,
-                              fontSize: 16,
-                              fontFamily:
-                                Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                              color: colors.text,
-                              marginVertical: 8,
-                            },
-                            strong: {
-                              fontWeight: '600',
-                              color: colors.text,
-                            },
-                            em: {
-                              fontStyle: 'italic',
-                            },
-                            bullet_list: {
-                              marginTop: 0,
-                              marginBottom: 12,
-                            },
-                            ordered_list: {
-                              marginTop: 0,
-                              marginBottom: 12,
-                            },
-                            list_item: {
-                              marginTop: 4,
-                              marginBottom: 4,
-                            },
-                            hr: {
-                              backgroundColor: colors.border,
-                              height: 1,
-                              marginVertical: 16,
-                            },
-                            blockquote: {
-                              borderLeftWidth: 3,
-                              borderLeftColor: colors.primary,
-                              paddingLeft: 12,
-                              marginVertical: 8,
-                              backgroundColor: colors.backgroundLight,
-                              paddingVertical: 8,
-                              paddingRight: 8,
-                            },
-                            link: {
-                              color: colors.primary,
-                              textDecorationLine: 'underline',
-                            },
-                          }}
-                        >
-                          {message.content}
-                        </Markdown>
-                      )
-                    })()}
+                ))}
+                {isLoading && (
+                  <View style={styles.loadingMessageContainer}>
+                    <ActivityIndicator size="small" color={colors.primary} />
                   </View>
                 )}
-              </View>
-            ))}
-            {isLoading && (
-              <View style={styles.loadingMessageContainer}>
-                <ActivityIndicator size="small" color={colors.primary} />
+                {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
+                {generatedPlanContent &&
+                  // Check if the LAST message is NOT a workout card (if it is, we already showed inline buttons)
+                  !parseWorkoutForDisplay(
+                    messages[messages.length - 1]?.content || '',
+                  ) && (
+                    <View style={styles.actionButtonsContainer}>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={handleStartWorkout}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name="barbell"
+                          size={20}
+                          color={colors.white}
+                        />
+                        <Text style={styles.actionButtonText}>
+                          Start Workout
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          styles.secondaryActionButton,
+                        ]}
+                        onPress={handleSaveRoutine}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name="bookmark-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.secondaryActionButtonText}>
+                          Save as Routine
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
               </View>
             )}
-            {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
-            {generatedPlanContent &&
-              // Check if the LAST message is NOT a workout card (if it is, we already showed inline buttons)
-              !parseWorkoutForDisplay(
-                messages[messages.length - 1]?.content || '',
-              ) && (
-                <View style={styles.actionButtonsContainer}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={handleStartWorkout}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="barbell" size={20} color={colors.white} />
-                    <Text style={styles.actionButtonText}>Start Workout</Text>
-                  </TouchableOpacity>
+          </ScrollView>
 
+          {/* Suggestions Row */}
+          {!generatedPlanContent && !planningState.isActive && (
+            <View style={styles.suggestionsContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestionsContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                {suggestionMode !== 'main' && (
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.secondaryActionButton]}
-                    onPress={handleSaveRoutine}
+                    style={styles.suggestionBackBubble}
+                    onPress={handleSuggestionBack}
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name="bookmark-outline"
-                      size={20}
-                      color={colors.primary}
+                      name="chevron-back"
+                      size={18}
+                      color={colors.textSecondary}
                     />
-                    <Text style={styles.secondaryActionButtonText}>
-                      Save as Routine
-                    </Text>
                   </TouchableOpacity>
-                </View>
-              )}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Suggestions Row */}
-      {!generatedPlanContent && !planningState.isActive && (
-        <View style={styles.suggestionsContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.suggestionsContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            {suggestionMode !== 'main' && (
-              <TouchableOpacity
-                style={styles.suggestionBackBubble}
-                onPress={handleSuggestionBack}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            )}
-
-            {suggestionMode === 'main'
-              ? SUGGESTIONS.main.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.suggestionBubble,
-                      item.id === 'plan_workout' && styles.planWorkoutBubble,
-                    ]}
-                    onPress={() => handleSuggestionClick(item)}
-                    activeOpacity={0.7}
-                  >
-                    {item.id === 'plan_workout' && (
-                      <Ionicons
-                        name="flash"
-                        size={14}
-                        color={colors.primary}
-                        style={{ marginRight: 6 }}
-                      />
-                    )}
-                    <Text
-                      style={[
-                        styles.suggestionText,
-                        item.id === 'plan_workout' && styles.planWorkoutText,
-                      ]}
-                    >
-                      {item.text}
-                    </Text>
-                  </TouchableOpacity>
-                ))
-              : SUGGESTIONS[suggestionMode].map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionBubble}
-                    onPress={() => handleSuggestionClick(item)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.suggestionText}>{item}</Text>
-                  </TouchableOpacity>
-                ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Input Area */}
-      <View
-        style={[
-          styles.inputContainer,
-          { paddingBottom: isKeyboardVisible ? 80 : 16 },
-        ]}
-      >
-        {/* Image Thumbnails Preview */}
-        {selectedImages.length > 0 && (
-          <ScrollView
-            horizontal
-            style={styles.imagePreviewContainer}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.imagePreviewContent}
-          >
-            {selectedImages.map((imageUri, index) => (
-              <View key={index} style={styles.imageThumbnailContainer}>
-                <Image
-                  source={{ uri: imageUri }}
-                  style={styles.imageThumbnail}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => removeImage(index)}
-                >
-                  <Ionicons name="close" size={14} color={colors.white} />
-                </TouchableOpacity>
-              </View>
-            ))}
-            <View style={styles.imageCountBadge}>
-              <Text style={styles.imageCountText}>
-                {selectedImages.length}/{MAX_IMAGES}
-              </Text>
-            </View>
-          </ScrollView>
-        )}
-
-        {/* Input Row */}
-        <View style={styles.inputWrapper}>
-          {/* Add Image Button */}
-          <TouchableOpacity
-            style={styles.addImageButton}
-            onPress={() => setShowImagePickerModal(true)}
-            disabled={isLoading}
-          >
-            <Ionicons
-              name="add"
-              size={20}
-              color={isLoading ? colors.textPlaceholder : colors.primary}
-            />
-          </TouchableOpacity>
-
-          {/* Text Input */}
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            placeholder={
-              generatedPlanContent
-                ? 'Make changes to your plan...'
-                : 'Ask about your workouts...'
-            }
-            placeholderTextColor={colors.textPlaceholder}
-            value={input}
-            onChangeText={setInput}
-            multiline
-            maxLength={500}
-            returnKeyType="send"
-            onSubmitEditing={handleSendMessage}
-            blurOnSubmit={false}
-            editable={!isLoading}
-          />
-
-          {/* Send Button */}
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (!input.trim() || isLoading) && styles.sendButtonDisabled,
-            ]}
-            onPress={handleSendMessage}
-            disabled={!input.trim() || isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={colors.textPlaceholder} />
-            ) : (
-              <Ionicons
-                name="send"
-                size={20}
-                color={input.trim() ? colors.white : colors.textPlaceholder}
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Paywall Modal */}
-      <Paywall
-        visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        title="Try Pro for FREE!"
-        message="AI chat is a Pro feature"
-      />
-
-      {/* Image Picker Bottom Sheet */}
-      <Modal
-        visible={showImagePickerModal}
-        transparent
-        animationType="fade"
-        onRequestClose={closeImagePickerSheet}
-      >
-        <GestureHandlerRootView style={styles.modalContainer}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={closeImagePickerSheet}
-          >
-            <View style={styles.modalBackdrop} />
-          </Pressable>
-
-          <GestureDetector gesture={pan}>
-            <AnimatedReanimated.View
-              style={[styles.bottomSheet, animatedBottomSheetStyle]}
-            >
-              <View style={styles.bottomSheetHandleContainer}>
-                <View style={styles.bottomSheetHandle} />
-              </View>
-              <Text style={styles.bottomSheetTitle}>Add Image</Text>
-
-              <TouchableOpacity
-                style={styles.bottomSheetOption}
-                onPress={launchCamera}
-              >
-                <View style={styles.bottomSheetOptionIcon}>
-                  <Ionicons name="camera" size={24} color={colors.primary} />
-                </View>
-                <Text style={styles.bottomSheetOptionText}>Take Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.bottomSheetOption}
-                onPress={launchLibrary}
-              >
-                <View style={styles.bottomSheetOptionIcon}>
-                  <Ionicons name="images" size={24} color={colors.primary} />
-                </View>
-                <Text style={styles.bottomSheetOptionText}>
-                  Choose from Library
-                </Text>
-              </TouchableOpacity>
-            </AnimatedReanimated.View>
-          </GestureDetector>
-        </GestureHandlerRootView>
-      </Modal>
-
-      {/* Image Viewer Modal */}
-      <Modal
-        visible={viewerImageIndex !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={closeImageViewer}
-      >
-        <View style={styles.imageViewerContainer}>
-          <TouchableOpacity
-            style={styles.imageViewerCloseButton}
-            onPress={closeImageViewer}
-          >
-            <Ionicons name="close" size={28} color={colors.white} />
-          </TouchableOpacity>
-
-          {viewerImages.length > 0 && viewerImageIndex !== null && (
-            <>
-              <FlatList
-                data={viewerImages}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                initialScrollIndex={viewerImageIndex}
-                getItemLayout={(_, index) => ({
-                  length: 400,
-                  offset: 400 * index,
-                  index,
-                })}
-                renderItem={({ item }) => (
-                  <View style={styles.imageViewerSlide}>
-                    <Image
-                      source={{ uri: item }}
-                      style={styles.imageViewerImage}
-                      resizeMode="contain"
-                    />
-                  </View>
                 )}
-                keyExtractor={(_, index) => index.toString()}
-              />
 
-              {viewerImages.length > 1 && (
-                <View style={styles.imageViewerCounter}>
-                  <Text style={styles.imageViewerCounterText}>
-                    {viewerImageIndex + 1} of {viewerImages.length}
+                {suggestionMode === 'main'
+                  ? SUGGESTIONS.main.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[
+                          styles.suggestionBubble,
+                          item.id === 'plan_workout' &&
+                            styles.planWorkoutBubble,
+                        ]}
+                        onPress={() => handleSuggestionClick(item)}
+                        activeOpacity={0.7}
+                      >
+                        {item.id === 'plan_workout' && (
+                          <Ionicons
+                            name="flash"
+                            size={14}
+                            color={colors.primary}
+                            style={{ marginRight: 6 }}
+                          />
+                        )}
+                        <Text
+                          style={[
+                            styles.suggestionText,
+                            item.id === 'plan_workout' &&
+                              styles.planWorkoutText,
+                          ]}
+                        >
+                          {item.text}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  : SUGGESTIONS[suggestionMode].map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionBubble}
+                        onPress={() => handleSuggestionClick(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.suggestionText}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Input Area */}
+          <View
+            style={[styles.inputContainer, { paddingBottom: 0 }]}
+            onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
+          >
+            {/* Image Thumbnails Preview */}
+            {selectedImages.length > 0 && (
+              <ScrollView
+                horizontal
+                style={styles.imagePreviewContainer}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.imagePreviewContent}
+              >
+                {selectedImages.map((imageUri, index) => (
+                  <View key={index} style={styles.imageThumbnailContainer}>
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.imageThumbnail}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeImage(index)}
+                    >
+                      <Ionicons name="close" size={14} color={colors.white} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <View style={styles.imageCountBadge}>
+                  <Text style={styles.imageCountText}>
+                    {selectedImages.length}/{MAX_IMAGES}
                   </Text>
                 </View>
+              </ScrollView>
+            )}
+
+            {/* Input Row */}
+            <View style={styles.inputWrapper}>
+              {/* Add Image Button */}
+              <TouchableOpacity
+                style={styles.addImageButton}
+                onPress={() => setShowImagePickerModal(true)}
+                disabled={isLoading}
+              >
+                <Ionicons
+                  name="add"
+                  size={20}
+                  color={isLoading ? colors.textPlaceholder : colors.primary}
+                />
+              </TouchableOpacity>
+
+              <View style={styles.textInputContainer}>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.input}
+                  placeholder={
+                    generatedPlanContent
+                      ? 'Make changes to your plan...'
+                      : 'Ask about your workouts...'
+                  }
+                  placeholderTextColor={colors.textPlaceholder}
+                  value={input}
+                  onChangeText={setInput}
+                  multiline
+                  maxLength={500}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSendMessage}
+                  blurOnSubmit={false}
+                  editable={!isLoading}
+                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    (!input.trim() || isLoading) && styles.sendButtonDisabled,
+                  ]}
+                  onPress={handleSendMessage}
+                  disabled={!input.trim() || isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.textPlaceholder}
+                    />
+                  ) : (
+                    <Ionicons name="arrow-up" size={20} color={colors.white} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Paywall Modal */}
+          <Paywall
+            visible={showPaywall}
+            onClose={() => setShowPaywall(false)}
+            title="Try Pro for FREE!"
+            message="AI chat is a Pro feature"
+          />
+
+          {/* Image Picker Bottom Sheet */}
+          <Modal
+            visible={showImagePickerModal}
+            transparent
+            animationType="fade"
+            onRequestClose={closeImagePickerSheet}
+          >
+            <GestureHandlerRootView style={styles.modalContainer}>
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={closeImagePickerSheet}
+              >
+                <View style={styles.modalBackdrop} />
+              </Pressable>
+
+              <GestureDetector gesture={pan}>
+                <AnimatedReanimated.View
+                  style={[styles.bottomSheet, animatedBottomSheetStyle]}
+                >
+                  <View style={styles.bottomSheetHandleContainer}>
+                    <View style={styles.bottomSheetHandle} />
+                  </View>
+                  <Text style={styles.bottomSheetTitle}>Add Image</Text>
+
+                  <TouchableOpacity
+                    style={styles.bottomSheetOption}
+                    onPress={launchCamera}
+                  >
+                    <View style={styles.bottomSheetOptionIcon}>
+                      <Ionicons
+                        name="camera"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <Text style={styles.bottomSheetOptionText}>Take Photo</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.bottomSheetOption}
+                    onPress={launchLibrary}
+                  >
+                    <View style={styles.bottomSheetOptionIcon}>
+                      <Ionicons
+                        name="images"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <Text style={styles.bottomSheetOptionText}>
+                      Choose from Library
+                    </Text>
+                  </TouchableOpacity>
+                </AnimatedReanimated.View>
+              </GestureDetector>
+            </GestureHandlerRootView>
+          </Modal>
+
+          {/* Image Viewer Modal */}
+          <Modal
+            visible={viewerImageIndex !== null}
+            transparent
+            animationType="fade"
+            onRequestClose={closeImageViewer}
+          >
+            <View style={styles.imageViewerContainer}>
+              <TouchableOpacity
+                style={styles.imageViewerCloseButton}
+                onPress={closeImageViewer}
+              >
+                <Ionicons name="close" size={28} color={colors.white} />
+              </TouchableOpacity>
+
+              {viewerImages.length > 0 && viewerImageIndex !== null && (
+                <>
+                  <FlatList
+                    data={viewerImages}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    initialScrollIndex={viewerImageIndex}
+                    getItemLayout={(_, index) => ({
+                      length: 400,
+                      offset: 400 * index,
+                      index,
+                    })}
+                    renderItem={({ item }) => (
+                      <View style={styles.imageViewerSlide}>
+                        <Image
+                          source={{ uri: item }}
+                          style={styles.imageViewerImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
+                    keyExtractor={(_, index) => index.toString()}
+                  />
+
+                  {viewerImages.length > 1 && (
+                    <View style={styles.imageViewerCounter}>
+                      <Text style={styles.imageViewerCounterText}>
+                        {viewerImageIndex + 1} of {viewerImages.length}
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </View>
-      </Modal>
+            </View>
+          </Modal>
+        </>
+      )}
     </KeyboardAvoidingView>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  insets: { bottom: number },
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -1806,7 +1978,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     messagesContent: {
       flexGrow: 1,
       padding: 16,
-      paddingBottom: 8,
+      paddingBottom: 0,
       paddingTop: 16,
     },
     emptyState: {
@@ -1857,9 +2029,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 4,
     },
     inputContainer: {
-      backgroundColor: colors.white,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      backgroundColor: 'transparent',
+      borderTopWidth: 0,
       paddingHorizontal: 16,
       paddingTop: 8,
     },
@@ -1868,13 +2039,26 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'flex-end',
       gap: 8,
     },
+    textInputContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 24,
+      paddingRight: 4,
+      paddingLeft: 16,
+      paddingVertical: 4,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
     input: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
-      borderRadius: 9999,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 10,
+      paddingTop: 6,
+      paddingBottom: 6,
+      marginRight: 8,
       fontSize: 17,
       lineHeight: 22,
       color: colors.text,
@@ -1882,15 +2066,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlignVertical: 'center',
     },
     sendButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 9999,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
+      marginBottom: 2,
     },
     sendButtonDisabled: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.textPlaceholder,
+      opacity: 0.5,
     },
     loadingMessageContainer: {
       flexDirection: 'row',
@@ -2001,6 +2187,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       justifyContent: 'center',
       alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
     // Images in messages
     messageImagesGrid: {
@@ -2020,6 +2211,54 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: '100%',
     },
     // Bottom sheet modal
+    wizardContainer: {
+      flex: 1,
+    },
+    recapCard: {
+      flex: 1,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    recapTitle: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    recapSubtitle: {
+      fontSize: 16,
+      marginBottom: 32,
+      textAlign: 'center',
+    },
+    recapItems: {
+      gap: 16,
+      marginBottom: 40,
+    },
+    recapItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: 'rgba(120, 120, 120, 0.1)',
+    },
+    recapItemText: {
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    recapButtons: {
+      gap: 12,
+    },
+    recapButton: {
+      padding: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    recapButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
     modalContainer: {
       flex: 1,
       justifyContent: 'flex-end',

@@ -67,13 +67,28 @@ const LEVEL_SCORES: Record<StrengthLevel, number> = {
   'World Class': 6,
 }
 
-const LEVEL_IMAGES: Record<StrengthLevel, any> = {
-  Beginner: require('@/assets/images/lifter-levels/1.png'),
-  Novice: require('@/assets/images/lifter-levels/2.png'),
-  Intermediate: require('@/assets/images/lifter-levels/3.png'),
-  Advanced: require('@/assets/images/lifter-levels/4.png'),
-  Elite: require('@/assets/images/lifter-levels/5.png'),
-  'World Class': require('@/assets/images/lifter-levels/6.png'),
+const LEVEL_IMAGES = {
+  male: {
+    Beginner: require('../assets/images/lifter-levels/male_images/1.png'),
+    Novice: require('../assets/images/lifter-levels/male_images/2.png'),
+    Intermediate: require('../assets/images/lifter-levels/male_images/3.png'),
+    Advanced: require('../assets/images/lifter-levels/male_images/4.png'),
+    Elite: require('../assets/images/lifter-levels/male_images/5.png'),
+    'World Class': require('../assets/images/lifter-levels/male_images/6.png'),
+  },
+  female: {
+    Beginner: require('../assets/images/lifter-levels/female_images/1.png'),
+    Novice: require('../assets/images/lifter-levels/female_images/2.png'),
+    Intermediate: require('../assets/images/lifter-levels/female_images/3.png'),
+    Advanced: require('../assets/images/lifter-levels/female_images/4.png'),
+    Elite: require('../assets/images/lifter-levels/female_images/5.png'),
+    'World Class': require('../assets/images/lifter-levels/female_images/6.png'),
+  },
+}
+
+const getLevelImage = (level: StrengthLevel, gender?: string | null) => {
+  const g = gender === 'female' ? 'female' : 'male'
+  return LEVEL_IMAGES[g][level]
 }
 
 const ProgressRing = ({
@@ -447,7 +462,7 @@ export function StrengthStandardsView() {
                       </View>
                     )}
                     <Image
-                      source={LEVEL_IMAGES[overallLevel.balancedLevel]}
+                      source={getLevelImage(overallLevel.balancedLevel, profile?.gender)}
                       style={styles.heroLevelImage}
                       contentFit="contain"
                     />
@@ -680,6 +695,7 @@ export function StrengthStandardsView() {
           onClose={() => setShowLevelsSheet(false)}
           currentLevel={overallLevel.balancedLevel}
           progressToNext={overallLevel.balancedProgress}
+          gender={profile?.gender}
         />
       )}
     </View>

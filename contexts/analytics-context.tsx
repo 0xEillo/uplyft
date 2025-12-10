@@ -3,7 +3,7 @@ import { usePostHog } from 'posthog-react-native'
 import { useAuth } from './auth-context'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
-import { getSessionId } from '@/utils/analytics-helpers'
+import { getSessionId } from '@/utils/analytics-common'
 
 type AnalyticsContextValue = {
   trackEvent: (event: string, payload?: Record<string, unknown>) => Promise<void>
