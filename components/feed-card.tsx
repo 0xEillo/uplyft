@@ -1,10 +1,19 @@
+import { LevelBadge } from '@/components/LevelBadge'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
+
+// Helper function to determine badge size based on text fontSize
+const getBadgeSizeFromFontSize = (fontSize: number): 'small' | 'medium' | 'large' | 'xl' => {
+  if (fontSize >= 20) return 'large'
+  if (fontSize >= 15) return 'medium'
+  return 'small'
+}
 import {
   ActivityIndicator,
   Animated,
@@ -151,6 +160,7 @@ export const FeedCard = memo(function FeedCard({
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  const { level: userLevel } = useUserLevel(userId)
 
   const displayRoutine = routine || workout?.routine
 
@@ -474,7 +484,16 @@ export const FeedCard = memo(function FeedCard({
             </View>
           )}
           <View>
-            <Text style={styles.userName}>{userName}</Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{userName}</Text>
+              {userLevel && (
+                <LevelBadge
+                  level={userLevel}
+                  size={getBadgeSizeFromFontSize(styles.userName.fontSize)}
+                  iconOnly={true}
+                />
+              )}
+            </View>
             {displayRoutine ? (
               <View style={styles.routineContainer}>
                 <Text style={styles.actionText}>finished </Text>
@@ -778,6 +797,11 @@ const createStyles = (
       color: colors.white,
       fontSize: 18,
       fontWeight: '600',
+    },
+    userNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
     },
     userName: {
       fontSize: 16,

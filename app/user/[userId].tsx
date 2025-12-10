@@ -30,6 +30,15 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+// Helper function to determine badge size based on text fontSize
+const getBadgeSizeFromFontSize = (
+  fontSize: number,
+): 'small' | 'medium' | 'large' | 'xl' => {
+  if (fontSize >= 20) return 'large'
+  if (fontSize >= 15) return 'medium'
+  return 'small'
+}
+
 let skipNextProfileEntryAnimation = false
 
 const markProfileEntrySkipFlag = () => {
@@ -409,8 +418,11 @@ export default function UserProfileScreen() {
                     {userLevel && (
                       <LevelBadge
                         level={userLevel}
-                        size="small"
+                        size={getBadgeSizeFromFontSize(
+                          styles.displayName.fontSize,
+                        )}
                         style={styles.levelBadge}
+                        iconOnly={true}
                       />
                     )}
                   </View>
@@ -794,7 +806,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 2,
     },
     levelBadge: {
       transform: [{ scale: 0.85 }],

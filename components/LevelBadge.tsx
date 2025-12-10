@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    Animated,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native'
 
 export type StrengthLevel =
@@ -28,9 +28,10 @@ const LEVEL_COLORS: Record<StrengthLevel, string> = {
 
 interface LevelBadgeProps {
   level: StrengthLevel
-  size?: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large' | 'xl'
   style?: ViewStyle
   showTooltipOnPress?: boolean
+  iconOnly?: boolean
 }
 
 export function LevelBadge({
@@ -38,16 +39,18 @@ export function LevelBadge({
   size = 'medium',
   style,
   showTooltipOnPress = true,
+  iconOnly = false,
 }: LevelBadgeProps) {
   const color = LEVEL_COLORS[level]
   const [showTooltip, setShowTooltip] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<any>(null)
 
   const dimensions = {
     small: { container: 26, icon: 16, border: 2, fontSize: 10 },
     medium: { container: 34, icon: 20, border: 2.5, fontSize: 11 },
     large: { container: 48, icon: 28, border: 3, fontSize: 12 },
+    xl: { container: 120, icon: 70, border: 6, fontSize: 24 },
   }
 
   const dim = dimensions[size]
@@ -80,7 +83,20 @@ export function LevelBadge({
     }, 2000)
   }, [showTooltipOnPress, fadeAnim])
 
-  const badge = (
+  const badge = iconOnly ? (
+    <Image
+      source={require('../assets/images/bicep-icon.png')}
+      style={[
+        {
+          width: dim.icon,
+          height: dim.icon,
+          tintColor: color,
+        },
+        style,
+      ]}
+      resizeMode="contain"
+    />
+  ) : (
     <View
       style={[
         styles.container,

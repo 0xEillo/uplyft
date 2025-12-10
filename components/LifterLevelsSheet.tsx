@@ -1,18 +1,18 @@
+import { LevelBadge } from '@/components/LevelBadge'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { StrengthLevel } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
-import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { useEffect, useRef } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -21,7 +21,6 @@ interface LifterLevelsSheetProps {
   onClose: () => void
   currentLevel: StrengthLevel
   progressToNext: number
-  gender?: string | null
 }
 
 const LEVEL_ORDER: StrengthLevel[] = [
@@ -33,29 +32,7 @@ const LEVEL_ORDER: StrengthLevel[] = [
   'World Class',
 ]
 
-const LEVEL_IMAGES = {
-  male: {
-    Beginner: require('../assets/images/lifter-levels/male_images/1.png'),
-    Novice: require('../assets/images/lifter-levels/male_images/2.png'),
-    Intermediate: require('../assets/images/lifter-levels/male_images/3.png'),
-    Advanced: require('../assets/images/lifter-levels/male_images/4.png'),
-    Elite: require('../assets/images/lifter-levels/male_images/5.png'),
-    'World Class': require('../assets/images/lifter-levels/male_images/6.png'),
-  },
-  female: {
-    Beginner: require('../assets/images/lifter-levels/female_images/1.png'),
-    Novice: require('../assets/images/lifter-levels/female_images/2.png'),
-    Intermediate: require('../assets/images/lifter-levels/female_images/3.png'),
-    Advanced: require('../assets/images/lifter-levels/female_images/4.png'),
-    Elite: require('../assets/images/lifter-levels/female_images/5.png'),
-    'World Class': require('../assets/images/lifter-levels/female_images/6.png'),
-  },
-}
 
-const getLevelImage = (level: StrengthLevel, gender?: string | null) => {
-  const g = gender === 'female' ? 'female' : 'male'
-  return LEVEL_IMAGES[g][level]
-}
 
 const LEVEL_COLORS: Record<StrengthLevel, string> = {
   Beginner: '#9CA3AF',
@@ -75,7 +52,6 @@ export function LifterLevelsSheet({
   onClose,
   currentLevel,
   progressToNext,
-  gender,
 }: LifterLevelsSheetProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -187,15 +163,12 @@ export function LifterLevelsSheet({
                       <Text style={styles.levelNumber}>LEVEL {index + 1}</Text>
                     </View>
 
-                    {/* Character Image */}
+                    {/* Character Image -> Level Badge */}
                     <View style={styles.imageContainer}>
-                      <Image
-                        source={getLevelImage(level, gender)}
-                        style={[
-                          styles.characterImage,
-                          locked && styles.characterImageLocked,
-                        ]}
-                        contentFit="contain"
+                      <LevelBadge
+                        level={level}
+                        size="xl"
+                        showTooltipOnPress={false}
                       />
                       {locked && (
                         <View style={styles.lockOverlay}>

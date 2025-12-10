@@ -28,9 +28,9 @@ import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 
-function ElevatedPlusButton() {
-  const colors = useThemedColors()
+function TikTokPlusButton() {
   const router = useRouter()
+  const colors = useThemedColors()
   const [hasDraft, setHasDraft] = useState(false)
 
   // Check for draft on mount and when returning from create-post
@@ -48,19 +48,23 @@ function ElevatedPlusButton() {
     return () => clearInterval(interval)
   }, [])
 
-  const styles = createStyles(colors, hasDraft)
+  const styles = createButtonStyles(colors)
 
   return (
     <TouchableOpacity
-      style={styles.elevatedButton}
+      style={styles.container}
       onPress={() => router.push('/(tabs)/create-post')}
       activeOpacity={0.8}
     >
-      <Ionicons
-        name={hasDraft ? 'document-text' : 'add'}
-        size={24}
-        color={colors.white}
-      />
+      <View style={styles.leftLayer} />
+      <View style={styles.rightLayer} />
+      <View style={styles.centerLayer}>
+        <Ionicons
+          name={hasDraft ? 'document-text' : 'add'}
+          size={22}
+          color={colors.white}
+        />
+      </View>
     </TouchableOpacity>
   )
 }
@@ -146,14 +150,19 @@ function TabLayoutContent() {
           tabBarButton: HapticTab,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: colors.white,
+            backgroundColor: colors.backgroundWhite,
             borderTopWidth: 1,
-            borderTopColor: 'rgba(0, 0, 0, 0.08)',
-            height: 80,
-            paddingBottom: 28,
-            paddingTop: 6,
+            borderTopColor: isDark ? '#333333' : 'rgba(0, 0, 0, 0.08)',
+            height: 79,
+            paddingBottom: 30,
+            paddingTop: 2,
           },
           tabBarInactiveTintColor: colors.textSecondary,
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: '600',
+            marginTop: -4,
+          },
         }}
       >
         {/* Home tab */}
@@ -161,8 +170,12 @@ function TabLayoutContent() {
           name="index"
           options={{
             title: 'Home',
-            tabBarIcon: ({ color }) => (
-              <IconSymbol size={28} name="house.fill" color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <IconSymbol
+                size={30}
+                name={focused ? 'house.fill' : 'house'}
+                color={color}
+              />
             ),
           }}
           listeners={{
@@ -189,8 +202,12 @@ function TabLayoutContent() {
           name="analytics"
           options={{
             title: 'Progress',
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="bar-chart" size={28} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'bar-chart' : 'bar-chart-outline'}
+                size={30}
+                color={color}
+              />
             ),
           }}
         />
@@ -206,10 +223,9 @@ function TabLayoutContent() {
                   flex: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  marginTop: -8,
                 }}
               >
-                <ElevatedPlusButton />
+                <TikTokPlusButton />
               </View>
             ),
           }}
@@ -224,8 +240,12 @@ function TabLayoutContent() {
           name="chat"
           options={{
             title: 'Plan',
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="chatbubble-ellipses" size={28} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+                size={30}
+                color={color}
+              />
             ),
           }}
         />
@@ -234,8 +254,12 @@ function TabLayoutContent() {
           name="profile"
           options={{
             title: 'Profile',
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="person-circle" size={30} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'person' : 'person-outline'}
+                size={30}
+                color={color}
+              />
             ),
           }}
           listeners={{
@@ -307,25 +331,38 @@ export default function TabLayout() {
   )
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useThemedColors>,
-  hasDraft: boolean = false,
-) =>
+const createButtonStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    elevatedButton: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: hasDraft ? '#EF4444' : colors.primary,
+    container: {
+      width: 55,
+      height: 33,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: hasDraft ? '#EF4444' : colors.primary,
-      shadowOffset: {
-        width: 0,
-        height: 6,
-      },
-      shadowOpacity: 0.4,
-      shadowRadius: 12,
-      elevation: 12,
+      position: 'relative',
+    },
+    leftLayer: {
+      position: 'absolute',
+      left: 0,
+      width: 46,
+      height: 33,
+      backgroundColor: colors.primary, // Theme Orange
+      borderRadius: 10,
+    },
+    rightLayer: {
+      position: 'absolute',
+      right: 0,
+      width: 46,
+      height: 33,
+      backgroundColor: colors.primary, // Theme Orange
+      borderRadius: 10,
+    },
+    centerLayer: {
+      width: 46,
+      height: 33,
+      backgroundColor: colors.primary, // Theme Orange
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1,
     },
   })

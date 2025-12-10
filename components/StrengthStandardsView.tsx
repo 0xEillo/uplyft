@@ -1,3 +1,4 @@
+import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -11,7 +12,6 @@ import {
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
@@ -67,29 +67,7 @@ const LEVEL_SCORES: Record<StrengthLevel, number> = {
   'World Class': 6,
 }
 
-const LEVEL_IMAGES = {
-  male: {
-    Beginner: require('../assets/images/lifter-levels/male_images/1.png'),
-    Novice: require('../assets/images/lifter-levels/male_images/2.png'),
-    Intermediate: require('../assets/images/lifter-levels/male_images/3.png'),
-    Advanced: require('../assets/images/lifter-levels/male_images/4.png'),
-    Elite: require('../assets/images/lifter-levels/male_images/5.png'),
-    'World Class': require('../assets/images/lifter-levels/male_images/6.png'),
-  },
-  female: {
-    Beginner: require('../assets/images/lifter-levels/female_images/1.png'),
-    Novice: require('../assets/images/lifter-levels/female_images/2.png'),
-    Intermediate: require('../assets/images/lifter-levels/female_images/3.png'),
-    Advanced: require('../assets/images/lifter-levels/female_images/4.png'),
-    Elite: require('../assets/images/lifter-levels/female_images/5.png'),
-    'World Class': require('../assets/images/lifter-levels/female_images/6.png'),
-  },
-}
 
-const getLevelImage = (level: StrengthLevel, gender?: string | null) => {
-  const g = gender === 'female' ? 'female' : 'male'
-  return LEVEL_IMAGES[g][level]
-}
 
 const ProgressRing = ({
   progress,
@@ -436,35 +414,38 @@ export function StrengthStandardsView() {
                 onPress={() => setShowLevelsSheet(true)}
               >
                 <View style={styles.heroContent}>
-                  <View style={[styles.heroLeft, styles.heroLevelContainer]}>
-                    <Text style={styles.heroLevel}>
-                      {overallLevel.balancedLevel}
-                    </Text>
-                    {overallLevel.weakestGroup && (
-                      <View
-                        style={{
-                          marginTop: 4,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Ionicons
-                          name="warning-outline"
-                          size={14}
-                          color="#F59E0B"
-                          style={{ marginRight: 4 }}
-                        />
-                        <Text
-                          style={{ color: colors.textSecondary, fontSize: 12 }}
+                  <View style={styles.heroLeft}>
+                    <View style={styles.heroLevelContainer}>
+                      <Text style={styles.heroLevel}>
+                        {overallLevel.balancedLevel}
+                      </Text>
+                      {overallLevel.weakestGroup && (
+                        <View
+                          style={{
+                            marginTop: 4,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                          }}
                         >
-                          Held back by {overallLevel.weakestGroup}
-                        </Text>
-                      </View>
-                    )}
-                    <Image
-                      source={getLevelImage(overallLevel.balancedLevel, profile?.gender)}
+                          <Ionicons
+                            name="warning-outline"
+                            size={14}
+                            color="#F59E0B"
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text
+                            style={{ color: colors.textSecondary, fontSize: 12 }}
+                          >
+                            Held back by {overallLevel.weakestGroup}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <LevelBadge
+                      level={overallLevel.balancedLevel}
+                      size="xl"
+                      showTooltipOnPress={false}
                       style={styles.heroLevelImage}
-                      contentFit="contain"
                     />
                   </View>
                 </View>
@@ -695,7 +676,6 @@ export function StrengthStandardsView() {
           onClose={() => setShowLevelsSheet(false)}
           currentLevel={overallLevel.balancedLevel}
           progressToNext={overallLevel.balancedProgress}
-          gender={profile?.gender}
         />
       )}
     </View>
@@ -740,18 +720,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     heroLeft: {
       flex: 1,
-    },
-    heroLevelContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
+    heroLevelContainer: {
+      flex: 1,
+    },
     heroLevelImage: {
-      width: 120,
-      height: 120,
-      marginTop: -20,
-      marginBottom: -20,
-      marginRight: -10,
+      width: 100,
+      height: 100,
     },
     heroLevel: {
       fontSize: 32,

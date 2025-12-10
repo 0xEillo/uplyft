@@ -13,6 +13,13 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+// Helper function to determine badge size based on text fontSize
+const getBadgeSizeFromFontSize = (fontSize: number): 'small' | 'medium' | 'large' | 'xl' => {
+  if (fontSize >= 20) return 'large'
+  if (fontSize >= 15) return 'medium'
+  return 'small'
+}
 import {
   ActivityIndicator,
   FlatList,
@@ -305,8 +312,9 @@ export default function ProfileScreen() {
                       {userLevel && (
                         <LevelBadge
                           level={userLevel}
-                          size="small"
+                          size={getBadgeSizeFromFontSize(styles.displayName.fontSize)}
                           style={styles.levelBadge}
+                          iconOnly={true}
                         />
                       )}
                     </View>
@@ -518,7 +526,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 2,
     },
     levelBadge: {
       transform: [{ scale: 0.85 }],
