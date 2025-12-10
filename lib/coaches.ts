@@ -54,6 +54,8 @@ export const COACHES: Record<CoachId, Coach> = {
   },
 }
 
+export const COACH_OPTIONS = Object.values(COACHES)
+
 export const DEFAULT_COACH_ID: CoachId = 'ross'
 
 export function getCoach(id?: string | null): Coach {
@@ -62,5 +64,3 @@ export function getCoach(id?: string | null): Coach {
   }
   return COACHES[id as CoachId]
 }
-
-export const COACH_OPTIONS = Object.values(COACHES)

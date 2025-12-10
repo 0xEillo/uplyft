@@ -680,7 +680,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#FC4C02',
+      backgroundColor: colors.primary,
       paddingVertical: 14,
       borderRadius: 28,
     },

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useThemedColors } from '@/hooks/useThemedColors'
 
 interface FloatingMenuProps {
   visible: boolean
@@ -19,8 +20,10 @@ export function FloatingMenu({
   onSpeechPress,
   onNotesPress,
 }: FloatingMenuProps) {
+  const colors = useThemedColors()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(20)).current
+  const styles = createStyles(colors)
 
   useEffect(() => {
     if (visible) {
@@ -66,14 +69,14 @@ export function FloatingMenu({
     >
       <TouchableOpacity style={styles.menuItem} onPress={onSpeechPress}>
         <View style={styles.iconCircle}>
-          <Ionicons name="mic" size={24} color="#FF6B35" />
+          <Ionicons name="mic" size={24} color={colors.primary} />
         </View>
         <Text style={styles.menuText}>Speech</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.menuItem} onPress={onNotesPress}>
         <View style={styles.iconCircle}>
-          <Ionicons name="create-outline" size={24} color="#FF6B35" />
+          <Ionicons name="create-outline" size={24} color={colors.primary} />
         </View>
         <Text style={styles.menuText}>Notes</Text>
       </TouchableOpacity>
@@ -81,43 +84,44 @@ export function FloatingMenu({
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      position: 'absolute',
+      bottom: 100,
+      alignSelf: 'center',
+      backgroundColor: colors.white,
+      borderRadius: 16,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      shadowColor: colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+      flexDirection: 'row',
+      gap: 8,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  menuItem: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF5F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  menuText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-})
+    menuItem: {
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    iconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
+    menuText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+    },
+  })

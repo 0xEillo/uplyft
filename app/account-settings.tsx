@@ -4,7 +4,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { COACH_OPTIONS, getCoach } from '@/lib/coaches'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types/database.types'
@@ -672,29 +672,14 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <View style={styles.unitToggleContainer}>
-                {COACH_OPTIONS.map((coach) => (
-                  <TouchableOpacity
-                    key={coach.id}
-                    style={[
-                      styles.unitButton,
-                      profile?.coach === coach.id && styles.unitButtonActive,
-                    ]}
-                    onPress={() => handleUpdateCoach(coach.id)}
-                    disabled={isCoachUpdating}
-                  >
-                    <Text
-                      style={[
-                        styles.unitButtonText,
-                        profile?.coach === coach.id &&
-                          styles.unitButtonTextActive,
-                      ]}
-                    >
-                      {coach.id.charAt(0).toUpperCase() + coach.id.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TouchableOpacity
+                style={styles.unitToggleContainer}
+                onPress={() => router.push('/coach-selection')}
+              >
+                <View style={styles.unitButton}>
+                  <Text style={styles.unitButtonText}>Change</Text>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* Divider */}

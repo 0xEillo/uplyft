@@ -118,7 +118,7 @@ export function RatingPromptModal() {
                     key={star}
                     name="star"
                     size={24}
-                    color="#FF6B35"
+                    color={colors.primary}
                     style={styles.star}
                   />
                 ))}
@@ -200,7 +200,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: '#FF6B35',
+      backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -229,7 +229,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginHorizontal: 2,
     },
     primaryButton: {
-      backgroundColor: '#FF6B35',
+      backgroundColor: colors.primary,
       borderRadius: 12,
       paddingVertical: 16,
       paddingHorizontal: 24,

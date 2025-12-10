@@ -2,6 +2,7 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
+import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -13,6 +14,16 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+    ActivityIndicator,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 // Helper function to determine badge size based on text fontSize
 const getBadgeSizeFromFontSize = (fontSize: number): 'small' | 'medium' | 'large' | 'xl' => {
@@ -20,16 +31,6 @@ const getBadgeSizeFromFontSize = (fontSize: number): 'small' | 'medium' | 'large
   if (fontSize >= 15) return 'medium'
   return 'small'
 }
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ProfileScreen() {
   const { user } = useAuth()
@@ -387,75 +388,15 @@ export default function ProfileScreen() {
               <View style={styles.calendarHeader}>
                 <Text style={styles.calendarTitle}>CALENDAR</Text>
               </View>
-              <TouchableOpacity
-                style={styles.weeklyStatsSection}
+              
+              <WeeklyStatsCard
+                streak={currentStreak}
+                workouts={weeklyWorkouts}
+                volume={weeklyVolume}
+                weightUnit={weightUnit}
+                activity={weeklyActivity}
                 onPress={() => router.push('/workout-calendar')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.weeklyStatsHeader}>
-                  <Text style={styles.weeklyStatsTitle}>THIS WEEK</Text>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </View>
-
-                <View style={styles.weeklyStats}>
-                  <View style={styles.weeklyStat}>
-                    <Text style={styles.weeklyStatNumber}>{currentStreak}</Text>
-                    <Text style={styles.weeklyStatLabel}>Streak</Text>
-                  </View>
-                  <View style={styles.weeklyStatDivider} />
-                  <View style={styles.weeklyStat}>
-                    <Text style={styles.weeklyStatNumber}>
-                      {weeklyWorkouts}
-                    </Text>
-                    <Text style={styles.weeklyStatLabel}>Workouts</Text>
-                  </View>
-                  <View style={styles.weeklyStatDivider} />
-                  <View style={styles.weeklyStat}>
-                    <Text style={styles.weeklyStatNumber}>
-                      {(weightUnit === 'lb'
-                        ? (weeklyVolume * 2.20462) / 1000
-                        : weeklyVolume / 1000
-                      ).toFixed(1)}
-                      k
-                    </Text>
-                    <Text style={styles.weeklyStatLabel}>
-                      Volume ({weightUnit})
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.weekDaysRow}>
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
-                    const isToday = new Date().getDay() === index
-                    return (
-                      <View key={index} style={styles.dayColumn}>
-                        <View
-                          style={[
-                            styles.activityDot,
-                            weeklyActivity[index] && styles.activityDotActive,
-                            !weeklyActivity[index] &&
-                              isToday &&
-                              styles.activityDotToday,
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.dayLabel,
-                            (isToday || weeklyActivity[index]) &&
-                              styles.dayLabelActive,
-                          ]}
-                        >
-                          {day}
-                        </Text>
-                      </View>
-                    )
-                  })}
-                </View>
-              </TouchableOpacity>
+              />
 
               {/* Workouts Header */}
               <View style={styles.workoutsHeader}>
@@ -588,82 +529,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
       color: colors.textSecondary,
       letterSpacing: 1,
-    },
-    weeklyStatsSection: {
-      backgroundColor: colors.backgroundLight,
-      marginHorizontal: 20,
-      marginBottom: 0,
-      borderRadius: 12,
-      padding: 16,
-    },
-    weeklyStatsHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
-    },
-    weeklyStatsTitle: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.textSecondary,
-      letterSpacing: 1,
-    },
-    weeklyStats: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    weeklyStat: {
-      flex: 1,
-    },
-    weeklyStatNumber: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 2,
-    },
-    weeklyStatLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '500',
-    },
-    weeklyStatDivider: {
-      width: 1,
-      height: 40,
-      backgroundColor: colors.border,
-      marginHorizontal: 16,
-    },
-    weekDaysRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingHorizontal: 4,
-    },
-    dayColumn: {
-      alignItems: 'center',
-      gap: 6,
-    },
-    activityDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: colors.border,
-    },
-    activityDotActive: {
-      backgroundColor: colors.primary,
-    },
-    activityDotToday: {
-      borderWidth: 2,
-      borderColor: colors.primary,
-      backgroundColor: 'transparent',
-    },
-    dayLabel: {
-      fontSize: 11,
-      color: colors.textSecondary,
-      fontWeight: '500',
-    },
-    dayLabelActive: {
-      color: colors.text,
-      fontWeight: '700',
     },
     workoutsHeader: {
       paddingHorizontal: 20,

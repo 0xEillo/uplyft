@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useThemedColors } from '@/hooks/useThemedColors'
 
 interface ProBadgeProps {
   onPress?: () => void
@@ -6,7 +7,8 @@ interface ProBadgeProps {
 }
 
 export function ProBadge({ onPress, size = 'medium' }: ProBadgeProps) {
-  const styles = createStyles()
+  const colors = useThemedColors()
+  const styles = createStyles(colors)
 
   const sizeStyle = size === 'small' ? styles.badgeSmall : size === 'large' ? styles.badgeLarge : styles.badgeMedium
   const textStyle = size === 'small' ? styles.textSmall : size === 'large' ? styles.textLarge : styles.textMedium
@@ -25,13 +27,13 @@ export function ProBadge({ onPress, size = 'medium' }: ProBadgeProps) {
     )
   }
 
-  return <Text style={[styles.badge, sizeStyle, { backgroundColor: '#FF7E47', paddingHorizontal: 12 }]}>{BadgeContent}</Text>
+  return <Text style={[styles.badge, sizeStyle, { backgroundColor: colors.primary, paddingHorizontal: 12 }]}>{BadgeContent}</Text>
 }
 
-const createStyles = () =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     badge: {
-      backgroundColor: '#FF7E47',
+      backgroundColor: colors.primary,
       borderRadius: 8,
       justifyContent: 'center',
       alignItems: 'center',
@@ -51,16 +53,16 @@ const createStyles = () =>
     textSmall: {
       fontSize: 10,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: colors.white,
     },
     textMedium: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: colors.white,
     },
     textLarge: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: colors.white,
     },
   })

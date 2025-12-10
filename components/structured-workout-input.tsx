@@ -781,7 +781,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
     },
     timerTextOverTime: {
-      color: '#FF6B35',
+      color: colors.primary,
       fontWeight: '600',
     },
     timerTargetText: {
