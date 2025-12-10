@@ -6,22 +6,22 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
@@ -443,7 +443,7 @@ export function StrengthStandardsView() {
                     </View>
                     <LevelBadge
                       level={overallLevel.balancedLevel}
-                      size="xl"
+                      size="large"
                       showTooltipOnPress={false}
                       style={styles.heroLevelImage}
                     />

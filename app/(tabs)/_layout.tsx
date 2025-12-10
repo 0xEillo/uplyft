@@ -12,12 +12,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
-    ScrollToTopProvider,
-    useScrollToTop,
+  ScrollToTopProvider,
+  useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
 import {
-    SuccessOverlayProvider,
-    useSuccessOverlay,
+  SuccessOverlayProvider,
+  useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -203,11 +203,13 @@ function TabLayoutContent() {
           options={{
             title: 'Progress',
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'bar-chart' : 'bar-chart-outline'}
-                size={30}
-                color={color}
-              />
+              <View style={{ overflow: 'visible', marginBottom: -1 }}>
+                <Ionicons
+                  name={focused ? 'bar-chart' : 'bar-chart-outline'}
+                  size={30}
+                  color={color}
+                />
+              </View>
             ),
           }}
         />
@@ -242,7 +244,11 @@ function TabLayoutContent() {
             title: 'Plan',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
-                name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+                name={
+                  focused
+                    ? 'chatbubble-ellipses'
+                    : 'chatbubble-ellipses-outline'
+                }
                 size={30}
                 color={color}
               />
