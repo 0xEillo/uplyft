@@ -29,7 +29,7 @@ interface StatsViewProps {
   userId: string
 }
 
-type TimeRange = '7D' | '30D' | '3M' | '6M' | 'ALL'
+type TimeRange = 'M' | '6M' | '1Y' | 'ALL'
 
 interface MuscleGroupData {
   muscleGroup: string
@@ -56,10 +56,22 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
   const { weightUnit, formatWeight } = useWeightUnits()
   const { isProMember } = useSubscription()
 
-  // Unified time range for all stats (default to 7D for free users, 30D for pro)
+  // Unified time range for all stats (default to M for free users, 6M for pro)
   const [timeRange, setTimeRange] = useState<TimeRange>(() =>
-    isProMember ? '30D' : '7D',
+    isProMember ? '6M' : 'M',
   )
+
+  // Info modal state
+  const [infoModalVisible, setInfoModalVisible] = useState(false)
+  const [infoModalContent, setInfoModalContent] = useState<{
+    title: string
+    description: string
+  } | null>(null)
+
+  const showInfo = (title: string, description: string) => {
+    setInfoModalContent({ title, description })
+    setInfoModalVisible(true)
+  }
 
   // Strength Progress State
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -132,14 +144,12 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
   // Helper to convert time range to days back
   const getDaysBack = useCallback((range: TimeRange): number | undefined => {
     switch (range) {
-      case '7D':
-        return 7
-      case '30D':
+      case 'M':
         return 30
-      case '3M':
-        return 90
       case '6M':
         return 180
+      case '1Y':
+        return 365
       case 'ALL':
         return undefined
     }
@@ -346,9 +356,9 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
     }
 
     // Aggregate based on time range
-    if (timeRange === '7D' || timeRange === '30D') {
+    if (timeRange === 'M') {
       return filtered
-    } else if (timeRange === '3M' || timeRange === '6M') {
+    } else if (timeRange === '6M') {
       return aggregateByWeek(filtered)
     } else {
       return aggregateByMonth(filtered)
@@ -421,9 +431,9 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
     if (volumeProgressData.length === 0) return []
 
     // Aggregate based on time range
-    if (timeRange === '7D' || timeRange === '30D') {
+    if (timeRange === 'M') {
       return volumeProgressData
-    } else if (timeRange === '3M' || timeRange === '6M') {
+    } else if (timeRange === '6M') {
       return aggregateVolumeByWeek(volumeProgressData)
     } else {
       return aggregateVolumeByMonth(volumeProgressData)
@@ -477,14 +487,12 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
   const getTimeRangeLabel = () => {
     switch (timeRange) {
-      case '7D':
-        return '7 days'
-      case '30D':
-        return '30 days'
-      case '3M':
-        return '3 months'
+      case 'M':
+        return '1 month'
       case '6M':
         return '6 months'
+      case '1Y':
+        return '1 year'
       case 'ALL':
         return 'All time'
     }
@@ -548,8 +556,8 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
       {/* Unified Time Range Selector */}
       <View style={styles.timeRangeHeader}>
         <View style={styles.timeRangeContainer}>
-          {(['7D', '30D', '3M', '6M', 'ALL'] as TimeRange[]).map((range) => {
-            const isRestricted = !isProMember && range !== '7D'
+          {(['M', '6M', '1Y', 'ALL'] as TimeRange[]).map((range) => {
+            const isRestricted = !isProMember && range !== 'M'
             return (
               <TouchableOpacity
                 key={range}
@@ -595,6 +603,21 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
       {/* STRENGTH PROGRESS SECTION */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionHeaderText}>Strength Progress</Text>
+        <TouchableOpacity
+          onPress={() =>
+            showInfo(
+              'Strength Progress',
+              "Track how your strength improves over time for each exercise. A rising line means you're getting stronger — lifting more weight or doing more reps than before.",
+            )
+          }
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.card}>
@@ -733,6 +756,21 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
       {/* MUSCLE BALANCE SECTION */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionHeaderText}>Muscle Balance</Text>
+        <TouchableOpacity
+          onPress={() =>
+            showInfo(
+              'Muscle Balance',
+              "See which muscle groups you're training the most. This helps you spot imbalances — if one bar is much longer than others, you might be overtraining that area and neglecting others.",
+            )
+          }
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.card}>
@@ -797,7 +835,22 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
       {/* VOLUME OVER TIME SECTION */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>VOLUME OVER TIME</Text>
+        <Text style={styles.sectionHeaderText}>Volume Over Time</Text>
+        <TouchableOpacity
+          onPress={() =>
+            showInfo(
+              'Volume Over Time',
+              "Track your total training volume (weight × reps) over time. Increasing volume is one of the best indicators of progress — it means you're doing more work and building more muscle.",
+            )
+          }
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.card}>
@@ -1030,6 +1083,32 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
         title="Unlock Volume Analytics"
         message="Track your training volume over time to optimize your progression."
       />
+
+      {/* Info Modal */}
+      <Modal
+        visible={infoModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInfoModalVisible(false)}
+      >
+        <Pressable
+          style={styles.infoModalOverlay}
+          onPress={() => setInfoModalVisible(false)}
+        >
+          <View style={styles.infoModalContent}>
+            <Text style={styles.infoModalTitle}>{infoModalContent?.title}</Text>
+            <Text style={styles.infoModalDescription}>
+              {infoModalContent?.description}
+            </Text>
+            <TouchableOpacity
+              style={styles.infoModalButton}
+              onPress={() => setInfoModalVisible(false)}
+            >
+              <Text style={styles.infoModalButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   )
 })
@@ -1044,12 +1123,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 32,
     },
     timeRangeHeader: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.background,
       paddingTop: 16,
       paddingBottom: 4,
       paddingHorizontal: 20,
     },
     sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
       paddingHorizontal: 20,
       paddingTop: 20,
       paddingBottom: 12,
@@ -1059,11 +1141,49 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       color: colors.textSecondary,
     },
+    infoModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    infoModalContent: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 320,
+    },
+    infoModalTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    infoModalDescription: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 20,
+    },
+    infoModalButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    infoModalButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.white,
+    },
     card: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.background,
       paddingVertical: 16,
       paddingHorizontal: 20,
-      marginBottom: 2,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
     exerciseSelector: {
       flexDirection: 'row',

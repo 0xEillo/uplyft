@@ -2,19 +2,19 @@ import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-    Exercise,
-    Follow,
-    FollowRelationshipStatus,
-    FollowRequest,
-    ParsedWorkout,
-    Profile,
-    WorkoutComment,
-    WorkoutLike,
-    WorkoutRoutine,
-    WorkoutRoutineWithDetails,
-    WorkoutSession,
-    WorkoutSessionWithDetails,
-    WorkoutSocialStats,
+  Exercise,
+  Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
+  ParsedWorkout,
+  Profile,
+  WorkoutComment,
+  WorkoutLike,
+  WorkoutRoutine,
+  WorkoutRoutineWithDetails,
+  WorkoutSession,
+  WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -95,7 +95,7 @@ export const database = {
       }
       return data as Profile
     },
-    
+
     async getByIdOrNull(userId: string) {
       const { data, error } = await supabase
         .from('profiles')
@@ -264,7 +264,7 @@ export const database = {
         .maybeSingle()
 
       if (error) throw error
-      
+
       // Return nulls if profile doesn't exist yet (e.g., for new anonymous users)
       if (!data) {
         return {
@@ -273,7 +273,7 @@ export const database = {
           trial_start_date: null,
         }
       }
-      
+
       return data as {
         trial_notification_id: string | null
         trial_notification_scheduled_at: string | null
@@ -791,7 +791,7 @@ export const database = {
       sessions?.forEach((session: any) => {
         // Sort exercises in session by created_at (though usually consistent)
         const sessionExercises = session.workout_exercises || []
-        
+
         sessionExercises.forEach((we: any) => {
           if (we.exercise && !exerciseMap.has(we.exercise.id)) {
             exerciseMap.set(we.exercise.id, we.exercise)
@@ -840,8 +840,6 @@ export const database = {
         .slice(0, limit)
         .map(([muscle]) => muscle)
     },
-
-
 
     async getExercisesWithData(userId: string) {
       const { data, error } = await supabase
@@ -1121,7 +1119,6 @@ export const database = {
 
       if (sessionError) throw sessionError
 
-
       // Process exercises one by one to avoid duplicate key violations
       const exerciseMap = new Map<string, Exercise>()
 
@@ -1317,14 +1314,6 @@ export const database = {
       const endOfWeek = new Date(startOfWeek)
       endOfWeek.setDate(startOfWeek.getDate() + 7)
 
-      console.log('[getWeeklyWorkoutCount] Debug:', {
-        targetDate: targetDate.toISOString(),
-        startOfWeek: startOfWeek.toISOString(),
-        endOfWeek: endOfWeek.toISOString(),
-        userId,
-        workoutId,
-      })
-
       const { data, error } = await supabase
         .from('workout_sessions')
         .select('id, date, created_at')
@@ -1338,12 +1327,6 @@ export const database = {
 
       const index = data?.findIndex((w) => w.id === workoutId) ?? -1
       const count = index !== -1 ? index + 1 : 0
-
-      console.log('[getWeeklyWorkoutCount] Result:', {
-        totalInWeek: data?.length,
-        foundIndex: index,
-        count,
-      })
 
       return count
     },
