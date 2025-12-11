@@ -413,6 +413,7 @@ export default function FeedScreen() {
         index={index}
         isNew={workout.id === newWorkoutId}
         isDeleting={workout.id === deletingWorkoutId}
+        isFirst={index === 0}
         onDelete={() => {
           // If already marked for deletion, actually remove from state
           if (workout.id === deletingWorkoutId) {
@@ -454,13 +455,13 @@ export default function FeedScreen() {
           <View style={styles.headerTitleContainer}>
             {isProMember ? (
               <NavbarIsland>
-              <TouchableOpacity
-                style={styles.repAiBadge}
-                onPress={() => router.push('/(tabs)/chat')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.repAiBadgeText}>Rep AI</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.repAiBadge}
+                  onPress={() => router.push('/(tabs)/chat')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.repAiBadgeText}>Rep AI</Text>
+                </TouchableOpacity>
               </NavbarIsland>
             ) : (
               <TouchableOpacity

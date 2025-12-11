@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -986,24 +986,19 @@ export default function CreateRoutineScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
-            <>
-              <TouchableOpacity
-                onPress={handleCancel}
-                style={styles.headerButton}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
+            <TouchableOpacity onPress={handleCancel}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          }
+          centerContent={
+            <NavbarIsland>
               <Text style={styles.headerTitle}>
                 {isEditMode ? 'Edit Routine' : 'Create Routine'}
               </Text>
-            </>
+            </NavbarIsland>
           }
           rightContent={
-            <TouchableOpacity
-              onPress={handleSave}
-              style={styles.headerButton}
-              disabled={isSaving}
-            >
+            <TouchableOpacity onPress={handleSave} disabled={isSaving}>
               {isSaving ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -1016,7 +1011,6 @@ export default function CreateRoutineScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.flex}
         >
-
           <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}
@@ -1216,7 +1210,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
     },
     flex: {
       flex: 1,
@@ -1227,18 +1221,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       backgroundColor: colors.background,
     },
-    headerButton: {
-      zIndex: 1,
-    },
     headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 17,
+      fontWeight: '600',
       color: colors.text,
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      textAlign: 'center',
-      pointerEvents: 'none',
     },
     cancelText: {
       fontSize: 16,
@@ -1258,11 +1244,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 16,
     },
     sectionLabel: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
       marginBottom: 8,
     },
     input: {

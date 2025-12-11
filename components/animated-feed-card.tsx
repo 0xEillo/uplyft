@@ -9,6 +9,7 @@ interface AnimatedFeedCardProps {
   index: number
   isNew?: boolean
   isDeleting?: boolean
+  isFirst?: boolean
 }
 
 /**
@@ -22,6 +23,7 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
   index,
   isNew = false,
   isDeleting = false,
+  isFirst = false,
 }: AnimatedFeedCardProps) {
   const slideAnim = useRef(new Animated.Value(isNew ? -100 : 0)).current
   const opacityAnim = useRef(new Animated.Value(isNew ? 0 : 1)).current
@@ -94,7 +96,11 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
         opacity: opacityAnim,
       }}
     >
-      <AsyncPrFeedCard workout={workout} onDelete={onDelete} />
+      <AsyncPrFeedCard
+        workout={workout}
+        onDelete={onDelete}
+        isFirst={isFirst}
+      />
     </Animated.View>
   )
 })

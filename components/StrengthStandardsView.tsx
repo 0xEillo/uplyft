@@ -438,7 +438,7 @@ export function StrengthStandardsView() {
           {overallLevel && (
             <View style={styles.heroSection}>
               <View style={styles.heroHeader}>
-                <Text style={styles.heroTitle}>LIFTER LEVEL</Text>
+                <Text style={styles.heroTitle}>Lifter Level</Text>
                 {overallLevel.weakestGroup && (
                   <View style={styles.weakPointContainer}>
                     <Ionicons
@@ -507,7 +507,7 @@ export function StrengthStandardsView() {
 
           {/* Section Header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>YOUR MUSCLES</Text>
+            <Text style={styles.sectionHeaderText}>Your Muscles</Text>
           </View>
 
           {/* Muscle Groups */}
@@ -677,10 +677,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 12,
     },
     heroTitle: {
-      fontSize: 13,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
     },
     weakPointContainer: {
       flexDirection: 'row',
@@ -764,10 +763,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 12,
     },
     sectionHeaderText: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
     },
 
 

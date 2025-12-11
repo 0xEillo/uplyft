@@ -164,7 +164,12 @@ export function WorkoutDetailView({
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
+      >
         <BaseNavbar
           leftContent={
             <NavbarIsland>
@@ -174,9 +179,9 @@ export function WorkoutDetailView({
             </NavbarIsland>
           }
           centerContent={
-              <Text style={[styles.headerTitle, { color: colors.text }]}>
-                Workout Detail
-              </Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Workout Detail
+            </Text>
           }
           rightContent={
             <TouchableOpacity
@@ -249,7 +254,7 @@ export function WorkoutDetailView({
               style={[
                 styles.topCard,
                 {
-                  backgroundColor: colors.feedCardBackground,
+                  backgroundColor: colors.background,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -310,7 +315,7 @@ export function WorkoutDetailView({
               style={[
                 styles.topCard,
                 {
-                  backgroundColor: colors.feedCardBackground,
+                  backgroundColor: colors.background,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -446,7 +451,7 @@ export function WorkoutDetailView({
             <View
               style={[
                 styles.exercisesSection,
-                { backgroundColor: colors.feedCardBackground },
+                { backgroundColor: colors.background },
               ]}
             >
               <Text
@@ -485,10 +490,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   menuButton: {
-      zIndex: 1,
-      padding: 4,
-    },
-    backButton: {
+    zIndex: 1,
+    padding: 4,
+  },
+  backButton: {
     zIndex: 1,
   },
   menuDropdown: {
@@ -591,9 +596,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 16,

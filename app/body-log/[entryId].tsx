@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Stack, useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
     ActivityIndicator,
@@ -1629,10 +1629,8 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   overviewTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 12,
     paddingLeft: 4,
   },

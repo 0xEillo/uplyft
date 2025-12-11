@@ -58,12 +58,14 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
   // Unified time range for all stats (default to 7D for free users, 30D for pro)
   const [timeRange, setTimeRange] = useState<TimeRange>(() =>
-    isProMember ? '30D' : '7D'
+    isProMember ? '30D' : '7D',
   )
 
   // Strength Progress State
   const [exercises, setExercises] = useState<Exercise[]>([])
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
+    null,
+  )
   const [showExercisePicker, setShowExercisePicker] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [progressData, setProgressData] = useState<
@@ -72,7 +74,9 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
   const [isLoadingStrength, setIsLoadingStrength] = useState(false)
 
   // Volume/Muscle Balance State
-  const [distributionData, setDistributionData] = useState<MuscleGroupData[]>([])
+  const [distributionData, setDistributionData] = useState<MuscleGroupData[]>(
+    [],
+  )
   const [isLoadingMuscle, setIsLoadingMuscle] = useState(false)
 
   // Volume Over Time State
@@ -147,7 +151,10 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
     try {
       const daysBack = getDaysBack(timeRange)
 
-      const distribution = await database.stats.getMuscleGroupDistribution(userId, daysBack)
+      const distribution = await database.stats.getMuscleGroupDistribution(
+        userId,
+        daysBack,
+      )
       setDistributionData(distribution)
     } catch (error) {
       console.error('Error loading volume data:', error)
@@ -421,7 +428,12 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
     } else {
       return aggregateVolumeByMonth(volumeProgressData)
     }
-  }, [volumeProgressData, timeRange, aggregateVolumeByWeek, aggregateVolumeByMonth])
+  }, [
+    volumeProgressData,
+    timeRange,
+    aggregateVolumeByWeek,
+    aggregateVolumeByMonth,
+  ])
 
   // Transform data for strength chart
   const strengthChartData = filteredStrengthData.map((point) => ({
@@ -582,7 +594,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
       {/* STRENGTH PROGRESS SECTION */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>STRENGTH PROGRESS</Text>
+        <Text style={styles.sectionHeaderText}>Strength Progress</Text>
       </View>
 
       <View style={styles.card}>
@@ -597,7 +609,11 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               {selectedExercise?.name || 'All Exercises'}
             </Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+          <Ionicons
+            name="chevron-down"
+            size={20}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
 
         {/* Stats Cards */}
@@ -716,7 +732,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
       {/* MUSCLE BALANCE SECTION */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>MUSCLE BALANCE</Text>
+        <Text style={styles.sectionHeaderText}>Muscle Balance</Text>
       </View>
 
       <View style={styles.card}>
@@ -799,9 +815,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               <Text
                 style={[
                   styles.statValue,
-                  volumeChange >= 0
-                    ? styles.statPositive
-                    : styles.statNegative,
+                  volumeChange >= 0 ? styles.statPositive : styles.statNegative,
                 ]}
               >
                 {volumeChange >= 0 ? '+' : ''}
@@ -813,88 +827,86 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
         {/* Volume Chart */}
         <View style={styles.chartContainer}>
-              {isLoadingVolume ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-              ) : volumeChartData.length === 0 ? (
-                <View style={styles.emptyState}>
+          {isLoadingVolume ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : volumeChartData.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="trending-up-outline"
+                size={48}
+                color={colors.textPlaceholder}
+              />
+              <Text style={styles.emptyText}>
+                Complete a workout to see your volume over time
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.yAxisLabel}>{`(${weightUnit})`}</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chartScrollContent}
+              >
+                <LineChart
+                  data={volumeChartData}
+                  width={volumeCalculatedWidth}
+                  height={200}
+                  spacing={volumeOptimalSpacing}
+                  initialSpacing={20}
+                  endSpacing={10}
+                  color={colors.primary}
+                  thickness={3}
+                  startFillColor={colors.primaryLight}
+                  endFillColor={colors.white}
+                  startOpacity={0.4}
+                  endOpacity={0.1}
+                  areaChart
+                  hideDataPoints={false}
+                  dataPointsColor={colors.primary}
+                  dataPointsRadius={4}
+                  textColor1={colors.textSecondary}
+                  textShiftY={-8}
+                  textShiftX={-10}
+                  textFontSize={10}
+                  curved
+                  hideYAxisText
+                  yAxisColor={colors.textTertiary}
+                  xAxisColor={colors.textTertiary}
+                  yAxisThickness={2}
+                  xAxisThickness={2}
+                  rulesType="solid"
+                  rulesColor={colors.border}
+                  showVerticalLines
+                  verticalLinesColor={colors.border}
+                  maxValue={Math.ceil(maxVolume * 1.1)}
+                />
+              </ScrollView>
+              <View style={styles.xAxisEndLabel}>
+                <Text style={styles.xAxisEndLabelText}>
+                  {getTimeRangeLabel()}
+                </Text>
+              </View>
+              {volumeNeedsScroll && (
+                <View style={styles.scrollHint}>
                   <Ionicons
-                    name="trending-up-outline"
-                    size={48}
+                    name="chevron-back"
+                    size={16}
                     color={colors.textPlaceholder}
                   />
-                  <Text style={styles.emptyText}>
-                    Complete a workout to see your volume over time
-                  </Text>
+                  <Text style={styles.scrollHintText}>Scroll to see more</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.textPlaceholder}
+                  />
                 </View>
-              ) : (
-                <>
-                  <Text style={styles.yAxisLabel}>{`(${weightUnit})`}</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.chartScrollContent}
-                  >
-                    <LineChart
-                      data={volumeChartData}
-                      width={volumeCalculatedWidth}
-                      height={200}
-                      spacing={volumeOptimalSpacing}
-                      initialSpacing={20}
-                      endSpacing={10}
-                      color={colors.primary}
-                      thickness={3}
-                      startFillColor={colors.primaryLight}
-                      endFillColor={colors.white}
-                      startOpacity={0.4}
-                      endOpacity={0.1}
-                      areaChart
-                      hideDataPoints={false}
-                      dataPointsColor={colors.primary}
-                      dataPointsRadius={4}
-                      textColor1={colors.textSecondary}
-                      textShiftY={-8}
-                      textShiftX={-10}
-                      textFontSize={10}
-                      curved
-                      hideYAxisText
-                      yAxisColor={colors.textTertiary}
-                      xAxisColor={colors.textTertiary}
-                      yAxisThickness={2}
-                      xAxisThickness={2}
-                      rulesType="solid"
-                      rulesColor={colors.border}
-                      showVerticalLines
-                      verticalLinesColor={colors.border}
-                      maxValue={Math.ceil(maxVolume * 1.1)}
-                    />
-                  </ScrollView>
-                  <View style={styles.xAxisEndLabel}>
-                    <Text style={styles.xAxisEndLabelText}>
-                      {getTimeRangeLabel()}
-                    </Text>
-                  </View>
-                  {volumeNeedsScroll && (
-                    <View style={styles.scrollHint}>
-                      <Ionicons
-                        name="chevron-back"
-                        size={16}
-                        color={colors.textPlaceholder}
-                      />
-                      <Text style={styles.scrollHintText}>
-                        Scroll to see more
-                      </Text>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={colors.textPlaceholder}
-                      />
-                    </View>
-                  )}
-                </>
               )}
-            </View>
+            </>
+          )}
+        </View>
       </View>
 
       {/* Exercise Picker Modal */}
@@ -930,7 +942,10 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
           >
             <View style={styles.handleContainer}>
               <View
-                style={[styles.handle, { backgroundColor: colors.textSecondary }]}
+                style={[
+                  styles.handle,
+                  { backgroundColor: colors.textSecondary },
+                ]}
               />
             </View>
 
@@ -995,7 +1010,11 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                     {exercise.name}
                   </Text>
                   {selectedExercise?.id === exercise.id && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    <Ionicons
+                      name="checkmark"
+                      size={20}
+                      color={colors.primary}
+                    />
                   )}
                 </TouchableOpacity>
               ))}
@@ -1036,10 +1055,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 12,
     },
     sectionHeaderText: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
     },
     card: {
       backgroundColor: colors.feedCardBackground,

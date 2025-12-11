@@ -15,18 +15,20 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 // Helper function to determine badge size based on text fontSize
-const getBadgeSizeFromFontSize = (fontSize: number): 'small' | 'medium' | 'large' | 'xl' => {
+const getBadgeSizeFromFontSize = (
+  fontSize: number,
+): 'small' | 'medium' | 'large' | 'xl' => {
   if (fontSize >= 20) return 'large'
   if (fontSize >= 15) return 'medium'
   return 'small'
@@ -47,7 +49,9 @@ export default function ProfileScreen() {
   const [followingCount, setFollowingCount] = useState(0)
   const [workoutCount, setWorkoutCount] = useState(0)
   const [latestWeight, setLatestWeight] = useState<number | null>(null)
-  const [activeRoutineName, setActiveRoutineName] = useState<string | null>(null)
+  const [activeRoutineName, setActiveRoutineName] = useState<string | null>(
+    null,
+  )
 
   // Workouts feed
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
@@ -228,23 +232,22 @@ export default function ProfileScreen() {
       item: WorkoutSessionWithDetails
       index: number
     }) => (
-      <View style={[index === 0 && { marginTop: -12 }]}>
-        <AnimatedFeedCard
-          key={workout.id}
-          workout={workout}
-          index={index}
-          isNew={false}
-          isDeleting={workout.id === deletingWorkoutId}
-          onDelete={() => {
-            if (workout.id === deletingWorkoutId) {
-              setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
-              setDeletingWorkoutId(null)
-            } else {
-              setDeletingWorkoutId(workout.id)
-            }
-          }}
-        />
-      </View>
+      <AnimatedFeedCard
+        key={workout.id}
+        workout={workout}
+        index={index}
+        isNew={false}
+        isDeleting={workout.id === deletingWorkoutId}
+        isFirst={index === 0}
+        onDelete={() => {
+          if (workout.id === deletingWorkoutId) {
+            setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
+            setDeletingWorkoutId(null)
+          } else {
+            setDeletingWorkoutId(workout.id)
+          }
+        }}
+      />
     ),
     [deletingWorkoutId],
   )
@@ -310,7 +313,9 @@ export default function ProfileScreen() {
                 {/* Avatar and Name Row */}
                 <View style={styles.profileTop}>
                   {/* Avatar */}
-                  <TouchableOpacity onPress={() => router.push('/edit-profile')}>
+                  <TouchableOpacity
+                    onPress={() => router.push('/edit-profile')}
+                  >
                     {profile?.avatar_url ? (
                       <Image
                         source={{ uri: profile.avatar_url }}
@@ -318,7 +323,11 @@ export default function ProfileScreen() {
                       />
                     ) : (
                       <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                        <Ionicons name="person" size={42} color={colors.white} />
+                        <Ionicons
+                          name="person"
+                          size={42}
+                          color={colors.white}
+                        />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -335,7 +344,9 @@ export default function ProfileScreen() {
                       {userLevel && (
                         <LevelBadge
                           level={userLevel}
-                          size={getBadgeSizeFromFontSize(styles.displayName.fontSize)}
+                          size={getBadgeSizeFromFontSize(
+                            styles.displayName.fontSize,
+                          )}
                           style={styles.levelBadge}
                           iconOnly={true}
                         />
@@ -400,30 +411,57 @@ export default function ProfileScreen() {
                 <View style={styles.dashboardCards}>
                   {/* Routines Card */}
                   <TouchableOpacity
-                    style={[styles.dashboardCard, { backgroundColor: colors.feedCardBackground }]}
+                    style={[
+                      styles.dashboardCard,
+                      { backgroundColor: colors.feedCardBackground },
+                    ]}
                     onPress={() => router.push('/routines')}
                   >
                     <View style={styles.cardHeader}>
-                      <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.cardLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         Routines
                       </Text>
-                      <Ionicons name="albums-outline" size={20} color={colors.primary} />
+                      <Ionicons
+                        name="albums-outline"
+                        size={20}
+                        color={colors.primary}
+                      />
                     </View>
-                    <Text style={[styles.cardValue, { color: colors.text }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.cardValue, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
                       {activeRoutineName || 'No Plan'}
                     </Text>
                   </TouchableOpacity>
 
                   {/* Body Log Card */}
                   <TouchableOpacity
-                    style={[styles.dashboardCard, { backgroundColor: colors.feedCardBackground }]}
+                    style={[
+                      styles.dashboardCard,
+                      { backgroundColor: colors.feedCardBackground },
+                    ]}
                     onPress={() => router.push('/body-log')}
                   >
                     <View style={styles.cardHeader}>
-                      <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.cardLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         Body Log
                       </Text>
-                      <Ionicons name="body-outline" size={20} color={colors.primary} />
+                      <Ionicons
+                        name="body-outline"
+                        size={20}
+                        color={colors.primary}
+                      />
                     </View>
                     <Text style={[styles.cardValue, { color: colors.text }]}>
                       {latestWeight ? `${latestWeight.toFixed(1)} kg` : '-- kg'}
@@ -446,7 +484,7 @@ export default function ProfileScreen() {
 
               {/* Workouts Header */}
               <View style={styles.workoutsHeader}>
-                <Text style={styles.workoutsTitle}>RECENT ACTIVITY</Text>
+                <Text style={styles.workoutsTitle}>Recent Activity</Text>
               </View>
             </View>
           }
@@ -607,16 +645,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     workoutsHeader: {
       paddingHorizontal: 20,
-      paddingTop: 24,
+      paddingTop: 16,
       paddingBottom: 12,
-      backgroundColor: colors.feedCardBackground,
-      zIndex: 10,
+      backgroundColor: colors.background,
     },
     workoutsTitle: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
     },
     divider: {
       height: 4,

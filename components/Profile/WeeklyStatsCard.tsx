@@ -1,6 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface WeeklyStatsCardProps {
@@ -22,10 +22,23 @@ export const WeeklyStatsCard = ({
 }: WeeklyStatsCardProps) => {
   const colors = useThemedColors()
   const styles = useMemo(() => createStyles(colors), [colors])
+  const [showStreakLabel, setShowStreakLabel] = useState(false)
+  const [showVolumeLabel, setShowVolumeLabel] = useState(false)
+
+  const handleStreakTap = useCallback(() => {
+    setShowStreakLabel(true)
+    setTimeout(() => setShowStreakLabel(false), 1000)
+  }, [])
+
+  const handleVolumeTap = useCallback(() => {
+    setShowVolumeLabel(true)
+    setTimeout(() => setShowVolumeLabel(false), 1000)
+  }, [])
 
   // Calculate volume display
-  const volumeDisplay = (
-    weightUnit === 'lb' ? (volume * 2.20462) / 1000 : volume / 1000
+  const volumeDisplay = (weightUnit === 'lb'
+    ? (volume * 2.20462) / 1000
+    : volume / 1000
   ).toFixed(1)
 
   return (
@@ -37,35 +50,35 @@ export const WeeklyStatsCard = ({
       >
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          {/* Streak Chip */}
-          <View style={[styles.statChip, styles.streakChip]}>
-            <View style={styles.iconCircleStreak}>
-              <Ionicons name="flame" size={14} color={colors.white} />
-            </View>
-            <View>
-              <Text style={styles.statLabelSmall}>Streak</Text>
-              <Text style={styles.statValue}>
-                {streak} <Text style={styles.statUnit}>weeks</Text>
-              </Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={handleStreakTap}
+            activeOpacity={0.7}
+          >
+            {showStreakLabel && <Text style={styles.statLabel}>Streak</Text>}
+            <Ionicons name="flame" size={16} color={colors.primary} />
+            <Text style={styles.statValue}>
+              {streak} <Text style={styles.statUnit}>weeks</Text>
+            </Text>
+          </TouchableOpacity>
 
-          {/* Workouts Chip */}
-          <View style={[styles.statChip, styles.workoutChip]}>
-            <View style={styles.iconCircleWorkout}>
-              <Ionicons name="barbell" size={14} color={colors.white} />
-            </View>
-            <View>
-              <Text style={styles.statLabelSmall}>Volume</Text>
-              <Text style={styles.statValue}>
-                {volumeDisplay}
-                <Text style={styles.statUnit}>k</Text>
-              </Text>
-            </View>
-          </View>
+          <View style={styles.statDivider} />
+
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={handleVolumeTap}
+            activeOpacity={0.7}
+          >
+            {showVolumeLabel && <Text style={styles.statLabel}>Volume</Text>}
+            <Ionicons name="barbell" size={16} color={colors.primary} />
+            <Text style={styles.statValue}>
+              {volumeDisplay}
+              <Text style={styles.statUnit}>k</Text>
+            </Text>
+          </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
-          
+
           <Ionicons name="chevron-down" size={20} color={colors.textTertiary} />
         </View>
 
@@ -74,7 +87,7 @@ export const WeeklyStatsCard = ({
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
             const isToday = new Date().getDay() === index
             const isActive = activity[index]
-            
+
             const dateNum = (() => {
               const d = new Date()
               const currentDay = d.getDay()
@@ -85,7 +98,9 @@ export const WeeklyStatsCard = ({
 
             return (
               <View key={index} style={styles.dayColumn}>
-                <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
+                <Text
+                  style={[styles.dayLabel, isToday && styles.dayLabelToday]}
+                >
                   {day}
                 </Text>
                 <View style={styles.dayIndicatorContainer}>
@@ -135,43 +150,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: 24,
-      gap: 12,
+      gap: 6,
     },
-    statChip: {
+    statItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 16,
-      gap: 10,
+      gap: 6,
     },
-    streakChip: {
-      backgroundColor: colors.backgroundLight,
-    },
-    workoutChip: {
-      backgroundColor: colors.backgroundLight,
-    },
-    iconCircleStreak: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    iconCircleWorkout: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.textSecondary, // Neutral for volume/workouts
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    statLabelSmall: {
+    statLabel: {
       fontSize: 11,
-      fontWeight: '500',
+      fontWeight: '600',
       color: colors.textSecondary,
-      marginBottom: 0,
+      marginRight: 2,
+    },
+    statDivider: {
+      width: 1,
+      height: 14,
+      backgroundColor: colors.border,
+      marginHorizontal: 10,
     },
     statValue: {
       fontSize: 15,

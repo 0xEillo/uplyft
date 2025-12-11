@@ -18,7 +18,10 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-type RequestProfile = Pick<Profile, 'id' | 'display_name' | 'user_tag' | 'avatar_url'>
+type RequestProfile = Pick<
+  Profile,
+  'id' | 'display_name' | 'user_tag' | 'avatar_url'
+>
 type IncomingRequest = FollowRequest & { follower?: RequestProfile }
 type OutgoingRequest = FollowRequest & { followee?: RequestProfile }
 
@@ -96,7 +99,10 @@ export default function FollowRequestsScreen() {
         setIncoming((prev) => prev.filter((req) => req.id !== requestId))
       } catch (error) {
         console.error('Error responding to follow request:', error)
-        Alert.alert('Error', 'Unable to update the follow request. Please try again.')
+        Alert.alert(
+          'Error',
+          'Unable to update the follow request. Please try again.',
+        )
       } finally {
         markBusy(requestId, false)
       }
@@ -123,7 +129,9 @@ export default function FollowRequestsScreen() {
 
   const renderAvatar = (profile?: RequestProfile) => {
     if (profile?.avatar_url) {
-      return <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+      return (
+        <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+      )
     }
     const initial = profile?.display_name?.[0]?.toUpperCase() ?? '?'
     return (
@@ -137,7 +145,11 @@ export default function FollowRequestsScreen() {
     if (incoming.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Ionicons name="shield-checkmark-outline" size={36} color={colors.textSecondary} />
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={36}
+            color={colors.textSecondary}
+          />
           <Text style={styles.emptyTitle}>No pending requests</Text>
           <Text style={styles.emptyMessage}>
             Followers you approve will immediately see your workouts.
@@ -153,8 +165,12 @@ export default function FollowRequestsScreen() {
         <View key={request.id} style={styles.requestRow}>
           {renderAvatar(follower)}
           <View style={styles.requestInfo}>
-            <Text style={styles.requestName}>{follower?.display_name || 'Athlete'}</Text>
-            <Text style={styles.requestTag}>@{follower?.user_tag || 'unknown'}</Text>
+            <Text style={styles.requestName}>
+              {follower?.display_name || 'Athlete'}
+            </Text>
+            <Text style={styles.requestTag}>
+              @{follower?.user_tag || 'unknown'}
+            </Text>
           </View>
           <View style={styles.incomingActions}>
             <TouchableOpacity
@@ -165,7 +181,11 @@ export default function FollowRequestsScreen() {
               {isBusy ? (
                 <ActivityIndicator size="small" color={colors.error} />
               ) : (
-                <Text style={[styles.requestButtonText, styles.declineButtonText]}>Decline</Text>
+                <Text
+                  style={[styles.requestButtonText, styles.declineButtonText]}
+                >
+                  Decline
+                </Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -189,10 +209,15 @@ export default function FollowRequestsScreen() {
     if (outgoing.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Ionicons name="timer-outline" size={36} color={colors.textSecondary} />
+          <Ionicons
+            name="timer-outline"
+            size={36}
+            color={colors.textSecondary}
+          />
           <Text style={styles.emptyTitle}>No pending invites</Text>
           <Text style={styles.emptyMessage}>
-            Send requests to private athletes from their profile or the search tab.
+            Send requests to private athletes from their profile or the search
+            tab.
           </Text>
         </View>
       )
@@ -205,8 +230,12 @@ export default function FollowRequestsScreen() {
         <View key={request.id} style={styles.requestRow}>
           {renderAvatar(followee)}
           <View style={styles.requestInfo}>
-            <Text style={styles.requestName}>{followee?.display_name || 'Athlete'}</Text>
-            <Text style={styles.requestTag}>@{followee?.user_tag || 'unknown'}</Text>
+            <Text style={styles.requestName}>
+              {followee?.display_name || 'Athlete'}
+            </Text>
+            <Text style={styles.requestTag}>
+              @{followee?.user_tag || 'unknown'}
+            </Text>
             <Text style={styles.outgoingStatus}>Waiting for approval</Text>
           </View>
           <TouchableOpacity
@@ -217,7 +246,11 @@ export default function FollowRequestsScreen() {
             {isBusy ? (
               <ActivityIndicator size="small" color={colors.error} />
             ) : (
-              <Text style={[styles.requestButtonText, styles.declineButtonText]}>Cancel</Text>
+              <Text
+                style={[styles.requestButtonText, styles.declineButtonText]}
+              >
+                Cancel
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -228,7 +261,10 @@ export default function FollowRequestsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Follow Requests</Text>
@@ -243,7 +279,10 @@ export default function FollowRequestsScreen() {
         <ScrollView
           style={styles.content}
           refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
           }
         >
           <View style={styles.section}>
@@ -301,11 +340,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 16,
     },
     sectionTitle: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
-      textTransform: 'uppercase',
       marginBottom: 12,
     },
     requestRow: {
@@ -394,4 +431,3 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 20,
     },
   })
-

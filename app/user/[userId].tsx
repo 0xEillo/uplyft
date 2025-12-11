@@ -488,7 +488,7 @@ export default function UserProfileScreen() {
             {/* This Week Stats Section */}
             <View style={styles.weeklyStatsSection}>
               <View style={styles.weeklyStatsHeader}>
-                <Text style={styles.weeklyStatsTitle}>THIS WEEK</Text>
+                <Text style={styles.weeklyStatsTitle}>This Week</Text>
               </View>
               <View style={styles.weeklyStats}>
                 <View style={styles.weeklyStat}>
@@ -862,10 +862,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 12,
     },
     weeklyStatsTitle: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
     },
     weeklyStats: {
       flexDirection: 'row',

@@ -107,6 +107,7 @@ export interface FeedCardProps {
   onCardPress?: () => void // Navigate to workout detail
   prInfo?: ExercisePRInfo[]
   isPending?: boolean // Flag to show skeleton while workout is being parsed
+  isFirst?: boolean // Hide top border for first card
   // Social stats
   likeCount?: number
   commentCount?: number
@@ -140,6 +141,7 @@ export const FeedCard = memo(function FeedCard({
   onCardPress,
   prInfo = [],
   isPending = false,
+  isFirst = false,
   likeCount = 0,
   commentCount = 0,
   isLiked = false,
@@ -482,7 +484,7 @@ export const FeedCard = memo(function FeedCard({
   )
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isFirst && { borderTopWidth: 0 }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -770,17 +772,12 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.feedCardBackground,
-      borderRadius: 4,
+      backgroundColor: colors.background,
       paddingHorizontal: 20,
       paddingTop: 18,
       paddingBottom: 0,
-      marginBottom: 2,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
     header: {
       flexDirection: 'row',
@@ -1133,6 +1130,7 @@ const createStyles = (
       borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.border,
+      backgroundColor: colors.white,
     },
     statItem: {
       alignItems: 'center',

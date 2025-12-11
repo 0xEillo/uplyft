@@ -29,6 +29,7 @@ interface PrInfo {
 interface AsyncPrFeedCardProps {
   workout: WorkoutSessionWithDetails
   onDelete: () => void
+  isFirst?: boolean
 }
 
 /**
@@ -38,6 +39,7 @@ interface AsyncPrFeedCardProps {
 export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   workout,
   onDelete,
+  isFirst = false,
 }: AsyncPrFeedCardProps) {
   const { user, isAnonymous } = useAuth()
   const router = useRouter()
@@ -281,6 +283,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       isLiked={isLiked}
       onLike={handleLike}
       onComment={handleComment}
+      isFirst={isFirst}
     />
   )
 })

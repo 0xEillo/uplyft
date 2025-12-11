@@ -1,9 +1,9 @@
-import React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { calculateMuscleSplitGrouped } from '@/lib/utils/muscle-split'
-import { useTheme } from '@/contexts/theme-context'
 import { getColors } from '@/constants/colors'
+import { useTheme } from '@/contexts/theme-context'
+import { calculateMuscleSplitGrouped } from '@/lib/utils/muscle-split'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
+import React from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 
 interface MuscleSplitChartProps {
   workout: WorkoutSessionWithDetails
@@ -32,7 +32,15 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.feedCardBackground, borderBottomColor: colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
       <Text style={[styles.title, { color: colors.textSecondary }]}>
         Muscle Split
       </Text>
@@ -50,7 +58,12 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
                 </Text>
               </View>
 
-              <View style={[styles.barContainer, { backgroundColor: colors.backgroundLight }]}>
+              <View
+                style={[
+                  styles.barContainer,
+                  { backgroundColor: colors.backgroundLight },
+                ]}
+              >
                 <View
                   style={[
                     styles.bar,
@@ -62,7 +75,12 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
                 />
               </View>
 
-              <Text style={[styles.percentageLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.percentageLabel,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {percentage}%
               </Text>
             </View>
@@ -80,9 +98,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 16,
   },
   chartContainer: {

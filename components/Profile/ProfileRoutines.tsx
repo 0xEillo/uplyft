@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 
 interface ProfileRoutinesProps {
@@ -29,7 +29,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
         const data = await database.workoutRoutines.getAll(userId)
         // Filter out archived routines if needed, though getAll usually handles it or returns all.
         // Assuming we want to show all active routines.
-        const activeRoutines = data.filter(r => !r.is_archived)
+        const activeRoutines = data.filter((r) => !r.is_archived)
         setRoutines(activeRoutines)
       } catch (error) {
         console.error('Error loading routines:', error)
@@ -82,7 +82,13 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: colors.feedCardBackground, borderColor: colors.border }]}
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.feedCardBackground,
+            borderColor: colors.border,
+          },
+        ]}
         onPress={() =>
           router.push({
             pathname: '/routine-detail',
@@ -91,21 +97,36 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
         }
       >
         <View style={styles.cardHeader}>
-          <Text style={[styles.routineName, { color: colors.text }]} numberOfLines={1}>
+          <Text
+            style={[styles.routineName, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {item.name}
           </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={colors.textSecondary}
+          />
         </View>
-        
+
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={colors.textSecondary}
+            />
             <Text style={[styles.statText, { color: colors.textSecondary }]}>
               {estDurationString}
             </Text>
           </View>
           <View style={styles.statItem}>
-            <Ionicons name="barbell-outline" size={14} color={colors.textSecondary} />
+            <Ionicons
+              name="barbell-outline"
+              size={14}
+              color={colors.textSecondary}
+            />
             <Text style={[styles.statText, { color: colors.textSecondary }]}>
               {setCount} sets
             </Text>
@@ -122,7 +143,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
       <View style={styles.header}>
         <Text style={styles.title}>ROUTINES</Text>
       </View>
-      
+
       <FlatList
         data={routines}
         renderItem={renderItem}
@@ -145,10 +166,9 @@ const createStyles = (colors: any) =>
       marginBottom: 12,
     },
     title: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      letterSpacing: 1,
     },
     listContent: {
       paddingHorizontal: 20,

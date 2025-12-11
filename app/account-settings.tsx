@@ -12,16 +12,16 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Linking,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
       setIsLoading(true)
       // Try to get existing profile - signInAnonymously should have created one for anonymous users
       const data = await database.profiles.getByIdOrNull(user.id)
-      
+
       if (!data) {
         // Profile doesn't exist - try to create one (fallback)
         if (user.email) {
@@ -103,23 +103,26 @@ export default function SettingsScreen() {
     }
   }, [user, profile])
 
-  const handleUpdateCoach = useCallback(async (coachId: string) => {
-    if (!user || !profile) return
-    if (profile.coach === coachId) return
+  const handleUpdateCoach = useCallback(
+    async (coachId: string) => {
+      if (!user || !profile) return
+      if (profile.coach === coachId) return
 
-    try {
-      setIsCoachUpdating(true)
-      const updated = await database.profiles.update(user.id, {
-        coach: coachId,
-      })
-      setProfile(updated)
-    } catch (error) {
-      console.error('Error updating coach:', error)
-      Alert.alert('Error', 'Unable to update coach. Please try again.')
-    } finally {
-      setIsCoachUpdating(false)
-    }
-  }, [user, profile])
+      try {
+        setIsCoachUpdating(true)
+        const updated = await database.profiles.update(user.id, {
+          coach: coachId,
+        })
+        setProfile(updated)
+      } catch (error) {
+        console.error('Error updating coach:', error)
+        Alert.alert('Error', 'Unable to update coach. Please try again.')
+      } finally {
+        setIsCoachUpdating(false)
+      }
+    },
+    [user, profile],
+  )
 
   const handleOpenFollowRequests = useCallback(() => {
     router.push('/follow-requests')
@@ -420,14 +423,15 @@ export default function SettingsScreen() {
         <BaseNavbar
           leftContent={
             <NavbarIsland>
-              <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+              <TouchableOpacity
+                onPress={handleGoBack}
+                style={styles.backButton}
+              >
                 <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+              </TouchableOpacity>
             </NavbarIsland>
           }
-          centerContent={
-          <Text style={styles.headerTitle}>Settings</Text>
-          }
+          centerContent={<Text style={styles.headerTitle}>Settings</Text>}
         />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -443,12 +447,10 @@ export default function SettingsScreen() {
           <NavbarIsland>
             <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={22} color={colors.text} />
-        </TouchableOpacity>
+            </TouchableOpacity>
           </NavbarIsland>
         }
-        centerContent={
-        <Text style={styles.headerTitle}>Settings</Text>
-        }
+        centerContent={<Text style={styles.headerTitle}>Settings</Text>}
       />
 
       <ScrollView
@@ -465,7 +467,11 @@ export default function SettingsScreen() {
           >
             <View style={styles.guestBannerContent}>
               <View style={styles.guestBannerIconContainer}>
-                <Ionicons name="cloud-upload" size={24} color={colors.primary} />
+                <Ionicons
+                  name="cloud-upload"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <View style={styles.guestBannerText}>
                 <Text style={styles.guestBannerTitle}>Create an Account</Text>
@@ -513,7 +519,11 @@ export default function SettingsScreen() {
                     style={styles.linkAccountButton}
                   >
                     <Text style={styles.linkAccountText}>Link Account</Text>
-                    <Ionicons name="add-circle" size={18} color={colors.primary} />
+                    <Ionicons
+                      name="add-circle"
+                      size={18}
+                      color={colors.primary}
+                    />
                   </TouchableOpacity>
                 ) : (
                   <Text style={styles.detailValue}>
@@ -892,7 +902,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
     </SafeAreaView>
   )
 }
@@ -928,11 +937,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
     },
     sectionTitle: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
       marginBottom: 12,
     },
     profileCard: {

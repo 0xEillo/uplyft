@@ -356,7 +356,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     safeAreaContainer: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
     },
     container: {
       flex: 1,
@@ -368,9 +368,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
     },
     backButton: {
       padding: 4,
@@ -389,9 +387,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
     },
     viewModeSelector: {
       flexDirection: 'row',
@@ -405,7 +401,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 6,
     },
     viewModeButtonActive: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
     },
     viewModeText: {
       fontSize: 14,

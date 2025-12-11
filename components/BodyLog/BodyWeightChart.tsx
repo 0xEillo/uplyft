@@ -3,11 +3,11 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
@@ -77,7 +77,8 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   const minWeight =
     data.length > 0 ? Math.min(...data.map((d) => d.weight_kg)) : 0
   const range = maxWeight - minWeight
-  const padding = range === 0 ? maxWeight * 0.1 : range * 0.1
+  // Use aggressive padding (50% of range, min 1kg) to make small changes more visible
+  const padding = range === 0 ? 2 : Math.max(1, range * 0.5)
 
   // Find min and max points with dates
   const minPoint = data.reduce((prev, curr) =>
@@ -104,7 +105,10 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
           return (
             <TouchableOpacity
               key={value}
-              style={[styles.segmentButton, isActive && styles.segmentButtonActive]}
+              style={[
+                styles.segmentButton,
+                isActive && styles.segmentButtonActive,
+              ]}
               onPress={() => setTimeRange(value)}
               activeOpacity={0.7}
             >

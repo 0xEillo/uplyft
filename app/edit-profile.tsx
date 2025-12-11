@@ -491,9 +491,7 @@ const createStyles = (
       alignItems: 'center',
       paddingHorizontal: 20,
       paddingVertical: 16,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
     },
     headerTitle: {
       fontSize: 17,

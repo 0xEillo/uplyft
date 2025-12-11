@@ -2,11 +2,11 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
-  import { Ionicons } from '@expo/vector-icons'
-  import * as Haptics from 'expo-haptics'
-  import { router } from 'expo-router'
-  import { useCallback, useEffect, useMemo, useState } from 'react'
-  import {
+import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
+import { router } from 'expo-router'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
   ActivityIndicator,
   Alert,
   Keyboard,
@@ -56,7 +56,7 @@ export function ExerciseSearchModal({
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  
+
   // Filters
   const [muscleGroups, setMuscleGroups] = useState<string[]>([])
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
@@ -64,36 +64,47 @@ export function ExerciseSearchModal({
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
 
   const translateY = useSharedValue(0)
+  const isKeyboardVisible = useSharedValue(false)
   const styles = createStyles(colors, insets)
 
   const trimmedQuery = searchQuery.trim()
   const normalizedQuery = trimmedQuery.toLowerCase()
-  
+
   const hasExactMatch = trimmedQuery
     ? exercises.some(
         (exercise) => exercise.name.toLowerCase() === normalizedQuery,
       )
     : false
 
-  const hasFilters = selectedMuscleGroups.length > 0 || selectedEquipment.length > 0
+  const hasFilters =
+    selectedMuscleGroups.length > 0 || selectedEquipment.length > 0
 
   const filteredExercises = useMemo(() => {
     return exercises.filter((exercise) => {
       // Name filter
-      if (normalizedQuery && !exercise.name.toLowerCase().includes(normalizedQuery)) {
+      if (
+        normalizedQuery &&
+        !exercise.name.toLowerCase().includes(normalizedQuery)
+      ) {
         return false
       }
 
       // Muscle group filter
       if (selectedMuscleGroups.length > 0) {
-        if (!exercise.muscle_group || !selectedMuscleGroups.includes(exercise.muscle_group)) {
+        if (
+          !exercise.muscle_group ||
+          !selectedMuscleGroups.includes(exercise.muscle_group)
+        ) {
           return false
         }
       }
 
       // Equipment filter
       if (selectedEquipment.length > 0) {
-        if (!exercise.equipment || !selectedEquipment.includes(exercise.equipment)) {
+        if (
+          !exercise.equipment ||
+          !selectedEquipment.includes(exercise.equipment)
+        ) {
           return false
         }
       }
@@ -125,17 +136,23 @@ export function ExerciseSearchModal({
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height)
+        isKeyboardVisible.value = true
+      },
     )
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0)
+      () => {
+        setKeyboardHeight(0)
+        isKeyboardVisible.value = false
+      },
     )
     return () => {
       keyboardWillShow.remove()
       keyboardWillHide.remove()
     }
-  }, [])
+  }, [isKeyboardVisible])
 
   // Initial Data Load
   useEffect(() => {
@@ -159,7 +176,7 @@ export function ExerciseSearchModal({
           database.exercises.getEquipment(),
           user ? database.exercises.getRecent(user.id) : Promise.resolve([]),
         ])
-        
+
         setExercises(allExercises)
         setMuscleGroups(muscles)
         setEquipmentTypes(equipment)
@@ -186,6 +203,19 @@ export function ExerciseSearchModal({
     onClose()
   }
 
+  const handleBackdropPress = useCallback(() => {
+    // If keyboard is visible, dismiss it first instead of closing sheet
+    if (keyboardHeight > 0) {
+      Keyboard.dismiss()
+    } else {
+      closeSheet()
+    }
+  }, [keyboardHeight])
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
   const pan = Gesture.Pan()
     .onUpdate((event) => {
       if (event.translationY > 0) {
@@ -194,9 +224,15 @@ export function ExerciseSearchModal({
     })
     .onEnd((event) => {
       if (event.translationY > 100 || event.velocityY > 1000) {
-        translateY.value = withTiming(500, { duration: 200 }, () => {
-          runOnJS(closeSheet)()
-        })
+        // If keyboard is visible, dismiss it first instead of closing sheet
+        if (isKeyboardVisible.value) {
+          translateY.value = withSpring(0, { damping: 20, stiffness: 300 })
+          runOnJS(dismissKeyboard)()
+        } else {
+          translateY.value = withTiming(500, { duration: 200 }, () => {
+            runOnJS(closeSheet)()
+          })
+        }
       } else {
         translateY.value = withSpring(0, {
           damping: 20,
@@ -223,7 +259,10 @@ export function ExerciseSearchModal({
     if (!name || isCreating) return
 
     if (!user) {
-      Alert.alert('Login Required', 'You must be logged in to create exercises.')
+      Alert.alert(
+        'Login Required',
+        'You must be logged in to create exercises.',
+      )
       return
     }
 
@@ -248,14 +287,14 @@ export function ExerciseSearchModal({
   const toggleMuscleGroup = (group: string) => {
     Haptics.selectionAsync()
     setSelectedMuscleGroups((prev) =>
-      prev.includes(group) ? prev.filter((i) => i !== group) : [...prev, group]
+      prev.includes(group) ? prev.filter((i) => i !== group) : [...prev, group],
     )
   }
 
   const toggleEquipment = (type: string) => {
     Haptics.selectionAsync()
     setSelectedEquipment((prev) =>
-      prev.includes(type) ? prev.filter((i) => i !== type) : [...prev, type]
+      prev.includes(type) ? prev.filter((i) => i !== type) : [...prev, type],
     )
   }
 
@@ -267,7 +306,10 @@ export function ExerciseSearchModal({
       onRequestClose={closeSheet}
     >
       <GestureHandlerRootView style={styles.container}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleBackdropPress}
+        >
           <View style={styles.backdrop} />
         </Pressable>
 
@@ -288,7 +330,12 @@ export function ExerciseSearchModal({
             </View>
 
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
+              <Ionicons
+                name="search"
+                size={20}
+                color={colors.textTertiary}
+                style={styles.searchIcon}
+              />
               <TextInput
                 style={styles.searchInput}
                 value={searchQuery}
@@ -303,9 +350,9 @@ export function ExerciseSearchModal({
             {/* Filters */}
             <View style={styles.filtersContainer}>
               {/* Muscle Groups */}
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.filterScroll}
                 style={styles.filterRow}
               >
@@ -318,7 +365,12 @@ export function ExerciseSearchModal({
                       style={[styles.chip, isSelected && styles.chipActive]}
                       onPress={() => toggleMuscleGroup(group)}
                     >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          isSelected && styles.chipTextActive,
+                        ]}
+                      >
                         {group}
                       </Text>
                     </TouchableOpacity>
@@ -327,9 +379,9 @@ export function ExerciseSearchModal({
               </ScrollView>
 
               {/* Equipment */}
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.filterScroll}
                 style={styles.filterRow}
               >
@@ -342,7 +394,12 @@ export function ExerciseSearchModal({
                       style={[styles.chip, isSelected && styles.chipActive]}
                       onPress={() => toggleEquipment(type)}
                     >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          isSelected && styles.chipTextActive,
+                        ]}
+                      >
                         {type}
                       </Text>
                     </TouchableOpacity>
@@ -356,7 +413,8 @@ export function ExerciseSearchModal({
               <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : filteredExercises.length === 0 && !(!trimmedQuery && !hasFilters && recentExercises.length > 0) ? (
+            ) : filteredExercises.length === 0 &&
+              !(!trimmedQuery && !hasFilters && recentExercises.length > 0) ? (
               <View style={styles.centerContainer}>
                 <Text style={styles.emptyText}>{emptyStateText}</Text>
                 {trimmedQuery && !hasExactMatch && (
@@ -368,31 +426,37 @@ export function ExerciseSearchModal({
                     {isCreating ? (
                       <ActivityIndicator color={colors.primary} />
                     ) : (
-                      <Text style={styles.createButtonText}>Create "{trimmedQuery}"</Text>
+                      <Text style={styles.createButtonText}>
+                        Create "{trimmedQuery}"
+                      </Text>
                     )}
                   </TouchableOpacity>
                 )}
               </View>
             ) : (
-              <ScrollView 
+              <ScrollView
                 style={styles.list}
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.listContent}
               >
-                 {trimmedQuery && !hasExactMatch && (
+                {trimmedQuery && !hasExactMatch && (
                   <TouchableOpacity
                     style={styles.createRow}
                     onPress={handleCreateExercise}
                   >
                     <View style={styles.createIcon}>
-                        <Ionicons name="add" size={24} color={colors.white} />
+                      <Ionicons name="add" size={24} color={colors.white} />
                     </View>
                     <View>
-                        <Text style={styles.createRowText}>Create "{trimmedQuery}"</Text>
-                        <Text style={styles.createRowSubtext}>New custom exercise</Text>
+                      <Text style={styles.createRowText}>
+                        Create "{trimmedQuery}"
+                      </Text>
+                      <Text style={styles.createRowSubtext}>
+                        New custom exercise
+                      </Text>
                     </View>
                   </TouchableOpacity>
-                 )}
+                )}
 
                 {/* Recent Exercises Section */}
                 {!trimmedQuery && !hasFilters && recentExercises.length > 0 && (
@@ -410,36 +474,56 @@ export function ExerciseSearchModal({
                             onPress={() => handleSelectExercise(exercise)}
                           >
                             <View style={styles.rowContent}>
-                              <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
+                              <Text
+                                style={[
+                                  styles.rowTitle,
+                                  isSelected && styles.rowTitleSelected,
+                                ]}
+                              >
                                 {exercise.name}
                               </Text>
                               <View style={styles.rowMeta}>
                                 {exercise.muscle_group && (
-                                  <Text style={styles.rowSubtitle}>{exercise.muscle_group}</Text>
+                                  <Text style={styles.rowSubtitle}>
+                                    {exercise.muscle_group}
+                                  </Text>
                                 )}
-                                {exercise.muscle_group && exercise.equipment && (
-                                   <Text style={styles.rowDot}>•</Text>
-                                )}
+                                {exercise.muscle_group &&
+                                  exercise.equipment && (
+                                    <Text style={styles.rowDot}>•</Text>
+                                  )}
                                 {exercise.equipment && (
-                                  <Text style={styles.rowSubtitle}>{exercise.equipment}</Text>
+                                  <Text style={styles.rowSubtitle}>
+                                    {exercise.equipment}
+                                  </Text>
                                 )}
                               </View>
                             </View>
                           </TouchableOpacity>
-                          
+
                           <View style={styles.rowActions}>
                             {isSelected && (
-                              <Ionicons name="checkmark" size={20} color={colors.primary} style={styles.checkIcon} />
+                              <Ionicons
+                                name="checkmark"
+                                size={20}
+                                color={colors.primary}
+                                style={styles.checkIcon}
+                              />
                             )}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               onPress={() => handleInfoPress(exercise.id)}
                               style={styles.infoButton}
-                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              hitSlop={{
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10,
+                              }}
                             >
-                              <Ionicons 
-                                name="information-circle-outline" 
-                                size={24} 
-                                color={colors.textSecondary} 
+                              <Ionicons
+                                name="information-circle-outline"
+                                size={24}
+                                color={colors.textSecondary}
                               />
                             </TouchableOpacity>
                           </View>
@@ -463,18 +547,27 @@ export function ExerciseSearchModal({
                         onPress={() => handleSelectExercise(exercise)}
                       >
                         <View style={styles.rowContent}>
-                          <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
+                          <Text
+                            style={[
+                              styles.rowTitle,
+                              isSelected && styles.rowTitleSelected,
+                            ]}
+                          >
                             {exercise.name}
                           </Text>
                           <View style={styles.rowMeta}>
                             {exercise.muscle_group && (
-                              <Text style={styles.rowSubtitle}>{exercise.muscle_group}</Text>
+                              <Text style={styles.rowSubtitle}>
+                                {exercise.muscle_group}
+                              </Text>
                             )}
                             {exercise.muscle_group && exercise.equipment && (
-                               <Text style={styles.rowDot}>•</Text>
+                              <Text style={styles.rowDot}>•</Text>
                             )}
                             {exercise.equipment && (
-                              <Text style={styles.rowSubtitle}>{exercise.equipment}</Text>
+                              <Text style={styles.rowSubtitle}>
+                                {exercise.equipment}
+                              </Text>
                             )}
                           </View>
                         </View>
@@ -482,17 +575,22 @@ export function ExerciseSearchModal({
 
                       <View style={styles.rowActions}>
                         {isSelected && (
-                          <Ionicons name="checkmark" size={20} color={colors.primary} style={styles.checkIcon} />
+                          <Ionicons
+                            name="checkmark"
+                            size={20}
+                            color={colors.primary}
+                            style={styles.checkIcon}
+                          />
                         )}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           onPress={() => handleInfoPress(exercise.id)}
                           style={styles.infoButton}
                           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                          <Ionicons 
-                            name="information-circle-outline" 
-                            size={24} 
-                            color={colors.textSecondary} 
+                          <Ionicons
+                            name="information-circle-outline"
+                            size={24}
+                            color={colors.textSecondary}
                           />
                         </TouchableOpacity>
                       </View>
@@ -508,7 +606,10 @@ export function ExerciseSearchModal({
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: any) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  insets: any,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -695,31 +796,31 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: any) =
       color: colors.primary,
     },
     createRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        marginHorizontal: 16,
-        marginBottom: 8,
-        backgroundColor: colors.primary + '10',
-        borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      backgroundColor: colors.primary + '10',
+      borderRadius: 12,
     },
     createIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
     },
     createRowText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
     },
     createRowSubtext: {
-        fontSize: 13,
-        color: colors.textSecondary,
+      fontSize: 13,
+      color: colors.textSecondary,
     },
     section: {
       marginTop: 8,
