@@ -5,3 +5,4 @@
 ALTER TABLE workout_sessions 
 ADD COLUMN IF NOT EXISTS duration INTEGER;
 
+

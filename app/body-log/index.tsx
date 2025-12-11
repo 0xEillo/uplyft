@@ -1,3 +1,4 @@
+import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -8,19 +9,20 @@ import { database } from '@/lib/database'
 import { getThumbnailUrlsWithPrefetch } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Image } from 'expo-image'
 import * as Haptics from 'expo-haptics'
+import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -123,67 +125,108 @@ const BodyLogEntryItem = memo(
 
     return (
       <TouchableOpacity
-        style={styles.imageContainer}
+        style={styles.cardContainer}
         onPress={handlePress}
         activeOpacity={0.9}
       >
+        {/* Background Layer */}
         {thumbnailUrl ? (
-          <>
-            <Image
-              source={{ uri: thumbnailUrl }}
-              style={styles.image}
-              contentFit="cover"
-              cachePolicy="disk"
-              transition={200}
-              recyclingKey={entry.id}
-            />
-            <View style={styles.overlaysContainer}>
-              <View style={styles.topBadgesRow}>
-                {hasBodyScan && (
-                  <View style={styles.scanBadge}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={14}
-                      color={colors.white}
-                    />
-                    <Text style={styles.scanBadgeText}>Scanned</Text>
-                  </View>
-                )}
-                {imageCount > 1 && (
-                  <View style={[styles.imageBadge, { marginLeft: 'auto' }]}>
-                    <Ionicons
-                      name="images"
-                      size={12}
-                      color={colors.white}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={styles.imageBadgeText}>{imageCount}</Text>
-                  </View>
-                )}
-              </View>
-
-              {hasWeight && formattedWeight && (
-                <View style={styles.weightPill}>
-                  <Text style={styles.weightPillValue}>{formattedWeight}</Text>
-                </View>
-              )}
-            </View>
-          </>
-        ) : hasImages ? (
-          <View style={styles.imageLoadingOverlay}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        ) : hasWeight && formattedWeight ? (
-          <View style={styles.weightCard}>
-            <Text style={styles.weightCardValue}>{formattedWeight}</Text>
-            <Text style={styles.weightCardLabel}>Weight</Text>
-          </View>
-        ) : isEmpty ? (
-          <View style={styles.emptyEntryCard}>
-            <Ionicons name="add" size={28} color={colors.primary} />
-          </View>
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={styles.backgroundImage}
+            contentFit="cover"
+            cachePolicy="disk"
+            transition={200}
+            recyclingKey={entry.id}
+          />
         ) : (
-          <View style={styles.imageLoadingOverlay}>
+          <View style={styles.placeholderBackground}>
+            {isEmpty ? (
+              <Ionicons name="add" size={32} color={colors.primary} />
+            ) : (
+              <Ionicons
+                name="scale-outline"
+                size={32}
+                color={colors.textTertiary}
+                style={{ opacity: 0.5 }}
+              />
+            )}
+          </View>
+        )}
+
+        {/* Gradient Overlay for Images */}
+        {thumbnailUrl && (
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.gradientOverlay}
+            locations={[0.6, 1]}
+          />
+        )}
+
+        {/* Content Overlay */}
+        <View style={styles.contentOverlay}>
+          {/* Top Row: Badges */}
+          <View style={styles.topRow}>
+            {hasBodyScan && (
+              <View style={thumbnailUrl ? styles.badge : styles.standardBadge}>
+                <Ionicons
+                  name="scan-outline"
+                  size={10}
+                  color={thumbnailUrl ? colors.white : colors.text}
+                  style={{ marginRight: 3 }}
+                />
+                <Text
+                  style={
+                    thumbnailUrl ? styles.badgeText : styles.standardBadgeText
+                  }
+                >
+                  SCAN
+                </Text>
+              </View>
+            )}
+
+            {imageCount > 1 && (
+              <View
+                style={[
+                  thumbnailUrl ? styles.badge : styles.standardBadge,
+                  styles.imageCountBadge,
+                ]}
+              >
+                <Ionicons
+                  name="images"
+                  size={10}
+                  color={thumbnailUrl ? colors.white : colors.text}
+                  style={{ marginRight: 3 }}
+                />
+                <Text
+                  style={
+                    thumbnailUrl ? styles.badgeText : styles.standardBadgeText
+                  }
+                >
+                  {imageCount}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom Row: Weight */}
+          <View style={styles.bottomRow}>
+            {hasWeight && formattedWeight && (
+              <Text
+                style={[
+                  styles.weightText,
+                  !thumbnailUrl && { color: colors.text },
+                ]}
+              >
+                {formattedWeight}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Loading State */}
+        {hasImages && !thumbnailUrl && (
+          <View style={styles.loadingOverlay}>
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         )}
@@ -550,6 +593,13 @@ export default function BodyLogScreen() {
             initialNumToRender={3}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.5}
+            ListHeaderComponent={
+              user ? (
+                <View>
+                  <BodyWeightChart userId={user.id} />
+                </View>
+              ) : null
+            }
             ListFooterComponent={ListFooterComponent}
             refreshControl={
               <RefreshControl
@@ -574,119 +624,99 @@ const footerStyles = StyleSheet.create({
 
 const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    imageContainer: {
+    cardContainer: {
       width: IMAGE_SIZE,
       height: IMAGE_SIZE,
-      borderRadius: 2,
+      borderRadius: 12,
       overflow: 'hidden',
       backgroundColor: colors.backgroundLight,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.05,
       shadowRadius: 4,
-      elevation: 3,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
-    image: {
+    backgroundImage: {
       width: '100%',
       height: '100%',
     },
-    imageLoadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
+    placeholderBackground: {
+      flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.backgroundLight,
     },
-    overlaysContainer: {
+    gradientOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 1,
+    },
+    contentOverlay: {
       ...StyleSheet.absoluteFillObject,
       padding: 8,
       justifyContent: 'space-between',
+      zIndex: 2,
     },
-    topBadgesRow: {
+    topRow: {
       flexDirection: 'row',
-      width: '100%',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
     },
-    imageBadge: {
+    bottomRow: {
       flexDirection: 'row',
-      height: 22,
-      paddingHorizontal: 8,
-      borderRadius: 11,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: 'flex-start',
+      alignItems: 'flex-end',
     },
-    imageBadgeText: {
-      color: colors.white,
-      fontSize: 11,
-      fontWeight: '600',
-      textShadowColor: 'rgba(0, 0, 0, 0.75)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
-    },
-    weightPill: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 16,
-    },
-    weightPillValue: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#FFFFFF',
-      textShadowColor: 'rgba(0, 0, 0, 0.75)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
-    },
-    weightCard: {
-      flex: 1,
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
-      padding: 12,
-    },
-    weightCardLabel: {
-      fontSize: 11,
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 1.0,
-      fontWeight: '600',
-      marginTop: 4,
-    },
-    weightCardValue: {
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.text,
-      letterSpacing: -0.5,
-    },
-    scanBadge: {
+    badge: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      gap: 4,
-      height: 22,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backdropFilter: 'blur(4px)',
     },
-    scanBadgeText: {
+    standardBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    imageCountBadge: {
+      marginLeft: 'auto',
+    },
+    badgeText: {
       color: '#FFFFFF',
       fontSize: 10,
       fontWeight: '700',
       textTransform: 'uppercase',
-      textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    },
+    standardBadgeText: {
+      color: colors.text,
+      fontSize: 10,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    weightText: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: -0.5,
+      textShadowColor: 'rgba(0, 0, 0, 0.3)',
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 2,
     },
-    emptyEntryCard: {
-      flex: 1,
-      width: '100%',
-      height: '100%',
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
-      borderRadius: 12,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderStyle: 'dashed',
+      backgroundColor: colors.backgroundLight,
+      zIndex: 3,
     },
   })
 

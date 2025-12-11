@@ -5,13 +5,14 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
+import * as Sharing from 'expo-sharing'
 import { useCallback, useState } from 'react'
 import {
-  Alert,
-  InteractionManager,
-  Linking,
-  Platform,
-  Share,
+    Alert,
+    InteractionManager,
+    Linking,
+    Platform,
+    Share,
 } from 'react-native'
 import { useWeightUnits } from './useWeightUnits'
 
@@ -481,8 +482,8 @@ export function useWorkoutShare(): UseWorkoutShareResult {
         } else {
           // General share
           const captureOptions = {
-            format: 'jpg' as const,
-            quality: Platform.OS === 'ios' ? 0.85 : 0.9,
+            format: 'png' as const,
+            quality: 1,
             result: 'tmpfile' as const,
           }
 
@@ -520,20 +521,33 @@ export function useWorkoutShare(): UseWorkoutShareResult {
             throw new Error('Failed to generate share image')
           }
 
-          // Share the image
-          const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
-          const shareOptions = {
-            url: Platform.OS === 'ios' ? uri : `file://${uri}`,
-            message: shareMessage,
-            title: 'My Workout - Rep AI',
-          }
+          // Share the image using expo-sharing
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(uri, {
+              mimeType: 'image/png',
+              dialogTitle: 'Share your workout',
+              UTI: 'image/png',
+            })
 
-          const result = await Share.share(shareOptions)
-
-          if (result.action === Share.sharedAction) {
             await Haptics.notificationAsync(
               Haptics.NotificationFeedbackType.Success,
             )
+          } else {
+            // Fallback to React Native Share if expo-sharing is not available
+            const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
+            const shareOptions = {
+              url: Platform.OS === 'ios' ? uri : `file://${uri}`,
+              message: shareMessage,
+              title: 'My Workout - Rep AI',
+            }
+
+            const result = await Share.share(shareOptions)
+
+            if (result.action === Share.sharedAction) {
+              await Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              )
+            }
           }
         }
 

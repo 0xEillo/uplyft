@@ -1,18 +1,18 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react'
-import { View, ActivityIndicator, StyleSheet, Alert } from 'react-native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { WorkoutDetailView } from '@/components/WorkoutDetail/WorkoutDetailView'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { database } from '@/lib/database'
+import { getColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
-import { getColors } from '@/constants/colors'
-import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { WorkoutShareScreen } from '@/components/workout-share-screen'
-import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
+import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { markWorkoutAsDeleted } from '@/lib/utils/deleted-workouts'
+import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
+import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Alert, StyleSheet, View } from 'react-native'
 
 interface PrDetailForDisplay {
   label: string
@@ -47,6 +47,7 @@ export default function WorkoutDetailScreen() {
   const [isLiked, setIsLiked] = useState(false)
   const [prInfo, setPrInfo] = useState<ExercisePRInfo[]>([])
   const [showShareScreen, setShowShareScreen] = useState(false)
+  const [workoutCount, setWorkoutCount] = useState(1)
 
   // Log when component mounts/unmounts
   useEffect(() => {
@@ -129,6 +130,26 @@ export default function WorkoutDetailScreen() {
   useEffect(() => {
     loadSocialStats()
   }, [loadSocialStats])
+
+  // Load workout count for the week
+  useEffect(() => {
+    if (!workout?.date || !user?.id) return
+
+    const fetchCount = async () => {
+      try {
+        const count = await database.workoutSessions.getWeeklyWorkoutCount(
+          user.id,
+          new Date(workout.date),
+          workout.id,
+        )
+        setWorkoutCount(count)
+      } catch (error) {
+        console.error('Error fetching workout count:', error)
+      }
+    }
+
+    fetchCount()
+  }, [workout?.date, workout?.id, user?.id])
 
   // Compute PRs
   useEffect(() => {
@@ -279,7 +300,7 @@ export default function WorkoutDetailScreen() {
           visible={showShareScreen}
           workout={workout}
           weightUnit={weightUnit}
-          workoutCountThisWeek={1}
+          workoutCountThisWeek={workoutCount}
           workoutTitle={workoutTitle}
           onClose={handleCloseShareScreen}
           onShare={handleShareWidget}

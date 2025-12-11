@@ -55,7 +55,7 @@ const LEVEL_COLORS: Record<StrengthLevel, string> = {
 
 interface LevelBadgeProps {
   level: StrengthLevel
-  size?: 'small' | 'medium' | 'large' | 'xl'
+  size?: 'small' | 'medium' | 'large' | 'xl' | 'hero'
   style?: ViewStyle
   showTooltipOnPress?: boolean
   iconOnly?: boolean
@@ -65,7 +65,7 @@ export function LevelBadge({
   level,
   size = 'medium',
   style,
-  showTooltipOnPress = true,
+  showTooltipOnPress = false,
   iconOnly = false,
 }: LevelBadgeProps) {
   const color = LEVEL_COLORS[level]
@@ -77,6 +77,7 @@ export function LevelBadge({
     small: { container: 26, icon: 16, border: 2, fontSize: 10 },
     medium: { container: 34, icon: 20, border: 2.5, fontSize: 11 },
     large: { container: 48, icon: 28, border: 3, fontSize: 12 },
+    hero: { container: 80, icon: 48, border: 4, fontSize: 16 },
     xl: { container: 120, icon: 84, border: 6, fontSize: 24 },
   }
 

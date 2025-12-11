@@ -272,6 +272,28 @@ export default function EditProfileScreen() {
             />
           </View>
 
+          {/* Profile Description */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Profile Description</Text>
+            <Text style={styles.description}>
+              This shows under your name on your public profile.
+            </Text>
+            <TextInput
+              style={[styles.bioInput, styles.profileDescriptionInput]}
+              value={editedProfileDescription}
+              onChangeText={setEditedProfileDescription}
+              placeholder="E.g., Hybrid athlete. Coffee & deadlifts."
+              placeholderTextColor={colors.textPlaceholder}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              maxLength={160}
+            />
+            <Text style={styles.characterCount}>
+              {editedProfileDescription.length}/160
+            </Text>
+          </View>
+
           {/* Gender Selection */}
           <View style={styles.section}>
             <Text style={styles.label}>Gender</Text>
@@ -426,28 +448,6 @@ export default function EditProfileScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-
-          {/* Profile Description */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Profile Description</Text>
-            <Text style={styles.description}>
-              This shows under your name on your public profile.
-            </Text>
-            <TextInput
-              style={[styles.bioInput, styles.profileDescriptionInput]}
-              value={editedProfileDescription}
-              onChangeText={setEditedProfileDescription}
-              placeholder="E.g., Hybrid athlete. Coffee & deadlifts."
-              placeholderTextColor={colors.textPlaceholder}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-              maxLength={160}
-            />
-            <Text style={styles.characterCount}>
-              {editedProfileDescription.length}/160
-            </Text>
           </View>
 
           {/* Bio Input */}

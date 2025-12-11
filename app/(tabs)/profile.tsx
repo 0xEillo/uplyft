@@ -1,7 +1,7 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { LevelBadge } from '@/components/LevelBadge'
-import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
+
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
@@ -46,6 +46,8 @@ export default function ProfileScreen() {
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [workoutCount, setWorkoutCount] = useState(0)
+  const [latestWeight, setLatestWeight] = useState<number | null>(null)
+  const [activeRoutineName, setActiveRoutineName] = useState<string | null>(null)
 
   // Workouts feed
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
@@ -96,11 +98,15 @@ export default function ProfileScreen() {
         totalWorkouts,
         weekCount,
         streakResult,
+        bodyLogResult,
+        routinesData,
       ] = await Promise.all([
         database.follows.getCounts(user.id),
         database.workoutSessions.getTotalCount(user.id),
         database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
         database.stats.calculateStreak(user.id),
+        database.bodyLog.getEntriesPage(user.id, 0, 1),
+        database.workoutRoutines.getAll(user.id),
       ])
 
       setFollowerCount(counts.followers)
@@ -108,6 +114,17 @@ export default function ProfileScreen() {
       setWorkoutCount(totalWorkouts)
       setWeeklyWorkouts(weekCount)
       setCurrentStreak(streakResult.currentStreak)
+
+      // Set latest weight
+      if (bodyLogResult.entries && bodyLogResult.entries.length > 0) {
+        setLatestWeight(bodyLogResult.entries[0].weight_kg)
+      }
+
+      // Set active routine
+      const activeRoutines = routinesData.filter((r) => !r.is_archived)
+      if (activeRoutines.length > 0) {
+        setActiveRoutineName(activeRoutines[0].name)
+      }
 
       // Calculate weekly volume and activity
       const weekWorkouts = await database.workoutSessions.getRecent(
@@ -293,19 +310,24 @@ export default function ProfileScreen() {
                 {/* Avatar and Name Row */}
                 <View style={styles.profileTop}>
                   {/* Avatar */}
-                  {profile?.avatar_url ? (
-                    <Image
-                      source={{ uri: profile.avatar_url }}
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={42} color={colors.white} />
-                    </View>
-                  )}
+                  <TouchableOpacity onPress={() => router.push('/edit-profile')}>
+                    {profile?.avatar_url ? (
+                      <Image
+                        source={{ uri: profile.avatar_url }}
+                        style={styles.avatar}
+                      />
+                    ) : (
+                      <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                        <Ionicons name="person" size={42} color={colors.white} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
                   {/* Name */}
-                  <View style={styles.nameContainer}>
+                  <TouchableOpacity
+                    style={styles.nameContainer}
+                    onPress={() => router.push('/edit-profile')}
+                  >
                     <View style={styles.nameRow}>
                       <Text style={styles.displayName}>
                         {profile?.display_name || 'User'}
@@ -322,7 +344,7 @@ export default function ProfileScreen() {
                     {profile?.user_tag && (
                       <Text style={styles.userTag}>@{profile.user_tag}</Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Stats Row - Below Avatar */}
@@ -371,24 +393,48 @@ export default function ProfileScreen() {
                     {profile.profile_description}
                   </Text>
                 ) : null}
-
-                {/* Edit Profile Button */}
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => router.push('/edit-profile')}
-                >
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
               </View>
 
-              {/* Routines Section */}
-              {user && <ProfileRoutines userId={user.id} />}
+              {/* Dashboard Section */}
+              <View style={styles.dashboardSection}>
+                <View style={styles.dashboardCards}>
+                  {/* Routines Card */}
+                  <TouchableOpacity
+                    style={[styles.dashboardCard, { backgroundColor: colors.feedCardBackground }]}
+                    onPress={() => router.push('/routines')}
+                  >
+                    <View style={styles.cardHeader}>
+                      <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+                        Routines
+                      </Text>
+                      <Ionicons name="albums-outline" size={20} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.cardValue, { color: colors.text }]} numberOfLines={1}>
+                      {activeRoutineName || 'No Plan'}
+                    </Text>
+                  </TouchableOpacity>
 
-              {/* This Week Stats Section */}
-              <View style={styles.calendarHeader}>
-                <Text style={styles.calendarTitle}>CALENDAR</Text>
+                  {/* Body Log Card */}
+                  <TouchableOpacity
+                    style={[styles.dashboardCard, { backgroundColor: colors.feedCardBackground }]}
+                    onPress={() => router.push('/body-log')}
+                  >
+                    <View style={styles.cardHeader}>
+                      <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+                        Body Log
+                      </Text>
+                      <Ionicons name="body-outline" size={20} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.cardValue, { color: colors.text }]}>
+                      {latestWeight ? `${latestWeight.toFixed(1)} kg` : '-- kg'}
+                    </Text>
+                    <View style={styles.plusButton}>
+                      <Ionicons name="add" size={24} color={colors.text} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
-              
+
               <WeeklyStatsCard
                 streak={currentStreak}
                 workouts={weeklyWorkouts}
@@ -438,7 +484,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 2,
     },
     profileHeader: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.background,
     },
     profileSection: {
       paddingHorizontal: 20,
@@ -507,28 +553,57 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       marginBottom: 16,
     },
-    editButton: {
-      backgroundColor: colors.white,
+    dashboardSection: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    },
+    dashboardCards: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    dashboardCard: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 6,
-      paddingVertical: 7,
-      alignItems: 'center',
+      height: 160,
+      justifyContent: 'space-between',
+      // Add shadow for contrast
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 3,
     },
-    editButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    calendarHeader: {
-      paddingHorizontal: 20,
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
       marginBottom: 12,
     },
-    calendarTitle: {
-      fontSize: 11,
+    cardLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    cardValue: {
+      fontSize: 22,
       fontWeight: '700',
-      color: colors.textSecondary,
-      letterSpacing: 1,
+      letterSpacing: -0.5,
+    },
+    plusButton: {
+      position: 'absolute',
+      bottom: 12,
+      right: 12,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     workoutsHeader: {
       paddingHorizontal: 20,

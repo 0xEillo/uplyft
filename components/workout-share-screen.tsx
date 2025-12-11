@@ -5,19 +5,20 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  PanResponder,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    PanResponder,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { AchievementWidget } from './shareable-widgets/AchievementWidget'
 import { StatsMetricsWidget } from './shareable-widgets/StatsMetricsWidget'
+import { StravaOverlayWidget } from './shareable-widgets/StravaOverlayWidget'
 import { WorkoutSummaryWidget } from './shareable-widgets/WorkoutSummaryWidget'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -54,6 +55,9 @@ export function WorkoutShareScreen({
     [],
   )
   const [hasPRs, setHasPRs] = useState(false)
+  const [backgroundMode, setBackgroundMode] = useState<
+    'light' | 'dark' | 'transparent'
+  >('dark')
 
   // Compute PRs when workout or visibility changes
   useEffect(() => {
@@ -100,9 +104,16 @@ export function WorkoutShareScreen({
   const widget1Ref = useRef<View>(null)
   const widget2Ref = useRef<View>(null)
   const widget3Ref = useRef<View>(null)
+  const widget4Ref = useRef<View>(null)
 
   // Build widget refs array dynamically based on whether PRs exist
-  const widgetRefs = [widget1Ref, widget2Ref, ...(hasPRs ? [widget3Ref] : [])]
+  // Build widget refs array dynamically based on whether PRs exist
+  const widgetRefs = [
+    widget1Ref,
+    widget2Ref,
+    widget4Ref,
+    ...(hasPRs ? [widget3Ref] : []),
+  ]
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
@@ -240,6 +251,7 @@ export function WorkoutShareScreen({
                 workout={workout}
                 weightUnit={weightUnit}
                 workoutTitle={workoutTitle}
+                backgroundMode={backgroundMode}
               />
             </View>
 
@@ -250,6 +262,45 @@ export function WorkoutShareScreen({
                 workout={workout}
                 weightUnit={weightUnit}
                 workoutCountThisWeek={workoutCountThisWeek}
+                backgroundMode={backgroundMode}
+              />
+            </View>
+
+            {/* Widget 3: Strava Overlay */}
+            <View style={styles.widgetPage}>
+              {/* Checkerboard background for transparent mode preview */}
+              {backgroundMode === 'transparent' && (
+                <View style={[StyleSheet.absoluteFill, styles.checkerboardContainer]}>
+                  <View style={styles.checkerboardRow}>
+                    {Array.from({ length: 1000 }).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.checkerboardSquare,
+                          { backgroundColor: i % 2 === 0 ? '#3A3A3C' : '#2C2C2E' },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
+              {/* Dark background for preview visibility only - positioned absolutely behind */}
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: 'transparent', // Removed dark background, using checkerboard or actual background
+                    marginVertical: 10,
+                    marginHorizontal: 20,
+                    borderRadius: 20,
+                  },
+                ]}
+              />
+              <StravaOverlayWidget
+                ref={widget4Ref}
+                workout={workout}
+                weightUnit={weightUnit}
+                backgroundMode={backgroundMode}
               />
             </View>
 
@@ -261,6 +312,7 @@ export function WorkoutShareScreen({
                   workout={workout}
                   weightUnit={weightUnit}
                   prData={prData}
+                  backgroundMode={backgroundMode}
                 />
               </View>
             )}
@@ -284,6 +336,45 @@ export function WorkoutShareScreen({
 
           {/* Share buttons */}
           <View style={styles.shareButtons}>
+            <TouchableOpacity
+              style={[styles.shareButton, styles.backgroundButton]}
+              onPress={() => {
+                const modes: ('light' | 'dark' | 'transparent')[] = [
+                  'light',
+                  'dark',
+                  'transparent',
+                ]
+                const nextIndex =
+                  (modes.indexOf(backgroundMode) + 1) % modes.length
+                setBackgroundMode(modes[nextIndex])
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.backgroundIcon}>
+                {backgroundMode === 'light' && (
+                  <View style={[styles.bgCircle, { backgroundColor: '#FFF' }]} />
+                )}
+                {backgroundMode === 'dark' && (
+                  <View style={[styles.bgCircle, { backgroundColor: '#000' }]} />
+                )}
+                {backgroundMode === 'transparent' && (
+                  <View
+                    style={[
+                      styles.bgCircle,
+                      {
+                        backgroundColor: '#D1D1D6',
+                        borderWidth: 1,
+                        borderColor: '#FFF',
+                      },
+                    ]}
+                  />
+                )}
+              </View>
+              <Text style={styles.backgroundButtonText}>
+                {backgroundMode.charAt(0).toUpperCase() + backgroundMode.slice(1)}
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.shareButton,
@@ -386,5 +477,52 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  backgroundButton: {
+    backgroundColor: '#2C2C2E',
+    flexDirection: 'column',
+    gap: 4,
+    paddingVertical: 10,
+    width: 80,
+  },
+  backgroundIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#555',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+  },
+  bgCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  backgroundButtonText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  checkerboardContainer: {
+    marginVertical: 10,
+    marginHorizontal: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#FFFFFF',
+  },
+  checkerboardRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: '100%',
+    height: '100%',
+  },
+  checkerboardSquare: {
+    width: 20,
+    height: 20,
   },
 })

@@ -2,6 +2,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { database } from '@/lib/database'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
@@ -163,6 +164,7 @@ export const FeedCard = memo(function FeedCard({
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
   const [infoHeight, setInfoHeight] = useState(0)
+  const [workoutCountThisWeek, setWorkoutCountThisWeek] = useState(1)
 
   // Calculate carousel width (screen width - card padding * 2)
   // Card padding is 20 horizontal
@@ -262,6 +264,28 @@ export const FeedCard = memo(function FeedCard({
 
     return () => clearInterval(interval)
   }, [isPending])
+
+  // Load workout count for the week
+  useEffect(() => {
+    if (!workout?.date || !userId || !workoutId) {
+      return
+    }
+
+    const fetchCount = async () => {
+      try {
+        const count = await database.workoutSessions.getWeeklyWorkoutCount(
+          userId,
+          new Date(workout.date),
+          workoutId,
+        )
+        setWorkoutCountThisWeek(count)
+      } catch (error) {
+        console.error('Error fetching workout count:', error)
+      }
+    }
+
+    fetchCount()
+  }, [workout?.date, workoutId, userId])
 
   // Fade in exercises when data loads
   useEffect(() => {
@@ -730,7 +754,7 @@ export const FeedCard = memo(function FeedCard({
           visible={showShareScreen}
           workout={workout}
           weightUnit={weightUnit}
-          workoutCountThisWeek={1}
+          workoutCountThisWeek={workoutCountThisWeek}
           workoutTitle={workoutTitle}
           onClose={handleCloseShareScreen}
           onShare={handleShareWidget}

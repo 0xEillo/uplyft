@@ -2,7 +2,7 @@ import { calculateWorkoutStats } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Image, StyleSheet, Text, View } from 'react-native'
 
 const formatStopwatch = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -25,10 +25,11 @@ interface AchievementWidgetProps {
   workout: WorkoutSessionWithDetails
   weightUnit: 'kg' | 'lb'
   prData?: { exerciseName: string; prs: any[] }[]
+  backgroundMode?: 'light' | 'dark' | 'transparent'
 }
 
 export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
-  ({ workout, weightUnit, prData = [] }, ref) => {
+  ({ workout, weightUnit, prData = [], backgroundMode = 'light' }, ref) => {
     const stats = calculateWorkoutStats(workout, weightUnit)
     const durationDisplay = formatStopwatch(stats.durationSeconds)
 
@@ -50,28 +51,73 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
 
     const hasPRs = prExercises.length > 0
 
+    const isDark = backgroundMode === 'dark'
+    const isTransparent = backgroundMode === 'transparent'
+    const isLight = backgroundMode === 'light'
+
+    // Text colors
+    const textColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
+    const subTextColor =
+      isDark || isTransparent ? 'rgba(255, 255, 255, 0.6)' : '#8E8E93'
+    const cardBg =
+      isDark || isTransparent ? 'rgba(255, 255, 255, 0.1)' : '#F2F2F7'
+    const cardBorder =
+      isDark || isTransparent ? 'rgba(255, 255, 255, 0.1)' : '#E5E5EA'
+    const dividerColor =
+      isDark || isTransparent ? 'rgba(255, 255, 255, 0.2)' : '#E5E5EA'
+    const shadowOpacity = isTransparent ? 0.5 : 0
+
+    const getGradientColors = () => {
+      if (isTransparent) return ['transparent', 'transparent'] as const
+      if (isDark) return ['#1C1C1E', '#000000'] as const
+      // Light mode - keep existing logic for PRs vs no PRs
+      return hasPRs
+        ? (['#FF6B35', '#FF8C5A'] as const)
+        : (['#FFFFFF', '#F2F2F7'] as const)
+    }
+
+    // Special handling for PR mode in Light theme (it uses orange background)
+    // If light mode AND has PRs, we want white text.
+    // If dark/transparent, we always want white text.
+    // If light mode AND no PRs, we want black text.
+    const useWhiteText = (isLight && hasPRs) || isDark || isTransparent
+    const dynamicTextColor = useWhiteText ? '#FFFFFF' : '#000000'
+    const dynamicSubTextColor = useWhiteText
+      ? 'rgba(255, 255, 255, 0.8)'
+      : '#8E8E93'
+
     return (
       <View ref={ref} style={styles.container} collapsable={false}>
         <LinearGradient
-          colors={hasPRs ? ['#FF6B35', '#FF8C5A'] : ['#FFFFFF', '#FAFAFA']}
+          colors={getGradientColors()}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
           {/* Top Section: Date */}
           <View style={styles.topSection}>
-            <Text style={[styles.date, hasPRs && styles.dateLight]}>
+            <Text
+              style={[
+                styles.date,
+                { color: dynamicSubTextColor, shadowOpacity },
+              ]}
+            >
               {new Date(workout.date).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
               })}
             </Text>
-            <Text style={[styles.title, hasPRs && styles.titleLight]}>
+            <Text
+              style={[styles.title, { color: dynamicTextColor, shadowOpacity }]}
+            >
               {hasPRs ? 'Personal Records' : 'Workout Complete'}
             </Text>
             <Text
-              style={[styles.durationText, hasPRs && styles.durationTextLight]}
+              style={[
+                styles.durationText,
+                { color: dynamicTextColor, shadowOpacity },
+              ]}
             >
               {durationDisplay}
             </Text>
@@ -83,11 +129,20 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
               /* PR List */
               <View style={styles.prSection}>
                 <View style={styles.prCountContainer}>
-                  <View style={styles.prCountCard}>
+                  <View
+                    style={[
+                      styles.prCountCard,
+                      { backgroundColor: cardBg, borderColor: cardBorder },
+                    ]}
+                  >
                     <Text style={styles.prCount}>
                       {prExercises.length} PR{prExercises.length > 1 ? 's' : ''}
                     </Text>
-                    <Text style={styles.prCountSubtext}>Achieved Today</Text>
+                    <Text
+                      style={[styles.prCountSubtext, { color: subTextColor }]}
+                    >
+                      Achieved Today
+                    </Text>
                   </View>
                 </View>
 
@@ -109,16 +164,35 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                     const reps = bestPR?.currentReps || 0
 
                     return (
-                      <View key={index} style={styles.prItem}>
+                      <View
+                        key={index}
+                        style={[
+                          styles.prItem,
+                          { backgroundColor: cardBg, borderColor: cardBorder },
+                        ]}
+                      >
                         <View style={styles.prBadge}>
                           <Text style={styles.prBadgeText}>PR</Text>
                         </View>
                         <View style={styles.prInfo}>
-                          <Text style={styles.prExerciseName} numberOfLines={1}>
+                          <Text
+                            style={[
+                              styles.prExerciseName,
+                              { color: textColor },
+                            ]}
+                            numberOfLines={1}
+                          >
                             {exercise.exercise?.name || 'Exercise'}
                           </Text>
-                          <Text style={styles.prStats}>
-                            {weight > 0 ? `${weight} ${weightUnit}` : ''}{' '}
+                          <Text
+                            style={[styles.prStats, { color: subTextColor }]}
+                          >
+                            {weight > 0
+                              ? `${Number(weight).toLocaleString(undefined, {
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 1,
+                                })} ${weightUnit}`
+                              : ''}{' '}
                             {weight > 0 && reps > 0 ? '×' : ''}{' '}
                             {reps > 0 ? `${reps} reps` : ''}
                           </Text>
@@ -139,17 +213,39 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                 </Text>
 
                 <View style={styles.summaryStats}>
-                  <View style={styles.summaryStatCard}>
-                    <Text style={styles.summaryStatValue}>
+                  <View
+                    style={[
+                      styles.summaryStatCard,
+                      { backgroundColor: cardBg, borderColor: cardBorder },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.summaryStatValue, { color: textColor }]}
+                    >
                       {stats.totalSets}
                     </Text>
-                    <Text style={styles.summaryStatLabel}>Sets Completed</Text>
+                    <Text
+                      style={[styles.summaryStatLabel, { color: subTextColor }]}
+                    >
+                      Sets Completed
+                    </Text>
                   </View>
-                  <View style={styles.summaryStatCard}>
-                    <Text style={styles.summaryStatValue}>
+                  <View
+                    style={[
+                      styles.summaryStatCard,
+                      { backgroundColor: cardBg, borderColor: cardBorder },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.summaryStatValue, { color: textColor }]}
+                    >
                       {stats.exerciseCount}
                     </Text>
-                    <Text style={styles.summaryStatLabel}>Exercises</Text>
+                    <Text
+                      style={[styles.summaryStatLabel, { color: subTextColor }]}
+                    >
+                      Exercises
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -160,20 +256,48 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
           <View style={styles.bottomSection}>
             <View style={styles.brandContainer}>
               <View
-                style={[styles.brandLine, hasPRs && styles.brandLineLight]}
+                style={[
+                  styles.brandLine,
+                  { backgroundColor: dividerColor, shadowOpacity },
+                ]}
               />
               <View style={styles.brandContent}>
-                <Text
-                  style={[styles.brandText, hasPRs && styles.brandTextLight]}
-                >
-                  REP AI
-                </Text>
+                <View style={styles.logoContainer}>
+                  <Image
+                    source={require('../../assets/images/bicep-icon.png')}
+                    style={[
+                      styles.brandIcon,
+                      {
+                        tintColor:
+                          dynamicTextColor === '#FFFFFF'
+                            ? '#FFFFFF'
+                            : '#FF6B35',
+                        shadowOpacity,
+                      },
+                    ]}
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={[
+                      styles.brandText,
+                      {
+                        color:
+                          dynamicTextColor === '#FFFFFF'
+                            ? '#FFFFFF'
+                            : '#FF6B35',
+                        shadowOpacity,
+                      },
+                    ]}
+                  >
+                    REP AI
+                  </Text>
+                </View>
                 {(workout.profile?.user_tag ||
                   workout.profile?.display_name) && (
                   <Text
                     style={[
                       styles.userTagText,
-                      hasPRs && styles.userTagTextLight,
+                      { color: dynamicSubTextColor, shadowOpacity },
                     ]}
                   >
                     @
@@ -182,7 +306,10 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                 )}
               </View>
               <View
-                style={[styles.brandLine, hasPRs && styles.brandLineLight]}
+                style={[
+                  styles.brandLine,
+                  { backgroundColor: dividerColor, shadowOpacity },
+                ]}
               />
             </View>
           </View>
@@ -221,6 +348,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   dateLight: {
     color: 'rgba(255, 255, 255, 0.9)',
@@ -231,6 +361,9 @@ const styles = StyleSheet.create({
     color: '#000000',
     letterSpacing: -0.8,
     lineHeight: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   titleLight: {
     color: '#FFFFFF',
@@ -247,6 +380,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 4,
     fontVariant: ['tabular-nums'],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   durationTextLight: {
     color: '#FFFFFF',
@@ -399,12 +535,28 @@ const styles = StyleSheet.create({
   },
   brandContent: {
     alignItems: 'center',
+    paddingHorizontal: 12,
     gap: 2,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  brandIcon: {
+    width: 20,
+    height: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   brandLine: {
     width: 40,
     height: 2,
     backgroundColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   brandLineLight: {
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
@@ -414,6 +566,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FF6B35',
     letterSpacing: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   brandTextLight: {
     color: '#FFFFFF',
@@ -423,6 +578,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8E8E93',
     letterSpacing: 0.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   userTagTextLight: {
     color: 'rgba(255, 255, 255, 0.8)',

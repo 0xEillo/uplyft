@@ -1300,6 +1300,54 @@ export const database = {
       return data?.length || 0
     },
 
+    async getWeeklyWorkoutCount(
+      userId: string,
+      targetDate: Date,
+      workoutId: string,
+    ) {
+      // Calculate start of week (Monday) for the target date
+      const d = new Date(targetDate)
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
+      const startOfWeek = new Date(d)
+      startOfWeek.setDate(diff)
+      startOfWeek.setHours(0, 0, 0, 0)
+
+      // Calculate end of week (Sunday end of day)
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 7)
+
+      console.log('[getWeeklyWorkoutCount] Debug:', {
+        targetDate: targetDate.toISOString(),
+        startOfWeek: startOfWeek.toISOString(),
+        endOfWeek: endOfWeek.toISOString(),
+        userId,
+        workoutId,
+      })
+
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select('id, date, created_at')
+        .eq('user_id', userId)
+        .gte('date', startOfWeek.toISOString())
+        .lt('date', endOfWeek.toISOString())
+        .order('date', { ascending: true })
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      const index = data?.findIndex((w) => w.id === workoutId) ?? -1
+      const count = index !== -1 ? index + 1 : 0
+
+      console.log('[getWeeklyWorkoutCount] Result:', {
+        totalInWeek: data?.length,
+        foundIndex: index,
+        count,
+      })
+
+      return count
+    },
+
     async getTotalCount(userId: string) {
       const { count, error } = await supabase
         .from('workout_sessions')
@@ -2474,6 +2522,29 @@ export const database = {
       }
 
       return data
+    },
+
+    /**
+     * Get weight history for a user
+     */
+    async getWeightHistory(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('body_log_entries')
+        .select('created_at, weight_kg')
+        .eq('user_id', userId)
+        .not('weight_kg', 'is', null)
+        .order('created_at', { ascending: true })
+
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('created_at', cutoffDate.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return data as { created_at: string; weight_kg: number }[]
     },
 
     /**

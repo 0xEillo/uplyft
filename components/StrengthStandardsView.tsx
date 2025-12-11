@@ -6,25 +6,46 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel
+    getStrengthStandard,
+    hasStrengthStandards,
+    type StrengthLevel
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
+
+// Helper to lighten a hex color (copied from LevelBadge for consistency)
+function lightenColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = (num >> 16) + amt
+  const B = ((num >> 8) & 0x00ff) + amt
+  const G = (num & 0x00ff) + amt
+
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255) * 0x100 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  )
+}
 
 interface ExerciseRecord {
   weight: number
@@ -87,10 +108,21 @@ const ProgressRing = ({
   const radius = (size - strokeWidth) / 2
   const circumference = radius * 2 * Math.PI
   const strokeDashoffset = circumference - (progress / 100) * circumference
+  const gradientId = `grad-${color.replace('#', '')}`
 
   return (
     <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+        <Defs>
+          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity="1" />
+            <Stop
+              offset="1"
+              stopColor={lightenColor(color, 40)}
+              stopOpacity="1"
+            />
+          </LinearGradient>
+        </Defs>
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -103,7 +135,7 @@ const ProgressRing = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={color}
+          stroke={`url(#${gradientId})`}
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeDasharray={circumference}
@@ -404,126 +436,73 @@ export function StrengthStandardsView() {
         >
           {/* Overall Level Hero Card */}
           {overallLevel && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>LIFTER LEVEL</Text>
+            <View style={styles.heroSection}>
+              <View style={styles.heroHeader}>
+                <Text style={styles.heroTitle}>LIFTER LEVEL</Text>
+                {overallLevel.weakestGroup && (
+                  <View style={styles.weakPointContainer}>
+                    <Ionicons
+                      name="warning"
+                      size={14}
+                      color={colors.warning}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.weakPointText}>
+                      Focus on {overallLevel.weakestGroup}
+                    </Text>
+                  </View>
+                )}
               </View>
+
               <TouchableOpacity
                 style={styles.heroCard}
                 activeOpacity={0.9}
                 onPress={() => setShowLevelsSheet(true)}
               >
-                <View style={styles.heroContent}>
-                  <View style={styles.heroLeft}>
-                    <View style={styles.heroLevelContainer}>
-                      <Text style={styles.heroLevel}>
-                        {overallLevel.balancedLevel}
-                      </Text>
-                      {overallLevel.weakestGroup && (
-                        <View
-                          style={{
-                            marginTop: 4,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <Ionicons
-                            name="warning-outline"
-                            size={14}
-                            color="#F59E0B"
-                            style={{ marginRight: 4 }}
-                          />
-                          <Text
-                            style={{ color: colors.textSecondary, fontSize: 12 }}
-                          >
-                            Held back by {overallLevel.weakestGroup}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
+                <View style={styles.heroMainContent}>
+                  <View style={styles.heroLeftContent}>
+                    <Text style={styles.heroLevelLabel}>Current Level</Text>
+                    <Text style={styles.heroLevelValue}>
+                      {overallLevel.balancedLevel}
+                    </Text>
+                    
+                    {overallLevel.balancedNextLevel ? (
+                      <View style={styles.heroNextLevelContainer}>
+                        <Text style={styles.heroNextLevelText}>
+                          {Math.round(overallLevel.balancedProgress)}% to {overallLevel.balancedNextLevel}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.heroNextLevelText}>Max Level Reached</Text>
+                    )}
+                  </View>
+
+                  <View style={styles.heroRightContent}>
                     <LevelBadge
                       level={overallLevel.balancedLevel}
-                      size="large"
+                      size="hero"
                       showTooltipOnPress={false}
-                      style={styles.heroLevelImage}
                     />
                   </View>
                 </View>
+
                 {overallLevel.balancedNextLevel && (
-                  <View style={styles.heroProgress}>
-                    <View style={styles.heroProgressLabels}>
-                      <Text style={styles.heroProgressCurrent}>
-                        {overallLevel.balancedLevel}
-                      </Text>
-                      <Text style={styles.heroProgressNext}>
-                        {overallLevel.balancedNextLevel}
-                      </Text>
-                    </View>
-                    <View style={styles.heroProgressBar}>
+                  <View style={styles.heroProgressBarContainer}>
+                    <View style={styles.heroProgressBarBackground}>
                       <View
                         style={[
-                          styles.heroProgressFill,
+                          styles.heroProgressBarFill,
                           {
                             width: `${overallLevel.balancedProgress}%`,
-                            backgroundColor: getLevelColor(
-                              overallLevel.balancedLevel,
-                            ),
+                            backgroundColor: getLevelColor(overallLevel.balancedLevel),
                           },
                         ]}
-                      />
-                    </View>
-                    <Text style={styles.heroProgressPercent}>
-                      {Math.round(overallLevel.balancedProgress)}% to next level
-                    </Text>
-                  </View>
-                )}
-
-                {overallLevel.currentLevel !== overallLevel.balancedLevel && (
-                  <View
-                    style={{
-                      marginTop: 12,
-                      paddingTop: 12,
-                      borderTopWidth: 1,
-                      borderTopColor: colors.border,
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      Peak Potential
-                    </Text>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: colors.text,
-                          fontWeight: '600',
-                          fontSize: 13,
-                        }}
-                      >
-                        {overallLevel.currentLevel}
-                      </Text>
-                      <View
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: 3,
-                          backgroundColor: getLevelColor(
-                            overallLevel.currentLevel,
-                          ),
-                        }}
                       />
                     </View>
                   </View>
                 )}
               </TouchableOpacity>
-            </>
+            </View>
           )}
 
           {/* Section Header */}
@@ -548,123 +527,103 @@ export function StrengthStandardsView() {
               </Text>
             </View>
           ) : (
-            muscleGroups.map((group) => {
-              const isGroupExpanded = expandedGroups.has(group.name)
-              
-              return (
-                <View key={group.name} style={styles.groupContainer}>
-                  <TouchableOpacity
-                    style={styles.groupHeader}
-                    onPress={() => toggleGroup(group.name)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.groupInfo}>
-                      <Text style={styles.groupName}>{group.name}</Text>
-                    </View>
-                    <View style={styles.groupRight}>
-                      {!isGroupExpanded && (
-                        <View
-                          style={[
-                            styles.levelBadge,
-                            { backgroundColor: getLevelColor(group.level) },
-                          ]}
-                        >
-                          <Text style={styles.levelBadgeText}>{group.level}</Text>
+            <View style={styles.muscleGroupsContainer}>
+              {muscleGroups.map((group) => {
+                const isGroupExpanded = expandedGroups.has(group.name)
+                
+                return (
+                  <View key={group.name} style={styles.muscleGroupCard}>
+                    <TouchableOpacity
+                      style={styles.muscleGroupHeader}
+                      onPress={() => toggleGroup(group.name)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.muscleGroupHeaderLeft}>
+                        <View style={styles.muscleGroupIconContainer}>
+                          <Ionicons 
+                            name={group.name === 'Lower' ? 'body-outline' : 'barbell-outline'} 
+                            size={24} 
+                            color={colors.primary} 
+                          />
                         </View>
-                      )}
-                      
-                      {group.level !== 'World Class' ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          {isGroupExpanded && (
-                            <Text style={styles.groupProgressText}>
-                              {Math.round(group.progress)}%
-                            </Text>
-                          )}
+                        <View>
+                          <Text style={styles.muscleGroupName}>{group.name}</Text>
+                          <Text style={styles.muscleGroupLevel}>{group.level}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.muscleGroupHeaderRight}>
+                        <View style={styles.progressRingContainer}>
                           <ProgressRing
                             progress={group.progress}
-                            size={32}
-                            strokeWidth={3}
-                            color={colors.primary}
+                            size={44}
+                            strokeWidth={4}
+                            color={getLevelColor(group.level)}
                             trackColor={colors.border}
                           >
-                            <Ionicons
-                              name={isGroupExpanded ? 'chevron-up' : 'chevron-down'}
-                              size={16}
-                              color={colors.textSecondary}
-                            />
+                            <Text style={[styles.progressRingText, { color: getLevelColor(group.level) }]}>
+                              {Math.round(group.progress)}%
+                            </Text>
                           </ProgressRing>
                         </View>
-                      ) : (
                         <Ionicons
                           name={isGroupExpanded ? 'chevron-up' : 'chevron-down'}
                           size={20}
-                          color={colors.textSecondary}
+                          color={colors.textTertiary}
+                          style={{ marginLeft: 12 }}
                         />
-                      )}
-                    </View>
-                  </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
 
-                  {isGroupExpanded && (
-                    <View style={styles.groupContent}>
-                      {group.exercises.map((exercise, index) => {
-                        const strengthInfo = getStrengthInfo(
-                          exercise.exerciseName,
-                          exercise.max1RM,
-                        )
+                    {isGroupExpanded && (
+                      <View style={styles.muscleGroupContent}>
+                        {group.exercises.map((exercise, index) => {
+                          const strengthInfo = getStrengthInfo(
+                            exercise.exerciseName,
+                            exercise.max1RM,
+                          )
 
-                        return (
-                          <View
-                            key={exercise.exerciseId}
-                            style={[
-                              styles.exerciseCard,
-                              index === group.exercises.length - 1 && styles.lastCard,
-                            ]}
-                          >
-                            {/* Exercise Header */}
-                            <TouchableOpacity
-                              style={styles.exerciseHeader}
-                              onPress={() => navigateToExercise(exercise.exerciseId)}
-                              activeOpacity={0.7}
+                          return (
+                            <View
+                              key={exercise.exerciseId}
+                              style={[
+                                styles.exerciseItem,
+                                index === group.exercises.length - 1 && styles.lastExerciseItem,
+                              ]}
                             >
-                              <View style={styles.exerciseMain}>
-                                <Text style={styles.exerciseName}>
-                                  {exercise.exerciseName}
-                                </Text>
-                                <View style={styles.exerciseStats}>
-                                  <Text style={styles.exerciseStatValue}>
+                              <TouchableOpacity
+                                style={styles.exerciseRow}
+                                onPress={() => navigateToExercise(exercise.exerciseId)}
+                                activeOpacity={0.7}
+                              >
+                                <View style={styles.exerciseInfo}>
+                                  <Text style={styles.exerciseName}>
+                                    {exercise.exerciseName}
+                                  </Text>
+                                  <Text style={styles.exerciseWeight}>
                                     {formatWeight(exercise.max1RM, {
                                       maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
                                     })}
                                   </Text>
-                                  <Text style={styles.exerciseStatLabel}>1RM</Text>
                                 </View>
-                              </View>
 
-                              <View style={styles.exerciseRight}>
                                 {strengthInfo ? (
-                                  <View
-                                    style={[
-                                      styles.levelBadge,
-                                      {
-                                        backgroundColor: getLevelColor(strengthInfo.level),
-                                      },
-                                    ]}
-                                  >
-                                    <Text style={styles.levelBadgeText}>
+                                  <View style={styles.exerciseLevelBadge}>
+                                    <Text style={[styles.exerciseLevelText, { color: getLevelColor(strengthInfo.level) }]}>
                                       {strengthInfo.level}
                                     </Text>
                                   </View>
                                 ) : null}
-                              </View>
-                            </TouchableOpacity>
-                          </View>
-                        )
-                      })}
-                    </View>
-                  )}
-                </View>
-              )
-            })
+                              </TouchableOpacity>
+                            </View>
+                          )
+                        })}
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
+            </View>
           )}
         </ScrollView>
       )}
@@ -705,70 +664,93 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
 
-    // Hero Card
+    // Hero Section
+    heroSection: {
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      marginBottom: 24,
+    },
+    heroHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    heroTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      letterSpacing: 1,
+    },
+    weakPointContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.warning + '15',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    weakPointText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.warning,
+    },
     heroCard: {
       backgroundColor: colors.feedCardBackground,
-      marginHorizontal: 0,
-      marginBottom: 2,
-      paddingHorizontal: 20,
-      paddingVertical: 20,
+      borderRadius: 12,
+      padding: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 12,
+      elevation: 3,
     },
-    heroContent: {
+    heroMainContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-    heroLeft: {
+    heroLeftContent: {
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
     },
-    heroLevelContainer: {
-      flex: 1,
+    heroRightContent: {
+      marginLeft: 16,
     },
-    heroLevelImage: {
-      // Dimensions handled by component size="xl"
+    heroLevelLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 4,
     },
-    heroLevel: {
+    heroLevelValue: {
       fontSize: 32,
       fontWeight: '800',
-      letterSpacing: -0.5,
       color: colors.text,
-    },
-    heroProgress: {
-      marginTop: 20,
-    },
-    heroProgressLabels: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
+      letterSpacing: -0.5,
       marginBottom: 8,
     },
-    heroProgressCurrent: {
-      fontSize: 12,
-      fontWeight: '600',
+    heroNextLevelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    heroNextLevelText: {
+      fontSize: 13,
+      fontWeight: '500',
       color: colors.textSecondary,
     },
-    heroProgressNext: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.textSecondary,
+    heroProgressBarContainer: {
+      marginTop: 20,
     },
-    heroProgressBar: {
-      height: 6,
+    heroProgressBarBackground: {
+      height: 8,
       backgroundColor: colors.border,
-      borderRadius: 3,
+      borderRadius: 4,
       overflow: 'hidden',
     },
-    heroProgressFill: {
+    heroProgressBarFill: {
       height: '100%',
-      borderRadius: 3,
-    },
-    heroProgressPercent: {
-      fontSize: 12,
-      color: colors.textTertiary,
-      marginTop: 6,
-      textAlign: 'center',
+      borderRadius: 4,
     },
 
     // Locked Hero
@@ -788,138 +770,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       letterSpacing: 1,
     },
 
-    // Exercise Cards
-    exerciseCard: {
-      backgroundColor: colors.feedCardBackground,
-      marginBottom: 2,
-    },
-    lastCard: {
-      marginBottom: 0,
-    },
-    exerciseHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-    },
-    exerciseMain: {
-      flex: 1,
-    },
-    exerciseName: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    exerciseStats: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 6,
-    },
-    exerciseStatValue: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.primary,
-      letterSpacing: -0.5,
-    },
-    exerciseStatLabel: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    exerciseRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    levelBadge: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 6,
-    },
-    levelBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#FFFFFF',
-      letterSpacing: 0.3,
-    },
-    expandButton: {
-      padding: 4,
-    },
-
-    // Exercise Progress
-    exerciseProgressContainer: {
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-    },
-    exerciseProgressBar: {
-      height: 4,
-      backgroundColor: colors.border,
-      borderRadius: 2,
-      overflow: 'hidden',
-    },
-    exerciseProgressFill: {
-      height: '100%',
-      borderRadius: 2,
-    },
-
-    // Expanded Content
-    expandedContent: {
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-    },
-    standardsGrid: {
-      gap: 0,
-    },
-    standardRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    standardRowLast: {
-      borderBottomWidth: 0,
-    },
-    standardLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      flex: 1,
-    },
-    standardIndicator: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 2,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    standardInfo: {
-      flex: 1,
-    },
-    standardLevel: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 2,
-    },
-    standardDesc: {
-      fontSize: 12,
-      color: colors.textSecondary,
-    },
-    standardRight: {
-      marginLeft: 12,
-    },
-    standardWeight: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.text,
-    },
 
     // Empty State
     emptyState: {
@@ -951,44 +801,106 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
 
     // Muscle Groups
-    groupContainer: {
-      backgroundColor: colors.feedCardBackground,
-      marginBottom: 2,
+    muscleGroupsContainer: {
+      paddingHorizontal: 20,
+      gap: 8,
     },
-    groupHeader: {
+    muscleGroupCard: {
+      backgroundColor: colors.feedCardBackground,
+      borderRadius: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+      overflow: 'hidden',
+    },
+    muscleGroupHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      padding: 16,
     },
-    groupInfo: {
+    muscleGroupHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
     },
-    groupName: {
+    muscleGroupIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    muscleGroupName: {
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.text,
+      marginBottom: 2,
     },
-    groupLevelContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    groupRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    groupProgressText: {
+    muscleGroupLevel: {
       fontSize: 13,
-      fontWeight: '600',
-      color: colors.primary,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
-    groupContent: {
+    muscleGroupHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    progressRingContainer: {
+      width: 44,
+      height: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    progressRingText: {
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    muscleGroupContent: {
       borderTopWidth: 1,
       borderTopColor: colors.border,
+      backgroundColor: colors.background + '50', // Slightly darker/different for contrast
+    },
+    exerciseItem: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    lastExerciseItem: {
+      borderBottomWidth: 0,
+    },
+    exerciseRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    exerciseInfo: {
+      flex: 1,
+    },
+    exerciseName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    exerciseWeight: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    exerciseLevelBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+    },
+    exerciseLevelText: {
+      fontSize: 12,
+      fontWeight: '700',
     },
   })
