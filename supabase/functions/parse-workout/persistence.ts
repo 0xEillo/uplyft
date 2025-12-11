@@ -13,6 +13,7 @@ export async function createWorkoutSession(
   userId: string,
   workout: NormalizedWorkout,
   rawText: string,
+  description: string | null | undefined,
   imageUrl: string | null | undefined,
   routineId: string | null | undefined,
   durationSeconds: number | null | undefined,
@@ -30,7 +31,7 @@ export async function createWorkoutSession(
     .insert({
       user_id: userId,
       raw_text: rawText,
-      notes: workout.notes ?? null,
+      notes: description || null, // Use user-provided description, not AI-parsed notes
       type: workout.type ?? null,
       image_url: imageUrl ?? null,
       routine_id: routineId ?? null,

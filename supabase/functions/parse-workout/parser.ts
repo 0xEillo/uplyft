@@ -1,13 +1,14 @@
-import { openai } from '@ai-sdk/openai'
-import { generateObject, generateText } from 'ai'
+// @ts-ignore: Remote import for Deno edge runtime
+import { openai } from 'npm:@ai-sdk/openai@2.0.42'
+// @ts-ignore: Remote import for Deno edge runtime
+import { generateObject } from 'npm:ai@5.0.60'
 
-import { PARSER_MODEL, TITLE_MODEL } from './constants.ts'
+import { PARSER_MODEL } from './constants.ts'
 import { ApiError } from './errors.ts'
 import { logWithCorrelation } from './metrics.ts'
 import { ParsedWorkout, WorkoutRequest, workoutSchema } from './schemas.ts'
 
 const parserModel = openai(PARSER_MODEL)
-const titleModel = openai(TITLE_MODEL)
 
 export async function parseWorkoutNotes(
   payload: WorkoutRequest,
@@ -49,47 +50,11 @@ export async function parseWorkoutNotes(
   }
 }
 
-export async function inferWorkoutTitle(
+export function inferWorkoutTitle(
   existingTitle: string | undefined,
-  parsedWorkout: ParsedWorkout,
-  correlationId: string,
-): Promise<string | undefined> {
-  if (existingTitle?.trim()) {
-    return existingTitle.trim()
-  }
-
-  if (parsedWorkout.type?.trim()) {
-    return parsedWorkout.type.trim()
-  }
-
-  if (
-    !Array.isArray(parsedWorkout.exercises) ||
-    parsedWorkout.exercises.length === 0
-  ) {
-    return undefined
-  }
-
-  try {
-    const exerciseList = parsedWorkout.exercises
-      .map((ex) => `${ex.name} (${ex.sets.length} sets)`)
-      .join(', ')
-
-    const titleResult = await generateText({
-      model: titleModel,
-      prompt: buildTitlePrompt(exerciseList),
-    })
-
-    const title = titleResult.text.trim()
-    logWithCorrelation(correlationId, `Generated workout title: ${title}`)
-    return title || undefined
-  } catch (error) {
-    logWithCorrelation(
-      correlationId,
-      'Title generation failed, falling back to undefined',
-      error,
-    )
-    return undefined
-  }
+): string | undefined {
+  // Title is required in the UI, so this just trims and returns it
+  return existingTitle?.trim() || undefined
 }
 
 function buildParsePrompt(notes: string, weightUnit: 'kg' | 'lb'): string {
@@ -111,25 +76,7 @@ Instructions:
 3. If the user mentions warm-up sets or sets without specific reps, include them but mark reps as null
 4. Convert all weights to ${weightUnit}. ${conversionInstructions}
 5. Extract RPE (Rate of Perceived Exertion) if mentioned
-6. Extract any exercise-specific notes
-7. Try to infer the workout type if possible (e.g., "Push Day", "Pull Day", "Leg Day", "Upper Body", "Full Body")
-8. IMPORTANT: The 'notes' field should ONLY contain explicit user comments or descriptions about the workout (e.g., "Felt great today!", "New PR!", "Struggled with form"). If the user didn't provide any description or comment about the workout session itself, leave the notes field as null.
+6. Leave all 'notes' and 'type' fields as null - we handle those separately
 
 Return structured data following the schema.`
-}
-
-function buildTitlePrompt(exerciseList: string): string {
-  return `You are a fitness expert analyzing workout sessions. Based on the exercises performed, generate a concise workout title (2-3 words max).
-
-Exercises performed: ${exerciseList}
-
-Guidelines:
-- Use standard workout split terminology: Upper Body, Lower Body, Push, Pull, Glutes, Quads, Hamstrings, Calves, Full Body, Core, Cardio, Arms, Shoulders, Back, Chest
-- If it's a specific split, use that (e.g., "Push Session", "Pull Session", "Glute Session")
-- If it's mixed, use broader terms (e.g., "Upper Body", "Full Body")
-- Keep it SHORT and specific (2-3 words maximum)
-- IMPORTANT: Use proper capitalization (Title Case) - capitalize the first letter of each major word
-- Examples: "Upper Body", "Lower Body", "Push Session", "Pull Session", "Glute Session", "Full Body"
-
-Return ONLY the title with proper capitalization, nothing else.`
 }

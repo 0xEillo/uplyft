@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
 import * as Crypto from 'expo-crypto'
+import { useCallback, useRef, useState } from 'react'
 
 import { useAuth } from '@/contexts/auth-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -8,16 +8,16 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import {
-  clearDraft,
-  clearPendingArtifacts,
-  createPlaceholderWorkout,
-  loadPendingWorkout,
-  loadPlaceholderWorkout,
-  PendingWorkout,
-  PlaceholderWorkout,
-  saveDraft,
-  savePendingWorkout,
-  savePlaceholderWorkout,
+    clearDraft,
+    clearPendingArtifacts,
+    createPlaceholderWorkout,
+    loadPendingWorkout,
+    loadPlaceholderWorkout,
+    PendingWorkout,
+    PlaceholderWorkout,
+    saveDraft,
+    savePendingWorkout,
+    savePlaceholderWorkout,
 } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
@@ -27,6 +27,7 @@ interface SubmitWorkoutArgs {
   imageUri: string | null
   routineId?: string | null
   durationSeconds?: number
+  description?: string
 }
 
 export type SubmitWorkoutErrorCode = 'IMAGE_UPLOAD'
@@ -69,7 +70,7 @@ export function useSubmitWorkout() {
   const isProcessingRef = useRef(false)
 
   const submitWorkout = useCallback(
-    async ({ notes, title, imageUri, routineId, durationSeconds }: SubmitWorkoutArgs) => {
+    async ({ notes, title, imageUri, routineId, durationSeconds, description }: SubmitWorkoutArgs) => {
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
       }
@@ -102,6 +103,7 @@ export function useSubmitWorkout() {
         idempotencyKey,
         routineId: routineId || null,
         durationSeconds: typeof durationSeconds === 'number' ? durationSeconds : null,
+        description,
       }
 
       // Fetch user's profile for the placeholder
@@ -163,6 +165,7 @@ export function useSubmitWorkout() {
           idempotencyKey: pending.idempotencyKey,
           routineId: pending.routineId,
           durationSeconds: pending.durationSeconds ?? undefined,
+          description: pending.description,
         },
         accessToken,
       )

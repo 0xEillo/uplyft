@@ -11,6 +11,7 @@ export interface WorkoutRequest {
   createWorkout?: boolean
   userId?: string
   workoutTitle?: string
+  description?: string
   imageUrl?: string | null
   idempotencyKey?: string
   routineId?: string | null

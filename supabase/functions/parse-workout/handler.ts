@@ -51,11 +51,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       )
     }
 
-    const workoutTitle = await inferWorkoutTitle(
-      payload.workoutTitle,
-      parsedWorkout,
-      correlationId,
-    )
+    const workoutTitle = inferWorkoutTitle(payload.workoutTitle)
 
     const normalizedWorkout = normalizeWorkout(
       parsedWorkout,
@@ -64,7 +60,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     const finalWorkout: NormalizedWorkout = {
       ...normalizedWorkout,
-      type: workoutTitle ?? normalizedWorkout.type ?? undefined,
+      type: workoutTitle ?? undefined,
     }
 
     logErrorWithCorrelation(correlationId, 'Workout finalized', {
@@ -90,7 +86,8 @@ export async function handleRequest(req: Request): Promise<Response> {
         serviceClient,
         payload.userId,
         finalWorkout,
-        payload.notes,
+        payload.notes, // raw workout text for parsing
+        payload.description ?? null, // user-provided description from overlay
         payload.imageUrl,
         payload.routineId,
         payload.durationSeconds,

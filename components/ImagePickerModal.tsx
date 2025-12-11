@@ -16,11 +16,11 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated'
 
 interface ImagePickerModalProps {
@@ -28,8 +28,6 @@ interface ImagePickerModalProps {
   onClose: () => void
   onScanWithCamera: () => void
   onScanWithLibrary: () => void
-  onAttachWithCamera: () => void
-  onAttachWithLibrary: () => void
 }
 
 export function ImagePickerModal({
@@ -37,8 +35,6 @@ export function ImagePickerModal({
   onClose,
   onScanWithCamera,
   onScanWithLibrary,
-  onAttachWithCamera,
-  onAttachWithLibrary,
 }: ImagePickerModalProps) {
   const colors = useThemedColors()
   const translateY = useSharedValue(0)
@@ -90,17 +86,15 @@ export function ImagePickerModal({
     setTimeout(onScanWithCamera, 250)
   }
 
-  const handleAttach = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    onClose()
-    // Launch library directly after menu closes
-    setTimeout(onAttachWithLibrary, 250)
-  }
-
   const styles = createStyles(colors)
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleClose}
+    >
       <GestureHandlerRootView style={styles.container}>
         {/* Backdrop */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
@@ -115,7 +109,7 @@ export function ImagePickerModal({
             </View>
 
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Add Photo</Text>
+              <Text style={styles.sheetTitle}>Scan Workout</Text>
             </View>
 
             <View style={styles.optionsContainer}>
@@ -125,27 +119,19 @@ export function ImagePickerModal({
                 onPress={handleScan}
                 activeOpacity={0.7}
               >
-                <View style={[styles.optionIcon, { backgroundColor: colors.primary }]}>
+                <View
+                  style={[
+                    styles.optionIcon,
+                    { backgroundColor: colors.primary },
+                  ]}
+                >
                   <Ionicons name="scan" size={28} color={colors.white} />
                 </View>
                 <View style={styles.optionTextContainer}>
                   <Text style={styles.optionLabel}>Scan Workout</Text>
-                  <Text style={styles.optionDescription}>Extract text from image</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Attach Button */}
-              <TouchableOpacity
-                style={styles.optionButton}
-                onPress={handleAttach}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.optionIcon, { backgroundColor: colors.primary }]}>
-                  <Ionicons name="image" size={28} color={colors.white} />
-                </View>
-                <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionLabel}>Attach Photo</Text>
-                  <Text style={styles.optionDescription}>Add photo to workout</Text>
+                  <Text style={styles.optionDescription}>
+                    Extract text from image
+                  </Text>
                 </View>
               </TouchableOpacity>
             </View>

@@ -48,7 +48,8 @@ function TikTokPlusButton() {
     return () => clearInterval(interval)
   }, [])
 
-  const styles = createButtonStyles(colors)
+  const buttonColor = hasDraft ? colors.error : colors.primary
+  const styles = createButtonStyles(colors, buttonColor)
 
   return (
     <TouchableOpacity
@@ -172,7 +173,7 @@ function TabLayoutContent() {
             title: 'Home',
             tabBarIcon: ({ color, focused }) => (
               <IconSymbol
-                size={30}
+                size={32}
                 name={focused ? 'house.fill' : 'house'}
                 color={color}
               />
@@ -337,7 +338,10 @@ export default function TabLayout() {
   )
 }
 
-const createButtonStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createButtonStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  buttonColor: string,
+) =>
   StyleSheet.create({
     container: {
       width: 55,
@@ -351,7 +355,7 @@ const createButtonStyles = (colors: ReturnType<typeof useThemedColors>) =>
       left: 0,
       width: 46,
       height: 33,
-      backgroundColor: colors.primary, // Theme Orange
+      backgroundColor: buttonColor,
       borderRadius: 10,
     },
     rightLayer: {
@@ -359,13 +363,13 @@ const createButtonStyles = (colors: ReturnType<typeof useThemedColors>) =>
       right: 0,
       width: 46,
       height: 33,
-      backgroundColor: colors.primary, // Theme Orange
+      backgroundColor: buttonColor,
       borderRadius: 10,
     },
     centerLayer: {
       width: 46,
       height: 33,
-      backgroundColor: colors.primary, // Theme Orange
+      backgroundColor: buttonColor,
       borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',

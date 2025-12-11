@@ -1,6 +1,8 @@
-import { openai } from 'npm:@ai-sdk/openai'
-import { embed, generateObject } from 'npm:ai'
+// @ts-ignore: Remote import for Deno edge runtime
+import { openai } from 'npm:@ai-sdk/openai@2.0.42'
+// @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
+import { embed, generateObject } from 'npm:ai@5.0.60'
 
 import { createServiceClient } from './supabase.ts'
 
@@ -338,7 +340,10 @@ function normalizeExerciseName(name: string): string {
       if (word.includes('-')) {
         return word
           .split('-')
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .map(
+            (part) =>
+              part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
+          )
           .join('-')
       }
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()

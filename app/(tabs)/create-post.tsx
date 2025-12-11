@@ -1,6 +1,6 @@
+import { EditorToolbar } from '@/components/editor-toolbar'
 import { ExerciseSearchModal } from '@/components/exercise-search-modal'
-import { ImagePickerModal } from '@/components/ImagePickerModal'
-import { KeyboardAccessoryBar } from '@/components/keyboard-accessory'
+import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { Paywall } from '@/components/paywall'
 import { RoutineSelectorSheet } from '@/components/routine-selector-sheet'
 import { SlideUpView } from '@/components/slide-up-view'
@@ -42,7 +42,6 @@ import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -239,6 +238,12 @@ export default function CreatePostScreen() {
   const [isLoading, setIsLoading] = useState(false)
 
   // =============================================================================
+  // FINALIZE OVERLAY STATE
+  // =============================================================================
+  const [showFinalizeOverlay, setShowFinalizeOverlay] = useState(false)
+  const [finalizeDescription, setFinalizeDescription] = useState('')
+
+  // =============================================================================
   // UI STATE
   // =============================================================================
   const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
@@ -409,9 +414,6 @@ export default function CreatePostScreen() {
   // Use image transcription hook
   const {
     isProcessing: isProcessingImage,
-    pickImage,
-    showModal,
-    closeModal,
     handleScanWithCamera,
     handleScanWithLibrary,
     handleAttachWithCamera,
@@ -853,7 +855,25 @@ export default function CreatePostScreen() {
   const handlePickImage = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     blurInputs()
-    await pickImage()
+
+    Alert.alert(
+      'Scan Workout',
+      'Extract workout text from a photo. Choose an option to scan your workout.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Scan from Camera',
+          onPress: handleScanWithCamera,
+        },
+        {
+          text: 'Scan from Library',
+          onPress: handleScanWithLibrary,
+        },
+      ],
+    )
   }
 
   const handleRemoveAttachedImage = async () => {
@@ -919,6 +939,7 @@ export default function CreatePostScreen() {
       titleValue: string,
       imageUriValue: string | null,
       routineIdValue: string | null,
+      descriptionValue?: string,
     ) => {
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
@@ -934,6 +955,7 @@ export default function CreatePostScreen() {
         imageUri: imageUriValue,
         routineId: routineIdValue,
         durationSeconds,
+        description: descriptionValue?.trim() || undefined,
       })
 
       // Refresh freemium limits after successful submission
@@ -963,7 +985,7 @@ export default function CreatePostScreen() {
         )
         workoutNumber = workoutsThisWeek + 1
 
-        weeklyTarget = parseCommitment(profile.commitment)
+        weeklyTarget = parseCommitment(profile.commitment?.[0] ?? null)
 
         // Fetch current streak (includeCurrentWeek=true since we're submitting a workout now)
         const streakResult = await database.stats.calculateStreak(
@@ -998,6 +1020,7 @@ export default function CreatePostScreen() {
       setStructuredData([])
       setLastRoutineWorkout(null)
       setShowRoutineSelector(false)
+      setFinalizeDescription('')
       blurInputs()
 
       // Store title for later use in share screen
@@ -1027,7 +1050,7 @@ export default function CreatePostScreen() {
     ],
   )
 
-  const submitWorkout = async () => {
+  const submitWorkout = async (caption?: string) => {
     // Check if user can post workout (freemium limit)
     if (!canPostWorkout) {
       setShowPaywall(true)
@@ -1041,6 +1064,8 @@ export default function CreatePostScreen() {
 
     // Combine structured data with free-form notes
     let workoutNotes = notes
+    // We no longer prepend caption to notes, as it's handled separately
+
     if (isStructuredMode && structuredData.length > 0) {
       const structuredText = convertStructuredDataToText(structuredData)
       // Add structured workout first, then notes
@@ -1053,6 +1078,7 @@ export default function CreatePostScreen() {
         workoutTitle,
         attachedImageUri,
         selectedRoutine?.id ?? null,
+        caption, // Pass caption as description
       )
       // Success - reset loading state
       isSubmittingRef.current = false
@@ -1087,6 +1113,7 @@ export default function CreatePostScreen() {
                     workoutTitle,
                     null,
                     selectedRoutine?.id ?? null,
+                    caption,
                   )
                 } catch (retryError) {
                   console.error('Error saving pending post:', retryError)
@@ -1315,7 +1342,7 @@ export default function CreatePostScreen() {
       const workouts = await database.workoutSessions.getRecent(user.id, 1)
 
       if (workouts.length === 0) {
-        // First-time user - show confirmation modal
+        // First-time user - show confirmation modal, then overlay
         Alert.alert(
           'Submit Your First Workout',
           "You're about to submit your workout! We'll analyze it and add it to your feed. Ready to track your progress?",
@@ -1331,7 +1358,12 @@ export default function CreatePostScreen() {
             },
             {
               text: 'Submit',
-              onPress: submitWorkout,
+              onPress: () => {
+                // Reset loading state since we're showing overlay, not submitting yet
+                isSubmittingRef.current = false
+                setIsLoading(false)
+                setShowFinalizeOverlay(true)
+              },
             },
           ],
         )
@@ -1339,11 +1371,13 @@ export default function CreatePostScreen() {
       }
     } catch (error) {
       console.error('Error checking workout count:', error)
-      // If check fails, just proceed with submission
+      // If check fails, just proceed with showing overlay
     }
 
-    // Not a first-time user, submit directly
-    await submitWorkout()
+    // Reset loading state since we're showing overlay, not submitting yet
+    isSubmittingRef.current = false
+    setIsLoading(false)
+    setShowFinalizeOverlay(true)
 
     trackEvent(AnalyticsEvents.WORKOUT_CREATE_SUBMITTED, {
       hasTitle: Boolean(workoutTitle.trim()),
@@ -1694,7 +1728,7 @@ export default function CreatePostScreen() {
   }, [structuredData, selectedRoutine])
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <SlideUpView
         key={slideKey}
         style={{ flex: 1 }}
@@ -1753,7 +1787,7 @@ export default function CreatePostScreen() {
         <KeyboardAvoidingView
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           <ScrollView
             ref={scrollViewRef}
@@ -1831,7 +1865,7 @@ export default function CreatePostScreen() {
                 placeholder={
                   isStructuredMode
                     ? 'Add notes about your workout...'
-                    : 'Input your workout...'
+                    : 'Log your exercises...'
                 }
                 placeholderTextColor="#999"
                 multiline
@@ -1904,52 +1938,22 @@ export default function CreatePostScreen() {
               )}
             </View>
 
-            {/* Attached Image Thumbnail */}
-            {attachedImageUri && (
-              <View style={styles.attachedImageContainer}>
-                <View style={styles.attachedImageWrapper}>
-                  <Animated.Image
-                    source={{ uri: attachedImageUri }}
-                    style={[styles.attachedImage, { opacity: imageOpacity }]}
-                    resizeMode="cover"
-                    onLoadStart={() => setImageLoading(true)}
-                    onLoad={() => {
-                      setImageLoading(false)
-                      Animated.timing(imageOpacity, {
-                        toValue: 1,
-                        duration: IMAGE_FADE_DURATION,
-                        useNativeDriver: true,
-                      }).start()
-                    }}
-                    onError={(error) => {
-                      console.error(
-                        'Failed to load attached image:',
-                        error.nativeEvent.error,
-                      )
-                      setImageLoading(false)
-                    }}
-                  />
-                  {imageLoading && (
-                    <View style={styles.imageLoadingOverlay}>
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={handleRemoveAttachedImage}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={28}
-                      color={colors.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.attachedImageLabel}>Workout Photo</Text>
-              </View>
-            )}
+            {/* Attached Image Thumbnail - REMOVED per refactor */}
           </ScrollView>
+
+          {/* Editor Toolbar */}
+          <EditorToolbar
+            onScanEquipment={handleDumbbellPress}
+            onMicPress={handleToggleRecording}
+            onScanWorkout={handlePickImage}
+            onSearchExercise={handleChooseExercisePress}
+            onAddExercise={handleConvertToStructured}
+            isRecording={isRecording}
+            isTranscribing={isTranscribing}
+            isProcessingImage={isProcessingImage}
+            isLoading={isLoading}
+            showAddExercise={showConvertButton}
+          />
         </KeyboardAvoidingView>
 
         {/* Example Workout - shown when user has no workouts and inputs are empty */}
@@ -1959,75 +1963,13 @@ export default function CreatePostScreen() {
             <View style={styles.exampleCard}>
               <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
               <View style={styles.exampleDivider} />
-              <Text style={styles.exampleText}>{exampleWorkout.notes}</Text>
+              {/* Description removed per refactor */}
+              <Text style={styles.exampleText}>
+                {exampleWorkout.notes.split('\n\n')[1]}
+              </Text>
             </View>
           </View>
         )}
-
-        {/* Floating Dumbbell Button */}
-        <TouchableOpacity
-          style={styles.dumbbellFab}
-          onPress={handleDumbbellPress}
-          disabled={isLoading || isProcessingImage || isTranscribing}
-        >
-          {isProcessingImage ? (
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <View style={styles.loaderRing}>
-                <View style={styles.loaderArc} />
-              </View>
-            </Animated.View>
-          ) : (
-            <Ionicons name="barbell" size={28} color={colors.white} />
-          )}
-        </TouchableOpacity>
-
-        {/* Floating Microphone Button */}
-        <TouchableOpacity
-          style={[styles.micFab, isRecording && styles.micFabActive]}
-          onPress={handleToggleRecording}
-          disabled={isTranscribing || isLoading || isProcessingImage}
-        >
-          {isTranscribing ? (
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <View style={styles.loaderRing}>
-                <View style={styles.loaderArc} />
-              </View>
-            </Animated.View>
-          ) : (
-            <Ionicons
-              name={isRecording ? 'stop' : 'mic'}
-              size={28}
-              color={colors.white}
-            />
-          )}
-        </TouchableOpacity>
-
-        {/* Floating Camera Button */}
-        <TouchableOpacity
-          style={[styles.cameraFab]}
-          onPress={handlePickImage}
-          disabled={
-            isProcessingImage || isRecording || isTranscribing || isLoading
-          }
-        >
-          <Ionicons name="camera" size={28} color={colors.white} />
-        </TouchableOpacity>
-
-        {/* Image Picker Modal */}
-        <ImagePickerModal
-          visible={showModal}
-          onClose={closeModal}
-          onScanWithCamera={handleScanWithCamera}
-          onScanWithLibrary={handleScanWithLibrary}
-          onAttachWithCamera={handleAttachWithCamera}
-          onAttachWithLibrary={handleAttachWithLibrary}
-        />
-
-        <ExerciseSearchModal
-          visible={showExerciseSearch}
-          onClose={() => setShowExerciseSearch(false)}
-          onSelectExercise={handleSelectExerciseFromModal}
-        />
 
         {/* Routine Selector Modal */}
         <RoutineSelectorSheet
@@ -2040,6 +1982,12 @@ export default function CreatePostScreen() {
           onDeleteRoutine={handleDeleteRoutine}
         />
 
+        <ExerciseSearchModal
+          visible={showExerciseSearch}
+          onClose={() => setShowExerciseSearch(false)}
+          onSelectExercise={handleSelectExerciseFromModal}
+        />
+
         {/* Paywall Modal */}
         <Paywall
           visible={showPaywall}
@@ -2047,15 +1995,38 @@ export default function CreatePostScreen() {
           title="Try Pro for FREE!"
           message="Free workout limit reached"
         />
-      </SlideUpView>
 
-      {/* Keyboard Accessory for adding exercises */}
-      <KeyboardAccessoryBar
-        onConvertPress={handleConvertToStructured}
-        onChooseExercisePress={handleChooseExercisePress}
-        showConvertButton={showConvertButton}
-        visible={isNotesFocused}
-      />
+        <FinalizeWorkoutOverlay
+          visible={showFinalizeOverlay}
+          onClose={() => {
+            // Modal dismissed (swipe down) - do NOT submit
+            setShowFinalizeOverlay(false)
+            isSubmittingRef.current = false
+            setIsLoading(false)
+          }}
+          onSkip={() => {
+            // "Skip" pressed - submit without caption
+            setShowFinalizeOverlay(false)
+            isSubmittingRef.current = true
+            setIsLoading(true)
+            submitWorkout()
+          }}
+          onFinish={() => {
+            // "Finish" pressed - submit with caption
+            setShowFinalizeOverlay(false)
+            isSubmittingRef.current = true
+            setIsLoading(true)
+            submitWorkout(finalizeDescription)
+          }}
+          onAttachWithCamera={handleAttachWithCamera}
+          onAttachWithLibrary={handleAttachWithLibrary}
+          imageUri={attachedImageUri}
+          onRemoveImage={handleRemoveAttachedImage}
+          description={finalizeDescription}
+          setDescription={setFinalizeDescription}
+          isLoading={isLoading}
+        />
+      </SlideUpView>
     </SafeAreaView>
   )
 }
@@ -2147,57 +2118,7 @@ const createStyles = (
       borderTopColor: '#ffffff',
       borderRightColor: '#ffffff',
     },
-    dumbbellFab: {
-      position: 'absolute',
-      bottom: 112 + insets.bottom,
-      right: 24,
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    micFab: {
-      position: 'absolute',
-      bottom: 32 + insets.bottom,
-      right: 24,
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    cameraFab: {
-      position: 'absolute',
-      bottom: -48 + insets.bottom,
-      right: 24,
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    micFabActive: {
-      backgroundColor: colors.primaryDark,
-    },
+
     inputContainer: {
       flex: 1,
     },

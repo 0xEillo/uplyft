@@ -30,6 +30,7 @@ export const requestSchema = z.object({
   createWorkout: z.boolean().optional(),
   userId: z.string().optional(),
   workoutTitle: z.string().optional(),
+  description: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
   routineId: z.string().nullable().optional(),
   durationSeconds: z.number().int().min(0).optional(),

@@ -44,6 +44,7 @@ export interface PendingWorkout {
   idempotencyKey?: string
   routineId?: string | null
   durationSeconds?: number | null
+  description?: string
 }
 
 export interface PlaceholderWorkout {

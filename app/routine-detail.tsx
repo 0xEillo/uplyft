@@ -92,6 +92,38 @@ export default function RoutineDetailScreen() {
     router.push(`/create-routine?routineId=${routine.id}`)
   }
 
+  const handleDeleteRoutine = async () => {
+    if (!routine) return
+
+    Alert.alert(
+      'Delete Routine',
+      `Are you sure you want to delete "${routine.name}"? This cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await database.workoutRoutines.delete(routine.id)
+              Alert.alert('Success', 'Routine deleted successfully')
+              router.back()
+            } catch (error) {
+              console.error('Error deleting routine:', error)
+              Alert.alert(
+                'Error',
+                'Failed to delete routine. Please try again.',
+              )
+            }
+          },
+        },
+      ],
+    )
+  }
+
   const handleSaveRoutine = async () => {
     if (!routine || !user) return
 
@@ -205,6 +237,22 @@ export default function RoutineDetailScreen() {
             <Text style={[styles.headerTitle, { color: colors.text }]}>
               Routine
             </Text>
+          }
+          rightContent={
+            isOwner ? (
+              <NavbarIsland>
+                <TouchableOpacity
+                  onPress={handleDeleteRoutine}
+                  style={styles.deleteButton}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={24}
+                    color={colors.error}
+                  />
+                </TouchableOpacity>
+              </NavbarIsland>
+            ) : undefined
           }
         />
 
@@ -422,6 +470,9 @@ const styles = StyleSheet.create({
   },
   backButton: {
     zIndex: 1,
+  },
+  deleteButton: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 22,
