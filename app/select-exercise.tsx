@@ -1,3 +1,4 @@
+import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
 import { SlideInView } from '@/components/slide-in-view'
@@ -11,15 +12,15 @@ import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -312,6 +313,12 @@ export default function SelectExerciseScreen() {
                   onPress={() => handleSelectExercise(exercise)}
                   disabled={isCurrentExercise}
                 >
+                  <ExerciseMedia
+                    gifUrl={exercise.gif_url}
+                    mode="thumbnail"
+                    style={styles.exerciseThumbnail}
+                    autoPlay={false}
+                  />
                   <View style={styles.exerciseItemContent}>
                     <Text
                       style={[
@@ -445,6 +452,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseItemTextSelected: {
       fontWeight: '600',
       color: colors.primary,
+    },
+    exerciseThumbnail: {
+        width: 48,
+        height: 48,
+        borderRadius: 6,
+        marginRight: 12, // Moved to right side of text, before checkmark if exists? Wait, layout is row space-between.
+        // Let's adjust flex direction or order.
+        // Actually, the previous code had:
+        // View (Content) - Checkmark
+        // I inserted Media between Content and Checkmark.
+        // Space between might push them apart.
+        // Let's rely on space-between.
+        // wait, I want: [Thumbnail] [Content] [Checkmark]
     },
     exerciseMuscleGroup: {
       fontSize: 13,

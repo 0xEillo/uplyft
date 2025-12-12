@@ -2,19 +2,19 @@ import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  Exercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  WorkoutComment,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    Exercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    WorkoutComment,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -718,6 +718,17 @@ export const database = {
 
   // Exercise operations
   exercises: {
+    async getById(id: string) {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) throw error
+      return data as Exercise
+    },
+
     async getAll() {
       const { data, error } = await supabase
         .from('exercises')

@@ -45,6 +45,7 @@ export interface Exercise {
     | 'Quads'
     | 'Hamstrings'
     | 'Calves'
+    | 'Forearms'
     | 'Cardio'
     | 'Full Body'
     | null
@@ -54,6 +55,13 @@ export interface Exercise {
   created_at: string
   aliases?: string[] | null
   embedding?: number[] | null
+  exercise_id?: string | null
+  gif_url?: string | null
+  target_muscles?: string[] | null
+  body_parts?: string[] | null
+  equipments?: string[] | null
+  secondary_muscles?: string[] | null
+  instructions?: string[] | null
 }
 
 export interface WorkoutSession {

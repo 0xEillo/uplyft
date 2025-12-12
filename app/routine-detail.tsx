@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
 import { getColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
@@ -10,13 +11,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -375,6 +376,12 @@ export default function RoutineDetailScreen() {
                 ]}
               >
                 <View style={styles.exerciseHeader}>
+                  <ExerciseMedia
+                    gifUrl={routineExercise.exercise.gif_url}
+                    mode="thumbnail"
+                    style={{ width: 40, height: 40, borderRadius: 4, marginRight: 12 }}
+                    autoPlay={false}
+                  />
                   <Text
                     style={[styles.exerciseName, { color: colors.primary }]}
                   >

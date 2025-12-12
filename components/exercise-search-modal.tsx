@@ -7,37 +7,40 @@ import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Keyboard,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ExerciseMedia } from './ExerciseMedia'
 
 interface ExerciseSearchModalProps {
   visible: boolean
   onClose: () => void
-  onSelectExercise: (exercise: Exercise) => void
+  onSelectExercise?: (exercise: Exercise) => void
+  onMultiSelect?: (exercises: Exercise[]) => void
+  multiSelect?: boolean
   currentExerciseName?: string
 }
 
@@ -45,6 +48,8 @@ export function ExerciseSearchModal({
   visible,
   onClose,
   onSelectExercise,
+  onMultiSelect,
+  multiSelect = false,
   currentExerciseName,
 }: ExerciseSearchModalProps) {
   const colors = useThemedColors()
@@ -56,6 +61,9 @@ export function ExerciseSearchModal({
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  
+  // Multi-select state
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set())
 
   // Filters
   const [muscleGroups, setMuscleGroups] = useState<string[]>([])
@@ -101,10 +109,19 @@ export function ExerciseSearchModal({
 
       // Equipment filter
       if (selectedEquipment.length > 0) {
-        if (
-          !exercise.equipment ||
-          !selectedEquipment.includes(exercise.equipment)
-        ) {
+        let matches = false
+        
+        // Check single equipment field
+        if (exercise.equipment && selectedEquipment.includes(exercise.equipment)) {
+          matches = true
+        }
+        
+        // Check equipments array field
+        if (!matches && exercise.equipments && Array.isArray(exercise.equipments)) {
+          matches = exercise.equipments.some(eq => selectedEquipment.includes(eq))
+        }
+
+        if (!matches) {
           return false
         }
       }
@@ -161,6 +178,7 @@ export function ExerciseSearchModal({
       // Don't clear exercises to keep cache
       setSelectedMuscleGroups([])
       setSelectedEquipment([])
+      setSelectedExerciseIds(new Set()) // Clear selection on close/re-open? Or keep? Usually clear.
       Keyboard.dismiss()
       return
     }
@@ -170,17 +188,36 @@ export function ExerciseSearchModal({
 
       try {
         setIsLoading(true)
-        const [allExercises, muscles, equipment, recent] = await Promise.all([
+        // Fetch exercises and recent history
+        // Derive filters from the actual exercises to ensure consistency
+        const [allExercises, recent] = await Promise.all([
           database.exercises.getAll(),
-          database.exercises.getMuscleGroups(),
-          database.exercises.getEquipment(),
           user ? database.exercises.getRecent(user.id) : Promise.resolve([]),
         ])
 
         setExercises(allExercises)
-        setMuscleGroups(muscles)
-        setEquipmentTypes(equipment)
         setRecentExercises(recent)
+
+        // Derive muscle groups
+        const muscles = Array.from(
+          new Set(
+            allExercises
+              .map((e) => e.muscle_group)
+              .filter((m) => !!m),
+          ),
+        ).sort() as string[]
+        setMuscleGroups(muscles)
+
+        // Derive equipment (checking both legacy 'equipment' and new 'equipments' array)
+        const equipmentSet = new Set<string>()
+        allExercises.forEach((e) => {
+          if (e.equipment) equipmentSet.add(e.equipment)
+          if (e.equipments && Array.isArray(e.equipments)) {
+            e.equipments.forEach((eq) => equipmentSet.add(eq))
+          }
+        })
+        setEquipmentTypes(Array.from(equipmentSet).sort())
+
       } catch (error) {
         console.error('Error loading exercise data:', error)
       } finally {
@@ -189,7 +226,7 @@ export function ExerciseSearchModal({
     }
 
     loadData()
-  }, [visible, user]) // Remove exercises.length dependency to allow refresh on re-open if needed, but here we cache
+  }, [visible, user])
 
   const handleInfoPress = (exerciseId: string) => {
     Haptics.selectionAsync()
@@ -248,11 +285,34 @@ export function ExerciseSearchModal({
   const handleSelectExercise = useCallback(
     (exercise: Exercise) => {
       Haptics.selectionAsync()
-      onSelectExercise(exercise)
-      onClose()
+      
+      if (multiSelect) {
+        setSelectedExerciseIds(prev => {
+          const next = new Set(prev)
+          if (next.has(exercise.id)) {
+            next.delete(exercise.id)
+          } else {
+            next.add(exercise.id)
+          }
+          return next
+        })
+      } else {
+        onSelectExercise?.(exercise)
+        onClose()
+      }
     },
-    [onSelectExercise, onClose],
+    [onSelectExercise, onClose, multiSelect],
   )
+  
+  const handleDone = () => {
+    if (multiSelect && onMultiSelect) {
+      const selected = exercises.filter(e => selectedExerciseIds.has(e.id))
+      if (selected.length > 0) {
+          onMultiSelect(selected)
+      }
+      onClose()
+    }
+  }
 
   const handleCreateExercise = useCallback(async () => {
     const name = trimmedQuery
@@ -297,6 +357,82 @@ export function ExerciseSearchModal({
       prev.includes(type) ? prev.filter((i) => i !== type) : [...prev, type],
     )
   }
+  
+  const renderExerciseItem = (exercise: Exercise) => {
+      const isSelected = multiSelect 
+        ? selectedExerciseIds.has(exercise.id)
+        : exercise.name === currentExerciseName
+      
+      return (
+        <View
+          key={exercise.id}
+          style={[styles.row, isSelected && styles.rowSelected]}
+        >
+          <TouchableOpacity
+            style={styles.rowContentContainer}
+            onPress={() => handleSelectExercise(exercise)}
+          >
+            <View style={styles.rowContent}>
+              {exercise.gif_url && (
+                <ExerciseMedia
+                  gifUrl={exercise.gif_url}
+                  mode="thumbnail"
+                  style={styles.exerciseThumbnail}
+                  autoPlay={false}
+                />
+              )}
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <Text
+                  style={[
+                    styles.rowTitle,
+                    isSelected && styles.rowTitleSelected,
+                  ]}
+                >
+                  {exercise.name}
+                </Text>
+                <View style={styles.rowMeta}>
+                  {exercise.muscle_group && (
+                    <Text style={styles.rowSubtitle}>
+                      {exercise.muscle_group}
+                    </Text>
+                  )}
+                  {exercise.muscle_group && exercise.equipment && (
+                    <Text style={styles.rowDot}>•</Text>
+                  )}
+                  {exercise.equipment && (
+                    <Text style={styles.rowSubtitle}>
+                      {exercise.equipment}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.rowActions}>
+            {isSelected && (
+              <Ionicons
+                name="checkmark-circle" // Used circle check for better visibility
+                size={24}
+                color={colors.primary}
+                style={styles.checkIcon}
+              />
+            )}
+            <TouchableOpacity
+              onPress={() => handleInfoPress(exercise.id)}
+              style={styles.infoButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={24}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )
+  }
 
   return (
     <Modal
@@ -326,7 +462,15 @@ export function ExerciseSearchModal({
             </View>
 
             <View style={styles.header}>
+              <View style={styles.headerLeftSpacer} />
               <Text style={styles.title}>Select Exercise</Text>
+              <View style={styles.headerRight}>
+                  {multiSelect && selectedExerciseIds.size > 0 && (
+                      <TouchableOpacity onPress={handleDone}>
+                          <Text style={styles.classesDoneText}>Done ({selectedExerciseIds.size})</Text>
+                      </TouchableOpacity>
+                  )}
+              </View>
             </View>
 
             <View style={styles.searchContainer}>
@@ -462,141 +606,12 @@ export function ExerciseSearchModal({
                 {!trimmedQuery && !hasFilters && recentExercises.length > 0 && (
                   <View style={styles.section}>
                     <Text style={styles.sectionHeader}>Recently Used</Text>
-                    {recentExercises.map((exercise) => {
-                      const isSelected = exercise.name === currentExerciseName
-                      return (
-                        <View
-                          key={`recent-${exercise.id}`}
-                          style={[styles.row, isSelected && styles.rowSelected]}
-                        >
-                          <TouchableOpacity
-                            style={styles.rowContentContainer}
-                            onPress={() => handleSelectExercise(exercise)}
-                          >
-                            <View style={styles.rowContent}>
-                              <Text
-                                style={[
-                                  styles.rowTitle,
-                                  isSelected && styles.rowTitleSelected,
-                                ]}
-                              >
-                                {exercise.name}
-                              </Text>
-                              <View style={styles.rowMeta}>
-                                {exercise.muscle_group && (
-                                  <Text style={styles.rowSubtitle}>
-                                    {exercise.muscle_group}
-                                  </Text>
-                                )}
-                                {exercise.muscle_group &&
-                                  exercise.equipment && (
-                                    <Text style={styles.rowDot}>•</Text>
-                                  )}
-                                {exercise.equipment && (
-                                  <Text style={styles.rowSubtitle}>
-                                    {exercise.equipment}
-                                  </Text>
-                                )}
-                              </View>
-                            </View>
-                          </TouchableOpacity>
-
-                          <View style={styles.rowActions}>
-                            {isSelected && (
-                              <Ionicons
-                                name="checkmark"
-                                size={20}
-                                color={colors.primary}
-                                style={styles.checkIcon}
-                              />
-                            )}
-                            <TouchableOpacity
-                              onPress={() => handleInfoPress(exercise.id)}
-                              style={styles.infoButton}
-                              hitSlop={{
-                                top: 10,
-                                bottom: 10,
-                                left: 10,
-                                right: 10,
-                              }}
-                            >
-                              <Ionicons
-                                name="information-circle-outline"
-                                size={24}
-                                color={colors.textSecondary}
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      )
-                    })}
-                    {/* Removed sectionDivider as requested */}
+                    {recentExercises.map(renderExerciseItem)}
                     <Text style={styles.sectionHeader}>All Exercises</Text>
                   </View>
                 )}
 
-                {filteredExercises.map((exercise) => {
-                  const isSelected = exercise.name === currentExerciseName
-                  return (
-                    <View
-                      key={exercise.id}
-                      style={[styles.row, isSelected && styles.rowSelected]}
-                    >
-                      <TouchableOpacity
-                        style={styles.rowContentContainer}
-                        onPress={() => handleSelectExercise(exercise)}
-                      >
-                        <View style={styles.rowContent}>
-                          <Text
-                            style={[
-                              styles.rowTitle,
-                              isSelected && styles.rowTitleSelected,
-                            ]}
-                          >
-                            {exercise.name}
-                          </Text>
-                          <View style={styles.rowMeta}>
-                            {exercise.muscle_group && (
-                              <Text style={styles.rowSubtitle}>
-                                {exercise.muscle_group}
-                              </Text>
-                            )}
-                            {exercise.muscle_group && exercise.equipment && (
-                              <Text style={styles.rowDot}>•</Text>
-                            )}
-                            {exercise.equipment && (
-                              <Text style={styles.rowSubtitle}>
-                                {exercise.equipment}
-                              </Text>
-                            )}
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-
-                      <View style={styles.rowActions}>
-                        {isSelected && (
-                          <Ionicons
-                            name="checkmark"
-                            size={20}
-                            color={colors.primary}
-                            style={styles.checkIcon}
-                          />
-                        )}
-                        <TouchableOpacity
-                          onPress={() => handleInfoPress(exercise.id)}
-                          style={styles.infoButton}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <Ionicons
-                            name="information-circle-outline"
-                            size={24}
-                            color={colors.textSecondary}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )
-                })}
+                {filteredExercises.map(renderExerciseItem)}
               </ScrollView>
             )}
           </Animated.View>
@@ -640,12 +655,26 @@ const createStyles = (
       width: 40,
       height: 4,
       borderRadius: 2,
-      backgroundColor: colors.gray300,
+      backgroundColor: '#E0E0E0',
     },
     header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: 20,
       paddingBottom: 16,
-      alignItems: 'center',
+    },
+    headerLeftSpacer: {
+        width: 60, // approximate width of right button to balance title
+    },
+    headerRight: {
+        minWidth: 60,
+        alignItems: 'flex-end',
+    },
+    classesDoneText: {
+        color: colors.primary,
+        fontWeight: '600',
+        fontSize: 16,
     },
     title: {
       fontSize: 18,
@@ -724,7 +753,13 @@ const createStyles = (
       paddingHorizontal: 20,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
-      minHeight: 60,
+      minHeight: 80,
+    },
+    exerciseThumbnail: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginRight: 16,
     },
     rowContentContainer: {
       flex: 1,
@@ -735,7 +770,8 @@ const createStyles = (
       backgroundColor: colors.primary + '08',
     },
     rowContent: {
-      justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     rowActions: {
       flexDirection: 'row',

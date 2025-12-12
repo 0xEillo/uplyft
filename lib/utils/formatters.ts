@@ -4,6 +4,7 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 export interface ExerciseDisplay {
   id: string // exercise ID for navigation
   name: string
+  gifUrl?: string | null
   sets: number
   reps: string
   weight: string
@@ -71,6 +72,7 @@ export function formatWorkoutForDisplay(
         return {
           id: exercise.id,
           name: exercise.name,
+          gifUrl: exercise.gif_url,
           sets: 0,
           reps: '-',
           weight: '-',
@@ -109,6 +111,7 @@ export function formatWorkoutForDisplay(
       return {
         id: exercise.id,
         name: exercise.name,
+        gifUrl: exercise.gif_url,
         sets: sets.length,
         reps: repsDisplay,
         weight: weightDisplay,

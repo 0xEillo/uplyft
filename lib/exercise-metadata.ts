@@ -16,6 +16,7 @@ const exerciseMetadataSchema = z.object({
       'Quads',
       'Hamstrings',
       'Calves',
+      'Forearms',
       'Cardio',
       'Full Body',
     ])

@@ -24,19 +24,19 @@ import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { database } from '@/lib/database'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearDraft as clearWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
+    clearDraft as clearWorkoutDraft,
+    loadPendingWorkout,
+    loadDraft as loadWorkoutDraft,
+    saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-  generateWorkoutMessage,
-  parseCommitment,
+    generateWorkoutMessage,
+    parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-  Exercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    Exercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -45,20 +45,20 @@ import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
-  Animated,
-  Easing,
-  InteractionManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Easing,
+    InteractionManager,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -1672,10 +1672,10 @@ export default function CreatePostScreen() {
     // showConvertButton will automatically update via useMemo
   }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode])
 
-  const handleSelectExerciseFromModal = useCallback((exercise: Exercise) => {
-    // Create new structured exercise
-    const newExercise: StructuredExerciseDraft = {
-      id: `manual-${Date.now()}`,
+  const handleMultiSelectExercises = useCallback((exercises: Exercise[]) => {
+    // Create new structured exercises
+    const newExercises: StructuredExerciseDraft[] = exercises.map(exercise => ({
+      id: `manual-${Date.now()}-${exercise.id}`, // Ensure unique ID
       name: exercise.name,
       sets: [
         {
@@ -1688,9 +1688,9 @@ export default function CreatePostScreen() {
           targetRestSeconds: null,
         },
       ],
-    }
+    }))
 
-    setStructuredData((prev) => [...prev, newExercise])
+    setStructuredData((prev) => [...prev, ...newExercises])
     setIsStructuredMode(true)
 
     // Scroll to bottom after a short delay to allow render
@@ -2037,7 +2037,8 @@ export default function CreatePostScreen() {
         <ExerciseSearchModal
           visible={showExerciseSearch}
           onClose={() => setShowExerciseSearch(false)}
-          onSelectExercise={handleSelectExerciseFromModal}
+          onMultiSelect={handleMultiSelectExercises}
+          multiSelect={true}
         />
 
         {/* Paywall Modal */}

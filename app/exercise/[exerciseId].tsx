@@ -1,18 +1,19 @@
+import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Image
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 
+import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -21,12 +22,11 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  getStandardsLadder,
   getStrengthStandard,
   hasStrengthStandards,
-  type StrengthLevel,
+  type StrengthLevel
 } from '@/lib/strength-standards'
-import { Profile } from '@/types/database.types'
+import { Exercise, Profile } from '@/types/database.types'
 
 interface ExerciseRecord {
   weight: number
@@ -54,7 +54,7 @@ interface LeaderboardEntry {
   strengthLevel: StrengthLevel | null
 }
 
-type TabType = 'records' | 'history' | 'leaderboard'
+type TabType = 'records' | 'history' | 'leaderboard' | 'how_to'
 
 export default function ExerciseDetailScreen() {
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
@@ -65,7 +65,7 @@ export default function ExerciseDetailScreen() {
   const router = useRouter()
 
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [exerciseName, setExerciseName] = useState<string>('')
+  const [exercise, setExercise] = useState<Exercise | null>(null)
   const [max1RM, setMax1RM] = useState<number>(0)
   const [personalRecords, setPersonalRecords] = useState<{
     heaviestWeight: number
@@ -96,12 +96,10 @@ export default function ExerciseDetailScreen() {
       const profileData = await database.profiles.getById(user.id)
       setProfile(profileData)
 
-      // Load all exercises to find name (TODO: optimize to fetch single exercise)
-      const allExercises = await database.exercises.getAll()
-      const exercise = allExercises.find((e) => e.id === exerciseId)
-      if (exercise) {
-        setExerciseName(exercise.name)
-      }
+      // Load exercise details
+      const exerciseData = await database.exercises.getById(exerciseId)
+      console.log('Loaded exercise:', exerciseData?.name, 'GIF:', exerciseData?.gif_url)
+      setExercise(exerciseData)
 
       // Load max 1RM
       const records = await database.stats.getExerciseRecordsByWeight(
@@ -136,7 +134,7 @@ export default function ExerciseDetailScreen() {
       if (exercise && exercise.name) {
         const historyData = await database.stats.getExerciseHistory(
           user.id,
-          exercise?.name || '',
+          exerciseData?.name || '',
         )
         
         // Calculate Best Session Volume from history
@@ -188,9 +186,9 @@ export default function ExerciseDetailScreen() {
       
       if (profileData) {
         let strengthLevel: StrengthLevel | null = null
-        if (exercise && exercise.name && profileData.weight_kg && profileData.gender) {
+        if (exerciseData && exerciseData.name && profileData.weight_kg && profileData.gender) {
              const info = getStrengthStandard(
-                exercise.name,
+                exerciseData.name,
                 profileData.gender as 'male' | 'female',
                 profileData.weight_kg,
                 myEstimated1RM
@@ -226,9 +224,9 @@ export default function ExerciseDetailScreen() {
               
               if (friendMaxWeight > 0) { // Only include if they have lifted this weight
                   let strengthLevel: StrengthLevel | null = null
-                  if (exercise && exercise.name && fullFriendProfile?.weight_kg && fullFriendProfile?.gender) {
+                  if (exerciseData && exerciseData.name && fullFriendProfile?.weight_kg && fullFriendProfile?.gender) {
                        const info = getStrengthStandard(
-                          exercise.name,
+                          exerciseData.name,
                           fullFriendProfile.gender as 'male' | 'female',
                           fullFriendProfile.weight_kg,
                           friendEstimated1RM
@@ -280,21 +278,21 @@ export default function ExerciseDetailScreen() {
   }, [loadData])
 
   const getStrengthInfo = useCallback(() => {
-    if (!profile?.gender || !profile?.weight_kg || !exerciseName || !max1RM) {
+    if (!profile?.gender || !profile?.weight_kg || !exercise?.name || !max1RM) {
       return null
     }
 
-    if (!hasStrengthStandards(exerciseName)) {
+    if (!hasStrengthStandards(exercise.name)) {
       return null
     }
 
     return getStrengthStandard(
-      exerciseName,
+      exercise.name,
       profile.gender as 'male' | 'female',
       profile.weight_kg,
       max1RM,
     )
-  }, [profile, exerciseName, max1RM])
+  }, [profile, exercise, max1RM])
 
   const getLevelColor = (level: StrengthLevel): string => {
     const colors = {
@@ -359,58 +357,90 @@ export default function ExerciseDetailScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {exerciseName || 'Exercise Details'}
+            {exercise?.name || 'Exercise Details'}
           </Text>
           <View style={styles.headerRightSpacer} />
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'records' && styles.activeTab]}
-            onPress={() => setActiveTab('records')}
+        <View style={styles.tabsBorder}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabs}
+            contentContainerStyle={styles.tabsContent}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.tabText,
-                activeTab === 'records' && styles.activeTabText,
+                styles.tab,
+                activeTab === 'records' && styles.activeTab,
               ]}
+              onPress={() => setActiveTab('records')}
             >
-              Records
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'history' && styles.activeTab]}
-            onPress={() => setActiveTab('history')}
-          >
-            <Text
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'records' && styles.activeTabText,
+                ]}
+              >
+                Records
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
-                styles.tabText,
-                activeTab === 'history' && styles.activeTabText,
+                styles.tab,
+                activeTab === 'history' && styles.activeTab,
               ]}
+              onPress={() => setActiveTab('history')}
             >
-              History
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'leaderboard' && styles.activeTab]}
-            onPress={() => {
-              if (!isProMember) {
-                setPaywallVisible(true)
-              } else {
-                setActiveTab('leaderboard')
-              }
-            }}
-          >
-            <Text
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'history' && styles.activeTabText,
+                ]}
+              >
+                History
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
-                styles.tabText,
-                activeTab === 'leaderboard' && styles.activeTabText,
+                styles.tab,
+                activeTab === 'how_to' && styles.activeTab,
               ]}
+              onPress={() => setActiveTab('how_to')}
             >
-              Leaderboard
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'how_to' && styles.activeTabText,
+                ]}
+              >
+                How To
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'leaderboard' && styles.activeTab,
+              ]}
+              onPress={() => {
+                if (!isProMember) {
+                  setPaywallVisible(true)
+                } else {
+                  setActiveTab('leaderboard')
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'leaderboard' && styles.activeTabText,
+                ]}
+              >
+                Leaderboard
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
         {isLoading ? (
@@ -470,7 +500,7 @@ export default function ExerciseDetailScreen() {
                             Next Level ({strengthInfo.nextLevel.level})
                           </Text>
                           <Text style={styles.statValue}>
-                            {['Pull-Up', 'Dips'].includes(exerciseName)
+                            {['Pull-Up', 'Dips'].includes(exercise?.name || '')
                               ? `${Math.ceil(strengthInfo.nextLevel.multiplier)} reps`
                               : formatWeight(
                                   Math.ceil(
@@ -587,6 +617,49 @@ export default function ExerciseDetailScreen() {
                     ))}
                 </View>
             </View>
+          ) : activeTab === 'how_to' ? (
+              <View style={styles.howToContainer}>
+                  {/* Media Section */}
+                  <View style={styles.mediaContainer}>
+                      <ExerciseMedia 
+                          gifUrl={exercise?.gif_url} 
+                          mode="full" 
+                          style={styles.media}
+                      />
+                  </View>
+
+                  {/* Muscles Section */}
+                  <View style={styles.sectionContainer}>
+                      <Text style={styles.howToTitle}>{exercise?.name}</Text>
+                      {exercise?.target_muscles && exercise.target_muscles.length > 0 && (
+                          <Text style={styles.musclesText}>
+                              Primary: <Text style={styles.muscleHighlight}>{exercise.target_muscles.join(', ')}</Text>
+                          </Text>
+                      )}
+                      {exercise?.secondary_muscles && exercise.secondary_muscles.length > 0 && (
+                          <Text style={styles.musclesText}>
+                              Secondary: <Text style={styles.muscleHighlightSecondary}>{exercise.secondary_muscles.join(', ')}</Text>
+                          </Text>
+                      )}
+                  </View>
+                  
+                  {/* Instructions Section */}
+                  {exercise?.instructions && exercise.instructions.length > 0 && (
+                  <View style={styles.instructionsContainer}>
+                      {exercise.instructions.map((step, index) => {
+                          const cleanStep = step.replace(/^Step:\d+\s*/i, '').trim()
+                          return (
+                              <View key={index} style={styles.instructionStep}>
+                                  <View style={styles.stepNumberContainer}>
+                                      <Text style={styles.stepNumberText}>{index + 1}</Text>
+                                  </View>
+                                  <Text style={styles.stepText}>{cleanStep}</Text>
+                              </View>
+                          )
+                      })}
+                  </View>
+                  )}
+              </View>
           ) : (
             <View style={styles.historyContainer}>
                 {history.length === 0 ? (
@@ -597,7 +670,7 @@ export default function ExerciseDetailScreen() {
                             <View style={styles.historyHeader}>
                                 <Text style={styles.historyDate}>{formatDateTime(session.date)}</Text>
                             </View>
-                            <Text style={styles.exerciseNameSmall}>{exerciseName}</Text>
+                            <Text style={styles.exerciseNameSmall}>{exercise?.name}</Text>
                             <View style={styles.setsContainer}>
                                 <View style={styles.setHeader}>
                                     <Text style={styles.setHeaderText}>SET</Text>
@@ -663,15 +736,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 32,
       alignItems: 'flex-end'
     },
-    tabs: {
-      flexDirection: 'row',
+    tabsBorder: {
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       backgroundColor: colors.background,
     },
+    tabs: {
+      flexGrow: 0,
+    },
+    tabsContent: {
+      paddingHorizontal: 8,
+    },
     tab: {
-      flex: 1,
       paddingVertical: 16,
+      paddingHorizontal: 16,
       alignItems: 'center',
       borderBottomWidth: 2,
       borderBottomColor: 'transparent',
@@ -798,6 +876,68 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         backgroundColor: colors.border,
         borderRadius: 4,
         overflow: 'hidden'
+    },
+    howToContainer: {
+        flex: 1,
+        gap: 24
+    },
+    mediaContainer: {
+        width: '100%',
+        height: 250,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    media: {
+        width: '100%',
+        height: '100%'
+    },
+    sectionContainer: {
+        gap: 4
+    },
+    howToTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 4
+    },
+    musclesText: {
+        fontSize: 16,
+        color: colors.textSecondary
+    },
+    muscleHighlight: {
+        color: colors.text
+    },
+    muscleHighlightSecondary: {
+        color: colors.textSecondary
+    },
+    instructionsContainer: {
+        gap: 16
+    },
+    instructionStep: {
+        flexDirection: 'row',
+        gap: 16,
+        paddingRight: 8,
+    },
+    stepNumberContainer: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.primary + '15',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: -2, // Align with text cap height
+    },
+    stepNumberText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.primary,
+    },
+    stepText: {
+        flex: 1,
+        fontSize: 16,
+        color: colors.text,
+        lineHeight: 24,
     },
     progressBarFill: {
         height: '100%',

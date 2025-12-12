@@ -1,9 +1,10 @@
-import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { WorkoutExerciseWithDetails } from '@/types/database.types'
-import { useTheme } from '@/contexts/theme-context'
+import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
-import { useUnit , kgToPreferred } from '@/contexts/unit-context'
+import { useTheme } from '@/contexts/theme-context'
+import { kgToPreferred, useUnit } from '@/contexts/unit-context'
+import { WorkoutExerciseWithDetails } from '@/types/database.types'
+import React from 'react'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface PrDetailForDisplay {
   label: string
@@ -50,6 +51,12 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
         disabled={!onExercisePress}
         activeOpacity={0.7}
       >
+        <ExerciseMedia
+          gifUrl={exercise.gif_url}
+          mode="thumbnail"
+          style={{ width: 40, height: 40, borderRadius: 4 }}
+          autoPlay={false}
+        />
         <Text style={[styles.exerciseName, { color: colors.primary }]}>
           {exercise.name}
         </Text>

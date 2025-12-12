@@ -8,19 +8,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    Animated,
+    Image,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
@@ -68,6 +68,7 @@ interface SetDetail {
 interface ExerciseDisplay {
   id: string // exercise ID for navigation
   name: string
+  gifUrl?: string | null
   sets: number
   reps: string
   weight: string
@@ -407,25 +408,27 @@ export const FeedCard = memo(function FeedCard({
                     ]}
                   >
                     <View style={styles.exerciseNameContainer}>
-                      <Text style={styles.exerciseNameSimple} numberOfLines={1}>
-                        {exercise.name}
-                      </Text>
-                      {hasPR && exercisePR && (
-                        <TouchableOpacity
-                          onPress={() => {
-                            setSelectedExercisePR(exercisePR)
-                            setTooltipVisible(true)
-                          }}
-                          activeOpacity={0.7}
-                          style={[
-                            styles.prBadge,
-                            !exercisePR.hasCurrentPR &&
-                              styles.prBadgeHistorical,
-                          ]}
-                        >
-                          <Text style={styles.prBadgeText}>PR</Text>
-                        </TouchableOpacity>
-                      )}
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.exerciseNameSimple} numberOfLines={1}>
+                          {exercise.name}
+                        </Text>
+                        {hasPR && exercisePR && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSelectedExercisePR(exercisePR)
+                              setTooltipVisible(true)
+                            }}
+                            activeOpacity={0.7}
+                            style={[
+                              styles.prBadge,
+                              !exercisePR.hasCurrentPR &&
+                                styles.prBadgeHistorical,
+                            ]}
+                          >
+                            <Text style={styles.prBadgeText}>PR</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                     <Text style={styles.setsText}>
                       {exercise.sets} {exercise.sets === 1 ? 'set' : 'sets'}
