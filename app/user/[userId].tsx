@@ -1,6 +1,7 @@
 import { FeedCard } from '@/components/feed-card'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
+import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -84,6 +85,9 @@ export default function UserProfileScreen() {
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState(0)
   const [currentStreak, setCurrentStreak] = useState(0)
+  const [weeklyActivity, setWeeklyActivity] = useState<boolean[]>(
+    new Array(7).fill(false),
+  )
 
   useEffect(() => {
     return () => {
@@ -130,21 +134,25 @@ export default function UserProfileScreen() {
         setPrivacyLocked(false)
 
         // Calculate weekly stats
-        const weekCount = workoutData.filter((w) => {
+        const weeklyWorkoutsList = workoutData.filter((w) => {
           const workoutDate = new Date(w.date)
           return workoutDate >= startOfWeek
-        }).length
+        })
+
+        const weekCount = weeklyWorkoutsList.length
 
         let totalVolume = 0
-        workoutData.forEach((workout) => {
-          const workoutDate = new Date(workout.date)
-          if (workoutDate >= startOfWeek) {
-            totalVolume += calculateTotalVolume(workout, 'kg')
-          }
+        const activity = new Array(7).fill(false)
+
+        weeklyWorkoutsList.forEach((workout) => {
+          totalVolume += calculateTotalVolume(workout, 'kg')
+          const dayIndex = new Date(workout.date).getDay()
+          activity[dayIndex] = true
         })
 
         setWeeklyWorkouts(weekCount)
         setWeeklyVolume(totalVolume)
+        setWeeklyActivity(activity)
 
         // Calculate streak
         const streakResult = await database.stats.calculateStreak(userId)
@@ -156,6 +164,7 @@ export default function UserProfileScreen() {
           setWeeklyWorkouts(0)
           setWeeklyVolume(0)
           setCurrentStreak(0)
+          setWeeklyActivity(new Array(7).fill(false))
         } else {
           throw workoutError
         }
@@ -485,39 +494,27 @@ export default function UserProfileScreen() {
               <ProfileRoutines userId={userId} />
             )}
 
-            {/* This Week Stats Section */}
-            <View style={styles.weeklyStatsSection}>
-              <View style={styles.weeklyStatsHeader}>
-                <Text style={styles.weeklyStatsTitle}>This Week</Text>
-              </View>
-              <View style={styles.weeklyStats}>
-                <View style={styles.weeklyStat}>
-                  <Text style={styles.weeklyStatNumber}>{currentStreak}</Text>
-                  <Text style={styles.weeklyStatLabel}>Streak</Text>
-                </View>
-                <View style={styles.weeklyStatDivider} />
-                <View style={styles.weeklyStat}>
-                  <Text style={styles.weeklyStatNumber}>{weeklyWorkouts}</Text>
-                  <Text style={styles.weeklyStatLabel}>Workouts</Text>
-                </View>
-                <View style={styles.weeklyStatDivider} />
-                <View style={styles.weeklyStat}>
-                  <Text style={styles.weeklyStatNumber}>
-                    {(weightUnit === 'lb'
-                      ? (weeklyVolume * 2.20462) / 1000
-                      : weeklyVolume / 1000
-                    ).toFixed(1)}
-                    k
-                  </Text>
-                  <Text style={styles.weeklyStatLabel}>
-                    Volume ({weightUnit})
-                  </Text>
-                </View>
-              </View>
-            </View>
+            {/* Weekly Stats Card */}
+            {!privacyLocked && (
+              <WeeklyStatsCard
+                streak={currentStreak}
+                workouts={weeklyWorkouts}
+                volume={weeklyVolume}
+                weightUnit={weightUnit}
+                activity={weeklyActivity}
+                onPress={() => {
+                  // Navigate to workout calendar if needed
+                }}
+                showChevron={false}
+              />
+            )}
 
-            {/* Workouts Divider */}
-            <View style={styles.divider} />
+            {/* Workouts Header */}
+            {!privacyLocked && (
+              <View style={styles.workoutsHeader}>
+                <Text style={styles.workoutsTitle}>Recent Activity</Text>
+              </View>
+            )}
           </View>
 
           {privacyLocked && !isOwnProfile ? (
@@ -552,7 +549,7 @@ export default function UserProfileScreen() {
                     <Text style={styles.emptyText}>No workouts yet</Text>
                   </View>
                 ) : (
-                  workouts.map((workout) => (
+                  workouts.map((workout, index) => (
                     <AsyncPrFeedCard
                       key={workout.id}
                       workout={workout}
@@ -560,6 +557,7 @@ export default function UserProfileScreen() {
                       userName={userName}
                       avatarUrl={avatarUrl}
                       onNavigateAway={markNextFocusAsChildReturn}
+                      isFirst={index === 0}
                     />
                   ))
                 )}
@@ -578,12 +576,14 @@ function AsyncPrFeedCard({
   userName,
   avatarUrl,
   onNavigateAway,
+  isFirst = false,
 }: {
   workout: WorkoutSessionWithDetails
   userId: string
   userName: string
   avatarUrl: string | null
   onNavigateAway?: () => void
+  isFirst?: boolean
 }) {
   const { user } = useAuth()
   const [prs, setPrs] = useState<number>(0)
@@ -753,6 +753,7 @@ function AsyncPrFeedCard({
       isLiked={isLiked}
       onLike={handleLike}
       onComment={handleComment}
+      isFirst={isFirst}
     />
   )
 }
@@ -768,11 +769,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.background,
       zIndex: 0,
     },
     profileHeader: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.background,
     },
     backButton: {
       paddingHorizontal: 20,
@@ -781,7 +782,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     profileSection: {
       paddingHorizontal: 20,
-      paddingTop: 12,
+      paddingTop: 20,
       paddingBottom: 20,
     },
     profileTop: {
@@ -824,7 +825,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     profileDescription: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginTop: 6,
+      marginBottom: 16,
     },
     statsRow: {
       flexDirection: 'row',
@@ -849,50 +850,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     followButtonContainer: {
       marginTop: 0,
     },
-    weeklyStatsSection: {
-      backgroundColor: colors.backgroundLight,
-      marginHorizontal: 20,
-      marginBottom: 4,
-      borderRadius: 12,
-      paddingHorizontal: 16,
+    divider: {
+      height: 4,
+      backgroundColor: colors.background,
+    },
+    workoutsHeader: {
+      paddingHorizontal: 20,
       paddingTop: 16,
       paddingBottom: 12,
+      backgroundColor: colors.background,
     },
-    weeklyStatsHeader: {
-      marginBottom: 12,
-    },
-    weeklyStatsTitle: {
+    workoutsTitle: {
       fontSize: 15,
       fontWeight: '600',
       color: colors.textSecondary,
-    },
-    weeklyStats: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    weeklyStat: {
-      flex: 1,
-    },
-    weeklyStatNumber: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 2,
-    },
-    weeklyStatLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '500',
-    },
-    weeklyStatDivider: {
-      width: 1,
-      height: 40,
-      backgroundColor: colors.border,
-      marginHorizontal: 16,
-    },
-    divider: {
-      height: 0,
-      backgroundColor: colors.background,
     },
     followActionButton: {
       width: '100%',

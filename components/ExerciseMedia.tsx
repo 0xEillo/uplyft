@@ -1,44 +1,45 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { supabase } from '@/lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
-import { useEffect, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { memo, useMemo, useState } from 'react'
+import { StyleSheet, Text, View, ViewStyle } from 'react-native'
+import iconImage from '@/assets/images/icon.png'
+
+// Pre-compute the storage bucket URL once
+const STORAGE_BUCKET_URL = 'https://nsgezkxrgwtmnshulijs.supabase.co/storage/v1/object/public/exercise-gifs/'
 
 interface ExerciseMediaProps {
   gifUrl?: string | null
   mode?: 'thumbnail' | 'full'
   autoPlay?: boolean
-  style?: any
+  style?: ViewStyle
 }
 
-export function ExerciseMedia({ 
+// Memoized component - only re-renders when props change
+export const ExerciseMedia = memo(function ExerciseMedia({ 
   gifUrl, 
   mode = 'thumbnail', 
   autoPlay = true,
   style 
 }: ExerciseMediaProps) {
   const colors = useThemedColors()
-  const [isPlaying, setIsPlaying] = useState(autoPlay)
-  const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  // Construct full URL
-  const fullUrl = gifUrl 
-    ? supabase.storage.from('exercise-gifs').getPublicUrl(gifUrl).data.publicUrl
-    : null
-
-  useEffect(() => {
-    setIsPlaying(autoPlay)
-  }, [autoPlay, gifUrl, fullUrl])
+  // Memoize the full URL to avoid recalculation
+  const fullUrl = useMemo(() => {
+    if (!gifUrl) return null
+    return `${STORAGE_BUCKET_URL}${gifUrl}`
+  }, [gifUrl])
 
   if (!fullUrl || hasError) {
     return (
-      <View style={[styles.container, styles.fallbackContainer, style]}>
-        <Ionicons name="barbell-outline" size={mode === 'thumbnail' ? 24 : 48} color={colors.textTertiary} />
-        {mode === 'full' && (
-             <Text style={[styles.fallbackText, { color: colors.textTertiary }]}>No visual available</Text>
-        )}
+      <View style={[styles.container, style]}>
+        <Image
+          source={iconImage}
+          style={styles.image}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
       </View>
     )
   }
@@ -48,37 +49,62 @@ export function ExerciseMedia({
       <Image
         source={{ uri: fullUrl }}
         style={styles.image}
-        contentFit="contain" // 'contain' allows seeing the whole exercise. 'cover' might crop heads/feet.
-        onLoadStart={() => setIsLoading(true)}
-        onLoad={() => {
-            setIsLoading(false)
-        }}
-        onError={(e) => {
-            setIsLoading(false)
-            setHasError(true)
-        }}
-        // Expo Image supports animated-gif, but control is limited without 'expo-av' or specialized props in newer versions.
-        // Assuming basic GIF support works out of the box. 
-        // Note: caching is handled automatically by expo-image.
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        recyclingKey={gifUrl}
+        transition={150}
+        onError={() => setHasError(true)}
+        // For thumbnails, use lower priority to not block UI
+        priority={mode === 'thumbnail' ? 'low' : 'normal'}
       />
-
-      {isLoading && (
-        <View style={[styles.absoluteFill, styles.centered]}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      )}
-
-      {/* 
-        Note: True play/pause control for GIFs in expo-image isn't fully exposed in standard props 
-        without using the native view manager or switching to video.
-        For now, we rely on standard GIF loop.
-        If 'thumbnail' mode, ideally we'd show a static frame, but expo-image doesn't extract frames easily.
-        We can simulate 'thumbnail' by accepting it's a moving thumbnail or just showing it small.
-      */}
-      
     </View>
   )
-}
+})
+
+// Pre-compute blurhash for consistent placeholder
+const PLACEHOLDER_BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4'
+
+// Optimized version for lists - even lighter weight
+export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
+  gifUrl,
+  style,
+}: {
+  gifUrl?: string | null
+  style?: ViewStyle
+}) {
+  const colors = useThemedColors()
+
+  const fullUrl = useMemo(() => {
+    if (!gifUrl) return null
+    return `${STORAGE_BUCKET_URL}${gifUrl}`
+  }, [gifUrl])
+
+  if (!fullUrl) {
+    return (
+      <View style={[styles.container, style]}>
+        <Image
+          source={iconImage}
+          style={styles.image}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
+      </View>
+    )
+  }
+
+  return (
+    <Image
+      source={{ uri: fullUrl }}
+      style={[styles.container, style]}
+      contentFit="contain"
+      cachePolicy="memory-disk"
+      recyclingKey={gifUrl}
+      placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+      transition={100}
+      priority="low"
+    />
+  )
+})
 
 const styles = StyleSheet.create({
   container: {
@@ -90,25 +116,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  absoluteFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   fallbackContainer: {
-    backgroundColor: '#f5f5f5', // Will be overridden by themed backgroundLight usually
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8
+    gap: 8,
   },
   fallbackText: {
-      fontSize: 14,
-      fontWeight: '500'
-  }
+    fontSize: 14,
+    fontWeight: '500',
+  },
 })

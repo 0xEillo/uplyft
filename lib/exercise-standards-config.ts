@@ -32,8 +32,8 @@ export interface ExerciseStandardsConfig {
 export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Bench Press
   {
-    name: 'Bench Press',
-    aliases: [],
+    name: 'Barbell Bench Press',
+    aliases: ['Bench Press'],
     male: [
       {
         level: 'Beginner',
@@ -114,8 +114,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Incline Bench Press
   {
-    name: 'Incline Bench Press',
-    aliases: [],
+    name: 'Barbell Incline Bench Press',
+    aliases: ['Incline Bench Press'],
     male: [
       {
         level: 'Beginner',
@@ -278,8 +278,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Incline Dumbbell Press
   {
-    name: 'Incline Dumbbell Press',
-    aliases: [],
+    name: 'Dumbbell Incline Bench Press',
+    aliases: ['Incline Dumbbell Press', 'Dumbbell Incline Press'],
     male: [
       {
         level: 'Beginner',
@@ -360,8 +360,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Squat
   {
-    name: 'Squat',
-    aliases: [],
+    name: 'Barbell Squat',
+    aliases: ['Squat', 'Barbell Full Squat', 'Back Squat'],
     male: [
       {
         level: 'Beginner',
@@ -442,8 +442,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Front Squat
   {
-    name: 'Front Squat',
-    aliases: [],
+    name: 'Barbell Front Squat',
+    aliases: ['Front Squat'],
     male: [
       {
         level: 'Beginner',
@@ -524,8 +524,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Deadlift
   {
-    name: 'Deadlift',
-    aliases: [],
+    name: 'Barbell Deadlift',
+    aliases: ['Deadlift', 'Conventional Deadlift'],
     male: [
       {
         level: 'Beginner',
@@ -606,8 +606,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Romanian Deadlift
   {
-    name: 'Romanian Deadlift',
-    aliases: [],
+    name: 'Barbell Romanian Deadlift',
+    aliases: ['Romanian Deadlift', 'RDL', 'Dumbbell Romanian Deadlift'],
     male: [
       {
         level: 'Beginner',
@@ -688,8 +688,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Overhead Press
   {
-    name: 'Overhead Press',
-    aliases: ['Barbell Shoulder Press', 'Military Press'],
+    name: 'Barbell Seated Overhead Press',
+    aliases: ['Overhead Press', 'Barbell Shoulder Press', 'Military Press', 'OHP'],
     male: [
       {
         level: 'Beginner',
@@ -770,8 +770,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Shoulder Press
   {
-    name: 'Dumbbell Shoulder Press',
-    aliases: [],
+    name: 'Dumbbell Seated Shoulder Press',
+    aliases: ['Dumbbell Shoulder Press', 'Seated Dumbbell Press', 'DB Shoulder Press'],
     male: [
       {
         level: 'Beginner',
@@ -852,8 +852,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Bent Over Row
   {
-    name: 'Barbell Rows',
-    aliases: ['Barbell Row', 'Bent Over Row'],
+    name: 'Barbell Bent Over Row',
+    aliases: ['Barbell Row', 'Barbell Rows', 'Bent Over Row', 'BB Row'],
     male: [
       {
         level: 'Beginner',
@@ -934,8 +934,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Lat Pulldown
   {
-    name: 'Lat Pulldown',
-    aliases: [],
+    name: 'Cable Pulldown',
+    aliases: ['Lat Pulldown', 'Pulldown'],
     male: [
       {
         level: 'Beginner',
@@ -1098,8 +1098,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Weighted Pull-Ups (multiplier represents added weight as fraction of bodyweight)
   {
-    name: 'Weighted Pull-Ups',
-    aliases: [],
+    name: 'Weighted Pull-Up',
+    aliases: ['Weighted Pull-Ups'],
     male: [
       {
         level: 'Beginner',
@@ -1180,8 +1180,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dips
   {
-    name: 'Dips',
-    aliases: [],
+    name: 'Chest Dip',
+    aliases: ['Dips', 'Triceps Dip', 'Parallel Bar Dip'],
     male: [
       {
         level: 'Beginner',
@@ -1262,8 +1262,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Weighted Dips (multiplier represents added weight as fraction of bodyweight)
   {
-    name: 'Weighted Dips',
-    aliases: [],
+    name: 'Weighted Tricep Dips',
+    aliases: ['Weighted Dips'],
     male: [
       {
         level: 'Beginner',
@@ -1344,8 +1344,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Curl
   {
-    name: 'Dumbbell Curl',
-    aliases: [],
+    name: 'Dumbbell Standing Biceps Curl',
+    aliases: ['Dumbbell Curl', 'Dumbbell Biceps Curl', 'DB Curl'],
     male: [
       {
         level: 'Beginner',
@@ -1754,8 +1754,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Row
   {
-    name: 'Dumbbell Row',
-    aliases: ['DB Row', 'One Arm Dumbbell Row'],
+    name: 'Dumbbell One Arm Bent-Over Row',
+    aliases: ['Dumbbell Row', 'DB Row', 'One Arm Dumbbell Row'],
     male: [
       {
         level: 'Beginner',
@@ -1836,8 +1836,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Seated Cable Row
   {
-    name: 'Seated Cable Row',
-    aliases: ['Cable Row'],
+    name: 'Cable Seated Row',
+    aliases: ['Seated Cable Row', 'Cable Row'],
     male: [
       {
         level: 'Beginner',
@@ -2000,8 +2000,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Tricep Pushdown
   {
-    name: 'Tricep Pushdown',
-    aliases: ['Cable Tricep Pushdown'],
+    name: 'Cable Pushdown',
+    aliases: ['Tricep Pushdown', 'Cable Tricep Pushdown', 'Triceps Pushdown'],
     male: [
       {
         level: 'Beginner',
@@ -2094,34 +2094,34 @@ export function getLeaderboardExercises(): string[] {
 export type ExerciseGroup = 'Upper Push' | 'Upper Pull' | 'Lower' | 'Other'
 
 const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
-  'Bench Press': 'Upper Push',
-  'Incline Bench Press': 'Upper Push',
+  'Barbell Bench Press': 'Upper Push',
+  'Barbell Incline Bench Press': 'Upper Push',
   'Dumbbell Bench Press': 'Upper Push',
-  'Incline Dumbbell Press': 'Upper Push',
-  'Overhead Press': 'Upper Push',
-  'Dumbbell Shoulder Press': 'Upper Push',
-  Dips: 'Upper Push',
-  'Weighted Dips': 'Upper Push',
+  'Dumbbell Incline Bench Press': 'Upper Push',
+  'Barbell Seated Overhead Press': 'Upper Push',
+  'Dumbbell Seated Shoulder Press': 'Upper Push',
+  'Chest Dip': 'Upper Push',
+  'Weighted Tricep Dips': 'Upper Push',
 
-  'Barbell Rows': 'Upper Pull',
-  'Lat Pulldown': 'Upper Pull',
+  'Barbell Bent Over Row': 'Upper Pull',
+  'Cable Pulldown': 'Upper Pull',
   'Pull-Up': 'Upper Pull',
-  'Weighted Pull-Ups': 'Upper Pull',
-  'Dumbbell Curl': 'Upper Pull',
+  'Weighted Pull-Up': 'Upper Pull',
+  'Dumbbell Standing Biceps Curl': 'Upper Pull',
   'Barbell Curl': 'Upper Pull',
-  'Dumbbell Row': 'Upper Pull',
-  'Seated Cable Row': 'Upper Pull',
+  'Dumbbell One Arm Bent-Over Row': 'Upper Pull',
+  'Cable Seated Row': 'Upper Pull',
 
-  Squat: 'Lower',
-  'Front Squat': 'Lower',
-  Deadlift: 'Lower',
-  'Romanian Deadlift': 'Lower',
+  'Barbell Squat': 'Lower',
+  'Barbell Front Squat': 'Lower',
+  'Barbell Deadlift': 'Lower',
+  'Barbell Romanian Deadlift': 'Lower',
   'Leg Press': 'Lower',
   'Dumbbell Bulgarian Split Squat': 'Lower',
   'Hip Thrust': 'Lower',
 
   'Close Grip Bench Press': 'Upper Push',
-  'Tricep Pushdown': 'Upper Push',
+  'Cable Pushdown': 'Upper Push',
 }
 
 /**

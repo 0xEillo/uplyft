@@ -188,8 +188,8 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.background,
     },
     headerTitle: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 22,
+      fontWeight: '700',
       color: colors.text,
     },
     loadingContainer: {

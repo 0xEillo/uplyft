@@ -1331,43 +1331,6 @@ export default function CreatePostScreen() {
       return
     }
 
-    // Check if this is a first-time user (0 workouts)
-    try {
-      const workouts = await database.workoutSessions.getRecent(user.id, 1)
-
-      if (workouts.length === 0) {
-        // First-time user - show confirmation modal, then overlay
-        Alert.alert(
-          'Submit Your First Workout',
-          "You're about to submit your workout! We'll analyze it and add it to your feed. Ready to track your progress?",
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-              onPress: () => {
-                // User cancelled - re-enable button
-                isSubmittingRef.current = false
-                setIsLoading(false)
-              },
-            },
-            {
-              text: 'Submit',
-              onPress: () => {
-                // Reset loading state since we're showing overlay, not submitting yet
-                isSubmittingRef.current = false
-                setIsLoading(false)
-                setShowFinalizeOverlay(true)
-              },
-            },
-          ],
-        )
-        return
-      }
-    } catch (error) {
-      console.error('Error checking workout count:', error)
-      // If check fails, just proceed with showing overlay
-    }
-
     // Reset loading state since we're showing overlay, not submitting yet
     isSubmittingRef.current = false
     setIsLoading(false)

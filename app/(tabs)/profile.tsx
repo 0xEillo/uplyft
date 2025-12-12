@@ -63,6 +63,9 @@ export default function ProfileScreen() {
     null,
   )
 
+  // Track if initial load has completed - prevents showing spinner on subsequent focuses
+  const hasLoadedOnce = useRef(false)
+
   // Register FlatList ref for scroll-to-top functionality
   useEffect(() => {
     registerScrollRef('profile', flatListRef)
@@ -218,8 +221,12 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Only show loading spinner on first load, silent refresh after
+      const showLoading = !hasLoadedOnce.current
       loadProfileData()
-      loadWorkouts(true)
+      loadWorkouts(showLoading).then(() => {
+        hasLoadedOnce.current = true
+      })
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   )

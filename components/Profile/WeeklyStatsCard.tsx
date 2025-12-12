@@ -10,6 +10,7 @@ interface WeeklyStatsCardProps {
   weightUnit: 'kg' | 'lb'
   activity: boolean[]
   onPress: () => void
+  showChevron?: boolean
 }
 
 export const WeeklyStatsCard = ({
@@ -19,6 +20,7 @@ export const WeeklyStatsCard = ({
   weightUnit,
   activity,
   onPress,
+  showChevron = true,
 }: WeeklyStatsCardProps) => {
   const colors = useThemedColors()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -45,8 +47,9 @@ export const WeeklyStatsCard = ({
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.card}
-        onPress={onPress}
-        activeOpacity={0.9}
+        onPress={showChevron ? onPress : undefined}
+        activeOpacity={showChevron ? 0.9 : 1}
+        disabled={!showChevron}
       >
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -79,7 +82,9 @@ export const WeeklyStatsCard = ({
 
           <View style={{ flex: 1 }} />
 
-          <Ionicons name="chevron-down" size={20} color={colors.textTertiary} />
+          {showChevron && (
+            <Ionicons name="chevron-down" size={20} color={colors.textTertiary} />
+          )}
         </View>
 
         {/* Calendar Row */}
