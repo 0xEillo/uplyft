@@ -29,14 +29,10 @@ export function ExerciseMedia({
     : null
 
   useEffect(() => {
-    if (gifUrl) {
-        console.log(`[ExerciseMedia] gifUrl prop: ${gifUrl}, generated fullUrl: ${fullUrl}`)
-    }
     setIsPlaying(autoPlay)
   }, [autoPlay, gifUrl, fullUrl])
 
   if (!fullUrl || hasError) {
-    if (hasError) console.log(`[ExerciseMedia] Error loading image for ${gifUrl}`)
     return (
       <View style={[styles.container, styles.fallbackContainer, style]}>
         <Ionicons name="barbell-outline" size={mode === 'thumbnail' ? 24 : 48} color={colors.textTertiary} />
@@ -55,11 +51,9 @@ export function ExerciseMedia({
         contentFit="contain" // 'contain' allows seeing the whole exercise. 'cover' might crop heads/feet.
         onLoadStart={() => setIsLoading(true)}
         onLoad={() => {
-            console.log(`[ExerciseMedia] Successfully loaded image for ${gifUrl}`)
             setIsLoading(false)
         }}
         onError={(e) => {
-            console.log(`[ExerciseMedia] Failed to load image for ${gifUrl}`, e)
             setIsLoading(false)
             setHasError(true)
         }}
