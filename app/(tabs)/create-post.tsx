@@ -6,6 +6,7 @@ import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { RoutineSelectorSheet } from '@/components/routine-selector-sheet'
 import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
+import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -253,6 +254,7 @@ export default function CreatePostScreen() {
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [showCoachSheet, setShowCoachSheet] = useState(false)
 
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
@@ -305,6 +307,19 @@ export default function CreatePostScreen() {
       Boolean(selectedRoutine)
     )
   }, [hasStructuredEntries, notes, selectedRoutine, workoutTitle])
+
+  // Context for the AI coach sheet
+  const workoutContext = useMemo(
+    () => ({
+      title: workoutTitle,
+      notes,
+      exercises: structuredData.map((e) => ({
+        name: e.name,
+        setsCount: e.sets.length,
+      })),
+    }),
+    [workoutTitle, notes, structuredData],
+  )
 
   const shouldShowWorkoutTimer =
     hasWorkoutDraftContent || workoutElapsedSeconds > 0
@@ -1684,6 +1699,53 @@ export default function CreatePostScreen() {
     }, 100)
   }, [])
 
+  // Handler for adding exercise from AI coach suggestions
+  const handleAddExerciseFromCoach = useCallback(
+    (exercise: { name: string; sets: number; reps: string }) => {
+      // Parse reps range for target
+      let targetRepsMin: number | null = null
+      let targetRepsMax: number | null = null
+
+      const rangeMatch = exercise.reps.match(/(\d+)[-–](\d+)/)
+      if (rangeMatch) {
+        targetRepsMin = parseInt(rangeMatch[1], 10)
+        targetRepsMax = parseInt(rangeMatch[2], 10)
+      } else {
+        const singleRep = parseInt(exercise.reps, 10)
+        if (!isNaN(singleRep)) {
+          targetRepsMin = singleRep
+          targetRepsMax = singleRep
+        }
+      }
+
+      // Create sets based on the suggested count
+      const sets = Array.from({ length: exercise.sets }, () => ({
+        weight: '',
+        reps: '',
+        lastWorkoutWeight: null,
+        lastWorkoutReps: null,
+        targetRepsMin,
+        targetRepsMax,
+        targetRestSeconds: null,
+      }))
+
+      const newExercise: StructuredExerciseDraft = {
+        id: `coach-${Date.now()}`,
+        name: exercise.name,
+        sets,
+      }
+
+      setStructuredData((prev) => [...prev, newExercise])
+      setIsStructuredMode(true)
+
+      // Scroll to bottom after a short delay
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true })
+      }, 100)
+    },
+    [],
+  )
+
   // Track previous structured data length to detect deletions
   const previousStructuredDataLength = useRef(0)
 
@@ -1929,6 +1991,11 @@ export default function CreatePostScreen() {
               blurInputs()
               setShowRestTimer(true)
             }}
+            onChatPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              blurInputs()
+              setShowCoachSheet(true)
+            }}
             onSearchExercise={handleChooseExercisePress}
             onAddExercise={handleConvertToStructured}
             isRecording={isRecording}
@@ -2021,6 +2088,13 @@ export default function CreatePostScreen() {
         onStart={restTimer.start}
         onStop={restTimer.stop}
         onAddTime={restTimer.addTime}
+      />
+
+      <WorkoutCoachSheet
+        visible={showCoachSheet}
+        onClose={() => setShowCoachSheet(false)}
+        workoutContext={workoutContext}
+        onAddExercise={handleAddExerciseFromCoach}
       />
     </SafeAreaView>
   )

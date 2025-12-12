@@ -2,13 +2,13 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Keyboard,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -16,6 +16,7 @@ interface EditorToolbarProps {
   onScanEquipment: () => void
   onMicPress: () => void
   onStopwatchPress: () => void
+  onChatPress: () => void
   onSearchExercise: () => void
   onAddExercise: () => void
   isRecording: boolean
@@ -31,6 +32,7 @@ export function EditorToolbar({
   onScanEquipment,
   onMicPress,
   onStopwatchPress,
+  onChatPress,
   onSearchExercise,
   onAddExercise,
   isRecording,
@@ -46,7 +48,7 @@ export function EditorToolbar({
   const styles = createStyles(colors, insets)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
-  
+
   // Animation for padding bottom (safe area)
   const paddingBottom = useRef(new Animated.Value(insets.bottom)).current
 
@@ -59,7 +61,7 @@ export function EditorToolbar({
     const showSub = Keyboard.addListener(showEvent, (e) => {
       setIsKeyboardVisible(true)
       setKeyboardHeight(e.endCoordinates.height)
-      
+
       Animated.timing(paddingBottom, {
         toValue: 0,
         duration: e.duration || 250,
@@ -70,7 +72,7 @@ export function EditorToolbar({
     const hideSub = Keyboard.addListener(hideEvent, (e) => {
       setIsKeyboardVisible(false)
       setKeyboardHeight(0)
-      
+
       Animated.timing(paddingBottom, {
         toValue: insets.bottom,
         duration: e.duration || 250,
@@ -85,6 +87,7 @@ export function EditorToolbar({
   }, [insets.bottom, paddingBottom])
 
   const isDisabled = isLoading || isTranscribing || isProcessingImage
+  const shouldShowAdd = showAddExercise
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -117,10 +120,10 @@ export function EditorToolbar({
           onPress={onMicPress}
           disabled={isDisabled}
         >
-          <Ionicons 
-            name={isRecording ? "stop" : "mic-outline"} 
-            size={24} 
-            color={isRecording ? colors.white : colors.text} 
+          <Ionicons
+            name={isRecording ? 'stop' : 'mic-outline'}
+            size={24}
+            color={isRecording ? colors.white : colors.text}
           />
         </TouchableOpacity>
 
@@ -131,31 +134,37 @@ export function EditorToolbar({
           disabled={isDisabled}
         >
           {isRestTimerActive && restTimerRemaining !== undefined ? (
-            <Text style={styles.timerText}>{formatTime(restTimerRemaining)}</Text>
+            <Text style={styles.timerText}>
+              {formatTime(restTimerRemaining)}
+            </Text>
           ) : (
             <Ionicons name="stopwatch-outline" size={24} color={colors.text} />
           )}
         </TouchableOpacity>
 
-        {/* Search Exercise */}
+        {/* AI Coach Chat */}
         <TouchableOpacity
           style={styles.button}
-          onPress={onSearchExercise}
+          onPress={onChatPress}
           disabled={isDisabled}
         >
-          <Ionicons name="search-outline" size={24} color={colors.text} />
+          <Ionicons
+            name="chatbubble-ellipses-outline"
+            size={24}
+            color={colors.text}
+          />
         </TouchableOpacity>
 
-        {/* Add Exercise (Conditional) */}
+        {/* Search / Add Exercise (Merged) */}
         <TouchableOpacity
-          style={[styles.button, !showAddExercise && styles.disabledButton]}
-          onPress={onAddExercise}
-          disabled={isDisabled || !showAddExercise}
+          style={styles.button}
+          onPress={shouldShowAdd ? onAddExercise : onSearchExercise}
+          disabled={isDisabled}
         >
-          <Ionicons 
-            name="add-circle-outline" 
-            size={24} 
-            color={showAddExercise ? colors.text : colors.textTertiary} 
+          <Ionicons
+            name={shouldShowAdd ? 'add-circle-outline' : 'search-outline'}
+            size={24}
+            color={colors.text}
           />
         </TouchableOpacity>
       </View>
@@ -165,7 +174,7 @@ export function EditorToolbar({
 
 const createStyles = (
   colors: ReturnType<typeof useThemedColors>,
-  insets: { bottom: number }
+  insets: { bottom: number },
 ) =>
   StyleSheet.create({
     container: {
