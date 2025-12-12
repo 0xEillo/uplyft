@@ -172,11 +172,13 @@ function TabLayoutContent() {
           options={{
             title: 'Home',
             tabBarIcon: ({ color, focused }) => (
-              <IconSymbol
-                size={32}
-                name={focused ? 'house.fill' : 'house'}
-                color={color}
-              />
+              <View style={{ marginTop: 5 }}>
+                <IconSymbol
+                  size={32}
+                  name={focused ? 'house.fill' : 'house'}
+                  color={color}
+                />
+              </View>
             ),
           }}
           listeners={{

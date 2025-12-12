@@ -6,6 +6,7 @@ import {
     Keyboard,
     Platform,
     StyleSheet,
+    Text,
     TouchableOpacity,
     View,
 } from 'react-native'
@@ -14,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 interface EditorToolbarProps {
   onScanEquipment: () => void
   onMicPress: () => void
-  onScanWorkout: () => void
+  onStopwatchPress: () => void
   onSearchExercise: () => void
   onAddExercise: () => void
   isRecording: boolean
@@ -22,12 +23,14 @@ interface EditorToolbarProps {
   isProcessingImage: boolean
   isLoading: boolean
   showAddExercise: boolean
+  isRestTimerActive?: boolean
+  restTimerRemaining?: number
 }
 
 export function EditorToolbar({
   onScanEquipment,
   onMicPress,
-  onScanWorkout,
+  onStopwatchPress,
   onSearchExercise,
   onAddExercise,
   isRecording,
@@ -35,6 +38,8 @@ export function EditorToolbar({
   isProcessingImage,
   isLoading,
   showAddExercise,
+  isRestTimerActive,
+  restTimerRemaining,
 }: EditorToolbarProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -81,6 +86,12 @@ export function EditorToolbar({
 
   const isDisabled = isLoading || isTranscribing || isProcessingImage
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
     <Animated.View
       style={[
@@ -113,13 +124,17 @@ export function EditorToolbar({
           />
         </TouchableOpacity>
 
-        {/* Scan Workout */}
+        {/* Stopwatch / Timer */}
         <TouchableOpacity
-          style={styles.button}
-          onPress={onScanWorkout}
+          style={[styles.button, isRestTimerActive && styles.activeTimerButton]}
+          onPress={onStopwatchPress}
           disabled={isDisabled}
         >
-          <Ionicons name="camera-outline" size={24} color={colors.text} />
+          {isRestTimerActive && restTimerRemaining !== undefined ? (
+            <Text style={styles.timerText}>{formatTime(restTimerRemaining)}</Text>
+          ) : (
+            <Ionicons name="stopwatch-outline" size={24} color={colors.text} />
+          )}
         </TouchableOpacity>
 
         {/* Search Exercise */}
@@ -176,6 +191,17 @@ const createStyles = (
     },
     activeButton: {
       backgroundColor: colors.primary,
+    },
+    activeTimerButton: {
+      backgroundColor: colors.primary,
+      width: 'auto',
+      paddingHorizontal: 12,
+    },
+    timerText: {
+      color: colors.white,
+      fontWeight: '600',
+      fontSize: 14,
+      fontVariant: ['tabular-nums'],
     },
     disabledButton: {
       opacity: 0.5,

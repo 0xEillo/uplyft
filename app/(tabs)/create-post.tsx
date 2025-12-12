@@ -2,6 +2,7 @@ import { EditorToolbar } from '@/components/editor-toolbar'
 import { ExerciseSearchModal } from '@/components/exercise-search-modal'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { Paywall } from '@/components/paywall'
+import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { RoutineSelectorSheet } from '@/components/routine-selector-sheet'
 import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
@@ -14,6 +15,7 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
+import { useRestTimer } from '@/hooks/useRestTimer'
 import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -274,6 +276,9 @@ export default function CreatePostScreen() {
     serializableState: workoutTimerSerializableState,
   } = useWorkoutTimer()
 
+  const [showRestTimer, setShowRestTimer] = useState(false)
+  const restTimer = useRestTimer()
+
   const [structuredData, setStructuredData] = useState<
     StructuredExerciseDraft[]
   >([])
@@ -414,8 +419,6 @@ export default function CreatePostScreen() {
   // Use image transcription hook
   const {
     isProcessing: isProcessingImage,
-    handleScanWithCamera,
-    handleScanWithLibrary,
     handleAttachWithCamera,
     handleAttachWithLibrary,
     handleScanEquipment,
@@ -851,30 +854,6 @@ export default function CreatePostScreen() {
   const handleExitComplete = useCallback(() => {
     router.back()
   }, [])
-
-  const handlePickImage = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    blurInputs()
-
-    Alert.alert(
-      'Scan Workout',
-      'Extract workout text from a photo. Choose an option to scan your workout.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Scan from Camera',
-          onPress: handleScanWithCamera,
-        },
-        {
-          text: 'Scan from Library',
-          onPress: handleScanWithLibrary,
-        },
-      ],
-    )
-  }
 
   const handleRemoveAttachedImage = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -1945,7 +1924,11 @@ export default function CreatePostScreen() {
           <EditorToolbar
             onScanEquipment={handleDumbbellPress}
             onMicPress={handleToggleRecording}
-            onScanWorkout={handlePickImage}
+            onStopwatchPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              blurInputs()
+              setShowRestTimer(true)
+            }}
             onSearchExercise={handleChooseExercisePress}
             onAddExercise={handleConvertToStructured}
             isRecording={isRecording}
@@ -1953,6 +1936,8 @@ export default function CreatePostScreen() {
             isProcessingImage={isProcessingImage}
             isLoading={isLoading}
             showAddExercise={showConvertButton}
+            isRestTimerActive={restTimer.isActive}
+            restTimerRemaining={restTimer.remainingSeconds}
           />
         </KeyboardAvoidingView>
 
@@ -2027,6 +2012,16 @@ export default function CreatePostScreen() {
           isLoading={isLoading}
         />
       </SlideUpView>
+
+      <RestTimerOverlay
+        visible={showRestTimer}
+        onClose={() => setShowRestTimer(false)}
+        remainingSeconds={restTimer.remainingSeconds}
+        isActive={restTimer.isActive}
+        onStart={restTimer.start}
+        onStop={restTimer.stop}
+        onAddTime={restTimer.addTime}
+      />
     </SafeAreaView>
   )
 }
