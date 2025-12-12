@@ -829,5 +829,11 @@ function buildSystemPrompt(
     "If (and ONLY if) the user explicitly asks you to create, plan, or generate a workout/routine (e.g. 'Create a chest workout', 'Plan a leg day'), you MUST output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
     `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
+    'EXERCISE NAMING:',
+    'When suggesting exercises, format names to match our database convention:',
+    '- Use Title Case (capitalize each word): "Barbell Bench Press", "Dumbbell Curl", "Cable Fly"',
+    '- Use hyphens for compound descriptors: "Close-Grip Push-Up", "Wide-Grip Pull-Up", "One-Arm Row"',
+    '- Follow the pattern: Equipment → Movement → Modifiers (e.g., "Dumbbell Seated Shoulder Press", "Cable Standing Crunch")',
+    '- Examples: "Barbell Squat", "Dumbbell Incline Bench Press", "Cable Standing Lateral Raise", "Close-Grip Push-Up"',
   ].join('\n\n')
 }
