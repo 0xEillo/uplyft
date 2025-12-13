@@ -2,7 +2,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
-import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native'
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { HapticTab } from '@/components/haptic-tab'
@@ -11,6 +17,10 @@ import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
+import {
+  RestTimerProvider,
+  useRestTimerContext,
+} from '@/contexts/rest-timer-context'
 import {
   ScrollToTopProvider,
   useScrollToTop,
@@ -28,10 +38,23 @@ import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
 const PENDING_POST_KEY = '@pending_workout_post'
 
+const formatTimerCompact = (seconds: number) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  if (mins > 0) {
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+  return `${secs}`
+}
+
 function TikTokPlusButton() {
   const router = useRouter()
   const colors = useThemedColors()
   const [hasDraft, setHasDraft] = useState(false)
+  const {
+    isActive: isRestTimerActive,
+    remainingSeconds,
+  } = useRestTimerContext()
 
   // Check for draft on mount and when returning from create-post
   useEffect(() => {
@@ -48,7 +71,12 @@ function TikTokPlusButton() {
     return () => clearInterval(interval)
   }, [])
 
-  const buttonColor = hasDraft ? colors.error : colors.primary
+  // Timer takes priority over draft state for button color
+  const buttonColor = isRestTimerActive
+    ? colors.error
+    : hasDraft
+    ? colors.error
+    : colors.primary
   const styles = createButtonStyles(colors, buttonColor)
 
   return (
@@ -60,11 +88,22 @@ function TikTokPlusButton() {
       <View style={styles.leftLayer} />
       <View style={styles.rightLayer} />
       <View style={styles.centerLayer}>
-        <Ionicons
-          name={hasDraft ? 'document-text' : 'add'}
-          size={22}
-          color={colors.white}
-        />
+        {isRestTimerActive ? (
+          <View style={styles.timerContent}>
+            <Ionicons name="timer-outline" size={14} color={colors.white} />
+            <View style={styles.timerTextContainer}>
+              <Text style={styles.timerText}>
+                {formatTimerCompact(remainingSeconds)}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <Ionicons
+            name={hasDraft ? 'document-text' : 'add'}
+            size={22}
+            color={colors.white}
+          />
+        )}
       </View>
     </TouchableOpacity>
   )
@@ -330,13 +369,15 @@ function TabLayoutContent() {
 
 export default function TabLayout() {
   return (
-    <ScrollToTopProvider>
-      <SuccessOverlayProvider>
-        <RatingPromptProvider>
-          <TabLayoutContent />
-        </RatingPromptProvider>
-      </SuccessOverlayProvider>
-    </ScrollToTopProvider>
+    <RestTimerProvider>
+      <ScrollToTopProvider>
+        <SuccessOverlayProvider>
+          <RatingPromptProvider>
+            <TabLayoutContent />
+          </RatingPromptProvider>
+        </SuccessOverlayProvider>
+      </ScrollToTopProvider>
+    </RestTimerProvider>
   )
 }
 
@@ -376,5 +417,20 @@ const createButtonStyles = (
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 1,
+    },
+    timerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    timerTextContainer: {
+      minWidth: 24,
+      alignItems: 'center',
+    },
+    timerText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
     },
   })

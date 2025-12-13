@@ -101,12 +101,17 @@ serve(async (req) => {
       }
     }
 
+    // Filter out system messages from client - we use our own system prompt
+    const filteredMessages = payload.messages.filter(
+      (msg) => msg.role !== 'system',
+    )
+
     // Transform messages to include images in AI SDK format
-    const transformedMessages: any[] = payload.messages.map((msg, index) => {
+    const transformedMessages: any[] = filteredMessages.map((msg, index) => {
       // Only add images to the last user message
       if (
         msg.role === 'user' &&
-        index === payload.messages.length - 1 &&
+        index === filteredMessages.length - 1 &&
         payload.images &&
         payload.images.length > 0
       ) {
@@ -790,6 +795,123 @@ async function buildUserContext(
         }
       },
     }),
+    searchExercises: tool({
+      description:
+        'Search the exercise database. Use EXACT muscle/equipment names from allowed lists.',
+      inputSchema: z
+        .object({
+          query: z
+            .string()
+            .optional()
+            .describe('Text to match in exercise name'),
+          targetMuscle: z
+            .string()
+            .optional()
+            .describe(
+              'MUST be one of: Back, Biceps, Calves, Chest, Core, Forearms, Glutes, Hamstrings, Quads, Shoulders, Triceps',
+            ),
+          equipment: z
+            .string()
+            .optional()
+            .describe(
+              'MUST be one of: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
+            ),
+          limit: z.number().int().min(1).max(20).default(10).optional(),
+        })
+        .partial(),
+      execute: async ({ query, targetMuscle, equipment, limit = 10 } = {}) => {
+        console.log('🔍 [searchExercises] Called with:', {
+          query,
+          targetMuscle,
+          equipment,
+          limit,
+        })
+
+        // Map common synonyms to database values
+        const muscleMapping: Record<string, string> = {
+          quadriceps: 'Quads',
+          quads: 'Quads',
+          pecs: 'Chest',
+          pectorals: 'Chest',
+          lats: 'Back',
+          abs: 'Core',
+          abdominals: 'Core',
+          delts: 'Shoulders',
+          deltoids: 'Shoulders',
+          traps: 'Back',
+          trapezius: 'Back',
+          'lower back': 'Back',
+          'upper back': 'Back',
+          legs: 'Quads',
+          'lower body': 'Quads',
+          arms: 'Biceps',
+        }
+
+        const equipmentMapping: Record<string, string> = {
+          dumbbells: 'dumbbell',
+          barbells: 'barbell',
+          cables: 'cable',
+          machines: 'machine',
+          'body weight': 'bodyweight',
+          'free weights': 'dumbbell',
+          bands: 'resistance band',
+        }
+
+        const mappedMuscle = targetMuscle
+          ? muscleMapping[targetMuscle.toLowerCase()] || targetMuscle
+          : undefined
+        const mappedEquipment = equipment
+          ? equipmentMapping[equipment.toLowerCase()] || equipment.toLowerCase()
+          : undefined
+
+        let dbQuery = supabase
+          .from('exercises')
+          .select(
+            'id, name, muscle_group, target_muscles, body_parts, equipment, equipments, gif_url',
+          )
+          .limit(limit)
+
+        if (query) {
+          dbQuery = dbQuery.ilike('name', `%${query}%`)
+        }
+
+        if (mappedMuscle) {
+          // Search in muscle_group (text) - case insensitive
+          dbQuery = dbQuery.ilike('muscle_group', `%${mappedMuscle}%`)
+        }
+
+        if (mappedEquipment) {
+          // Search in equipment (text) - case insensitive
+          dbQuery = dbQuery.ilike('equipment', `%${mappedEquipment}%`)
+        }
+
+        const { data, error } = await dbQuery
+
+        if (error) {
+          console.error(
+            '❌ [searchExercises] Error searching exercises:',
+            error,
+          )
+          return { exercises: [] }
+        }
+
+        console.log(
+          `✅ [searchExercises] Found ${
+            data?.length ?? 0
+          } exercises. Top match: ${data?.[0]?.name ?? 'None'}`,
+        )
+
+        return {
+          exercises: data?.map((ex) => ({
+            id: ex.id,
+            name: ex.name,
+            equipment: ex.equipment || ex.equipments?.[0],
+            muscleGroup: ex.muscle_group,
+            muscles: ex.target_muscles,
+          })),
+        }
+      },
+    }),
   }
 
   return { summary, tools }
@@ -829,11 +951,14 @@ function buildSystemPrompt(
     "If (and ONLY if) the user explicitly asks you to create, plan, or generate a workout/routine (e.g. 'Create a chest workout', 'Plan a leg day'), you MUST output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
     `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
-    'EXERCISE NAMING:',
-    'When suggesting exercises, format names to match our database convention:',
-    '- Use Title Case (capitalize each word): "Barbell Bench Press", "Dumbbell Curl", "Cable Fly"',
-    '- Use hyphens for compound descriptors: "Close-Grip Push-Up", "Wide-Grip Pull-Up", "One-Arm Row"',
-    '- Follow the pattern: Equipment → Movement → Modifiers (e.g., "Dumbbell Seated Shoulder Press", "Cable Standing Crunch")',
-    '- Examples: "Barbell Squat", "Dumbbell Incline Bench Press", "Cable Standing Lateral Raise", "Close-Grip Push-Up"',
+    'CRITICAL: EXERCISE SELECTION & NAMING:',
+    'You DO NOT natively know which exercises exist in our database. You MUST use the `searchExercises` tool to find valid exercises before creating a workout.',
+    '1. When the user asks for a workout (e.g., "chest day"), FIRST call `searchExercises` with relevant muscles or equipment.',
+    '2. Use ONLY the exact `name` strings returned by the tool in your final plan. Do not guess names.',
+    "3. If the tool returns 'Barbell Bench Press', use exactly 'Barbell Bench Press'. Do not shorten it.",
+    '4. If you cannot find a perfect match, pick the closest valid alternative from the tool output.',
+    '',
+    'VALID MUSCLE GROUPS for searchExercises: Back, Biceps, Calves, Chest, Core, Forearms, Glutes, Hamstrings, Quads, Shoulders, Triceps',
+    'VALID EQUIPMENT for searchExercises: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
   ].join('\n\n')
 }

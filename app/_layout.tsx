@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -20,6 +20,7 @@ import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { NotificationProvider } from '@/contexts/notification-context'
 import { PostsProvider } from '@/contexts/posts-context'
+import { ProfileProvider } from '@/contexts/profile-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
@@ -233,15 +234,17 @@ export default function RootLayout() {
           <ThemedRootView>
             <UnitProvider>
               <AuthProvider>
-                <SubscriptionProvider>
-                  <NotificationProvider>
-                    <AnalyticsProvider>
-                      <PostsProvider>
-                        <RootLayoutNav />
-                      </PostsProvider>
-                    </AnalyticsProvider>
-                  </NotificationProvider>
-                </SubscriptionProvider>
+                <ProfileProvider>
+                  <SubscriptionProvider>
+                    <NotificationProvider>
+                      <AnalyticsProvider>
+                        <PostsProvider>
+                          <RootLayoutNav />
+                        </PostsProvider>
+                      </AnalyticsProvider>
+                    </NotificationProvider>
+                  </SubscriptionProvider>
+                </ProfileProvider>
               </AuthProvider>
             </UnitProvider>
           </ThemedRootView>

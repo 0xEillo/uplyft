@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons'
 import React, { useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
-import { ParsedWorkoutDisplay, getExerciseIcon } from '@/lib/ai/workoutParsing'
+import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { ParsedWorkoutDisplay, getExerciseIcon } from '@/lib/ai/workoutParsing'
 
 interface WorkoutCardProps {
   workout: ParsedWorkoutDisplay
@@ -23,144 +24,140 @@ export function WorkoutCard({
     number[]
   >([])
 
+  // Determine which exercises to show based on expansion state
+  const visibleExercises = isWorkoutExpanded
+    ? workout.exercises
+    : workout.exercises.slice(0, 4)
+
+  const hasMoreExercises = workout.exercises.length > 4
+
   return (
     <View style={styles.container}>
-      <Text style={styles.workoutDescription}>{workout.description}</Text>
-
-      <View style={styles.workoutCard}>
-        <View style={styles.workoutCardHeader}>
-          <Text style={styles.workoutCardTitle}>{workout.title}</Text>
-          <View style={styles.workoutDuration}>
-            <Ionicons name="time-outline" size={16} color={colors.primary} />
-            <Text style={styles.workoutDurationText}>{workout.duration}</Text>
-          </View>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{workout.title}</Text>
+        <View style={styles.durationBadge}>
+          <Ionicons name="time-outline" size={14} color={colors.primary} />
+          <Text style={styles.durationText}>{workout.duration}</Text>
         </View>
+      </View>
 
-        <View style={styles.workoutDivider} />
+      {/* Optional: Limit description line count or keep it concise */}
+      {workout.description ? (
+        <Text style={styles.description} numberOfLines={2}>
+          {workout.description}
+        </Text>
+      ) : null}
 
-        {(isWorkoutExpanded ? workout.exercises : workout.exercises.slice(0, 4))
-          .map((exercise, index) => {
-            const warmupSets = exercise.sets.filter(
-              (s) => s.type === 'warmup',
-            ).length
-            const totalSets = exercise.sets.length
-            const isExpanded = expandedExerciseIndices.includes(index)
+      <View style={styles.exerciseList}>
+        {visibleExercises.map((exercise, index) => {
+          const isLast = index === visibleExercises.length - 1 && !hasMoreExercises
+          const isExpanded = expandedExerciseIndices.includes(index)
+          const setSummary = `${exercise.sets.length} sets`
 
-            return (
-              <TouchableOpacity
-                key={index}
-                style={styles.exerciseItemContainer}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setExpandedExerciseIndices((prev) =>
-                    prev.includes(index)
-                      ? prev.filter((i) => i !== index)
-                      : [...prev, index],
-                  )
-                }}
-              >
-                <View style={styles.exerciseItem}>
-                  <View style={styles.exerciseIconContainer}>
-                    <Ionicons
-                      name={getExerciseIcon(exercise.name)}
-                      size={24}
-                      color={colors.textSecondary}
-                    />
-                  </View>
-                  <View style={styles.exerciseInfo}>
-                    <Text style={styles.exerciseName}>{exercise.name}</Text>
-                    <Text style={styles.exerciseSets}>
-                      {totalSets} sets
-                      {warmupSets > 0 ? ` (${warmupSets} warmup)` : ''}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color={colors.textSecondary}
-                  />
+          return (
+            <View key={index} style={styles.timelineRow}>
+              {/* Timeline Connector */}
+              <View style={styles.timelineColumn}>
+                <View style={styles.timelineLineTop} />
+                <View style={[styles.timelineNode, exercise.gifUrl ? styles.timelineNodeImage : null]}>
+                   {exercise.gifUrl ? (
+                      <ExerciseMediaThumbnail
+                        gifUrl={exercise.gifUrl}
+                        style={styles.thumbnailImage}
+                      />
+                    ) : (
+                       <Ionicons
+                        name={getExerciseIcon(exercise.name)}
+                        size={18}
+                        color={colors.textSecondary}
+                      />
+                    )}
                 </View>
+                {/* Draw line to next item unless it's the very last one */}
+                 {!isLast && <View style={styles.timelineLineBottom} />}
+              </View>
 
-                {isExpanded && (
-                  <View style={styles.exerciseDetails}>
-                    {exercise.sets.map((set, setIndex) => (
-                      <View key={setIndex} style={styles.setDetailRow}>
-                        <View style={styles.setNumberContainer}>
-                          <Text style={styles.setNumberText}>
-                            {setIndex + 1}
-                          </Text>
-                          {set.type === 'warmup' && (
-                            <View style={styles.warmupBadge}>
-                              <Text style={styles.warmupText}>W</Text>
-                            </View>
-                          )}
-                        </View>
-                        <View style={styles.setMainInfo}>
-                          <Text style={styles.setDetailText}>
-                            {set.weight ? `${set.weight} x ` : ''}
-                            {set.reps} reps
-                          </Text>
-                        </View>
-                        {set.rest && (
-                          <View style={styles.restInfo}>
-                            <Ionicons
-                              name="timer-outline"
-                              size={14}
-                              color={colors.textSecondary}
-                            />
-                            <Text style={styles.restText}>{set.rest}s</Text>
-                          </View>
-                        )}
+              {/* Content */}
+              <View style={styles.contentColumn}>
+                <TouchableOpacity
+                  style={styles.exerciseItem}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setExpandedExerciseIndices((prev) =>
+                      prev.includes(index)
+                        ? prev.filter((i) => i !== index)
+                        : [...prev, index],
+                    )
+                  }}
+                >
+                  <View style={styles.exerciseHeader}>
+                    <View style={styles.exerciseHeaderText}>
+                      <Text style={styles.exerciseName}>{exercise.name}</Text>
+                      <View style={styles.setSummaryContainer}>
+                         <Text style={styles.setSummaryText}>{setSummary}</Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={12}
+                            color={colors.textTertiary}
+                            style={{ transform: [{ rotate: isExpanded ? '90deg' : '0deg' }]}}
+                          />
                       </View>
-                    ))}
+                    </View>
                   </View>
-                )}
-              </TouchableOpacity>
-            )
-          })}
 
-        {workout.exercises.length > 4 && (
-          <TouchableOpacity
-            style={styles.expandButton}
+                  {isExpanded && (
+                    <View style={styles.setsDetailContainer}>
+                      {exercise.sets.map((set, setIndex) => (
+                        <View key={setIndex} style={styles.setRow}>
+                           <View style={[styles.setBadge, set.type === 'warmup' && styles.warmupBadge]}>
+                             <Text style={[styles.setText, set.type === 'warmup' && styles.warmupText]}>
+                               {setIndex + 1}
+                             </Text>
+                           </View>
+                           <Text style={styles.setDetailText}>
+                              {set.reps} reps {set.weight ? `@ ${set.weight}` : ''}
+                           </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
+        })}
+
+        {hasMoreExercises && (
+           <TouchableOpacity
+            style={styles.expandFooter}
             onPress={() => setIsWorkoutExpanded(!isWorkoutExpanded)}
             activeOpacity={0.7}
           >
-            <Ionicons
+             <Ionicons
               name={isWorkoutExpanded ? 'chevron-up' : 'chevron-down'}
-              size={24}
+              size={20}
               color={colors.textSecondary}
             />
+             <Text style={styles.expandText}>
+               {isWorkoutExpanded ? 'Show Less' : `${workout.exercises.length - 4} more exercises`}
+             </Text>
           </TouchableOpacity>
         )}
       </View>
 
+      {/* Action Buttons */}
       {(onStartWorkout || onSaveRoutine) && (
-        <View style={styles.actionButtonsContainer}>
+        <View style={styles.actionsContainer}>
           {onStartWorkout && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onStartWorkout}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="barbell" size={20} color={colors.white} />
-              <Text style={styles.actionButtonText}>Start Workout</Text>
-            </TouchableOpacity>
+             <TouchableOpacity style={styles.primaryButton} onPress={onStartWorkout} activeOpacity={0.8}>
+               <Text style={styles.primaryButtonText}>Start Workout</Text>
+               <Ionicons name="arrow-forward" size={18} color={colors.white} />
+             </TouchableOpacity>
           )}
-          {onSaveRoutine && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.secondaryActionButton]}
-              onPress={onSaveRoutine}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="albums-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={styles.secondaryActionButtonText}>
-                Save as Routine
-              </Text>
-            </TouchableOpacity>
+           {onSaveRoutine && (
+             <TouchableOpacity style={styles.secondaryButton} onPress={onSaveRoutine} activeOpacity={0.7}>
+               <Text style={styles.secondaryButtonText}>Save Routine</Text>
+             </TouchableOpacity>
           )}
         </View>
       )}
@@ -171,172 +168,205 @@ export function WorkoutCard({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      paddingVertical: 4,
-    },
-    workoutDescription: {
-      fontSize: 15,
-      lineHeight: 22,
-      color: colors.textSecondary,
-      marginBottom: 16,
-    },
-    workoutCard: {
-      backgroundColor: colors.backgroundWhite,
-      borderRadius: 20,
+      backgroundColor: colors.backgroundWhite, // Distinct card background
+      borderRadius: 24,
       padding: 20,
+      marginVertical: 8,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
+      shadowOpacity: 0.1,
       shadowRadius: 12,
-      elevation: 4,
+      elevation: 3,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    workoutCardHeader: {
-      marginBottom: 12,
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 8,
     },
-    workoutCardTitle: {
+    cardTitle: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 8,
-    },
-    workoutDuration: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    workoutDurationText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.primary,
-    },
-    workoutDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginBottom: 16,
-    },
-    exerciseItemContainer: {
-      borderBottomWidth: 1,
-      borderBottomColor: `${colors.border}80`,
-    },
-    exerciseItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-    },
-    exerciseDetails: {
-      paddingLeft: 58,
-      paddingRight: 16,
-      paddingBottom: 12,
-    },
-    setDetailRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 6,
-    },
-    setNumberContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: 40,
-    },
-    setNumberText: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    },
-    warmupBadge: {
-      backgroundColor: `${colors.primary}15`,
-      borderRadius: 4,
-      paddingHorizontal: 4,
-      paddingVertical: 1,
-      marginLeft: 4,
-    },
-    warmupText: {
-      fontSize: 10,
-      color: colors.primary,
-      fontWeight: '700',
-    },
-    setMainInfo: {
       flex: 1,
+      marginRight: 12,
+      lineHeight: 26,
     },
-    setDetailText: {
-      fontSize: 14,
-      color: colors.text,
-    },
-    restInfo: {
+    durationBadge: {
       flexDirection: 'row',
       alignItems: 'center',
+      backgroundColor: `${colors.primary}15`,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
       gap: 4,
     },
-    restText: {
+    durationText: {
       fontSize: 13,
-      color: colors.textSecondary,
+      fontWeight: '600',
+      color: colors.primary,
     },
-    exerciseIconContainer: {
+    description: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    exerciseList: {
+      marginBottom: 20,
+    },
+    timelineRow: {
+      flexDirection: 'row',
+      minHeight: 64, // Ensure enough height for the connector
+    },
+    timelineColumn: {
+      width: 48,
+      alignItems: 'center',
+    },
+    timelineLineTop: {
+      width: 2,
+      height: 12, // Short line from top of row to node
+      backgroundColor: colors.border,
+      opacity: 0.5,
+    },
+    timelineLineBottom: {
+      width: 2,
+      flex: 1, // Extend to bottom
+      backgroundColor: colors.border,
+      opacity: 0.5,
+    },
+    timelineNode: {
       width: 44,
       height: 44,
       borderRadius: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.background,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      zIndex: 2, // Sit on top of line
     },
-    exerciseInfo: {
+    timelineNodeImage: {
+       padding: 0,
+       overflow: 'hidden',
+       borderWidth: 0,
+    },
+    thumbnailImage: {
+      width: '100%',
+      height: '100%',
+    },
+    contentColumn: {
       flex: 1,
+      paddingLeft: 12,
+      paddingBottom: 16, // Space between items
+    },
+    exerciseItem: {
+      justifyContent: 'center',
+      paddingTop: 10,
+    },
+    exerciseHeader: {
+      marginBottom: 4,
+    },
+    exerciseHeaderText: {
+       // flex: 1,
     },
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 2,
+      marginBottom: 4,
     },
-    exerciseSets: {
-      fontSize: 14,
-      color: colors.primary,
+    setSummaryContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    setSummaryText: {
+      fontSize: 13,
+      color: colors.textSecondary,
       fontWeight: '500',
     },
-    expandButton: {
-      alignItems: 'center',
-      paddingTop: 12,
-      marginTop: 4,
+    setsDetailContainer: {
+      marginTop: 8,
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 12,
     },
-    actionButtonsContainer: {
+    setRow: {
       flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 6,
+      gap: 10,
+    },
+    setBadge: {
+       width: 20,
+       height: 20,
+       borderRadius: 10,
+       backgroundColor: colors.border,
+       justifyContent: 'center',
+       alignItems: 'center',
+    },
+    warmupBadge: {
+       backgroundColor: `${colors.warning}30`,
+    },
+    setText: {
+       fontSize: 10,
+       fontWeight: '700',
+       color: colors.textSecondary,
+    },
+    warmupText: {
+       color: colors.warning,
+    },
+    setDetailText: {
+       fontSize: 14,
+       color: colors.textSecondary,
+    },
+    expandFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 16,
-      marginBottom: 16,
-      paddingHorizontal: 16,
+      paddingVertical: 8,
+      gap: 6,
+    },
+    expandText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    actionsContainer: {
       gap: 12,
     },
-    actionButton: {
-      flex: 1,
-      height: 44,
-      borderRadius: 22,
+    primaryButton: {
       backgroundColor: colors.primary,
+      height: 50,
+      borderRadius: 25,
       flexDirection: 'row',
-      justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      justifyContent: 'center',
       gap: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
       elevation: 4,
     },
-    secondaryActionButton: {
-      backgroundColor: colors.backgroundWhite,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      shadowOpacity: 0.05,
-    },
-    actionButtonText: {
+    primaryButtonText: {
       color: colors.white,
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: '600',
     },
-    secondaryActionButtonText: {
-      color: colors.primary,
+    secondaryButton: {
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryButtonText: {
+      color: colors.text,
       fontSize: 14,
       fontWeight: '600',
     },

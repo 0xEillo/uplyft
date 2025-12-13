@@ -1,9 +1,12 @@
+import { findExerciseByName } from '@/lib/utils/exercise-matcher'
+
 export interface ParsedWorkoutDisplay {
   description: string
   title: string
   duration: string
   exercises: {
     name: string
+    gifUrl?: string | null
     sets: {
       type: 'warmup' | 'working'
       weight: string
@@ -43,15 +46,19 @@ export function parseWorkoutForDisplay(
           duration: data.estimatedDuration
             ? `${data.estimatedDuration}:00`
             : '45:00',
-          exercises: data.exercises.map((ex: any) => ({
-            name: ex.name,
-            sets: ex.sets.map((s: any) => ({
-              type: s.type || 'working',
-              weight: '', // Strip weight suggestions
-              reps: s.reps || '',
-              rest: s.restSeconds || s.rest || 60,
-            })),
-          })),
+          exercises: data.exercises.map((ex: any) => {
+            const match = findExerciseByName(ex.name)
+            return {
+              name: ex.name,
+              gifUrl: match?.gifUrl,
+              sets: ex.sets.map((s: any) => ({
+                type: s.type || 'working',
+                weight: '', // Strip weight suggestions
+                reps: s.reps || '',
+                rest: s.restSeconds || s.rest || 60,
+              })),
+            }
+          }),
         }
       }
     }

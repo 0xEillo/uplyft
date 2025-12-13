@@ -1,12 +1,11 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
-import { database } from '@/lib/database'
-import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
@@ -21,25 +20,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function CoachSelectionScreen() {
   const { user } = useAuth()
+  const { profile, isLoading, updateProfile } = useProfile()
   const router = useRouter()
   const colors = useThemedColors()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
-
-  const loadProfile = useCallback(async () => {
-    if (!user?.id) return
-
-    try {
-      setIsLoading(true)
-      const data = await database.profiles.getByIdOrNull(user.id)
-      setProfile(data)
-    } catch (error) {
-      console.error('Error loading profile:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user?.id])
 
   const handleSelectCoach = async (coachId: CoachId) => {
     if (!user || !profile) return
@@ -47,26 +31,14 @@ export default function CoachSelectionScreen() {
 
     try {
       setIsUpdating(true)
-      // Optimistic update
-      setProfile({ ...profile, coach: coachId })
-      
-      const updated = await database.profiles.update(user.id, {
-        coach: coachId,
-      })
-      setProfile(updated)
+      await updateProfile({ coach: coachId })
     } catch (error) {
       console.error('Error updating coach:', error)
       Alert.alert('Error', 'Unable to update coach. Please try again.')
-      // Revert optimistic update
-      loadProfile()
     } finally {
       setIsUpdating(false)
     }
   }
-
-  useEffect(() => {
-    loadProfile()
-  }, [loadProfile])
 
   const styles = createStyles(colors)
 

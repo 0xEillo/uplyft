@@ -1,33 +1,36 @@
+import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  EQUIPMENT_PREF_KEY,
-  MUSCLE_OPTIONS,
-  WORKOUT_PLANNING_PREFS_KEY,
-  WorkoutPlanningData,
-  WorkoutPlanningWizard,
+    EQUIPMENT_PREF_KEY,
+    MUSCLE_OPTIONS,
+    WORKOUT_PLANNING_PREFS_KEY,
+    WorkoutPlanningData,
+    WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  convertAiPlanToRoutine,
-  convertAiPlanToWorkout,
+    convertAiPlanToRoutine,
+    convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-  ParsedWorkoutDisplay,
-  parseWorkoutForDisplay,
+    ParsedWorkoutDisplay,
+    parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-  buildWorkoutCreationPrompt,
-  buildWorkoutModificationSuffix,
+    buildWorkoutCreationPrompt,
+    buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
+import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import { saveDraft } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -38,36 +41,36 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -85,13 +88,66 @@ interface PlanningState {
   commonMuscles?: string[]
 }
 
-type SuggestionMode = 'main' | 'tell_me_about' | 'how_to'
+type SuggestionMode =
+  | 'main'
+  | 'tell_me_about'
+  | 'how_to'
+  | 'adjust_workout'
+  | 'replace_exercise'
 
-const SUGGESTIONS = {
+// Exercise suggestion for add exercise callback
+export interface ExerciseSuggestion {
+  name: string
+  sets: number
+  reps: string
+  notes?: string
+}
+
+// Workout context passed from create-post
+export interface WorkoutContext {
+  title: string
+  exercises: { name: string; setsCount: number }[]
+}
+
+// Custom suggestions config
+export interface SuggestionsConfig {
+  main: { id: string; text: string; icon: string }[]
+  tell_me_about?: string[]
+  how_to?: string[]
+  replace_exercise?: string[]
+  adjust_workout?: { id: string; text: string; icon: string }[]
+}
+
+// Props for WorkoutChat component
+export interface WorkoutChatProps {
+  // For modal/sheet usage
+  mode?: 'fullscreen' | 'sheet'
+
+  // Custom suggestions for create-post context
+  customSuggestions?: SuggestionsConfig
+
+  // Workout context for create-post
+  workoutContext?: WorkoutContext
+
+  // Callback when exercise is selected/suggested
+  onAddExercise?: (exercise: ExerciseSuggestion) => void
+
+  // Callback when exercise is replaced
+  onReplaceExercise?: (oldExerciseName: string, newExercise: ExerciseSuggestion) => void
+
+  // For sheet mode - hide features not needed
+  hideImagePicker?: boolean
+  hidePlanningWizard?: boolean
+
+  // Callback for closing the sheet (sheet mode only)
+  onClose?: () => void
+}
+
+const DEFAULT_SUGGESTIONS: SuggestionsConfig = {
   main: [
     {
       id: 'plan_workout',
-      text: 'Plan Workout',
+      text: 'Generate Workout',
       icon: 'flash-outline',
     },
     {
@@ -100,6 +156,18 @@ const SUGGESTIONS = {
       icon: 'book-outline',
     },
     { id: 'how_to', text: 'How to...', icon: 'help-circle-outline' },
+  ],
+  adjust_workout: [
+    {
+      id: 'add_exercises',
+      text: 'Add Exercises',
+      icon: 'add-circle-outline',
+    },
+    {
+      id: 'replace_exercise_menu',
+      text: 'Replace Exercise',
+      icon: 'swap-horizontal-outline',
+    },
   ],
   tell_me_about: [
     'Progressive overload',
@@ -120,7 +188,82 @@ const SUGGESTIONS = {
 
 const MAX_IMAGES = 10
 
-export function WorkoutChat() {
+const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
+
+// Parse exercise suggestions from AI response
+function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
+  const suggestions: ExerciseSuggestion[] = []
+
+  // 1. Try to parse JSON block first (Most robust)
+  // Match either code-blocked JSON or raw JSON array in text
+  const jsonMatch = content.match(JSON_BLOCK_REGEX)
+
+  if (jsonMatch && jsonMatch[1]) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1])
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => {
+          if (item.name && (item.sets || item.reps)) {
+            suggestions.push({
+              name: item.name,
+              sets:
+                typeof item.sets === 'number'
+                  ? item.sets
+                  : parseInt(item.sets || '3'),
+              reps: item.reps?.toString() || '10',
+            })
+          }
+        })
+
+        // If we successfully parsed JSON, return immediately
+        if (suggestions.length > 0) return suggestions
+      }
+    } catch (e) {
+      console.warn('Failed to parse exercise suggestions JSON:', e)
+    }
+  }
+
+  // 2. Fallback to Regex patterns for plain text responses
+  const patterns = [
+    // Bullet/Plain/Bold style: Name - Sets x Reps
+    /(?:^|\n)[\s⋅•·\.-]*\**([^*\n]+?)\**\s*[-–:]\s*(\d+)\s*(?:sets?\s*[x×]\s*|x\s*)(\d+(?:-\d+)?)\s*(?:reps?)?/gi,
+
+    // Numbered Loop style: 1. Name: 3x10
+    /^\d+\.\s*([^:\n]+):\s*(\d+)\s*[x×]\s*(\d+(?:-\d+)?)/gim,
+
+    // Narrative style: "Add Bench Press - 3 sets x 10"
+    /(?:Add|Try|Include)\s+([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*)\s*[-–]\s*(\d+)\s*sets?\s*[x×]\s*(\d+(?:-\d+)?)/gi,
+  ]
+
+  for (const pattern of patterns) {
+    let match
+    while ((match = pattern.exec(content)) !== null) {
+      const name = match[1].trim()
+      const sets = parseInt(match[2], 10)
+      const reps = match[3]
+
+      // Avoid duplicates
+      if (
+        !suggestions.some((s) => s.name.toLowerCase() === name.toLowerCase())
+      ) {
+        suggestions.push({ name, sets, reps })
+      }
+    }
+  }
+
+  return suggestions
+}
+
+export function WorkoutChat({
+  mode = 'fullscreen',
+  customSuggestions,
+  workoutContext,
+  onAddExercise,
+  onReplaceExercise,
+  hideImagePicker = false,
+  hidePlanningWizard = false,
+  onClose,
+}: WorkoutChatProps = {}) {
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -131,7 +274,6 @@ export function WorkoutChat() {
   const [showImagePickerModal, setShowImagePickerModal] = useState(false)
   const [viewerImages, setViewerImages] = useState<string[]>([])
   const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [planningState, setPlanningState] = useState<PlanningState>({
     isActive: false,
     step: 'none',
@@ -145,7 +287,11 @@ export function WorkoutChat() {
     parsedWorkout,
     setParsedWorkout,
   ] = useState<ParsedWorkoutDisplay | null>(null)
-  const [coachId, setCoachId] = useState<string>('ross')
+  const [proposedWorkout, setProposedWorkout] = useState<ExerciseSuggestion[]>(
+    [],
+  ) // Track AI-proposed exercises
+  const [exerciseToReplace, setExerciseToReplace] = useState<string | null>(null) // Track which exercise is being replaced
+  const { coachId } = useProfile()
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
@@ -155,7 +301,37 @@ export function WorkoutChat() {
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
   const TAB_BAR_HEIGHT = 45
-  const keyboardVerticalOffset = insets.bottom + TAB_BAR_HEIGHT
+  const keyboardVerticalOffset =
+    mode === 'sheet' ? 0 : insets.bottom + TAB_BAR_HEIGHT
+
+  // Merge custom suggestions with defaults
+  const suggestions: SuggestionsConfig =
+    customSuggestions || DEFAULT_SUGGESTIONS
+
+  // For sheet mode with workout context, build replace_exercise options
+  workoutContext?.exercises.map((e) => e.name) || []
+
+  // Combine initial context exercises with any proposed exercises for the "current workout" state
+  const currentWorkoutExercises = [
+    ...(workoutContext?.exercises.map((e) => e.name) || []),
+    ...proposedWorkout.map((e) => e.name),
+  ]
+  const hasWorkout = currentWorkoutExercises.length > 0
+
+  // Update suggestions based on state
+  const activeSuggestions = {
+    ...suggestions,
+    main: hasWorkout
+      ? [
+          {
+            id: 'adjust_workout',
+            text: 'Adjust Workout',
+            icon: 'options-outline',
+          },
+          ...suggestions.main.filter((s) => s.id !== 'plan_workout'),
+        ]
+      : suggestions.main,
+  }
 
   const layoutRef = useRef({
     root: 0,
@@ -192,21 +368,7 @@ export function WorkoutChat() {
     }
   }, [messages.length])
 
-  // Fetch user's coach preference
-  useEffect(() => {
-    async function loadCoach() {
-      if (!user?.id) return
-      try {
-        const profile = await database.profiles.getByIdOrNull(user.id)
-        if (profile?.coach) {
-          setCoachId(profile.coach)
-        }
-      } catch (error) {
-        console.error('Error loading coach:', error)
-      }
-    }
-    loadCoach()
-  }, [user?.id])
+  // Coach is now managed by ProfileContext - automatically updates when changed
 
   // Scroll to bottom when buttons appear (to ensure they're visible)
   useEffect(() => {
@@ -223,7 +385,6 @@ export function WorkoutChat() {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
-        setIsKeyboardVisible(true)
         setTimeout(() => scrollToBottom(), 100)
       },
     )
@@ -231,7 +392,7 @@ export function WorkoutChat() {
     const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (event) => {
-        setIsKeyboardVisible(false)
+        // No-op
       },
     )
 
@@ -364,7 +525,31 @@ export function WorkoutChat() {
     if (parsed) {
       setGeneratedPlanContent(acc)
       setParsedWorkout(parsed)
+
+      // Also populate proposedWorkout from the parsed plan if empty?
+      // Actually, for the initial plan generation, we might rely on the ParsedWorkoutDisplay.
+      // But if we want to support "Add Exercises" after, we should probably track them.
+      // For now, let's keep them separate as ParsedWorkoutDisplay is for the specific "Plan" UI.
+      // However, if the user modifies it, we might want to sync up.
+      // Let's rely on the explicit "Add Exercises" flow for populating proposedWorkout.
     }
+
+    // Check for add/replace suggestions in non-plan responses
+    const newSuggestions = parseExerciseSuggestions(acc)
+    if (newSuggestions.length > 0) {
+      // If we are in "add exercises" flow, we might want to automatically add them or just show them.
+      // The requirement says: "AI responds with exercise suggestions... User sees exercise cards with '+' button"
+      // So we don't auto-add to state yet, we wait for user action.
+      // But we need to make sure the UI renders these cards.
+      // The `ParsedWorkoutDisplay` handles full plans. For partial suggestions, we might need a similar display?
+      // `parseWorkoutForDisplay` might be too strict for just 2-3 exercises.
+      // Let's assume standard markdown rendering for now, or maybe we can enhance the markdown renderer later to show cards.
+      // But wait, step 4 says: "User sees exercise cards with '+' button".
+      // This implies we need to detect these suggestions and render a specific UI for them in the chat.
+    }
+
+    // Auto-update proposed workout if it's a direct instruction?
+    // No, the requirement says "Clicking '+' adds to proposedWorkout state".
 
     return acc
   }
@@ -542,8 +727,29 @@ export function WorkoutChat() {
     setViewerImages([])
   }
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return
+  const handleAddExercise = (suggestion: ExerciseSuggestion) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    if (onAddExercise) {
+      onAddExercise(suggestion)
+    } else {
+      setProposedWorkout((prev) => [...prev, suggestion])
+    }
+  }
+
+  const handleReplaceExercise = (suggestion: ExerciseSuggestion) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    if (onReplaceExercise && exerciseToReplace) {
+      onReplaceExercise(exerciseToReplace, suggestion)
+      setExerciseToReplace(null) // Clear after replacement
+    } else {
+      // Fallback: just add the exercise if no replace handler
+      handleAddExercise(suggestion)
+    }
+  }
+
+  const handleSendMessage = async (hiddenPrompt?: string) => {
+    const messageContent = hiddenPrompt || input.trim()
+    if (!messageContent || isLoading) return
 
     // Check if user is pro member
     if (!isProMember) {
@@ -555,16 +761,15 @@ export function WorkoutChat() {
     }
 
     // Store input and images before clearing
-    const messageContent = input.trim()
     const imagesToSend = [...selectedImages]
 
-    // Clear input immediately after validation
-    setInput('')
-    setSelectedImages([])
-
-    // Force blur and clear the TextInput to prevent race conditions
-    inputRef.current?.clear()
-    Keyboard.dismiss()
+    // Clear input immediately after validation if not hidden prompt
+    if (!hiddenPrompt) {
+      setInput('')
+      setSelectedImages([])
+      inputRef.current?.clear()
+      Keyboard.dismiss()
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -572,7 +777,11 @@ export function WorkoutChat() {
       content: messageContent,
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
     }
-    setMessages((prev) => [...prev, userMessage])
+
+    // Only show user message if not a hidden prompt
+    if (!hiddenPrompt) {
+      setMessages((prev) => [...prev, userMessage])
+    }
 
     let hiddenPromptContent: string | undefined
 
@@ -621,7 +830,8 @@ export function WorkoutChat() {
       } else {
         // If we already generated a workout/routine, and the user is sending a new message,
         // we assume they might be refining it.
-        if (generatedPlanContent) {
+        // Skip adding suffix for hidden prompts or if no plan generated yet
+        if (generatedPlanContent && !hiddenPrompt) {
           const lastMsg = formattedMessages[formattedMessages.length - 1]
           lastMsg.content += buildWorkoutModificationSuffix()
         }
@@ -824,34 +1034,87 @@ export function WorkoutChat() {
     }
   }
 
-  const handleSuggestionClick = (
-    item: string | { id: string; text: string },
+  const handleSuggestionPress = (
+    item: string | { id: string; text: string; icon: string },
   ) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-    if (suggestionMode === 'main' && typeof item === 'object') {
+    // 1. Handle object-based menu items (Main, Adjust Workout)
+    if (typeof item === 'object') {
       if (item.id === 'plan_workout') {
-        handlePlanWorkout()
-      } else if (item.id === 'tell_me_about') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        setPlanningState((prev) => ({
+          ...prev,
+          isActive: true,
+          step: 'wizard',
+        }))
+        return
+      }
+
+      if (item.id === 'adjust_workout') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        setSuggestionMode('adjust_workout')
+        return
+      }
+
+      if (item.id === 'add_exercises') {
+        // Send hidden prompt for adding exercises
+        const prompt = `Suggest 2-3 exercises that would complement my current workout: ${currentWorkoutExercises.join(
+          ', ',
+        )}. Format response as a JSON list: [{"name": "Exercise Name", "sets": 3, "reps": "10-12"}]`
+        handleSendMessage(prompt)
+        setSuggestionMode('main')
+        return
+      }
+
+      if (item.id === 'replace_exercise_menu') {
+        setSuggestionMode('replace_exercise')
+        return
+      }
+
+      if (item.id === 'back_to_main') {
+        setSuggestionMode('main')
+        return
+      }
+
+      if (item.id === 'tell_me_about') {
         setSuggestionMode('tell_me_about')
-        setInput('Tell me about ')
-        inputRef.current?.focus()
-      } else if (item.id === 'how_to') {
+        return
+      }
+
+      if (item.id === 'how_to') {
         setSuggestionMode('how_to')
-        setInput('How to ')
+        return
+      } else {
+        setInput((prev) => prev + item)
+        setSuggestionMode('main')
         inputRef.current?.focus()
       }
-    } else if (typeof item === 'string') {
-      setInput((prev) => prev + item)
-      setSuggestionMode('main')
-      inputRef.current?.focus()
+    } else {
+      // 2. Handle string-based suggestion items (Exercise names)
+      if (suggestionMode === 'replace_exercise') {
+        setExerciseToReplace(item) // Track which exercise we're replacing
+        const prompt = `I want to replace "${item}" in my current workout with a similar exercise. Suggest 3 alternatives. Format response as a JSON list: [{"name": "Exercise Name", "sets": 3, "reps": "10-12"}]`
+        handleSendMessage(prompt)
+        setSuggestionMode('main')
+      } else if (suggestionMode === 'how_to') {
+        const prompt = `How do I perform "${item}" correctly? Give me a concise guide with key cues.`
+        handleSendMessage(prompt)
+        setSuggestionMode('main')
+      } else {
+        // Default: append text to input
+        setInput((prev) => prev + (prev ? ' ' : '') + item)
+        inputRef.current?.focus()
+      }
     }
   }
 
   const handleSuggestionBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setSuggestionMode('main')
-    if (input === 'Tell me about ' || input === 'How to ') {
+    if (
+      input === 'Tell me about ' ||
+      input === 'How to ' ||
+      suggestionMode === 'replace_exercise'
+    ) {
       setInput('')
     }
   }
@@ -997,14 +1260,6 @@ export function WorkoutChat() {
     }
   }
 
-  const handleWizardCancel = () => {
-    setPlanningState({
-      isActive: false,
-      step: 'none',
-      data: {},
-    })
-  }
-
   const handleStartWorkout = async () => {
     if (isLoading) return
 
@@ -1093,6 +1348,9 @@ export function WorkoutChat() {
         isStructuredMode: true,
       })
 
+      // Close the sheet first (if in sheet mode)
+      onClose?.()
+
       // Navigate to create-post
       router.push({
         pathname: '/(tabs)/create-post',
@@ -1172,47 +1430,23 @@ export function WorkoutChat() {
       )
       createdRoutineId = routine.id
 
-      // Resolve all exercises at once using the AI agent
+      // Resolve exercise IDs from the database (to get UUIDs)
       const exerciseNames = routineData.exercises.map((ex) => ex.name)
-      let resolutions: Record<
-        string,
-        { exerciseId: string; exerciseName: string; wasCreated: boolean }
-      > = {}
+      const { data: dbExercises, error: resolveError } = await supabase
+        .from('exercises')
+        .select('id, name')
+        .in('name', exerciseNames)
 
-      const { callSupabaseFunction } = await import(
-        '@/lib/supabase-functions-client'
-      )
-      const response = await callSupabaseFunction(
-        'resolve-exercises',
-        'POST',
-        {
-          exerciseNames,
-          userId: user.id,
-        },
-        undefined,
-        session?.access_token,
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to resolve exercises')
+      if (resolveError) {
+        throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
       }
 
-      const data = await response.json()
-      resolutions = data.resolutions
-
-      // Helper to find resolution with case-insensitive matching
-      const findResolution = (name: string) => {
-        // Try exact match first
-        if (resolutions[name]) return resolutions[name]
-        // Try case-insensitive match
-        const lowerName = name.toLowerCase()
-        for (const key of Object.keys(resolutions)) {
-          if (key.toLowerCase() === lowerName) {
-            return resolutions[key]
-          }
+      const exerciseIdMap = new Map<string, string>()
+      dbExercises?.forEach((ex) => {
+        if (ex.name) {
+          exerciseIdMap.set(ex.name.toLowerCase(), ex.id)
         }
-        return null
-      }
+      })
 
       // Collect all routine exercises to insert
       const routineExercisesToInsert = []
@@ -1223,27 +1457,28 @@ export function WorkoutChat() {
 
       for (let i = 0; i < routineData.exercises.length; i++) {
         const ex = routineData.exercises[i]
-        const resolution = findResolution(ex.name)
+        const dbId = exerciseIdMap.get(ex.name.toLowerCase())
 
-        if (!resolution || !resolution.exerciseId) {
-          console.warn(`Could not resolve exercise: ${ex.name}`)
+        if (!dbId) {
+          console.warn(`Could not find DB exercise for: ${ex.name}`)
+          // If strict, we could throw. For now, skipping to avoid crashing if one name is off.
           continue
         }
 
         routineExercisesToInsert.push({
           routine_id: routine.id,
-          exercise_id: resolution.exerciseId,
+          exercise_id: dbId,
           order_index: i,
           notes: null,
         })
         exerciseIndexMap.push({
           originalIndex: i,
-          exerciseId: resolution.exerciseId,
+          exerciseId: dbId,
         })
       }
 
       if (routineExercisesToInsert.length === 0) {
-        throw new Error('No exercises could be resolved')
+        throw new Error('No valid exercises found in the database.')
       }
 
       // Batch insert all routine exercises
@@ -1253,7 +1488,16 @@ export function WorkoutChat() {
         .select()
 
       if (exError || !insertedExercises) {
-        throw new Error('Failed to create routine exercises')
+        console.error('Error creating routine exercises:', exError)
+        console.error(
+          'Payload:',
+          JSON.stringify(routineExercisesToInsert, null, 2),
+        )
+        throw new Error(
+          `Failed to create routine exercises: ${
+            exError?.message || 'Unknown error'
+          }`,
+        )
       }
 
       // Prepare all sets for batch insert
@@ -1333,11 +1577,6 @@ export function WorkoutChat() {
 
   const styles = createStyles(colors, insets)
 
-  const renderRecap = () => {
-    // Deprecated: The wizard itself is now the recap/menu
-    return null
-  }
-
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -1362,24 +1601,37 @@ export function WorkoutChat() {
         />
       ) : (
         <>
-          {/* New Chat Button - Positioned absolutely */}
-          <TouchableOpacity
-            style={[
-              styles.newChatButton,
-              { top: Math.max(insets.top - 38, 0) },
-            ]}
-            onPress={handleNewChat}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="create-outline" size={28} color={colors.primary} />
-          </TouchableOpacity>
+          {/* New Chat Button - Positioned absolutely (hidden in sheet mode) */}
+          {mode === 'fullscreen' && (
+            <TouchableOpacity
+              style={[
+                styles.newChatButton,
+                { top: Math.max(insets.top - 38, 0) },
+              ]}
+              onPress={handleNewChat}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="create-outline"
+                size={28}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          )}
 
           <ScrollView
             ref={scrollViewRef}
             style={styles.messagesContainer}
             contentContainerStyle={[
               styles.messagesContent,
-              { paddingTop: messages.length === 0 && !isLoading ? 16 : 80 },
+              {
+                paddingTop:
+                  mode === 'sheet'
+                    ? 16
+                    : messages.length === 0 && !isLoading
+                    ? 16
+                    : 80,
+              },
             ]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={
@@ -1395,21 +1647,23 @@ export function WorkoutChat() {
           >
             {messages.length === 0 && !isLoading ? (
               <View style={styles.emptyState}>
-                <View style={styles.welcomeSection}>
-                  <View style={styles.coachWelcomeContainer}>
-                    <Image
-                      source={getCoach(coachId).image}
-                      style={styles.coachWelcomeImage}
-                      resizeMode="cover"
-                    />
+                {mode === 'fullscreen' && (
+                  <View style={styles.welcomeSection}>
+                    <View style={styles.coachWelcomeContainer}>
+                      <Image
+                        source={getCoach(coachId).image}
+                        style={styles.coachWelcomeImage}
+                        resizeMode="cover"
+                      />
+                    </View>
+                    <Text style={styles.welcomeText}>
+                      Ask{' '}
+                      {getCoach(coachId).name.split(' ')[1] ||
+                        getCoach(coachId).name}
+                      ...
+                    </Text>
                   </View>
-                  <Text style={styles.welcomeText}>
-                    Ask{' '}
-                    {getCoach(coachId).name.split(' ')[1] ||
-                      getCoach(coachId).name}
-                    ...
-                  </Text>
-                </View>
+                )}
               </View>
             ) : (
               <View style={styles.chatMessages}>
@@ -1476,118 +1730,233 @@ export function WorkoutChat() {
                             )
                           }
 
+                          const displayContent = message.content
+                            .replace(JSON_BLOCK_REGEX, '')
+                            .trim()
+                          const exerciseSuggestions = parseExerciseSuggestions(
+                            message.content,
+                          )
+
                           return (
-                            <Markdown
-                              style={{
-                                body: {
-                                  fontSize: 17,
-                                  lineHeight: 24,
-                                  color: colors.text,
-                                  margin: 0,
-                                },
-                                paragraph: {
-                                  marginTop: 0,
-                                  marginBottom: 12,
-                                },
-                                heading1: {
-                                  fontSize: 22,
-                                  fontWeight: '700',
-                                  color: colors.text,
-                                  marginTop: 16,
-                                  marginBottom: 8,
-                                },
-                                heading2: {
-                                  fontSize: 20,
-                                  fontWeight: '700',
-                                  color: colors.text,
-                                  marginTop: 14,
-                                  marginBottom: 6,
-                                },
-                                heading3: {
-                                  fontSize: 18,
-                                  fontWeight: '600',
-                                  color: colors.text,
-                                  marginTop: 12,
-                                  marginBottom: 6,
-                                },
-                                code_inline: {
-                                  backgroundColor: colors.backgroundLight,
-                                  paddingHorizontal: 4,
-                                  paddingVertical: 2,
-                                  borderRadius: 4,
-                                  fontSize: 16,
-                                  fontFamily:
-                                    Platform.OS === 'ios'
-                                      ? 'Menlo'
-                                      : 'monospace',
-                                  color: colors.text,
-                                },
-                                code_block: {
-                                  backgroundColor: colors.backgroundLight,
-                                  padding: 12,
-                                  borderRadius: 8,
-                                  fontSize: 16,
-                                  fontFamily:
-                                    Platform.OS === 'ios'
-                                      ? 'Menlo'
-                                      : 'monospace',
-                                  color: colors.text,
-                                  marginVertical: 8,
-                                  overflow: 'hidden',
-                                },
-                                fence: {
-                                  backgroundColor: colors.backgroundLight,
-                                  padding: 12,
-                                  borderRadius: 8,
-                                  fontSize: 16,
-                                  fontFamily:
-                                    Platform.OS === 'ios'
-                                      ? 'Menlo'
-                                      : 'monospace',
-                                  color: colors.text,
-                                  marginVertical: 8,
-                                },
-                                strong: {
-                                  fontWeight: '600',
-                                  color: colors.text,
-                                },
-                                em: {
-                                  fontStyle: 'italic',
-                                },
-                                bullet_list: {
-                                  marginTop: 0,
-                                  marginBottom: 12,
-                                },
-                                ordered_list: {
-                                  marginTop: 0,
-                                  marginBottom: 12,
-                                },
-                                list_item: {
-                                  marginTop: 4,
-                                  marginBottom: 4,
-                                },
-                                hr: {
-                                  backgroundColor: colors.border,
-                                  height: 1,
-                                  marginVertical: 16,
-                                },
-                                blockquote: {
-                                  borderLeftWidth: 3,
-                                  borderLeftColor: colors.primary,
-                                  paddingLeft: 12,
-                                  marginVertical: 8,
-                                  backgroundColor: colors.backgroundLight,
-                                  paddingVertical: 8,
-                                  paddingRight: 8,
-                                },
-                                link: {
-                                  color: colors.primary,
-                                  textDecorationLine: 'underline',
-                                },
-                              }}
-                            >
-                              {message.content}
-                            </Markdown>
+                            <>
+                              <Markdown
+                                style={{
+                                  body: {
+                                    fontSize: 17,
+                                    lineHeight: 24,
+                                    color: colors.text,
+                                    margin: 0,
+                                  },
+                                  paragraph: {
+                                    marginTop: 0,
+                                    marginBottom: 12,
+                                  },
+                                  heading1: {
+                                    fontSize: 22,
+                                    fontWeight: '700',
+                                    color: colors.text,
+                                    marginTop: 16,
+                                    marginBottom: 8,
+                                  },
+                                  heading2: {
+                                    fontSize: 20,
+                                    fontWeight: '700',
+                                    color: colors.text,
+                                    marginTop: 14,
+                                    marginBottom: 6,
+                                  },
+                                  heading3: {
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    color: colors.text,
+                                    marginTop: 12,
+                                    marginBottom: 6,
+                                  },
+                                  code_inline: {
+                                    backgroundColor: colors.backgroundLight,
+                                    paddingHorizontal: 4,
+                                    paddingVertical: 2,
+                                    borderRadius: 4,
+                                    fontSize: 16,
+                                    fontFamily:
+                                      Platform.OS === 'ios'
+                                        ? 'Menlo'
+                                        : 'monospace',
+                                    color: colors.text,
+                                  },
+                                  code_block: {
+                                    backgroundColor: colors.backgroundLight,
+                                    padding: 12,
+                                    borderRadius: 8,
+                                    fontSize: 16,
+                                    fontFamily:
+                                      Platform.OS === 'ios'
+                                        ? 'Menlo'
+                                        : 'monospace',
+                                    color: colors.text,
+                                    marginVertical: 8,
+                                    overflow: 'hidden',
+                                  },
+                                  fence: {
+                                    backgroundColor: colors.backgroundLight,
+                                    padding: 12,
+                                    borderRadius: 8,
+                                    fontSize: 16,
+                                    fontFamily:
+                                      Platform.OS === 'ios'
+                                        ? 'Menlo'
+                                        : 'monospace',
+                                    color: colors.text,
+                                    marginVertical: 8,
+                                  },
+                                  strong: {
+                                    fontWeight: '600',
+                                    color: colors.text,
+                                  },
+                                  em: {
+                                    fontStyle: 'italic',
+                                  },
+                                  bullet_list: {
+                                    marginTop: 0,
+                                    marginBottom: 12,
+                                  },
+                                  ordered_list: {
+                                    marginTop: 0,
+                                    marginBottom: 12,
+                                  },
+                                  list_item: {
+                                    marginTop: 4,
+                                    marginBottom: 4,
+                                  },
+                                  hr: {
+                                    backgroundColor: colors.border,
+                                    height: 1,
+                                    marginVertical: 16,
+                                  },
+                                  blockquote: {
+                                    borderLeftWidth: 3,
+                                    borderLeftColor: colors.primary,
+                                    paddingLeft: 12,
+                                    marginVertical: 8,
+                                    backgroundColor: colors.backgroundLight,
+                                    paddingVertical: 8,
+                                    paddingRight: 8,
+                                  },
+                                  link: {
+                                    color: colors.primary,
+                                    textDecorationLine: 'underline',
+                                  },
+                                }}
+                              >
+                                {displayContent}
+                              </Markdown>
+
+                              {exerciseSuggestions.length > 0 && (
+                                <View style={styles.exerciseCardsContainer}>
+                                  {exerciseSuggestions.map(
+                                    (suggestion, idx) => {
+                                      const exerciseMatch = findExerciseByName(
+                                        suggestion.name,
+                                      )
+                                      const gifUrl = exerciseMatch?.gifUrl
+                                      const isLast =
+                                        idx === exerciseSuggestions.length - 1
+
+                                      return (
+                                        <View
+                                          key={idx}
+                                          style={styles.suggestionTimelineRow}
+                                        >
+                                          <View
+                                            style={
+                                              styles.suggestionTimelineColumn
+                                            }
+                                          >
+                                            <View
+                                              style={
+                                                styles.suggestionTimelineLineTop
+                                              }
+                                            />
+                                            <View
+                                              style={[
+                                                styles.suggestionTimelineNode,
+                                                gifUrl
+                                                  ? styles.suggestionTimelineNodeImage
+                                                  : null,
+                                              ]}
+                                            >
+                                              {gifUrl ? (
+                                                <ExerciseMediaThumbnail
+                                                  gifUrl={gifUrl}
+                                                  style={
+                                                    styles.suggestionThumbnailImage
+                                                  }
+                                                />
+                                              ) : (
+                                                <Ionicons
+                                                  name="barbell-outline"
+                                                  size={18}
+                                                  color={colors.textSecondary}
+                                                />
+                                              )}
+                                            </View>
+                                            {!isLast && (
+                                              <View
+                                                style={
+                                                  styles.suggestionTimelineLineBottom
+                                                }
+                                              />
+                                            )}
+                                          </View>
+
+                                          <View
+                                            style={
+                                              styles.suggestionContentColumn
+                                            }
+                                          >
+                                            <View style={styles.exerciseCard}>
+                                              <View
+                                                style={styles.exerciseCardInfo}
+                                              >
+                                                <Text
+                                                  style={
+                                                    styles.exerciseCardName
+                                                  }
+                                                >
+                                                  {suggestion.name}
+                                                </Text>
+                                                <Text
+                                                  style={
+                                                    styles.exerciseCardDetails
+                                                  }
+                                                >
+                                                  {suggestion.sets} sets ×{' '}
+                                                  {suggestion.reps} reps
+                                                </Text>
+                                              </View>
+                                              <TouchableOpacity
+                                                style={styles.addExerciseButton}
+                                                onPress={() =>
+                                                  exerciseToReplace
+                                                    ? handleReplaceExercise(suggestion)
+                                                    : handleAddExercise(suggestion)
+                                                }
+                                              >
+                                                <Ionicons
+                                                  name={exerciseToReplace ? "swap-horizontal" : "add"}
+                                                  size={20}
+                                                  color={colors.white}
+                                                />
+                                              </TouchableOpacity>
+                                            </View>
+                                          </View>
+                                        </View>
+                                      )
+                                    },
+                                  )}
+                                </View>
+                              )}
+                            </>
                           )
                         })()}
                       </View>
@@ -1600,46 +1969,8 @@ export function WorkoutChat() {
                   </View>
                 )}
                 {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
-                {generatedPlanContent &&
-                  // Check if the LAST message is NOT a workout card (if it is, we already showed inline buttons)
-                  !parseWorkoutForDisplay(
-                    messages[messages.length - 1]?.content || '',
-                  ) && (
-                    <View style={styles.actionButtonsContainer}>
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={handleStartWorkout}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name="barbell"
-                          size={20}
-                          color={colors.white}
-                        />
-                        <Text style={styles.actionButtonText}>
-                          Start Workout
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          styles.secondaryActionButton,
-                        ]}
-                        onPress={handleSaveRoutine}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name="bookmark-outline"
-                          size={20}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.secondaryActionButtonText}>
-                          Save as Routine
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
+                {/* REMOVED: Redundant footer buttons. Actions are now handled inline by WorkoutCard */}
               </View>
             )}
           </ScrollView>
@@ -1656,7 +1987,7 @@ export function WorkoutChat() {
                 {suggestionMode !== 'main' && (
                   <TouchableOpacity
                     style={styles.suggestionBackBubble}
-                    onPress={handleSuggestionBack}
+                    onPress={() => setSuggestionMode('main')}
                     activeOpacity={0.7}
                   >
                     <Ionicons
@@ -1668,18 +1999,20 @@ export function WorkoutChat() {
                 )}
 
                 {suggestionMode === 'main'
-                  ? SUGGESTIONS.main.map((item) => (
+                  ? suggestions.main.map((item) => (
                       <TouchableOpacity
                         key={item.id}
                         style={[
                           styles.suggestionBubble,
-                          item.id === 'plan_workout' &&
+                          (item.id === 'plan_workout' ||
+                            item.id === 'adjust_workout') &&
                             styles.planWorkoutBubble,
                         ]}
-                        onPress={() => handleSuggestionClick(item)}
+                        onPress={() => handleSuggestionPress(item)}
                         activeOpacity={0.7}
                       >
-                        {item.id === 'plan_workout' && (
+                        {(item.id === 'plan_workout' ||
+                          item.id === 'adjust_workout') && (
                           <Ionicons
                             name="flash"
                             size={14}
@@ -1690,7 +2023,8 @@ export function WorkoutChat() {
                         <Text
                           style={[
                             styles.suggestionText,
-                            item.id === 'plan_workout' &&
+                            (item.id === 'plan_workout' ||
+                              item.id === 'adjust_workout') &&
                               styles.planWorkoutText,
                           ]}
                         >
@@ -1698,14 +2032,56 @@ export function WorkoutChat() {
                         </Text>
                       </TouchableOpacity>
                     ))
-                  : SUGGESTIONS[suggestionMode].map((item, index) => (
+                  : suggestionMode === 'replace_exercise'
+                  ? currentWorkoutExercises.map((exerciseName, index) => (
                       <TouchableOpacity
                         key={index}
                         style={styles.suggestionBubble}
-                        onPress={() => handleSuggestionClick(item)}
+                        onPress={() => handleSuggestionPress(exerciseName)}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.suggestionText}>{item}</Text>
+                        <Text style={styles.suggestionText}>
+                          {exerciseName}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  : suggestionMode === 'adjust_workout'
+                  ? (suggestions.adjust_workout || []).map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[
+                          styles.suggestionBubble,
+                          styles.planWorkoutBubble,
+                        ]}
+                        onPress={() => handleSuggestionPress(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={item.icon as any}
+                          size={14}
+                          color={colors.primary}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text
+                          style={[
+                            styles.suggestionText,
+                            styles.planWorkoutText,
+                          ]}
+                        >
+                          {item.text}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  : (suggestions[suggestionMode] || []).map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionBubble}
+                        onPress={() => handleSuggestionPress(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.suggestionText}>
+                          {item as string}
+                        </Text>
                       </TouchableOpacity>
                     ))}
               </ScrollView>
@@ -1714,7 +2090,13 @@ export function WorkoutChat() {
 
           {/* Input Area */}
           <View
-            style={[styles.inputContainer, { paddingBottom: 0 }]}
+            style={[
+              styles.inputContainer,
+              {
+                paddingBottom:
+                  mode === 'sheet' ? Math.max(insets.bottom, 16) : 0,
+              },
+            ]}
             onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
           >
             {/* Image Thumbnails Preview */}
@@ -1750,18 +2132,20 @@ export function WorkoutChat() {
 
             {/* Input Row */}
             <View style={styles.inputWrapper}>
-              {/* Add Image Button */}
-              <TouchableOpacity
-                style={styles.addImageButton}
-                onPress={() => setShowImagePickerModal(true)}
-                disabled={isLoading}
-              >
-                <Ionicons
-                  name="add"
-                  size={20}
-                  color={isLoading ? colors.textPlaceholder : colors.primary}
-                />
-              </TouchableOpacity>
+              {/* Add Image Button - hidden when hideImagePicker is true */}
+              {!hideImagePicker && (
+                <TouchableOpacity
+                  style={styles.addImageButton}
+                  onPress={() => setShowImagePickerModal(true)}
+                  disabled={isLoading}
+                >
+                  <Ionicons
+                    name="add"
+                    size={20}
+                    color={isLoading ? colors.textPlaceholder : colors.primary}
+                  />
+                </TouchableOpacity>
+              )}
 
               <View style={styles.textInputContainer}>
                 <TextInput
@@ -1778,7 +2162,7 @@ export function WorkoutChat() {
                   multiline
                   maxLength={500}
                   returnKeyType="send"
-                  onSubmitEditing={handleSendMessage}
+                  onSubmitEditing={() => handleSendMessage()}
                   blurOnSubmit={false}
                   editable={!isLoading}
                 />
@@ -1788,7 +2172,7 @@ export function WorkoutChat() {
                     styles.sendButton,
                     (!input.trim() || isLoading) && styles.sendButtonDisabled,
                   ]}
-                  onPress={handleSendMessage}
+                  onPress={() => handleSendMessage()}
                   disabled={!input.trim() || isLoading}
                 >
                   {isLoading ? (
@@ -2393,5 +2777,86 @@ const createStyles = (
       color: colors.white,
       fontSize: 16,
       fontWeight: '600',
+    },
+    // Exercise suggestion cards (for sheet mode with onAddExercise)
+    exerciseCardsContainer: {
+      marginTop: 12,
+      gap: 8,
+    },
+    exerciseCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    exerciseCardInfo: {
+      flex: 1,
+    },
+    exerciseCardName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    exerciseCardDetails: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    addExerciseButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    // Timeline styles for exercise suggestions
+    suggestionTimelineRow: {
+      flexDirection: 'row',
+      minHeight: 64,
+    },
+    suggestionTimelineColumn: {
+      width: 48,
+      alignItems: 'center',
+    },
+    suggestionTimelineLineTop: {
+      width: 2,
+      height: 12,
+      backgroundColor: colors.border,
+      opacity: 0.5,
+    },
+    suggestionTimelineLineBottom: {
+      width: 2,
+      flex: 1,
+      backgroundColor: colors.border,
+      opacity: 0.5,
+    },
+    suggestionTimelineNode: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      zIndex: 2,
+    },
+    suggestionTimelineNodeImage: {
+      padding: 0,
+      overflow: 'hidden',
+      borderWidth: 0,
+    },
+    suggestionThumbnailImage: {
+      width: '100%',
+      height: '100%',
+    },
+    suggestionContentColumn: {
+      flex: 1,
+      paddingLeft: 12,
+      paddingBottom: 8,
     },
   })

@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { fuzzySearchExercises, hasExactOrFuzzyMatch } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
@@ -9,30 +10,30 @@ import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Keyboard,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
@@ -173,59 +174,48 @@ export function ExerciseSearchModal({
 
   const hasExactMatch = useMemo(() => {
     if (!trimmedQuery) return false
-    return exercises.some(
-      (exercise) => exercise.name.toLowerCase() === normalizedQuery,
-    )
-  }, [exercises, trimmedQuery, normalizedQuery])
+    return hasExactOrFuzzyMatch(exercises, trimmedQuery)
+  }, [exercises, trimmedQuery])
 
   const hasFilters =
     selectedMuscleGroups.length > 0 || selectedEquipment.length > 0
 
-  // Memoized filtered exercises
+  // Memoized filtered exercises with fuzzy search
   const filteredExercises = useMemo(() => {
-    return exercises.filter((exercise) => {
-      // Name filter
-      if (
-        normalizedQuery &&
-        !exercise.name.toLowerCase().includes(normalizedQuery)
-      ) {
-        return false
-      }
+    // Apply fuzzy search first (handles typos, plurals, word order)
+    let result = trimmedQuery
+      ? fuzzySearchExercises(exercises, trimmedQuery)
+      : exercises
 
-      // Muscle group filter
-      if (selectedMuscleGroups.length > 0) {
-        if (
-          !exercise.muscle_group ||
-          !selectedMuscleGroups.includes(exercise.muscle_group)
-        ) {
-          return false
-        }
-      }
+    // Apply muscle group filter
+    if (selectedMuscleGroups.length > 0) {
+      result = result.filter(
+        (exercise) =>
+          exercise.muscle_group &&
+          selectedMuscleGroups.includes(exercise.muscle_group),
+      )
+    }
 
-      // Equipment filter
-      if (selectedEquipment.length > 0) {
-        let matches = false
+    // Apply equipment filter
+    if (selectedEquipment.length > 0) {
+      result = result.filter((exercise) => {
         if (
           exercise.equipment &&
           selectedEquipment.includes(exercise.equipment)
         ) {
-          matches = true
+          return true
         }
-        if (
-          !matches &&
-          exercise.equipments &&
-          Array.isArray(exercise.equipments)
-        ) {
-          matches = exercise.equipments.some((eq) =>
+        if (exercise.equipments && Array.isArray(exercise.equipments)) {
+          return exercise.equipments.some((eq) =>
             selectedEquipment.includes(eq),
           )
         }
-        if (!matches) return false
-      }
+        return false
+      })
+    }
 
-      return true
-    })
-  }, [exercises, normalizedQuery, selectedMuscleGroups, selectedEquipment])
+    return result
+  }, [exercises, trimmedQuery, selectedMuscleGroups, selectedEquipment])
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {

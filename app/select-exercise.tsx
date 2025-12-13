@@ -6,6 +6,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { fuzzySearchExercises, hasExactOrFuzzyMatch } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
@@ -13,14 +14,14 @@ import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -96,15 +97,13 @@ export default function SelectExerciseScreen() {
   const normalizedQuery = trimmedQuery.toLowerCase()
   const hasMuscleFilter = selectedMuscleGroups.length > 0
 
-  // Debounced filtered results
+  // Debounced filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
     let result = exercises
 
-    // Apply search filter
-    if (normalizedQuery) {
-      result = result.filter((e) =>
-        e.name.toLowerCase().includes(normalizedQuery)
-      )
+    // Apply fuzzy search filter (handles typos, plurals, word order)
+    if (trimmedQuery) {
+      result = fuzzySearchExercises(result, trimmedQuery)
     }
 
     // Apply muscle group filter
@@ -114,12 +113,12 @@ export default function SelectExerciseScreen() {
     }
 
     return result
-  }, [exercises, normalizedQuery, hasMuscleFilter, selectedMuscleGroups])
+  }, [exercises, trimmedQuery, hasMuscleFilter, selectedMuscleGroups])
 
   const hasExactMatch = useMemo(() => {
     if (!trimmedQuery) return false
-    return exercises.some((e) => e.name.toLowerCase() === normalizedQuery)
-  }, [exercises, trimmedQuery, normalizedQuery])
+    return hasExactOrFuzzyMatch(exercises, trimmedQuery)
+  }, [exercises, trimmedQuery])
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {

@@ -11,12 +11,12 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useRatingPrompt } from '@/contexts/rating-prompt-context'
+import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
-import { useRestTimer } from '@/hooks/useRestTimer'
 import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -279,7 +279,7 @@ export default function CreatePostScreen() {
   } = useWorkoutTimer()
 
   const [showRestTimer, setShowRestTimer] = useState(false)
-  const restTimer = useRestTimer()
+  const restTimer = useRestTimerContext()
 
   const [structuredData, setStructuredData] = useState<
     StructuredExerciseDraft[]
@@ -321,6 +321,12 @@ export default function CreatePostScreen() {
     [workoutTitle, notes, structuredData],
   )
 
+  // Check if workout is empty (no notes, no structured workouts)
+  const isWorkoutEmpty = useMemo(
+    () => !notes.trim() && !workoutTitle.trim() && !hasStructuredEntries,
+    [notes, workoutTitle, hasStructuredEntries],
+  )
+
   const shouldShowWorkoutTimer =
     hasWorkoutDraftContent || workoutElapsedSeconds > 0
   const headerTimerDisplay = formatTimerDisplay(
@@ -333,6 +339,14 @@ export default function CreatePostScreen() {
     },
     [],
   )
+
+  const handleRestTimerStart = useCallback(
+    (seconds: number) => {
+      restTimer.start(seconds)
+    },
+    [restTimer],
+  )
+
   const [
     lastRoutineWorkout,
     setLastRoutineWorkout,
@@ -1637,21 +1651,23 @@ export default function CreatePostScreen() {
 
   const handleMultiSelectExercises = useCallback((exercises: Exercise[]) => {
     // Create new structured exercises
-    const newExercises: StructuredExerciseDraft[] = exercises.map(exercise => ({
-      id: `manual-${Date.now()}-${exercise.id}`, // Ensure unique ID
-      name: exercise.name,
-      sets: [
-        {
-          weight: '',
-          reps: '',
-          lastWorkoutWeight: null,
-          lastWorkoutReps: null,
-          targetRepsMin: null,
-          targetRepsMax: null,
-          targetRestSeconds: null,
-        },
-      ],
-    }))
+    const newExercises: StructuredExerciseDraft[] = exercises.map(
+      (exercise) => ({
+        id: `manual-${Date.now()}-${exercise.id}`, // Ensure unique ID
+        name: exercise.name,
+        sets: [
+          {
+            weight: '',
+            reps: '',
+            lastWorkoutWeight: null,
+            lastWorkoutReps: null,
+            targetRepsMin: null,
+            targetRepsMax: null,
+            targetRestSeconds: null,
+          },
+        ],
+      }),
+    )
 
     setStructuredData((prev) => [...prev, ...newExercises])
     setIsStructuredMode(true)
@@ -1662,35 +1678,41 @@ export default function CreatePostScreen() {
     }, 100)
   }, [])
 
+  // Helper: Parse rep range from string like "10-12" or "10"
+  const parseRepRange = (reps: string): { targetRepsMin: number | null; targetRepsMax: number | null } => {
+    const rangeMatch = reps.match(/(\d+)[-–](\d+)/)
+    if (rangeMatch) {
+      return {
+        targetRepsMin: parseInt(rangeMatch[1], 10),
+        targetRepsMax: parseInt(rangeMatch[2], 10),
+      }
+    }
+    const singleRep = parseInt(reps, 10)
+    if (!isNaN(singleRep)) {
+      return { targetRepsMin: singleRep, targetRepsMax: singleRep }
+    }
+    return { targetRepsMin: null, targetRepsMax: null }
+  }
+
+  // Helper: Create an empty set with target reps
+  const createEmptySet = (targetRepsMin: number | null, targetRepsMax: number | null) => ({
+    weight: '',
+    reps: '',
+    lastWorkoutWeight: null,
+    lastWorkoutReps: null,
+    targetRepsMin,
+    targetRepsMax,
+    targetRestSeconds: null,
+  })
+
   // Handler for adding exercise from AI coach suggestions
   const handleAddExerciseFromCoach = useCallback(
     (exercise: { name: string; sets: number; reps: string }) => {
-      // Parse reps range for target
-      let targetRepsMin: number | null = null
-      let targetRepsMax: number | null = null
-
-      const rangeMatch = exercise.reps.match(/(\d+)[-–](\d+)/)
-      if (rangeMatch) {
-        targetRepsMin = parseInt(rangeMatch[1], 10)
-        targetRepsMax = parseInt(rangeMatch[2], 10)
-      } else {
-        const singleRep = parseInt(exercise.reps, 10)
-        if (!isNaN(singleRep)) {
-          targetRepsMin = singleRep
-          targetRepsMax = singleRep
-        }
-      }
-
-      // Create sets based on the suggested count
-      const sets = Array.from({ length: exercise.sets }, () => ({
-        weight: '',
-        reps: '',
-        lastWorkoutWeight: null,
-        lastWorkoutReps: null,
-        targetRepsMin,
-        targetRepsMax,
-        targetRestSeconds: null,
-      }))
+      const { targetRepsMin, targetRepsMax } = parseRepRange(exercise.reps)
+      
+      const sets = Array.from({ length: exercise.sets }, () => 
+        createEmptySet(targetRepsMin, targetRepsMax)
+      )
 
       const newExercise: StructuredExerciseDraft = {
         id: `coach-${Date.now()}`,
@@ -1701,10 +1723,49 @@ export default function CreatePostScreen() {
       setStructuredData((prev) => [...prev, newExercise])
       setIsStructuredMode(true)
 
-      // Scroll to bottom after a short delay
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true })
       }, 100)
+    },
+    [],
+  )
+
+  // Handler for replacing exercise from AI coach suggestions
+  const handleReplaceExerciseFromCoach = useCallback(
+    (oldExerciseName: string, newExercise: { name: string; sets: number; reps: string }) => {
+      const { targetRepsMin, targetRepsMax } = parseRepRange(newExercise.reps)
+
+      setStructuredData((prev) => {
+        const index = prev.findIndex(
+          (ex) => ex.name.toLowerCase() === oldExerciseName.toLowerCase()
+        )
+        
+        if (index === -1) {
+          // If not found, just add the new exercise
+          const sets = Array.from({ length: newExercise.sets }, () => 
+            createEmptySet(targetRepsMin, targetRepsMax)
+          )
+          return [...prev, {
+            id: `coach-${Date.now()}`,
+            name: newExercise.name,
+            sets,
+          }]
+        }
+
+        const oldExercise = prev[index]
+        const setCount = Math.max(newExercise.sets, oldExercise.sets.length)
+        
+        const sets = Array.from({ length: setCount }, (_, i) => {
+          if (i < oldExercise.sets.length) {
+            return { ...oldExercise.sets[i], targetRepsMin, targetRepsMax }
+          }
+          return createEmptySet(targetRepsMin, targetRepsMax)
+        })
+
+        const updated = [...prev]
+        updated[index] = { id: oldExercise.id, name: newExercise.name, sets }
+        return updated
+      })
     },
     [],
   )
@@ -1730,6 +1791,48 @@ export default function CreatePostScreen() {
     // Update previous length
     previousStructuredDataLength.current = currentLength
   }, [structuredData, selectedRoutine])
+
+  const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(false)
+
+  const editorToolbarProps = useMemo(
+    () => ({
+      onScanEquipment: handleDumbbellPress,
+      onMicPress: handleToggleRecording,
+      onStopwatchPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        blurInputs()
+        setShowRestTimer(true)
+      },
+      onChatPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        blurInputs()
+        setShowCoachSheet(true)
+      },
+      onSearchExercise: handleChooseExercisePress,
+      onAddExercise: handleConvertToStructured,
+      isRecording,
+      isTranscribing,
+      isProcessingImage,
+      isLoading,
+      showAddExercise: showConvertButton,
+      isRestTimerActive: restTimer.isActive,
+      restTimerRemaining: restTimer.remainingSeconds,
+    }),
+    [
+      handleDumbbellPress,
+      handleToggleRecording,
+      blurInputs,
+      handleChooseExercisePress,
+      handleConvertToStructured,
+      isRecording,
+      isTranscribing,
+      isProcessingImage,
+      isLoading,
+      showConvertButton,
+      restTimer.isActive,
+      restTimer.remainingSeconds,
+    ],
+  )
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -1849,6 +1952,10 @@ export default function CreatePostScreen() {
                     structuredData.length > 0 ? structuredData : undefined
                   }
                   onDataChange={handleStructuredDataChange}
+                  onRestTimerStart={handleRestTimerStart}
+                  onInputFocus={() => setIsStructuredInputFocused(true)}
+                  onInputBlur={() => setIsStructuredInputFocused(false)}
+                  editorToolbarProps={editorToolbarProps}
                 />
               </View>
             )}
@@ -1946,29 +2053,7 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          <EditorToolbar
-            onScanEquipment={handleDumbbellPress}
-            onMicPress={handleToggleRecording}
-            onStopwatchPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              blurInputs()
-              setShowRestTimer(true)
-            }}
-            onChatPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              blurInputs()
-              setShowCoachSheet(true)
-            }}
-            onSearchExercise={handleChooseExercisePress}
-            onAddExercise={handleConvertToStructured}
-            isRecording={isRecording}
-            isTranscribing={isTranscribing}
-            isProcessingImage={isProcessingImage}
-            isLoading={isLoading}
-            showAddExercise={showConvertButton}
-            isRestTimerActive={restTimer.isActive}
-            restTimerRemaining={restTimer.remainingSeconds}
-          />
+           {!isStructuredInputFocused && <EditorToolbar {...editorToolbarProps} />}
         </KeyboardAvoidingView>
 
         {/* Example Workout - shown when user has no workouts and inputs are empty */}
@@ -2059,6 +2144,8 @@ export default function CreatePostScreen() {
         onClose={() => setShowCoachSheet(false)}
         workoutContext={workoutContext}
         onAddExercise={handleAddExerciseFromCoach}
+        onReplaceExercise={handleReplaceExerciseFromCoach}
+        isWorkoutEmpty={isWorkoutEmpty}
       />
     </SafeAreaView>
   )
