@@ -84,18 +84,21 @@ export default function SelectExerciseScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [showPaywall, setShowPaywall] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
 
   // Use cached exercises hook
-  const { exercises, muscleGroups, isLoading, searchExercises } = useExercises({
+  const { exercises, muscleGroups, equipmentTypes, isLoading, searchExercises } = useExercises({
     initialLoad: true,
   })
 
   const trimmedQuery = searchQuery.trim()
   const normalizedQuery = trimmedQuery.toLowerCase()
   const hasMuscleFilter = selectedMuscleGroups.length > 0
+  const hasEquipmentFilter = selectedEquipment.length > 0
+  const hasFilters = hasMuscleFilter || hasEquipmentFilter
 
   // Debounced filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
@@ -112,8 +115,20 @@ export default function SelectExerciseScreen() {
       result = result.filter((e) => e.muscle_group && selectedSet.has(e.muscle_group))
     }
 
+    // Apply equipment filter
+    if (hasEquipmentFilter) {
+      const selectedSet = new Set(selectedEquipment)
+      result = result.filter((e) => {
+        if (e.equipment && selectedSet.has(e.equipment)) return true
+        if (e.equipments && Array.isArray(e.equipments)) {
+          return e.equipments.some((eq) => selectedSet.has(eq))
+        }
+        return false
+      })
+    }
+
     return result
-  }, [exercises, trimmedQuery, hasMuscleFilter, selectedMuscleGroups])
+  }, [exercises, trimmedQuery, hasMuscleFilter, selectedMuscleGroups, hasEquipmentFilter, selectedEquipment])
 
   const hasExactMatch = useMemo(() => {
     if (!trimmedQuery) return false
@@ -122,15 +137,15 @@ export default function SelectExerciseScreen() {
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {
-      return hasMuscleFilter
-        ? `No exercises found for "${trimmedQuery}" in selected groups`
+      return hasFilters
+        ? `No exercises found for "${trimmedQuery}" with selected filters`
         : `No exercises found for "${trimmedQuery}"`
     }
-    if (hasMuscleFilter) {
-      return 'No exercises match the selected muscle groups'
+    if (hasFilters) {
+      return 'No exercises match the selected filters'
     }
     return 'Start typing to search'
-  }, [trimmedQuery, hasMuscleFilter])
+  }, [trimmedQuery, hasFilters])
 
   // Handle keyboard events
   useEffect(() => {
@@ -189,8 +204,15 @@ export default function SelectExerciseScreen() {
     )
   }, [])
 
-  const clearMuscleGroups = useCallback(() => {
+  const toggleEquipment = useCallback((type: string) => {
+    setSelectedEquipment((prev) =>
+      prev.includes(type) ? prev.filter((item) => item !== type) : [...prev, type]
+    )
+  }, [])
+
+  const clearFilters = useCallback(() => {
     setSelectedMuscleGroups([])
+    setSelectedEquipment([])
   }, [])
 
   // FlashList render item
@@ -276,58 +298,90 @@ export default function SelectExerciseScreen() {
           autoCapitalize="words"
         />
 
-        {/* Muscle Filter */}
-        {muscleGroups.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.muscleFilterScrollView}
-            contentContainerStyle={styles.muscleFilterContainer}
-          >
-            <TouchableOpacity
-              style={[
-                styles.muscleFilterChip,
-                { borderColor: colors.border, backgroundColor: colors.backgroundLight },
-                !hasMuscleFilter && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-              ]}
-              onPress={clearMuscleGroups}
+        {/* Filters */}
+        <View style={styles.filtersContainer}>
+          {/* Muscle Filter */}
+          {muscleGroups.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScrollView}
+              contentContainerStyle={styles.filterContainer}
             >
-              <Text
-                style={[
-                  styles.muscleFilterChipText,
-                  { color: colors.textSecondary },
-                  !hasMuscleFilter && { color: colors.primary },
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-            {muscleGroups.map((group) => {
-              const isSelected = selectedMuscleGroups.includes(group)
-              return (
-                <TouchableOpacity
-                  key={group}
-                  style={[
-                    styles.muscleFilterChip,
-                    { borderColor: colors.border, backgroundColor: colors.backgroundLight },
-                    isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-                  ]}
-                  onPress={() => toggleMuscleGroup(group)}
-                >
-                  <Text
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Muscles:</Text>
+              {muscleGroups.map((group) => {
+                const isSelected = selectedMuscleGroups.includes(group)
+                return (
+                  <TouchableOpacity
+                    key={group}
                     style={[
-                      styles.muscleFilterChipText,
-                      { color: colors.textSecondary },
-                      isSelected && { color: colors.primary },
+                      styles.filterChip,
+                      { borderColor: colors.border, backgroundColor: colors.backgroundLight },
+                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
                     ]}
+                    onPress={() => toggleMuscleGroup(group)}
                   >
-                    {group}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </ScrollView>
-        )}
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: colors.textSecondary },
+                        isSelected && { color: colors.primary },
+                      ]}
+                    >
+                      {group}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          )}
+
+          {/* Equipment Filter */}
+          {equipmentTypes.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScrollView}
+              contentContainerStyle={styles.filterContainer}
+            >
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Equipment:</Text>
+              {equipmentTypes.map((type) => {
+                const isSelected = selectedEquipment.includes(type)
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.filterChip,
+                      { borderColor: colors.border, backgroundColor: colors.backgroundLight },
+                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                    ]}
+                    onPress={() => toggleEquipment(type)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: colors.textSecondary },
+                        isSelected && { color: colors.primary },
+                      ]}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          )}
+
+          {/* Clear All Button */}
+          {hasFilters && (
+            <TouchableOpacity
+              style={[styles.clearButton, { backgroundColor: colors.backgroundLight }]}
+              onPress={clearFilters}
+            >
+              <Text style={[styles.clearButtonText, { color: colors.primary }]}>Clear filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Exercise List */}
         <View style={styles.listContainer}>
@@ -384,25 +438,45 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 16,
   },
-  muscleFilterScrollView: {
-    maxHeight: 50,
-  },
-  muscleFilterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
+  filtersContainer: {
     marginBottom: 8,
   },
-  muscleFilterChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+  filterScrollView: {
+    maxHeight: 36,
+    marginBottom: 8,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  filterChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 16,
     borderWidth: 1,
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  muscleFilterChipText: {
-    fontSize: 14,
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  clearButton: {
+    alignSelf: 'flex-start',
+    marginLeft: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  clearButtonText: {
+    fontSize: 13,
     fontWeight: '600',
   },
   listContainer: {

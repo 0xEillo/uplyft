@@ -1,9 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
+// @ts-ignore: Remote import for Deno edge runtime
+import { google } from 'npm:@ai-sdk/google@2.0.46'
+// @ts-ignore: Remote import for Deno edge runtime
+import { generateObject } from 'npm:ai@5.0.60'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
-import { getOpenAI } from '../_shared/openai.ts'
 
 const requestSchema = z.object({
   exerciseName: z.string().min(1, 'exerciseName is required'),
@@ -26,18 +29,16 @@ const metadataSchema = z.object({
   ]),
   type: z.enum(['compound', 'isolation']),
   equipment: z.enum([
-    'barbell',
-    'dumbbell',
-    'bodyweight',
-    'cable',
-    'machine',
-    'kettlebell',
-    'resistance band',
-    'other',
+    'Barbell',
+    'Dumbbell',
+    'Bodyweight',
+    'Cable',
+    'Machine',
+    'Kettlebell',
+    'Resistance Band',
+    'Other',
   ]),
 })
-
-const client = getOpenAI()
 
 serve(async (req) => {
   const cors = handleCors(req)
@@ -50,40 +51,13 @@ serve(async (req) => {
   try {
     const payload = requestSchema.parse(await req.json())
 
-    const response = await client.responses.create({
-      model: 'gpt-4.1-nano',
-      input: [
-        {
-          role: 'system',
-          content:
-            'You are a fitness expert returning strict JSON metadata for exercises.',
-        },
-        {
-          role: 'user',
-          content: buildPrompt(payload.exerciseName),
-        },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'exercise_metadata',
-          schema: jsonSchema,
-        },
-      },
+    const result = await generateObject({
+      model: google('gemini-2.5-flash-preview-09-2025'),
+      schema: metadataSchema,
+      prompt: buildPrompt(payload.exerciseName),
     })
 
-    const output = response.output?.[0]
-    let parsed: unknown
-
-    if (output && output.type === 'output_text') {
-      parsed = JSON.parse(output.text)
-    } else if (output && output.type === 'output_json') {
-      parsed = output.json
-    } else {
-      throw new Error('Unexpected response format from OpenAI')
-    }
-
-    const metadata = metadataSchema.parse(parsed)
+    const metadata = metadataSchema.parse(result.object)
     return jsonResponse(metadata)
   } catch (error) {
     console.error('[generate-exercise-metadata] Error:', error)
@@ -105,52 +79,16 @@ serve(async (req) => {
 })
 
 function buildPrompt(exerciseName: string): string {
-  return `Exercise name: "${exerciseName}"
+  return `You are a fitness expert. Analyze the exercise name and determine its metadata.
 
-Return JSON with properties:
-- muscle_group (Chest|Back|Shoulders|Biceps|Triceps|Core|Glutes|Quads|Hamstrings|Calves|Cardio|Full Body)
-- type (compound|isolation)
-- equipment (barbell|dumbbell|bodyweight|cable|machine|kettlebell|resistance band|other)`
+Exercise name: "${exerciseName}"
+
+Determine:
+1. Primary muscle group (Chest|Back|Shoulders|Biceps|Triceps|Core|Glutes|Quads|Hamstrings|Calves|Cardio|Full Body)
+2. Type (compound or isolation)
+   - Compound: works multiple muscle groups/joints (e.g., Bench Press, Squat, Pull-ups)
+   - Isolation: targets single muscle group (e.g., Bicep Curl, Leg Extension, Lateral Raise)
+3. Equipment (barbell|dumbbell|bodyweight|cable|machine|kettlebell|resistance band|other)
+
+Return the metadata as JSON.`
 }
-
-const jsonSchema = {
-  type: 'object',
-  properties: {
-    muscle_group: {
-      type: 'string',
-      enum: [
-        'Chest',
-        'Back',
-        'Shoulders',
-        'Biceps',
-        'Triceps',
-        'Core',
-        'Glutes',
-        'Quads',
-        'Hamstrings',
-        'Calves',
-        'Cardio',
-        'Full Body',
-      ],
-    },
-    type: {
-      type: 'string',
-      enum: ['compound', 'isolation'],
-    },
-    equipment: {
-      type: 'string',
-      enum: [
-        'barbell',
-        'dumbbell',
-        'bodyweight',
-        'cable',
-        'machine',
-        'kettlebell',
-        'resistance band',
-        'other',
-      ],
-    },
-  },
-  required: ['muscle_group', 'type', 'equipment'],
-  additionalProperties: false,
-} as const

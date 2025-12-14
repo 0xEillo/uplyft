@@ -5,7 +5,6 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
-import * as Sharing from 'expo-sharing'
 import { useCallback, useState } from 'react'
 import {
     Alert,
@@ -15,6 +14,14 @@ import {
     Share,
 } from 'react-native'
 import { useWeightUnits } from './useWeightUnits'
+
+// Lazy import expo-sharing to avoid crashes in Expo Go (requires native module)
+let Sharing: typeof import('expo-sharing') | null = null
+try {
+  Sharing = require('expo-sharing')
+} catch {
+  // Module not available in Expo Go
+}
 
 // Disable view-shot on simulator (it's not available there)
 const isSimulator = !Device.isDevice
@@ -522,7 +529,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
           }
 
           // Share the image using expo-sharing
-          if (await Sharing.isAvailableAsync()) {
+          if (Sharing && await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(uri, {
               mimeType: 'image/png',
               dialogTitle: 'Share your workout',

@@ -2,13 +2,13 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Keyboard,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -16,7 +16,7 @@ interface EditorToolbarProps {
   onScanEquipment: () => void
   onMicPress: () => void
   onStopwatchPress: () => void
-  onChatPress: () => void
+  onRoutinePress: () => void
   onSearchExercise: () => void
   onAddExercise: () => void
   isRecording: boolean
@@ -32,7 +32,7 @@ export function EditorToolbar({
   onScanEquipment,
   onMicPress,
   onStopwatchPress,
-  onChatPress,
+  onRoutinePress,
   onSearchExercise,
   onAddExercise,
   isRecording,
@@ -142,17 +142,13 @@ export function EditorToolbar({
           )}
         </TouchableOpacity>
 
-        {/* AI Coach Chat */}
+        {/* Routines (moved from title area) */}
         <TouchableOpacity
           style={styles.button}
-          onPress={onChatPress}
+          onPress={onRoutinePress}
           disabled={isDisabled}
         >
-          <Ionicons
-            name="chatbubble-ellipses-outline"
-            size={24}
-            color={colors.text}
-          />
+          <Ionicons name="albums-outline" size={24} color={colors.text} />
         </TouchableOpacity>
 
         {/* Search / Add Exercise (Merged) */}

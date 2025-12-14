@@ -1,14 +1,12 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { openai } from 'npm:@ai-sdk/openai@2.0.42'
+import { google } from 'npm:@ai-sdk/google@2.0.46'
 // @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai@5.0.60'
-
-import { PARSER_MODEL } from './constants.ts'
 import { ApiError } from './errors.ts'
 import { logWithCorrelation } from './metrics.ts'
 import { ParsedWorkout, WorkoutRequest, workoutSchema } from './schemas.ts'
 
-const parserModel = openai(PARSER_MODEL)
+const parserModel = google('gemini-2.5-flash-preview-09-2025')
 
 export async function parseWorkoutNotes(
   payload: WorkoutRequest,

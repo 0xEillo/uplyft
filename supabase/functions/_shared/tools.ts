@@ -1,6 +1,8 @@
 // @ts-ignore: Remote import for Deno edge runtime
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 // @ts-ignore: Remote import for Deno edge runtime
+import { google } from 'npm:@ai-sdk/google@2.0.46'
+// @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
 import { embed, generateObject } from 'npm:ai@5.0.60'
 
@@ -52,14 +54,14 @@ export const createExerciseInput = z.object({
   type: z.enum(['compound', 'isolation']).nullable().optional(),
   equipment: z
     .enum([
-      'barbell',
-      'dumbbell',
-      'bodyweight',
-      'cable',
-      'machine',
-      'kettlebell',
-      'resistance band',
-      'other',
+      'Barbell',
+      'Dumbbell',
+      'Bodyweight',
+      'Cable',
+      'Machine',
+      'Kettlebell',
+      'Resistance Band',
+      'Other',
     ])
     .nullable()
     .optional(),
@@ -139,14 +141,14 @@ export const createExerciseTool = {
         equipment: {
           type: 'string',
           enum: [
-            'barbell',
-            'dumbbell',
-            'bodyweight',
-            'cable',
-            'machine',
-            'kettlebell',
-            'resistance band',
-            'other',
+            'Barbell',
+            'Dumbbell',
+            'Bodyweight',
+            'Cable',
+            'Machine',
+            'Kettlebell',
+            'Resistance Band',
+            'Other',
           ],
           description: 'Equipment used for the exercise',
         },
@@ -477,20 +479,20 @@ async function generateExerciseMetadata(
     ]),
     type: z.enum(['compound', 'isolation']),
     equipment: z.enum([
-      'barbell',
-      'dumbbell',
-      'bodyweight',
-      'cable',
-      'machine',
-      'kettlebell',
-      'resistance band',
-      'other',
+      'Barbell',
+      'Dumbbell',
+      'Bodyweight',
+      'Cable',
+      'Machine',
+      'Kettlebell',
+      'Resistance Band',
+      'Other',
     ]),
   })
 
   try {
     const result = await generateObject({
-      model: openai('gpt-4.1-mini'),
+      model: google('gemini-2.5-flash-preview-09-2025'),
       schema: exerciseMetadataSchema,
       prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
 

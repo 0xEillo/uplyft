@@ -64,7 +64,7 @@ export function useExercises(options: UseExercisesOptions = {}) {
       })
       const muscles = Array.from(muscleSet).sort()
 
-      // Derive equipment types
+      // Derive equipment types with custom order
       const equipmentSet = new Set<string>()
       allExercises.forEach((e) => {
         if (e.equipment) equipmentSet.add(e.equipment)
@@ -72,7 +72,28 @@ export function useExercises(options: UseExercisesOptions = {}) {
           e.equipments.forEach((eq) => equipmentSet.add(eq))
         }
       })
-      const equipment = Array.from(equipmentSet).sort()
+      // Custom order: most common equipment first
+      const equipmentOrder = [
+        'Barbell',
+        'Dumbbell',
+        'Machine',
+        'Cable',
+        'Bodyweight',
+        'Kettlebell',
+        'Resistance Band',
+        'Other',
+      ]
+      const equipment = Array.from(equipmentSet).sort((a, b) => {
+        const aIndex = equipmentOrder.indexOf(a)
+        const bIndex = equipmentOrder.indexOf(b)
+        // If both in order list, sort by order
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+        // If only one in order list, it comes first
+        if (aIndex !== -1) return -1
+        if (bIndex !== -1) return 1
+        // Neither in list, sort alphabetically
+        return a.localeCompare(b)
+      })
 
       // Update global cache
       globalCache = {

@@ -1,8 +1,15 @@
 import * as FileSystem from 'expo-file-system/legacy'
-import * as ImageManipulator from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useState } from 'react'
 import { Alert, Linking, Platform } from 'react-native'
+
+// Lazy import expo-image-manipulator to avoid crashes in Expo Go (requires native module)
+let ImageManipulator: typeof import('expo-image-manipulator') | null = null
+try {
+  ImageManipulator = require('expo-image-manipulator')
+} catch {
+  // Module not available in Expo Go
+}
 
 // Constants
 const IMAGE_QUALITY = 0.8
@@ -120,6 +127,9 @@ export function useImageTranscription(
 
     // Resize image to reduce payload size and processing time
     // 512px is sufficient for identifying objects like dumbbells/machines
+    if (!ImageManipulator) {
+      throw new Error('Equipment scanning is not available in Expo Go. Please use a development build.')
+    }
     const manipulated = await ImageManipulator.manipulateAsync(
       uri,
       [{ resize: { width: 512 } }],

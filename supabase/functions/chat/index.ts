@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
+import { google } from 'npm:@ai-sdk/google@2.0.46'
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 import { streamText, tool } from 'npm:ai@5.0.60'
 
@@ -133,11 +134,11 @@ serve(async (req) => {
       }
     })
 
-    // Use vision model if images are present
+    // Use OpenAI vision model if images are present, otherwise use Gemini
     const modelToUse =
       payload.images && payload.images.length > 0
         ? openai('gpt-4o')
-        : openai('gpt-4.1-mini')
+        : google('gemini-2.5-flash-preview-09-2025')
 
     const result = streamText({
       model: modelToUse,
@@ -797,29 +798,29 @@ async function buildUserContext(
     }),
     searchExercises: tool({
       description:
-        'Search the exercise database. Use EXACT muscle/equipment names from allowed lists.',
+        'Search the exercise database to get a pool of exercises. Fetch at least 10-15 exercises per muscle group to have options to choose from. Returns exercise name, type (compound/isolation), equipment, and muscle info.',
       inputSchema: z
         .object({
           query: z
             .string()
             .optional()
-            .describe('Text to match in exercise name'),
+            .describe('Optional text to match in exercise name'),
           targetMuscle: z
             .string()
             .optional()
             .describe(
-              'MUST be one of: Back, Biceps, Calves, Chest, Core, Forearms, Glutes, Hamstrings, Quads, Shoulders, Triceps',
+              'MUST be one of: Back, Biceps, Calves, Cardio, Chest, Core, Forearms, Full Body, Glutes, Hamstrings, Quads, Shoulders, Triceps',
             ),
           equipment: z
             .string()
             .optional()
             .describe(
-              'MUST be one of: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
+              'Optional filter. MUST be one of: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
             ),
-          limit: z.number().int().min(1).max(20).default(10).optional(),
+          limit: z.number().int().min(1).max(50).default(20).optional(),
         })
         .partial(),
-      execute: async ({ query, targetMuscle, equipment, limit = 10 } = {}) => {
+      execute: async ({ query, targetMuscle, equipment, limit = 20 } = {}) => {
         console.log('🔍 [searchExercises] Called with:', {
           query,
           targetMuscle,
@@ -827,49 +828,96 @@ async function buildUserContext(
           limit,
         })
 
-        // Map common synonyms to database values
+        // Map common synonyms to canonical muscle group names
+        // Canonical groups: Back, Biceps, Calves, Cardio, Chest, Core, Forearms, Full Body, Glutes, Hamstrings, Quads, Shoulders, Triceps
         const muscleMapping: Record<string, string> = {
+          // Quads synonyms
           quadriceps: 'Quads',
           quads: 'Quads',
-          pecs: 'Chest',
-          pectorals: 'Chest',
-          lats: 'Back',
-          abs: 'Core',
-          abdominals: 'Core',
-          delts: 'Shoulders',
-          deltoids: 'Shoulders',
-          traps: 'Back',
-          trapezius: 'Back',
-          'lower back': 'Back',
-          'upper back': 'Back',
           legs: 'Quads',
           'lower body': 'Quads',
+          thighs: 'Quads',
+          adductors: 'Quads',
+          'inner thigh': 'Quads',
+
+          // Chest synonyms
+          pecs: 'Chest',
+          pectorals: 'Chest',
+          chest: 'Chest',
+
+          // Back synonyms
+          lats: 'Back',
+          latissimus: 'Back',
+          traps: 'Back',
+          trapezius: 'Back',
+          rhomboids: 'Back',
+          'lower back': 'Back',
+          'upper back': 'Back',
+          'mid back': 'Back',
+
+          // Core synonyms
+          abs: 'Core',
+          abdominals: 'Core',
+          obliques: 'Core',
+          'serratus anterior': 'Core',
+          serratus: 'Core',
+
+          // Shoulders synonyms
+          delts: 'Shoulders',
+          deltoids: 'Shoulders',
+          'front delts': 'Shoulders',
+          'rear delts': 'Shoulders',
+          'side delts': 'Shoulders',
+
+          // Glutes synonyms
+          glutes: 'Glutes',
+          butt: 'Glutes',
+          hips: 'Glutes',
+          abductors: 'Glutes',
+          'hip abductors': 'Glutes',
+
+          // Arms
           arms: 'Biceps',
+
+          // Cardio synonyms
+          'cardiovascular system': 'Cardio',
+          cardio: 'Cardio',
+          conditioning: 'Cardio',
         }
 
         const equipmentMapping: Record<string, string> = {
-          dumbbells: 'dumbbell',
-          barbells: 'barbell',
-          cables: 'cable',
-          machines: 'machine',
-          'body weight': 'bodyweight',
-          'free weights': 'dumbbell',
-          bands: 'resistance band',
+          dumbbells: 'Dumbbell',
+          dumbbell: 'Dumbbell',
+          barbells: 'Barbell',
+          barbell: 'Barbell',
+          cables: 'Cable',
+          cable: 'Cable',
+          machines: 'Machine',
+          machine: 'Machine',
+          'body weight': 'Bodyweight',
+          bodyweight: 'Bodyweight',
+          'free weights': 'Dumbbell',
+          bands: 'Resistance Band',
+          'resistance band': 'Resistance Band',
+          kettlebell: 'Kettlebell',
+          kettlebells: 'Kettlebell',
         }
 
         const mappedMuscle = targetMuscle
           ? muscleMapping[targetMuscle.toLowerCase()] || targetMuscle
           : undefined
+
         const mappedEquipment = equipment
-          ? equipmentMapping[equipment.toLowerCase()] || equipment.toLowerCase()
+          ? equipmentMapping[equipment.toLowerCase()] || equipment
           : undefined
 
         let dbQuery = supabase
           .from('exercises')
           .select(
-            'id, name, muscle_group, target_muscles, body_parts, equipment, equipments, gif_url',
+            'id, name, muscle_group, target_muscles, body_parts, equipment, equipments, type, gif_url',
           )
           .limit(limit)
+          .order('name', { ascending: true })
 
         if (query) {
           dbQuery = dbQuery.ilike('name', `%${query}%`)
@@ -905,9 +953,10 @@ async function buildUserContext(
           exercises: data?.map((ex) => ({
             id: ex.id,
             name: ex.name,
-            equipment: ex.equipment || ex.equipments?.[0],
+            type: ex.type || 'unknown', // compound, isolation, or unknown
+            equipment: ex.equipment || ex.equipments?.[0] || 'unknown',
             muscleGroup: ex.muscle_group,
-            muscles: ex.target_muscles,
+            targetMuscles: ex.target_muscles,
           })),
         }
       },
@@ -953,12 +1002,24 @@ function buildSystemPrompt(
     `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
     'CRITICAL: EXERCISE SELECTION & NAMING:',
     'You DO NOT natively know which exercises exist in our database. You MUST use the `searchExercises` tool to find valid exercises before creating a workout.',
-    '1. When the user asks for a workout (e.g., "chest day"), FIRST call `searchExercises` with relevant muscles or equipment.',
-    '2. Use ONLY the exact `name` strings returned by the tool in your final plan. Do not guess names.',
-    "3. If the tool returns 'Barbell Bench Press', use exactly 'Barbell Bench Press'. Do not shorten it.",
-    '4. If you cannot find a perfect match, pick the closest valid alternative from the tool output.',
     '',
-    'VALID MUSCLE GROUPS for searchExercises: Back, Biceps, Calves, Chest, Core, Forearms, Glutes, Hamstrings, Quads, Shoulders, Triceps',
-    'VALID EQUIPMENT for searchExercises: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
+    'EXERCISE SELECTION STRATEGY:',
+    '1. When creating a workout, call `searchExercises` with the target muscle group and limit=15-20 to get a POOL of options.',
+    '2. Review ALL returned exercises and intelligently SELECT the best ones based on:',
+    "   - User's available equipment and preferences",
+    "   - Exercise variety (don't pick 3 bench press variations - pick different movement patterns)",
+    '   - Start with compound movements, then isolation',
+    '   - Balance pushing/pulling movements where applicable',
+    "   - Consider the user's experience level (beginners: simpler exercises)",
+    '3. Use ONLY the exact `name` strings returned by the tool. Do not guess or modify names.',
+    '4. If you need exercises for multiple muscle groups, call searchExercises multiple times.',
+    '',
+    'Example for "chest workout":',
+    '- Call searchExercises with targetMuscle="Chest", limit=20',
+    '- From results, SELECT diverse exercises: e.g., Barbell Bench Press (compound), Incline Dumbbell Press (upper chest), Cable Fly (isolation)',
+    "- Don't just pick the first 4 exercises returned - choose strategically!",
+    '',
+    'VALID MUSCLE GROUPS: Back, Biceps, Calves, Cardio, Chest, Core, Forearms, Full Body, Glutes, Hamstrings, Quads, Shoulders, Triceps',
+    'VALID EQUIPMENT: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
   ].join('\n\n')
 }

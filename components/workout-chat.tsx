@@ -2188,13 +2188,7 @@ export function WorkoutChat({
             </View>
           </View>
 
-          {/* Paywall Modal */}
-          <Paywall
-            visible={showPaywall}
-            onClose={() => setShowPaywall(false)}
-            title="Try Pro for FREE!"
-            message="AI chat is a Pro feature"
-          />
+
 
           {/* Image Picker Bottom Sheet */}
           <Modal
@@ -2307,6 +2301,14 @@ export function WorkoutChat({
           </Modal>
         </>
       )}
+
+      {/* Paywall Modal - Rendered outside conditional to appear over wizard */}
+      <Paywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        title="Try Pro for FREE!"
+        message="AI chat is a Pro feature"
+      />
     </KeyboardAvoidingView>
   )
 }

@@ -1803,11 +1803,7 @@ export default function CreatePostScreen() {
         blurInputs()
         setShowRestTimer(true)
       },
-      onChatPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        blurInputs()
-        setShowCoachSheet(true)
-      },
+      onRoutinePress: handleOpenRoutineSelector,
       onSearchExercise: handleChooseExercisePress,
       onAddExercise: handleConvertToStructured,
       isRecording,
@@ -1822,6 +1818,7 @@ export default function CreatePostScreen() {
       handleDumbbellPress,
       handleToggleRecording,
       blurInputs,
+      handleOpenRoutineSelector,
       handleChooseExercisePress,
       handleConvertToStructured,
       isRecording,
@@ -1926,15 +1923,19 @@ export default function CreatePostScreen() {
                 selectionColor={colors.primary}
               />
               <TouchableOpacity
-                style={styles.routineSelectorButton}
-                onPress={handleOpenRoutineSelector}
+                style={styles.chatButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  blurInputs()
+                  setShowCoachSheet(true)
+                }}
                 disabled={isLoading || isRecording || isTranscribing}
                 activeOpacity={0.6}
               >
                 <Ionicons
-                  name="albums-outline"
-                  size={24}
-                  color={colors.textSecondary}
+                  name="chatbubble-ellipses"
+                  size={28}
+                  color={colors.primary}
                 />
               </TouchableOpacity>
             </View>
@@ -2264,6 +2265,10 @@ const createStyles = (
       paddingVertical: Platform.OS === 'ios' ? 6 : 4,
     },
     routineSelectorButton: {
+      padding: 6,
+      borderRadius: 8,
+    },
+    chatButton: {
       padding: 6,
       borderRadius: 8,
     },
