@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,13 +18,17 @@ export function RatingPromptModal() {
   const { isVisible, handleRate, handleDismiss } = useRatingPrompt();
   const styles = createStyles(colors);
 
+  // Separate state for Modal visibility (stays true during fade-out)
+  const [modalVisible, setModalVisible] = useState(false);
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     if (isVisible) {
-      // Animate in
+      // Show modal first, then animate in
+      setModalVisible(true);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -37,22 +41,25 @@ export function RatingPromptModal() {
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
-      // Animate out
+    } else if (modalVisible) {
+      // Animate out first, then hide modal
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(scaleAnim, {
           toValue: 0.9,
-          duration: 400,
+          duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        // Only hide modal after animation completes
+        setModalVisible(false);
+      });
     }
-  }, [isVisible, fadeAnim, scaleAnim]);
+  }, [isVisible]);
 
   const handleRatePress = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
@@ -70,7 +77,7 @@ export function RatingPromptModal() {
 
   return (
     <Modal
-      visible={isVisible}
+      visible={modalVisible}
       transparent
       animationType="none"
       statusBarTranslucent
