@@ -533,8 +533,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     profileSection: {
       paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 20,
+      paddingTop: 16,
+      paddingBottom: 8,
     },
     profileTop: {
       flexDirection: 'row',
@@ -575,8 +575,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statsRow: {
       flexDirection: 'row',
-      gap: 20,
-      marginBottom: 16,
+      gap: 24,
+      marginBottom: 12,
     },
     stat: {
       flexDirection: 'row',
@@ -596,15 +596,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     profileDescription: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginBottom: 16,
+      marginBottom: 8,
     },
     dashboardSection: {
       paddingHorizontal: 20,
-      marginBottom: 24,
+      marginBottom: 16,
     },
     dashboardCards: {
       flexDirection: 'row',
-      gap: 12,
+      gap: 16,
     },
     dashboardCard: {
       flex: 1,
@@ -652,7 +652,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     workoutsHeader: {
       paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingTop: 12,
       paddingBottom: 12,
       backgroundColor: colors.background,
     },

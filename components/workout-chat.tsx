@@ -2,11 +2,11 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-    EQUIPMENT_PREF_KEY,
-    MUSCLE_OPTIONS,
-    WORKOUT_PLANNING_PREFS_KEY,
-    WorkoutPlanningData,
-    WorkoutPlanningWizard,
+  EQUIPMENT_PREF_KEY,
+  MUSCLE_OPTIONS,
+  WORKOUT_PLANNING_PREFS_KEY,
+  WorkoutPlanningData,
+  WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -16,16 +16,16 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-    ParsedWorkoutDisplay,
-    parseWorkoutForDisplay,
+  ParsedWorkoutDisplay,
+  parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-    buildWorkoutCreationPrompt,
-    buildWorkoutModificationSuffix,
+  buildWorkoutCreationPrompt,
+  buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -41,36 +41,36 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -133,7 +133,10 @@ export interface WorkoutChatProps {
   onAddExercise?: (exercise: ExerciseSuggestion) => void
 
   // Callback when exercise is replaced
-  onReplaceExercise?: (oldExerciseName: string, newExercise: ExerciseSuggestion) => void
+  onReplaceExercise?: (
+    oldExerciseName: string,
+    newExercise: ExerciseSuggestion,
+  ) => void
 
   // For sheet mode - hide features not needed
   hideImagePicker?: boolean
@@ -290,7 +293,9 @@ export function WorkoutChat({
   const [proposedWorkout, setProposedWorkout] = useState<ExerciseSuggestion[]>(
     [],
   ) // Track AI-proposed exercises
-  const [exerciseToReplace, setExerciseToReplace] = useState<string | null>(null) // Track which exercise is being replaced
+  const [exerciseToReplace, setExerciseToReplace] = useState<string | null>(
+    null,
+  ) // Track which exercise is being replaced
   const { coachId } = useProfile()
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const translateY = useSharedValue(0)
@@ -1938,12 +1943,20 @@ export function WorkoutChat({
                                                 style={styles.addExerciseButton}
                                                 onPress={() =>
                                                   exerciseToReplace
-                                                    ? handleReplaceExercise(suggestion)
-                                                    : handleAddExercise(suggestion)
+                                                    ? handleReplaceExercise(
+                                                        suggestion,
+                                                      )
+                                                    : handleAddExercise(
+                                                        suggestion,
+                                                      )
                                                 }
                                               >
                                                 <Ionicons
-                                                  name={exerciseToReplace ? "swap-horizontal" : "add"}
+                                                  name={
+                                                    exerciseToReplace
+                                                      ? 'swap-horizontal'
+                                                      : 'add'
+                                                  }
                                                   size={20}
                                                   color={colors.white}
                                                 />
@@ -2187,8 +2200,6 @@ export function WorkoutChat({
               </View>
             </View>
           </View>
-
-
 
           {/* Image Picker Bottom Sheet */}
           <Modal

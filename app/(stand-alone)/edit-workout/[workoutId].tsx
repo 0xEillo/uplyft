@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -6,32 +6,32 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  deleteWorkoutImage,
-  uploadWorkoutImage,
+    deleteWorkoutImage,
+    uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from '@react-native-community/datetimepicker'
 import { Ionicons } from '@expo/vector-icons'
+import DateTimePicker, {
+    DateTimePickerEvent,
+} from '@react-native-community/datetimepicker'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  KeyboardAvoidingView,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    KeyboardAvoidingView,
+    LayoutAnimation,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -569,15 +569,17 @@ export default function EditWorkoutScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
-            <>
+            <NavbarIsland>
               <TouchableOpacity
                 onPress={() => handleExit()}
                 style={styles.headerButton}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Edit Workout</Text>
-            </>
+            </NavbarIsland>
+          }
+          centerContent={
+            <Text style={styles.headerTitle}>Edit Workout</Text>
           }
           rightContent={
             <TouchableOpacity
@@ -955,7 +957,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
     },
     keyboardView: {
       flex: 1,
@@ -970,14 +972,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 1,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
-      position: 'absolute',
-      left: 0,
-      right: 0,
       textAlign: 'center',
-      pointerEvents: 'none',
     },
     cancelText: {
       fontSize: 16,

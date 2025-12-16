@@ -272,6 +272,7 @@ export default function CreatePostScreen() {
     elapsedSeconds: workoutElapsedSeconds,
     isRunning: isWorkoutTimerRunning,
     start: startWorkoutTimer,
+    pause: pauseWorkoutTimer,
     reset: resetWorkoutTimer,
     hydrate: hydrateWorkoutTimer,
     getElapsedSeconds: getWorkoutElapsedSeconds,
@@ -1348,6 +1349,10 @@ export default function CreatePostScreen() {
     // Reset loading state since we're showing overlay, not submitting yet
     isSubmittingRef.current = false
     setIsLoading(false)
+
+    // Stop the workout timer before showing the finalize overlay
+    pauseWorkoutTimer()
+
     setShowFinalizeOverlay(true)
 
     trackEvent(AnalyticsEvents.WORKOUT_CREATE_SUBMITTED, {
@@ -1679,7 +1684,9 @@ export default function CreatePostScreen() {
   }, [])
 
   // Helper: Parse rep range from string like "10-12" or "10"
-  const parseRepRange = (reps: string): { targetRepsMin: number | null; targetRepsMax: number | null } => {
+  const parseRepRange = (
+    reps: string,
+  ): { targetRepsMin: number | null; targetRepsMax: number | null } => {
     const rangeMatch = reps.match(/(\d+)[-–](\d+)/)
     if (rangeMatch) {
       return {
@@ -1695,7 +1702,10 @@ export default function CreatePostScreen() {
   }
 
   // Helper: Create an empty set with target reps
-  const createEmptySet = (targetRepsMin: number | null, targetRepsMax: number | null) => ({
+  const createEmptySet = (
+    targetRepsMin: number | null,
+    targetRepsMax: number | null,
+  ) => ({
     weight: '',
     reps: '',
     lastWorkoutWeight: null,
@@ -1709,9 +1719,9 @@ export default function CreatePostScreen() {
   const handleAddExerciseFromCoach = useCallback(
     (exercise: { name: string; sets: number; reps: string }) => {
       const { targetRepsMin, targetRepsMax } = parseRepRange(exercise.reps)
-      
-      const sets = Array.from({ length: exercise.sets }, () => 
-        createEmptySet(targetRepsMin, targetRepsMax)
+
+      const sets = Array.from({ length: exercise.sets }, () =>
+        createEmptySet(targetRepsMin, targetRepsMax),
       )
 
       const newExercise: StructuredExerciseDraft = {
@@ -1732,29 +1742,35 @@ export default function CreatePostScreen() {
 
   // Handler for replacing exercise from AI coach suggestions
   const handleReplaceExerciseFromCoach = useCallback(
-    (oldExerciseName: string, newExercise: { name: string; sets: number; reps: string }) => {
+    (
+      oldExerciseName: string,
+      newExercise: { name: string; sets: number; reps: string },
+    ) => {
       const { targetRepsMin, targetRepsMax } = parseRepRange(newExercise.reps)
 
       setStructuredData((prev) => {
         const index = prev.findIndex(
-          (ex) => ex.name.toLowerCase() === oldExerciseName.toLowerCase()
+          (ex) => ex.name.toLowerCase() === oldExerciseName.toLowerCase(),
         )
-        
+
         if (index === -1) {
           // If not found, just add the new exercise
-          const sets = Array.from({ length: newExercise.sets }, () => 
-            createEmptySet(targetRepsMin, targetRepsMax)
+          const sets = Array.from({ length: newExercise.sets }, () =>
+            createEmptySet(targetRepsMin, targetRepsMax),
           )
-          return [...prev, {
-            id: `coach-${Date.now()}`,
-            name: newExercise.name,
-            sets,
-          }]
+          return [
+            ...prev,
+            {
+              id: `coach-${Date.now()}`,
+              name: newExercise.name,
+              sets,
+            },
+          ]
         }
 
         const oldExercise = prev[index]
         const setCount = Math.max(newExercise.sets, oldExercise.sets.length)
-        
+
         const sets = Array.from({ length: setCount }, (_, i) => {
           if (i < oldExercise.sets.length) {
             return { ...oldExercise.sets[i], targetRepsMin, targetRepsMax }
@@ -1792,7 +1808,9 @@ export default function CreatePostScreen() {
     previousStructuredDataLength.current = currentLength
   }, [structuredData, selectedRoutine])
 
-  const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(false)
+  const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
+    false,
+  )
 
   const editorToolbarProps = useMemo(
     () => ({
@@ -2054,7 +2072,9 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-           {!isStructuredInputFocused && <EditorToolbar {...editorToolbarProps} />}
+          {!isStructuredInputFocused && (
+            <EditorToolbar {...editorToolbarProps} />
+          )}
         </KeyboardAvoidingView>
 
         {/* Example Workout - shown when user has no workouts and inputs are empty */}

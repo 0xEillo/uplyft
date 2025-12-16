@@ -134,7 +134,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       paddingHorizontal: 20,
-      marginBottom: 24,
+      marginBottom: 16,
     },
     card: {
       backgroundColor: colors.feedCardBackground,
