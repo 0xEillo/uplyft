@@ -8,19 +8,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-    ActivityIndicator,
-    Animated,
-    Image,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Animated,
+  Image,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
@@ -408,8 +408,18 @@ export const FeedCard = memo(function FeedCard({
                     ]}
                   >
                     <View style={styles.exerciseNameContainer}>
-                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.exerciseNameSimple} numberOfLines={1}>
+                      <View
+                        style={{
+                          flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Text
+                          style={styles.exerciseNameSimple}
+                          numberOfLines={1}
+                        >
                           {exercise.name}
                         </Text>
                         {hasPR && exercisePR && (
@@ -856,10 +866,11 @@ const createStyles = (
     },
     exercisesContainer: {
       marginBottom: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
+      backgroundColor: colors.feedCardBackground,
       position: 'relative',
     },
     tableHeader: {
@@ -1083,7 +1094,7 @@ const createStyles = (
       alignItems: 'center',
       paddingVertical: 12,
       paddingHorizontal: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.feedCardBackground,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -1114,7 +1125,7 @@ const createStyles = (
       justifyContent: 'center',
       gap: 6,
       paddingVertical: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.feedCardBackground,
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
@@ -1127,13 +1138,12 @@ const createStyles = (
     statsContainer: {
       flexDirection: 'row',
       justifyContent: 'space-around',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
+      padding: 16,
       marginBottom: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
     },
     statItem: {
       alignItems: 'center',

@@ -1,34 +1,34 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useRatingPrompt } from '@/contexts/rating-prompt-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
+import React, { useEffect, useRef, useState } from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
   Animated,
-  Pressable,
+  Modal,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useThemedColors } from '@/hooks/useThemedColors';
-import { useRatingPrompt } from '@/contexts/rating-prompt-context';
-import * as Haptics from 'expo-haptics';
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 
 export function RatingPromptModal() {
-  const colors = useThemedColors();
-  const { isVisible, handleRate, handleDismiss } = useRatingPrompt();
-  const styles = createStyles(colors);
+  const colors = useThemedColors()
+  const { isVisible, handleRate, handleDismiss } = useRatingPrompt()
+  const styles = createStyles(colors)
 
   // Separate state for Modal visibility (stays true during fade-out)
-  const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false)
 
   // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.9)).current
 
   useEffect(() => {
     if (isVisible) {
       // Show modal first, then animate in
-      setModalVisible(true);
+      setModalVisible(true)
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -40,7 +40,7 @@ export function RatingPromptModal() {
           duration: 600,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start()
     } else if (modalVisible) {
       // Animate out first, then hide modal
       Animated.parallel([
@@ -56,24 +56,24 @@ export function RatingPromptModal() {
         }),
       ]).start(() => {
         // Only hide modal after animation completes
-        setModalVisible(false);
-      });
+        setModalVisible(false)
+      })
     }
-  }, [isVisible]);
+  }, [isVisible])
 
   const handleRatePress = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     }
-    handleRate();
-  };
+    handleRate()
+  }
 
   const handleMaybeLaterPress = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     }
-    handleDismiss();
-  };
+    handleDismiss()
+  }
 
   return (
     <Modal
@@ -114,8 +114,8 @@ export function RatingPromptModal() {
 
               {/* Body Text */}
               <Text style={styles.bodyText}>
-                You just crushed your first workout! Mind taking 5 seconds to rate
-                Rep AI? It helps us grow! 💪
+                You just crushed your first workout! Mind taking 5 seconds to
+                rate Rep AI? It helps us grow! 💪
               </Text>
 
               {/* Star Rating Visual */}
@@ -163,7 +163,7 @@ export function RatingPromptModal() {
         </Pressable>
       </Animated.View>
     </Modal>
-  );
+  )
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
@@ -272,4 +272,4 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '500',
       color: colors.textSecondary,
     },
-  });
+  })

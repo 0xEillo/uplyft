@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av'
+import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import React, {
   createContext,
@@ -9,6 +9,8 @@ import React, {
   useState,
 } from 'react'
 import { AppState } from 'react-native'
+
+const timerSound = require('@/assets/sounds/stopwatch.mp3')
 
 interface RestTimerContextType {
   remainingSeconds: number
@@ -33,18 +35,12 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
   const endTimeRef = useRef<number | null>(null)
   const appStateRef = useRef(AppState.currentState)
 
-  const playSound = async () => {
+  const player = useAudioPlayer(timerSound)
+
+  const playSound = () => {
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        require('@/assets/sounds/stopwatch.mp3'),
-      )
-      await sound.playAsync()
-      // Unload sound after playing to free resources
-      sound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          await sound.unloadAsync()
-        }
-      })
+      player.seekTo(0)
+      player.play()
     } catch (error) {
       console.log('Error playing sound:', error)
     }
