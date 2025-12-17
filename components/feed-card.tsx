@@ -175,7 +175,7 @@ export const FeedCard = memo(function FeedCard({
   const cardPadding = 20
   const carouselWidth = windowWidth - cardPadding * 2
   // Max height for the image to prevent it from growing too large (infinity zoom effect)
-  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.6, 500)
+  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.4, 380)
 
   const handleCarouselScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -202,8 +202,8 @@ export const FeedCard = memo(function FeedCard({
 
   const styles = createStyles(colors, isDark)
 
-  // Show more exercises if image exists to match height (up to 8), otherwise just 3
-  const PREVIEW_LIMIT = workoutImageUrl ? 10 : 3
+  // Show more exercises if image exists to match height (up to 6), otherwise just 3
+  const PREVIEW_LIMIT = workoutImageUrl ? 6 : 3
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
@@ -1049,7 +1049,7 @@ const createStyles = (
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.backgroundLight,
-      maxHeight: 400,
+      maxHeight: 380,
     },
     workoutImage: {
       width: '100%',
