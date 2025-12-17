@@ -1,4 +1,3 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { memo, useMemo, useState } from 'react'
@@ -22,7 +21,6 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   autoPlay = true,
   style,
 }: ExerciseMediaProps) {
-  const colors = useThemedColors()
   const [hasError, setHasError] = useState(false)
 
   // Memoize the full URL to avoid recalculation
@@ -34,11 +32,7 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   if (!fullUrl || hasError) {
     return (
       <View style={[styles.container, style]}>
-        <Ionicons
-          name="barbell-outline"
-          size={24}
-          color={colors.textSecondary}
-        />
+        <Ionicons name="barbell-outline" size={24} color="#333" />
       </View>
     )
   }
@@ -71,8 +65,6 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
   gifUrl?: string | null
   style?: ViewStyle
 }) {
-  const colors = useThemedColors()
-
   const fullUrl = useMemo(() => {
     if (!gifUrl) return null
     return `${STORAGE_BUCKET_URL}${gifUrl}`
@@ -81,11 +73,7 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
   if (!fullUrl) {
     return (
       <View style={[styles.container, style]}>
-        <Ionicons
-          name="barbell-outline"
-          size={18}
-          color={colors.textSecondary}
-        />
+        <Ionicons name="barbell-outline" size={18} color="#333" />
       </View>
     )
   }
@@ -111,6 +99,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f0f0f0', // Keep light background for white GIFs
   },
   image: {
     width: '100%',

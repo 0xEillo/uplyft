@@ -1117,7 +1117,7 @@ const createStyles = (
       width: 36,
       height: 36,
       borderRadius: 6,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {
       fontSize: 15,
