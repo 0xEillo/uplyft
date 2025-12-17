@@ -2,11 +2,11 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { memo, useMemo, useState } from 'react'
-import { StyleSheet, Text, View, ViewStyle } from 'react-native'
-import iconImage from '@/assets/images/icon.png'
+import { StyleSheet, View, ViewStyle } from 'react-native'
 
 // Pre-compute the storage bucket URL once
-const STORAGE_BUCKET_URL = 'https://nsgezkxrgwtmnshulijs.supabase.co/storage/v1/object/public/exercise-gifs/'
+const STORAGE_BUCKET_URL =
+  'https://nsgezkxrgwtmnshulijs.supabase.co/storage/v1/object/public/exercise-gifs/'
 
 interface ExerciseMediaProps {
   gifUrl?: string | null
@@ -16,11 +16,11 @@ interface ExerciseMediaProps {
 }
 
 // Memoized component - only re-renders when props change
-export const ExerciseMedia = memo(function ExerciseMedia({ 
-  gifUrl, 
-  mode = 'thumbnail', 
+export const ExerciseMedia = memo(function ExerciseMedia({
+  gifUrl,
+  mode = 'thumbnail',
   autoPlay = true,
-  style 
+  style,
 }: ExerciseMediaProps) {
   const colors = useThemedColors()
   const [hasError, setHasError] = useState(false)
@@ -34,11 +34,10 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   if (!fullUrl || hasError) {
     return (
       <View style={[styles.container, style]}>
-        <Image
-          source={iconImage}
-          style={styles.image}
-          contentFit="contain"
-          cachePolicy="memory-disk"
+        <Ionicons
+          name="barbell-outline"
+          size={24}
+          color={colors.textSecondary}
         />
       </View>
     )
@@ -82,27 +81,28 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
   if (!fullUrl) {
     return (
       <View style={[styles.container, style]}>
-        <Image
-          source={iconImage}
-          style={styles.image}
-          contentFit="contain"
-          cachePolicy="memory-disk"
+        <Ionicons
+          name="barbell-outline"
+          size={18}
+          color={colors.textSecondary}
         />
       </View>
     )
   }
 
   return (
-    <Image
-      source={{ uri: fullUrl }}
-      style={[styles.container, style]}
-      contentFit="contain"
-      cachePolicy="memory-disk"
-      recyclingKey={gifUrl}
-      placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
-      transition={100}
-      priority="low"
-    />
+    <View style={[styles.container, style]}>
+      <Image
+        source={{ uri: fullUrl }}
+        style={styles.image}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        recyclingKey={gifUrl}
+        placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+        transition={100}
+        priority="low"
+      />
+    </View>
   )
 })
 

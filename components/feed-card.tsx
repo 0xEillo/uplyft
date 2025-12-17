@@ -22,6 +22,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
+import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
 
@@ -408,6 +409,10 @@ export const FeedCard = memo(function FeedCard({
                     ]}
                   >
                     <View style={styles.exerciseNameContainer}>
+                      <ExerciseMediaThumbnail
+                        gifUrl={exercise.gifUrl}
+                        style={styles.exerciseThumbnail}
+                      />
                       <View
                         style={{
                           flex: 1,
@@ -1105,8 +1110,14 @@ const createStyles = (
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 12,
       marginRight: 12,
+    },
+    exerciseThumbnail: {
+      width: 36,
+      height: 36,
+      borderRadius: 6,
+      backgroundColor: colors.backgroundLight,
     },
     exerciseNameSimple: {
       fontSize: 15,

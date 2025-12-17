@@ -6,22 +6,25 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { fuzzySearchExercises, hasExactOrFuzzyMatch } from '@/lib/utils/fuzzy-search'
+import {
+  fuzzySearchExercises,
+  hasExactOrFuzzyMatch,
+} from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { FlashList } from '@shopify/flash-list'
+import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Keyboard,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -62,7 +65,12 @@ const ExerciseItem = memo(function ExerciseItem({
           {exercise.name}
         </Text>
         {exercise.muscle_group && (
-          <Text style={[styles.exerciseMuscleGroup, { color: colors.textSecondary }]}>
+          <Text
+            style={[
+              styles.exerciseMuscleGroup,
+              { color: colors.textSecondary },
+            ]}
+          >
             {exercise.muscle_group}
           </Text>
         )}
@@ -77,12 +85,15 @@ const ExerciseItem = memo(function ExerciseItem({
 export default function SelectExerciseScreen() {
   const colors = useThemedColors()
   const router = useRouter()
-  const { currentExerciseName } = useLocalSearchParams<{ currentExerciseName?: string }>()
+  const { currentExerciseName } = useLocalSearchParams<{
+    currentExerciseName?: string
+  }>()
   const { callCallback } = useExerciseSelection()
   const { isProMember } = useSubscription()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const listRef = useRef<FlashListRef<Exercise>>(null)
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [showPaywall, setShowPaywall] = useState(false)
@@ -90,7 +101,13 @@ export default function SelectExerciseScreen() {
   const insets = useSafeAreaInsets()
 
   // Use cached exercises hook
-  const { exercises, muscleGroups, equipmentTypes, isLoading, searchExercises } = useExercises({
+  const {
+    exercises,
+    muscleGroups,
+    equipmentTypes,
+    isLoading,
+    searchExercises,
+  } = useExercises({
     initialLoad: true,
   })
 
@@ -112,7 +129,9 @@ export default function SelectExerciseScreen() {
     // Apply muscle group filter
     if (hasMuscleFilter) {
       const selectedSet = new Set(selectedMuscleGroups)
-      result = result.filter((e) => e.muscle_group && selectedSet.has(e.muscle_group))
+      result = result.filter(
+        (e) => e.muscle_group && selectedSet.has(e.muscle_group),
+      )
     }
 
     // Apply equipment filter
@@ -128,7 +147,19 @@ export default function SelectExerciseScreen() {
     }
 
     return result
-  }, [exercises, trimmedQuery, hasMuscleFilter, selectedMuscleGroups, hasEquipmentFilter, selectedEquipment])
+  }, [
+    exercises,
+    trimmedQuery,
+    hasMuscleFilter,
+    selectedMuscleGroups,
+    hasEquipmentFilter,
+    selectedEquipment,
+  ])
+
+  // Scroll to top when search results change
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment])
 
   const hasExactMatch = useMemo(() => {
     if (!trimmedQuery) return false
@@ -151,11 +182,11 @@ export default function SelectExerciseScreen() {
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
+      (e) => setKeyboardHeight(e.endCoordinates.height),
     )
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0)
+      () => setKeyboardHeight(0),
     )
 
     return () => {
@@ -169,7 +200,7 @@ export default function SelectExerciseScreen() {
       callCallback(exercise)
       router.back()
     },
-    [callCallback, router]
+    [callCallback, router],
   )
 
   const handleCreateExercise = useCallback(() => {
@@ -200,13 +231,17 @@ export default function SelectExerciseScreen() {
 
   const toggleMuscleGroup = useCallback((group: string) => {
     setSelectedMuscleGroups((prev) =>
-      prev.includes(group) ? prev.filter((item) => item !== group) : [...prev, group]
+      prev.includes(group)
+        ? prev.filter((item) => item !== group)
+        : [...prev, group],
     )
   }, [])
 
   const toggleEquipment = useCallback((type: string) => {
     setSelectedEquipment((prev) =>
-      prev.includes(type) ? prev.filter((item) => item !== type) : [...prev, type]
+      prev.includes(type)
+        ? prev.filter((item) => item !== type)
+        : [...prev, type],
     )
   }, [])
 
@@ -228,7 +263,7 @@ export default function SelectExerciseScreen() {
         />
       )
     },
-    [currentExerciseName, handleSelectExercise, colors]
+    [currentExerciseName, handleSelectExercise, colors],
   )
 
   const keyExtractor = useCallback((item: Exercise) => item.id, [])
@@ -240,15 +275,28 @@ export default function SelectExerciseScreen() {
     return (
       <View style={styles.createExerciseContainer}>
         <TouchableOpacity
-          style={[styles.createExerciseItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+          style={[
+            styles.createExerciseItem,
+            {
+              backgroundColor: colors.primaryLight,
+              borderColor: colors.primary,
+            },
+          ]}
           onPress={handleCreateExercise}
         >
           <Ionicons name="add-circle" size={20} color={colors.primary} />
           <View style={styles.exerciseItemContent}>
-            <Text style={[styles.createExerciseText, { color: colors.primary }]}>
+            <Text
+              style={[styles.createExerciseText, { color: colors.primary }]}
+            >
               Create &quot;{trimmedQuery}&quot;
             </Text>
-            <Text style={[styles.exerciseMuscleGroup, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.exerciseMuscleGroup,
+                { color: colors.textSecondary },
+              ]}
+            >
               New exercise
             </Text>
           </View>
@@ -256,7 +304,14 @@ export default function SelectExerciseScreen() {
         </TouchableOpacity>
       </View>
     )
-  }, [trimmedQuery, hasExactMatch, isLoading, colors, handleCreateExercise, isProMember])
+  }, [
+    trimmedQuery,
+    hasExactMatch,
+    isLoading,
+    colors,
+    handleCreateExercise,
+    isProMember,
+  ])
 
   // Empty state component
   const ListEmpty = useMemo(() => {
@@ -264,7 +319,11 @@ export default function SelectExerciseScreen() {
 
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="barbell-outline" size={48} color={colors.textTertiary} />
+        <Ionicons
+          name="barbell-outline"
+          size={48}
+          color={colors.textTertiary}
+        />
         <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
           {emptyStateText}
         </Text>
@@ -278,19 +337,29 @@ export default function SelectExerciseScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
+      >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Select Exercise</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Select Exercise
+          </Text>
           <View style={styles.backButton} />
         </View>
 
         {/* Search Input */}
         <TextInput
-          style={[styles.searchInput, { backgroundColor: colors.backgroundLight, color: colors.text }]}
+          style={[
+            styles.searchInput,
+            { backgroundColor: colors.backgroundLight, color: colors.text },
+          ]}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search exercises..."
@@ -308,7 +377,11 @@ export default function SelectExerciseScreen() {
               style={styles.filterScrollView}
               contentContainerStyle={styles.filterContainer}
             >
-              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Muscles:</Text>
+              <Text
+                style={[styles.filterLabel, { color: colors.textSecondary }]}
+              >
+                Muscles:
+              </Text>
               {muscleGroups.map((group) => {
                 const isSelected = selectedMuscleGroups.includes(group)
                 return (
@@ -316,8 +389,14 @@ export default function SelectExerciseScreen() {
                     key={group}
                     style={[
                       styles.filterChip,
-                      { borderColor: colors.border, backgroundColor: colors.backgroundLight },
-                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: colors.backgroundLight,
+                      },
+                      isSelected && {
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primaryLight,
+                      },
                     ]}
                     onPress={() => toggleMuscleGroup(group)}
                   >
@@ -344,7 +423,11 @@ export default function SelectExerciseScreen() {
               style={styles.filterScrollView}
               contentContainerStyle={styles.filterContainer}
             >
-              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Equipment:</Text>
+              <Text
+                style={[styles.filterLabel, { color: colors.textSecondary }]}
+              >
+                Equipment:
+              </Text>
               {equipmentTypes.map((type) => {
                 const isSelected = selectedEquipment.includes(type)
                 return (
@@ -352,8 +435,14 @@ export default function SelectExerciseScreen() {
                     key={type}
                     style={[
                       styles.filterChip,
-                      { borderColor: colors.border, backgroundColor: colors.backgroundLight },
-                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: colors.backgroundLight,
+                      },
+                      isSelected && {
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primaryLight,
+                      },
                     ]}
                     onPress={() => toggleEquipment(type)}
                   >
@@ -375,10 +464,15 @@ export default function SelectExerciseScreen() {
           {/* Clear All Button */}
           {hasFilters && (
             <TouchableOpacity
-              style={[styles.clearButton, { backgroundColor: colors.backgroundLight }]}
+              style={[
+                styles.clearButton,
+                { backgroundColor: colors.backgroundLight },
+              ]}
               onPress={clearFilters}
             >
-              <Text style={[styles.clearButtonText, { color: colors.primary }]}>Clear filters</Text>
+              <Text style={[styles.clearButtonText, { color: colors.primary }]}>
+                Clear filters
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -386,13 +480,17 @@ export default function SelectExerciseScreen() {
         {/* Exercise List */}
         <View style={styles.listContainer}>
           <FlashList
+            ref={listRef}
             data={filteredExercises}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             ListHeaderComponent={ListHeader}
             ListEmptyComponent={ListEmpty}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: keyboardHeight + 20, paddingHorizontal: 16 }}
+            contentContainerStyle={{
+              paddingBottom: keyboardHeight + 20,
+              paddingHorizontal: 16,
+            }}
           />
         </View>
 

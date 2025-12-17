@@ -1,4 +1,4 @@
-import { FeedCard } from '@/components/feed-card'
+import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
@@ -8,8 +8,6 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
-import { PrService } from '@/lib/pr'
-import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import {
   FollowRelationshipStatus,
@@ -17,7 +15,7 @@ import {
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
-import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -553,10 +551,11 @@ export default function UserProfileScreen() {
                     <AsyncPrFeedCard
                       key={workout.id}
                       workout={workout}
-                      userId={userId}
-                      userName={userName}
-                      avatarUrl={avatarUrl}
-                      onNavigateAway={markNextFocusAsChildReturn}
+                      onDelete={() => {
+                        setWorkouts((prev) =>
+                          prev.filter((w) => w.id !== workout.id),
+                        )
+                      }}
                       isFirst={index === 0}
                     />
                   ))
@@ -567,194 +566,6 @@ export default function UserProfileScreen() {
         </ScrollView>
       </View>
     </SlideInView>
-  )
-}
-
-function AsyncPrFeedCard({
-  workout,
-  userId,
-  userName,
-  avatarUrl,
-  onNavigateAway,
-  isFirst = false,
-}: {
-  workout: WorkoutSessionWithDetails
-  userId: string
-  userName: string
-  avatarUrl: string | null
-  onNavigateAway?: () => void
-  isFirst?: boolean
-}) {
-  const { user } = useAuth()
-  const [prs, setPrs] = useState<number>(0)
-  const [prInfo, setPrInfo] = useState<any[]>([])
-  const [isComputed, setIsComputed] = useState(false)
-  const { weightUnit } = useWeightUnits()
-  const router = useRouter()
-  const pathname = usePathname()
-
-  // Social interaction states
-  const [likeCount, setLikeCount] = useState(0)
-  const [commentCount, setCommentCount] = useState(0)
-  const [isLiked, setIsLiked] = useState(false)
-
-  const compute = useCallback(async () => {
-    if (isComputed) return
-    try {
-      const ctx = {
-        sessionId: workout.id,
-        userId: userId,
-        createdAt: workout.created_at,
-        exercises: (workout.workout_exercises || []).map((we) => ({
-          exerciseId: we.exercise_id,
-          exerciseName: we.exercise?.name || 'Exercise',
-          sets: (we.sets || []).map((s) => ({
-            reps: s.reps,
-            weight: s.weight,
-          })),
-        })),
-      }
-      const result = await PrService.computePrsForSession(ctx)
-      setPrs(result.totalPrs)
-
-      // Build PR info for the feed card
-      const prData = result.perExercise.map((exPr) => ({
-        exerciseName: exPr.exerciseName,
-        prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
-        prLabels: exPr.prs.map((pr) => pr.label),
-        prDetails: exPr.prs.map((pr) => ({
-          label: pr.label,
-          weight: pr.weight,
-          previousReps: pr.previousReps,
-          currentReps: pr.currentReps,
-          isCurrent: pr.isCurrent,
-        })),
-        hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
-      }))
-      setPrInfo(prData)
-      setIsComputed(true)
-    } catch (error) {
-      console.error('Error computing PRs:', error)
-      setPrs(0)
-      setPrInfo([])
-    }
-  }, [userId, workout, isComputed])
-
-  // Fetch social stats
-  React.useEffect(() => {
-    if (!user || !workout.id) return
-
-    const fetchSocialStats = async () => {
-      try {
-        const [
-          likeCountResult,
-          hasLikedResult,
-          commentCountResult,
-        ] = await Promise.all([
-          database.workoutLikes.getCount(workout.id),
-          database.workoutLikes.hasLiked(workout.id, user.id),
-          database.workoutComments.getCount(workout.id),
-        ])
-
-        setLikeCount(likeCountResult)
-        setIsLiked(hasLikedResult)
-        setCommentCount(commentCountResult)
-      } catch (error) {
-        console.error('Error fetching social stats:', error)
-      }
-    }
-
-    fetchSocialStats()
-  }, [user, workout.id])
-
-  useFocusEffect(
-    useCallback(() => {
-      compute()
-    }, [compute]),
-  )
-
-  const exercises = formatWorkoutForDisplay(workout, weightUnit)
-
-  // Handle like toggle
-  const handleLike = useCallback(async () => {
-    if (!user || !workout.id) return
-
-    try {
-      if (isLiked) {
-        await database.workoutLikes.unlike(workout.id, user.id)
-        setIsLiked(false)
-        setLikeCount((prev) => Math.max(0, prev - 1))
-      } else {
-        await database.workoutLikes.like(workout.id, user.id)
-        setIsLiked(true)
-        setLikeCount((prev) => prev + 1)
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error)
-    }
-  }, [user, workout.id, isLiked])
-
-  // Handle comment - navigate to comments screen
-  const handleComment = useCallback(() => {
-    onNavigateAway?.()
-    router.push(`/workout-comments/${workout.id}`)
-  }, [workout.id, router, onNavigateAway])
-
-  const handleCreateRoutine = useCallback(() => {
-    onNavigateAway?.()
-    router.push(`/create-routine?from=${workout.id}`)
-  }, [workout.id, router, onNavigateAway])
-
-  const handleCardPress = useCallback(() => {
-    onNavigateAway?.()
-    router.push({
-      pathname: '/workout/[workoutId]',
-      params: {
-        workoutId: workout.id,
-        returnTo: pathname,
-      },
-    })
-  }, [workout.id, router, pathname, onNavigateAway])
-
-  const handleRoutinePress = useCallback(() => {
-    if (workout.routine?.id) {
-      router.push(`/routine-detail?routineId=${workout.routine.id}`)
-    }
-  }, [workout.routine, router])
-
-  return (
-    <FeedCard
-      userName={userName}
-      userAvatar={avatarUrl || ''}
-      timeAgo={formatTimeAgo(workout.created_at)}
-      workoutTitle={
-        workout.type || workout.notes?.split('\n')[0] || 'Workout Session'
-      }
-      workoutDescription={workout.notes}
-      exercises={exercises}
-      stats={{
-        exercises: (workout.workout_exercises || []).length,
-        sets:
-          workout.workout_exercises?.reduce(
-            (sum, we) => sum + (we.sets?.length || 0),
-            0,
-          ) || 0,
-        prs,
-        durationSeconds: workout.duration ?? undefined,
-        volume: calculateTotalVolume(workout, 'kg'),
-      }}
-      workout={workout}
-      onCardPress={handleCardPress}
-      onCreateRoutine={handleCreateRoutine}
-      onRoutinePress={handleRoutinePress}
-      prInfo={prInfo}
-      likeCount={likeCount}
-      commentCount={commentCount}
-      isLiked={isLiked}
-      onLike={handleLike}
-      onComment={handleComment}
-      isFirst={isFirst}
-    />
   )
 }
 

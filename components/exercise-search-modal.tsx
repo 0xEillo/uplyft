@@ -5,10 +5,10 @@ import { database } from '@/lib/database'
 import { fuzzySearchExercises, hasExactOrFuzzyMatch } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { FlashList } from '@shopify/flash-list'
+import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
@@ -150,6 +150,7 @@ export function ExerciseSearchModal({
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const listRef = useRef<FlashListRef<Exercise>>(null)
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
     new Set(),
   )
@@ -216,6 +217,13 @@ export function ExerciseSearchModal({
 
     return result
   }, [exercises, trimmedQuery, selectedMuscleGroups, selectedEquipment])
+
+  // Scroll to top when results change or filters are applied
+  useEffect(() => {
+    if (visible) {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false })
+    }
+  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment, visible])
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {
@@ -723,24 +731,28 @@ export function ExerciseSearchModal({
               </ScrollView>
             </View>
 
-            {/* List */}
-            {isLoading && exercises.length === 0 ? (
-              <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-              </View>
-            ) : filteredExercises.length === 0 &&
-              !(!trimmedQuery && !hasFilters && recentExercises.length > 0) ? (
-              EmptyComponent
-            ) : (
+            {/* List - FlashList requires parent with flex: 1 for proper layout */}
+            <View style={styles.listContainer}>
+              {isLoading && exercises.length === 0 ? (
+                <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              ) : filteredExercises.length === 0 &&
+                !(!trimmedQuery && !hasFilters && recentExercises.length > 0) ? (
+                EmptyComponent
+              ) : (
               <FlashList
+                ref={listRef}
                 data={filteredExercises}
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 ListHeaderComponent={ListHeader}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
+                extraData={selectedExerciseIds}
               />
-            )}
+              )}
+            </View>
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -820,6 +832,9 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     marginBottom: 8,
+  },
+  listContainer: {
+    flex: 1,
   },
   filterRow: {
     marginBottom: 12,
