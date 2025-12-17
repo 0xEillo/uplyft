@@ -204,8 +204,8 @@ const createStyles = (colors: Colors) =>
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'flex-end',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingBottom: 16,
+      paddingHorizontal: 20,
+      paddingBottom: 20,
     },
     modalContainer: {
       width: '100%',

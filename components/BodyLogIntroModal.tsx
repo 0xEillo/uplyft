@@ -163,14 +163,14 @@ const createDynamicStyles = (colors: Colors) =>
     },
     content: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       paddingTop: 8,
       paddingBottom: 0,
       justifyContent: 'space-between',
     },
     closeButton: {
       alignSelf: 'flex-end',
-      marginRight: 16,
+      marginRight: 20,
       marginTop: 8,
       width: 44,
       height: 44,

@@ -4,11 +4,16 @@ import { database } from '@/lib/database'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const GRID_PADDING = 20
+const CHART_WIDTH = SCREEN_WIDTH - GRID_PADDING * 2
 import { LineChart } from 'react-native-gifted-charts'
 
 interface BodyWeightChartProps {
@@ -136,9 +141,9 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
           <View style={styles.chartWrapper}>
             <LineChart
               data={chartData}
-              width={350}
+              width={CHART_WIDTH}
               height={200}
-              spacing={Math.max(40, 350 / chartData.length)}
+              spacing={Math.max(40, CHART_WIDTH / (chartData.length || 1))}
               initialSpacing={20}
               endSpacing={20}
               color={colors.primary}
@@ -264,7 +269,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight, // Light gray background
       borderRadius: 8,
       padding: 2,
-      marginHorizontal: 16,
       marginBottom: 16,
     },
     segmentButton: {
@@ -316,7 +320,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: 8,
-      marginLeft: -16,
     },
     emptyState: {
       height: 200,
@@ -330,7 +333,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statsCard: {
       flexDirection: 'row',
       backgroundColor: colors.feedCardBackground,
-      marginHorizontal: 16,
       marginTop: 24,
       borderRadius: 12,
       padding: 20,

@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 const SCREEN_WIDTH = Dimensions.get('window').width
 const IMAGE_SPACING = 4
 const NUM_COLUMNS = 2
-const GRID_PADDING = 16
+const GRID_PADDING = 20
 const IMAGE_SIZE =
   (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_SPACING * (NUM_COLUMNS - 1)) /
   NUM_COLUMNS

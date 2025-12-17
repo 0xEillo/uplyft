@@ -379,7 +379,7 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 28,
+      paddingHorizontal: 20,
     },
     imageContainer: {
       width: SCREEN_WIDTH * 0.78,

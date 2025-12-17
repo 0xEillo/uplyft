@@ -28,7 +28,8 @@ import Animated, {
 import { useState } from 'react'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const SLOT_SIZE = (SCREEN_WIDTH - 48) / 2 // 16px padding each side, gap between
+const GRID_PADDING = 20
+const SLOT_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - 12) / 2 // 20px padding each side, 12px gap
 
 interface CapturedPhoto {
   uri: string
@@ -424,7 +425,7 @@ const createDynamicStyles = (colors: Colors) =>
     },
     header: {
       alignItems: 'flex-end',
-      paddingHorizontal: 16,
+      paddingHorizontal: GRID_PADDING,
       paddingVertical: 8,
     },
     closeButton: {
@@ -439,7 +440,7 @@ const createDynamicStyles = (colors: Colors) =>
     },
     titleSection: {
       alignItems: 'center',
-      paddingHorizontal: 24,
+      paddingHorizontal: GRID_PADDING,
       marginBottom: 16,
     },
     title: {
@@ -459,7 +460,7 @@ const createDynamicStyles = (colors: Colors) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: GRID_PADDING,
     },
     grid: {
       flexDirection: 'row',
@@ -545,7 +546,7 @@ const createDynamicStyles = (colors: Colors) =>
       letterSpacing: 0.3,
     },
     infoSection: {
-      paddingHorizontal: 24,
+      paddingHorizontal: GRID_PADDING,
       paddingVertical: 16,
       marginBottom: 12,
     },
@@ -647,7 +648,7 @@ const createDynamicStyles = (colors: Colors) =>
       color: colors.primary,
     },
     buttonSection: {
-      paddingHorizontal: 24,
+      paddingHorizontal: GRID_PADDING,
       paddingBottom: 32,
       gap: 10,
     },
