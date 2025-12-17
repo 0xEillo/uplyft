@@ -689,7 +689,12 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Overhead Press
   {
     name: 'Barbell Seated Overhead Press',
-    aliases: ['Overhead Press', 'Barbell Shoulder Press', 'Military Press', 'OHP'],
+    aliases: [
+      'Overhead Press',
+      'Barbell Shoulder Press',
+      'Military Press',
+      'OHP',
+    ],
     male: [
       {
         level: 'Beginner',
@@ -771,7 +776,11 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Dumbbell Shoulder Press
   {
     name: 'Dumbbell Seated Shoulder Press',
-    aliases: ['Dumbbell Shoulder Press', 'Seated Dumbbell Press', 'DB Shoulder Press'],
+    aliases: [
+      'Dumbbell Shoulder Press',
+      'Seated Dumbbell Press',
+      'DB Shoulder Press',
+    ],
     male: [
       {
         level: 'Beginner',
@@ -1014,92 +1023,10 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Pull-ups (bodyweight exercise - standards are in absolute reps, not multipliers)
-  {
-    name: 'Pull-Up',
-    aliases: [],
-    male: [
-      {
-        level: 'Beginner',
-        multiplier: 1,
-        color: '#9CA3AF',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 5,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 10,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 15,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 20,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 25,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-    female: [
-      {
-        level: 'Beginner',
-        multiplier: 1,
-        color: '#9CA3AF',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 3,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 6,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 10,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 15,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 20,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-
   // Weighted Pull-Ups (multiplier represents added weight as fraction of bodyweight)
   {
-    name: 'Weighted Pull-Up',
-    aliases: ['Weighted Pull-Ups'],
+    name: 'Weighted Pull Ups',
+    aliases: ['Weighted Pull-Up', 'Weighted Pull-Ups', 'Weighted Pull Up'],
     male: [
       {
         level: 'Beginner',
@@ -1178,92 +1105,10 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Dips
-  {
-    name: 'Chest Dip',
-    aliases: ['Dips', 'Triceps Dip', 'Parallel Bar Dip'],
-    male: [
-      {
-        level: 'Beginner',
-        multiplier: 1,
-        color: '#9CA3AF',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 8,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 15,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 25,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 35,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 45,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-    female: [
-      {
-        level: 'Beginner',
-        multiplier: 1,
-        color: '#9CA3AF',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 5,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 10,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 15,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 20,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 30,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-
   // Weighted Dips (multiplier represents added weight as fraction of bodyweight)
   {
-    name: 'Weighted Tricep Dips',
-    aliases: ['Weighted Dips'],
+    name: 'Weighted Dips',
+    aliases: ['Weighted Tricep Dips'],
     male: [
       {
         level: 'Beginner',
@@ -2091,26 +1936,24 @@ export function getLeaderboardExercises(): string[] {
   ])
 }
 
-export type ExerciseGroup = 'Upper Push' | 'Upper Pull' | 'Lower' | 'Other'
+export type ExerciseGroup = 'Push' | 'Pull' | 'Lower' | 'Other'
 
 const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
-  'Barbell Bench Press': 'Upper Push',
-  'Barbell Incline Bench Press': 'Upper Push',
-  'Dumbbell Bench Press': 'Upper Push',
-  'Dumbbell Incline Bench Press': 'Upper Push',
-  'Barbell Seated Overhead Press': 'Upper Push',
-  'Dumbbell Seated Shoulder Press': 'Upper Push',
-  'Chest Dip': 'Upper Push',
-  'Weighted Tricep Dips': 'Upper Push',
+  'Barbell Bench Press': 'Push',
+  'Barbell Incline Bench Press': 'Push',
+  'Dumbbell Bench Press': 'Push',
+  'Dumbbell Incline Bench Press': 'Push',
+  'Barbell Seated Overhead Press': 'Push',
+  'Dumbbell Seated Shoulder Press': 'Push',
+  'Weighted Dips': 'Push',
 
-  'Barbell Bent Over Row': 'Upper Pull',
-  'Cable Pulldown': 'Upper Pull',
-  'Pull-Up': 'Upper Pull',
-  'Weighted Pull-Up': 'Upper Pull',
-  'Dumbbell Standing Biceps Curl': 'Upper Pull',
-  'Barbell Curl': 'Upper Pull',
-  'Dumbbell One Arm Bent-Over Row': 'Upper Pull',
-  'Cable Seated Row': 'Upper Pull',
+  'Barbell Bent Over Row': 'Pull',
+  'Cable Pulldown': 'Pull',
+  'Weighted Pull Ups': 'Pull',
+  'Dumbbell Standing Biceps Curl': 'Pull',
+  'Barbell Curl': 'Pull',
+  'Dumbbell One Arm Bent-Over Row': 'Pull',
+  'Cable Seated Row': 'Pull',
 
   'Barbell Squat': 'Lower',
   'Barbell Front Squat': 'Lower',
@@ -2120,8 +1963,8 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Dumbbell Bulgarian Split Squat': 'Lower',
   'Hip Thrust': 'Lower',
 
-  'Close Grip Bench Press': 'Upper Push',
-  'Cable Pushdown': 'Upper Push',
+  'Close Grip Bench Press': 'Push',
+  'Cable Pushdown': 'Push',
 }
 
 /**

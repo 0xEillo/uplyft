@@ -1,27 +1,28 @@
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
+import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
@@ -160,6 +161,7 @@ export function StrengthStandardsView() {
   const [refreshing, setRefreshing] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
+  const [showSupportedSheet, setShowSupportedSheet] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -242,8 +244,8 @@ export function StrengthStandardsView() {
     let count = 0
 
     const groupTotals: Record<ExerciseGroup | string, { total: number; count: number }> = {
-      'Upper Push': { total: 0, count: 0 },
-      'Upper Pull': { total: 0, count: 0 },
+      'Push': { total: 0, count: 0 },
+      'Pull': { total: 0, count: 0 },
       'Lower': { total: 0, count: 0 },
     }
 
@@ -507,7 +509,13 @@ export function StrengthStandardsView() {
 
           {/* Section Header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>Your Muscles</Text>
+            <Text style={styles.sectionHeaderText}>Strength Levels</Text>
+            <TouchableOpacity 
+              onPress={() => setShowSupportedSheet(true)}
+              style={styles.infoIcon}
+            >
+              <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           {/* Muscle Groups */}
@@ -525,6 +533,12 @@ export function StrengthStandardsView() {
                 Start tracking exercises like bench press, squat, and deadlift
                 to see your strength standards
               </Text>
+              <TouchableOpacity 
+                style={styles.emptyButton}
+                onPress={() => setShowSupportedSheet(true)}
+              >
+                <Text style={styles.emptyButtonText}>View all supported exercises</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.muscleGroupsContainer}>
@@ -637,6 +651,12 @@ export function StrengthStandardsView() {
           progressToNext={overallLevel.balancedProgress}
         />
       )}
+
+      {/* Supported Exercises Sheet */}
+      <SupportedExercisesSheet
+        isVisible={showSupportedSheet}
+        onClose={() => setShowSupportedSheet(false)}
+      />
     </View>
   )
 }
@@ -761,11 +781,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
       paddingTop: 20,
       paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     sectionHeaderText: {
       fontSize: 15,
       fontWeight: '600',
       color: colors.textSecondary,
+    },
+    infoIcon: {
+      padding: 4,
     },
 
 
@@ -796,6 +822,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 20,
+      marginBottom: 20,
+    },
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    emptyButtonText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
     },
 
     // Muscle Groups

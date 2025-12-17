@@ -1,6 +1,7 @@
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
 import { SlideInView } from '@/components/slide-in-view'
+import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -58,6 +59,7 @@ export default function StrengthStatsScreen() {
     new Set(),
   )
   const [paywallVisible, setPaywallVisible] = useState(false)
+  const [showSupportedSheet, setShowSupportedSheet] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -187,7 +189,19 @@ export default function StrengthStatsScreen() {
           <Text style={styles.headerTitle}>Strength Progress</Text>
           <View style={styles.headerRightSpacer} />
         </View>
+
         <View style={styles.container}>
+          {/* Top Info Bar */}
+          <View style={styles.topInfoBar}>
+            <TouchableOpacity 
+              onPress={() => setShowSupportedSheet(true)}
+              style={styles.supportedLink}
+            >
+              <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
+              <Text style={styles.supportedLinkText}>Supported Exercises</Text>
+            </TouchableOpacity>
+          </View>
+
         {/* Tabs */}
         <View style={styles.tabs}>
           <TouchableOpacity
@@ -250,6 +264,12 @@ export default function StrengthStatsScreen() {
                 Start tracking exercises like bench press, squat, and deadlift
                 to see your strength standards
               </Text>
+              <TouchableOpacity 
+                style={styles.emptyButton}
+                onPress={() => setShowSupportedSheet(true)}
+              >
+                <Text style={styles.emptyButtonText}>View all supported exercises</Text>
+              </TouchableOpacity>
             </View>
           ) : activeTab === 'standards' ? (
             /* Standards Tab */
@@ -517,6 +537,11 @@ export default function StrengthStatsScreen() {
         title="Unlock Your Strength Level"
         message="See which strength standard you've achieved. Upgrade to view your ranking and track your progress towards Elite and World Class levels."
       />
+
+      <SupportedExercisesSheet
+        isVisible={showSupportedSheet}
+        onClose={() => setShowSupportedSheet(false)}
+      />
     </SlideInView>
   )
 }
@@ -575,6 +600,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     activeTabText: {
+      color: colors.primary,
+    },
+    topInfoBar: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 4,
+      backgroundColor: colors.white,
+    },
+    supportedLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    supportedLinkText: {
+      fontSize: 13,
+      fontWeight: '600',
       color: colors.primary,
     },
     scrollView: {
@@ -665,6 +708,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 20,
+      marginBottom: 20,
+    },
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    emptyButtonText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
     },
     exerciseCard: {
       backgroundColor: colors.white,

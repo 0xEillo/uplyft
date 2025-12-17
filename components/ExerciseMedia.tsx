@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0', // Keep light background for white GIFs
+    backgroundColor: '#FFFFFF', // Pure white background for GIF container
   },
   image: {
     width: '100%',

@@ -3,16 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native'
 
 export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
@@ -259,15 +259,15 @@ export function WorkoutPlanningWizard({
       // Actually, for the "Smart Start" flow, initialData usually COMES from saved prefs + profile
       // So we might not need to load from AsyncStorage again if initialData is present.
       // However, to be safe and consistent:
-      
+
       if (initialData && Object.keys(initialData).length > 0) {
         // If we have initial data passed in (e.g. from Smart Start), use it and don't overwrite with AsyncStorage
         // unless we want to merge? Let's assume initialData is the "proposed" state.
         // But we might want to load saved equipment if not in initialData?
         if (!initialData.equipment && equipmentJson) {
-             const equipment = JSON.parse(equipmentJson) as EquipmentType
-             setSavedEquipment(equipment)
-             setData(prev => ({ ...prev, equipment }))
+          const equipment = JSON.parse(equipmentJson) as EquipmentType
+          setSavedEquipment(equipment)
+          setData((prev) => ({ ...prev, equipment }))
         }
         return
       }
@@ -381,8 +381,11 @@ export function WorkoutPlanningWizard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
     if (multiSelect && typeof value === 'string') {
-      const current = data[field] 
-        ? (data[field] as string).split(', ').map(v => v.trim()).filter(v => v.length > 0)
+      const current = data[field]
+        ? (data[field] as string)
+            .split(', ')
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0)
         : []
       let newSelection
       if (current.includes(value)) {
@@ -419,12 +422,24 @@ export function WorkoutPlanningWizard({
     field: keyof WorkoutPlanningData,
     multiSelect = false,
   ) => (
-    <View style={[styles.cardsContainer, { backgroundColor: colors.backgroundLight, borderRadius: 12, overflow: 'hidden' }]}>
+    <View
+      style={[
+        styles.cardsContainer,
+        {
+          backgroundColor: colors.backgroundLight,
+          borderRadius: 12,
+          overflow: 'hidden',
+        },
+      ]}
+    >
       {options.map((option, index) => {
         let isSelected = false
         if (multiSelect) {
-          const current = data[field] 
-            ? (data[field] as string).split(', ').map(v => v.trim()).filter(v => v.length > 0)
+          const current = data[field]
+            ? (data[field] as string)
+                .split(', ')
+                .map((v) => v.trim())
+                .filter((v) => v.length > 0)
             : []
           isSelected = current.includes(option.value)
         } else {
@@ -483,7 +498,9 @@ export function WorkoutPlanningWizard({
                   styles.checkbox,
                   {
                     borderColor: isSelected ? colors.primary : colors.border,
-                    backgroundColor: isSelected ? colors.primary : 'transparent',
+                    backgroundColor: isSelected
+                      ? colors.primary
+                      : 'transparent',
                   },
                 ]}
               >
@@ -617,13 +634,16 @@ export function WorkoutPlanningWizard({
 
       {commonMuscles && commonMuscles.length > 0 && (
         <View style={styles.commonMusclesContainer}>
-           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
             Quick Select (Based on your history)
           </Text>
           <View style={styles.tagsContainer}>
             {commonMuscles.map((muscle) => {
-              const current = data.muscles 
-                ? (data.muscles as string).split(', ').map(v => v.trim()).filter(v => v.length > 0)
+              const current = data.muscles
+                ? (data.muscles as string)
+                    .split(', ')
+                    .map((v) => v.trim())
+                    .filter((v) => v.length > 0)
                 : []
               const isSelected = current.includes(muscle)
               return (
@@ -635,9 +655,7 @@ export function WorkoutPlanningWizard({
                       backgroundColor: isSelected
                         ? colors.primary
                         : colors.backgroundLight,
-                      borderColor: isSelected
-                        ? colors.primary
-                        : colors.border,
+                      borderColor: isSelected ? colors.primary : colors.border,
                     },
                   ]}
                   onPress={() => {
@@ -649,9 +667,7 @@ export function WorkoutPlanningWizard({
                     style={[
                       styles.tagText,
                       {
-                        color: isSelected
-                          ? colors.white
-                          : colors.text,
+                        color: isSelected ? colors.white : colors.text,
                       },
                     ]}
                   >
@@ -675,9 +691,7 @@ export function WorkoutPlanningWizard({
       contentContainerStyle={styles.scrollContentContainer}
     >
       <View style={styles.headerContainer}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>
-          Duration
-        </Text>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>Duration</Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
           How much time do you have?
         </Text>
@@ -710,7 +724,8 @@ export function WorkoutPlanningWizard({
         >
           <Ionicons name="save-outline" size={14} color={colors.primary} />
           <Text style={[styles.savedBadgeText, { color: colors.primary }]}>
-            Saved: {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
+            Saved:{' '}
+            {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
           </Text>
         </View>
       )}
@@ -730,7 +745,9 @@ export function WorkoutPlanningWizard({
             <Text style={[styles.stepTitle, { color: colors.text }]}>
               Specifics
             </Text>
-            <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.stepSubtitle, { color: colors.textSecondary }]}
+            >
               Any injuries or preferences? (Optional)
             </Text>
           </View>
@@ -757,13 +774,20 @@ export function WorkoutPlanningWizard({
                     // Remove tag
                     setData((prev) => ({
                       ...prev,
-                      specifics: prev.specifics.replace(tag, '').replace(', ,', ',').replace(/^, /, '').replace(/, $/, '').trim(),
+                      specifics: prev.specifics
+                        .replace(tag, '')
+                        .replace(', ,', ',')
+                        .replace(/^, /, '')
+                        .replace(/, $/, '')
+                        .trim(),
                     }))
                   } else {
                     // Add tag
                     setData((prev) => ({
                       ...prev,
-                      specifics: prev.specifics ? `${prev.specifics}, ${tag}` : tag,
+                      specifics: prev.specifics
+                        ? `${prev.specifics}, ${tag}`
+                        : tag,
                     }))
                   }
                 }}
@@ -818,17 +842,18 @@ export function WorkoutPlanningWizard({
     const goalIcon = goalOption?.icon || 'barbell'
 
     // Format muscles display: convert values to labels
-    const musclesLabel = data.muscles && data.muscles.trim()
-      ? data.muscles
-          .split(', ')
-          .map((val) => val.trim())
-          .filter((val) => val.length > 0)
-          .map((val) => {
-            const option = MUSCLE_OPTIONS.find((o) => o.value === val)
-            return option ? option.label : val
-          })
-          .join(', ')
-      : 'Select Muscles'
+    const musclesLabel =
+      data.muscles && data.muscles.trim()
+        ? data.muscles
+            .split(', ')
+            .map((val) => val.trim())
+            .filter((val) => val.length > 0)
+            .map((val) => {
+              const option = MUSCLE_OPTIONS.find((o) => o.value === val)
+              return option ? option.label : val
+            })
+            .join(', ')
+        : 'Select Muscles'
 
     return (
       <ScrollView
@@ -903,7 +928,12 @@ export function WorkoutPlanningWizard({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={{ marginTop: 16, padding: 12, alignItems: 'center', marginBottom: 32 }}
+          style={{
+            marginTop: 16,
+            padding: 12,
+            alignItems: 'center',
+            marginBottom: 32,
+          }}
           onPress={onCancel}
           activeOpacity={0.6}
         >
@@ -1260,4 +1290,3 @@ const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
       fontWeight: '600',
     },
   })
-
