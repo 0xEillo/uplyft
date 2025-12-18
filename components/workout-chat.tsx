@@ -2,11 +2,11 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-    EQUIPMENT_PREF_KEY,
-    MUSCLE_OPTIONS,
-    WORKOUT_PLANNING_PREFS_KEY,
-    WorkoutPlanningData,
-    WorkoutPlanningWizard,
+  EQUIPMENT_PREF_KEY,
+  MUSCLE_OPTIONS,
+  WORKOUT_PLANNING_PREFS_KEY,
+  WorkoutPlanningData,
+  WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -17,16 +17,16 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-    ParsedWorkoutDisplay,
-    parseWorkoutForDisplay,
+  ParsedWorkoutDisplay,
+  parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-    buildWorkoutCreationPrompt,
-    buildWorkoutModificationSuffix,
+  buildWorkoutCreationPrompt,
+  buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -42,36 +42,38 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -102,6 +104,79 @@ export interface ExerciseSuggestion {
   sets: number
   reps: string
   notes?: string
+}
+
+// Internal component for animated suggestion buttons
+function AnimatedSuggestion({
+  index,
+  onPress,
+  style,
+  textStyle,
+  icon,
+  text,
+  isBack = false,
+  colors,
+}: {
+  index: number
+  onPress: () => void
+  style?: any
+  textStyle?: any
+  icon?: React.ReactNode
+  text?: string
+  isBack?: boolean
+  colors: any
+}) {
+  const translateY = useSharedValue(40)
+  const opacity = useSharedValue(0)
+
+  useEffect(() => {
+    // Reset
+    translateY.value = 40
+    opacity.value = 0
+
+    // Animate in with delay based on index
+    translateY.value = withDelay(
+      index * 60,
+      withSpring(0, {
+        damping: 8,
+        stiffness: 200,
+        mass: 0.8,
+      }),
+    )
+    opacity.value = withDelay(index * 60, withTiming(1, { duration: 300 }))
+  }, [index, text, isBack]) // Re-run when text or mode changes
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }))
+
+  if (isBack) {
+    return (
+      <AnimatedReanimated.View style={animatedStyle}>
+        <TouchableOpacity
+          style={style}
+          onPress={onPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </AnimatedReanimated.View>
+    )
+  }
+
+  return (
+    <AnimatedReanimated.View style={animatedStyle}>
+      <TouchableOpacity
+        style={style}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {icon}
+        <Text style={textStyle}>{text}</Text>
+      </TouchableOpacity>
+    </AnimatedReanimated.View>
+  )
 }
 
 // Workout context passed from create-post
@@ -765,7 +840,14 @@ export function WorkoutChat({
 
     // Check if user is pro member or has tutorial trial available
     const canAccessAiChat = isProMember || canUseTrial('ai_workout')
-    console.log('[WorkoutChat] handleSendMessage. canAccessAiChat:', canAccessAiChat, 'isProMember:', isProMember, 'canUseTrial:', canUseTrial('ai_workout'))
+    console.log(
+      '[WorkoutChat] handleSendMessage. canAccessAiChat:',
+      canAccessAiChat,
+      'isProMember:',
+      isProMember,
+      'canUseTrial:',
+      canUseTrial('ai_workout'),
+    )
 
     if (!canAccessAiChat) {
       setShowPaywall(true)
@@ -1140,8 +1222,15 @@ export function WorkoutChat({
   const handleWizardComplete = async (data: WorkoutPlanningData) => {
     // Check if user is pro member or has tutorial trial available
     const canAccessAiChat = isProMember || canUseTrial('ai_workout')
-    console.log('[WorkoutChat] Wizard complete. canAccessAiChat:', canAccessAiChat, 'isProMember:', isProMember, 'canUseTrial:', canUseTrial('ai_workout'))
-    
+    console.log(
+      '[WorkoutChat] Wizard complete. canAccessAiChat:',
+      canAccessAiChat,
+      'isProMember:',
+      isProMember,
+      'canUseTrial:',
+      canUseTrial('ai_workout'),
+    )
+
     if (!canAccessAiChat) {
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
@@ -1585,10 +1674,14 @@ export function WorkoutChat({
 
       // Consume trial or complete tutorial step
       if (!isProMember) {
-        console.log('[WorkoutChat] Saving AI routine. Consuming create_routine trial.')
+        console.log(
+          '[WorkoutChat] Saving AI routine. Consuming create_routine trial.',
+        )
         consumeTrial('create_routine')
       } else {
-        console.log('[WorkoutChat] Saving AI routine. Completing create_routine tutorial step.')
+        console.log(
+          '[WorkoutChat] Saving AI routine. Completing create_routine tutorial step.',
+        )
         completeStep('create_routine')
       }
 
@@ -2036,106 +2129,99 @@ export function WorkoutChat({
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.suggestionsContent}
                 keyboardShouldPersistTaps="handled"
+                style={{ overflow: 'visible' }}
               >
                 {suggestionMode !== 'main' && (
-                  <TouchableOpacity
+                  <AnimatedSuggestion
+                    index={0}
+                    isBack
+                    colors={colors}
                     style={styles.suggestionBackBubble}
                     onPress={() => setSuggestionMode('main')}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="chevron-back"
-                      size={18}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
+                  />
                 )}
 
                 {suggestionMode === 'main'
-                  ? suggestions.main.map((item) => (
-                      <TouchableOpacity
+                  ? activeSuggestions.main.map((item, idx) => (
+                      <AnimatedSuggestion
                         key={item.id}
+                        index={idx}
+                        text={item.text}
+                        colors={colors}
                         style={[
                           styles.suggestionBubble,
                           (item.id === 'plan_workout' ||
                             item.id === 'adjust_workout') &&
                             styles.planWorkoutBubble,
                         ]}
+                        textStyle={[
+                          styles.suggestionText,
+                          (item.id === 'plan_workout' ||
+                            item.id === 'adjust_workout') &&
+                            styles.planWorkoutText,
+                        ]}
+                        icon={
+                          (item.id === 'plan_workout' ||
+                            item.id === 'adjust_workout') ? (
+                            <Ionicons
+                              name="flash"
+                              size={14}
+                              color={colors.primary}
+                              style={{ marginRight: 6 }}
+                            />
+                          ) : null
+                        }
                         onPress={() => handleSuggestionPress(item)}
-                        activeOpacity={0.7}
-                      >
-                        {(item.id === 'plan_workout' ||
-                          item.id === 'adjust_workout') && (
-                          <Ionicons
-                            name="flash"
-                            size={14}
-                            color={colors.primary}
-                            style={{ marginRight: 6 }}
-                          />
-                        )}
-                        <Text
-                          style={[
-                            styles.suggestionText,
-                            (item.id === 'plan_workout' ||
-                              item.id === 'adjust_workout') &&
-                              styles.planWorkoutText,
-                          ]}
-                        >
-                          {item.text}
-                        </Text>
-                      </TouchableOpacity>
+                      />
                     ))
                   : suggestionMode === 'replace_exercise'
                   ? currentWorkoutExercises.map((exerciseName, index) => (
-                      <TouchableOpacity
+                      <AnimatedSuggestion
                         key={index}
+                        index={index + 1}
+                        text={exerciseName}
+                        colors={colors}
                         style={styles.suggestionBubble}
+                        textStyle={styles.suggestionText}
                         onPress={() => handleSuggestionPress(exerciseName)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.suggestionText}>
-                          {exerciseName}
-                        </Text>
-                      </TouchableOpacity>
+                      />
                     ))
                   : suggestionMode === 'adjust_workout'
-                  ? (suggestions.adjust_workout || []).map((item) => (
-                      <TouchableOpacity
+                  ? (activeSuggestions.adjust_workout || []).map((item, index) => (
+                      <AnimatedSuggestion
                         key={item.id}
+                        index={index + 1}
+                        text={item.text}
+                        colors={colors}
                         style={[
                           styles.suggestionBubble,
                           styles.planWorkoutBubble,
                         ]}
+                        textStyle={[
+                          styles.suggestionText,
+                          styles.planWorkoutText,
+                        ]}
+                        icon={
+                          <Ionicons
+                            name={item.icon as any}
+                            size={14}
+                            color={colors.primary}
+                            style={{ marginRight: 6 }}
+                          />
+                        }
                         onPress={() => handleSuggestionPress(item)}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name={item.icon as any}
-                          size={14}
-                          color={colors.primary}
-                          style={{ marginRight: 6 }}
-                        />
-                        <Text
-                          style={[
-                            styles.suggestionText,
-                            styles.planWorkoutText,
-                          ]}
-                        >
-                          {item.text}
-                        </Text>
-                      </TouchableOpacity>
+                      />
                     ))
-                  : (suggestions[suggestionMode] || []).map((item, index) => (
-                      <TouchableOpacity
+                  : (activeSuggestions[suggestionMode] || []).map((item, index) => (
+                      <AnimatedSuggestion
                         key={index}
+                        index={index + 1}
+                        text={item as string}
+                        colors={colors}
                         style={styles.suggestionBubble}
+                        textStyle={styles.suggestionText}
                         onPress={() => handleSuggestionPress(item)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.suggestionText}>
-                          {item as string}
-                        </Text>
-                      </TouchableOpacity>
+                      />
                     ))}
               </ScrollView>
             </View>
@@ -2560,13 +2646,17 @@ function createStyles(
     },
     // Suggestion bubbles
     suggestionsContainer: {
-      paddingTop: 12,
+      paddingTop: 20, // Increased to allow for bounce overshoot
+      marginTop: -8, // Compensate for extra padding to keep layout consistent
       paddingBottom: 12,
       backgroundColor: colors.background,
+      overflow: 'visible',
+      zIndex: 10,
     },
     suggestionsContent: {
       paddingHorizontal: 16,
       gap: 8,
+      overflow: 'visible',
     },
     suggestionBubble: {
       flexDirection: 'row',

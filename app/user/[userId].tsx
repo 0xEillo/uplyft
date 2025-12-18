@@ -11,22 +11,22 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import {
-    FollowRelationshipStatus,
-    WorkoutSessionWithDetails,
+  FollowRelationshipStatus,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
