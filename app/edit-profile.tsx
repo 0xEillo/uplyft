@@ -1,8 +1,8 @@
 import {
-  COMMITMENTS,
-  GENDERS,
-  GOALS,
-  TRAINING_YEARS,
+    COMMITMENTS,
+    GENDERS,
+    GOALS,
+    TRAINING_YEARS,
 } from '@/constants/options'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -15,17 +15,17 @@ import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -45,7 +45,7 @@ export default function EditProfileScreen() {
   const [editedWeight, setEditedWeight] = useState('')
   const [editedAge, setEditedAge] = useState('')
   const [editedGoals, setEditedGoals] = useState<Goal[]>([])
-  const [editedCommitment, setEditedCommitment] = useState<string | null>(null)
+  const [editedCommitment, setEditedCommitment] = useState<string[]>([])
   const [
     editedTrainingYears,
     setEditedTrainingYears,
@@ -75,7 +75,7 @@ export default function EditProfileScreen() {
       )
       setEditedAge(profile?.age?.toString() || '')
       setEditedGoals(profile?.goals || [])
-      setEditedCommitment(profile?.commitment || null)
+      setEditedCommitment(profile?.commitment || [])
       setEditedTrainingYears(profile?.training_years || null)
       setEditedBio(profile?.bio || '')
       setEditedProfileDescription(profile?.profile_description || '')
@@ -174,7 +174,7 @@ export default function EditProfileScreen() {
           : null,
         age: editedAge ? parseInt(editedAge) : null,
         goals: editedGoals.length > 0 ? editedGoals : null,
-        commitment: editedCommitment,
+        commitment: editedCommitment.length > 0 ? editedCommitment : null,
         training_years: editedTrainingYears,
         bio: editedBio.trim() || null,
         profile_description: editedProfileDescription.trim() || null,
@@ -396,22 +396,39 @@ export default function EditProfileScreen() {
 
           {/* Commitment Selection */}
           <View style={styles.section}>
-            <Text style={styles.label}>Commitment</Text>
+            <Text style={styles.label}>Which Days?</Text>
             <View style={styles.goalOptions}>
               {COMMITMENTS.map((commitment) => (
                 <TouchableOpacity
                   key={commitment.value}
                   style={[
                     styles.goalOption,
-                    editedCommitment === commitment.value &&
+                    editedCommitment.includes(commitment.value) &&
                       styles.goalOptionSelected,
                   ]}
-                  onPress={() => setEditedCommitment(commitment.value)}
+                  onPress={() => {
+                    let newCommitment: string[]
+                    if (commitment.value === 'not_sure') {
+                      newCommitment = ['not_sure']
+                    } else {
+                      const withoutNotSure = editedCommitment.filter(
+                        (c) => c !== 'not_sure',
+                      )
+                      if (withoutNotSure.includes(commitment.value)) {
+                        newCommitment = withoutNotSure.filter(
+                          (c) => c !== commitment.value,
+                        )
+                      } else {
+                        newCommitment = [...withoutNotSure, commitment.value]
+                      }
+                    }
+                    setEditedCommitment(newCommitment)
+                  }}
                 >
                   <Text
                     style={[
                       styles.goalOptionText,
-                      editedCommitment === commitment.value &&
+                      editedCommitment.includes(commitment.value) &&
                         styles.goalOptionTextSelected,
                     ]}
                   >

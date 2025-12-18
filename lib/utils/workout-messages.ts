@@ -9,10 +9,18 @@ export interface WorkoutProgress {
 
 /**
  * Parse commitment value to numeric target
+ * Commitment is now an array of day strings like ['monday', 'wednesday', 'friday']
  */
-export function parseCommitment(commitment: string | null): number {
+export function parseCommitment(commitment: string[] | string | null): number {
   if (!commitment) return 3 // Default to 3x per week
 
+  // Handle new array format (days of the week)
+  if (Array.isArray(commitment)) {
+    const validDays = commitment.filter(c => c !== 'not_sure')
+    return validDays.length > 0 ? validDays.length : 3
+  }
+
+  // Handle legacy frequency format for backwards compatibility
   const commitmentMap: Record<string, number> = {
     '2_times': 2,
     '3_times': 3,

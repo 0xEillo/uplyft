@@ -188,13 +188,19 @@ alter table profiles add constraint valid_weight
 -- Age and commitment fields
 alter table profiles
   add column age integer,
-  add column commitment text;
+  add column commitment text[];
 
 alter table profiles add constraint valid_age
   check (age is null or (age >= 13 and age <= 120));
 
 alter table profiles add constraint valid_commitment
-  check (commitment is null or commitment in ('2_times', '3_times', '4_times', '5_plus'));
+  check (
+    commitment is null 
+    or (
+      commitment <@ array['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'not_sure']::text[]
+      and array_length(commitment, 1) > 0
+    )
+  );
 
 -- Convert single goal to array of goals
 alter table profiles drop constraint if exists valid_goal;

@@ -40,7 +40,7 @@ type OnboardingData = {
   birth_month: string
   birth_year: string
   goal: Goal[]
-  commitment: string | null
+  commitment: string[]
   training_years: TrainingYears | null
   bio: string
   coach: string
@@ -70,7 +70,7 @@ export default function OnboardingScreen() {
     birth_month: '1',
     birth_year: '2000',
     goal: [],
-    commitment: null,
+    commitment: [],
     training_years: null,
     bio: '',
     coach: DEFAULT_COACH_ID,
@@ -267,7 +267,7 @@ export default function OnboardingScreen() {
       case 5:
         return data.gender !== null
       case 6:
-        return data.commitment !== null
+        return data.commitment.length > 0
       case 7:
         return data.training_years !== null
       case 8:
@@ -466,7 +466,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>
-                How often do you want to exercise?
+                Which days do you want to exercise?
               </Text>
             </View>
 
@@ -477,12 +477,28 @@ export default function OnboardingScreen() {
                     key={commitment.value}
                     style={[
                       styles.card,
-                      data.commitment === commitment.value && styles.cardSelected,
+                      data.commitment.includes(commitment.value) &&
+                        styles.cardSelected,
                     ]}
                     onPress={() => {
-                      setData({ ...data, commitment: commitment.value })
-                      // Frequency selection can auto-swipe like gender
-                      setTimeout(() => setStep(step + 1), 300)
+                      let newCommitment: string[]
+                      if (commitment.value === 'not_sure') {
+                        // If "not sure" is selected, clear others
+                        newCommitment = ['not_sure']
+                      } else {
+                        // If a day is selected, remove "not_sure" if present
+                        const withoutNotSure = data.commitment.filter(
+                          (c) => c !== 'not_sure',
+                        )
+                        if (withoutNotSure.includes(commitment.value)) {
+                          newCommitment = withoutNotSure.filter(
+                            (c) => c !== commitment.value,
+                          )
+                        } else {
+                          newCommitment = [...withoutNotSure, commitment.value]
+                        }
+                      }
+                      setData({ ...data, commitment: newCommitment })
                     }}
                     hapticStyle="light"
                   >
@@ -491,11 +507,11 @@ export default function OnboardingScreen() {
                       <View
                         style={[
                           styles.radioButton,
-                          data.commitment === commitment.value &&
+                          data.commitment.includes(commitment.value) &&
                             styles.radioButtonSelected,
                         ]}
                       >
-                        {data.commitment === commitment.value && (
+                        {data.commitment.includes(commitment.value) && (
                           <View style={styles.radioButtonInner} />
                         )}
                       </View>
