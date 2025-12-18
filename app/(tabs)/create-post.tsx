@@ -14,6 +14,7 @@ import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
+import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
@@ -390,6 +391,7 @@ export default function CreatePostScreen() {
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
+  const { completeStep } = useTutorial()
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
 
@@ -969,6 +971,10 @@ export default function CreatePostScreen() {
 
       // Refresh freemium limits after successful submission
       refreshFreemiumLimits()
+
+      // Complete tutorial step for logging first workout
+      console.log('[CreatePost] Successful workout submission. Completing log_workout tutorial step.')
+      completeStep('log_workout')
 
       trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
         hasTitle: Boolean(trimmedTitle),

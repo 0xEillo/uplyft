@@ -2,30 +2,31 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  EQUIPMENT_PREF_KEY,
-  MUSCLE_OPTIONS,
-  WORKOUT_PLANNING_PREFS_KEY,
-  WorkoutPlanningData,
-  WorkoutPlanningWizard,
+    EQUIPMENT_PREF_KEY,
+    MUSCLE_OPTIONS,
+    WORKOUT_PLANNING_PREFS_KEY,
+    WorkoutPlanningData,
+    WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  convertAiPlanToRoutine,
-  convertAiPlanToWorkout,
+    convertAiPlanToRoutine,
+    convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-  ParsedWorkoutDisplay,
-  parseWorkoutForDisplay,
+    ParsedWorkoutDisplay,
+    parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-  buildWorkoutCreationPrompt,
-  buildWorkoutModificationSuffix,
+    buildWorkoutCreationPrompt,
+    buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -41,36 +42,36 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -301,6 +302,7 @@ export function WorkoutChat({
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
+  const { canUseTrial, consumeTrial, completeStep } = useTutorial()
   const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
@@ -531,6 +533,11 @@ export function WorkoutChat({
       setGeneratedPlanContent(acc)
       setParsedWorkout(parsed)
 
+      // Consume the tutorial trial when user successfully generates a workout
+      if (!isProMember) {
+        consumeTrial('ai_workout')
+      }
+
       // Also populate proposedWorkout from the parsed plan if empty?
       // Actually, for the initial plan generation, we might rely on the ParsedWorkoutDisplay.
       // But if we want to support "Add Exercises" after, we should probably track them.
@@ -756,14 +763,20 @@ export function WorkoutChat({
     const messageContent = hiddenPrompt || input.trim()
     if (!messageContent || isLoading) return
 
-    // Check if user is pro member
-    if (!isProMember) {
+    // Check if user is pro member or has tutorial trial available
+    const canAccessAiChat = isProMember || canUseTrial('ai_workout')
+    console.log('[WorkoutChat] handleSendMessage. canAccessAiChat:', canAccessAiChat, 'isProMember:', isProMember, 'canUseTrial:', canUseTrial('ai_workout'))
+
+    if (!canAccessAiChat) {
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'ai_chat',
       })
       return
     }
+
+    // Note: Trial will be consumed later when a workout is actually generated
+    // This allows users to chat/explore before using their free workout generation
 
     // Store input and images before clearing
     const imagesToSend = [...selectedImages]
@@ -1125,8 +1138,11 @@ export function WorkoutChat({
   }
 
   const handleWizardComplete = async (data: WorkoutPlanningData) => {
-    // Check if user is pro member
-    if (!isProMember) {
+    // Check if user is pro member or has tutorial trial available
+    const canAccessAiChat = isProMember || canUseTrial('ai_workout')
+    console.log('[WorkoutChat] Wizard complete. canAccessAiChat:', canAccessAiChat, 'isProMember:', isProMember, 'canUseTrial:', canUseTrial('ai_workout'))
+    
+    if (!canAccessAiChat) {
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'ai_workout_generation',
@@ -1223,6 +1239,11 @@ export function WorkoutChat({
         // Parse workout for structured display
         const parsed = parseWorkoutForDisplay(assistantContent)
         setParsedWorkout(parsed)
+
+        // Consume trial when workout is generated
+        if (parsed && !isProMember) {
+          consumeTrial('ai_workout')
+        }
       } else {
         // Create placeholder message for streaming
         setMessages((prev) => [
@@ -1374,6 +1395,16 @@ export function WorkoutChat({
 
   const handleSaveRoutine = async () => {
     if (isLoading || !generatedPlanContent) return
+
+    // Check if user is pro member or has tutorial trial available
+    const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
+    if (!canAccessCreateRoutine) {
+      setShowPaywall(true)
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        feature: 'create_routine_from_chat',
+      })
+      return
+    }
 
     setIsLoading(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -1550,6 +1581,15 @@ export function WorkoutChat({
           .insert(routineSets)
 
         if (setsError) throw setsError
+      }
+
+      // Consume trial or complete tutorial step
+      if (!isProMember) {
+        console.log('[WorkoutChat] Saving AI routine. Consuming create_routine trial.')
+        consumeTrial('create_routine')
+      } else {
+        console.log('[WorkoutChat] Saving AI routine. Completing create_routine tutorial step.')
+        completeStep('create_routine')
       }
 
       // Navigate directly to the routine detail page
@@ -2324,11 +2364,11 @@ export function WorkoutChat({
   )
 }
 
-const createStyles = (
+function createStyles(
   colors: ReturnType<typeof useThemedColors>,
   insets: { bottom: number },
-) =>
-  StyleSheet.create({
+) {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -2873,3 +2913,4 @@ const createStyles = (
       paddingBottom: 8,
     },
   })
+}

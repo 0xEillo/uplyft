@@ -1,8 +1,8 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { EmptyFeedState } from '@/components/empty-feed-state'
 import { NotificationBadge } from '@/components/notification-badge'
 import { Paywall } from '@/components/paywall'
+import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -11,6 +11,7 @@ import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
+import { useTutorial } from '@/contexts/tutorial-context'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -24,17 +25,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  LayoutAnimation,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    LayoutAnimation,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -90,6 +91,7 @@ export default function FeedScreen() {
   const { updateWorkoutData } = useSuccessOverlay()
   const { showPrompt } = useRatingPrompt()
   const { registerScrollRef } = useScrollToTop()
+  const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlatList>(null)
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -503,18 +505,24 @@ export default function FeedScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : workouts.length === 0 ? (
-        <EmptyFeedState />
       ) : (
         <FlatList
           ref={flatListRef}
           data={workouts}
           renderItem={renderWorkoutItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.feed}
+          contentContainerStyle={[
+            styles.feed,
+            workouts.length === 0 && styles.emptyFeed,
+          ]}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          ListHeaderComponent={
+            !isTutorialDismissed && !isTutorialLoading && workouts.length === 0 ? (
+              <TutorialChecklist />
+            ) : null
+          }
           ListFooterComponent={renderFooter}
           refreshControl={
             <RefreshControl
@@ -585,5 +593,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 20,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    emptyFeed: {
+      flexGrow: 1,
     },
   })

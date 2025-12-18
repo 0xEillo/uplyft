@@ -3,6 +3,7 @@ import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTutorial } from '@/contexts/tutorial-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -13,27 +14,27 @@ import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    LayoutAnimation,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import Animated, {
-  Easing,
-  SharedValue,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    Easing,
+    SharedValue,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -315,6 +316,7 @@ export default function CreateRoutineScreen() {
   const colors = useThemedColors()
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { canUseTrial, consumeTrial, completeStep } = useTutorial()
 
   const isEditMode = !!routineId
 
@@ -405,8 +407,11 @@ export default function CreateRoutineScreen() {
       return
     }
 
-    // Check if user has Pro membership for routines
-    if (!isProMember && !isEditMode) {
+    // Check if user has Pro membership for routines or is using a tutorial trial
+    const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
+    console.log('[CreateRoutine] useEffect check. canAccess:', canAccessCreateRoutine, 'isProMember:', isProMember, 'canUseTrial:', canUseTrial('create_routine'))
+
+    if (!canAccessCreateRoutine && !isEditMode) {
       setShowPaywall(true)
       setIsLoading(false)
       return
@@ -681,6 +686,17 @@ export default function CreateRoutineScreen() {
             linkError,
           )
           // Don't throw - routine was created successfully, this is just a nice-to-have
+        }
+      }
+
+      // Consume trial or complete tutorial step for Saving a Routine
+      if (!isEditMode) {
+        if (!isProMember) {
+          console.log('[CreateRoutine] Saving new routine. Consuming create_routine trial.')
+          consumeTrial('create_routine')
+        } else {
+          console.log('[CreateRoutine] Saving new routine. Completing create_routine tutorial step.')
+          completeStep('create_routine')
         }
       }
 

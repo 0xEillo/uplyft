@@ -1,8 +1,8 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { LevelBadge } from '@/components/LevelBadge'
-
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
+import { TutorialProgressCard } from '@/components/Tutorial/TutorialProgressCard'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -15,13 +15,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -413,6 +413,11 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
+              {/* Tutorial Progress Card */}
+              <View style={styles.dashboardSection}>
+                <TutorialProgressCard />
+              </View>
+
               {/* Dashboard Section */}
               <View style={styles.dashboardSection}>
                 <View style={styles.dashboardCards}>
@@ -597,6 +602,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       color: colors.textSecondary,
       marginBottom: 8,
+    },
+    tutorialSection: {
+      paddingHorizontal: 20,
+      marginBottom: 16,
     },
     dashboardSection: {
       paddingHorizontal: 20,

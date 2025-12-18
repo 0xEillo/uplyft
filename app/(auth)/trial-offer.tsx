@@ -325,6 +325,20 @@ export default function TrialOfferScreen() {
         onboardingData.name || 'Guest',
       )
 
+      // Ensure commitment matches database check constraint
+      let validCommitment = onboardingData.commitment
+      if (Array.isArray(validCommitment)) {
+        const count = (validCommitment as string[]).filter(c => c !== 'not_sure').length
+        if (count === 0) validCommitment = '3_times'
+        else if (count <= 2) validCommitment = '2_times'
+        else if (count === 3) validCommitment = '3_times'
+        else if (count === 4) validCommitment = '4_times'
+        else validCommitment = '5_plus'
+      } else if (!['2_times', '3_times', '4_times', '5_plus'].includes(validCommitment as string)) {
+        // Fallback for unexpected string values (like 'monday')
+        validCommitment = '3_times'
+      }
+
       // Use upsert to ensure profile is created if it doesn't exist
       const profileUpdates: any = {
         id: userId,
@@ -335,7 +349,7 @@ export default function TrialOfferScreen() {
         weight_kg: onboardingData.weight_kg,
         age: onboardingData.age,
         goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
-        commitment: onboardingData.commitment,
+        commitment: validCommitment,
         training_years: onboardingData.training_years,
         bio: onboardingData.bio,
         coach: onboardingData.coach,

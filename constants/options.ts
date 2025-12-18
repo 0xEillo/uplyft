@@ -29,15 +29,12 @@ export const COMMITMENTS: {
   value: string
   label: string
 }[] = [
-  { value: 'sunday', label: 'Sunday' },
-  { value: 'monday', label: 'Monday' },
-  { value: 'tuesday', label: 'Tuesday' },
-  { value: 'wednesday', label: 'Wednesday' },
-  { value: 'thursday', label: 'Thursday' },
-  { value: 'friday', label: 'Friday' },
-  { value: 'saturday', label: 'Saturday' },
-  { value: 'not_sure', label: 'Not sure' },
+  { value: '2_times', label: '2 days / week' },
+  { value: '3_times', label: '3 days / week' },
+  { value: '4_times', label: '4 days / week' },
+  { value: '5_plus', label: '5+ days / week' },
 ]
+
 
 export const TRAINING_YEARS: {
   value: TrainingYears

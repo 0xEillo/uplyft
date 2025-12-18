@@ -22,7 +22,7 @@ export interface Profile {
   weight_kg: number | null
   age: number | null
   goals: Goal[] | null
-  commitment: string[] | null
+  commitment: string | null
   training_years: TrainingYears | null
   expo_push_token: string | null
   has_requested_push_notifications: boolean

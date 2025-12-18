@@ -23,6 +23,7 @@ import { PostsProvider } from '@/contexts/posts-context'
 import { ProfileProvider } from '@/contexts/profile-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
+import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
@@ -238,9 +239,11 @@ export default function RootLayout() {
                   <SubscriptionProvider>
                     <NotificationProvider>
                       <AnalyticsProvider>
-                        <PostsProvider>
-                          <RootLayoutNav />
-                        </PostsProvider>
+                        <TutorialProvider>
+                          <PostsProvider>
+                            <RootLayoutNav />
+                          </PostsProvider>
+                        </TutorialProvider>
                       </AnalyticsProvider>
                     </NotificationProvider>
                   </SubscriptionProvider>

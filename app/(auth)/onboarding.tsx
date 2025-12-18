@@ -2,10 +2,10 @@ import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
-    COMMITMENTS,
-    GENDERS,
-    GOALS,
-    TRAINING_YEARS,
+  COMMITMENTS,
+  GENDERS,
+  GOALS,
+  TRAINING_YEARS
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -17,15 +17,15 @@ import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -40,7 +40,7 @@ type OnboardingData = {
   birth_month: string
   birth_year: string
   goal: Goal[]
-  commitment: string[]
+  commitment: string | null
   training_years: TrainingYears | null
   bio: string
   coach: string
@@ -70,7 +70,7 @@ export default function OnboardingScreen() {
     birth_month: '1',
     birth_year: '2000',
     goal: [],
-    commitment: [],
+    commitment: null,
     training_years: null,
     bio: '',
     coach: DEFAULT_COACH_ID,
@@ -267,7 +267,7 @@ export default function OnboardingScreen() {
       case 5:
         return data.gender !== null
       case 6:
-        return data.commitment.length > 0
+        return data.commitment !== null
       case 7:
         return data.training_years !== null
       case 8:
@@ -477,28 +477,12 @@ export default function OnboardingScreen() {
                     key={commitment.value}
                     style={[
                       styles.card,
-                      data.commitment.includes(commitment.value) &&
-                        styles.cardSelected,
+                      data.commitment === commitment.value && styles.cardSelected,
                     ]}
                     onPress={() => {
-                      let newCommitment: string[]
-                      if (commitment.value === 'not_sure') {
-                        // If "not sure" is selected, clear others
-                        newCommitment = ['not_sure']
-                      } else {
-                        // If a day is selected, remove "not_sure" if present
-                        const withoutNotSure = data.commitment.filter(
-                          (c) => c !== 'not_sure',
-                        )
-                        if (withoutNotSure.includes(commitment.value)) {
-                          newCommitment = withoutNotSure.filter(
-                            (c) => c !== commitment.value,
-                          )
-                        } else {
-                          newCommitment = [...withoutNotSure, commitment.value]
-                        }
-                      }
-                      setData({ ...data, commitment: newCommitment })
+                      setData({ ...data, commitment: commitment.value })
+                      // Frequency selection can auto-swipe like gender
+                      setTimeout(() => setStep(step + 1), 300)
                     }}
                     hapticStyle="light"
                   >
@@ -507,11 +491,11 @@ export default function OnboardingScreen() {
                       <View
                         style={[
                           styles.radioButton,
-                          data.commitment.includes(commitment.value) &&
+                          data.commitment === commitment.value &&
                             styles.radioButtonSelected,
                         ]}
                       >
-                        {data.commitment.includes(commitment.value) && (
+                        {data.commitment === commitment.value && (
                           <View style={styles.radioButtonInner} />
                         )}
                       </View>

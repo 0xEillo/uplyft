@@ -28,6 +28,7 @@ import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
@@ -73,6 +74,7 @@ export default function BodyLogDetailScreen() {
   const { formatWeight } = useUnit()
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { completeStep } = useTutorial()
   const router = useRouter()
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()
@@ -422,6 +424,10 @@ export default function BodyLogDetailScreen() {
 
         // Update URL with real entry ID
         router.setParams({ entryId: actualEntryId })
+
+        // Complete tutorial step for body log
+        console.log('[BodyLog] Successful entry save. Completing body_log tutorial step.')
+        completeStep('body_log')
 
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
         return
