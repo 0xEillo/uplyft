@@ -3,7 +3,6 @@
  * Maps exercise groups (Push/Pull/Lower) to body highlighter anatomical slugs
  */
 
-import type { ExerciseGroup } from './exercise-standards-config'
 
 // Body part slugs supported by react-native-body-highlighter
 export type BodyPartSlug =
@@ -31,29 +30,6 @@ export type BodyPartSlug =
   | 'hamstring'
   | 'gluteal'
 
-// Maps from ExerciseGroup to body highlighter slugs
-export const EXERCISE_GROUP_TO_BODY_PARTS: Record<ExerciseGroup, BodyPartSlug[]> = {
-  Push: ['chest', 'triceps', 'deltoids'],
-  Pull: ['biceps', 'upper-back', 'forearm', 'trapezius'],
-  Lower: ['quadriceps', 'hamstring', 'gluteal', 'calves', 'adductors'],
-  Other: [],
-}
-
-// Reverse mapping: body part slug → ExerciseGroup
-export const BODY_PART_TO_EXERCISE_GROUP: Partial<Record<BodyPartSlug, ExerciseGroup>> = {
-  chest: 'Push',
-  triceps: 'Push',
-  deltoids: 'Push',
-  biceps: 'Pull',
-  'upper-back': 'Pull',
-  forearm: 'Pull',
-  trapezius: 'Pull',
-  quadriceps: 'Lower',
-  hamstring: 'Lower',
-  gluteal: 'Lower',
-  calves: 'Lower',
-  adductors: 'Lower',
-}
 
 // Human-readable names for body parts
 export const BODY_PART_DISPLAY_NAMES: Partial<Record<BodyPartSlug, string>> = {
@@ -74,23 +50,24 @@ export const BODY_PART_DISPLAY_NAMES: Partial<Record<BodyPartSlug, string>> = {
   obliques: 'Obliques',
 }
 
-// Get all body parts that should be highlighted (have data)
-export function getHighlightedBodyParts(
-  groupsWithData: Set<ExerciseGroup>
-): BodyPartSlug[] {
-  const parts: BodyPartSlug[] = []
-  
-  for (const group of groupsWithData) {
-    const bodyParts = EXERCISE_GROUP_TO_BODY_PARTS[group]
-    if (bodyParts) {
-      parts.push(...bodyParts)
-    }
-  }
-  
-  return parts
+/**
+ * Maps a body part slug to the corresponding muscle group name in the database.
+ * This is used for precise filtering of exercises.
+ */
+export const BODY_PART_TO_DATABASE_MUSCLE: Record<string, string> = {
+  deltoids: 'Shoulders',
+  chest: 'Chest',
+  triceps: 'Triceps',
+  biceps: 'Biceps',
+  'upper-back': 'Back',
+  'lower-back': 'Lower Back',
+  forearm: 'Forearms',
+  trapezius: 'Traps',
+  quadriceps: 'Quads',
+  hamstring: 'Hamstrings',
+  gluteal: 'Glutes',
+  calves: 'Calves',
+  abs: 'Abs',
+  obliques: 'Abs',
 }
 
-// Get the exercise group for a body part slug
-export function getExerciseGroupForBodyPart(slug: BodyPartSlug): ExerciseGroup | null {
-  return BODY_PART_TO_EXERCISE_GROUP[slug] || null
-}

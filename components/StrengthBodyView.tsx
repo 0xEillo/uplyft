@@ -6,14 +6,13 @@ import {
   getLevelColor,
   getLevelIntensity,
   useStrengthData,
-  type GroupLevelData,
+  type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
   BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_EXERCISE_GROUP,
-  EXERCISE_GROUP_TO_BODY_PARTS,
-  type BodyPartSlug,
+  BODY_PART_TO_DATABASE_MUSCLE,
+  type BodyPartSlug
 } from '@/lib/body-mapping'
 import { Ionicons } from '@expo/vector-icons'
 import { useCallback, useMemo, useState } from 'react'
@@ -124,14 +123,16 @@ export function StrengthBodyView() {
     onRefresh,
     overallLevel,
     groupLevels,
+    muscleGroups,
   } = useStrengthData()
 
   const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
   const [showSupportedSheet, setShowSupportedSheet] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<{
-    data: GroupLevelData
+    data: MuscleGroupData
     displayName: string
+    bodyPartSlug: BodyPartSlug
   } | null>(null)
 
   // Generate body data for highlighting
@@ -142,20 +143,23 @@ export function StrengthBodyView() {
       side?: 'left' | 'right'
     }> = []
 
-    groupLevels.forEach((groupData, group) => {
-      const bodyParts = EXERCISE_GROUP_TO_BODY_PARTS[group]
-      if (!bodyParts) return
+    // Map database muscle names to their data for easy lookup
+    const muscleMap = new Map<string, MuscleGroupData>()
+    muscleGroups.forEach((mg) => muscleMap.set(mg.name, mg))
 
-      const intensity = getLevelIntensity(groupData.level)
-
-      bodyParts.forEach((slug) => {
-        // Add both sides for symmetric muscles
-        data.push({ slug, intensity })
-      })
+    // Iterate over all supported body part slugs
+    Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(([slug, dbMuscleName]) => {
+      const mgData = muscleMap.get(dbMuscleName)
+      if (mgData) {
+        data.push({
+          slug: slug as BodyPartSlug,
+          intensity: getLevelIntensity(mgData.level),
+        })
+      }
     })
 
     return data
-  }, [groupLevels])
+  }, [muscleGroups])
 
   // Handle body part press
   const handleBodyPartPress = useCallback(
@@ -163,26 +167,30 @@ export function StrengthBodyView() {
       if (!bodyPart.slug) return
       
       const slug = bodyPart.slug as BodyPartSlug
-      const exerciseGroup = BODY_PART_TO_EXERCISE_GROUP[slug]
+      const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
 
-      if (!exerciseGroup) {
-        // No data for this body part
+      if (!dbMuscleName) {
         return
       }
 
-      const groupData = groupLevels.get(exerciseGroup)
-      if (!groupData) {
-        return
-      }
-
+      const mgData = muscleGroups.find((mg) => mg.name === dbMuscleName)
+      
       const displayName = BODY_PART_DISPLAY_NAMES[slug] || slug
 
+      // If we have data, show it. If not, show an empty state for that specific muscle
       setSelectedGroup({
-        data: groupData,
+        data: mgData || {
+          name: dbMuscleName,
+          level: 'Beginner',
+          progress: 0,
+          averageScore: 0,
+          exercises: [],
+        },
         displayName,
+        bodyPartSlug: slug,
       })
     },
-    [groupLevels],
+    [muscleGroups],
   )
 
   const styles = createStyles(colors)
@@ -392,6 +400,7 @@ export function StrengthBodyView() {
         onClose={() => setSelectedGroup(null)}
         groupData={selectedGroup?.data || null}
         groupDisplayName={selectedGroup?.displayName || ''}
+        bodyPartSlug={selectedGroup?.bodyPartSlug || null}
         profile={profile}
       />
     </View>
