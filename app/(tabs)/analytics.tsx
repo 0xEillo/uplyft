@@ -1,6 +1,6 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { StatsView } from '@/components/StatsView'
-import { StrengthStandardsView } from '@/components/StrengthStandardsView'
+import { StrengthBodyView } from '@/components/StrengthBodyView'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -9,20 +9,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-type ViewMode = 'standards' | 'stats'
+type ViewMode = 'body' | 'stats'
 
 export default function AnalyticsScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
-  const [viewMode, setViewMode] = useState<ViewMode>('standards')
+  const [viewMode, setViewMode] = useState<ViewMode>('body')
 
   useFocusEffect(
     useCallback(() => {
@@ -31,6 +30,14 @@ export default function AnalyticsScreen() {
       })
     }, [trackEvent]),
   )
+
+  const toggleViewMode = useCallback(() => {
+    setViewMode((current) => (current === 'body' ? 'stats' : 'body'))
+  }, [])
+
+  const getViewIcon = (): keyof typeof Ionicons.glyphMap => {
+    return viewMode === 'body' ? 'stats-chart' : 'body'
+  }
 
   const styles = createStyles(colors)
 
@@ -44,11 +51,11 @@ export default function AnalyticsScreen() {
         }
         rightContent={
           <TouchableOpacity
-            onPress={() => setViewMode(viewMode === 'standards' ? 'stats' : 'standards')}
+            onPress={toggleViewMode}
             style={{ padding: 4 }}
           >
             <Ionicons
-              name={viewMode === 'standards' ? 'stats-chart' : 'barbell'}
+              name={getViewIcon()}
               size={24}
               color={colors.text}
             />
@@ -59,7 +66,7 @@ export default function AnalyticsScreen() {
       {viewMode === 'stats' ? (
         user && <StatsView userId={user.id} />
       ) : (
-        <StrengthStandardsView />
+        <StrengthBodyView />
       )}
     </SafeAreaView>
   )
