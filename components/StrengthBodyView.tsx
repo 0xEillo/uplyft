@@ -218,63 +218,6 @@ export function StrengthBodyView() {
             />
           }
         >
-          {/* Overall Level Card */}
-          {overallLevel && (
-            <TouchableOpacity
-              style={styles.levelCard}
-              activeOpacity={0.9}
-              onPress={() => setShowLevelsSheet(true)}
-            >
-              <View style={styles.levelCardContent}>
-                <View style={styles.levelCardLeft}>
-                  <Text style={styles.levelCardLabel}>Lifter Level</Text>
-                  <Text style={styles.levelCardValue}>
-                    {overallLevel.balancedLevel}
-                  </Text>
-                  {overallLevel.balancedNextLevel ? (
-                    <Text style={styles.levelCardProgress}>
-                      {Math.round(overallLevel.balancedProgress)}% to{' '}
-                      {overallLevel.balancedNextLevel}
-                    </Text>
-                  ) : (
-                    <Text style={styles.levelCardProgress}>Max Level Reached</Text>
-                  )}
-                </View>
-                <LevelBadge
-                  level={overallLevel.balancedLevel}
-                  size="large"
-                  showTooltipOnPress={false}
-                />
-              </View>
-
-              {/* Progress Bar */}
-              {overallLevel.balancedNextLevel && (
-                <View style={styles.progressBarContainer}>
-                  <View style={styles.progressBarBackground}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${overallLevel.balancedProgress}%`,
-                          backgroundColor: getLevelColor(overallLevel.balancedLevel),
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* Weak Point Warning */}
-              {overallLevel.weakestGroup && (
-                <View style={styles.weakPointContainer}>
-                  <Ionicons name="warning" size={14} color={colors.warning} />
-                  <Text style={styles.weakPointText}>
-                    Focus on {overallLevel.weakestGroup}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
 
           {/* Body Section */}
           <View style={styles.bodySection}>
@@ -333,6 +276,64 @@ export function StrengthBodyView() {
                 <View style={[styles.dot, bodySide === 'back' && styles.dotActive]} />
               </View>
             </View>
+
+            {/* Overall Level Card */}
+            {overallLevel && (
+              <TouchableOpacity
+                style={styles.levelCard}
+                activeOpacity={0.9}
+                onPress={() => setShowLevelsSheet(true)}
+              >
+                <View style={styles.levelCardContent}>
+                  <View style={styles.levelCardLeft}>
+                    <Text style={styles.levelCardLabel}>Lifter Level</Text>
+                    <Text style={styles.levelCardValue}>
+                      {overallLevel.balancedLevel}
+                    </Text>
+                    {overallLevel.balancedNextLevel ? (
+                      <Text style={styles.levelCardProgress}>
+                        {Math.round(overallLevel.balancedProgress)}% to{' '}
+                        {overallLevel.balancedNextLevel}
+                      </Text>
+                    ) : (
+                      <Text style={styles.levelCardProgress}>Max Level Reached</Text>
+                    )}
+                  </View>
+                  <LevelBadge
+                    level={overallLevel.balancedLevel}
+                    size="large"
+                    showTooltipOnPress={false}
+                  />
+                </View>
+
+                {/* Progress Bar */}
+                {overallLevel.balancedNextLevel && (
+                  <View style={styles.progressBarContainer}>
+                    <View style={styles.progressBarBackground}>
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${overallLevel.balancedProgress}%`,
+                            backgroundColor: getLevelColor(overallLevel.balancedLevel),
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                {/* Weak Point Warning */}
+                {overallLevel.weakestGroup && (
+                  <View style={styles.weakPointContainer}>
+                    <Ionicons name="warning" size={14} color={colors.warning} />
+                    <Text style={styles.weakPointText}>
+                      Focus on {overallLevel.weakestGroup}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Legend */}
             {bodyData.length > 0 && (
@@ -422,8 +423,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
 
     // Level Card
     levelCard: {
-      marginHorizontal: 20,
-      marginTop: 20,
+      marginTop: 24,
       backgroundColor: colors.feedCardBackground,
       borderRadius: 16,
       padding: 20,
