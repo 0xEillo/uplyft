@@ -1,13 +1,14 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-  formatNotificationText,
-  getNotificationIcon,
-  getNotificationIconColor,
+    formatNotificationText,
+    getNotificationIcon,
+    getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -15,15 +16,15 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, usePathname } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -413,20 +414,13 @@ export default function NotificationsScreen() {
               })}
             </View>
           ) : (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons
-                  name="notifications-outline"
-                  size={80}
-                  color={colors.border}
-                />
-              </View>
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
-              <Text style={styles.emptyMessage}>
-                You&apos;ll be notified when someone likes or comments on your
-                workouts
-              </Text>
-            </View>
+            <EmptyState
+              icon="notifications-outline"
+              title="No notifications yet"
+              description="When people follow you or interact with your workouts, you'll see them here."
+              buttonText="Discover People"
+              onPress={() => router.push('/search')}
+            />
           )}
         </ScrollView>
       </View>
@@ -592,22 +586,23 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: 40,
+      paddingBottom: 100,
     },
-    emptyIconContainer: {
-      marginBottom: 24,
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
-    emptyTitle: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    emptyMessage: {
+    emptyButtonText: {
+      color: '#FFFFFF',
       fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 24,
+      fontWeight: '700',
     },
   })
 }

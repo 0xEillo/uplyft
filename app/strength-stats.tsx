@@ -1,7 +1,8 @@
+import { EmptyState } from '@/components/EmptyState'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
 import { SlideInView } from '@/components/slide-in-view'
-import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
+import { StrengthInfoSheet } from '@/components/StrengthInfoSheet'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -59,7 +60,7 @@ export default function StrengthStatsScreen() {
     new Set(),
   )
   const [paywallVisible, setPaywallVisible] = useState(false)
-  const [showSupportedSheet, setShowSupportedSheet] = useState(false)
+  const [showInfoSheet, setShowInfoSheet] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
@@ -194,11 +195,11 @@ export default function StrengthStatsScreen() {
           {/* Top Info Bar */}
           <View style={styles.topInfoBar}>
             <TouchableOpacity 
-              onPress={() => setShowSupportedSheet(true)}
+              onPress={() => setShowInfoSheet(true)}
               style={styles.supportedLink}
             >
               <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
-              <Text style={styles.supportedLinkText}>Supported Exercises</Text>
+              <Text style={styles.supportedLinkText}>About Strength Levels</Text>
             </TouchableOpacity>
           </View>
 
@@ -253,24 +254,13 @@ export default function StrengthStatsScreen() {
           >
             {/* Content based on active tab */}
             {exerciseData.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="barbell-outline"
-                size={64}
-                color={colors.textPlaceholder}
+              <EmptyState
+                icon="stats-chart-outline"
+                title="No strength data yet"
+                description="Complete major compound lifts to see your strength standards and level."
+                buttonText="Log Your First Workout"
+                onPress={() => router.push('/(tabs)/create-post')}
               />
-              <Text style={styles.emptyTitle}>No compound lifts yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Start tracking exercises like bench press, squat, and deadlift
-                to see your strength standards
-              </Text>
-              <TouchableOpacity 
-                style={styles.emptyButton}
-                onPress={() => setShowSupportedSheet(true)}
-              >
-                <Text style={styles.emptyButtonText}>View all supported exercises</Text>
-              </TouchableOpacity>
-            </View>
           ) : activeTab === 'standards' ? (
             /* Standards Tab */
             exerciseData.map((exercise) => {
@@ -538,9 +528,9 @@ export default function StrengthStatsScreen() {
         message="See which strength standard you've achieved. Upgrade to view your ranking and track your progress towards Elite and World Class levels."
       />
 
-      <SupportedExercisesSheet
-        isVisible={showSupportedSheet}
-        onClose={() => setShowSupportedSheet(false)}
+      <StrengthInfoSheet
+        isVisible={showInfoSheet}
+        onClose={() => setShowInfoSheet(false)}
       />
     </SlideInView>
   )
@@ -691,34 +681,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 18,
     },
     emptyState: {
+      paddingVertical: 100,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 60,
-      paddingHorizontal: 32,
-    },
-    emptyTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.text,
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    emptySubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 20,
-      marginBottom: 20,
     },
     emptyButton: {
       backgroundColor: colors.primary,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
       borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
     emptyButtonText: {
       color: '#FFFFFF',
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: '700',
     },
     exerciseCard: {

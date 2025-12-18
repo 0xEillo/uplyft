@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState'
 import { UserListItem } from '@/components/UserListItem'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -7,14 +8,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -244,11 +245,13 @@ export default function FollowingScreen() {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
-                {searchQuery ? 'No users found' : 'Not following anyone yet'}
-              </Text>
-            </View>
+            <EmptyState
+              icon="person-add-outline"
+              title="Not following anyone"
+              description="Follow other lifters to see their workouts in your feed and stay motivated."
+              buttonText="Discover People"
+              onPress={() => router.push('/search')}
+            />
           }
         />
       )}
@@ -319,11 +322,26 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     emptyState: {
+      flex: 1,
       padding: 40,
       alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 60,
     },
-    emptyText: {
-      color: colors.textSecondary,
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    emptyButtonText: {
+      color: '#FFFFFF',
       fontSize: 16,
+      fontWeight: '700',
     },
   })

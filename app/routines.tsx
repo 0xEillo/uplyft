@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { EmptyState } from '@/components/EmptyState'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -7,12 +8,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -171,9 +172,13 @@ export default function RoutinesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No routines found</Text>
-            </View>
+            <EmptyState
+              icon="albums-outline"
+              title="No routines yet"
+              description="Save your favorite workouts as routines to reuse them later and save time."
+              buttonText="Create Your First Routine"
+              onPress={() => router.push('/create-routine')}
+            />
           }
         />
       )}
@@ -232,11 +237,26 @@ const createStyles = (colors: any) =>
       fontWeight: '500',
     },
     emptyState: {
+      flex: 1,
       padding: 40,
       alignItems: 'center',
+      justifyContent: 'center',
+      height: 400,
     },
-    emptyText: {
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    emptyButtonText: {
+      color: '#FFFFFF',
       fontSize: 16,
-      color: colors.textSecondary,
+      fontWeight: '700',
     },
   })

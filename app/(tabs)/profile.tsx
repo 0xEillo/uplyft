@@ -1,5 +1,6 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { TutorialProgressCard } from '@/components/Tutorial/TutorialProgressCard'
@@ -271,17 +272,13 @@ export default function ProfileScreen() {
   const renderEmptyState = useCallback(() => {
     if (isLoading) return null
     return (
-      <View style={styles.emptyState}>
-        <Ionicons
-          name="barbell-outline"
-          size={64}
-          color={colors.textPlaceholder}
-        />
-        <Text style={styles.emptyText}>No workouts yet</Text>
-        <Text style={styles.emptySubtext}>
-          Start logging to see your progress!
-        </Text>
-      </View>
+      <EmptyState
+        icon="fitness-outline"
+        title="No workouts yet"
+        description="Start logging your training to track progress and see your stats here."
+        buttonText="Log Your First Workout"
+        onPress={() => router.push('/(tabs)/create-post')}
+      />
     )
   }, [isLoading, colors, styles])
 
@@ -680,20 +677,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     emptyState: {
-      paddingTop: 60,
+      paddingVertical: 60,
       alignItems: 'center',
-      paddingHorizontal: 40,
+      justifyContent: 'center',
     },
-    emptyText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.text,
-      marginTop: 16,
-      marginBottom: 8,
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
-    emptySubtext: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      textAlign: 'center',
+    emptyButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
     },
   })

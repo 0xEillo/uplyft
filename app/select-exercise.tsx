@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
@@ -7,8 +8,8 @@ import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  fuzzySearchExercises,
-  hasExactOrFuzzyMatch,
+    fuzzySearchExercises,
+    hasExactOrFuzzyMatch,
 } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -17,14 +18,14 @@ import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -318,16 +319,11 @@ export default function SelectExerciseScreen() {
     if (isLoading) return null
 
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons
-          name="barbell-outline"
-          size={48}
-          color={colors.textTertiary}
-        />
-        <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-          {emptyStateText}
-        </Text>
-      </View>
+      <EmptyState
+        icon="barbell-outline"
+        title="No exercises found"
+        description={emptyStateText}
+      />
     )
   }, [isLoading, colors, emptyStateText])
 

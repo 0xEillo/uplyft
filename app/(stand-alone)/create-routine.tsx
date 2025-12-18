@@ -409,7 +409,6 @@ export default function CreateRoutineScreen() {
 
     // Check if user has Pro membership for routines or is using a tutorial trial
     const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
-    console.log('[CreateRoutine] useEffect check. canAccess:', canAccessCreateRoutine, 'isProMember:', isProMember, 'canUseTrial:', canUseTrial('create_routine'))
 
     if (!canAccessCreateRoutine && !isEditMode) {
       setShowPaywall(true)
@@ -1238,8 +1237,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     headerTitle: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 22,
+      fontWeight: '700',
       color: colors.text,
     },
     cancelText: {

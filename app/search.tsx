@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -10,18 +11,18 @@ import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Keyboard,
-  Platform,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Platform,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -355,27 +356,24 @@ export default function SearchScreen() {
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : !trimmedQuery ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="people-outline"
-                  size={48}
-                  color={colors.textTertiary}
-                />
-                <Text style={styles.emptyText}>
-                  Start typing to search for users
-                </Text>
-              </View>
+              <EmptyState
+                icon="search-outline"
+                title="Find athletes"
+                description="Search for friends or other lifters to follow and stay updated on their progress."
+              />
             ) : users.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="search-outline"
-                  size={48}
-                  color={colors.textTertiary}
-                />
-                <Text style={styles.emptyText}>
-                  No users found for &quot;{trimmedQuery}&quot;
-                </Text>
-              </View>
+              <EmptyState
+                icon="person-remove-outline"
+                title="No users found"
+                description={`We couldn't find any athletes matching "${trimmedQuery}".`}
+                buttonText="Invite Friends"
+                onPress={() => {
+                  Share.share({
+                    message: 'Join me on Uplyft! Track your workouts and progress with me.',
+                    url: 'https://uplyft.app',
+                  })
+                }}
+              />
             ) : (
               <ScrollView
                 style={styles.userList}

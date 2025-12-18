@@ -17,8 +17,8 @@ export const TutorialProgressCard = memo(() => {
   const isDark = colors.background === '#141414'
   const { tutorialSteps, completedSteps, isTutorialComplete, isTutorialDismissed } = useTutorial()
 
-  // Don't show if dismissed
-  if (isTutorialDismissed) return null
+  // Don't show if dismissed or complete
+  if (isTutorialDismissed || isTutorialComplete) return null
 
   const completedCount = completedSteps.size
   const totalSteps = tutorialSteps.length

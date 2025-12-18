@@ -729,6 +729,17 @@ export const database = {
       return data as Exercise
     },
 
+    async findByNames(names: string[]) {
+      if (!names || names.length === 0) return []
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .in('name', names)
+
+      if (error) throw error
+      return data as Exercise[]
+    },
+
     async getAll() {
       const { data, error } = await supabase
         .from('exercises')
@@ -2056,7 +2067,7 @@ export const database = {
           `
           workout_exercises!inner (
             exercise_id,
-            exercise:exercises!inner (id, name, muscle_group),
+            exercise:exercises!inner (id, name, muscle_group, gif_url),
             sets!inner (reps, weight)
           )
         `,
@@ -2069,7 +2080,7 @@ export const database = {
       // Calculate max 1RM for each exercise
       const exerciseMax1RMs = new Map<
         string,
-        { name: string; muscleGroup: string | null; max1RM: number }
+        { name: string; muscleGroup: string | null; max1RM: number; gifUrl: string | null }
       >()
 
       ;(data as any)?.forEach((session: any) => {
@@ -2087,6 +2098,7 @@ export const database = {
                   name: we.exercise.name,
                   muscleGroup: we.exercise.muscle_group,
                   max1RM: Math.round(estimated1RM),
+                  gifUrl: we.exercise.gif_url,
                 })
               }
             }
@@ -2100,6 +2112,7 @@ export const database = {
           exerciseName: data.name,
           muscleGroup: data.muscleGroup,
           max1RM: data.max1RM,
+          gifUrl: data.gifUrl,
         }),
       )
     },
@@ -2198,6 +2211,7 @@ export const database = {
             exerciseName: lift.exerciseName,
             muscleGroup: lift.muscleGroup,
             max1RM: lift.max1RM,
+            gifUrl: lift.gifUrl,
             records,
           }
         }),

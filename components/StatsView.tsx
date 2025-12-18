@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState'
 import { Paywall } from '@/components/paywall'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -5,21 +6,22 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Modal,
-  PanResponder,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Modal,
+    PanResponder,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
@@ -55,6 +57,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const { isProMember } = useSubscription()
+  const router = useRouter()
 
   // Unified time range for all stats (default to M for free users, 6M for pro)
   const [timeRange, setTimeRange] = useState<TimeRange>(() =>
@@ -676,16 +679,13 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : strengthChartData.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="bar-chart-outline"
-                size={48}
-                color={colors.textPlaceholder}
-              />
-              <Text style={styles.emptyText}>
-                Complete a workout to see your strength progress
-              </Text>
-            </View>
+            <EmptyState
+              icon="stats-chart-outline"
+              title="No strength data"
+              description="Complete a workout to see your strength progress over time."
+              buttonText="Log Your First Workout"
+              onPress={() => router.push('/(tabs)/create-post')}
+            />
           ) : (
             <>
               <Text style={styles.yAxisLabel}>{`(${weightUnit})`}</Text>
@@ -781,16 +781,13 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : distributionData.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="analytics-outline"
-                size={48}
-                color={colors.textPlaceholder}
-              />
-              <Text style={styles.emptyText}>
-                Complete workouts to see your muscle balance
-              </Text>
-            </View>
+            <EmptyState
+              icon="pie-chart-outline"
+              title="No muscle data"
+              description="Complete workouts to see your training balance across muscle groups."
+              buttonText="Log Your First Workout"
+              onPress={() => router.push('/(tabs)/create-post')}
+            />
           ) : (
             <View style={styles.barsContainer}>
               {distributionData.map((item, index) => {
@@ -885,16 +882,13 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : volumeChartData.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="trending-up-outline"
-                size={48}
-                color={colors.textPlaceholder}
-              />
-              <Text style={styles.emptyText}>
-                Complete a workout to see your volume over time
-              </Text>
-            </View>
+            <EmptyState
+              icon="trending-up-outline"
+              title="No volume data"
+              description="Track your total weight lifted across all sessions."
+              buttonText="Log Your First Workout"
+              onPress={() => router.push('/(tabs)/create-post')}
+            />
           ) : (
             <>
               <Text style={styles.yAxisLabel}>{`(${weightUnit})`}</Text>
@@ -1291,18 +1285,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 200,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    emptyState: {
-      height: 200,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 32,
-    },
-    emptyText: {
-      fontSize: 14,
-      color: colors.textTertiary,
-      textAlign: 'center',
-      marginTop: 12,
     },
     yAxisLabel: {
       position: 'absolute',

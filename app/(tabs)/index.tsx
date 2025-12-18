@@ -1,5 +1,6 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { EmptyState } from '@/components/EmptyState'
 import { NotificationBadge } from '@/components/notification-badge'
 import { Paywall } from '@/components/paywall'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
@@ -492,6 +493,17 @@ export default function FeedScreen() {
               <TutorialChecklist />
             ) : null
           }
+          ListEmptyComponent={
+            (isTutorialDismissed || isTutorialLoading) && !isLoading ? (
+              <EmptyState
+                icon="barbell-outline"
+                title="Your feed is empty"
+                description="Follow friends or log your first workout to see activity here."
+                buttonText="Log Your First Workout"
+                onPress={() => router.push('/(tabs)/create-post')}
+              />
+            ) : null
+          }
           ListFooterComponent={renderFooter}
           refreshControl={
             <RefreshControl
@@ -565,5 +577,27 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     emptyFeed: {
       flexGrow: 1,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 100,
+    },
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    emptyButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
     },
   })

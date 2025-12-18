@@ -1,4 +1,5 @@
 import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
+import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -573,13 +574,13 @@ export default function BodyLogScreen() {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : entries.length === 0 ? (
-          <View style={dynamicStyles.emptyStateContainer}>
-            <View style={dynamicStyles.emptyStateContent}>
-              <Text style={dynamicStyles.emptyStateDescription}>
-                Track your fitness journey with weight and progress photos.
-              </Text>
-            </View>
-          </View>
+          <EmptyState
+            icon="images-outline"
+            title="Your body log is empty"
+            description="Track your physical transformation with photos and measurements."
+            buttonText="Add Your First Entry"
+            onPress={handleAddNewEntry}
+          />
         ) : (
           <FlatList
             data={sections}
@@ -733,22 +734,25 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     emptyStateContainer: {
       flex: 1,
-      paddingTop: 20,
-      alignItems: 'flex-start',
-    },
-    emptyStateContent: {
       alignItems: 'center',
-      maxWidth: 320,
-      alignSelf: 'center',
-      marginTop: 40,
+      justifyContent: 'center',
+      paddingBottom: 100,
     },
-    emptyStateDescription: {
-      fontSize: 15,
-      fontWeight: '400',
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 22,
-      letterSpacing: -0.2,
+    emptyButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    emptyButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
     },
     gridContent: {
       paddingHorizontal: GRID_PADDING,

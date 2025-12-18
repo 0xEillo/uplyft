@@ -21,6 +21,7 @@ export interface ExerciseData {
   exerciseName: string
   muscleGroup: string | null
   max1RM: number
+  gifUrl?: string | null
   records: ExerciseRecord[]
 }
 

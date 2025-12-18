@@ -1,23 +1,24 @@
+import { EmptyState } from '@/components/EmptyState'
+import { Paywall } from '@/components/paywall'
+import { ProBadge } from '@/components/pro-badge'
+import { SlideInView } from '@/components/slide-in-view'
+import { VolumeProgressChart } from '@/components/volume-progress-chart'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
-import { VolumeProgressChart } from '@/components/volume-progress-chart'
-import { Paywall } from '@/components/paywall'
-import { ProBadge } from '@/components/pro-badge'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { SlideInView } from '@/components/slide-in-view'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type TimeRange = '30D' | '3M' | '6M' | 'ALL'
 
@@ -220,7 +221,11 @@ export default function VolumeStatsScreen() {
                 <Text style={styles.proOnlySubtext}>Unlock detailed muscle group breakdown</Text>
               </TouchableOpacity>
             ) : weeklyData.length === 0 ? (
-              <Text style={styles.emptyText}>No workout data for this period</Text>
+              <EmptyState
+                icon="trending-up-outline"
+                title="No volume data"
+                description="Complete workouts in this period to see your volume breakdown."
+              />
             ) : (
               <View style={styles.volumeChartContainer}>
                 <ScrollView

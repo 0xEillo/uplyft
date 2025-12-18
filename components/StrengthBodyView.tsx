@@ -1,7 +1,7 @@
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { MuscleGroupDetailSheet } from '@/components/MuscleGroupDetailSheet'
-import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
+import { StrengthInfoSheet } from '@/components/StrengthInfoSheet'
 import {
   getLevelColor,
   getLevelIntensity,
@@ -44,74 +44,7 @@ const BODY_COLORS = [
   '#EF4444', // World Class (Intensity 6)
 ]
 
-const EmptyState = ({ showSupportedSheet, colors }: { showSupportedSheet: () => void, colors: any }) => (
-  <View style={styles_empty.emptyState}>
-    <View style={[styles_empty.emptyIconContainer, { backgroundColor: colors.backgroundLight }]}>
-      <Ionicons
-        name="barbell-outline"
-        size={48}
-        color={colors.textPlaceholder}
-      />
-    </View>
-    <Text style={[styles_empty.emptyTitle, { color: colors.text }]}>No strength data yet</Text>
-    <Text style={[styles_empty.emptySubtitle, { color: colors.textSecondary }]}>
-      Start tracking compound lifts like bench press, squat, and
-      deadlift to see your strength visualized
-    </Text>
-    <TouchableOpacity
-      style={[styles_empty.emptyButton, { backgroundColor: colors.primary }]}
-      onPress={showSupportedSheet}
-    >
-      <Text style={styles_empty.emptyButtonText}>
-        View supported exercises
-      </Text>
-    </TouchableOpacity>
-  </View>
-);
 
-// We need a separate style for EmptyState because it's used inside the ScrollView but defined outside StrengthBodyView
-const styles_empty = StyleSheet.create({
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-    width: SCREEN_WIDTH - 40,
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  emptyButton: {
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  emptyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
 
 export function StrengthBodyView() {
   const colors = useThemedColors()
@@ -128,7 +61,7 @@ export function StrengthBodyView() {
 
   const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
-  const [showSupportedSheet, setShowSupportedSheet] = useState(false)
+  const [showInfoSheet, setShowInfoSheet] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<{
     data: MuscleGroupData
     displayName: string
@@ -245,36 +178,28 @@ export function StrengthBodyView() {
               >
                 {/* Front View */}
                 <View style={styles.bodyWrapper}>
-                  {bodyData.length === 0 ? (
-                    <EmptyState showSupportedSheet={() => setShowSupportedSheet(true)} colors={colors} />
-                  ) : (
-                    <Body
-                      data={bodyData}
-                      gender={bodyGender}
-                      side="front"
-                      scale={bodyScale}
-                      colors={BODY_COLORS}
-                      onBodyPartPress={handleBodyPartPress}
-                      border={colors.border}
-                    />
-                  )}
+                  <Body
+                    data={bodyData}
+                    gender={bodyGender}
+                    side="front"
+                    scale={bodyScale}
+                    colors={BODY_COLORS}
+                    onBodyPartPress={handleBodyPartPress}
+                    border={colors.border}
+                  />
                 </View>
 
                 {/* Back View */}
                 <View style={styles.bodyWrapper}>
-                  {bodyData.length === 0 ? (
-                    <EmptyState showSupportedSheet={() => setShowSupportedSheet(true)} colors={colors} />
-                  ) : (
-                    <Body
-                      data={bodyData}
-                      gender={bodyGender}
-                      side="back"
-                      scale={bodyScale}
-                      colors={BODY_COLORS}
-                      onBodyPartPress={handleBodyPartPress}
-                      border={colors.border}
-                    />
-                  )}
+                  <Body
+                    data={bodyData}
+                    gender={bodyGender}
+                    side="back"
+                    scale={bodyScale}
+                    colors={BODY_COLORS}
+                    onBodyPartPress={handleBodyPartPress}
+                    border={colors.border}
+                  />
                 </View>
               </ScrollView>
 
@@ -344,38 +269,36 @@ export function StrengthBodyView() {
             )}
 
             {/* Legend */}
-            {bodyData.length > 0 && (
-              <View style={styles.legendContainer}>
-                <View style={styles.legendHeader}>
-                  <Text style={styles.legendTitle}>Strength Levels</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowSupportedSheet(true)}
-                    style={styles.infoButton}
-                  >
-                    <Ionicons
-                      name="information-circle-outline"
-                      size={18}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.legendGrid}>
-                  {['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class'].map(
-                    (level) => (
-                      <View key={level} style={styles.legendItem}>
-                        <View
-                          style={[
-                            styles.legendDot,
-                            { backgroundColor: getLevelColor(level as any) },
-                          ]}
-                        />
-                        <Text style={styles.legendText}>{level}</Text>
-                      </View>
-                    ),
-                  )}
-                </View>
+            <View style={styles.legendContainer}>
+              <View style={styles.legendHeader}>
+                <Text style={styles.legendTitle}>Strength Levels</Text>
+                <TouchableOpacity
+                  onPress={() => setShowInfoSheet(true)}
+                  style={styles.infoButton}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
-            )}
+              <View style={styles.legendGrid}>
+                {['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class'].map(
+                  (level) => (
+                    <View key={level} style={styles.legendItem}>
+                      <View
+                        style={[
+                          styles.legendDot,
+                          { backgroundColor: getLevelColor(level as any) },
+                        ]}
+                      />
+                      <Text style={styles.legendText}>{level}</Text>
+                    </View>
+                  ),
+                )}
+              </View>
+            </View>
           </View>
         </ScrollView>
       )}
@@ -390,9 +313,9 @@ export function StrengthBodyView() {
         />
       )}
 
-      <SupportedExercisesSheet
-        isVisible={showSupportedSheet}
-        onClose={() => setShowSupportedSheet(false)}
+      <StrengthInfoSheet
+        isVisible={showInfoSheet}
+        onClose={() => setShowInfoSheet(false)}
       />
 
       <MuscleGroupDetailSheet
@@ -545,7 +468,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 24,
       padding: 16,
       backgroundColor: colors.feedCardBackground,
-      borderRadius: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
     },
     legendTitle: {
       fontSize: 13,

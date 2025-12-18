@@ -7,6 +7,8 @@ import {
     TUTORIAL_TRIAL_USED_KEY,
     TutorialStepId,
 } from '@/constants/tutorial'
+import { useAuth } from '@/contexts/auth-context'
+import { database } from '@/lib/database'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import React, {
     createContext,
@@ -56,6 +58,7 @@ const TutorialContext = createContext<TutorialContextValue | undefined>(
 )
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [completedSteps, setCompletedSteps] = useState<Set<TutorialStepId>>(
     new Set(),
   )
@@ -75,7 +78,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(TUTORIAL_TRIAL_USED_KEY),
         ])
 
-        console.log('[Tutorial] Loading stored data. progressData:', progressData, 'dismissedData:', dismissedData, 'trialData:', trialData)
 
         // Start with auto-completed steps
         const autoCompletedSteps = TUTORIAL_STEPS
@@ -89,13 +91,11 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           completed.forEach((id) => initialSteps.add(id))
         }
 
-        console.log('[Tutorial] Initializing completedSteps:', Array.from(initialSteps))
         setCompletedSteps(initialSteps)
 
         // Load consumed trials
         if (trialData) {
           const trials = JSON.parse(trialData) as TrialFeatureId[]
-          console.log('[Tutorial] Initializing consumedTrials:', trials)
           setConsumedTrials(new Set(trials))
         }
 
@@ -112,11 +112,52 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     loadProgress()
   }, [])
 
+  // Auto-complete steps for existing users based on database state
+  useEffect(() => {
+    if (!user || isLoading) return
+
+    const checkExistingData = async () => {
+      try {
+        const stepsToComplete: TutorialStepId[] = []
+
+        // Check for workouts
+        const workoutCount = await database.workoutSessions.getTotalCount(user.id)
+        if (workoutCount > 0 && !completedSteps.has('log_workout')) {
+          stepsToComplete.push('log_workout')
+        }
+
+        // Check for routines
+        const routines = await database.workoutRoutines.getAll(user.id)
+        if (routines.length > 0 && !completedSteps.has('create_routine')) {
+          stepsToComplete.push('create_routine')
+        }
+
+        // Check for body logs
+        const bodyLogEntries = await database.bodyLog.getEntriesPage(user.id, 0, 1)
+        if (bodyLogEntries.entries.length > 0 && !completedSteps.has('body_log')) {
+          stepsToComplete.push('body_log')
+        }
+
+        if (stepsToComplete.length > 0) {
+          setCompletedSteps((prev) => {
+            const newSet = new Set(prev)
+            stepsToComplete.forEach((id) => newSet.add(id))
+            saveStepProgress(newSet)
+            return newSet
+          })
+        }
+      } catch (error) {
+        console.error('[Tutorial] Error checking existing data:', error)
+      }
+    }
+
+    checkExistingData()
+  }, [user, isLoading, completedSteps.size]) // Use size to avoid infinite loop if we update
+
   // Save step progress
   const saveStepProgress = useCallback(async (steps: Set<TutorialStepId>) => {
     try {
       const stepsArray = Array.from(steps)
-      console.log('[Tutorial] Saving progressData:', stepsArray)
       await AsyncStorage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(stepsArray))
     } catch (error) {
       console.error('[Tutorial] Error saving progress:', error)
@@ -127,7 +168,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const saveTrialUsage = useCallback(async (trials: Set<TrialFeatureId>) => {
     try {
       const trialsArray = Array.from(trials)
-      console.log('[Tutorial] Saving trialData:', trialsArray)
       await AsyncStorage.setItem(TUTORIAL_TRIAL_USED_KEY, JSON.stringify(trialsArray))
     } catch (error) {
       console.error('[Tutorial] Error saving trial usage:', error)
@@ -137,7 +177,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   // Complete a tutorial step (synchronous - storage saves in background)
   const completeStep = useCallback(
     (stepId: TutorialStepId) => {
-      console.log('[Tutorial] Completing step:', stepId)
       setCompletedSteps((prev) => {
         if (prev.has(stepId)) return prev
         const newSet = new Set(prev)
@@ -157,7 +196,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       const isConsumed = consumedTrials.has(featureId)
       const canUse = !isConsumed
       // Subtle log to avoid spamming every render, but useful for debugging paywall issues
-      if (isConsumed) console.log('[Tutorial] Trial already consumed for:', featureId)
       return canUse
     },
     [consumedTrials],
@@ -175,7 +213,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   // This also completes the associated tutorial step (synchronous - storage saves in background)
   const consumeTrial = useCallback(
     (featureId: TrialFeatureId) => {
-      console.log('[Tutorial] Consuming trial for:', featureId)
       // Mark trial as consumed
       setConsumedTrials((prev) => {
         if (prev.has(featureId)) return prev
@@ -189,7 +226,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       // Also complete the associated tutorial step
       const stepId = TRIAL_FEATURE_TO_STEP[featureId]
       if (stepId) {
-        console.log('[Tutorial] Consuming trial also completes step:', stepId)
         completeStep(stepId)
       }
     },
@@ -198,7 +234,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   // Dismiss the tutorial checklist
   const dismissTutorial = useCallback(async () => {
-    console.log('[Tutorial] Dismissing tutorial checklist')
     try {
       await AsyncStorage.setItem(TUTORIAL_DISMISSED_KEY, 'true')
       setIsTutorialDismissed(true)
@@ -209,7 +244,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   // Reset tutorial (for testing)
   const resetTutorial = useCallback(async () => {
-    console.log('[Tutorial] Resetting all tutorial data')
     try {
       await Promise.all([
         AsyncStorage.removeItem(TUTORIAL_STORAGE_KEY),

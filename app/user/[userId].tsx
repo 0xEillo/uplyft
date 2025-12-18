@@ -1,4 +1,5 @@
 import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
+import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
@@ -10,22 +11,22 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import {
-  FollowRelationshipStatus,
-  WorkoutSessionWithDetails,
+    FollowRelationshipStatus,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -538,14 +539,11 @@ export default function UserProfileScreen() {
                     <ActivityIndicator size="large" color={colors.primary} />
                   </View>
                 ) : workouts.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Ionicons
-                      name="barbell-outline"
-                      size={64}
-                      color={colors.textPlaceholder}
-                    />
-                    <Text style={styles.emptyText}>No workouts yet</Text>
-                  </View>
+                  <EmptyState
+                    icon="fitness-outline"
+                    title="No workouts posted"
+                    description="This user hasn't logged any public workouts yet."
+                  />
                 ) : (
                   workouts.map((workout, index) => (
                     <AsyncPrFeedCard
