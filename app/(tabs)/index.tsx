@@ -15,7 +15,6 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { isApiError, mapApiErrorToMessage } from '@/lib/api/errors'
 import { database } from '@/lib/database'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
@@ -237,17 +236,22 @@ export default function FeedScreen() {
         loadWorkouts(false, false)
 
         // Show rating prompt if applicable (after first workout, then every 10 workouts)
-        try {
-          const workoutCount = await database.workoutSessions.getCountByUserId(
-            user.id,
-          )
-          await showPrompt(workoutCount)
-        } catch (error) {
-          console.error(
-            'Error checking workout count for rating prompt:',
-            error,
-          )
-        }
+        // IMPORTANT: Delay this to avoid overlap with WorkoutShareScreen modal
+        // The share screen shows immediately after updateWorkoutData, so we need to wait
+        // for the user to have time to see/dismiss it before showing the rating prompt
+        setTimeout(async () => {
+          try {
+            const workoutCount = await database.workoutSessions.getCountByUserId(
+              user.id,
+            )
+            await showPrompt(workoutCount)
+          } catch (error) {
+            console.error(
+              'Error checking workout count for rating prompt:',
+              error,
+            )
+          }
+        }, 5000) // 5 second delay to give share screen time to be viewed
 
         // Check if this is the first workout and prompt for push notifications
         try {
@@ -300,41 +304,6 @@ export default function FeedScreen() {
       }
 
       const { error, placeholder } = result
-      console.error('Error creating post:', error)
-
-      const isTimeout = error instanceof Error && error.name === 'AbortError'
-      const isKnownApiError = isApiError(error)
-
-      const message = isKnownApiError
-        ? mapApiErrorToMessage(error)
-        : isTimeout
-        ? 'The request took too long. This usually happens with slow internet or large workouts. Your draft has been saved - please try again.'
-        : 'Something went wrong while saving your workout. Please try again.'
-
-      const title =
-        isKnownApiError &&
-        (error.code === 'CONTENT_REFUSED' || error.code === 'ZOD_INVALID')
-          ? 'Unable to Parse Workout'
-          : 'Error'
-
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-      setWorkouts((prev) => {
-        if (placeholder) {
-          return prev.filter((item) => item.id !== placeholder.id)
-        }
-        return prev.filter((item: any) => !item.isPending)
-      })
-
-      Alert.alert(title, message, [
-        {
-          text: 'Edit & Try Again',
-          onPress: () => router.push('/(tabs)/create-post'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ])
     } catch (error) {
       console.error('Error processing pending post:', error)
     }

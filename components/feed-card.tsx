@@ -8,19 +8,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    Animated,
+    Image,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PrTooltip } from './pr-tooltip'
@@ -157,6 +157,7 @@ export const FeedCard = memo(function FeedCard({
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+
 
   const displayRoutine = routine || workout?.routine
 

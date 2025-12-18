@@ -1048,9 +1048,8 @@ export default function CreatePostScreen() {
       })
       router.replace('/(tabs)')
 
-      setTimeout(() => {
-        showPrompt(workoutNumber)
-      }, 3700)
+      // NOTE: Rating prompt is now triggered from index.tsx handlePendingPost
+      // to avoid duplicate triggers causing modal overlap and iOS freeze
     },
     [
       user,
@@ -1058,7 +1057,6 @@ export default function CreatePostScreen() {
       trackEvent,
       blurInputs,
       showOverlay,
-      showPrompt,
       refreshFreemiumLimits,
       getWorkoutElapsedSeconds,
       resetWorkoutTimer,

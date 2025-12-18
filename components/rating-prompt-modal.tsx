@@ -4,13 +4,13 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 
 export function RatingPromptModal() {

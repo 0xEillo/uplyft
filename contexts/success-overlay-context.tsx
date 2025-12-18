@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState } from 'react'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import React, { createContext, useContext, useState } from 'react'
 
 interface SuccessOverlayData {
   message: string

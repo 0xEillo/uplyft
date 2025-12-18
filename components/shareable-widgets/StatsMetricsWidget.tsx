@@ -1,7 +1,7 @@
 import {
-  calculateWorkoutStats,
-  formatVolume,
-  getOrdinalSuffix,
+    calculateWorkoutStats,
+    formatVolume,
+    getOrdinalSuffix,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { LinearGradient } from 'expo-linear-gradient'

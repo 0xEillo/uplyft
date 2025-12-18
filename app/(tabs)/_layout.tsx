@@ -16,7 +16,7 @@ import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
-import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
+import { RatingPromptProvider, useRatingPrompt } from '@/contexts/rating-prompt-context'
 import {
   RestTimerProvider,
   useRestTimerContext,
@@ -125,24 +125,28 @@ function TabLayoutContent() {
   } = useSuccessOverlay()
   const { weightUnit } = useWeightUnits()
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
+  const { isVisible: isRatingPromptVisible } = useRatingPrompt()
 
   // Track if we've already shown the share screen for this workout
   const shownWorkoutIdRef = React.useRef<string | null>(null)
 
   // Watch for workout data updates and show share screen when workout is ready
+  // IMPORTANT: Don't show share screen while rating prompt is visible to avoid dual-modal freeze
   React.useEffect(() => {
     // If we have workout data and overlay is not visible (animation completed), show share screen
     // Only show once per workout ID
+    // CRITICAL: Wait for rating prompt to close first to prevent iOS modal freeze
     if (
       data.workout &&
       !isVisible &&
       !showShareScreen &&
+      !isRatingPromptVisible &&
       shownWorkoutIdRef.current !== data.workout.id
     ) {
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
-  }, [data.workout, isVisible, showShareScreen, setShowShareScreen])
+  }, [data.workout, isVisible, showShareScreen, setShowShareScreen, isRatingPromptVisible])
 
   const handleAnimationComplete = () => {
     hideOverlay()

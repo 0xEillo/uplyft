@@ -193,6 +193,10 @@ export function WorkoutShareScreen({
     }
   }
 
+  const handleBackdropPress = () => {
+    onClose()
+  }
+
   return (
     <Modal
       visible={visible}
@@ -212,7 +216,7 @@ export function WorkoutShareScreen({
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={onClose}
+            onPress={handleBackdropPress}
           />
         </Animated.View>
         <Animated.View
