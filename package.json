@@ -1,7 +1,7 @@
 {
   "name": "repai",
   "main": "expo-router/entry",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "scripts": {
     "start": "expo start",
     "start:test": "DOTENV_CONFIG_PATH=.env.test node scripts/run-with-env.js expo start",
