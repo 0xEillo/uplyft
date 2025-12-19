@@ -562,7 +562,7 @@ export default function BodyLogScreen() {
     >
       <View style={[dynamicStyles.container, { paddingTop: insets.top }]}>
         <ScreenHeader
-          title="Body log"
+          title="Body Log"
           onLeftPress={handleBackPress}
           leftIcon="arrow-back"
           rightIcon="add"

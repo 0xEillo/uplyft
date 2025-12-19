@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import * as Notifications from 'expo-notifications'
-import { Platform } from 'react-native'
-import { useAuth } from './auth-context'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import type { NotificationWithProfiles } from '@/types/database.types'
+import * as Notifications from 'expo-notifications'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { Platform } from 'react-native'
+import { useAuth } from './auth-context'
 
 // Check if notifications module is available (requires native build)
 let isNotificationsAvailable = true
@@ -62,8 +62,15 @@ export function NotificationProvider({
 
       const unread = data.filter((n) => !n.read).length
       setUnreadCount(unread)
-    } catch (error) {
-      console.error('[Notifications] Error loading notifications:', error)
+    } catch (error: any) {
+      // Silently handle transient server errors (like 502 Bad Gateway) 
+      // instead of printing full HTML blobs to the console.
+      const errorMessage = error?.message || String(error)
+      if (!errorMessage.includes('502') && !errorMessage.includes('<html>')) {
+        console.error('[Notifications] Error loading notifications:', errorMessage)
+      }
+      
+      // Fallback: keep existing notifications but don't crash
     }
   }, [user])
 

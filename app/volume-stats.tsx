@@ -343,7 +343,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginLeft: -4,
     },
     headerTitle: {
-      fontSize: 18,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
     },

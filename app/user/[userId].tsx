@@ -1,34 +1,40 @@
 import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
+import { BaseNavbar } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
-import { calculateTotalVolume } from '@/lib/utils/workout-stats'
+import { calculateTotalVolume, formatVolume } from '@/lib/utils/workout-stats'
 import {
   FollowRelationshipStatus,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const { width } = Dimensions.get('window')
 
 // Helper function to determine badge size based on text fontSize
 const getBadgeSizeFromFontSize = (
@@ -55,10 +61,14 @@ export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
   const { user, isAnonymous } = useAuth()
   const router = useRouter()
+  const { isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
+  const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
   const insets = useSafeAreaInsets()
   const { level: userLevel } = useUserLevel(userId)
+
+  const scrollY = useRef(new Animated.Value(0)).current
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [userName, setUserName] = useState('')
@@ -283,7 +293,7 @@ export default function UserProfileScreen() {
     }, [loadUserData, loadRelationship, loadFollowCounts]),
   )
 
-  const styles = createStyles(colors)
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
   const isOwnProfile = user?.id === userId
 
   useFocusEffect(
@@ -384,6 +394,26 @@ export default function UserProfileScreen() {
     )
   }
 
+  const navbarBgColor = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['transparent', colors.background],
+    extrapolate: 'clamp',
+  })
+
+  const whiteOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  })
+
+  const themedOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  })
+
+  const startColor = isDark ? '#F5F5F5' : colors.text
+
   return (
     <SlideInView
       style={{ flex: 1 }}
@@ -391,35 +421,109 @@ export default function UserProfileScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        {/* Status bar background */}
-        <View style={[styles.statusBarBackground, { height: insets.top }]} />
+      <View style={styles.container}>
+        <Animated.View
+          style={[
+            styles.navbarContainer,
+            {
+              paddingTop: insets.top,
+              backgroundColor: navbarBgColor,
+              borderBottomWidth: scrollY.interpolate({
+                inputRange: [0, 100],
+                outputRange: [0, 1],
+                extrapolate: 'clamp',
+              }),
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <BaseNavbar
+            leftContent={
+              <View style={styles.navbarLeft}>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.navbarBackAction}
+                >
+                  <View style={styles.iconWrapper}>
+                    <Animated.View style={{ opacity: whiteOpacity }}>
+                      <Ionicons
+                        name="arrow-back"
+                        size={24}
+                        color={startColor}
+                      />
+                    </Animated.View>
+                    <Animated.View
+                      style={{ opacity: themedOpacity, position: 'absolute' }}
+                    >
+                      <Ionicons
+                        name="arrow-back"
+                        size={24}
+                        color={colors.text}
+                      />
+                    </Animated.View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        </Animated.View>
+
         {/* Scrollable Content */}
-        <ScrollView
+        <Animated.ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+          scrollEventThrottle={16}
         >
           {/* Profile Header */}
           <View style={styles.profileHeader}>
-            {/* Back Button */}
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
+            {/* Cover Photo Section */}
+            <View style={styles.coverContainer}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.coverImage} />
+              ) : (
+                <View style={[styles.coverImage, styles.coverPlaceholder]} />
+              )}
+              {/* Uniform overlay */}
+              <View
+                style={[
+                  styles.coverGradient,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(0,0,0,0.45)'
+                      : 'rgba(255,255,255,0.55)',
+                  },
+                ]}
+              />
+              {/* Bottom fade to background */}
+              <LinearGradient
+                colors={[
+                  isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
+                  colors.background,
+                ]}
+                style={styles.coverBottomGradient}
+              />
+            </View>
 
             {/* Profile Section with Avatar and Info */}
             <View style={styles.profileSection}>
               {/* Avatar and Name Row */}
               <View style={styles.profileTop}>
                 {/* Avatar */}
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Ionicons name="person" size={36} color={colors.white} />
-                  </View>
-                )}
+                <View style={styles.avatarWrapper}>
+                  {avatarUrl ? (
+                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                  ) : (
+                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                      <Ionicons name="person" size={36} color={colors.white} />
+                    </View>
+                  )}
+                </View>
 
-                {/* Name */}
+                {/* Name and Stats */}
                 <View style={styles.nameContainer}>
                   <View style={styles.nameRow}>
                     <Text style={styles.displayName}>{userName || 'User'}</Text>
@@ -435,39 +539,41 @@ export default function UserProfileScreen() {
                     )}
                   </View>
                   {userTag && <Text style={styles.userTag}>@{userTag}</Text>}
-                </View>
-              </View>
 
-              {/* Stats Row - Below Avatar */}
-              <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                  <Text style={styles.statNumber}>{workouts.length}</Text>
-                  <Text style={styles.statLabel}>Workouts</Text>
+                  {/* Stats Row - Compact inline style */}
+                  <View style={styles.statsRow}>
+                    <View style={styles.stat}>
+                      <Text style={styles.statNumber}>{workouts.length}</Text>
+                      <Text style={styles.statLabel}>workouts</Text>
+                    </View>
+                    <View style={styles.statSeparator} />
+                    <TouchableOpacity
+                      style={styles.stat}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/followers/[userId]',
+                          params: { userId, returnTo: `/user/${userId}` },
+                        })
+                      }
+                    >
+                      <Text style={styles.statNumber}>{followerCount}</Text>
+                      <Text style={styles.statLabel}>followers</Text>
+                    </TouchableOpacity>
+                    <View style={styles.statSeparator} />
+                    <TouchableOpacity
+                      style={styles.stat}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/following/[userId]',
+                          params: { userId, returnTo: `/user/${userId}` },
+                        })
+                      }
+                    >
+                      <Text style={styles.statNumber}>{followingCount}</Text>
+                      <Text style={styles.statLabel}>following</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <TouchableOpacity
-                  style={styles.stat}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/followers/[userId]',
-                      params: { userId, returnTo: `/user/${userId}` },
-                    })
-                  }
-                >
-                  <Text style={styles.statNumber}>{followerCount}</Text>
-                  <Text style={styles.statLabel}>Followers</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.stat}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/following/[userId]',
-                      params: { userId, returnTo: `/user/${userId}` },
-                    })
-                  }
-                >
-                  <Text style={styles.statNumber}>{followingCount}</Text>
-                  <Text style={styles.statLabel}>Following</Text>
-                </TouchableOpacity>
               </View>
 
               {profileDescription ? (
@@ -512,10 +618,45 @@ export default function UserProfileScreen() {
             {!privacyLocked && (
               <View style={styles.workoutsHeader}>
                 <Text style={styles.workoutsTitle}>Recent Activity</Text>
+                <View style={styles.viewToggle}>
+                  <TouchableOpacity
+                    onPress={() => setViewMode('feed')}
+                    style={[
+                      styles.toggleButton,
+                      viewMode === 'feed' && styles.toggleButtonActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name="reorder-four-outline"
+                      size={20}
+                      color={
+                        viewMode === 'feed'
+                          ? colors.white
+                          : colors.textSecondary
+                      }
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setViewMode('grid')}
+                    style={[
+                      styles.toggleButton,
+                      viewMode === 'grid' && styles.toggleButtonActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name="apps-outline"
+                      size={18}
+                      color={
+                        viewMode === 'grid'
+                          ? colors.white
+                          : colors.textSecondary
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
-
           {privacyLocked && !isOwnProfile ? (
             <View style={styles.lockedCard}>
               <Ionicons
@@ -530,79 +671,261 @@ export default function UserProfileScreen() {
               </Text>
               {renderFollowButton()}
             </View>
-          ) : (
-            <>
-              {/* Workout Posts */}
-              <View style={styles.logContent}>
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                  </View>
-                ) : workouts.length === 0 ? (
-                  <EmptyState
-                    icon="fitness-outline"
-                    title="No workouts posted"
-                    description="This user hasn't logged any public workouts yet."
-                  />
-                ) : (
-                  workouts.map((workout, index) => (
-                    <AsyncPrFeedCard
+          ) : viewMode === 'grid' ? (
+            <View style={styles.gridContent}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              ) : workouts.length === 0 ? (
+                <EmptyState
+                  icon="fitness-outline"
+                  title="No workouts posted"
+                  description="This user hasn't logged any public workouts yet."
+                />
+              ) : (
+                <View style={styles.gridContainer}>
+                  {workouts.map((workout) => (
+                    <TouchableOpacity
                       key={workout.id}
-                      workout={workout}
-                      onDelete={() => {
-                        setWorkouts((prev) =>
-                          prev.filter((w) => w.id !== workout.id),
-                        )
-                      }}
-                      isFirst={index === 0}
-                    />
-                  ))
-                )}
-              </View>
-            </>
+                      style={styles.gridItem}
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/workout/[workoutId]',
+                          params: { workoutId: workout.id },
+                        })
+                      }
+                    >
+                      {workout.image_url ? (
+                        <>
+                          <Image
+                            source={{ uri: workout.image_url }}
+                            style={styles.gridItemImage}
+                          />
+                          <LinearGradient
+                            colors={['transparent', 'rgba(0,0,0,0.5)']}
+                            style={styles.gridItemGradient}
+                          />
+                        </>
+                      ) : (
+                        <View style={styles.gridItemPlaceholder}>
+                          <Ionicons
+                            name="barbell-outline"
+                            size={28}
+                            color={colors.textSecondary}
+                            style={{ opacity: 0.2 }}
+                          />
+                        </View>
+                      )}
+                      <View style={styles.gridItemInfo}>
+                        <Text
+                          style={[
+                            styles.gridItemTitle,
+                            !workout.image_url && { color: colors.text },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {workout.type ||
+                            workout.notes?.split('\n')[0] ||
+                            'Workout'}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.gridItemDate,
+                              !workout.image_url && {
+                                color: colors.textSecondary,
+                              },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {workout.routine?.name ? (
+                              <Text style={{ fontWeight: '400', fontSize: 9 }}>
+                                fin. {workout.routine.name}
+                              </Text>
+                            ) : (
+                              new Date(workout.date).toLocaleDateString(
+                                undefined,
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                },
+                              )
+                            )}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.gridItemSeparator,
+                              !workout.image_url && {
+                                color: colors.textSecondary,
+                              },
+                            ]}
+                          >
+                            •
+                          </Text>
+                          <Text
+                            style={[
+                              styles.gridItemVolume,
+                              !workout.image_url && {
+                                color: colors.textSecondary,
+                              },
+                            ]}
+                          >
+                            {
+                              formatVolume(
+                                calculateTotalVolume(workout),
+                                weightUnit,
+                              ).value
+                            }{' '}
+                            {weightUnit}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.logContent}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              ) : workouts.length === 0 ? (
+                <EmptyState
+                  icon="fitness-outline"
+                  title="No workouts posted"
+                  description="This user hasn't logged any public workouts yet."
+                />
+              ) : (
+                workouts.map((workout, index) => (
+                  <AsyncPrFeedCard
+                    key={workout.id}
+                    workout={workout}
+                    onDelete={() => {
+                      setWorkouts((prev) =>
+                        prev.filter((w) => w.id !== workout.id),
+                      )
+                    }}
+                    isFirst={index === 0}
+                  />
+                ))
+              )}
+            </View>
           )}
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
     </SlideInView>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
-    statusBarBackground: {
+    navbarContainer: {
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.background,
-      zIndex: 0,
+      zIndex: 10,
+    },
+    navbarLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    navbarBackAction: {
+      padding: 8,
+      marginLeft: -8, // Adjusted to compensate for BaseNavbar's paddingHorizontal: 20
+      marginRight: 4,
+    },
+    navbarIsland: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconWrapper: {
+      width: 24,
+      height: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: '700',
     },
     profileHeader: {
       backgroundColor: colors.background,
+      position: 'relative',
     },
-    backButton: {
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 8,
+    coverContainer: {
+      height: 360,
+      width: '100%',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      overflow: 'hidden',
+      backgroundColor: isDark ? '#000' : '#fff',
+    },
+    coverImage: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+      opacity: 0.85,
+    },
+    coverPlaceholder: {
+      backgroundColor: colors.primary + '20',
+    },
+    coverGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '100%',
+    },
+    coverBottomGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '25%',
     },
     profileSection: {
       paddingHorizontal: 20,
-      paddingTop: 20,
+      paddingTop: 210,
       paddingBottom: 20,
     },
     profileTop: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       marginBottom: 16,
     },
+    avatarWrapper: {
+      borderRadius: 50,
+      padding: 3,
+      backgroundColor: colors.background,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 8,
+    },
     avatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 90,
+      height: 90,
+      borderRadius: 45,
     },
     avatarPlaceholder: {
       backgroundColor: colors.primary,
@@ -610,41 +933,51 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     nameContainer: {
+      flex: 1,
       marginLeft: 16,
-      justifyContent: 'center',
+      justifyContent: 'flex-end',
+      paddingBottom: 4,
     },
     nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
+      gap: 6,
+      flexShrink: 1,
     },
     levelBadge: {
-      transform: [{ scale: 0.85 }],
+      transform: [{ scale: 0.9 }],
     },
     displayName: {
-      fontSize: 20,
+      fontSize: 26,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 2,
+      marginBottom: 0,
+      flexShrink: 1,
     },
     userTag: {
-      fontSize: 13,
+      fontSize: 15,
       color: colors.textSecondary,
-    },
-    profileDescription: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginBottom: 16,
+      fontWeight: '500',
+      marginTop: -2,
     },
     statsRow: {
       flexDirection: 'row',
-      gap: 20,
-      marginBottom: 16,
+      alignItems: 'center',
+      marginTop: 6,
+      flexWrap: 'wrap',
     },
     stat: {
       flexDirection: 'row',
       alignItems: 'baseline',
-      gap: 4,
+      gap: 3,
+    },
+    statSeparator: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: colors.textSecondary,
+      marginHorizontal: 10,
+      opacity: 0.4,
     },
     statNumber: {
       fontSize: 15,
@@ -652,18 +985,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.text,
     },
     statLabel: {
-      fontSize: 13,
+      fontSize: 14,
       color: colors.textSecondary,
       fontWeight: '400',
+      textTransform: 'lowercase',
+    },
+    profileDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 16,
     },
     followButtonContainer: {
-      marginTop: 0,
-    },
-    divider: {
-      height: 4,
-      backgroundColor: colors.background,
+      marginTop: 8,
     },
     workoutsHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
       paddingHorizontal: 20,
       paddingTop: 16,
       paddingBottom: 12,
@@ -680,11 +1018,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderWidth: 1,
       borderColor: colors.primary,
       borderRadius: 6,
-      paddingVertical: 7,
+      paddingVertical: 10,
       alignItems: 'center',
     },
     followActionButtonFollowing: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
       borderColor: colors.border,
     },
     followActionButtonPending: {
@@ -694,7 +1032,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     followActionButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.white,
+      color: '#fff',
     },
     followActionButtonTextFollowing: {
       color: colors.text,
@@ -706,7 +1044,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       margin: 20,
       padding: 32,
       borderRadius: 16,
-      backgroundColor: colors.white,
+      backgroundColor: colors.feedCardBackground,
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: 'center',
@@ -745,21 +1083,84 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    emptyState: {
-      paddingVertical: 80,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.white,
-      marginHorizontal: 16,
-      marginVertical: 8,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
+    viewToggle: {
+      flexDirection: 'row',
+      backgroundColor: colors.feedCardBackground,
+      borderRadius: 8,
+      padding: 2,
+      gap: 2,
     },
-    emptyText: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      marginTop: 16,
+    toggleButton: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    toggleButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    gridContent: {
+      paddingHorizontal: 1,
+    },
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    gridItem: {
+      width: (width - 8) / 3,
+      aspectRatio: 1,
+      margin: 1,
+      backgroundColor: colors.feedCardBackground,
+      overflow: 'hidden',
+    },
+    gridItemImage: {
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
+    },
+    gridItemPlaceholder: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.feedCardBackground,
+    },
+    gridItemGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '50%',
+    },
+    gridItemInfo: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      padding: 6,
+      justifyContent: 'flex-end',
+    },
+    gridItemTitle: {
+      color: '#fff',
+      fontSize: 11,
+      fontWeight: '700',
+      marginBottom: 0,
+    },
+    gridItemDate: {
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: '500',
+      opacity: 0.9,
+    },
+    gridItemSeparator: {
+      color: '#fff',
+      fontSize: 9,
+      opacity: 0.5,
+    },
+    gridItemVolume: {
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: '500',
+      opacity: 0.9,
     },
   })

@@ -6,15 +6,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -320,7 +320,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 4,
     },
     headerTitle: {
-      fontSize: 18,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
     },

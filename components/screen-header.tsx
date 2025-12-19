@@ -2,11 +2,11 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { ReactNode } from 'react'
 import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 interface ScreenHeaderProps {
@@ -102,8 +102,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 16,
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 22,
+      fontWeight: '700',
       color: colors.text,
     },
   })
