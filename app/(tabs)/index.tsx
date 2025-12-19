@@ -25,17 +25,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    LayoutAnimation,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  LayoutAnimation,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -432,7 +432,7 @@ export default function FeedScreen() {
                   onPress={() => router.push('/(tabs)/chat')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.repAiBadgeText}>Rep AI</Text>
+                  <Text style={styles.repAiBadgeText}>Home</Text>
                 </TouchableOpacity>
               </NavbarIsland>
             ) : (
@@ -489,7 +489,9 @@ export default function FeedScreen() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListHeaderComponent={
-            !isTutorialDismissed && !isTutorialLoading && workouts.length === 0 ? (
+            !isTutorialDismissed &&
+            !isTutorialLoading &&
+            workouts.length === 0 ? (
               <TutorialChecklist />
             ) : null
           }

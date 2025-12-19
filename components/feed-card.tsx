@@ -340,19 +340,28 @@ export const FeedCard = memo(function FeedCard({
           >
             {stats.durationSeconds !== undefined && stats.durationSeconds > 0 && (
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Duration</Text>
+                <View style={styles.statLabelContainer}>
+                  <Ionicons name="time-outline" size={14} color={colors.success} />
+                  <Text style={styles.statLabel}>Duration</Text>
+                </View>
                 <Text style={styles.statValue}>
                   {formatDurationCompact(stats.durationSeconds)}
                 </Text>
               </View>
             )}
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Sets</Text>
+              <View style={styles.statLabelContainer}>
+                <Ionicons name="layers-outline" size={13} color={colors.info} />
+                <Text style={styles.statLabel}>Sets</Text>
+              </View>
               <Text style={styles.statValue}>{stats.sets}</Text>
             </View>
             {stats.volume !== undefined && stats.volume > 0 && (
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Volume</Text>
+                <View style={styles.statLabelContainer}>
+                  <Ionicons name="barbell-outline" size={14} color={colors.primary} />
+                  <Text style={styles.statLabel}>Volume</Text>
+                </View>
                 <Text style={styles.statValue}>
                   {formatVolumeCompact(stats.volume, weightUnit)}
                 </Text>
@@ -1150,7 +1159,8 @@ const createStyles = (
     statsContainer: {
       flexDirection: 'row',
       justifyContent: 'space-around',
-      padding: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 12,
       marginBottom: 12,
       borderRadius: 12,
       borderWidth: 1,
@@ -1161,8 +1171,13 @@ const createStyles = (
       alignItems: 'center',
       gap: 4,
     },
+    statLabelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
     statLabel: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: '600',
       color: colors.textSecondary,
       textTransform: 'uppercase',
