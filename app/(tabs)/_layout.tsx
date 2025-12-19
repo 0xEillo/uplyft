@@ -195,8 +195,7 @@ function TabLayoutContent() {
           tabBarShowLabel: false,
           tabBarStyle: {
             backgroundColor: colors.backgroundWhite,
-            borderTopWidth: 1,
-            borderTopColor: isDark ? '#333333' : 'rgba(0, 0, 0, 0.08)',
+            borderTopWidth: 0,
             height: 79,
             paddingBottom: 30,
             paddingTop: 2,
