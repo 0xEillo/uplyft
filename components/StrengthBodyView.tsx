@@ -1,7 +1,6 @@
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { MuscleGroupDetailSheet } from '@/components/MuscleGroupDetailSheet'
-import { StrengthInfoSheet } from '@/components/StrengthInfoSheet'
 import {
   getLevelColor,
   getLevelIntensity,
@@ -61,7 +60,6 @@ export function StrengthBodyView() {
 
   const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
-  const [showInfoSheet, setShowInfoSheet] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<{
     data: MuscleGroupData
     displayName: string
@@ -210,6 +208,27 @@ export function StrengthBodyView() {
               </View>
             </View>
 
+            {/* Integrated Legend Key - Directly under the chart */}
+            <View style={styles.integratedLegend}>
+              <View style={styles.legendGrid}>
+                {['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class'].map(
+                  (level) => (
+                    <View key={level} style={styles.legendItemCompact}>
+                      <View
+                        style={[
+                          styles.legendDotSmall,
+                          { backgroundColor: getLevelColor(level as any) },
+                        ]}
+                      />
+                      <Text style={styles.legendTextCompact}>
+                        {level === 'World Class' ? 'World Class' : level}
+                      </Text>
+                    </View>
+                  ),
+                )}
+              </View>
+            </View>
+
             {/* Overall Level Card */}
             {overallLevel && (
               <TouchableOpacity
@@ -267,38 +286,6 @@ export function StrengthBodyView() {
                 )}
               </TouchableOpacity>
             )}
-
-            {/* Legend */}
-            <View style={styles.legendContainer}>
-              <View style={styles.legendHeader}>
-                <Text style={styles.legendTitle}>Strength Levels</Text>
-                <TouchableOpacity
-                  onPress={() => setShowInfoSheet(true)}
-                  style={styles.infoButton}
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.legendGrid}>
-                {['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class'].map(
-                  (level) => (
-                    <View key={level} style={styles.legendItem}>
-                      <View
-                        style={[
-                          styles.legendDot,
-                          { backgroundColor: getLevelColor(level as any) },
-                        ]}
-                      />
-                      <Text style={styles.legendText}>{level}</Text>
-                    </View>
-                  ),
-                )}
-              </View>
-            </View>
           </View>
         </ScrollView>
       )}
@@ -312,11 +299,6 @@ export function StrengthBodyView() {
           progressToNext={overallLevel.balancedProgress}
         />
       )}
-
-      <StrengthInfoSheet
-        isVisible={showInfoSheet}
-        onClose={() => setShowInfoSheet(false)}
-      />
 
       <MuscleGroupDetailSheet
         isVisible={!!selectedGroup}
@@ -425,9 +407,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
       marginTop: 24,
     },
-    infoButton: {
-      padding: 4,
-    },
 
     // Swipe Section
     swipeContainer: {
@@ -464,49 +443,32 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
 
     // Legend
-    legendContainer: {
-      marginTop: 24,
-      padding: 16,
-      backgroundColor: colors.feedCardBackground,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    legendTitle: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    legendHeader: {
+    integratedLegend: {
+      marginTop: 16,
+      paddingHorizontal: 0,
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 12,
     },
     legendGrid: {
+      flex: 1,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      justifyContent: 'center',
+      gap: 12,
     },
-    legendItem: {
+    legendItemCompact: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '48%',
-      gap: 8,
+      gap: 6,
     },
-    legendDot: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
+    legendDotSmall: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
     },
-    legendText: {
-      fontSize: 12,
-      color: colors.text,
-      fontWeight: '500',
+    legendTextCompact: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '600',
     },
   })

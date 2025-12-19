@@ -19,7 +19,9 @@ export interface StrengthStandard {
 }
 
 export interface ExerciseStandardsConfig {
+  id: string
   name: string
+  gifUrl?: string | null
   male: StrengthStandard[]
   female: StrengthStandard[]
 }
@@ -31,7 +33,9 @@ export interface ExerciseStandardsConfig {
 export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Bench Press
   {
+    id: 'a1a9f5cd-1e9f-47b1-b7cd-162d2de80ddb',
     name: 'Bench Press (Barbell)',
+    gifUrl: 'EIeI8Vf.gif',
     male: [
       {
         level: 'Beginner',
@@ -112,7 +116,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Incline Bench Press
   {
+    id: 'd5b6efa3-2ebe-4eec-9e59-7a2b5ad4aa12',
     name: 'Incline Bench Press (Barbell)',
+    gifUrl: '3TZduzM.gif',
     male: [
       {
         level: 'Beginner',
@@ -193,7 +199,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Bench Press
   {
+    id: '7927cf04-6d4b-4f01-9cd2-441ad398f214',
     name: 'Bench Press (Dumbbell)',
+    gifUrl: 'SpYC0Kp.gif',
     male: [
       {
         level: 'Beginner',
@@ -274,7 +282,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Incline Dumbbell Press
   {
+    id: 'f0d9f5c0-0da6-493b-a7d5-64cf793dbdca',
     name: 'Incline Bench Press (Dumbbell)',
+    gifUrl: 'ns0SIbU.gif',
     male: [
       {
         level: 'Beginner',
@@ -355,7 +365,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Squat
   {
+    id: 'ec791278-a90a-446a-a853-94e68646416b',
     name: 'Squat (Barbell)',
+    gifUrl: 'qXTaZnJ.gif',
     male: [
       {
         level: 'Beginner',
@@ -436,7 +448,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Front Squat
   {
+    id: '50c3ce34-9b80-4f8b-92c4-365183476959',
     name: 'Front Squat (Barbell)',
+    gifUrl: 'zG0zs85.gif',
     male: [
       {
         level: 'Beginner',
@@ -517,7 +531,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Deadlift
   {
+    id: 'cbd8a5d7-e51a-4691-8731-65d4dab19db2',
     name: 'Deadlift (Barbell)',
+    gifUrl: 'GUT8I22.gif',
     male: [
       {
         level: 'Beginner',
@@ -598,7 +614,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Romanian Deadlift
   {
+    id: 'c216a0a7-c3a6-458b-b691-a5c6afca0662',
     name: 'Romanian Deadlift (Barbell)',
+    gifUrl: 'wQ2c4XD.gif',
     male: [
       {
         level: 'Beginner',
@@ -679,7 +697,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Overhead Press
   {
+    id: 'baf05047-e528-47da-adf2-9be58d124278',
     name: 'Military Press (Barbell)',
+    gifUrl: 'CggQhII.gif',
     male: [
       {
         level: 'Beginner',
@@ -760,7 +780,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Shoulder Press
   {
+    id: '674beec1-ce86-401d-980d-8ae5949ec707',
     name: 'Seated Shoulder Press (Dumbbell)',
+    gifUrl: 'znQUdHY.gif',
     male: [
       {
         level: 'Beginner',
@@ -841,7 +863,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Bent Over Row
   {
+    id: 'f87f37bd-dfb9-4f88-a178-82423ab0e6a0',
     name: 'Bent Over Row (Barbell)',
+    gifUrl: 'X3cqyXz.gif',
     male: [
       {
         level: 'Beginner',
@@ -922,7 +946,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Lat Pulldown
   {
+    id: '62de3610-8941-4c87-aff2-31d5da85f82f',
     name: 'Lat Pulldown (Cable)',
+    gifUrl: 'eYnzaCm.gif',
     male: [
       {
         level: 'Beginner',
@@ -1003,7 +1029,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Weighted Pull-Ups (multiplier represents added weight as fraction of bodyweight)
   {
+    id: '8416f9f6-5500-4412-9cbe-e779f0314511',
     name: 'Weighted Pull Up',
+    gifUrl: 'HMzLjXx.gif',
     male: [
       {
         level: 'Beginner',
@@ -1084,7 +1112,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Weighted Dips (multiplier represents added weight as fraction of bodyweight)
   {
+    id: 'f18faaa7-0cb5-4d5f-9474-a1f822c4ed84',
     name: 'Weighted Dip',
+    gifUrl: 'MU9HnE7.gif',
     male: [
       {
         level: 'Beginner',
@@ -1165,7 +1195,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Curl
   {
+    id: '66076631-fbf3-4240-9358-99563893ff90',
     name: 'Bicep Curl (Dumbbell)',
+    gifUrl: 'NbVPDMW.gif',
     male: [
       {
         level: 'Beginner',
@@ -1246,7 +1278,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Barbell Curl
   {
+    id: '715479a2-4676-4ae1-a94e-b469d7c387e0',
     name: 'Bicep Curl (Barbell)',
+    gifUrl: 'Yza7XrQ.gif',
     male: [
       {
         level: 'Beginner',
@@ -1327,7 +1361,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Leg Press
   {
+    id: 'f270f1b1-4769-4fa0-babb-39dfa1296dcd',
     name: 'Leg Press (Machine)',
+    gifUrl: '10Z2DXU.gif',
     male: [
       {
         level: 'Beginner',
@@ -1408,7 +1444,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Bulgarian Split Squat
   {
+    id: 'f709f0a1-f934-4b25-8b30-115035bf53a3',
     name: 'Bulgarian Split Squat (Dumbbell)',
+    gifUrl: 'SpYC0Kp.gif',
     male: [
       {
         level: 'Beginner',
@@ -1489,7 +1527,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Hip Thrust
   {
+    id: '8e8ea45f-2a9e-47d5-8b99-410549aab166',
     name: 'Glute Bridge (Barbell)',
+    gifUrl: 'qKBpF7I.gif',
     male: [
       {
         level: 'Beginner',
@@ -1570,7 +1610,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Row
   {
+    id: '288281a7-e9bc-4902-896e-1df4c892cd20',
     name: 'Bent Over Row (Dumbbell)',
+    gifUrl: 'BJ0Hz5L.gif',
     male: [
       {
         level: 'Beginner',
@@ -1651,7 +1693,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Seated Cable Row
   {
+    id: '2bdfb2da-20f2-439d-8e4d-8b5e928a97ba',
     name: 'Seated Row',
+    gifUrl: 'X3cqyXz.gif',
     male: [
       {
         level: 'Beginner',
@@ -1732,7 +1776,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Close Grip Bench Press
   {
+    id: '4f70d4fe-7eee-4c95-9da7-1c35a78de5c2',
     name: 'Close Grip Bench Press (Barbell)',
+    gifUrl: 'J6Dx1Mu.gif',
     male: [
       {
         level: 'Beginner',
@@ -1813,7 +1859,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Tricep Pushdown
   {
+    id: '37b7c704-b4c1-4745-8ae7-e2cbd9432508',
     name: 'Pushdown (Cable)',
+    gifUrl: '3ZflifB.gif',
     male: [
       {
         level: 'Beginner',
@@ -1893,7 +1941,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Standing Calf Raise
   {
+    id: '51f08b8b-34d3-4e8b-bf9d-5d28c071c4ae',
     name: 'Standing Calf Raise (Machine)',
+    gifUrl: 'ykUOVze.gif',
     male: [
       {
         level: 'Beginner',
@@ -1973,7 +2023,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Barbell Shrug
   {
+    id: 'de0aeeaa-8bd0-4c4b-8602-986025dfdc17',
     name: 'Shrug (Machine)',
+    gifUrl: 'ZZKbeMw.gif',
     male: [
       {
         level: 'Beginner',
@@ -2053,7 +2105,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Hanging Leg Raise
   {
+    id: '00fbaaa6-b29b-4e7c-982e-78978d2f1d3d',
     name: 'Hanging Leg Raise',
+    gifUrl: 'I3tsCnC.gif',
     male: [
       {
         level: 'Beginner',
@@ -2133,7 +2187,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Back Extension
   {
+    id: '4502ba9e-c0bc-4ab4-8a8f-9773f64479c8',
     name: 'Back Extension (Machine)',
+    gifUrl: 'rUXfn3R.gif',
     male: [
       {
         level: 'Beginner',
@@ -2213,7 +2269,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Leg Extension
   {
+    id: '0f69ada8-ed3f-446d-a837-221c501ca826',
     name: 'Leg Extension (Machine)',
+    gifUrl: 'my33uHU.gif',
     male: [
       {
         level: 'Beginner',
@@ -2293,7 +2351,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Face Pulls
   {
+    id: '595e8458-ceab-4608-955b-ebad4c02210d',
     name: 'Face Pull (Cable)',
+    gifUrl: 'CggQhII.gif',
     male: [
       {
         level: 'Beginner',
@@ -2373,7 +2433,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Lateral Raise
   {
+    id: 'a97d866b-b29e-4b25-914a-ada0d59be96b',
     name: 'Seated Lateral Raise (Dumbbell)',
+    gifUrl: 'hxyTtWj.gif',
     male: [
       {
         level: 'Beginner',
@@ -2453,7 +2515,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Wrist Curl
   {
+    id: 'ce77ea3f-772d-435c-b1ca-05b1e9d6c6fe',
     name: 'Wrist Curl (Barbell)',
+    gifUrl: '82LxxkW.gif',
     male: [
       {
         level: 'Beginner',
@@ -2531,89 +2595,11 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
-  // Kettlebell Swing
-  {
-    name: 'Swing (Kettlebell)',
-    male: [
-      {
-        level: 'Beginner',
-        multiplier: 0.2,
-        color: '#9CA3AF',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 0.35,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 0.55,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 0.85,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 1.2,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 1.6,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-    female: [
-      {
-        level: 'Beginner',
-        multiplier: 0.1,
-        color: '#9CA3AF',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 0.2,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 0.35,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 0.6,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 0.9,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 1.2,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
   // Cable Hammer Curl
   {
+    id: 'aaa729ff-5681-4241-bda4-dd848afab3ef',
     name: 'Rope Hammer Curl (Cable)',
+    gifUrl: 'HPlPoQA.gif',
     male: [
       {
         level: 'Beginner',
@@ -2693,7 +2679,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Leg Curl
   {
+    id: '97ab3978-17bf-4c48-ae37-1683355e694c',
     name: 'Seated Leg Curl (Machine)',
+    gifUrl: 'Zg3XY7P.gif',
     male: [
       {
         level: 'Beginner',
@@ -2773,7 +2761,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Calf Raise
   {
+    id: '41571546-3273-4913-b1c8-4717088c8f44',
     name: 'Seated Calf Raise (Machine)',
+    gifUrl: 'bOOdeyc.gif',
     male: [
       {
         level: 'Beginner',
@@ -2853,7 +2843,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   },
   // Triceps Extension
   {
+    id: '5de336b5-00af-4b0a-b2e9-79a2b11d6b28',
     name: 'Triceps Extension (Machine)',
+    gifUrl: 'Ser9eQp.gif',
     male: [
       {
         level: 'Beginner',
@@ -2993,7 +2985,6 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Glutes
   'Glute Bridge (Barbell)': 'Glutes',
-  'Swing (Kettlebell)': 'Glutes',
 
   // Calves
   'Standing Calf Raise (Machine)': 'Calves',
@@ -3046,7 +3037,6 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Bulgarian Split Squat (Dumbbell)': 'Lower',
   'Glute Bridge (Barbell)': 'Lower',
   'Leg Extension (Machine)': 'Lower',
-  'Swing (Kettlebell)': 'Lower',
   'Standing Calf Raise (Machine)': 'Lower',
   'Back Extension (Machine)': 'Lower',
   'Seated Leg Curl (Machine)': 'Lower',
@@ -3056,10 +3046,16 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
 /**
  * Get all exercises that count towards a specific muscle's level
  */
-export function getTrackableExercisesForMuscle(muscleName: string): string[] {
-  return Object.entries(EXERCISE_MUSCLE_MAPPING)
+export function getTrackableExercisesForMuscle(
+  muscleName: string,
+): ExerciseStandardsConfig[] {
+  const exerciseNames = Object.entries(EXERCISE_MUSCLE_MAPPING)
     .filter(([_, muscle]) => muscle === muscleName)
     .map(([exercise, _]) => exercise)
+
+  return EXERCISES_WITH_STANDARDS.filter((ex) =>
+    exerciseNames.includes(ex.name),
+  )
 }
 
 /**

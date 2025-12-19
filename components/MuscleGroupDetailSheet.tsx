@@ -13,7 +13,7 @@ import {
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
     Dimensions,
     Modal,
@@ -48,23 +48,6 @@ export function MuscleGroupDetailSheet({
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { formatWeight, weightUnit } = useWeightUnits()
-  const [showInfo, setShowInfo] = useState(false)
-
-  const STRENGTH_LEVEL_INFO = [
-    { level: 'Beginner', description: 'Just starting out. Your focus is on learning proper form and building a baseline.' },
-    { level: 'Novice', description: 'A few months in. You have graduated from the basics and are seeing steady linear gains.' },
-    { level: 'Intermediate', description: '1–2 years of consistent work. You have reached a solid level of strength that requires a structured program to advance.' },
-    { level: 'Advanced', description: '2–5 years of dedicated training. Your strength is well above average and progress requires high precision.' },
-    { level: 'Elite', description: 'Top tier competitive strength. You are performing at the level of a high-end regional powerlifter or weightlifter.' },
-    { level: 'World Class', description: 'The pinnacle. Your strength levels are comparable to international record-holders and world champions.' },
-  ] as const;
-
-  const trackableExercises = useMemo(() => {
-    if (!bodyPartSlug) return []
-    const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
-    if (!dbMuscle) return []
-    return getTrackableExercisesForMuscle(dbMuscle)
-  }, [bodyPartSlug])
 
   const filteredExercises = useMemo(() => {
     if (!groupData) return [];
@@ -95,6 +78,32 @@ export function MuscleGroupDetailSheet({
       max1RM,
     )
   }
+
+  const allMuscleExercises = useMemo(() => {
+    if (!bodyPartSlug) return []
+    const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
+    if (!dbMuscle) return []
+    
+    const trackableConfigs = getTrackableExercisesForMuscle(dbMuscle)
+    
+    return trackableConfigs.map(config => {
+      const userExercise = filteredExercises.find(ex => ex.exerciseName === config.name)
+      
+      return {
+        exerciseId: userExercise?.exerciseId || config.id,
+        exerciseName: config.name,
+        gifUrl: userExercise?.gifUrl || config.gifUrl || null,
+        max1RM: userExercise?.max1RM || 0,
+        isDone: !!userExercise,
+        strengthInfo: userExercise ? getStrengthInfo(config.name, userExercise.max1RM) : null
+      }
+    }).sort((a, b) => {
+      // Done first, then alphabetical
+      if (a.isDone && !b.isDone) return -1
+      if (!a.isDone && b.isDone) return 1
+      return a.exerciseName.localeCompare(b.exerciseName)
+    })
+  }, [bodyPartSlug, filteredExercises, getStrengthInfo])
 
   const navigateToExercise = (exerciseId: string) => {
     onClose()
@@ -128,16 +137,6 @@ export function MuscleGroupDetailSheet({
             </Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity 
-              onPress={() => setShowInfo(!showInfo)} 
-              style={[styles.infoButton, showInfo && styles.infoButtonActive]}
-            >
-              <Ionicons 
-                name={showInfo ? "information-circle" : "information-circle-outline"} 
-                size={22} 
-                color={showInfo ? colors.primary : colors.textSecondary} 
-              />
-            </TouchableOpacity>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -150,104 +149,87 @@ export function MuscleGroupDetailSheet({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {showInfo ? (
-            <View style={styles.infoView}>
-              <Text style={styles.sectionTitle}>About Strength Levels</Text>
-              <Text style={styles.infoDescription}>
-                Levels are calculated based on your one-rep max relative to your gender and bodyweight.
-              </Text>
-              
-              <View style={styles.levelsList}>
-                {STRENGTH_LEVEL_INFO.map((info) => (
-                  <View key={info.level} style={styles.levelInfoCard}>
-                    <View style={styles.levelInfoHeader}>
-                      <View style={[styles.levelIndicator, { backgroundColor: getLevelColor(info.level as any) }]} />
-                      <Text style={styles.levelInfoTitle}>{info.level}</Text>
-                    </View>
-                    <Text style={styles.levelInfoDescription}>{info.description}</Text>
-                  </View>
-                ))}
-              </View>
+          <Text style={styles.sectionTitle}>
+            Exercises & Standards
+          </Text>
 
-              <View style={styles.infoFooter}>
-                <Ionicons name="shield-checkmark" size={16} color={colors.textTertiary} />
-                <Text style={styles.infoFooterText}>
-                  Based on global standards for drug-free athletes.
-                </Text>
-              </View>
-            </View>
+          {allMuscleExercises.length === 0 ? (
+            <EmptyState
+              icon="body-outline"
+              title="No exercises available"
+              description={`We don't have any tracked exercises for ${groupDisplayName} yet.`}
+            />
           ) : (
-            <>
-              <Text style={styles.sectionTitle}>
-                {filteredExercises.length} Exercise{filteredExercises.length !== 1 ? 's' : ''} Tracked
-              </Text>
-
-              {filteredExercises.length === 0 ? (
-                <EmptyState
-                  icon="body-outline"
-                  title="No exercises tracked"
-                  description={`You haven't logged any ${groupDisplayName} exercises that match our strength standards yet.`}
-                  buttonText="Log Your First Workout"
-                  onPress={() => {
-                    onClose()
-                    router.push('/(tabs)/create-post')
-                  }}
-                />
-              ) : (
-                filteredExercises.map((exercise, index) => {
-                  const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-
-                  return (
-                    <TouchableOpacity
-                      key={exercise.exerciseId}
-                      style={[
-                        styles.exerciseCard,
-                        index === filteredExercises.length - 1 && styles.lastExerciseCard,
-                      ]}
-                      onPress={() => navigateToExercise(exercise.exerciseId)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.exerciseLeft}>
-                        <ExerciseMediaThumbnail
-                          gifUrl={exercise.gifUrl}
-                          style={styles.exerciseThumbnail}
-                        />
-                        <View style={styles.exerciseInfo}>
-                          <Text style={styles.exerciseName}>{exercise.exerciseName}</Text>
-                          <Text style={styles.exerciseWeight}>
-                            Est. 1RM: {formatWeight(exercise.max1RM, {
-                              maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                            })}
-                          </Text>
-                        </View>
+            allMuscleExercises.map((exercise, index) => (
+              <TouchableOpacity
+                key={exercise.exerciseId || exercise.exerciseName}
+                style={[
+                  styles.exerciseCard,
+                  !exercise.isDone && styles.untrackedCard,
+                  index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
+                ]}
+                onPress={() => exercise.exerciseId && navigateToExercise(exercise.exerciseId)}
+                activeOpacity={0.7}
+                disabled={!exercise.exerciseId}
+              >
+                <View style={styles.exerciseLeft}>
+                  <View style={styles.thumbnailContainer}>
+                    <ExerciseMediaThumbnail
+                      gifUrl={exercise.gifUrl}
+                      style={[styles.exerciseThumbnail, !exercise.isDone && styles.untrackedThumbnail]}
+                    />
+                    {!exercise.isDone && (
+                      <View style={styles.lockOverlay}>
+                        <Ionicons name="lock-closed" size={14} color="#FFF" />
                       </View>
+                    )}
+                  </View>
+                  <View style={styles.exerciseInfo}>
+                    <Text style={[styles.exerciseName, !exercise.isDone && styles.untrackedText]}>
+                      {exercise.exerciseName}
+                    </Text>
+                    {exercise.isDone ? (
+                      <Text style={styles.exerciseWeight}>
+                        Est. 1RM: {formatWeight(exercise.max1RM, {
+                          maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                        })}
+                      </Text>
+                    ) : (
+                      <Text style={styles.exerciseStatus}>Not yet tracked</Text>
+                    )}
+                  </View>
+                </View>
 
-                      <View style={styles.exerciseRight}>
-                        {strengthInfo && (
-                          <View style={[
-                            styles.levelBadgeItem,
-                            { backgroundColor: getLevelColor(strengthInfo.level) + '20' }
-                          ]}>
-                            <Text style={[
-                              styles.levelText,
-                              { color: getLevelColor(strengthInfo.level) }
-                            ]}>
-                              {strengthInfo.level}
-                            </Text>
-                          </View>
-                        )}
-                        <Ionicons
-                          name="chevron-forward"
-                          size={18}
-                          color={colors.textTertiary}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </>
+                <View style={styles.exerciseRight}>
+                  {exercise.strengthInfo && (
+                    <View style={[
+                      styles.levelBadgeItem,
+                      { backgroundColor: getLevelColor(exercise.strengthInfo.level) + '20' }
+                    ]}>
+                      <Text style={[
+                        styles.levelText,
+                        { color: getLevelColor(exercise.strengthInfo.level) }
+                      ]}>
+                        {exercise.strengthInfo.level}
+                      </Text>
+                    </View>
+                  )}
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={colors.textTertiary}
+                  />
+                </View>
+              </TouchableOpacity>
+            ))
           )}
+
+          <View style={styles.infoFooter}>
+            <Ionicons name="shield-checkmark" size={14} color={colors.textTertiary} />
+            <Text style={styles.infoFooterText}>
+              Levels based on global strength standards
+            </Text>
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -298,13 +280,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-    },
-    infoButton: {
-      padding: 8,
-      borderRadius: 12,
-    },
-    infoButtonActive: {
-      backgroundColor: colors.primary + '15',
     },
     closeButton: {
       padding: 4,
@@ -382,72 +357,34 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 12,
       fontWeight: '700',
     },
-    emptyContainer: {
-      paddingVertical: 60,
+    untrackedCard: {
+      backgroundColor: colors.background,
+    },
+    thumbnailContainer: {
+      position: 'relative',
+    },
+    untrackedThumbnail: {
+    },
+    lockOverlay: {
+      position: 'absolute',
+      right: -4,
+      bottom: -4,
+      backgroundColor: colors.textTertiary,
+      borderRadius: 10,
+      width: 20,
+      height: 20,
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.background,
     },
-    emptyButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 24,
-      paddingVertical: 14,
-      borderRadius: 12,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    emptyButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    infoView: {
-      flex: 1,
-    },
-    infoDescription: {
-      fontSize: 15,
+    untrackedText: {
       color: colors.textSecondary,
-      lineHeight: 22,
-      marginBottom: 24,
     },
-    levelsList: {
-      gap: 12,
-    },
-    levelInfoCard: {
-      backgroundColor: colors.feedCardBackground,
-      borderRadius: 16,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    levelInfoHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      marginBottom: 6,
-    },
-    levelIndicator: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-    },
-    levelInfoTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-      letterSpacing: -0.3,
-    },
-    levelInfoDescription: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
+    exerciseStatus: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 2,
     },
     infoFooter: {
       flexDirection: 'row',
