@@ -2362,6 +2362,11 @@ export const database = {
      * Calculate workout streak based on consecutive weeks with at least one workout
      * Returns current streak in weeks and last workout date
      *
+     * A streak counts consecutive weeks where you've worked out at least once.
+     * The streak is maintained if:
+     * - The current week has a workout, OR
+     * - The current week hasn't had a workout yet, but last week did (grace period)
+     *
      * @param includeCurrentWeek - If true, assume the current week counts (for when
      *        calculating streak while submitting a workout that hasn't been saved yet)
      */
@@ -2412,16 +2417,41 @@ export const database = {
           weeksWithWorkouts.add(weekKey)
         })
 
-        // If includeCurrentWeek is true, add the current week to the set
-        // (this handles the case when we're submitting a workout that hasn't been saved yet)
+        // Calculate current week start (Sunday)
         const today = new Date()
         const currentWeekStart = new Date(today)
         currentWeekStart.setDate(today.getDate() - today.getDay())
         currentWeekStart.setHours(0, 0, 0, 0)
         const currentWeekKey = currentWeekStart.toISOString().split('T')[0]
 
+        // Calculate last week start (Sunday)
+        const lastWeekStart = new Date(currentWeekStart)
+        lastWeekStart.setDate(currentWeekStart.getDate() - 7)
+        const lastWeekKey = lastWeekStart.toISOString().split('T')[0]
+
+        // If includeCurrentWeek is true, add the current week to the set
+        // (this handles the case when we're submitting a workout that hasn't been saved yet)
         if (includeCurrentWeek) {
           weeksWithWorkouts.add(currentWeekKey)
+        }
+
+        // Determine the starting week for streak calculation
+        // If current week has a workout, start from current week
+        // If current week has no workout but last week does, start from last week
+        // Otherwise, streak is 0
+        const hasCurrentWeekWorkout = weeksWithWorkouts.has(currentWeekKey)
+        const hasLastWeekWorkout = weeksWithWorkouts.has(lastWeekKey)
+
+        let streakStartWeek: Date
+        if (hasCurrentWeekWorkout) {
+          streakStartWeek = currentWeekStart
+        } else if (hasLastWeekWorkout) {
+          // Grace period: current week hasn't had a workout yet, but streak is still valid
+          // if last week had a workout
+          streakStartWeek = lastWeekStart
+        } else {
+          // No workout in current or last week - streak is broken
+          return { currentStreak: 0, lastWorkoutDate }
         }
 
         // Sort weeks descending
@@ -2430,14 +2460,14 @@ export const database = {
         )
 
         // Calculate current streak - consecutive weeks with at least one workout
+        // Starting from streakStartWeek and going backwards
         let currentStreak = 0
-        // Start from current week and go backwards
         for (let i = 0; i < weeks.length; i++) {
           const week = weeks[i]
 
           // Calculate expected week for this position in the streak
-          const expectedWeek = new Date(currentWeekStart)
-          expectedWeek.setDate(currentWeekStart.getDate() - i * 7)
+          const expectedWeek = new Date(streakStartWeek)
+          expectedWeek.setDate(streakStartWeek.getDate() - i * 7)
           const expectedWeekKey = expectedWeek.toISOString().split('T')[0]
 
           // If this week matches the expected consecutive week, continue streak

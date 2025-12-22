@@ -6,12 +6,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -208,46 +209,160 @@ export default function WorkoutCalendarScreen() {
   const renderMultiYearView = () => {
     const currentYear = currentDate.getFullYear()
 
+    // Build a proper GitHub-style contribution graph
+    // Rows = days of week (0-6, Sun-Sat)
+    // Columns = weeks of year (~53 weeks)
+
+    // Get the first day of the year
+    const firstDayOfYear = new Date(currentYear, 0, 1)
+    const lastDayOfYear = new Date(currentYear, 11, 31)
+
+    // Calculate total days and weeks
+    const totalDays =
+      Math.ceil(
+        (lastDayOfYear.getTime() - firstDayOfYear.getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1
+
+    // Build a 2D structure: weeks as columns
+    // Each week is an array of 7 days (some might be null for padding)
+    const weeks: (Date | null)[][] = []
+
+    // First, add padding for days before Jan 1 in the first week
+    const firstDayOfWeek = firstDayOfYear.getDay() // 0=Sun, 6=Sat
+    let currentWeek: (Date | null)[] = []
+
+    // Pad the beginning of first week with nulls
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      currentWeek.push(null)
+    }
+
+    // Iterate through all days of the year
+    for (let i = 0; i < totalDays; i++) {
+      const date = new Date(currentYear, 0, 1 + i)
+
+      currentWeek.push(date)
+
+      // If we've filled a week (7 days), start a new one
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek)
+        currentWeek = []
+      }
+    }
+
+    // Push the last partial week if any
+    if (currentWeek.length > 0) {
+      // Pad the end of the last week with nulls
+      while (currentWeek.length < 7) {
+        currentWeek.push(null)
+      }
+      weeks.push(currentWeek)
+    }
+
+    // Calculate month label positions (which week each month starts in)
+    const monthLabels: { month: string; weekIndex: number }[] = []
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ]
+
+    for (let month = 0; month < 12; month++) {
+      const firstOfMonth = new Date(currentYear, month, 1)
+      // Find which week this falls into
+      const daysSinceYearStart = Math.floor(
+        (firstOfMonth.getTime() - firstDayOfYear.getTime()) /
+          (1000 * 60 * 60 * 24),
+      )
+      const weekIndex = Math.floor(
+        (daysSinceYearStart + firstDayOfWeek) / 7,
+      )
+      monthLabels.push({ month: monthNames[month], weekIndex })
+    }
+
+    // Grid dimensions - dynamically sized to fill screen width
+    // Account for padding (16 on each side = 32 total)
+    const screenWidth = Dimensions.get('window').width
+    const availableWidth = screenWidth - 32 // Subtract padding
+    const numWeeks = weeks.length
+    
+    // Calculate cell size and gap to fill available width exactly
+    // Use a fixed gap of 1px for clean rendering
+    // Formula: availableWidth = numWeeks * cellSize + (numWeeks - 1) * gap
+    // cellSize = (availableWidth - (numWeeks - 1) * gap) / numWeeks
+    const cellGap = 1
+    const cellSize = (availableWidth - (numWeeks - 1) * cellGap) / numWeeks
+
     return (
       <View style={styles.content}>
         <Text style={styles.yearTitle}>{currentYear}</Text>
-        <View style={styles.multiYearRow}>
-          {[
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'May',
-            'Jun',
-            'Jul',
-            'Aug',
-            'Sep',
-            'Oct',
-            'Nov',
-            'Dec',
-          ].map((month, idx) => (
-            <Text key={idx} style={styles.multiYearMonth}>
-              {month}
+
+        {/* Month labels - positioned above their starting weeks */}
+        <View style={styles.multiYearMonthRow}>
+          {monthLabels.map((label, idx) => (
+            <Text
+              key={idx}
+              style={[
+                styles.multiYearMonth,
+                {
+                  position: 'absolute',
+                  left: label.weekIndex * (cellSize + cellGap),
+                },
+              ]}
+            >
+              {label.month}
             </Text>
           ))}
         </View>
-        <View style={styles.multiYearGrid}>
-          {Array.from({ length: 365 }, (_, i) => {
-            const date = new Date(currentYear, 0, 1)
-            date.setDate(date.getDate() + i)
-            const dateStr = date.toISOString().split('T')[0]
-            const hasWorkout = workoutDates.has(dateStr)
 
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.multiYearDay,
-                  hasWorkout && { backgroundColor: colors.primary },
-                ]}
-              />
-            )
-          })}
+        {/* Main grid - rows are days of week, columns are weeks */}
+        <View style={[styles.multiYearWeeksContainer, { gap: cellGap }]}>
+          {weeks.map((week, weekIdx) => (
+            <View key={weekIdx} style={[styles.multiYearWeek, { gap: cellGap }]}>
+              {week.map((date, dayIdx) => {
+                const dayStyle = {
+                  width: cellSize,
+                  height: cellSize,
+                  borderRadius: Math.max(1, Math.floor(cellSize / 4)),
+                }
+
+                if (!date) {
+                  return (
+                    <View
+                      key={dayIdx}
+                      style={[styles.multiYearDay, styles.multiYearDayEmpty, dayStyle]}
+                    />
+                  )
+                }
+
+                const dateStr = date.toISOString().split('T')[0]
+                const hasWorkout = workoutDates.has(dateStr)
+                const isToday =
+                  dateStr === new Date().toISOString().split('T')[0]
+
+                return (
+                  <View
+                    key={dayIdx}
+                    style={[
+                      styles.multiYearDay,
+                      dayStyle,
+                      hasWorkout && styles.multiYearDayWorkout,
+                      isToday && styles.multiYearDayToday,
+                    ]}
+                  />
+                )
+              })}
+            </View>
+          ))}
         </View>
       </View>
     )
@@ -520,26 +635,37 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     miniDayWorkout: {
       backgroundColor: colors.primary,
     },
-    // Multi-year view styles
-    multiYearRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 8,
+    // Multi-year view styles (GitHub-style contribution graph)
+    multiYearMonthRow: {
+      position: 'relative',
+      height: 14,
+      marginBottom: 4,
     },
     multiYearMonth: {
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: '500',
       color: colors.textSecondary,
     },
-    multiYearGrid: {
+    multiYearWeeksContainer: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 2,
+      // gap is set dynamically inline
+    },
+    multiYearWeek: {
+      flexDirection: 'column',
+      // gap is set dynamically inline
     },
     multiYearDay: {
-      width: 4,
-      height: 4,
+      // width, height, borderRadius are set dynamically inline
       backgroundColor: colors.backgroundLight,
-      borderRadius: 1,
+    },
+    multiYearDayEmpty: {
+      backgroundColor: 'transparent',
+    },
+    multiYearDayWorkout: {
+      backgroundColor: colors.primary,
+    },
+    multiYearDayToday: {
+      borderWidth: 1,
+      borderColor: colors.primary,
     },
   })
