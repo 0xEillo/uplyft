@@ -194,11 +194,17 @@ function TabLayoutContent() {
           tabBarButton: HapticTab,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: colors.backgroundWhite,
+            backgroundColor: isDark 
+              ? 'rgba(36, 36, 36, 0.96)' 
+              : 'rgba(255, 255, 255, 0.96)',
             borderTopWidth: 0,
             height: 79,
             paddingBottom: 30,
             paddingTop: 2,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
           },
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarLabelStyle: {
@@ -353,6 +359,7 @@ function TabLayoutContent() {
         onAnimationComplete={handleAnimationComplete}
         workoutNumber={data.workoutNumber}
         weeklyTarget={data.weeklyTarget}
+        currentStreak={data.currentStreak}
       />
       {data.workout && (
         <WorkoutShareScreen
