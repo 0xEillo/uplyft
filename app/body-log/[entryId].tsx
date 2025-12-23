@@ -6,11 +6,13 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
+    ActionSheetIOS,
     ActivityIndicator,
     Alert,
     Dimensions,
     FlatList,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -466,7 +468,38 @@ export default function BodyLogDetailScreen() {
   const handleAddPhotos = async () => {
     if (!user) return
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            launchCameraForBodyLog()
+          } else if (buttonIndex === 2) {
+            launchLibraryForBodyLog()
+          }
+        }
+      )
+    } else {
+      // Android fallback using Alert
+      Alert.alert(
+        'Add Photo',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: launchCameraForBodyLog },
+          { text: 'Choose from Library', onPress: launchLibraryForBodyLog },
+        ]
+      )
+    }
+  }
+
+  const launchCameraForBodyLog = async () => {
+    if (!user) return
 
     try {
       // Request camera permissions
@@ -484,94 +517,12 @@ export default function BodyLogDetailScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         aspect: [3, 4],
-        quality: 0.8, // Reduced from 0.9 to save memory in edge function
+        quality: 0.8,
         base64: false,
       })
 
       if (!result.canceled && result.assets.length > 0) {
-        const photoUri = result.assets[0].uri
-
-        // Upload and save photo
-        try {
-          setIsUploadingImage(true)
-
-          let actualEntryId = entryId
-
-          // Create entry if this is a new entry
-          if (entryId === 'new') {
-            const newEntry = await database.bodyLog.createEntry(user.id, {})
-            actualEntryId = newEntry.id
-
-            // Update URL with real entry ID
-            router.setParams({ entryId: actualEntryId })
-          }
-
-          if (!actualEntryId) {
-            return
-          }
-
-          const imagePosition = (entry?.images.length ?? 0) + 1
-
-          // Import and use uploadBodyLogImage directly with the correct sequence
-          const { uploadBodyLogImage } = await import('@/lib/utils/body-log-storage')
-          const filePath = await uploadBodyLogImage(photoUri, user.id, actualEntryId, imagePosition)
-
-          await database.bodyLog.addImage(
-            actualEntryId,
-            user.id,
-            filePath,
-            imagePosition,
-          )
-
-          // Refresh entry data with images
-          const { data: updatedEntry } = await supabase
-            .from('body_log_entries')
-            .select(`
-              *,
-              body_log_images (
-                id,
-                entry_id,
-                user_id,
-                file_path,
-                sequence,
-                created_at
-              )
-            `)
-            .eq('id', actualEntryId)
-            .single()
-
-          if (updatedEntry) {
-            const images = (updatedEntry.body_log_images || []).sort(
-              (a: any, b: any) => a.sequence - b.sequence
-            )
-
-            setEntry((prev) =>
-              prev
-                ? { ...prev, images }
-                : null
-            )
-
-            // Refresh image URLs - map to file paths (hero size)
-            if (images.length > 0) {
-              setImagesLoading(true)
-              const filePaths = images.map((img: any) => img.file_path)
-              const newUrls = await getBodyLogImageUrls(filePaths, 'hero')
-              setImageUrls(newUrls)
-              setImagesLoading(false)
-              prefetchBodyLogImages(newUrls)
-            }
-          }
-
-          await Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success,
-          )
-        } catch (error) {
-          console.error('Error uploading photo:', error)
-          setImagesLoading(false)
-          Alert.alert('Error', 'Failed to upload photo. Please try again.')
-        } finally {
-          setIsUploadingImage(false)
-        }
+        await handleImageSelected(result.assets[0].uri)
       }
     } catch (error) {
       console.error('Error accessing camera:', error)
@@ -579,6 +530,126 @@ export default function BodyLogDetailScreen() {
         'Camera Error',
         'Failed to access camera. Please try again.',
       )
+    }
+  }
+
+  const launchLibraryForBodyLog = async () => {
+    if (!user) return
+
+    try {
+      // Request photo library permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert(
+          'Photo Library Permission',
+          'Rep AI needs photo library access to select photos. You can enable this in your device settings.',
+          [{ text: 'OK' }],
+        )
+        return
+      }
+
+      // Launch photo library
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        aspect: [3, 4],
+        quality: 0.8,
+        base64: false,
+      })
+
+      if (!result.canceled && result.assets.length > 0) {
+        await handleImageSelected(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.error('Error accessing photo library:', error)
+      Alert.alert(
+        'Photo Library Error',
+        'Failed to access photo library. Please try again.',
+      )
+    }
+  }
+
+  const handleImageSelected = async (photoUri: string) => {
+    if (!user) return
+
+    try {
+      setIsUploadingImage(true)
+
+      let actualEntryId = entryId
+
+      // Create entry if this is a new entry
+      if (entryId === 'new') {
+        const newEntry = await database.bodyLog.createEntry(user.id, {})
+        actualEntryId = newEntry.id
+
+        // Update URL with real entry ID
+        router.setParams({ entryId: actualEntryId })
+      }
+
+      if (!actualEntryId) {
+        return
+      }
+
+      const imagePosition = (entry?.images.length ?? 0) + 1
+
+      // Import and use uploadBodyLogImage directly with the correct sequence
+      const { uploadBodyLogImage } = await import('@/lib/utils/body-log-storage')
+      const filePath = await uploadBodyLogImage(photoUri, user.id, actualEntryId, imagePosition)
+
+      await database.bodyLog.addImage(
+        actualEntryId,
+        user.id,
+        filePath,
+        imagePosition,
+      )
+
+      // Refresh entry data with images
+      const { data: updatedEntry } = await supabase
+        .from('body_log_entries')
+        .select(`
+          *,
+          body_log_images (
+            id,
+            entry_id,
+            user_id,
+            file_path,
+            sequence,
+            created_at
+          )
+        `)
+        .eq('id', actualEntryId)
+        .single()
+
+      if (updatedEntry) {
+        const images = (updatedEntry.body_log_images || []).sort(
+          (a: any, b: any) => a.sequence - b.sequence
+        )
+
+        setEntry((prev) =>
+          prev
+            ? { ...prev, images }
+            : null
+        )
+
+        // Refresh image URLs - map to file paths (hero size)
+        if (images.length > 0) {
+          setImagesLoading(true)
+          const filePaths = images.map((img: any) => img.file_path)
+          const newUrls = await getBodyLogImageUrls(filePaths, 'hero')
+          setImageUrls(newUrls)
+          setImagesLoading(false)
+          prefetchBodyLogImages(newUrls)
+        }
+      }
+
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      )
+    } catch (error) {
+      console.error('Error uploading photo:', error)
+      setImagesLoading(false)
+      Alert.alert('Error', 'Failed to upload photo. Please try again.')
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 

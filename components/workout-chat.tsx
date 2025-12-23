@@ -2,11 +2,11 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-    EQUIPMENT_PREF_KEY,
-    MUSCLE_OPTIONS,
-    WORKOUT_PLANNING_PREFS_KEY,
-    WorkoutPlanningData,
-    WorkoutPlanningWizard,
+  EQUIPMENT_PREF_KEY,
+  MUSCLE_OPTIONS,
+  WORKOUT_PLANNING_PREFS_KEY,
+  WorkoutPlanningData,
+  WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -17,16 +17,16 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-    ParsedWorkoutDisplay,
-    parseWorkoutForDisplay,
+  ParsedWorkoutDisplay,
+  parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-    buildWorkoutCreationPrompt,
-    buildWorkoutModificationSuffix,
+  buildWorkoutCreationPrompt,
+  buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -43,37 +43,35 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSpring,
-    withTiming
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -374,6 +372,7 @@ export function WorkoutChat({
   ) // Track which exercise is being replaced
   const { coachId } = useProfile()
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
@@ -469,11 +468,12 @@ export function WorkoutChat({
     }
   }, [generatedPlanContent])
 
-  // Scroll to bottom when keyboard appears
+  // Track keyboard visibility and scroll to bottom when keyboard appears
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
+        setIsKeyboardVisible(true)
         setTimeout(() => scrollToBottom(), 100)
       },
     )
@@ -481,7 +481,7 @@ export function WorkoutChat({
     const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (event) => {
-        // No-op
+        setIsKeyboardVisible(false)
       },
     )
 
@@ -661,10 +661,40 @@ export function WorkoutChat({
     }
   }
 
+  // Show native action sheet for image picker
+  const showImagePickerActionSheet = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            launchCamera()
+          } else if (buttonIndex === 2) {
+            launchLibrary()
+          }
+        }
+      )
+    } else {
+      // Android fallback using Alert
+      Alert.alert(
+        'Add Image',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: launchCamera },
+          { text: 'Choose from Library', onPress: launchLibrary },
+        ]
+      )
+    }
+  }
+
   // Launch camera
   const launchCamera = async () => {
-    setShowImagePickerModal(false)
-
     try {
       const currentStatus = await ImagePicker.getCameraPermissionsAsync()
 
@@ -732,8 +762,6 @@ export function WorkoutChat({
 
   // Launch photo library
   const launchLibrary = async () => {
-    setShowImagePickerModal(false)
-
     try {
       const currentStatus = await ImagePicker.getMediaLibraryPermissionsAsync()
 
@@ -2240,7 +2268,7 @@ export function WorkoutChat({
               styles.inputContainer,
               {
                 paddingBottom:
-                  mode === 'sheet' ? Math.max(insets.bottom, 16) : 0,
+                  mode === 'sheet' ? Math.max(insets.bottom, 16) : (isKeyboardVisible ? 0 : 60),
               },
             ]}
             onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
@@ -2282,12 +2310,12 @@ export function WorkoutChat({
               {!hideImagePicker && (
                 <TouchableOpacity
                   style={styles.addImageButton}
-                  onPress={() => setShowImagePickerModal(true)}
+                  onPress={showImagePickerActionSheet}
                   disabled={isLoading}
                 >
                   <Ionicons
-                    name="add"
-                    size={20}
+                    name="image-outline"
+                    size={22}
                     color={isLoading ? colors.textPlaceholder : colors.primary}
                   />
                 </TouchableOpacity>
@@ -2334,63 +2362,6 @@ export function WorkoutChat({
             </View>
           </View>
 
-          {/* Image Picker Bottom Sheet */}
-          <Modal
-            visible={showImagePickerModal}
-            transparent
-            animationType="fade"
-            onRequestClose={closeImagePickerSheet}
-          >
-            <GestureHandlerRootView style={styles.modalContainer}>
-              <Pressable
-                style={StyleSheet.absoluteFill}
-                onPress={closeImagePickerSheet}
-              >
-                <View style={styles.modalBackdrop} />
-              </Pressable>
-
-              <GestureDetector gesture={pan}>
-                <AnimatedReanimated.View
-                  style={[styles.bottomSheet, animatedBottomSheetStyle]}
-                >
-                  <View style={styles.bottomSheetHandleContainer}>
-                    <View style={styles.bottomSheetHandle} />
-                  </View>
-                  <Text style={styles.bottomSheetTitle}>Add Image</Text>
-
-                  <TouchableOpacity
-                    style={styles.bottomSheetOption}
-                    onPress={launchCamera}
-                  >
-                    <View style={styles.bottomSheetOptionIcon}>
-                      <Ionicons
-                        name="camera"
-                        size={24}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text style={styles.bottomSheetOptionText}>Take Photo</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.bottomSheetOption}
-                    onPress={launchLibrary}
-                  >
-                    <View style={styles.bottomSheetOptionIcon}>
-                      <Ionicons
-                        name="images"
-                        size={24}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text style={styles.bottomSheetOptionText}>
-                      Choose from Library
-                    </Text>
-                  </TouchableOpacity>
-                </AnimatedReanimated.View>
-              </GestureDetector>
-            </GestureHandlerRootView>
-          </Modal>
 
           {/* Image Viewer Modal */}
           <Modal
