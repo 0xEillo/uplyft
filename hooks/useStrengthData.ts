@@ -70,9 +70,6 @@ const LEVEL_SCORES: Record<StrengthLevel, number> = {
   Elite: 5,
   'World Class': 6,
 }
-
-const SHOW_DEMO_DATA = true // Set to true for demo showcases
-
 export function useStrengthData() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -81,125 +78,6 @@ export function useStrengthData() {
   const [refreshing, setRefreshing] = useState(false)
 
   const loadData = useCallback(async () => {
-    // In demo mode, we provide fake data if no real user/data
-    if (SHOW_DEMO_DATA) {
-      setProfile({
-        id: 'demo-user',
-        username: 'Demo User',
-        gender: 'male',
-        weight_kg: 85,
-        created_at: new Date().toISOString(),
-        user_tag: 'demo',
-        display_name: 'Demo User',
-        bio: '',
-        profile_description: '',
-      } as any)
-
-      const demoExercises: ExerciseData[] = [
-        {
-          exerciseId: 'demo-1',
-          exerciseName: 'Bench Press (Barbell)',
-          muscleGroup: 'Chest',
-          max1RM: 110, // ~1.3x BW -> Intermediate/Advanced
-          records: [],
-        },
-        {
-          exerciseId: 'demo-2',
-          exerciseName: 'Squat (Barbell)',
-          muscleGroup: 'Quads',
-          max1RM: 180, // ~2.1x BW -> Advanced
-          records: [],
-        },
-        {
-          exerciseId: 'demo-3',
-          exerciseName: 'Deadlift (Barbell)',
-          muscleGroup: 'Back',
-          max1RM: 240, // ~2.8x BW -> Elite
-          records: [],
-        },
-        {
-          exerciseId: 'demo-4',
-          exerciseName: 'Military Press (Barbell)',
-          muscleGroup: 'Shoulders',
-          max1RM: 45, // ~0.5x BW -> Novice
-          records: [],
-        },
-        {
-          exerciseId: 'demo-5',
-          exerciseName: 'Weighted Pull Up',
-          muscleGroup: 'Back',
-          max1RM: 0.8, // ~0.8 multiplier -> Elite
-          records: [],
-        },
-        {
-          exerciseId: 'demo-6',
-          exerciseName: 'Pushdown (Cable)',
-          muscleGroup: 'Triceps',
-          max1RM: 140, // ~1.65 multiplier -> World Class
-          records: [],
-        },
-        {
-          exerciseId: 'demo-7',
-          exerciseName: 'Bicep Curl (Barbell)',
-          muscleGroup: 'Biceps',
-          max1RM: 35, // ~0.4x BW -> Novice
-          records: [],
-        },
-        {
-          exerciseId: 'demo-8',
-          exerciseName: 'Glute Bridge (Barbell)',
-          muscleGroup: 'Glutes',
-          max1RM: 190, // ~2.2x BW -> Advanced
-          records: [],
-        },
-        {
-          exerciseId: 'demo-9',
-          exerciseName: 'Romanian Deadlift (Barbell)',
-          muscleGroup: 'Hamstrings',
-          max1RM: 140, // ~1.6x BW -> Intermediate
-          records: [],
-        },
-        {
-          exerciseId: 'demo-10',
-          exerciseName: 'Standing Calf Raise (Machine)',
-          muscleGroup: 'Calves',
-          max1RM: 150, // ~1.7x BW -> Advanced
-          records: [],
-        },
-        {
-          exerciseId: 'demo-11',
-          exerciseName: 'Shrug (Machine)',
-          muscleGroup: 'Traps',
-          max1RM: 130, // ~1.5x BW -> Intermediate
-          records: [],
-        },
-        {
-          exerciseId: 'demo-12',
-          exerciseName: 'Hanging Leg Raise',
-          muscleGroup: 'Abs',
-          max1RM: 15, // ~0.17x BW -> Novice/Intermediate
-          records: [],
-        },
-        {
-          exerciseId: 'demo-13',
-          exerciseName: 'Back Extension (Machine)',
-          muscleGroup: 'Lower Back',
-          max1RM: 60, // ~0.7x BW -> Advanced
-          records: [],
-        },
-        {
-          exerciseId: 'demo-14',
-          exerciseName: 'Wrist Curl (Barbell)',
-          muscleGroup: 'Forearms',
-          max1RM: 60, // ~0.7x BW -> Intermediate/Advanced
-          records: [],
-        }
-      ]
-      setExerciseData(demoExercises)
-      setIsLoading(false)
-      return
-    }
-
     if (!user?.id) return
 
     try {

@@ -23,6 +23,12 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { database } from '@/lib/database'
+import {
+    clearExerciseHistoryCache,
+    getLastPerformanceForExercise,
+    getSetPerformance,
+    type SetPerformance,
+} from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
     clearDraft as clearWorkoutDraft,
@@ -222,7 +228,7 @@ const getExerciseSuggestion = (
 
 export default function CreatePostScreen() {
   const colors = useThemedColors()
-  const { weightUnit } = useWeightUnits()
+  const { weightUnit, convertToPreferred } = useWeightUnits()
   const insets = useSafeAreaInsets()
   const {
     selectedRoutineId: selectedRoutineIdParam,
@@ -1028,6 +1034,7 @@ export default function CreatePostScreen() {
       skipPersistCountRef.current = 1
       suppressDraftToastRef.current = true
       await clearWorkoutDraft()
+      clearExerciseHistoryCache() // Clear cache so new workout data is available next time
       resetWorkoutTimer()
 
       setNotes('')
@@ -1510,6 +1517,148 @@ export default function CreatePostScreen() {
   )
 
   // =============================================================================
+  // EXERCISE HISTORY HELPERS
+  // =============================================================================
+
+  /**
+   * Convert a SetPerformance from the history service to display format.
+   * Handles weight unit conversion and formatting.
+   */
+  const formatSetHistoryForDisplay = useCallback(
+    (
+      historySet: SetPerformance | null,
+    ): { weight: string | null; reps: string | null } => {
+      if (!historySet) {
+        return { weight: null, reps: null }
+      }
+
+      const weightInPreferredUnit = historySet.weight
+        ? convertToPreferred(historySet.weight)
+        : null
+
+      return {
+        weight: weightInPreferredUnit
+          ? Math.round(weightInPreferredUnit).toString()
+          : null,
+        reps: historySet.reps?.toString() ?? null,
+      }
+    },
+    [convertToPreferred],
+  )
+
+  /**
+   * Create an empty set with optional target rep range.
+   */
+  const createEmptySet = useCallback(
+    (targetRepsMin: number | null = null, targetRepsMax: number | null = null) => ({
+      weight: '',
+      reps: '',
+      lastWorkoutWeight: null,
+      lastWorkoutReps: null,
+      targetRepsMin,
+      targetRepsMax,
+      targetRestSeconds: null,
+    }),
+    [],
+  )
+
+  /**
+   * Create a StructuredExerciseDraft with last performance data.
+   *
+   * Fetches the user's most recent workout for this exercise and populates
+   * placeholder values with their previous weight/reps for each set.
+   *
+   * Standard workout tracker approach:
+   * - Match by set number (Set 1 history → Set 1 placeholder)
+   * - Show empty placeholders for sets beyond previous workout
+   */
+  const createExerciseWithHistory = useCallback(
+    async (
+      exerciseName: string,
+      numberOfSets = 1,
+      targetRepsMin: number | null = null,
+      targetRepsMax: number | null = null,
+    ): Promise<StructuredExerciseDraft> => {
+      // Create base exercise with empty sets
+      const baseExercise: StructuredExerciseDraft = {
+        id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        name: exerciseName,
+        sets: Array.from({ length: numberOfSets }, () =>
+          createEmptySet(targetRepsMin, targetRepsMax),
+        ),
+      }
+
+      // Early return if user not authenticated
+      if (!user?.id) {
+        return baseExercise
+      }
+
+      try {
+        const lastPerformance = await getLastPerformanceForExercise(
+          user.id,
+          exerciseName,
+        )
+
+        if (!lastPerformance?.sets?.length) {
+          return baseExercise
+        }
+
+        // Enrich each set with history data
+        const enrichedSets = baseExercise.sets.map((set, index) => {
+          const setNumber = index + 1
+          const historySet = lastPerformance.sets.find(
+            (s) => s.setNumber === setNumber,
+          )
+          const formatted = formatSetHistoryForDisplay(historySet ?? null)
+
+          return {
+            ...set,
+            lastWorkoutWeight: formatted.weight,
+            lastWorkoutReps: formatted.reps,
+          }
+        })
+
+        return { ...baseExercise, sets: enrichedSets }
+      } catch (error) {
+        console.error('[createExerciseWithHistory] Error:', error)
+        return baseExercise
+      }
+    },
+    [user?.id, createEmptySet, formatSetHistoryForDisplay],
+  )
+
+  /**
+   * Fetch and format history for a specific set number.
+   *
+   * Used by StructuredWorkoutInput when the user adds new sets via the + button.
+   * Returns weight/reps in display format (user's preferred units, stringified).
+   */
+  const handleFetchSetHistory = useCallback(
+    async (
+      exerciseName: string,
+      setNumber: number,
+    ): Promise<{ weight: string | null; reps: string | null } | null> => {
+      if (!user?.id) return null
+
+      try {
+        const historySet = await getSetPerformance(user.id, exerciseName, setNumber)
+        const formatted = formatSetHistoryForDisplay(historySet)
+
+        // Return null if no data to avoid creating empty placeholders
+        if (!formatted.weight && !formatted.reps) {
+          return null
+        }
+
+        return formatted
+      } catch (error) {
+        console.error('[handleFetchSetHistory] Error:', error)
+        return null
+      }
+    },
+    [user?.id, formatSetHistoryForDisplay],
+  )
+
+  // =============================================================================
   // AUTOCOMPLETE STATE
   // =============================================================================
   const currentSuggestion = useMemo(() => {
@@ -1518,27 +1667,13 @@ export default function CreatePostScreen() {
       : null
   }, [notes, cursorPosition, allExercises, isNotesFocused])
 
-  const handleAcceptSuggestion = useCallback(() => {
+  const handleAcceptSuggestion = useCallback(async () => {
     if (!currentSuggestion) return
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-    // 1. Create structured workout entry
-    const newExercise: StructuredExerciseDraft = {
-      id: `manual-${Date.now()}`,
-      name: currentSuggestion.name,
-      sets: [
-        {
-          weight: '',
-          reps: '',
-          lastWorkoutWeight: null,
-          lastWorkoutReps: null,
-          targetRepsMin: null,
-          targetRepsMax: null,
-          targetRestSeconds: null,
-        },
-      ],
-    }
+    // 1. Create structured workout entry with history data
+    const newExercise = await createExerciseWithHistory(currentSuggestion.name)
 
     setStructuredData((prev) => [...prev, newExercise])
     setIsStructuredMode(true)
@@ -1554,11 +1689,11 @@ export default function CreatePostScreen() {
       notes.substring(0, startOfLine) + notes.substring(cursorPosition)
 
     setNotes(newText)
-  }, [currentSuggestion, notes, cursorPosition])
+  }, [currentSuggestion, notes, cursorPosition, createExerciseWithHistory])
 
   // Handle text change
   const handleNotesChange = useCallback(
-    (text: string) => {
+    async (text: string) => {
       // Check for Enter key press (newline addition) when a suggestion is active
       const isNewlineAdded =
         text.length > notes.length &&
@@ -1574,22 +1709,8 @@ export default function CreatePostScreen() {
           // Manually call accept suggestion logic with the calculated suggestion
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-          // 1. Create structured workout entry
-          const newExercise: StructuredExerciseDraft = {
-            id: `manual-${Date.now()}`,
-            name: suggestion.name,
-            sets: [
-              {
-                weight: '',
-                reps: '',
-                lastWorkoutWeight: null,
-                lastWorkoutReps: null,
-                targetRepsMin: null,
-                targetRepsMax: null,
-                targetRestSeconds: null,
-              },
-            ],
-          }
+          // 1. Create structured workout entry with history data
+          const newExercise = await createExerciseWithHistory(suggestion.name)
 
           setStructuredData((prev) => [...prev, newExercise])
           setIsStructuredMode(true)
@@ -1610,7 +1731,7 @@ export default function CreatePostScreen() {
 
       setNotes(text)
     },
-    [notes, cursorPosition, allExercises],
+    [notes, cursorPosition, allExercises, createExerciseWithHistory],
   )
 
   const handleChooseExercisePress = useCallback(() => {
@@ -1626,25 +1747,29 @@ export default function CreatePostScreen() {
 
     const { exerciseName, sets, startLineIndex, endLineIndex } = parsed
 
-    // Create exercise data
-    const newExercise: StructuredExerciseDraft = {
-      id: `manual-${Date.now()}`,
-      name: exerciseName,
-      sets: sets.map((set) => ({
-        weight: set.weight || '',
-        reps: set.reps || '',
-        lastWorkoutWeight: null,
-        lastWorkoutReps: null,
-        targetRepsMin: null,
-        targetRepsMax: null,
-        targetRestSeconds: null,
-      })),
+    // Create exercise with history data, using the number of sets parsed from text
+    const baseExercise = await createExerciseWithHistory(
+      exerciseName,
+      sets.length,
+    )
+
+    // Merge with user-typed data (preserve any values they already entered)
+    const mergedExercise: StructuredExerciseDraft = {
+      ...baseExercise,
+      sets: baseExercise.sets.map((set, index) => {
+        const typedSet = sets[index]
+        return {
+          ...set,
+          weight: typedSet?.weight || set.weight,
+          reps: typedSet?.reps || set.reps,
+        }
+      }),
     }
 
     // Add to structured data FIRST, then enable structured mode
     // This ensures the component renders with the exercise already in structuredData
     setStructuredData((prev) => {
-      return [...prev, newExercise]
+      return [...prev, mergedExercise]
     })
 
     // Enable structured mode AFTER adding exercise to ensure component renders with data
@@ -1661,26 +1786,12 @@ export default function CreatePostScreen() {
     const newNotes = newLines.join('\n')
     setNotes(newNotes)
     // showConvertButton will automatically update via useMemo
-  }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode])
+  }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode, createExerciseWithHistory])
 
-  const handleMultiSelectExercises = useCallback((exercises: Exercise[]) => {
-    // Create new structured exercises
-    const newExercises: StructuredExerciseDraft[] = exercises.map(
-      (exercise) => ({
-        id: `manual-${Date.now()}-${exercise.id}`, // Ensure unique ID
-        name: exercise.name,
-        sets: [
-          {
-            weight: '',
-            reps: '',
-            lastWorkoutWeight: null,
-            lastWorkoutReps: null,
-            targetRepsMin: null,
-            targetRepsMax: null,
-            targetRestSeconds: null,
-          },
-        ],
-      }),
+  const handleMultiSelectExercises = useCallback(async (exercises: Exercise[]) => {
+    // Create new structured exercises with history data (in parallel)
+    const newExercises = await Promise.all(
+      exercises.map((exercise) => createExerciseWithHistory(exercise.name)),
     )
 
     setStructuredData((prev) => [...prev, ...newExercises])
@@ -1690,7 +1801,7 @@ export default function CreatePostScreen() {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true })
     }, 100)
-  }, [])
+  }, [createExerciseWithHistory])
 
   // Helper: Parse rep range from string like "10-12" or "10"
   const parseRepRange = (
@@ -1710,34 +1821,18 @@ export default function CreatePostScreen() {
     return { targetRepsMin: null, targetRepsMax: null }
   }
 
-  // Helper: Create an empty set with target reps
-  const createEmptySet = (
-    targetRepsMin: number | null,
-    targetRepsMax: number | null,
-  ) => ({
-    weight: '',
-    reps: '',
-    lastWorkoutWeight: null,
-    lastWorkoutReps: null,
-    targetRepsMin,
-    targetRepsMax,
-    targetRestSeconds: null,
-  })
-
   // Handler for adding exercise from AI coach suggestions
   const handleAddExerciseFromCoach = useCallback(
-    (exercise: { name: string; sets: number; reps: string }) => {
+    async (exercise: { name: string; sets: number; reps: string }) => {
       const { targetRepsMin, targetRepsMax } = parseRepRange(exercise.reps)
 
-      const sets = Array.from({ length: exercise.sets }, () =>
-        createEmptySet(targetRepsMin, targetRepsMax),
+      // Create exercise with history data
+      const newExercise = await createExerciseWithHistory(
+        exercise.name,
+        exercise.sets,
+        targetRepsMin,
+        targetRepsMax,
       )
-
-      const newExercise: StructuredExerciseDraft = {
-        id: `coach-${Date.now()}`,
-        name: exercise.name,
-        sets,
-      }
 
       setStructuredData((prev) => [...prev, newExercise])
       setIsStructuredMode(true)
@@ -1746,53 +1841,62 @@ export default function CreatePostScreen() {
         scrollViewRef.current?.scrollToEnd({ animated: true })
       }, 100)
     },
-    [],
+    [createExerciseWithHistory],
   )
 
   // Handler for replacing exercise from AI coach suggestions
   const handleReplaceExerciseFromCoach = useCallback(
-    (
+    async (
       oldExerciseName: string,
       newExercise: { name: string; sets: number; reps: string },
     ) => {
       const { targetRepsMin, targetRepsMax } = parseRepRange(newExercise.reps)
 
-      setStructuredData((prev) => {
-        const index = prev.findIndex(
-          (ex) => ex.name.toLowerCase() === oldExerciseName.toLowerCase(),
+      // First check if the exercise exists
+      const existingIndex = structuredData.findIndex(
+        (ex) => ex.name.toLowerCase() === oldExerciseName.toLowerCase(),
+      )
+
+      if (existingIndex === -1) {
+        // If not found, add as a new exercise with history
+        const newExerciseData = await createExerciseWithHistory(
+          newExercise.name,
+          newExercise.sets,
+          targetRepsMin,
+          targetRepsMax,
         )
+        setStructuredData((prev) => [...prev, newExerciseData])
+        return
+      }
 
-        if (index === -1) {
-          // If not found, just add the new exercise
-          const sets = Array.from({ length: newExercise.sets }, () =>
-            createEmptySet(targetRepsMin, targetRepsMax),
-          )
-          return [
-            ...prev,
-            {
-              id: `coach-${Date.now()}`,
-              name: newExercise.name,
-              sets,
-            },
-          ]
-        }
+      // Exercise exists - fetch history for the new exercise to fill any extra sets
+      const newHistory = await createExerciseWithHistory(
+        newExercise.name,
+        newExercise.sets,
+        targetRepsMin,
+        targetRepsMax,
+      )
 
-        const oldExercise = prev[index]
+      setStructuredData((prev) => {
+        const oldExercise = prev[existingIndex]
         const setCount = Math.max(newExercise.sets, oldExercise.sets.length)
 
+        // Preserve existing set data where available, use history for new sets
         const sets = Array.from({ length: setCount }, (_, i) => {
           if (i < oldExercise.sets.length) {
+            // Keep the user's existing data but update target reps
             return { ...oldExercise.sets[i], targetRepsMin, targetRepsMax }
           }
-          return createEmptySet(targetRepsMin, targetRepsMax)
+          // Use history data for new sets
+          return newHistory.sets[i] || createEmptySet(targetRepsMin, targetRepsMax)
         })
 
         const updated = [...prev]
-        updated[index] = { id: oldExercise.id, name: newExercise.name, sets }
+        updated[existingIndex] = { id: oldExercise.id, name: newExercise.name, sets }
         return updated
       })
     },
-    [],
+    [createExerciseWithHistory, structuredData],
   )
 
   // Track previous structured data length to detect deletions
@@ -1984,6 +2088,7 @@ export default function CreatePostScreen() {
                   onInputFocus={() => setIsStructuredInputFocused(true)}
                   onInputBlur={() => setIsStructuredInputFocused(false)}
                   editorToolbarProps={editorToolbarProps}
+                  onFetchSetHistory={handleFetchSetHistory}
                 />
               </View>
             )}

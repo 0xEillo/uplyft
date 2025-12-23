@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -22,9 +22,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel
+    getStrengthStandard,
+    hasStrengthStandards,
+    type StrengthLevel
 } from '@/lib/strength-standards'
 import { Exercise, Profile } from '@/types/database.types'
 
@@ -131,10 +131,10 @@ export default function ExerciseDetailScreen() {
       }
 
       // Load History (Sessions)
-      if (exercise && exercise.name) {
+      if (exerciseData && exerciseData.name) {
         const historyData = await database.stats.getExerciseHistory(
           user.id,
-          exerciseData?.name || '',
+          exerciseData.name,
         )
         
         // Calculate Best Session Volume from history

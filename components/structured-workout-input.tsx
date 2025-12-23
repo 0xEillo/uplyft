@@ -43,6 +43,14 @@ interface StructuredWorkoutInputProps {
   onInputFocus?: () => void
   onInputBlur?: () => void
   editorToolbarProps?: any
+  /**
+   * Callback to fetch history data for a specific set when adding new sets.
+   * Returns the last workout's weight/reps for the given exercise and set number.
+   */
+  onFetchSetHistory?: (
+    exerciseName: string,
+    setNumber: number,
+  ) => Promise<{ weight: string | null; reps: string | null } | null>
 }
 
 export function StructuredWorkoutInput({
@@ -54,6 +62,7 @@ export function StructuredWorkoutInput({
   onInputFocus,
   onInputBlur,
   editorToolbarProps,
+  onFetchSetHistory,
 }: StructuredWorkoutInputProps) {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
@@ -238,30 +247,52 @@ export function StructuredWorkoutInput({
     onDataChange(newExercises)
   }
 
-  const handleAddSet = async (exerciseIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    const newExercises = [...exercises]
-    const exercise = newExercises[exerciseIndex]
+  const handleAddSet = useCallback(
+    async (exerciseIndex: number) => {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      const newExercises = [...exercises]
+      const exercise = newExercises[exerciseIndex]
 
-    // Get the weight from the previous set (if it exists)
-    const previousSet = exercise.sets[exercise.sets.length - 1]
-    const prefillWeight = previousSet?.weight || ''
+      // Get the weight from the previous set (if it exists)
+      const previousSet = exercise.sets[exercise.sets.length - 1]
+      const prefillWeight = previousSet?.weight || ''
 
-    // Create a new set with prefilled weight
-    const newSet: SetData = {
-      weight: prefillWeight,
-      reps: '',
-      lastWorkoutWeight: null,
-      lastWorkoutReps: null,
-      targetRepsMin: null,
-      targetRepsMax: null,
-      targetRestSeconds: null,
-    }
+      // The new set number (1-indexed)
+      const newSetNumber = exercise.sets.length + 1
 
-    exercise.sets.push(newSet)
-    setExercises(newExercises)
-    onDataChange(newExercises)
-  }
+      // Try to fetch history for this set number
+      let historyWeight: string | null = null
+      let historyReps: string | null = null
+
+      if (onFetchSetHistory) {
+        try {
+          const history = await onFetchSetHistory(exercise.name, newSetNumber)
+          if (history) {
+            historyWeight = history.weight
+            historyReps = history.reps
+          }
+        } catch (error) {
+          console.warn('[handleAddSet] Error fetching history:', error)
+        }
+      }
+
+      // Create a new set with prefilled weight and history data
+      const newSet: SetData = {
+        weight: prefillWeight,
+        reps: '',
+        lastWorkoutWeight: historyWeight,
+        lastWorkoutReps: historyReps,
+        targetRepsMin: previousSet?.targetRepsMin ?? null,
+        targetRepsMax: previousSet?.targetRepsMax ?? null,
+        targetRestSeconds: previousSet?.targetRestSeconds ?? null,
+      }
+
+      exercise.sets.push(newSet)
+      setExercises(newExercises)
+      onDataChange(newExercises)
+    },
+    [exercises, onFetchSetHistory, onDataChange],
+  )
 
   const handleDeleteSet = async (exerciseIndex: number, setIndex: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
