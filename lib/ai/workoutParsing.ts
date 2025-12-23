@@ -1,4 +1,4 @@
-import { findExerciseByName } from '@/lib/utils/exercise-matcher'
+import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
 export interface ParsedWorkoutDisplay {
   description: string
@@ -47,10 +47,11 @@ export function parseWorkoutForDisplay(
             ? `${data.estimatedDuration}:00`
             : '45:00',
           exercises: data.exercises.map((ex: any) => {
-            const match = findExerciseByName(ex.name)
+            // Use the exerciseLookup service to find exact match by name
+            const match = exerciseLookup.findByName(ex.name)
             return {
               name: ex.name,
-              gifUrl: match?.gifUrl,
+              gifUrl: match?.gifUrl ?? null,
               sets: ex.sets.map((s: any) => ({
                 type: s.type || 'working',
                 weight: '', // Strip weight suggestions

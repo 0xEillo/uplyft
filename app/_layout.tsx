@@ -26,6 +26,7 @@ import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
 // Set global refresh control tint color for iOS
 if (Platform.OS === 'ios') {
@@ -62,6 +63,13 @@ function RootLayoutNav() {
 
   // Initialize push notifications
   usePushNotifications()
+
+  // Pre-load exercise cache for faster lookups throughout the app
+  useEffect(() => {
+    exerciseLookup.initialize().catch((err) => {
+      console.warn('[RootLayout] Failed to initialize exercise lookup:', err)
+    })
+  }, [])
 
   const hasTrackedAppOpen = useRef(false)
 

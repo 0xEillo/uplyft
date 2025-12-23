@@ -958,7 +958,12 @@ export default function CreatePostScreen() {
 
       const trimmedNotes = notesValue.trim()
       const trimmedTitle = titleValue.trim()
-      const durationSeconds = Math.max(0, getWorkoutElapsedSeconds())
+      // Cap duration at 4 hours to prevent absurdly long durations from forgotten timers
+      const MAX_WORKOUT_DURATION_SECONDS = 4 * 60 * 60 // 4 hours
+      const durationSeconds = Math.min(
+        Math.max(0, getWorkoutElapsedSeconds()),
+        MAX_WORKOUT_DURATION_SECONDS,
+      )
 
       await queueWorkout({
         notes: trimmedNotes,
