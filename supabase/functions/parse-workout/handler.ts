@@ -109,7 +109,9 @@ export async function handleRequest(req: Request): Promise<Response> {
         .eq('id', session.id)
         .single()
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        throw fetchError
+      }
 
       return jsonResponse({
         workout: finalWorkout,

@@ -1,6 +1,6 @@
 import { createServiceClient } from '../_shared/supabase.ts'
 import { logWithCorrelation } from './metrics.ts'
-import { resolveExercisesWithAgent } from './resolver/agent.ts'
+import { resolveExercises } from './resolver/agent.ts'
 import { NormalizedWorkout, WorkoutMetrics } from './schemas.ts'
 
 export interface CreatedWorkoutResult {
@@ -53,7 +53,7 @@ export async function createWorkoutSession(
 
   const exerciseNames = workout.exercises.map((exercise) => exercise.name)
 
-  const exerciseResolutions = await resolveExercisesWithAgent(
+  const exerciseResolutions = await resolveExercises(
     exerciseNames,
     userId,
     correlationId,
@@ -61,7 +61,7 @@ export async function createWorkoutSession(
 
   logWithCorrelation(
     correlationId,
-    `Agent resolved ${exerciseResolutions.size} exercises`,
+    `Resolved ${exerciseResolutions.size} exercises`,
   )
 
   const workoutExercisesToInsert = workout.exercises.map((exercise) => {

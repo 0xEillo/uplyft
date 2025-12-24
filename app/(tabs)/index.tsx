@@ -304,9 +304,23 @@ export default function FeedScreen() {
         return
       }
 
-      const { error, placeholder } = result
+      const { error } = result
+      setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
+
+      if (error instanceof Error && error.message.includes('idempotency')) {
+        // Silent fail for idempotency errors - they mean it's already working
+        return
+      }
+
+      Alert.alert(
+        'Submission Failed',
+        'We couldn\'t save your workout right now. We\'ve saved a draft so you don\'t lose your work.',
+        [{ text: 'OK' }]
+      )
     } catch (error) {
       console.error('Error processing pending post:', error)
+      // Also ensure placeholder is removed if an unexpected error occurs
+      setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
     }
   }, [
     user,

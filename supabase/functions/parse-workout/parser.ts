@@ -2,30 +2,31 @@
 import { google } from 'npm:@ai-sdk/google@2.0.46'
 // @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai@5.0.60'
+import { PARSER_MODEL } from './constants.ts'
 import { ApiError } from './errors.ts'
-import { logWithCorrelation } from './metrics.ts'
 import { ParsedWorkout, WorkoutRequest, workoutSchema } from './schemas.ts'
-
-const parserModel = google('gemini-2.5-flash-preview-09-2025')
 
 export async function parseWorkoutNotes(
   payload: WorkoutRequest,
   correlationId: string,
 ): Promise<ParsedWorkout> {
   try {
-    logWithCorrelation(
-      correlationId,
-      `Parsing workout notes (unit=${payload.weightUnit ?? 'kg'})`,
-    )
-
     const structured = await generateObject({
-      model: parserModel,
+      model: google(PARSER_MODEL),
       schema: workoutSchema,
       prompt: buildParsePrompt(payload.notes, payload.weightUnit ?? 'kg'),
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingLevel: 'low',
+          },
+        },
+      },
     })
 
     return structured.object
   } catch (error) {
+
     if (
       error &&
       typeof error === 'object' &&
@@ -43,7 +44,11 @@ export async function parseWorkoutNotes(
       500,
       'PARSE_FAILED',
       'Workout parsing failed',
-      error instanceof Error ? error.message : String(error),
+      {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        errorObject: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      }
     )
   }
 }

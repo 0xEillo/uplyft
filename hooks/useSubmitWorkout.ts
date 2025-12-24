@@ -153,7 +153,6 @@ export function useSubmitWorkout() {
       } = await supabase.auth.getSession()
 
       const accessToken = session?.access_token
-
       const response = await postWorkout(
         {
           notes: pending.notes,
@@ -184,6 +183,7 @@ export function useSubmitWorkout() {
         response,
       }
     } catch (error) {
+      // Save back to draft so the user doesn't lose data
       await saveDraft({ notes: pending.notes, title: pending.title })
       await clearPendingArtifacts()
 

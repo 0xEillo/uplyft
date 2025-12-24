@@ -12,9 +12,9 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  calculateTotalVolume,
-  calculateWorkoutStats,
-  formatVolume,
+    calculateTotalVolume,
+    calculateWorkoutStats,
+    formatVolume,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -22,15 +22,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -812,7 +812,7 @@ const createStyles = (
       position: 'relative',
     },
     coverContainer: {
-      height: 360,
+      height: 300,
       width: '100%',
       position: 'absolute',
       top: 0,
@@ -845,8 +845,8 @@ const createStyles = (
     },
     profileSection: {
       paddingHorizontal: 20,
-      paddingTop: 210,
-      paddingBottom: 20, // Reduced from 40 for the shorter cover image
+      paddingTop: 150,
+      paddingBottom: 12, // More compact gap to next section
     },
     profileTop: {
       flexDirection: 'row',
@@ -942,7 +942,7 @@ const createStyles = (
     },
     dashboardSection: {
       paddingHorizontal: 20,
-      marginBottom: 16,
+      marginBottom: 12,
     },
     dashboardCards: {
       flexDirection: 'row',

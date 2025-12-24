@@ -1,10 +1,9 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { openai } from 'npm:@ai-sdk/openai@2.0.42'
-// @ts-ignore: Remote import for Deno edge runtime
 import { google } from 'npm:@ai-sdk/google@2.0.46'
 // @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
-import { embed, generateObject } from 'npm:ai@5.0.60'
+// @ts-ignore: Remote import for Deno edge runtime
+import { generateObject } from 'npm:ai@5.0.60'
 
 import { createServiceClient } from './supabase.ts'
 
@@ -14,7 +13,7 @@ import { createServiceClient } from './supabase.ts'
 
 export const searchExercisesInput = z.object({
   query: z.string().describe('The exercise name to search for'),
-  limit: z.number().int().min(1).max(25).optional().default(10),
+  limit: z.number().int().min(1).max(25).optional().default(20),
 })
 
 export const exerciseCandidate = z.object({
@@ -162,34 +161,6 @@ export const createExerciseTool = {
 // Helper Functions
 // ============================================================================
 
-function sanitizeExerciseName(text: string): string {
-  return text
-    .normalize('NFKD')
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-}
-
-async function computeQueryEmbedding(query: string): Promise<number[]> {
-  const normalized = sanitizeExerciseName(query)
-  if (!normalized) {
-    throw new Error('Cannot embed empty exercise name')
-  }
-
-  const result = await embed({
-    model: openai.embedding('text-embedding-3-small'),
-    value: normalized,
-  })
-
-  if (!result.embedding || result.embedding.length !== 1536) {
-    throw new Error('Invalid embedding result')
-  }
-
-  return result.embedding
-}
-
 // ============================================================================
 // Tool Handler Functions
 // ============================================================================
@@ -244,9 +215,7 @@ export async function handleSearchExercises(
     }
   }
 
-  // 1. Trigram search (name + aliases)
-  let needsVectorSearch = true
-  let trigramRows: any[] = []
+  // Trigram search (name + aliases)
   try {
     const { data, error } = await supabase.rpc('match_exercises_trgm', {
       search_query: args.query,
@@ -257,7 +226,7 @@ export async function handleSearchExercises(
 
     if (error) throw error
 
-    trigramRows = (data || []).map((row: any) => ({
+    const trigramRows = (data || []).map((row: any) => ({
       id: row.id,
       name: row.name,
       aliases: row.aliases || [],
@@ -269,42 +238,8 @@ export async function handleSearchExercises(
     }))
 
     addCandidates(trigramRows, 'Trigram search')
-
-    const bestTrigram = trigramRows[0]?.similarity ?? 0
-    if (bestTrigram >= 0.5 || trigramRows.length >= limit) {
-      needsVectorSearch = false
-    }
   } catch (error) {
     console.warn('[Tool: searchExercises] Trigram search failed:', error)
-  }
-
-  // 2. Vector search fallback when trigram confidence is low
-  if (needsVectorSearch) {
-    try {
-      const queryEmbedding = await computeQueryEmbedding(args.query)
-
-      const { data, error } = await supabase.rpc('match_exercises', {
-        query_embedding: queryEmbedding,
-        requesting_user_id: userId,
-        match_count: limit,
-      })
-
-      if (error) throw error
-
-      const vectorRows = (data || []).map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        aliases: row.aliases || [],
-        muscle_group: row.muscle_group,
-        type: row.type,
-        equipment: row.equipment,
-        similarity: typeof row.similarity === 'number' ? row.similarity : 0,
-      }))
-
-      addCandidates(vectorRows, 'Vector search')
-    } catch (error) {
-      console.warn('[Tool: searchExercises] Vector search failed:', error)
-    }
   }
 
   const candidates = Array.from(candidateMap.values())
@@ -430,9 +365,6 @@ export async function handleCreateExercise(
     }
   }
 
-  // Compute embedding
-  const embedding = await computeQueryEmbedding(normalizedName)
-
   // Insert new exercise
   const { data, error } = await supabase
     .from('exercises')
@@ -442,7 +374,6 @@ export async function handleCreateExercise(
       muscle_group: metadata.muscle_group,
       type: metadata.type,
       equipment: metadata.equipment,
-      embedding,
     })
     .select('id, name')
     .single()
@@ -492,7 +423,7 @@ async function generateExerciseMetadata(
 
   try {
     const result = await generateObject({
-      model: google('gemini-2.5-flash-preview-09-2025'),
+      model: google('gemini-3-flash-preview'),
       schema: exerciseMetadataSchema,
       prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
 
@@ -513,6 +444,13 @@ Examples:
 - "Leg Extension" → muscle_group: Legs, type: isolation, equipment: machine
 
 Return the metadata as JSON.`,
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingLevel: 'low',
+          },
+        },
+      },
     })
 
     return result.object
