@@ -284,7 +284,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingVertical: 12,
     },
     backButton: {
@@ -303,7 +303,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.backgroundLight,
-      marginHorizontal: 20,
+      marginHorizontal: 14,
       paddingHorizontal: 12,
       height: 40,
       borderRadius: 8,

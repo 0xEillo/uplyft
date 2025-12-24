@@ -332,7 +332,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
+      paddingHorizontal: 14,
       paddingVertical: 12,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
@@ -353,7 +353,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     timeRangeContainer: {
       flexDirection: 'row',
       gap: 8,
-      paddingHorizontal: 16,
+      paddingHorizontal: 14,
       paddingVertical: 12,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
@@ -383,7 +383,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     contentContainer: {
-      padding: 16,
+      padding: 14,
     },
     loadingContainer: {
       flex: 1,

@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 interface ProfileRoutinesProps {
@@ -162,7 +162,7 @@ const createStyles = (colors: any) =>
       marginBottom: 24,
     },
     header: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       marginBottom: 12,
     },
     title: {
@@ -171,7 +171,7 @@ const createStyles = (colors: any) =>
       color: colors.textSecondary,
     },
     listContent: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       gap: 12,
     },
     card: {
@@ -179,6 +179,11 @@ const createStyles = (colors: any) =>
       padding: 12,
       borderRadius: 12,
       borderWidth: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
     },
     cardHeader: {
       flexDirection: 'row',

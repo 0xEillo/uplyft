@@ -310,7 +310,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingVertical: 16,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
@@ -336,7 +336,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     section: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingVertical: 16,
     },
     sectionTitle: {

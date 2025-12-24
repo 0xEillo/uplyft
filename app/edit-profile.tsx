@@ -506,7 +506,7 @@ const createStyles = (
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingVertical: 16,
       backgroundColor: colors.background,
     },
@@ -572,7 +572,7 @@ const createStyles = (
     },
     section: {
       marginTop: 24,
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
     },
     label: {
       fontSize: 15,

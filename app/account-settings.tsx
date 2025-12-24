@@ -12,16 +12,16 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Linking,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -934,7 +934,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     section: {
       marginTop: 24,
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
     },
     sectionTitle: {
       fontSize: 15,
@@ -1293,7 +1293,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginVertical: 16,
     },
     guestBanner: {
-      marginHorizontal: 20,
+      marginHorizontal: 14,
       marginTop: 16,
       backgroundColor: colors.primary + '12',
       borderRadius: 16,

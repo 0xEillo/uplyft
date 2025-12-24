@@ -2,28 +2,28 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { MuscleGroupDetailSheet } from '@/components/MuscleGroupDetailSheet'
 import {
-  getLevelColor,
-  getLevelIntensity,
-  useStrengthData,
-  type MuscleGroupData
+    getLevelColor,
+    getLevelIntensity,
+    useStrengthData,
+    type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_DATABASE_MUSCLE,
-  type BodyPartSlug
+    BODY_PART_DISPLAY_NAMES,
+    BODY_PART_TO_DATABASE_MUSCLE,
+    type BodyPartSlug
 } from '@/lib/body-mapping'
 import { Ionicons } from '@expo/vector-icons'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -404,18 +404,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Body Section
     bodySection: {
       flex: 1,
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       marginTop: 24,
     },
 
     // Swipe Section
     swipeContainer: {
       height: 540,
-      width: SCREEN_WIDTH - 40,
+      width: SCREEN_WIDTH - 28,
       alignItems: 'center',
     },
     bodyWrapper: {
-      width: SCREEN_WIDTH - 40,
+      width: SCREEN_WIDTH - 28,
       height: 540,
       alignItems: 'center',
       justifyContent: 'center',

@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
+import { BlurView } from 'expo-blur'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
+  Platform,
   StatusBar,
   StyleSheet,
   Text,
@@ -193,10 +195,15 @@ function TabLayoutContent() {
           tabBarHideOnKeyboard: false,
           tabBarButton: HapticTab,
           tabBarShowLabel: false,
+          tabBarBackground: () => (
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 80 : 100}
+              tint={isDark ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
           tabBarStyle: {
-            backgroundColor: isDark 
-              ? 'rgba(36, 36, 36, 0.96)' 
-              : 'rgba(255, 255, 255, 0.96)',
+            backgroundColor: 'transparent',
             borderTopWidth: 0,
             height: 79,
             paddingBottom: 30,
@@ -205,6 +212,7 @@ function TabLayoutContent() {
             left: 0,
             right: 0,
             bottom: 0,
+            elevation: 0, // Remove shadow on Android
           },
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarLabelStyle: {

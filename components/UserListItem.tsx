@@ -3,15 +3,15 @@ import { FollowRelationshipStatus, Profile } from '@/types/database.types'
 import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import {
-  ActivityIndicator,
-  Image,
-  StyleProp,
-  StyleSheet,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    ActivityIndicator,
+    Image,
+    StyleProp,
+    StyleSheet,
+    Text,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native'
 
 interface UserListItemProps {
@@ -121,7 +121,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 12,
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },

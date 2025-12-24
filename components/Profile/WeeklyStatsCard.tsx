@@ -133,7 +133,7 @@ export const WeeklyStatsCard = ({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       marginBottom: 16,
     },
     card: {
@@ -212,14 +212,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: `${colors.primary}30`, // Increased opacity for better contrast
+      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     activeDateText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.white,
     },
     todayRing: {
       width: 36,

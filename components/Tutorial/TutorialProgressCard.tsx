@@ -1,3 +1,4 @@
+import { useTheme } from '@/contexts/theme-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
@@ -14,7 +15,7 @@ import Animated, { FadeIn } from 'react-native-reanimated'
 export const TutorialProgressCard = memo(() => {
   const colors = useThemedColors()
   const router = useRouter()
-  const isDark = colors.background === '#141414'
+  const { isDark } = useTheme()
   const { tutorialSteps, completedSteps, isTutorialComplete, isTutorialDismissed } = useTutorial()
 
   // Don't show if dismissed or complete
@@ -40,10 +41,10 @@ export const TutorialProgressCard = memo(() => {
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+            backgroundColor: colors.backgroundWhite,
             borderColor: isTutorialComplete
               ? '#10B98130'
-              : colors.primary + '30',
+              : colors.border,
           },
         ]}
       >
@@ -54,9 +55,7 @@ export const TutorialProgressCard = memo(() => {
             {
               backgroundColor: isTutorialComplete
                 ? '#10B98115'
-                : isDark
-                ? '#1E1E1E'
-                : '#FFFFFF',
+                : colors.backgroundWhite,
               borderColor: isTutorialComplete
                 ? '#10B981'
                 : colors.primary,
@@ -101,9 +100,7 @@ export const TutorialProgressCard = memo(() => {
             {
               backgroundColor: isTutorialComplete
                 ? '#10B98115'
-                : isDark
-                ? '#2A2A2A'
-                : '#F5F5F5',
+                : colors.backgroundLight,
             },
           ]}
         >

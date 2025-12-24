@@ -55,7 +55,7 @@ const createStyles = (
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingVertical: paddingVertical,
       minHeight: 60,
       backgroundColor: 'transparent',

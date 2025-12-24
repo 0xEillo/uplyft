@@ -14,12 +14,17 @@ import {
     Modal,
     Platform,
     Pressable,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native'
+import Animated, {
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
@@ -46,10 +51,7 @@ import {
     type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-    formatBMI,
-    formatBodyFat,
-    formatBodyLogDate,
-    type BodyLogEntryWithImages,
+    type BodyLogEntryWithImages
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -59,9 +61,114 @@ import {
 } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
-const HERO_HEIGHT = SCREEN_HEIGHT * 0.58
+const HERO_HEIGHT = SCREEN_HEIGHT * 0.45
 const CARD_RADIUS = 24
+
+// Helper for intensity (1-4)
+const getScoreIntensity = (score: number | null) => {
+  if (score === null) return 1
+  if (score < 50) return 1 // Red
+  if (score < 75) return 2 // Orange
+  if (score < 90) return 3 // Green
+  return 4 // Blue
+}
+
 const METRIC_CARD_RADIUS = 20
+
+// Helper component for linear scale (Body Fat / BMI)
+const LinearScale = ({ 
+  value, 
+  min = 0, 
+  max = 50, 
+  ranges = [], 
+  label, 
+  subLabel,
+  colorResolver 
+}: {
+  value: number
+  min?: number
+  max?: number
+  ranges?: { label: string, start: number, end: number, color?: string }[]
+  label: string
+  subLabel?: string
+  colorResolver?: (val: number) => string
+}) => {
+  const colors = useThemedColors()
+  const percent = Math.min(Math.max((value - min) / (max - min), 0), 1) * 100
+  
+  // Calculate specific markers position if ranges provided
+  const markers = ranges ? ranges.map(r => ({
+    left: Math.min(Math.max((r.start - min) / (max - min), 0), 1) * 100,
+    label: r.start
+  })) : []
+  
+  const hideMin = markers.some(m => m.left < 10)
+  const hideMax = markers.some(m => m.left > 90)
+
+  return (
+    <View style={styles.scaleContainer}>
+      <View style={styles.scaleHeader}>
+        <View>
+          <Text style={[styles.scaleLabel, { color: colors.textSecondary }]}>{label}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <Text style={[styles.scaleValueBig, { color: colors.text }]}>{value}</Text>
+            {subLabel && <Text style={[styles.scaleSubLabel, { color: colors.textSecondary }]}>{subLabel}</Text>}
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      </View>
+
+      <View style={styles.scaleTrackContainer}>
+        {/* Track Background */}
+        <View style={[styles.scaleTrack, { backgroundColor: colors.border }]}>
+          {ranges && ranges.map((range, index) => {
+             const left = Math.min(Math.max((range.start - min) / (max - min), 0), 1) * 100
+             const width = Math.min(Math.max((range.end - range.start) / (max - min), 0), 1) * 100
+             return (
+               <View 
+                 key={index} 
+                 style={{ 
+                   position: 'absolute', 
+                   left: `${left}%`, 
+                   width: `${width}%`, 
+                   height: '100%', 
+                   backgroundColor: range.color || colors.primary,
+                   opacity: 0.3
+                 }} 
+               />
+             )
+          })}
+          
+          {/* Main Gradient Bar (Fallback) */}
+          {(!ranges || ranges.length === 0) && (
+            <LinearGradient
+                colors={['#FFB74D', '#F57C00', '#EF6C00']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: 4, opacity: 0.8 }]} 
+            />
+          )}
+        </View>
+
+        {/* Thumb */}
+        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.feedCardBackground }]}>
+           <View style={[styles.scaleThumbInner, { backgroundColor: colorResolver ? colorResolver(value) : colors.text }]} />
+        </View>
+        
+        {/* Markers */}
+        <View style={styles.scaleMarkers}>
+           {!hideMin && <Text style={[styles.scaleMarkerText, { color: colors.textSecondary, left: '0%' }]}>{min}</Text>}
+           {!hideMax && <Text style={[styles.scaleMarkerText, { color: colors.textSecondary, right: '0%' }]}>{max}</Text>}
+           {markers.map((m, i) => (
+             <Text key={i} style={[styles.scaleMarkerText, { color: colors.textSecondary, left: `${m.left}%`, transform: [{translateX: -10}] }]}>
+               {m.label}
+             </Text>
+           ))}
+        </View>
+      </View>
+    </View>
+  )
+}
 
 export default function BodyLogDetailScreen() {
   const { entryId, weightKg, bodyFatPercentage, bmi, isNew } = useLocalSearchParams<{
@@ -127,6 +234,37 @@ export default function BodyLogDetailScreen() {
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const scrollXRef = useRef(0)
+
+  // Animation for the bottom dock
+  const isDockHidden = useSharedValue(0)
+  const lastScrollY = useSharedValue(0)
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const currentY = event.contentOffset.y
+      const diff = currentY - lastScrollY.value
+
+      if (currentY <= 0) {
+        isDockHidden.value = 0
+      } else if (diff > 5 && currentY > 50) {
+        isDockHidden.value = 1
+      } else if (diff < -5) {
+        isDockHidden.value = 0
+      }
+      lastScrollY.value = currentY
+    }
+  })
+
+  const dockAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateY: withTiming(isDockHidden.value ? 100 : 0, { duration: 250 }) }
+      ],
+      opacity: withTiming(isDockHidden.value ? 0 : 1, { duration: 200 })
+    }
+  })
+
+
 
   // Fetch entry data
   useEffect(() => {
@@ -1032,558 +1170,346 @@ export default function BodyLogDetailScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
 
-        <ScrollView
-          bounces={false}
+        <Animated.ScrollView
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          style={styles.container}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
-            showTeaserResults && { paddingBottom: insets.bottom + 40 },
+            { paddingBottom: 100 }
           ]}
         >
-        {/* Hero Image Section with Carousel */}
-        <View style={[styles.heroContainer, { backgroundColor: colors.background }]}>
-          {imagesLoading ? (
-            <View style={styles.heroPlaceholder}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                Loading images...
-              </Text>
-            </View>
-          ) : imageUrls.length > 0 ? (
-            <>
-              <FlatList
-                data={imageUrls}
-                renderItem={renderImageItem}
-                keyExtractor={(item, index) => `image-${index}`}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={(event) => {
-                  const offsetX = event.nativeEvent.contentOffset.x
-                  scrollXRef.current = offsetX
-                  const index = Math.round(offsetX / SCREEN_WIDTH)
-                  if (index !== currentImageIndex && index >= 0 && index < imageCount) {
-                    setCurrentImageIndex(index)
-                  }
-                }}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(
-                    event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
-                  )
-                  setCurrentImageIndex(index)
-                }}
-              />
+            {/* Header Space */}
+           <View style={{ height: insets.top + 60 }} />
 
-              {/* Pagination indicator and date */}
-              <View style={styles.bottomOverlay}>
-                <View style={styles.dateOverlay}>
-                  <Text style={styles.dateOverlayText}>
-                    {entry.created_at ? formatBodyLogDate(entry.created_at) : '--'}
-                  </Text>
-                </View>
-                {imageCount > 1 && (
-                  <View style={styles.paginationCounter}>
-                    <Text style={styles.paginationCounterText}>
-                      {currentImageIndex + 1} / {imageCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </>
-          ) : isUploadingImage ? (
-            <View style={styles.heroPlaceholder}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                Uploading photo...
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.heroPlaceholder}>
-              {entry.weight_kg !== null ? (
-                <>
-                  <View
-                    style={[
-                      styles.placeholderIconContainer,
-                      { backgroundColor: colors.backgroundWhite },
-                    ]}
-                  >
-                    <Ionicons
-                      name="barbell-outline"
-                      size={56}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={[styles.placeholderWeight, { color: colors.text }]}>
-                    {formatWeight(entry.weight_kg)}
-                  </Text>
-                  <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                    Logged {formatBodyLogDate(entry.created_at)}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <View
-                    style={[
-                      styles.placeholderIconContainer,
-                      { backgroundColor: colors.backgroundWhite },
-                    ]}
-                  >
-                    <Ionicons
-                      name="images-outline"
-                      size={56}
-                      color={colors.textSecondary}
-                    />
-                  </View>
-                  <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                    Take progress pic
-                  </Text>
-                </>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Content Section */}
-        <View style={styles.contentSection}>
-          {/* Metrics List - with locked overlay for teaser results */}
-          {/* Body Composition Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Body Composition</Text>
-            <View style={[styles.metricsCard, { backgroundColor: colors.backgroundWhite }]}>
-              {/* Weight */}
-              <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
-                <View style={styles.metricRowLeft}>
-                  <Ionicons name="barbell-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                    Weight
-                  </Text>
-                </View>
-                <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                  {formatWeight(metrics.weight_kg)}
-                </Text>
-              </View>
-
-              {/* Body Fat */}
-              <TouchableOpacity
-                style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}
-                onPress={() =>
-                  metrics.body_fat_percentage !== null &&
-                  !showTeaserResults &&
-                  handleInfoPress(
-                    'bodyFat',
-                    formatBodyFat(metrics.body_fat_percentage),
-                    bodyFatStatus,
-                  )
-                }
-                disabled={metrics.body_fat_percentage === null || showTeaserResults}
-                activeOpacity={0.7}
-              >
-                <View style={styles.metricRowLeft}>
-                  <Ionicons
-                    name="body-outline"
-                    size={20}
-                    color={
-                      bodyFatStatus
-                        ? getStatusColor(bodyFatStatus.color).primary
-                        : colors.primary
-                    }
-                  />
-                  <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                    Body Fat
-                  </Text>
-                </View>
-                <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                  {formatBodyFat(metrics.body_fat_percentage)}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Lean Mass */}
-              {metrics.lean_mass_kg !== null && (
-                <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
-                  <View style={styles.metricRowLeft}>
-                    <Ionicons name="fitness-outline" size={20} color={colors.success} />
-                    <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                      Lean Mass
-                    </Text>
-                  </View>
-                  <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                    {formatWeight(metrics.lean_mass_kg)}
-                  </Text>
-                </View>
-              )}
-
-              {/* Fat Mass */}
-              {metrics.fat_mass_kg !== null && (
-                <View style={[styles.metricRow, { borderBottomColor: `${colors.border}40` }]}>
-                  <View style={styles.metricRowLeft}>
-                    <Ionicons name="water-outline" size={20} color={colors.warning} />
-                    <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                      Fat Mass
-                    </Text>
-                  </View>
-                  <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                    {formatWeight(metrics.fat_mass_kg)}
-                  </Text>
-                </View>
-              )}
-
-              {/* BMI */}
-              <TouchableOpacity
-                style={[styles.metricRow, { borderBottomWidth: 0 }]}
-                onPress={() =>
-                  metrics.bmi !== null &&
-                  !showTeaserResults &&
-                  handleInfoPress('bmi', formatBMI(metrics.bmi), bmiStatus)
-                }
-                disabled={metrics.bmi === null || showTeaserResults}
-                activeOpacity={0.7}
-              >
-                <View style={styles.metricRowLeft}>
-                  <Ionicons
-                    name="analytics-outline"
-                    size={20}
-                    color={
-                      bmiStatus ? getStatusColor(bmiStatus.color).primary : colors.primary
-                    }
-                  />
-                  <Text style={[styles.metricRowLabel, { color: colors.textSecondary }]}>
-                    BMI
-                  </Text>
-                </View>
-                <Text style={[styles.metricRowValue, { color: colors.text }]}>
-                  {formatBMI(metrics.bmi)}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Physique Analysis Section */}
-          {/* Physique Analysis Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Physique Analysis</Text>
-            <View style={styles.scoresGrid}>
-              {[
-                { label: 'V-Taper', score: metrics.score_v_taper },
-                { label: 'Chest', score: metrics.score_chest },
-                { label: 'Shoulders', score: metrics.score_shoulders },
-                { label: 'Abs', score: metrics.score_abs },
-                { label: 'Arms', score: metrics.score_arms },
-                { label: 'Back', score: metrics.score_back },
-                { label: 'Legs', score: metrics.score_legs },
-              ].map((item, index) => {
-                const hasScore = item.score !== null
-                const score = item.score ?? 0
-                
-                let scoreColor: string = colors.border // Default/Empty color
-                if (hasScore) {
-                  scoreColor = colors.error // < 50
-                  if (score >= 75) scoreColor = colors.success
-                  else if (score >= 50) scoreColor = colors.warning
-                }
-
-                return (
-                  <View key={index} style={[styles.scoreCard, { backgroundColor: colors.backgroundWhite }]}>
-                    <View style={[styles.scoreValueContainer, { borderColor: scoreColor }]}>
-                      <Text style={[styles.scoreValue, { color: hasScore ? colors.text : colors.textSecondary }]}>
-                        {hasScore ? score : '--'}
-                      </Text>
-                    </View>
-                    <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
-                    <View style={[styles.scoreBarBg, { backgroundColor: colors.border }]}>
-                      <View
-                        style={[
-                          styles.scoreBarFill,
-                          { 
-                            width: `${hasScore ? score : 0}%`, 
-                            backgroundColor: hasScore ? scoreColor : 'transparent' 
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                )
-              })}
-            </View>
-            
-            {/* Locked Results Overlay for free users teaser */}
-            {showTeaserResults && (
-              <LockedResultsOverlay onUnlock={handleUnlockResults} />
-            )}
-          </View>
-
-          {/* AI Summary Card - hide when showing teaser results */}
-          {summaryText && !showTeaserResults && (
-            <View
-              style={[
-                styles.overallStatusCard,
-                {
-                  backgroundColor:
-                    summaryStatusColors?.background ?? colors.backgroundWhite,
-                  borderColor:
-                    summaryStatusColors?.primary
-                      ? summaryStatusColors.primary + '25'
-                      : colors.border,
-                },
-              ]}
-            >
-              <View style={styles.statusHeader}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={22}
-                  color={summaryStatusColors?.primary ?? colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.overallStatusTitle,
-                    {
-                      color: summaryStatusColors?.text ?? colors.text,
-                    },
-                  ]}
+           {/* Photos Section */}
+           <View style={styles.photoSection}>
+              {imageUrls.length === 0 ? (
+                <TouchableOpacity
+                  style={[styles.emptyPhotoState, { backgroundColor: colors.feedCardBackground, borderColor: colors.border }]}
+                  onPress={isUploadingImage ? undefined : handleAddPhotos}
                 >
-                  {summaryTitle}
-                </Text>
-              </View>
-              <Text style={[styles.overallStatusSummary, { color: colors.text }]}>
-                {summaryText}
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Floating Top Actions */}
-      <View style={[styles.topActionsContainer, { paddingTop: insets.top }]}>
-        <View style={styles.topActions}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleBack}
-            style={[
-              styles.topButton,
-              {
-                backgroundColor: colors.backgroundWhite,
-                shadowColor: colors.shadow,
-              },
-            ]}
-          >
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-
-          <View style={styles.topActionsSpacer} />
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleDelete}
-            style={[
-              styles.topButton,
-              {
-                backgroundColor: colors.backgroundWhite,
-                shadowColor: colors.shadow,
-              },
-            ]}
-          >
-            <Ionicons name="trash-outline" size={22} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Image Fullscreen Modal */}
-      {imageUrls.length > 0 && (
-        <Modal
-          visible={imageModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setImageModalVisible(false)}
-        >
-          <View style={styles.imageModalOverlay}>
-            <View style={[styles.fullscreenSafeArea, { paddingTop: insets.top }]}>
-              {/* Close button */}
-              <TouchableOpacity
-                style={styles.fullscreenCloseButton}
-                onPress={() => setImageModalVisible(false)}
-              >
-                <Ionicons name="close" size={28} color={colors.white} />
-              </TouchableOpacity>
-
-              {/* Image counter */}
-              {imageCount > 1 && (
-                <View style={styles.fullscreenCounter}>
-                  <Text style={styles.fullscreenCounterText}>
-                    {currentImageIndex + 1} / {imageCount}
-                  </Text>
-                </View>
-              )}
-
-              {/* Delete button */}
-              <TouchableOpacity
-                style={styles.fullscreenDeleteButton}
-                onPress={() => {
-                  const image = entry?.images[currentImageIndex]
-                  if (image?.id) {
-                    setImageModalVisible(false)
-                    handleDeleteImage(image.id, currentImageIndex)
-                  }
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="trash-outline" size={24} color={colors.white} />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={imageUrls}
-              renderItem={({ item, index }) => (
-                <Pressable
-                  style={styles.fullscreenImageWrapper}
-                  onPress={() => setImageModalVisible(false)}
-                >
-                  <Image
-                    source={{ uri: item }}
-                    style={styles.fullscreenImage}
-                    contentFit="contain"
-                    cachePolicy="disk"
-                    transition={300}
-                    recyclingKey={`fullscreen-${index}`}
-                    onLoadStart={() => setFullscreenImageLoading(true)}
-                    onLoad={() => setFullscreenImageLoading(false)}
-                    onError={(error) => {
-                      console.error('Failed to load fullscreen image:', error)
-                      setFullscreenImageLoading(false)
-                    }}
-                  />
-                  {fullscreenImageLoading && (
-                    <View style={styles.fullscreenLoadingOverlay}>
-                      <ActivityIndicator size="large" color={colors.white} />
-                    </View>
+                  {isUploadingImage ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : (
+                    <>
+                      <View style={[styles.cameraIconContainer, { backgroundColor: colors.background }]}>
+                        <Ionicons name="camera" size={32} color={colors.primary} />
+                      </View>
+                      <Text style={[styles.emptyPhotoText, { color: colors.text }]}>Add Progress Photos</Text>
+                      <Text style={[styles.emptyPhotoSubtext, { color: colors.textSecondary }]}>Visually track your transformation</Text>
+                    </>
                   )}
-                </Pressable>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.photoGrid}>
+                  {imageUrls.slice(0, 2).map((url, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[styles.photoCard, { flex: 1, height: 280 }]}
+                      onPress={() => {
+                        setCurrentImageIndex(idx)
+                        setImageModalVisible(true)
+                      }}
+                    >
+                      <Image source={{ uri: url }} style={styles.photoImage} contentFit="cover" />
+                      {idx === 1 && imageUrls.length > 2 && (
+                        <View style={styles.morePhotosOverlay}>
+                          <Text style={styles.morePhotosText}>+{imageUrls.length - 2}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                  {imageUrls.length < 2 && (
+                     <TouchableOpacity
+                       style={[styles.addPhotoSmall, { flex: 1, height: 280, backgroundColor: colors.feedCardBackground, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border }]}
+                       onPress={handleAddPhotos}
+                     >
+                        {isUploadingImage ? (
+                          <ActivityIndicator color={colors.primary} />
+                        ) : (
+                          <>
+                            <Ionicons name="add" size={28} color={colors.primary} />
+                            <Text style={[styles.addPhotoSmallText, { color: colors.textSecondary }]}>Add Photo</Text>
+                          </>
+                        )}
+                     </TouchableOpacity>
+                  )}
+                </View>
               )}
-              keyExtractor={(item, index) => `fullscreen-${index}`}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              initialScrollIndex={currentImageIndex}
-              getItemLayout={(data, index) => ({
-                length: SCREEN_WIDTH,
-                offset: SCREEN_WIDTH * index,
-                index,
-              })}
-              onMomentumScrollEnd={(event) => {
-                const index = Math.round(
-                  event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
-                )
-                setCurrentImageIndex(index)
-              }}
-            />
+           </View>
+
+           {/* Body Composition Section */}
+           <View style={styles.sectionContainer}>
+             <View style={styles.sectionHeader}>
+               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Body Composition</Text>
+               {!showTeaserResults && (
+                  <TouchableOpacity onPress={() => setInfoModalVisible(true)} hitSlop={10}>
+                     <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+               )}
+             </View>
+
+             {showTeaserResults ? (
+                <LockedResultsOverlay onUnlock={handleUnlockResults} />
+             ) : (
+               <View style={styles.metricCardStack}>
+                 {/* Body Fat Card */}
+                 <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                   <LinearScale
+                     label="Body Fat %"
+                     value={metrics.body_fat_percentage ?? 0}
+                     min={5}
+                     max={40}
+                     subLabel={getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender)?.label}
+                     ranges={[
+                        { label: 'Ess.', start: 2, end: 5, color: '#EF4444' },
+                        { label: 'Ath.', start: 6, end: 13, color: '#10B981' },
+                        { label: 'Fit.', start: 14, end: 17, color: '#3B82F6' },
+                        { label: 'Avg.', start: 18, end: 24, color: '#F59E0B' },
+                        { label: 'Obs.', start: 25, end: 40, color: '#EF4444' },
+                     ]}
+                     colorResolver={(val) => getStatusColor(getBodyFatStatus(val, userGender)?.color || 'moderate').primary}
+                   />
+                 </View>
+
+                 {/* BMI Card */}
+                 <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                   <LinearScale
+                     label="BMI"
+                     value={metrics.bmi ?? 0}
+                     min={15}
+                     max={45}
+                     subLabel={getBMIStatus(metrics.bmi ?? 0, userGender)?.label}
+                      ranges={[
+                        { label: 'U.', start: 15, end: 18.5, color: '#3B82F6' },
+                        { label: 'N.', start: 18.5, end: 25, color: '#10B981' },
+                        { label: 'O.', start: 25, end: 30, color: '#F59E0B' },
+                        { label: 'H.', start: 30, end: 45, color: '#EF4444' },
+                     ]}
+                     colorResolver={(val) => getStatusColor(getBMIStatus(val, userGender)?.color || 'moderate').primary}
+                   />
+                 </View>
+               </View>
+             )}
+           </View>
+
+           {/* Physique Analysis Section */}
+           <View style={[styles.sectionContainer, { marginBottom: 100 }]}>
+             <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Physique Analysis</Text>
+             </View>
+
+             {showTeaserResults ? (
+                <LockedResultsOverlay onUnlock={handleUnlockResults} />
+             ) : (
+               <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground, padding: 20 }]}>
+                    <Text style={[styles.physiqueCardSubTitle, { color: colors.textSecondary }]}>Detailed Muscle Distribution</Text>
+
+                    {/* Score Grid */}
+                    <View style={styles.scoreGridModern}>
+                       {[
+                          { label: 'Chest', score: metrics.score_chest, icon: 'fitness' },
+                          { label: 'Shoulders', score: metrics.score_shoulders, icon: 'trending-up' },
+                          { label: 'Abs', score: metrics.score_abs, icon: 'grid' },
+                          { label: 'Arms', score: metrics.score_arms, icon: 'barbell' },
+                          { label: 'Back', score: metrics.score_back, icon: 'medal' },
+                          { label: 'Legs', score: metrics.score_legs, icon: 'walk' },
+                       ].map((item, i) => {
+                         const intensity = getScoreIntensity(item.score)
+                         const color = ['#333', '#EF4444', '#F59E0B', '#10B981', '#3B82F6'][intensity]
+                         return (
+                           <View key={i} style={[styles.modernScoreItem, { backgroundColor: colors.background }]}>
+                             <View style={styles.modernScoreHeader}>
+                               <Text style={[styles.modernScoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                               <Ionicons name={item.icon as any} size={14} color={color} />
+                             </View>
+                             <Text style={[styles.modernScoreValue, { color: colors.text }]}>{item.score ?? '--'}</Text>
+                             <View style={styles.modernProgressBarBg}>
+                                <View style={{ height: '100%', width: `${item.score ?? 0}%`, backgroundColor: color, borderRadius: 2 }} />
+                             </View>
+                           </View>
+                         )
+                       })}
+                    </View>
+               </View>
+             )}
+           </View>
+
+
+         </Animated.ScrollView>
+
+        {/* Dynamic Action Dock */}
+        <Animated.View style={[styles.actionDockContainer, { bottom: insets.bottom + 20 }, dockAnimatedStyle]}>
+           <View style={[styles.actionDock, { backgroundColor: 'rgba(28, 28, 30, 0.85)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              {/* Add Progress Photos */}
+              <TouchableOpacity style={styles.dockAction} onPress={handleAddPhotos}>
+                 <Ionicons name="camera" size={22} color={colors.primary} />
+                 <Text style={[styles.dockLabel, { color: colors.text }]}>Photo</Text>
+              </TouchableOpacity>
+
+              <View style={[styles.dockDivider, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+
+              {/* Log Weight */}
+              <TouchableOpacity style={styles.dockAction} onPress={handleLogWeight}>
+                 <View style={styles.dockWeightValue}>
+                    <Text style={[styles.dockWeightText, { color: colors.text }]}>
+                       {metrics.weight_kg ? formatWeight(metrics.weight_kg) : '--'}
+                    </Text>
+                    <Text style={[styles.dockWeightLabel, { color: colors.textSecondary }]}>Weight</Text>
+                 </View>
+              </TouchableOpacity>
+
+              <View style={[styles.dockDivider, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+
+              {/* Run Scan / Analyze */}
+              <TouchableOpacity 
+                style={styles.dockAction} 
+                onPress={handleRunBodyScan}
+                disabled={isRunningBodyScan}
+              >
+                 {isRunningBodyScan ? (
+                   <ActivityIndicator color={colors.primary} size="small" />
+                 ) : (
+                   <>
+                    <Ionicons name="scan" size={22} color={colors.primary} />
+                    <Text style={[styles.dockLabel, { color: colors.text }]}>Analyze</Text>
+                   </>
+                 )}
+              </TouchableOpacity>
+           </View>
+        </Animated.View>
+
+        {/* Floating Top Header */}
+        <View style={[styles.floatingHeader, { top: insets.top }]}>
+          <TouchableOpacity onPress={handleBack} style={[styles.headerCircleBtn, { backgroundColor: 'rgba(28, 28, 30, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+             <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          <View style={styles.headerTitleContainer}>
+             <Text style={[styles.headerDateText, { color: colors.text }]}>
+               {entry?.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Entry'}
+             </Text>
           </View>
-        </Modal>
-      )}
 
-      {/* Bottom Action Buttons - hide when showing teaser results */}
-      {!showTeaserResults && (
-      <View style={[
-        styles.actionBarContainer,
-        styles.buttonContainer,
-        { paddingBottom: insets.bottom + 16 },
-      ]}>
-        <TouchableOpacity
-          style={[styles.actionButtonIcon, { backgroundColor: colors.backgroundWhite, borderColor: colors.border }]}
-          onPress={handleLogWeight}
-          activeOpacity={0.6}
-          accessibilityLabel={entry?.weight_kg ? 'Update Weight' : 'Log Weight'}
-        >
-          <Ionicons name="barbell-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={handleDelete} style={[styles.headerCircleBtn, { backgroundColor: 'rgba(28, 28, 30, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+             <Ionicons name="trash-outline" size={20} color={colors.error} />
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.actionButtonIcon, { backgroundColor: colors.backgroundWhite, borderColor: colors.border }]}
-          onPress={handleAddPhotos}
-          activeOpacity={0.6}
-          accessibilityLabel={imageUrls.length > 0 ? 'Add More Photos' : 'Add Photos'}
-        >
-          <Ionicons name="camera-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.actionButtonIcon,
-            {
-              backgroundColor: (entry && (entry.body_fat_percentage !== null || entry.bmi !== null))
-                ? colors.success
-                : (entry?.images.length ?? 0) >= 2 && entry?.weight_kg !== null
-                ? colors.primary
-                : colors.backgroundLight,
-              borderColor: (entry && (entry.body_fat_percentage !== null || entry.bmi !== null))
-                ? colors.success
-                : (entry?.images.length ?? 0) >= 2 && entry?.weight_kg !== null
-                ? colors.primary
-                : colors.border,
-            },
-          ]}
-          onPress={handleRunBodyScan}
-          disabled={isRunningBodyScan || (entry && (entry.body_fat_percentage !== null || entry.bmi !== null))}
-          activeOpacity={0.6}
-          accessibilityLabel={entry && (entry.body_fat_percentage !== null || entry.bmi !== null) ? 'Body Scan Completed' : 'Run Body Scan'}
-        >
-          {isRunningBodyScan ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : entry && (entry.body_fat_percentage !== null || entry.bmi !== null) ? (
-            <Ionicons
-              name="checkmark-circle"
-              size={24}
-              color={colors.white}
-            />
-          ) : (
-            <Ionicons
-              name="body-outline"
-              size={24}
-              color={(entry?.images.length ?? 0) >= 2 && entry?.weight_kg !== null ? colors.white : colors.textSecondary}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
-      )}
-
-      {/* Weight Input Modal */}
-      <WeightInputModal
-        visible={weightModalVisible}
-        onClose={() => {
-          console.log('[WEIGHT_FLOW] 🚪 Closing weight modal')
-          setWeightModalVisible(false)
-        }}
-        onSave={handleSaveWeight}
-        initialValue={entry?.weight_kg}
-      />
-
-      {/* Info Modal */}
-      {selectedMetric && (
-        <BodyMetricInfoModal
-          visible={infoModalVisible}
-          onClose={() => setInfoModalVisible(false)}
-          metricType={selectedMetric.type}
-          currentValue={selectedMetric.value}
-          status={selectedMetric.status}
-          explanation={selectedMetric.explanation}
-          gender={userGender}
+        {/* Modals */}
+        <WeightInputModal
+            visible={weightModalVisible}
+            onClose={() => setWeightModalVisible(false)}
+            onSave={handleSaveWeight}
+            initialValue={entry?.weight_kg}
         />
-      )}
-
-      {/* Paywall Modal */}
-      <Paywall
+        {selectedMetric && (
+            <BodyMetricInfoModal
+            visible={infoModalVisible}
+            onClose={() => setInfoModalVisible(false)}
+            metricType={selectedMetric.type}
+            currentValue={selectedMetric.value}
+            status={selectedMetric.status}
+            explanation={selectedMetric.explanation}
+            gender={userGender}
+            />
+        )}
+        <Paywall
         visible={paywallVisible}
         onClose={() => setPaywallVisible(false)}
-        title="Body Scan - Premium Feature"
-        message="Body scan analysis is a premium feature. Upgrade to unlock AI-powered body composition analysis."
       />
-
-      {/* Body Scan Processing Modal (for teaser flow) */}
-      <BodyLogProcessingModal
+        <BodyLogProcessingModal
         visible={showProcessingModal}
         imageUri={imageUrls[0] ?? null}
         isComplete={processingComplete}
-        onComplete={handleTeaserProcessingComplete}
-      />
-    </View>
+            onComplete={() => {
+            setShowProcessingModal(false)
+            setProcessingComplete(false)
+            }}
+        />
+
+        {/* Fullscreen Image Modal */}
+        {imageModalVisible && imageCount > 0 && (
+            <Modal
+            visible={imageModalVisible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setImageModalVisible(false)}
+            >
+            <View style={styles.imageModalOverlay}>
+                <View style={[styles.fullscreenSafeArea, { paddingTop: insets.top }]}>
+                <TouchableOpacity
+                    style={styles.fullscreenCloseButton}
+                    onPress={() => setImageModalVisible(false)}
+                >
+                    <Ionicons name="close" size={28} color="#FFFFFF" />
+                </TouchableOpacity>
+                <View style={styles.fullscreenCounter}>
+                    <Text style={styles.fullscreenCounterText}>
+                    {currentImageIndex + 1} / {imageCount}
+                    </Text>
+                </View>
+                <TouchableOpacity
+                    style={styles.fullscreenDeleteButton}
+                    onPress={() => {
+                    const image = entry?.images[currentImageIndex]
+                    if (image?.id) {
+                        setImageModalVisible(false)
+                        handleDeleteImage(image.id, currentImageIndex)
+                    }
+                    }}
+                >
+                    <Ionicons name="trash-outline" size={24} color={colors.white} />
+                </TouchableOpacity>
+                </View>
+
+                <FlatList
+                data={imageUrls}
+                renderItem={({ item, index }) => (
+                    <Pressable
+                    style={styles.fullscreenImageWrapper}
+                    onPress={() => setImageModalVisible(false)}
+                    >
+                    <Image
+                        source={{ uri: item }}
+                        style={styles.fullscreenImage}
+                        contentFit="contain"
+                        cachePolicy="disk"
+                        transition={300}
+                        recyclingKey={`fullscreen-${index}`}
+                        onLoadStart={() => setFullscreenImageLoading(true)}
+                        onLoad={() => setFullscreenImageLoading(false)}
+                    />
+                    {fullscreenImageLoading && (
+                        <View style={styles.fullscreenLoadingOverlay}>
+                        <ActivityIndicator size="large" color={colors.white} />
+                        </View>
+                    )}
+                    </Pressable>
+                )}
+                keyExtractor={(item, index) => `fullscreen-${index}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={currentImageIndex}
+                getItemLayout={(data, index) => ({
+                    length: SCREEN_WIDTH,
+                    offset: SCREEN_WIDTH * index,
+                    index,
+                })}
+                onMomentumScrollEnd={(event) => {
+                    const index = Math.round(
+                    event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+                    )
+                    setCurrentImageIndex(index)
+                }}
+                />
+            </View>
+            </Modal>
+        )}
+      </View>
     </SlideInView>
   )
 }
@@ -1595,7 +1521,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 200,
+    paddingBottom: 140,
   },
   loadingContainer: {
     flex: 1,
@@ -1607,7 +1533,41 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Hero Section
+  // Floating Header
+  floatingHeader: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    height: 60,
+    zIndex: 100,
+  },
+  headerCircleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  headerTitleContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(28, 28, 30, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerDateText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+
+  // Hero Section Logic
   heroContainer: {
     height: HERO_HEIGHT,
     position: 'relative',
@@ -1640,7 +1600,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   heroPlaceholder: {
-    flex: 1,
+    height: HERO_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
@@ -1687,222 +1647,307 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // Content Section
-  contentSection: {
-    paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 12,
-    gap: 32,
-  },
-
-  // Metrics List
-  metricsContainer: {
-    position: 'relative',
-    borderRadius: 16,
-    overflow: 'hidden',
-    minHeight: 320,
-  },
-  metricsList: {
-    gap: 1,
-  },
-  overviewTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 12,
-    paddingLeft: 4,
-  },
-  metricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 0,
-    borderBottomWidth: 1,
-  },
-  metricRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  metricRowLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    letterSpacing: -0.2,
-  },
-  metricRowValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-
-  // Overall Status Card
-  overallStatusCard: {
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  overallStatusTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  overallStatusSummary: {
-    fontSize: 14,
-    lineHeight: 21,
-    letterSpacing: -0.2,
-  },
-
-  // Top Actions
-  topActionsContainer: {
+  // Action Dock
+  actionDockContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 100,
   },
-  topActions: {
+  actionDock: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    borderRadius: 35,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
   },
-  topActionsSpacer: {
+  dockAction: {
     flex: 1,
-  },
-  topButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    minWidth: 80,
+    height: 54,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 4,
+  },
+  dockLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  dockDivider: {
+    width: 1,
+    height: 24,
+    opacity: 0.5,
+  },
+  dockWeightValue: {
+    alignItems: 'center',
+  },
+  dockWeightText: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  dockWeightLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
 
-  // New Sections
-  sectionContainer: {
+  // Photos Section
+  photoSection: {
+    paddingHorizontal: 20,
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8E8E93', // textSecondary - keeping hardcoded for specific look or use colors.textSecondary
-    marginBottom: 12,
-    paddingLeft: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  metricsCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    paddingHorizontal: 16, // Add horizontal padding to container
-  },
-  scoresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  scoreCard: {
-    flex: 1,
-    minWidth: '45%',
-    borderRadius: 16,
-    padding: 16,
+  emptyPhotoState: {
+    height: 240,
+    borderRadius: 28,
+    borderWidth: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  scoreValueContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  cameraIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    marginBottom: 8,
   },
-  scoreValue: {
-    fontSize: 20,
+  emptyPhotoText: {
+    fontSize: 18,
     fontWeight: '700',
   },
-  scoreLabel: {
+  emptyPhotoSubtext: {
     fontSize: 14,
-    fontWeight: '600',
-    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
-  scoreBarBg: {
+  photoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  photoCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  photoImage: {
     width: '100%',
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
-  },
-  scoreBarFill: {
     height: '100%',
-    borderRadius: 2,
+  },
+  morePhotosOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  morePhotosText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  addPhotoSmall: {
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addPhotoSmallText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 
-  // Image Modal
-  imageModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.98)',
+  // General Spacing
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
   },
-  fullscreenSafeArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
-  fullscreenCloseButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backdropFilter: 'blur(10px)',
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
-  fullscreenDeleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backdropFilter: 'blur(10px)',
+
+  // Premium Cards
+  premiumCard: {
+    borderRadius: 28,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  fullscreenCounter: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backdropFilter: 'blur(10px)',
+  metricCardStack: {
+    gap: 16,
   },
-  fullscreenCounterText: {
-    color: '#FFFFFF',
+  physiqueCardSubTitle: {
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    marginBottom: 20,
+    opacity: 0.8,
   },
-  imageModalContent: {
-    flex: 1,
+
+  // Score GridModern
+  scoreGridModern: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  modernScoreItem: {
+    width: '48.4%',
+    borderRadius: 20,
+    padding: 14,
+    gap: 6,
+  },
+  modernScoreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modernScoreLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modernScoreValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  modernProgressBarBg: {
+    height: 4,
+    backgroundColor: '#333',
+    borderRadius: 2,
+    marginTop: 4,
+    width: '100%',
+  },
+
+  // Linear Scale Redesign
+  scaleContainer: {
+    width: '100%',
+  },
+  scaleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 16,
+  },
+  scaleLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  scaleValueBig: {
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  scaleSubLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.9,
+  },
+  scaleTrackContainer: {
+    height: 32,
+    justifyContent: 'center',
+  },
+  scaleTrack: {
+    width: '100%',
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  scaleThumb: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: -14,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  scaleThumbInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  scaleMarkers: {
+    position: 'absolute',
+    top: 36,
+    left: 0,
+    right: 0,
+  },
+  scaleMarkerText: {
+    position: 'absolute',
+    fontSize: 11,
+    fontWeight: '700',
+    opacity: 0.6,
+  },
+
+  // Fullscreen Image Modal
+  imageModalOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  fullscreenSafeArea: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    height: 60,
+    zIndex: 10,
+  },
+  fullscreenCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenDeleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenCounter: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  fullscreenCounterText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   fullscreenImageWrapper: {
     width: SCREEN_WIDTH,
@@ -1918,29 +1963,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  // Action Buttons
-  actionBarContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  actionButtonIcon: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 52,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 })

@@ -772,8 +772,8 @@ const styles = StyleSheet.create({
   bottomSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
-    height: '80%',
+    maxHeight: '96%',
+    height: '92%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

@@ -172,8 +172,8 @@ export const FeedCard = memo(function FeedCard({
   const [workoutCountThisWeek, setWorkoutCountThisWeek] = useState(1)
 
   // Calculate carousel width (screen width - card padding * 2)
-  // Card padding is 20 horizontal
-  const cardPadding = 20
+  // Card padding is 14 horizontal
+  const cardPadding = 14
   const carouselWidth = windowWidth - cardPadding * 2
   // Max height for the image to prevent it from growing too large (infinity zoom effect)
   const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.4, 380)
@@ -809,11 +809,11 @@ const createStyles = (
   StyleSheet.create({
     card: {
       backgroundColor: colors.background,
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingTop: 18,
       paddingBottom: 0,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     header: {
       flexDirection: 'row',
@@ -882,10 +882,21 @@ const createStyles = (
       marginBottom: 8,
     },
     workoutDescription: {
-      fontSize: 16,
-      lineHeight: 20,
+      fontSize: 15,
       color: colors.text,
-      marginBottom: 12,
+      backgroundColor: colors.feedCardBackground,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      borderTopLeftRadius: 4, // More of a 'bubble' feel from the side
+      alignSelf: 'flex-start',
+      marginTop: 4,
+      marginBottom: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 1,
     },
     exercisesContainer: {
       marginBottom: 12,
@@ -1118,11 +1129,17 @@ const createStyles = (
       paddingVertical: 12,
       paddingHorizontal: 12,
       backgroundColor: colors.feedCardBackground,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      marginBottom: 4, // Spacing between individual exercise "cards"
+      borderRadius: 12,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 1,
     },
     lastExerciseRow: {
-      borderBottomWidth: 0,
+      // Overriding the margin for the last row if needed, but keeping it consistent for "islands"
+      marginBottom: 12,
     },
     exerciseNameContainer: {
       flex: 1,
@@ -1169,11 +1186,14 @@ const createStyles = (
       justifyContent: 'space-around',
       paddingVertical: 16,
       paddingHorizontal: 12,
-      marginBottom: 12,
+      marginBottom: 16,
       borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.feedCardBackground,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
     statItem: {
       alignItems: 'center',

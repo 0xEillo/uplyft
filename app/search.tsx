@@ -520,7 +520,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      margin: 16,
+      margin: 14,
       marginBottom: 12,
       paddingHorizontal: 12,
       backgroundColor: colors.backgroundLight,
@@ -544,7 +544,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 4,
     },
     resultsHeader: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 14,
       paddingVertical: 12,
       backgroundColor: colors.background,
     },
@@ -563,7 +563,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     userItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: 14,
       paddingVertical: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
@@ -651,7 +651,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       left: 0,
       right: 0,
       backgroundColor: colors.white,
-      paddingHorizontal: 16,
+      paddingHorizontal: 14,
       paddingVertical: 16,
       paddingBottom: 34,
       borderTopWidth: 1,

@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     marginBottom: 16,
   },
   headerContent: {
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 4,
-    marginHorizontal: 20,
+    marginHorizontal: 14,
     borderRadius: 2,
     marginBottom: 20,
     overflow: 'hidden',

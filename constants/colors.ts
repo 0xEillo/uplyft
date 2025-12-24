@@ -12,35 +12,35 @@ const lightColors = {
   // Neutral colors
   white: '#fff',
   black: '#000',
-  text: '#1a1a1a',
-  textSecondary: '#666',
-  textTertiary: '#999',
-  textLight: '#bbb',
-  textPlaceholder: '#ccc',
+  text: '#000',
+  textSecondary: '#3a3a3c',
+  textTertiary: '#8e8e93',
+  textLight: '#aeaeb2',
+  textPlaceholder: '#c7c7cc',
 
   // Background colors
-  background: '#fafafa',
+  background: '#f7f7f8', // Balanced neutral off-white (the perfect in-between)
   backgroundWhite: '#fff',
-  backgroundLight: '#f0f0f0',
-  inputBackground: '#fafafa',
+  backgroundLight: '#efeff4', // Lighter elevation gray
+  inputBackground: '#fff',
   feedCardBackground: '#fff',
 
   // Border colors
-  border: '#f0f0f0',
+  border: '#e8e8ec', // Balanced neutral border
 
   // Shadow colors
   shadow: '#000',
 
   // Status colors
-  success: '#4CAF50',
-  error: '#f44336',
-  warning: '#FF9800',
-  info: '#2196F3',
+  success: '#34c759',
+  error: '#ff3b30',
+  warning: '#ff9500',
+  info: '#007aff',
   buttonText: '#fff',
 
   // Specific UI colors
-  icon: '#687076',
-  link: '#007AFF',
+  icon: '#8e8e93',
+  link: '#007aff',
 } as const
 
 const darkColors = {

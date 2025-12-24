@@ -481,7 +481,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     notificationItem: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
       paddingVertical: 16,
       backgroundColor: colors.white,
       borderBottomWidth: 1,
