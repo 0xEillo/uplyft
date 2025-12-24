@@ -381,13 +381,21 @@ export const FeedCard = memo(function FeedCard({
             <>
               {[60, 80, 70].map((width, index) => (
                 <View key={`skeleton-${index}`} style={styles.exerciseRow}>
-                  <Animated.View
-                    style={[
-                      styles.skeletonBar,
-                      styles.skeletonBarExercise,
-                      { opacity: shimmerOpacity, width: `${width}%` },
-                    ]}
-                  />
+                  <View style={styles.exerciseNameContainer}>
+                    <Animated.View
+                      style={[
+                        styles.exerciseThumbnail,
+                        { opacity: shimmerOpacity, backgroundColor: isDark ? '#444' : '#eee' },
+                      ]}
+                    />
+                    <Animated.View
+                      style={[
+                        styles.skeletonBar,
+                        styles.skeletonBarExercise,
+                        { opacity: shimmerOpacity, width: `${width}%` },
+                      ]}
+                    />
+                  </View>
                   <Animated.View
                     style={[
                       styles.skeletonBar,
@@ -1124,9 +1132,9 @@ const createStyles = (
       marginRight: 12,
     },
     exerciseThumbnail: {
-      width: 36,
-      height: 36,
-      borderRadius: 6,
+      width: 44,
+      height: 44,
+      borderRadius: 8,
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {

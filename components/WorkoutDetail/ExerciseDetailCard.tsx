@@ -54,7 +54,7 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
         <ExerciseMedia
           gifUrl={exercise.gif_url}
           mode="thumbnail"
-          style={{ width: 40, height: 40, borderRadius: 4 }}
+          style={{ width: 52, height: 52, borderRadius: 12 }}
           autoPlay={false}
         />
         <Text style={[styles.exerciseName, { color: colors.primary }]}>

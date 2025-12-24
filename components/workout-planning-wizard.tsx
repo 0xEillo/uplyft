@@ -3,17 +3,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
 export const EQUIPMENT_PREF_KEY = '@equipment_preference'
@@ -227,6 +228,7 @@ export function WorkoutPlanningWizard({
   initialData,
   commonMuscles,
 }: WorkoutPlanningWizardProps) {
+  const insets = useSafeAreaInsets()
   const [editingField, setEditingField] = useState<WizardStep | null>(null)
   const [data, setData] = useState<WorkoutPlanningData>({
     goal: '',
@@ -913,34 +915,6 @@ export function WorkoutPlanningWizard({
           />
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            styles.confirmButton,
-            { backgroundColor: colors.primary, marginTop: 24 },
-          ]}
-          onPress={handleConfirm}
-          activeOpacity={0.6}
-        >
-          <Text style={[styles.navButtonText, { color: colors.white }]}>
-            Generate Workout
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={{
-            marginTop: 16,
-            padding: 12,
-            alignItems: 'center',
-            marginBottom: 32,
-          }}
-          onPress={onCancel}
-          activeOpacity={0.6}
-        >
-          <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
-            Cancel
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     )
   }
@@ -966,7 +940,7 @@ export function WorkoutPlanningWizard({
     }
   }
 
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, insets)
 
   return (
     <KeyboardAvoidingView
@@ -976,52 +950,95 @@ export function WorkoutPlanningWizard({
     >
       {renderCurrentView()}
 
-      {/* Only show navigation bar when editing a field */}
-      {editingField && (
-        <View style={styles.navigationContainer}>
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              styles.backButton,
-              { borderColor: colors.border },
-            ]}
-            onPress={handleBack}
-            activeOpacity={0.6}
-          >
-            <Ionicons name="chevron-back" size={18} color={colors.text} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              styles.nextButton,
-              {
-                backgroundColor: canSaveField()
-                  ? colors.primary
-                  : colors.backgroundLight,
-                opacity: canSaveField() ? 1 : 0.5,
-              },
-            ]}
-            onPress={handleDoneEditing}
-            disabled={!canSaveField()}
-            activeOpacity={0.6}
-          >
-            <Text
+      <View style={styles.navigationContainer}>
+        {!editingField ? (
+          <>
+            <TouchableOpacity
               style={[
-                styles.navButtonText,
-                { color: canSaveField() ? colors.white : colors.textSecondary },
+                styles.navButton,
+                styles.backButton,
+                {
+                  borderColor: colors.border,
+                  width: 'auto',
+                  paddingHorizontal: 20,
+                },
               ]}
+              onPress={onCancel}
+              activeOpacity={0.6}
             >
-              Done
-            </Text>
-            <Ionicons
-              name="checkmark"
-              size={16}
-              color={canSaveField() ? colors.white : colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
-      )}
+              <Text
+                style={[styles.navButtonText, { color: colors.textSecondary }]}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                styles.confirmButton,
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={handleConfirm}
+              activeOpacity={0.6}
+            >
+              <Text style={[styles.navButtonText, { color: colors.white }]}>
+                Generate Workout
+              </Text>
+              <Ionicons
+                name="flash"
+                size={16}
+                color={colors.white}
+                style={{ marginLeft: 4 }}
+              />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                styles.backButton,
+                { borderColor: colors.border },
+              ]}
+              onPress={handleBack}
+              activeOpacity={0.6}
+            >
+              <Ionicons name="chevron-back" size={18} color={colors.text} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                styles.nextButton,
+                {
+                  backgroundColor: canSaveField()
+                    ? colors.primary
+                    : colors.backgroundLight,
+                  opacity: canSaveField() ? 1 : 0.5,
+                },
+              ]}
+              onPress={handleDoneEditing}
+              disabled={!canSaveField()}
+              activeOpacity={0.6}
+            >
+              <Text
+                style={[
+                  styles.navButtonText,
+                  { color: canSaveField() ? colors.white : colors.textSecondary },
+                ]}
+              >
+                Done
+              </Text>
+              <Ionicons
+                name="checkmark"
+                size={16}
+                color={canSaveField() ? colors.white : colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </KeyboardAvoidingView>
   )
 }
@@ -1094,7 +1111,10 @@ const summaryStyles = StyleSheet.create({
   },
 })
 
-const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
+const createStyles = (
+  colors: WorkoutPlanningWizardProps['colors'],
+  insets: { bottom: number },
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -1104,7 +1124,7 @@ const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
     },
     scrollContentContainer: {
       paddingHorizontal: 16,
-      paddingBottom: 16,
+      paddingBottom: Math.max(insets.bottom, 16) + 40,
     },
     stepIndicatorContainer: {
       flexDirection: 'row',
@@ -1261,7 +1281,7 @@ const createStyles = (colors: WorkoutPlanningWizardProps['colors']) =>
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: Platform.OS === 'ios' ? 16 : 16,
+      paddingBottom: Math.max(insets.bottom, 16) + 40,
       gap: 10,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
