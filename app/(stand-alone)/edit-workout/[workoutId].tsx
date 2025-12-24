@@ -82,6 +82,7 @@ export default function EditWorkoutScreen() {
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null,
   )
+  const [isAddingExercise, setIsAddingExercise] = useState(false)
   const { registerCallback } = useExerciseSelection()
 
   // Image management states
@@ -282,6 +283,71 @@ export default function EditWorkoutScreen() {
     },
     [registerCallback, handleSelectExercise, workout, router],
   )
+
+  const handleAddNewExercise = useCallback(
+    async (selectedExercise: Exercise) => {
+      if (!workout || !workoutId) return
+
+      try {
+        // Calculate the next order index
+        const activeExercises = workout.workout_exercises?.filter(
+          (we) => !deletedExerciseIds.has(we.id),
+        )
+        const nextOrderIndex = (activeExercises?.length || 0)
+
+        // Create the new workout exercise in the database
+        const newWorkoutExercise = await database.workoutExercises.create(
+          workoutId,
+          selectedExercise.id,
+          nextOrderIndex,
+        )
+
+        // Smooth animation for exercise addition
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+
+        // Update local state
+        setWorkout((prevWorkout) => {
+          if (!prevWorkout) return prevWorkout
+
+          return {
+            ...prevWorkout,
+            workout_exercises: [
+              ...(prevWorkout.workout_exercises || []),
+              {
+                ...newWorkoutExercise,
+                exercise: selectedExercise,
+                sets: newWorkoutExercise.sets || [],
+              },
+            ],
+          }
+        })
+
+        // Expand the newly added exercise
+        setExpandedExercises((prev) => new Set(prev).add(newWorkoutExercise.id))
+        setIsAddingExercise(false)
+      } catch (error) {
+        console.error('Error adding exercise:', error)
+        Alert.alert('Error', 'Failed to add exercise. Please try again.')
+        setIsAddingExercise(false)
+      }
+    },
+    [workout, workoutId, deletedExerciseIds],
+  )
+
+  const handleAddExercise = useCallback(() => {
+    setIsAddingExercise(true)
+
+    // Register callback for when exercise is selected
+    registerCallback((selectedExercise: Exercise) => {
+      handleAddNewExercise(selectedExercise)
+    })
+
+    // Navigate to select-exercise page
+    router.push({
+      pathname: '/select-exercise',
+      params: {},
+    })
+  }, [registerCallback, handleAddNewExercise, router])
 
   const handleSave = useCallback(async () => {
     if (!workoutId) return
@@ -945,6 +1011,19 @@ export default function EditWorkoutScreen() {
                     </View>
                   )
                 })}
+
+              {/* Add Exercise Button */}
+              <TouchableOpacity
+                style={styles.addExerciseButton}
+                onPress={handleAddExercise}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={22}
+                  color={colors.primary}
+                />
+                <Text style={styles.addExerciseText}>Add Exercise</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -1234,6 +1313,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     addSetText: {
       fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    addExerciseButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 16,
+      marginTop: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      backgroundColor: colors.backgroundWhite,
+    },
+    addExerciseText: {
+      fontSize: 15,
       fontWeight: '600',
       color: colors.primary,
     },

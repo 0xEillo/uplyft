@@ -1114,7 +1114,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     contentContainer: {
-      paddingBottom: 32,
+      paddingBottom: 100,
     },
     timeRangeHeader: {
       backgroundColor: colors.background,

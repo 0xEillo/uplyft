@@ -471,6 +471,7 @@ export default function UserProfileScreen() {
         {/* Scrollable Content */}
         <Animated.ScrollView
           style={styles.scrollView}
+          contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],

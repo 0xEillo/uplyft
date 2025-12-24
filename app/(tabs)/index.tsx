@@ -579,7 +579,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     feed: {
       paddingTop: 2,
-      paddingBottom: 2,
+      paddingBottom: 90,
     },
     loadingContainer: {
       flex: 1,

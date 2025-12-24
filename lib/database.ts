@@ -1517,6 +1517,31 @@ export const database = {
 
   // Workout Exercise operations
   workoutExercises: {
+    async create(
+      sessionId: string,
+      exerciseId: string,
+      orderIndex: number,
+    ) {
+      const { data, error } = await supabase
+        .from('workout_exercises')
+        .insert({
+          session_id: sessionId,
+          exercise_id: exerciseId,
+          order_index: orderIndex,
+        })
+        .select(
+          `
+          *,
+          exercise:exercises (*),
+          sets (*)
+        `,
+        )
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
     async update(workoutExerciseId: string, exerciseId: string) {
       const { data, error } = await supabase
         .from('workout_exercises')
