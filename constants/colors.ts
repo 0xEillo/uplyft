@@ -19,14 +19,14 @@ const lightColors = {
   textPlaceholder: '#c7c7cc',
 
   // Background colors
-  background: '#f7f7f8', // Balanced neutral off-white (the perfect in-between)
+  background: '#f6f6f8', // The absolute perfect midpoint off-white
   backgroundWhite: '#fff',
   backgroundLight: '#efeff4', // Lighter elevation gray
   inputBackground: '#fff',
   feedCardBackground: '#fff',
 
   // Border colors
-  border: '#e8e8ec', // Balanced neutral border
+  border: '#e5e6eb', // Refined neutral border
 
   // Shadow colors
   shadow: '#000',
