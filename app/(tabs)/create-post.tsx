@@ -324,6 +324,12 @@ export default function CreatePostScreen() {
       exercises: structuredData.map((e) => ({
         name: e.name,
         setsCount: e.sets.length,
+        sets: e.sets
+          .map((set) => ({
+            weight: set.weight || undefined,
+            reps: set.reps || undefined,
+          }))
+          .filter((set) => set.weight || set.reps),
       })),
     }),
     [workoutTitle, notes, structuredData],

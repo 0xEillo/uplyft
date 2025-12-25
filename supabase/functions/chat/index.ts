@@ -30,11 +30,25 @@ const imageSchema = z.object({
   }),
 })
 
+const workoutContextSchema = z.object({
+  title: z.string().optional(),
+  notes: z.string().optional(),
+  exercises: z.array(z.object({
+    name: z.string(),
+    setsCount: z.number(),
+    sets: z.array(z.object({
+      weight: z.string().optional(),
+      reps: z.string().optional(),
+    })).optional(),
+  })).optional(),
+}).optional()
+
 const requestSchema = z.object({
   messages: z.array(messagesSchema),
   userId: z.string().optional(),
   weightUnit: z.enum(['kg', 'lb']).optional(),
   images: z.array(imageSchema).optional(),
+  workoutContext: workoutContextSchema,
 })
 
 type WorkoutSessionWithDetails = {
@@ -95,7 +109,7 @@ serve(async (req) => {
           payload.userId,
           accessToken,
         )
-        systemPrompt = buildSystemPrompt(summary, payload.weightUnit)
+        systemPrompt = buildSystemPrompt(summary, payload.weightUnit, payload.workoutContext)
         tools = chatTools
       } catch (contextError) {
         console.warn('Failed to build user context summary:', contextError)
@@ -987,7 +1001,11 @@ const WORKOUT_JSON_SCHEMA = `{
 function buildSystemPrompt(
   summary: Awaited<ReturnType<typeof buildUserContextSummary>>,
   weightUnit: 'kg' | 'lb' = 'kg',
+  workoutContext?: z.infer<typeof workoutContextSchema>,
 ): string {
+  // Build current workout context section if there's a workout in progress
+  const workoutInProgressSection = buildWorkoutInProgressSection(workoutContext)
+  
   return [
     "You are the Rep AI gym training copilot. Keep responses short, digestible, and conversational—like you're texting between sets. Don't dump all your knowledge at once. Start with the essentials, and if they want more detail, they'll ask.",
     'User context:\n' + userContextToPrompt(summary),
@@ -1021,5 +1039,79 @@ function buildSystemPrompt(
     '',
     'VALID MUSCLE GROUPS: Back, Biceps, Calves, Cardio, Chest, Core, Forearms, Full Body, Glutes, Hamstrings, Quads, Shoulders, Triceps',
     'VALID EQUIPMENT: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
-  ].join('\n\n')
+    '',
+    'EXERCISE SUGGESTIONS FORMAT:',
+    'Whenever you suggest, recommend, or mention specific exercises (whether adding to a workout, replacing an exercise, or just discussing options), ALWAYS include a JSON array at the END of your response with the exercise details.',
+    'Format: [{"name": "Exercise Name", "sets": 3, "reps": "8-10"}, ...]',
+    'This applies when:',
+    '- User asks you to add exercises to their workout',
+    '- User asks for exercise alternatives or replacements',
+    '- You recommend exercises in your response',
+    '- You discuss specific exercises the user could try',
+    'Example: "I\'d suggest adding some tricep work to balance your push day. Here are a couple options:\\n[{\\"name\\": \\"Tricep Pushdown\\", \\"sets\\": 3, \\"reps\\": \\"12-15\\"}, {\\"name\\": \\"Overhead Tricep Extension\\", \\"sets\\": 3, \\"reps\\": \\"10-12\\"}]"',
+    'Do NOT include the JSON for general exercise questions like "what muscles does bench press work?" - only when actually suggesting exercises to add/do.',
+    workoutInProgressSection,
+  ].filter(Boolean).join('\n\n')
+}
+
+function buildWorkoutInProgressSection(
+  workoutContext?: z.infer<typeof workoutContextSchema>,
+): string {
+  if (!workoutContext) return ''
+  
+  const hasTitle = workoutContext.title?.trim()
+  const hasNotes = workoutContext.notes?.trim()
+  const hasExercises = workoutContext.exercises && workoutContext.exercises.length > 0
+  
+  if (!hasTitle && !hasNotes && !hasExercises) return ''
+  
+  const lines: string[] = [
+    'CURRENT WORKOUT IN PROGRESS:',
+    'The user is currently creating/logging a workout. Use this context to provide relevant suggestions, modifications, or exercise recommendations.',
+  ]
+  
+  if (hasTitle) {
+    lines.push(`Workout Title: "${workoutContext.title}"`)
+  }
+  
+  if (hasNotes) {
+    lines.push(`Notes/Description: "${workoutContext.notes}"`)
+  }
+  
+  if (hasExercises) {
+    const exerciseList = workoutContext.exercises!.map(
+      (e: { name: string; setsCount: number; sets?: { weight?: string; reps?: string }[] }, i: number) => {
+        let exerciseLine = `${i + 1}. ${e.name}`
+        
+        // Include set details if available
+        if (e.sets && e.sets.length > 0) {
+          const setDetails = e.sets.map((set, setIdx) => {
+            const parts: string[] = []
+            if (set.weight) parts.push(`${set.weight}`)
+            if (set.reps) parts.push(`${set.reps} reps`)
+            return parts.length > 0 ? `Set ${setIdx + 1}: ${parts.join(' x ')}` : null
+          }).filter(Boolean).join(', ')
+          
+          if (setDetails) {
+            exerciseLine += ` - ${setDetails}`
+          } else {
+            exerciseLine += ` (${e.setsCount} sets planned)`
+          }
+        } else {
+          exerciseLine += ` (${e.setsCount} sets planned)`
+        }
+        
+        return exerciseLine
+      }
+    ).join('\n')
+    lines.push(`Current Exercises:\n${exerciseList}`)
+  }
+  
+  lines.push(
+    'When the user asks for suggestions, exercise replacements, or modifications, consider this context.',
+    'If they ask to add exercises, suggest ones that complement their current workout.',
+    'If they ask to replace an exercise, suggest alternatives based on the exercise being replaced.',
+  )
+  
+  return lines.join('\n')
 }

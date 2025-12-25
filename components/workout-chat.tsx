@@ -33,7 +33,7 @@ import { database } from '@/lib/database'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
-import { saveDraft } from '@/lib/utils/workout-draft'
+import { loadDraft as loadWorkoutDraft, saveDraft } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
@@ -41,7 +41,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -178,9 +178,21 @@ function AnimatedSuggestion({
 }
 
 // Workout context passed from create-post
+export interface WorkoutContextSet {
+  weight?: string
+  reps?: string
+}
+
+export interface WorkoutContextExercise {
+  name: string
+  setsCount: number
+  sets?: WorkoutContextSet[]
+}
+
 export interface WorkoutContext {
   title: string
-  exercises: { name: string; setsCount: number }[]
+  notes?: string
+  exercises: WorkoutContextExercise[]
 }
 
 // Custom suggestions config
@@ -373,6 +385,7 @@ export function WorkoutChat({
   const { coachId } = useProfile()
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const [loadedDraftContext, setLoadedDraftContext] = useState<WorkoutContext | null>(null)
   const translateY = useSharedValue(0)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
@@ -389,30 +402,8 @@ export function WorkoutChat({
   const suggestions: SuggestionsConfig =
     customSuggestions || DEFAULT_SUGGESTIONS
 
-  // For sheet mode with workout context, build replace_exercise options
-  workoutContext?.exercises.map((e) => e.name) || []
-
-  // Combine initial context exercises with any proposed exercises for the "current workout" state
-  const currentWorkoutExercises = [
-    ...(workoutContext?.exercises.map((e) => e.name) || []),
-    ...proposedWorkout.map((e) => e.name),
-  ]
-  const hasWorkout = currentWorkoutExercises.length > 0
-
-  // Update suggestions based on state
-  const activeSuggestions = {
-    ...suggestions,
-    main: hasWorkout
-      ? [
-          {
-            id: 'adjust_workout',
-            text: 'Adjust Workout',
-            icon: 'options-outline',
-          },
-          ...suggestions.main.filter((s) => s.id !== 'plan_workout'),
-        ]
-      : suggestions.main,
-  }
+  // NOTE: currentWorkoutExercises, hasWorkout, and activeSuggestions are computed
+  // below using useMemo after effectiveWorkoutContext is defined
 
   const layoutRef = useRef({
     root: 0,
@@ -444,6 +435,71 @@ export function WorkoutChat({
       console.error('[WorkoutChat] Failed to initialize exercise lookup:', err)
     })
   }, [])
+
+  // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
+  // This ensures the AI always knows about the current workout in progress
+  useFocusEffect(
+    useCallback(() => {
+      // If workoutContext is passed as a prop, use that (e.g., from create-post slide-up)
+      if (workoutContext) {
+        return
+      }
+
+      // Load the workout draft for the chat tab
+      const loadDraftContext = async () => {
+        try {
+          const draft = await loadWorkoutDraft()
+          if (draft) {
+            const context: WorkoutContext = {
+              title: draft.title || '',
+              notes: draft.notes || '',
+              exercises: (draft.structuredData || []).map((e) => ({
+                name: e.name,
+                setsCount: e.sets?.length || 0,
+                sets: e.sets?.map((set) => ({
+                  weight: set.weight || undefined,
+                  reps: set.reps || undefined,
+                })).filter((set) => set.weight || set.reps) || [],
+              })),
+            }
+            setLoadedDraftContext(context)
+          } else {
+            setLoadedDraftContext(null)
+          }
+        } catch (error) {
+          console.error('[WorkoutChat] Failed to load workout draft:', error)
+        }
+      }
+
+      loadDraftContext()
+    }, [workoutContext])
+  )
+
+  // Combined context: prefer passed prop, fall back to loaded draft
+  const effectiveWorkoutContext = workoutContext || loadedDraftContext || undefined
+
+  // Combine initial context exercises with any proposed exercises for the "current workout" state
+  const currentWorkoutExercises = useMemo(() => [
+    ...(effectiveWorkoutContext?.exercises.map((e) => e.name) || []),
+    ...proposedWorkout.map((e) => e.name),
+  ], [effectiveWorkoutContext, proposedWorkout])
+  
+  const hasWorkout = currentWorkoutExercises.length > 0
+
+  // Update suggestions based on state
+  const activeSuggestions = useMemo(() => ({
+    ...suggestions,
+    main: hasWorkout
+      ? [
+          {
+            id: 'adjust_workout',
+            text: 'Adjust Workout',
+            icon: 'options-outline',
+          },
+          ...suggestions.main.filter((s) => s.id !== 'plan_workout'),
+        ]
+      : suggestions.main,
+  }), [suggestions, hasWorkout])
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
@@ -977,6 +1033,12 @@ export function WorkoutChat({
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
+        // Include current workout context so AI knows what workout is in progress
+        workoutContext: effectiveWorkoutContext ? {
+          title: effectiveWorkoutContext.title,
+          notes: effectiveWorkoutContext.notes,
+          exercises: effectiveWorkoutContext.exercises,
+        } : undefined,
       }
 
       // Add images array if present
@@ -2537,11 +2599,13 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-start',
+      marginBottom: 24,
     },
     assistantMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-start',
+      marginBottom: 24,
     },
     userMessageBubble: {
       maxWidth: '80%',

@@ -6,36 +6,36 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
-  Dimensions,
-  Image,
-  Keyboard,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Image,
+    Keyboard,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
-  ExerciseSuggestion,
-  SuggestionsConfig,
-  WorkoutChat,
-  WorkoutContext,
+    ExerciseSuggestion,
+    SuggestionsConfig,
+    WorkoutChat,
+    WorkoutContext,
 } from './workout-chat'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -45,7 +45,7 @@ const MAX_SHEET_HEIGHT = SCREEN_HEIGHT * 0.85
 interface WorkoutCoachSheetProps {
   visible: boolean
   onClose: () => void
-  workoutContext: WorkoutContext & { notes?: string }
+  workoutContext: WorkoutContext
   onAddExercise: (exercise: ExerciseSuggestion) => void
   onReplaceExercise?: (
     oldExerciseName: string,
