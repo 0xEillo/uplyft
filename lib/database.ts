@@ -3132,4 +3132,219 @@ export const database = {
       if (error) throw error
     },
   },
+
+  // Explore content operations
+  explore: {
+    /**
+     * Get all published programs with routine count
+     */
+    async getPrograms() {
+      const { data, error } = await supabase
+        .from('explore_programs')
+        .select(`
+          *,
+          explore_program_routines (
+            routine_id
+          )
+        `)
+        .eq('is_published', true)
+        .order('display_order', { ascending: true })
+
+      if (error) throw error
+
+      return (data || []).map((program: any) => ({
+        ...program,
+        routine_count: program.explore_program_routines?.length || 0,
+        routines: [],
+      }))
+    },
+
+    /**
+     * Get a single program with all its routines
+     */
+    async getProgramById(programId: string) {
+      const { data, error } = await supabase
+        .from('explore_programs')
+        .select(`
+          *,
+          explore_program_routines (
+            *,
+            routine:explore_routines (
+              *,
+              explore_routine_exercises (
+                *,
+                exercise:exercises (
+                  id,
+                  name,
+                  target_muscles,
+                  gif_url
+                )
+              )
+            )
+          )
+        `)
+        .eq('id', programId)
+        .eq('is_published', true)
+        .single()
+
+      if (error) throw error
+
+      const routines = (data.explore_program_routines || [])
+        .sort((a: any, b: any) => a.display_order - b.display_order)
+        .map((pr: any) => {
+          const routine = pr.routine
+          if (!routine) return null
+          
+          // Sort exercises by order_index
+          const exercises = (routine.explore_routine_exercises || [])
+            .sort((a: any, b: any) => a.order_index - b.order_index)
+            
+          return {
+            ...routine,
+            exercises
+          }
+        })
+        .filter(Boolean)
+
+      return {
+        ...data,
+        routines,
+        routine_count: routines.length,
+      }
+    },
+
+    /**
+     * Get all published routines
+     */
+    async getRoutines(filters?: { level?: string; equipment?: string }) {
+      let query = supabase
+        .from('explore_routines')
+        .select('*')
+        .eq('is_published', true)
+        .order('display_order', { ascending: true })
+
+      if (filters?.level) {
+        query = query.eq('level', filters.level)
+      }
+
+      if (filters?.equipment) {
+        query = query.contains('equipment', [filters.equipment])
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return data || []
+    },
+
+    /**
+     * Get a single routine with all its exercises
+     */
+    async getRoutineById(routineId: string) {
+      const { data, error } = await supabase
+        .from('explore_routines')
+        .select(`
+          *,
+          explore_routine_exercises (
+            *,
+            exercise:exercises (*)
+          )
+        `)
+        .eq('id', routineId)
+        .eq('is_published', true)
+        .single()
+
+      if (error) throw error
+
+      const exercises = (data.explore_routine_exercises || [])
+        .sort((a: any, b: any) => a.order_index - b.order_index)
+
+      return {
+        ...data,
+        exercises,
+      }
+    },
+
+    /**
+     * Save an explore routine to user's personal routines
+     */
+    async saveRoutineToUser(routineId: string, userId: string) {
+      // Get the explore routine with exercises
+      const exploreRoutine = await this.getRoutineById(routineId)
+
+      // Create user's personal routine
+      const { data: routine, error: routineError } = await supabase
+        .from('workout_routines')
+        .insert({
+          user_id: userId,
+          name: exploreRoutine.name,
+          notes: exploreRoutine.description,
+        })
+        .select()
+        .single()
+
+      if (routineError) throw routineError
+
+      // Insert routine exercises
+      if (exploreRoutine.exercises && exploreRoutine.exercises.length > 0) {
+        const routineExercises = exploreRoutine.exercises.map((ex: any) => ({
+          routine_id: routine.id,
+          exercise_id: ex.exercise_id,
+          order_index: ex.order_index,
+          notes: ex.notes,
+        }))
+
+        const { data: insertedExercises, error: exercisesError } = await supabase
+          .from('workout_routine_exercises')
+          .insert(routineExercises)
+          .select()
+
+        if (exercisesError) throw exercisesError
+
+        // Create sets for each exercise
+        const routineSets: any[] = []
+        exploreRoutine.exercises.forEach((ex: any, exIndex: number) => {
+          const insertedEx = insertedExercises?.find(
+            (ie: any) => ie.order_index === ex.order_index
+          )
+          if (!insertedEx) return
+
+          for (let setNum = 1; setNum <= ex.sets; setNum++) {
+            routineSets.push({
+              routine_exercise_id: insertedEx.id,
+              set_number: setNum,
+              reps_min: ex.reps_min,
+              reps_max: ex.reps_max,
+            })
+          }
+        })
+
+        if (routineSets.length > 0) {
+          const { error: setsError } = await supabase
+            .from('workout_routine_sets')
+            .insert(routineSets)
+
+          if (setsError) throw setsError
+        }
+      }
+
+      return routine
+    },
+
+    /**
+     * Save all routines from a program to user's personal routines
+     */
+    async saveProgramToUser(programId: string, userId: string) {
+      const program = await this.getProgramById(programId)
+      const savedRoutines = []
+
+      for (const routine of program.routines) {
+        const saved = await this.saveRoutineToUser(routine.id, userId)
+        savedRoutines.push(saved)
+      }
+
+      return savedRoutines
+    },
+  },
 }
+

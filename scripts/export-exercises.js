@@ -1,4 +1,5 @@
 require('dotenv').config()
+require('cross-fetch/polyfill')
 const { createClient } = require('@supabase/supabase-js')
 const fs = require('fs')
 const path = require('path')

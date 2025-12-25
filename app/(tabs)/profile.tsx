@@ -2,6 +2,7 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
+import { ExploreCard } from '@/components/Profile/ExploreCard'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { TutorialProgressCard } from '@/components/Tutorial/TutorialProgressCard'
 import { useAuth } from '@/contexts/auth-context'
@@ -618,9 +619,10 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
-              {/* Tutorial Progress Card */}
-              <View style={styles.dashboardSection}>
+              {/* Tutorial Progress Card & Explore */}
+              <View style={[styles.dashboardSection, { gap: 12 }]}>
                 <TutorialProgressCard />
+                <ExploreCard />
               </View>
 
               {/* Dashboard Section */}
