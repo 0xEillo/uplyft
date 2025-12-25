@@ -902,8 +902,6 @@ const createStyles = (
       marginBottom: 12,
       borderRadius: 12,
       overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.feedCardBackground,
       position: 'relative',
     },
@@ -1129,17 +1127,11 @@ const createStyles = (
       paddingVertical: 12,
       paddingHorizontal: 12,
       backgroundColor: colors.feedCardBackground,
-      marginBottom: 4, // Spacing between individual exercise "cards"
-      borderRadius: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 1,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     lastExerciseRow: {
-      // Overriding the margin for the last row if needed, but keeping it consistent for "islands"
-      marginBottom: 12,
+      borderBottomWidth: 0,
     },
     exerciseNameContainer: {
       flex: 1,

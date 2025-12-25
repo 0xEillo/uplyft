@@ -3,13 +3,13 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useRef } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Dimensions,
+    Easing,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -198,22 +198,18 @@ function SubmitSuccessOverlayComponent({
           },
         ]}
       >
-        {/* Header with Icon and Close Button */}
+        {/* Header with Close Button (tick icon) */}
         <View style={styles.header}>
-          <View
+          <View style={styles.headerSpacer} />
+          <Pressable
             style={[
               styles.iconCircle,
               { backgroundColor: `${colors.primary}15` },
             ]}
-          >
-            <Ionicons name="checkmark" size={24} color={colors.primary} />
-          </View>
-          <Pressable
-            style={styles.closeButton}
             onPress={handleClose}
             hitSlop={8}
           >
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
+            <Ionicons name="checkmark" size={24} color={colors.primary} />
           </Pressable>
         </View>
 
@@ -387,9 +383,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    closeButton: {
-      padding: 8,
-      marginRight: -8,
+    headerSpacer: {
+      width: 48,
+      height: 48,
     },
     numberSection: {
       alignItems: 'center',
