@@ -25,22 +25,14 @@ export const ExploreCard = memo(() => {
         style={[
           styles.container,
           {
-            backgroundColor: colors.backgroundWhite,
+            backgroundColor: colors.feedCardBackground,
             borderColor: colors.border,
           },
         ]}
       >
-        {/* Left: Icon Circle */}
-        <View
-          style={[
-            styles.iconRing,
-            {
-              backgroundColor: isDark ? '#3B82F630' : '#EBF5FF',
-              borderColor: '#3B82F6',
-            },
-          ]}
-        >
-          <Ionicons name="compass" size={24} color="#3B82F6" />
+        {/* Left: Icon Container */}
+        <View style={styles.iconContainer}>
+          <Ionicons name="compass-outline" size={24} color={colors.primary} />
         </View>
 
         {/* Middle: Content */}
@@ -55,7 +47,7 @@ export const ExploreCard = memo(() => {
           style={[
             styles.arrowContainer,
             {
-              backgroundColor: colors.backgroundLight,
+              backgroundColor: colors.background,
             },
           ]}
         >
@@ -80,17 +72,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  iconRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 0, // Using background for color
+  iconContainer: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   content: {
     flex: 1,
@@ -98,15 +88,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 13,
   },
   arrowContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,

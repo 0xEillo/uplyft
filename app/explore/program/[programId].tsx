@@ -1,24 +1,30 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { Paywall } from '@/components/paywall'
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { ExploreProgramWithRoutines } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
+import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -31,12 +37,26 @@ export default function ProgramDetailScreen() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { isProMember } = useSubscription()
 
   const [program, setProgram] = useState<ExploreProgramWithRoutines | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [shouldExit, setShouldExit] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
+
+  const getRoutineImage = (item: any) => {
+    // If the database already has a full URL, use it
+    if (item.image_url && item.image_url.startsWith('http')) {
+      return item.image_url
+    }
+    
+    // Otherwise, construct a URL from the storage bucket based on the image_url (path) or name
+    const imagePath = item.image_url || `${item.name}.png`
+    return getRoutineImageUrl(imagePath)
+  }
 
   useEffect(() => {
     if (programId) {
@@ -110,13 +130,25 @@ export default function ProgramDetailScreen() {
   if (nameLower.includes('strength') || nameLower.includes('power')) iconName = 'flash'
   if (nameLower.includes('yoga') || nameLower.includes('stretch')) iconName = 'walk'
 
+  const handleBack = () => {
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    router.back()
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.navbarContainer, { paddingTop: insets.top }]}>
+    <SlideInView
+      style={styles.container}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -133,119 +165,168 @@ export default function ProgramDetailScreen() {
              </TouchableOpacity>
           }
         />
-      </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header Card */}
-        <View style={styles.headerCard}>
-          <LinearGradient
-            colors={gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-             <View style={styles.iconBadge}>
-               <Ionicons name={iconName as any} size={40} color="#FFF" />
-             </View>
-             <Text style={styles.programTitle}>{program.name}</Text>
-
-          </LinearGradient>
-        </View>
-
-        {/* Action Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
-          onPress={handleSaveProgram}
-          disabled={isSaving}
-          activeOpacity={0.8}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          {isSaving ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Program</Text>
-          )}
-        </TouchableOpacity>
+          {/* Header Card */}
+          <View style={styles.headerCard}>
+            <LinearGradient
+              colors={gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerGradient}
+            >
+               <View style={styles.iconBadge}>
+                 <Ionicons name={iconName as any} size={40} color="#FFF" />
+               </View>
+               <Text style={styles.programTitle}>{program.name}</Text>
 
-        {/* Description & Stats */}
-        <View style={styles.infoSection}>
-          <Text style={styles.description}>{program.description}</Text>
-          
-          <View style={styles.statsGrid}>
-
-             <View style={styles.statItem}>
-               <Ionicons name="fitness-outline" size={20} color={colors.textSecondary} />
-               <Text style={styles.statLabel}>Gym</Text>
-             </View>
-             <View style={styles.statItem}>
-               <Ionicons name="trophy-outline" size={20} color={colors.textSecondary} />
-               <Text style={styles.statLabel}>{program.goal?.replace('_', ' ') || 'General'}</Text>
-             </View>
-             <View style={styles.statItem}>
-               <Ionicons name="list-outline" size={20} color={colors.textSecondary} />
-               <Text style={styles.statLabel}>{program.routine_count} Routines</Text>
-             </View>
+            </LinearGradient>
           </View>
-        </View>
 
-        {/* Routines List */}
-        <View style={styles.routinesSection}>
-          <Text style={styles.sectionTitle}>Routines</Text>
-          {program.routines.map((routine) => (
-            <View key={routine.id} style={styles.routineItem}>
-              <View style={styles.routineHeader}>
-                <Text style={styles.routineName}>{routine.name}</Text>
-              </View>
-              
-              <Text style={styles.routineDescription}>
-                {routine.description}
-              </Text>
+          {/* Action Button - Different for pro vs non-pro */}
+          {!isProMember ? (
+            <TouchableOpacity
+              style={[styles.saveButton]}
+              onPress={() => setShowPaywall(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="lock-closed" size={18} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.saveButtonText}>Unlock</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
+              onPress={handleSaveProgram}
+              disabled={isSaving}
+              activeOpacity={0.8}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Program</Text>
+              )}
+            </TouchableOpacity>
+          )}
 
-              {/* Exercises List */}
-              <View style={styles.exerciseList}>
-                {routine.exercises?.map((exItem) => (
-                  <TouchableOpacity 
-                    key={exItem.id} 
-                    style={styles.exerciseRow}
-                    onPress={() => exItem.exercise && handleExercisePress(exItem.exercise.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.exerciseImageContainer}>
-                      {exItem.exercise?.gif_url ? (
-                        <ExerciseMediaThumbnail 
-                           gifUrl={exItem.exercise.gif_url}
-                           style={{ width: '100%', height: '100%' }}
-                        />
-                      ) : (
-                        <View style={styles.exercisePlaceholder}>
-                           <Ionicons name="barbell" size={20} color={colors.textSecondary} />
-                        </View>
+          {/* Description & Stats */}
+          <View style={styles.infoSection}>
+            <Text style={styles.description}>{program.description}</Text>
+            
+            <View style={styles.statsGrid}>
+
+               <View style={styles.statItem}>
+                 <Ionicons name="fitness-outline" size={20} color={colors.textSecondary} />
+                 <Text style={styles.statLabel}>Gym</Text>
+               </View>
+               <View style={styles.statItem}>
+                 <Ionicons name="trophy-outline" size={20} color={colors.textSecondary} />
+                 <Text style={styles.statLabel}>{program.goal?.replace('_', ' ') || 'General'}</Text>
+               </View>
+               <View style={styles.statItem}>
+                 <Ionicons name="list-outline" size={20} color={colors.textSecondary} />
+                 <Text style={styles.statLabel}>{program.routine_count} Routines</Text>
+               </View>
+            </View>
+          </View>
+
+          {/* Routines List - Show all but with locked exercise details for non-pro */}
+          <View style={styles.routinesSection}>
+            <Text style={styles.sectionTitle}>Routines</Text>
+            {program.routines.map((routine) => (
+              <View key={routine.id} style={styles.routineItem}>
+                <View style={styles.routineCardPreview}>
+                  <Image 
+                    source={getRoutineImage(routine)} 
+                    style={styles.routinePreviewImage} 
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={200}
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    style={styles.routinePreviewOverlay}
+                  />
+                  <View style={styles.routinePreviewContent}>
+                    <Text style={styles.routinePreviewName}>{routine.name}</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.routineDescription}>
+                  {routine.description}
+                </Text>
+
+                {/* Exercises List - locked for non-pro */}
+                <View style={styles.exerciseList}>
+                  {routine.exercises?.map((exItem) => (
+                    <View key={exItem.id} style={styles.exerciseRow}>
+                      <View style={styles.exerciseImageContainer}>
+                        {exItem.exercise?.gif_url ? (
+                          <ExerciseMediaThumbnail 
+                             gifUrl={exItem.exercise.gif_url}
+                             style={{ width: '100%', height: '100%' }}
+                          />
+                        ) : (
+                          <View style={styles.exercisePlaceholder}>
+                             <Ionicons name="barbell" size={20} color={colors.textSecondary} />
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.exerciseInfo}>
+                        {!isProMember ? (
+                          // Beautiful expo blur over real text
+                          <View style={styles.lockedExerciseTextContainer}>
+                            <Text style={styles.exerciseName} numberOfLines={1}>
+                              {exItem.exercise?.name || 'Unknown Exercise'}
+                            </Text>
+                            <Text style={styles.exerciseDetails}>
+                              {exItem.sets} sets • {exItem.reps_min}{exItem.reps_max ? `-${exItem.reps_max}` : ''} reps
+                            </Text>
+                            <BlurView
+                              intensity={60}
+                              tint={isDark ? 'dark' : 'light'}
+                              style={styles.blurOverlay}
+                            />
+                          </View>
+                        ) : (
+                          // Visible text for pro
+                          <>
+                            <Text style={styles.exerciseName} numberOfLines={1}>{exItem.exercise?.name || 'Unknown Exercise'}</Text>
+                            <Text style={styles.exerciseDetails}>
+                              {exItem.sets} sets • {exItem.reps_min}{exItem.reps_max ? `-${exItem.reps_max}` : ''} reps
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                      {isProMember && (
+                        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
                       )}
                     </View>
-                    <View style={styles.exerciseInfo}>
-                      <Text style={styles.exerciseName} numberOfLines={1}>{exItem.exercise?.name || 'Unknown Exercise'}</Text>
-                      <Text style={styles.exerciseDetails}>
-                        {exItem.sets} sets • {exItem.reps_min}{exItem.reps_max ? `-${exItem.reps_max}` : ''} reps
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-                  </TouchableOpacity>
-                ))}
-                {(!routine.exercises || routine.exercises.length === 0) && (
-                   <Text style={{color: colors.textSecondary, fontStyle: 'italic', marginTop: 8}}>No exercises preview available</Text>
-                )}
+                  ))}
+                  {(!routine.exercises || routine.exercises.length === 0) && (
+                     <Text style={{color: colors.textSecondary, fontStyle: 'italic', marginTop: 8}}>No exercises preview available</Text>
+                  )}
+                </View>
+
               </View>
+            ))}
+          </View>
 
-            </View>
-          ))}
-        </View>
+          {/* Bottom padding */}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
 
-        {/* Bottom padding */}
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
+      {/* Paywall Modal */}
+      <Paywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        title="Pro Feature"
+        message="Unlock Pro to access premium programs and routines."
+      />
+    </SlideInView>
   )
 }
 
@@ -259,16 +340,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       justifyContent: 'center',
       alignItems: 'center',
     },
-    navbarContainer: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 10,
-      backgroundColor: colors.background,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
     backButton: {
       padding: 8,
       marginLeft: -8,
@@ -278,8 +349,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       marginRight: -8,
     },
     headerTitle: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 22,
+      fontWeight: '700',
       color: colors.text,
     },
     scrollContent: {
@@ -330,6 +401,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       letterSpacing: 1,
     },
     saveButton: {
+      flexDirection: 'row',
       backgroundColor: colors.primary,
       marginHorizontal: 16,
       height: 56,
@@ -388,24 +460,35 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
     routineItem: {
       marginBottom: 32,
     },
-    routineHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
+    routineCardPreview: {
+      height: 160,
+      width: '100%',
+      borderRadius: 16,
+      overflow: 'hidden',
+      marginBottom: 12,
     },
-    routineName: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 4,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    routinePreviewImage: {
+      width: '100%',
+      height: '100%',
+    },
+    routinePreviewOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    routinePreviewContent: {
+      position: 'absolute',
+      bottom: 12,
+      left: 12,
+    },
+    routinePreviewName: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: '#FFF',
+      letterSpacing: -0.5,
     },
     routineDescription: {
-      fontSize: 14,
+      fontSize: 15,
       color: colors.textSecondary,
-      lineHeight: 20,
+      lineHeight: 22,
       marginBottom: 16,
     },
     exerciseList: {
@@ -452,5 +535,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       fontSize: 13,
       color: colors.textSecondary,
       fontWeight: '500',
+    },
+    lockedExerciseTextContainer: {
+      position: 'relative',
+      overflow: 'hidden',
+      borderRadius: 4,
+    },
+    blurOverlay: {
+      ...StyleSheet.absoluteFillObject,
     },
   })

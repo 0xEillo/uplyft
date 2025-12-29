@@ -2814,13 +2814,23 @@ export const database = {
     /**
      * Create a new workout routine from scratch
      */
-    async create(userId: string, name: string, notes?: string) {
+    async create(
+      userId: string,
+      name: string,
+      options?: {
+        notes?: string
+        imagePath?: string
+        tintColor?: string
+      }
+    ) {
       const { data, error } = await supabase
         .from('workout_routines')
         .insert({
           user_id: userId,
           name,
-          notes: notes ?? null,
+          notes: options?.notes ?? null,
+          image_path: options?.imagePath ?? null,
+          tint_color: options?.tintColor ?? null,
         })
         .select()
         .single()
@@ -2982,7 +2992,13 @@ export const database = {
      */
     async update(
       routineId: string,
-      updates: { name?: string; notes?: string; is_archived?: boolean },
+      updates: {
+        name?: string
+        notes?: string
+        is_archived?: boolean
+        image_path?: string | null
+        tint_color?: string | null
+      },
     ) {
       const { data, error } = await supabase
         .from('workout_routines')

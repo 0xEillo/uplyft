@@ -234,7 +234,10 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 
   const handleRoutinePress = useCallback(() => {
     if (workout.routine?.id) {
-      router.push(`/routine-detail?routineId=${workout.routine.id}`)
+      router.push({
+        pathname: '/routine/[routineId]',
+        params: { routineId: workout.routine.id },
+      })
     }
   }, [workout.routine, router])
 

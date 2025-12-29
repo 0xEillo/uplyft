@@ -605,15 +605,32 @@ export default function CreatePostScreen() {
     const source = pendingRoutineSource
 
     // Clear pending state synchronously BEFORE other state updates to prevent re-triggers
-    // (structuredData/notes in deps would cause infinite loops if cleared async)
     setPendingDraftRoutineId(null)
     setPendingRoutineSource(null)
 
     setSelectedRoutine(routine)
     setIsStructuredMode(true)
-    // Only clear structuredData if this is a fresh routine start (from route, not draft)
+
+    // Transform routine exercises into structured data format
+    const transformedExercises = (routine.workout_routine_exercises || [])
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((we) => ({
+        id: we.id,
+        name: we.exercise?.name || 'Exercise',
+        sets: (we.sets || [])
+          .sort((a, b) => a.set_number - b.set_number)
+          .map((s) => ({
+            weight: '',
+            reps: '',
+            targetRepsMin: s.reps_min ?? null,
+            targetRepsMax: s.reps_max ?? null,
+            targetRestSeconds: s.rest_seconds ?? null,
+          })),
+      }))
+
+    // Only set if this is a fresh routine start (from route, not draft)
     if (source === 'route') {
-      setStructuredData([])
+      setStructuredData(transformedExercises)
     }
     setLastRoutineWorkout(null)
 
@@ -622,10 +639,12 @@ export default function CreatePostScreen() {
     }
 
     // Persist the routine selection immediately to avoid losing it on navigation
+    // Use the transformed exercises if we just set them
     void saveWorkoutDraft({
       notes,
-      title: titleRef.current,
-      structuredData,
+      title: source === 'route' ? routine.name : titleRef.current,
+      structuredData:
+        source === 'route' ? transformedExercises : structuredData,
       isStructuredMode: true,
       selectedRoutineId: routine.id,
       timerStartedAt: workoutTimerSerializableState.timerStartedAt,
@@ -634,12 +653,38 @@ export default function CreatePostScreen() {
       console.error('[Routine] Immediate persist failed:', error),
     )
 
-    // Hydrate last workout data (async, but no longer controls loop prevention)
+    // Hydrate last workout data and update structured data with history if needed
     if (user?.id) {
       database.workoutSessions
         .getLastForRoutine(user.id, routine.id)
         .then((lastWorkout) => {
           setLastRoutineWorkout(lastWorkout)
+
+          // If we just applied this from route, we should update the history in the structuredData
+          if (source === 'route' && lastWorkout) {
+            setStructuredData((current) =>
+              current.map((exercise) => {
+                const exerciseName = exercise.name
+                const lastWorkoutExercise = lastWorkout.workout_exercises?.find(
+                  (we) => we.exercise?.name === exerciseName,
+                )
+
+                return {
+                  ...exercise,
+                  sets: exercise.sets.map((set, index) => {
+                    const lastSet = lastWorkoutExercise?.sets?.find(
+                      (s) => s.set_number === index + 1,
+                    )
+                    return {
+                      ...set,
+                      lastWorkoutWeight: lastSet?.weight ? lastSet.weight.toString() : null,
+                      lastWorkoutReps: lastSet?.reps ? lastSet.reps.toString() : null,
+                    }
+                  }),
+                }
+              }),
+            )
+          }
         })
         .catch((error) => {
           console.error('[Routine] Error loading last workout:', error)
@@ -1967,9 +2012,9 @@ export default function CreatePostScreen() {
       <SlideUpView
         key={slideKey}
         style={{ flex: 1 }}
-        backgroundColor="transparent"
+        backgroundColor={colors.background}
         fade={true}
-        fadeFrom={0.5}
+        fadeFrom={0}
         duration={200}
         tension={65}
         friction={14}

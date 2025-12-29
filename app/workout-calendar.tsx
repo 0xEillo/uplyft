@@ -387,7 +387,7 @@ export default function WorkoutCalendarScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={30} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Workout Calendar</Text>
           <View style={styles.headerRightSpacer} />
@@ -486,16 +486,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     backButton: {
-      padding: 4,
-      marginLeft: -4,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: -7,
     },
     headerTitle: {
-      fontSize: 18,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
+      textAlign: 'center',
+      flex: 1,
     },
     headerRightSpacer: {
-      width: 32,
+      width: 44,
+      marginRight: -7,
     },
     viewModeSelectorContainer: {
       flexDirection: 'row',

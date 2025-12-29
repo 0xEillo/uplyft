@@ -8,7 +8,11 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 import fs from 'fs'
-import path from 'path'
+import path, { dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 dotenv.config({ path: '.env.test' })
 
@@ -75,7 +79,7 @@ function findExerciseId(name: string): string {
 // 1. PPL Program
 const PPL_PROGRAM = {
   name: 'Push Pull Legs',
-  description: 'This beginner program has three weekly workouts: push (chest, shoulders, and triceps), pull (back and biceps), and legs (quads, hamstrings, glutes, and calves).',
+  description: 'A 3-day split (Push, Pull, Legs) focused on high intensity. Volume is lower to allow for maximum effort; each set should be performed near failure (0-2 reps in reserve).',
   level: 'beginner',
   goal: 'build_muscle',
   is_published: true,
@@ -85,52 +89,55 @@ const PPL_PROGRAM = {
 const PPL_ROUTINES = [
   {
     name: 'Push',
-    description: 'The first workout of the week focuses on the push muscles of the upper body: the chest, shoulders, and triceps.',
+    description: 'Upper body pushing muscles. Maintain high intensity and push each set near failure.',
     level: 'beginner',
     duration_minutes: 45,
     equipment: ['Barbell', 'Dumbbell', 'Machine', 'Cable'],
     is_published: true,
     display_order: 1,
-    image_url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&q=80&w=3540', 
+    image_url: 'Push.png', 
     exercises: [
-      { name: 'Bench Press (Barbell)', sets: 5, reps_min: 4, reps_max: 15 },
-      { name: 'Shoulder Press (Dumbbell)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Butterfly (Pec Deck)', sets: 3, reps_min: 15, reps_max: 20 },
-      { name: 'Lateral Raise (Dumbbell)', sets: 3, reps_min: 15, reps_max: 20 },
-      { name: 'Cable Triceps Pushdown (v-Bar)', sets: 3, reps_min: 15, reps_max: 20 },
+      { name: 'Bench Press (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+      { name: 'Incline Bench Press (Dumbbell)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Shoulder Press (Dumbbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Lateral Raise (Dumbbell)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Cable Triceps Pushdown (v-Bar)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Skullcrusher (Barbell)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   },
   {
     name: 'Pull',
-    description: 'This workout focuses on the upper body muscles involved in pulling motions—the entire back and biceps.',
+    description: 'Upper body pulling muscles. Low volume, high intensity is key—take every set to near failure.',
     level: 'beginner',
     duration_minutes: 45,
     equipment: ['Cable', 'Dumbbell'],
     is_published: true,
     display_order: 2,
-    image_url: 'https://images.unsplash.com/photo-1521804906057-1df8fdb718b7?auto=format&fit=crop&q=80&w=3540',
+    image_url: 'Pull.png',
     exercises: [
-      { name: 'Lat Pulldown (Cable)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Low Seated Row (Cable)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Shrug (Dumbbell)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Hammer Curl (Dumbbell)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Face Pull', sets: 3, reps_min: 15, reps_max: 20 },
+      { name: 'Lat Pulldown (Cable)', sets: 3, reps_min: 6, reps_max: 8 },
+      { name: 'Bent Over Row (Barbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Low Seated Row (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Face Pull', sets: 2, reps_min: 10, reps_max: 15 },
+      { name: 'Bicep Curl (Barbell)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Hammer Curl (Dumbbell)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   },
   {
     name: 'Legs',
-    description: 'The final workout of the week focuses exclusively on the lower body muscles.',
+    description: 'Lower body session. Focus on heavy compound movements and high intensity sets near failure.',
     level: 'beginner',
     duration_minutes: 45,
     equipment: ['Machine'],
     is_published: true,
     display_order: 3,
-    image_url: 'https://images.unsplash.com/photo-1574680396902-84912ca9b032?auto=format&fit=crop&q=80&w=3540', 
+    image_url: 'Legs.png', 
     exercises: [
-      { name: 'Leg Press (Machine)', sets: 5, reps_min: 5, reps_max: 12 },
-      { name: 'Lying Leg Curl (Machine)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Leg Extension (Machine)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Standing Calf Raise (Machine)', sets: 3, reps_min: 15, reps_max: 20 },
+      { name: 'Squat (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+      { name: 'Leg Press (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Romanian Deadlift (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+      { name: 'Lying Leg Curl (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Standing Calf Raise (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   }
 ]
@@ -138,7 +145,7 @@ const PPL_ROUTINES = [
 // 2. Upper/Lower Program
 const UL_PROGRAM = {
   name: 'Upper / Lower Split',
-  description: 'A 4-day split program focusing on compound movements to build strength and muscle. Alternates between upper body and lower body workouts.',
+  description: 'A 4-day split alternating between upper and lower body. Optimized for high intensity and lower volume; ensure every set is performed near failure for maximum growth.',
   level: 'intermediate',
   goal: 'build_muscle',
   is_published: true,
@@ -154,14 +161,14 @@ const UL_ROUTINES = [
     equipment: ['Barbell', 'Dumbbell'],
     is_published: true,
     display_order: 1,
-    image_url: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=2940&auto=format&fit=crop', // Gym upper body
+    image_url: 'Upper Body A.png', // Gym upper body
     exercises: [
-        { name: 'Bench Press (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Bent Over Row (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Overhead Press (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Lat Pulldown (Cable)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Skullcrusher (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Bicep Curl (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
+        { name: 'Bench Press (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+        { name: 'Bent Over Row (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+        { name: 'Overhead Press (Barbell)', sets: 2, reps_min: 6, reps_max: 8 },
+        { name: 'Lat Pulldown (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
+        { name: 'Skullcrusher (Barbell)', sets: 2, reps_min: 8, reps_max: 12 },
+        { name: 'Bicep Curl (Barbell)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   },
   {
@@ -172,13 +179,13 @@ const UL_ROUTINES = [
     equipment: ['Barbell', 'Machine'],
     is_published: true,
     display_order: 2,
-    image_url: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=2938&auto=format&fit=crop', // Squat/Legs
+    image_url: 'Lower Body A.png', // Squat/Legs
     exercises: [
-        { name: 'Squat (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Romanian Deadlift (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Leg Press (Machine)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Lying Leg Curl (Machine)', sets: 3, reps_min: 8, reps_max: 10 },
-        { name: 'Standing Calf Raise (Machine)', sets: 3, reps_min: 8, reps_max: 10 },
+        { name: 'Squat (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+        { name: 'Romanian Deadlift (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+        { name: 'Leg Press (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
+        { name: 'Lying Leg Curl (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
+        { name: 'Standing Calf Raise (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   }
 ]
@@ -186,7 +193,7 @@ const UL_ROUTINES = [
 // 3. Full Body Program
 const FB_PROGRAM = {
   name: 'Full Body Foundation',
-  description: 'A classic 3-day full body routine. Hits every major muscle group 3 times a week using compound movements. Ideal for building a solid strength foundation.',
+  description: 'A classic 3-day full body routine. Hits every major muscle group using high-intensity, low-volume sets. Aim for 0-2 reps in reserve on every exercise.',
   level: 'beginner',
   goal: 'build_muscle',
   is_published: true,
@@ -202,14 +209,14 @@ const FB_ROUTINES = [
     equipment: ['Barbell', 'Dumbbell', 'Cable'],
     is_published: true,
     display_order: 1,
-    image_url: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop',
+    image_url: 'Full Body A.png',
     exercises: [
-      { name: 'Squat (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-      { name: 'Bench Press (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-      { name: 'Bent Over Row (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-      { name: 'Overhead Press (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-      { name: 'Cable Triceps Pushdown (v-Bar)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Bicep Curl (Barbell)', sets: 3, reps_min: 10, reps_max: 12 },
+      { name: 'Squat (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+      { name: 'Bench Press (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
+      { name: 'Bent Over Row (Barbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Overhead Press (Barbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Cable Triceps Pushdown (v-Bar)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Bicep Curl (Barbell)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   },
   {
@@ -220,14 +227,14 @@ const FB_ROUTINES = [
     equipment: ['Barbell', 'Dumbbell', 'Machine'],
     is_published: true,
     display_order: 2,
-    image_url: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?q=80&w=2940&auto=format&fit=crop',
+    image_url: 'Full Body B.png',
     exercises: [
-      { name: 'Deadlift (Barbell)', sets: 3, reps_min: 5, reps_max: 5 }, // Deadlift usually lower reps intensity
-      { name: 'Leg Press (Machine)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Incline Bench Press (Dumbbell)', sets: 3, reps_min: 8, reps_max: 10 },
-      { name: 'Lat Pulldown (Cable)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Lateral Raise (Dumbbell)', sets: 3, reps_min: 12, reps_max: 15 },
-      { name: 'Face Pull', sets: 3, reps_min: 12, reps_max: 15 },
+      { name: 'Deadlift (Barbell)', sets: 2, reps_min: 5, reps_max: 5 },
+      { name: 'Leg Press (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Incline Bench Press (Dumbbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Lat Pulldown (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Lateral Raise (Dumbbell)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Face Pull', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   },
   {
@@ -238,14 +245,14 @@ const FB_ROUTINES = [
     equipment: ['Barbell', 'Dumbbell', 'Machine'],
     is_published: true,
     display_order: 3,
-    image_url: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2938&auto=format&fit=crop',
+    image_url: 'Full Body C.png',
     exercises: [
-      { name: 'Lunge (Dumbbell)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Romanian Deadlift (Barbell)', sets: 3, reps_min: 8, reps_max: 10 },
-      { name: 'Shoulder Press (Dumbbell)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Low Seated Row (Cable)', sets: 3, reps_min: 10, reps_max: 12 },
-      { name: 'Leg Curl (Machine)', sets: 3, reps_min: 12, reps_max: 15 }, // Generic Leg Curl
-      { name: 'Standing Calf Raise (Machine)', sets: 3, reps_min: 15, reps_max: 20 },
+      { name: 'Lunge (Dumbbell)', sets: 2, reps_min: 8, reps_max: 10 },
+      { name: 'Romanian Deadlift (Barbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Shoulder Press (Dumbbell)', sets: 2, reps_min: 6, reps_max: 8 },
+      { name: 'Low Seated Row (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Leg Curl (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Standing Calf Raise (Machine)', sets: 2, reps_min: 8, reps_max: 12 },
     ]
   }
 ]

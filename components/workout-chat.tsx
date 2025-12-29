@@ -2,11 +2,11 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  EQUIPMENT_PREF_KEY,
-  MUSCLE_OPTIONS,
-  WORKOUT_PLANNING_PREFS_KEY,
-  WorkoutPlanningData,
-  WorkoutPlanningWizard,
+    EQUIPMENT_PREF_KEY,
+    MUSCLE_OPTIONS,
+    WORKOUT_PLANNING_PREFS_KEY,
+    WorkoutPlanningData,
+    WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -17,16 +17,16 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  convertAiPlanToRoutine,
-  convertAiPlanToWorkout,
+    convertAiPlanToRoutine,
+    convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-  ParsedWorkoutDisplay,
-  parseWorkoutForDisplay,
+    ParsedWorkoutDisplay,
+    parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-  buildWorkoutCreationPrompt,
-  buildWorkoutModificationSuffix,
+    buildWorkoutCreationPrompt,
+    buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -43,35 +43,35 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import {
-  Gesture
+    Gesture
 } from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -1722,7 +1722,7 @@ export function WorkoutChat({
 
       // Navigate directly to the routine detail page
       router.push({
-        pathname: '/routine-detail',
+        pathname: '/routine/[routineId]',
         params: { routineId: routine.id },
       })
     } catch (error) {

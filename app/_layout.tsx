@@ -132,11 +132,23 @@ function RootLayoutNav() {
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
           <Stack.Screen
-            name="routine-detail"
+            name="routine/[routineId]"
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
           <Stack.Screen
             name="search"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="explore"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="routines"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="explore/program/[programId]"
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
           <Stack.Screen

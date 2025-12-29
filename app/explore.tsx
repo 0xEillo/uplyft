@@ -1,25 +1,28 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { ScreenHeader } from '@/components/screen-header'
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
+import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -37,6 +40,7 @@ export default function ExploreScreen() {
   const [programs, setPrograms] = useState<any[]>([])
   const [routines, setRoutines] = useState<any[]>([])
   const [savingRoutineId, setSavingRoutineId] = useState<string | null>(null)
+  const [shouldExit, setShouldExit] = useState(false)
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
 
@@ -60,6 +64,14 @@ export default function ExploreScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleBack = useCallback(() => {
+    setShouldExit(true)
+  }, [])
+
+  const handleExitComplete = useCallback(() => {
+    router.back()
+  }, [router])
 
   const handleSaveRoutine = useCallback(
     async (routineId: string) => {
@@ -88,8 +100,6 @@ export default function ExploreScreen() {
 
   const renderProgramCard = useCallback(
     ({ item }: { item: any }) => {
-      // Determine gradient based on generic logic or hardcoded for now since DB doesn't store colors yet
-      // Using display_order to rotate colors for variety
       const GRADIENTS = [
         ['#2563EB', '#3B82F6'], // Blue
         ['#7C3AED', '#8B5CF6'], // Purple
@@ -100,7 +110,6 @@ export default function ExploreScreen() {
         (item.display_order - 1) % GRADIENTS.length
       ] || GRADIENTS[0]) as [string, string, ...string[]]
 
-      // Choose icon based on name keywords
       let iconName = 'barbell-outline'
       if (item.name.toLowerCase().includes('body')) iconName = 'body-outline'
       if (item.name.toLowerCase().includes('cardio'))
@@ -109,13 +118,15 @@ export default function ExploreScreen() {
         iconName = 'flash-outline'
 
       return (
-        <TouchableOpacity 
-          activeOpacity={0.9} 
+        <TouchableOpacity
+          activeOpacity={0.9}
           style={styles.programCard}
-          onPress={() => router.push({
-            pathname: '/explore/program/[programId]',
-            params: { programId: item.id }
-          })}
+          onPress={() =>
+            router.push({
+              pathname: '/explore/program/[programId]',
+              params: { programId: item.id },
+            })
+          }
         >
           <LinearGradient
             colors={gradient}
@@ -150,160 +161,170 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       )
     },
-    [styles],
+    [styles, router],
   )
 
   const renderRoutineItem = useCallback(
-    ({ item }: { item: any }) => {
+    ({ item, index }: { item: any; index: number }) => {
       const isSaving = savingRoutineId === item.id
+      const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
+      const tintColor = tintColors[index % tintColors.length]
+
+      const getRoutineImage = (item: any) => {
+        // If the database already has a full URL, use it
+        if (item.image_url && item.image_url.startsWith('http')) {
+          return item.image_url
+        }
+        
+        // Otherwise, construct a URL from the storage bucket based on the image_url (path) or name
+        const imagePath = item.image_url || `${item.name}.png`
+        return getRoutineImageUrl(imagePath)
+      }
 
       return (
         <TouchableOpacity
-          activeOpacity={0.7}
+          activeOpacity={0.8}
           style={styles.routineCard}
-          onPress={() => router.push({
-            pathname: '/explore/routine/[routineId]',
-            params: { routineId: item.id }
-          })}
+          onPress={() =>
+            router.push({
+              pathname: '/routine/[routineId]',
+              params: { routineId: item.id },
+            })
+          }
         >
           <Image
-            source={{
-              uri:
-                item.image_url ||
-                'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop',
-            }}
+            source={getRoutineImage(item)}
             style={styles.routineImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            priority="normal"
+            transition={200}
           />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.8)'] as const}
+            colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
             style={styles.routineOverlay}
+          />
+          <View
+            style={[
+              styles.colorTint,
+              { backgroundColor: tintColor, opacity: 0.25 },
+            ]}
           />
           <View style={styles.routineContent}>
             <Text style={styles.routineTitle} numberOfLines={2}>
               {item.name}
             </Text>
-            <View style={styles.routineMeta}>
-
-              {item.duration_minutes && (
-                <View style={styles.routineTag}>
-                  <Ionicons name="time-outline" size={12} color="#FFF" />
-                  <Text style={styles.routineTagText}>
-                    {item.duration_minutes}m
-                  </Text>
-                </View>
-              )}
-              {/* Quick Save Button on Card */}
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  isSaving && styles.saveButtonLoading,
-                ]}
-                onPress={() => handleSaveRoutine(item.id)}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Ionicons name="add" size={16} color="#FFF" />
-                )}
-              </TouchableOpacity>
+            <View style={styles.premiumContainer}>
+              <Text style={[styles.premiumText, { color: tintColor }]}>
+                Pro
+              </Text>
+              <Ionicons name="star" size={12} color={tintColor} />
             </View>
           </View>
+
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.saveButtonLoading]}
+            onPress={() => handleSaveRoutine(item.id)}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Ionicons name="add" size={18} color="#FFF" />
+            )}
+          </TouchableOpacity>
         </TouchableOpacity>
       )
     },
-    [styles, handleSaveRoutine, savingRoutineId],
+    [styles, handleSaveRoutine, savingRoutineId, router],
   )
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.navbarContainer, { paddingTop: insets.top }]}>
-        <BaseNavbar
-          leftContent={
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-          }
-          centerContent={
-            <NavbarIsland>
-              <Text style={styles.headerTitle}>Explore</Text>
-            </NavbarIsland>
-          }
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenHeader
+          title="Explore"
+          onLeftPress={handleBack}
+          leftIcon="arrow-back"
         />
-      </View>
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: insets.top + 60,
-            minHeight: Dimensions.get('window').height,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true)
-              loadData()
-            }}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true)
+                loadData()
+              }}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} />
+            <TextInput
+              placeholder="Search"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.searchInput}
+            />
           </View>
-        ) : (
-          <>
-            {/* Programs Section */}
-            {programs.length > 0 && (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Programs</Text>
-                </View>
 
-                <FlatList
-                  horizontal
-                  data={programs}
-                  renderItem={renderProgramCard}
-                  keyExtractor={(item) => item.id}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.programsList}
-                  snapToInterval={width * 0.8 + 16}
-                  decelerationRate="fast"
-                />
-              </>
-            )}
-
-            {/* Routines Grid */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured Routines</Text>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
+          ) : (
+            <>
+              {/* Programs Section */}
+              {programs.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Programs</Text>
+                  </View>
 
-            <View style={styles.routinesGrid}>
-              {routines.map((routine) => (
-                <View key={routine.id} style={styles.routineWrapper}>
-                  {renderRoutineItem({ item: routine })}
-                </View>
-              ))}
-              {routines.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Text style={{ color: colors.textSecondary }}>
-                    No routines found
-                  </Text>
-                </View>
+                  <FlatList
+                    horizontal
+                    data={programs}
+                    renderItem={renderProgramCard}
+                    keyExtractor={(item) => item.id}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.programsList}
+                    snapToInterval={width * 0.8 + 16}
+                    decelerationRate="fast"
+                  />
+                </>
               )}
-            </View>
-          </>
-        )}
-      </ScrollView>
-    </View>
+
+              {/* Routines Grid */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Routines</Text>
+              </View>
+
+              <View style={styles.routinesGrid}>
+                {routines.map((routine, index) => (
+                  <View key={routine.id} style={styles.routineWrapper}>
+                    {renderRoutineItem({ item: routine, index })}
+                  </View>
+                ))}
+                {routines.length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Text style={{ color: colors.textSecondary }}>
+                      No routines found
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </SlideInView>
   )
 }
 
@@ -316,28 +337,26 @@ const createStyles = (
       flex: 1,
       backgroundColor: colors.background,
     },
-    navbarContainer: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 10,
-      backgroundColor: colors.background,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+    scrollContent: {
+      paddingBottom: 100,
     },
-    backButton: {
-      padding: 8,
-      marginLeft: -8,
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+      marginHorizontal: 20,
+      paddingHorizontal: 12,
+      height: 44,
+      borderRadius: 12,
+      marginBottom: 16,
     },
-    headerTitle: {
+    searchInput: {
+      flex: 1,
+      marginLeft: 8,
       fontSize: 17,
-      fontWeight: '600',
       color: colors.text,
     },
-    scrollContent: {
-      paddingBottom: 40,
-    },
+
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -348,7 +367,7 @@ const createStyles = (
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       marginBottom: 16,
       marginTop: 24,
     },
@@ -358,7 +377,7 @@ const createStyles = (
       color: colors.text,
     },
     programsList: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       gap: 16,
     },
     programCard: {
@@ -413,15 +432,16 @@ const createStyles = (
     routinesGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       gap: 16,
+      paddingTop: 12,
     },
     routineWrapper: {
-      width: (width - 48) / 2, // 2 columns with 16px gap and 16px outer padding
+      width: (width - 56) / 2,
       marginBottom: 8,
     },
     routineCard: {
-      height: 200,
+      height: 240,
       borderRadius: 16,
       overflow: 'hidden',
       backgroundColor: colors.feedCardBackground,
@@ -429,59 +449,49 @@ const createStyles = (
     routineImage: {
       width: '100%',
       height: '100%',
+      position: 'absolute',
+    },
+    colorTint: {
+      ...StyleSheet.absoluteFillObject,
     },
     routineOverlay: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: '100%',
-      justifyContent: 'flex-end',
-      padding: 12,
+      ...StyleSheet.absoluteFillObject,
     },
     routineContent: {
-      zIndex: 1,
+      flex: 1,
+      justifyContent: 'flex-end',
+      padding: 16,
+      paddingBottom: 20,
     },
     routineTitle: {
       color: '#FFF',
-      fontSize: 16,
-      fontWeight: '700',
-      marginBottom: 8,
-      textShadowColor: 'rgba(0,0,0,0.5)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
+      fontSize: 22,
+      fontWeight: '800',
+      marginBottom: 4,
+      letterSpacing: -0.5,
     },
-    routineMeta: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-      alignItems: 'center',
-    },
-    routineTag: {
+    premiumContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
     },
-    routineTagText: {
-      color: '#FFF',
-      fontSize: 10,
-      fontWeight: '600',
+    premiumText: {
+      fontSize: 12,
+      fontWeight: '700',
     },
     saveButton: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.primary,
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(255,255,255,0.2)',
       justifyContent: 'center',
       alignItems: 'center',
-      marginLeft: 'auto',
     },
     saveButtonLoading: {
-      opacity: 0.8,
+      backgroundColor: 'rgba(255,255,255,0.4)',
     },
     emptyState: {
       width: '100%',

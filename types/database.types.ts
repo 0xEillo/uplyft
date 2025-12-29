@@ -103,6 +103,8 @@ export interface WorkoutRoutine {
   name: string
   notes: string | null
   is_archived: boolean
+  image_path: string | null
+  tint_color: string | null
   created_at: string
   updated_at: string
 }

@@ -109,12 +109,12 @@ export default function OnboardingScreen() {
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
-            duration: 400,
+            duration: 600,
             useNativeDriver: true,
           }),
           Animated.timing(slideAnim, {
             toValue: 0,
-            duration: 400,
+            duration: 600,
             useNativeDriver: true,
           }),
         ]).start()
@@ -437,7 +437,7 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => {
                       setData({ ...data, gender: gender.value })
-                      setTimeout(() => setStep(step + 1), 300)
+                      setTimeout(() => setStep(step + 1), 600)
                     }}
                     hapticStyle="light"
                   >
@@ -542,7 +542,7 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => {
                       setData({ ...data, training_years: item.value })
-                      setTimeout(() => setStep(step + 1), 300)
+                      setTimeout(() => setStep(step + 1), 600)
                     }}
                     hapticStyle="light"
                   >
