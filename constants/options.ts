@@ -44,8 +44,7 @@ export const TRAINING_YEARS: {
   value: TrainingYears
   label: string
 }[] = [
-  { value: 'less_than_1', label: 'Less than 1 year' },
-  { value: '1_to_3', label: '1-3 years' },
-  { value: '3_to_5', label: '3-5 years' },
-  { value: '5_plus', label: '5+ years' },
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' },
 ]

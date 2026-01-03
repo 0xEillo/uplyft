@@ -369,8 +369,8 @@ export default function SearchScreen() {
                 buttonText="Invite Friends"
                 onPress={() => {
                   Share.share({
-                    message: 'Join me on Uplyft! Track your workouts and progress with me.',
-                    url: 'https://uplyft.app',
+                    message: 'Join me on Rep AI! Track your workouts and progress with me.',
+                    url: 'https://rep.ai',
                   })
                 }}
               />

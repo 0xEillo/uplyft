@@ -6,7 +6,7 @@ export type Goal =
   | 'improve_cardio'
   | 'become_flexible'
   | 'general_fitness'
-export type TrainingYears = 'less_than_1' | '1_to_3' | '3_to_5' | '5_plus'
+export type TrainingYears = 'beginner' | 'intermediate' | 'advanced'
 
 export interface Profile {
   id: string
