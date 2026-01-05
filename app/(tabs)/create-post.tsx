@@ -10,6 +10,7 @@ import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -22,28 +23,29 @@ import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import {
-    clearExerciseHistoryCache,
-    getLastPerformanceForExercise,
-    getSetPerformance,
-    type SetPerformance,
+  clearExerciseHistoryCache,
+  getLastPerformanceForExercise,
+  getSetPerformance,
+  type SetPerformance,
 } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
+  clearDraft as clearWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -52,20 +54,20 @@ import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Alert,
-    Animated,
-    Easing,
-    InteractionManager,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Easing,
+  InteractionManager,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -229,6 +231,9 @@ const getExerciseSuggestion = (
 export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
+  const { coachId } = useProfile()
+  const coach = getCoach(coachId)
+  const coachFirstName = coach.name.split(' ')[1] || coach.name
   const insets = useSafeAreaInsets()
   const {
     selectedRoutineId: selectedRoutineIdParam,
@@ -2273,8 +2278,8 @@ export default function CreatePostScreen() {
         <Paywall
           visible={showPaywall}
           onClose={() => setShowPaywall(false)}
-          title="Try Pro for FREE!"
-          message="Free workout limit reached"
+          title={`Take Your Training to the Next Level!`}
+          message={`Unlock ${coachFirstName}'s full coaching suite, unlimited workouts, and advanced progress tracking.`}
         />
 
         <FinalizeWorkoutOverlay

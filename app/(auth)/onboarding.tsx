@@ -4,16 +4,17 @@ import { HapticButton } from '@/components/haptic-button'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   COMMITMENTS,
+  EXPERIENCE_LEVELS,
   GENDERS,
   GOALS,
-  TRAINING_YEARS,
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BodyPartSlug } from '@/lib/body-mapping'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
-import { Gender, Goal, TrainingYears } from '@/types/database.types'
+import { markUserAsRated, requestReview } from '@/lib/rating'
+import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { Asset } from 'expo-asset'
@@ -52,7 +53,7 @@ type OnboardingData = {
   birth_year: string
   goal: Goal[]
   commitment: string[]
-  training_years: TrainingYears | null
+  experience_level: ExperienceLevel | null
   bio: string
   coach: string
 }
@@ -502,15 +503,6 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
   const testimonials = [
     {
       id: 1,
-      name: 'Sarah J.',
-      time: '2 months training with Rep AI',
-      text:
-        "Rep AI is a game-changer. I used to dread going to the gym, but with Rep AI, I actually look forward to my workouts. It's like having a personal trainer in my pocket!",
-      rating: 5,
-      avatar: 'https://i.pravatar.cc/150?u=sarah_fitness',
-    },
-    {
-      id: 2,
       name: 'Mike T.',
       time: '6 months training with Rep AI',
       text:
@@ -637,6 +629,26 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
       </View>
 
       <View style={styles.socialProofSection}>
+        <View style={styles.appStoreBadge}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name="leaf" size={24} color="#000" />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.ratingValue}>5.0 on App Store</Text>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Ionicons key={s} name="star" size={12} color="#F59E0B" />
+                ))}
+              </View>
+            </View>
+            <Ionicons
+              name="leaf"
+              size={24}
+              color="#000"
+              style={{ transform: [{ scaleX: -1 }] }}
+            />
+          </View>
+        </View>
+
         <View style={styles.testimonialCard}>
           <View style={styles.testimonialHeader}>
             <Image
@@ -675,26 +687,6 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
               ]}
             />
           ))}
-        </View>
-
-        <View style={styles.appStoreBadge}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Ionicons name="leaf" size={24} color="#000" />
-            <View style={{ alignItems: 'center' }}>
-              <Text style={styles.ratingValue}>5.0 on App Store</Text>
-              <View style={{ flexDirection: 'row', gap: 2 }}>
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Ionicons key={s} name="star" size={12} color="#F59E0B" />
-                ))}
-              </View>
-            </View>
-            <Ionicons
-              name="leaf"
-              size={24}
-              color="#000"
-              style={{ transform: [{ scaleX: -1 }] }}
-            />
-          </View>
         </View>
       </View>
     </View>
@@ -1143,6 +1135,20 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
     ).toString()
   }
 
+  // Trigger App Store review prompt when user sees their plan
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        await requestReview()
+        await markUserAsRated()
+      } catch (error) {
+        console.error('Error requesting review:', error)
+      }
+    }, 1500) // Wait 1.5 seconds for the user to see their plan first
+
+    return () => clearTimeout(timer)
+  }, [])
+
   const stats = [
     { label: 'Goal', value: mainGoal },
     { label: 'Age', value: displayAge },
@@ -1154,9 +1160,9 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
     },
     {
       label: 'Fitness Level',
-      value: data.training_years
-        ? data.training_years.charAt(0).toUpperCase() +
-          data.training_years.slice(1)
+      value: data.experience_level
+        ? data.experience_level.charAt(0).toUpperCase() +
+          data.experience_level.slice(1)
         : 'Beginner',
     },
     { label: 'Weight', value: `${data.weight_kg} ${weightUnit}` },
@@ -1169,11 +1175,7 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
       : require('@/assets/images/male_plan_preview.png')
 
   return (
-    <ScrollView
-      style={styles.stepContainer}
-      contentContainerStyle={{ paddingBottom: 140 }}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.stepContainer}>
       <View style={styles.planReadyHeader}>
         <Text style={styles.planReadyTitle}>
           {data.name || 'Oli'}, your plan{'\n'}is ready!
@@ -1231,7 +1233,7 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
           </LinearGradient>
         </View>
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
@@ -1245,14 +1247,14 @@ export default function OnboardingScreen() {
     gender: null,
     height_cm: '170',
     height_feet: '5',
-    height_inches: '8',
-    weight_kg: '70',
+    height_inches: '7',
+    weight_kg: '75',
     birth_day: '1',
     birth_month: '1',
     birth_year: '2001', // Average age 25 (Current year 2026)
     goal: [],
     commitment: [],
-    training_years: null,
+    experience_level: null,
     bio: '',
     coach: DEFAULT_COACH_ID,
   })
@@ -1418,7 +1420,7 @@ export default function OnboardingScreen() {
             age: age,
             goal: data.goal,
             commitment: data.commitment,
-            training_years: data.training_years,
+            experience_level: data.experience_level,
             bio: data.bio.trim() || null,
             coach: data.coach,
           }),
@@ -1433,7 +1435,7 @@ export default function OnboardingScreen() {
         height: heightCm,
         weight: weightKg,
         commitment: data.commitment,
-        training_years: data.training_years,
+        experience_level: data.experience_level,
         bio: data.bio,
         coach: data.coach,
       })
@@ -1475,7 +1477,7 @@ export default function OnboardingScreen() {
       case 7:
         return data.commitment.length > 0
       case 8:
-        return data.training_years !== null
+        return data.experience_level !== null
       case 9:
         return true // Tailored preview step
       case 10:
@@ -1715,14 +1717,18 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => {
                       // Set reasonable defaults based on gender to reduce scrolling
+                      // Average male: 5'10" (178 cm), 180 lbs (82 kg)
+                      // Average female: 5'4" (163 cm), 145 lbs (66 kg)
                       const isMale = gender.value === 'male'
+                      const weightKg = isMale ? 82 : 66
+                      const weightLb = isMale ? 180 : 145
                       setData({
                         ...data,
                         gender: gender.value,
                         height_cm: isMale ? '178' : '163',
                         height_feet: isMale ? '5' : '5',
                         height_inches: isMale ? '10' : '4',
-                        weight_kg: isMale ? '80' : '65',
+                        weight_kg: weightUnit === 'kg' ? weightKg.toString() : weightLb.toString(),
                       })
                       setTimeout(() => setStep(step + 1), 600)
                     }}
@@ -1818,15 +1824,15 @@ export default function OnboardingScreen() {
 
             <View style={styles.stepContent}>
               <View style={styles.optionsContainer}>
-                {TRAINING_YEARS.map((item) => (
+                {EXPERIENCE_LEVELS.map((item) => (
                   <HapticButton
                     key={item.value}
                     style={[
                       styles.card,
-                      data.training_years === item.value && styles.cardSelected,
+                      data.experience_level === item.value && styles.cardSelected,
                     ]}
                     onPress={() => {
-                      setData({ ...data, training_years: item.value })
+                      setData({ ...data, experience_level: item.value })
                       setTimeout(() => setStep(step + 1), 600)
                     }}
                     hapticStyle="light"
@@ -1836,11 +1842,11 @@ export default function OnboardingScreen() {
                       <View
                         style={[
                           styles.radioButton,
-                          data.training_years === item.value &&
+                          data.experience_level === item.value &&
                             styles.radioButtonSelected,
                         ]}
                       >
-                        {data.training_years === item.value && (
+                        {data.experience_level === item.value && (
                           <View style={styles.radioButtonInner} />
                         )}
                       </View>
@@ -2056,36 +2062,50 @@ export default function OnboardingScreen() {
 
         if (diff < 0) {
           // Weight loss
-          if (Math.abs(percentChange) <= 2) {
-            feedbackTitle = `Easy win: You will lose ${Math.abs(
-              Math.round(percentChange),
-            )}%`
+          const lossPercent = Math.abs(percentChange)
+          if (lossPercent <= 3) {
+            feedbackTitle = `Quick win: Lose ${Math.round(lossPercent)}%`
             feedbackDesc =
-              "A solid first step that's about building momentum. Stay consistent, and small wins today may lead to bigger results later."
+              "A great starting point! This is very achievable with some simple lifestyle changes. Build momentum with quick wins."
             feedbackColor = '#22C55E' // Green
-          } else {
-            feedbackTitle = `Reasonable goal: You will lose ${Math.abs(
-              Math.round(percentChange),
-            )}%`
+          } else if (lossPercent <= 7) {
+            feedbackTitle = `Moderate goal: Lose ${Math.round(lossPercent)}%`
             feedbackDesc =
-              "You've hit the sweet spot: tough but doable. Stay committed and stick to your plan, and you'll love the changes you see!"
+              "A solid, achievable target. With consistent effort and good habits, you'll see great results in a few months."
+            feedbackColor = '#84CC16' // Lime
+          } else if (lossPercent <= 12) {
+            feedbackTitle = `Challenging goal: Lose ${Math.round(lossPercent)}%`
+            feedbackDesc =
+              "This is ambitious but doable! It'll require real commitment to your nutrition and training. Stay disciplined!"
             feedbackColor = '#F97316' // Orange
+          } else {
+            feedbackTitle = `Very ambitious: Lose ${Math.round(lossPercent)}%`
+            feedbackDesc =
+              "This is a significant transformation. Consider breaking it into smaller milestones and give yourself time to succeed."
+            feedbackColor = '#EF4444' // Red
           }
         } else if (diff > 0) {
-          // Weight gain (Muscle)
-          if (percentChange <= 5) {
-            feedbackTitle = `Reasonable goal: You will gain ${Math.round(
-              percentChange,
-            )}%`
+          // Weight gain (Muscle) - tighter thresholds since muscle gain is slower
+          const gainPercent = Math.round(percentChange)
+          if (gainPercent <= 2) {
+            feedbackTitle = `Steady gains: Add ${gainPercent}%`
             feedbackDesc =
-              'A nice steady pace for building strength. Keep it up!'
+              "A realistic target for lean muscle growth. Stay consistent with your training and protein intake."
+            feedbackColor = '#22C55E' // Green
+          } else if (gainPercent <= 5) {
+            feedbackTitle = `Solid goal: Gain ${gainPercent}%`
+            feedbackDesc =
+              "Good target! Building quality muscle takes time. Focus on progressive overload and proper nutrition."
+            feedbackColor = '#84CC16' // Lime
+          } else if (gainPercent <= 8) {
+            feedbackTitle = `Challenging goal: Gain ${gainPercent}%`
+            feedbackDesc =
+              "This will take serious dedication. Expect this to take 6+ months with optimal training and nutrition."
             feedbackColor = '#F97316' // Orange
           } else {
-            feedbackTitle = `Challenging goal: You'll gain at least ${Math.round(
-              percentChange,
-            )}% of muscle`
+            feedbackTitle = `Very ambitious: Gain ${gainPercent}%`
             feedbackDesc =
-              "This'll be tough: people rarely gain more than 2% of muscle per month. Be ultra disciplined to see it through!"
+              "Building this much muscle takes significant time. Most people gain 1-2% muscle per month at best. Plan for the long haul!"
             feedbackColor = '#EF4444' // Red
           }
         } else {
@@ -2619,7 +2639,7 @@ export default function OnboardingScreen() {
                   {feet.map((f) => (
                     <Picker.Item
                       key={f}
-                      label={`${f}'`}
+                      label={`${f} ft`}
                       value={f}
                       color={colors.text}
                     />
@@ -2635,7 +2655,7 @@ export default function OnboardingScreen() {
                   {inches.map((i) => (
                     <Picker.Item
                       key={i}
-                      label={`${i}"`}
+                      label={`${i} in`}
                       value={i}
                       color={colors.text}
                     />
@@ -3087,7 +3107,8 @@ const createStyles = (
       textAlign: 'center',
     },
     pickerContainer: {
-      flex: 1,
+      height: 200,
+      flexDirection: 'row',
       backgroundColor: colors.backgroundWhite,
       borderRadius: 16,
       overflow: 'hidden',
@@ -3765,7 +3786,7 @@ const createStyles = (
       flexDirection: 'row',
       gap: 6,
       marginTop: 16,
-      marginBottom: 30,
+      marginBottom: 10,
     },
     testimonialDot: {
       width: 20,
@@ -3781,6 +3802,7 @@ const createStyles = (
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 20,
+      marginBottom: 20,
     },
     ratingValue: {
       fontSize: 15,

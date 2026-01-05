@@ -8,7 +8,6 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
-import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
@@ -25,17 +24,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    LayoutAnimation,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  LayoutAnimation,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -89,7 +88,6 @@ export default function FeedScreen() {
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
   const { updateWorkoutData } = useSuccessOverlay()
-  const { showPrompt } = useRatingPrompt()
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlatList>(null)
@@ -236,24 +234,6 @@ export default function FeedScreen() {
         setHasMore(true)
         loadWorkouts(false, false)
 
-        // Show rating prompt if applicable (after first workout, then every 10 workouts)
-        // IMPORTANT: Delay this to avoid overlap with WorkoutShareScreen modal
-        // The share screen shows immediately after updateWorkoutData, so we need to wait
-        // for the user to have time to see/dismiss it before showing the rating prompt
-        setTimeout(async () => {
-          try {
-            const workoutCount = await database.workoutSessions.getCountByUserId(
-              user.id,
-            )
-            await showPrompt(workoutCount)
-          } catch (error) {
-            console.error(
-              'Error checking workout count for rating prompt:',
-              error,
-            )
-          }
-        }, 5000) // 5 second delay to give share screen time to be viewed
-
         // Check if this is the first workout and prompt for push notifications
         try {
           const profile = await database.profiles.getById(user.id)
@@ -328,7 +308,6 @@ export default function FeedScreen() {
     processPendingWorkout,
     router,
     updateWorkoutData,
-    showPrompt,
   ])
 
   const handleLoadMore = useCallback(() => {

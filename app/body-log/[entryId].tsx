@@ -4,26 +4,26 @@ import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import Animated, {
-    useAnimatedScrollHandler,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -31,6 +31,7 @@ import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
 import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
 import { LockedResultsOverlay } from '@/components/LockedResultsOverlay'
 import { Paywall } from '@/components/paywall'
+import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
@@ -39,25 +40,25 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-    getBMIExplanation,
-    getBMIStatus,
-    getBodyFatExplanation,
-    getBodyFatStatus,
-    getOverallStatus,
-    getStatusColor,
-    getWeightExplanation,
-    type BMIRange,
-    type BodyFatRange,
-    type Gender,
+  getBMIExplanation,
+  getBMIStatus,
+  getBodyFatExplanation,
+  getBodyFatStatus,
+  getOverallStatus,
+  getStatusColor,
+  getWeightExplanation,
+  type BMIRange,
+  type BodyFatRange,
+  type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-    type BodyLogEntryWithImages
+  type BodyLogEntryWithImages
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    getBodyLogImageUrls,
-    prefetchBodyLogImages,
+  getBodyLogImageUrls,
+  prefetchBodyLogImages,
 } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -83,7 +84,8 @@ const LinearScale = ({
   ranges = [], 
   label, 
   subLabel,
-  colorResolver 
+  colorResolver,
+  styles
 }: {
   value: number
   min?: number
@@ -92,6 +94,7 @@ const LinearScale = ({
   label: string
   subLabel?: string
   colorResolver?: (val: number) => string
+  styles: any
 }) => {
   const colors = useThemedColors()
   const percent = Math.min(Math.max((value - min) / (max - min), 0), 1) * 100
@@ -151,7 +154,7 @@ const LinearScale = ({
         </View>
 
         {/* Thumb */}
-        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.feedCardBackground }]}>
+        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.feedCardBackground, borderColor: colors.border }]}>
            <View style={[styles.scaleThumbInner, { backgroundColor: colorResolver ? colorResolver(value) : colors.text }]} />
         </View>
         
@@ -187,7 +190,7 @@ export default function BodyLogDetailScreen() {
   const router = useRouter()
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()
-
+  const styles = useMemo(() => createStyles(colors), [colors])
   const [entry, setEntry] = useState<BodyLogEntryWithImages | null>(null)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -566,7 +569,7 @@ export default function BodyLogDetailScreen() {
         router.setParams({ entryId: actualEntryId })
 
         // Complete tutorial step for body log
-        console.log('[BodyLog] Successful entry save. Completing body_log tutorial step.')
+
         completeStep('body_log')
 
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -892,10 +895,14 @@ export default function BodyLogDetailScreen() {
   }
 
   const handleRunBodyScan = async () => {
-    if (!entry || !entryId || entryId === 'new') return
+    if (!entry || !entryId || entryId === 'new') {
+      Alert.alert('Incomplete Entry', 'Please add at least 2 photos and your weight before running a scan.')
+      return
+    }
 
-    // Check if body scan has already been run for this entry (for Pro users)
+    // Check if body scan has already been run for this entry
     const alreadyScanned = entry.body_fat_percentage !== null || entry.bmi !== null
+    
     if (alreadyScanned && isProMember) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       Alert.alert(
@@ -906,7 +913,7 @@ export default function BodyLogDetailScreen() {
       return
     }
 
-    // Check requirements and provide specific feedback
+    // Check requirements
     const hasEnoughPhotos = entry.images.length >= 2
     const hasWeight = entry.weight_kg !== null
 
@@ -932,15 +939,18 @@ export default function BodyLogDetailScreen() {
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
+    // Start processing modal for both flows
+    setProcessingComplete(false)
+    setShowProcessingModal(true)
+
     // For free users: Show teaser flow (fake processing, then locked results)
     if (!isProMember) {
-      setProcessingComplete(false)
-      setShowProcessingModal(true)
-
-      // Simulate processing time (3 seconds)
+      // Simulate slightly variable processing time (3.5-5 seconds) for realism
+      // This makes it feel like it's actually doing something complex
+      const teaserTime = 3500 + Math.random() * 1500
       setTimeout(() => {
         setProcessingComplete(true)
-      }, 3000)
+      }, teaserTime)
       return
     }
 
@@ -949,8 +959,8 @@ export default function BodyLogDetailScreen() {
 
     try {
       // Get session token
-      const { data } = await supabase.auth.getSession()
-      const sessionToken = data.session?.access_token
+      const { data: sessionData } = await supabase.auth.getSession()
+      const sessionToken = sessionData.session?.access_token
 
       if (!sessionToken) {
         throw new Error('Not authenticated')
@@ -967,16 +977,13 @@ export default function BodyLogDetailScreen() {
       )
 
       if (!response.ok) {
-        // Try to get error details from response
         let errorMessage = `Analysis failed with status ${response.status}`
         try {
           const errorData = await response.json()
           if (errorData.error || errorData.message) {
             errorMessage = errorData.error || errorData.message
           }
-        } catch (e) {
-          // If we can't parse the error response, use the status text
-        }
+        } catch (e) {}
         throw new Error(errorMessage)
       }
 
@@ -1006,17 +1013,15 @@ export default function BodyLogDetailScreen() {
         .single()
 
       if (updatedEntry) {
-        setEntry((prev) => prev ? { ...prev, ...updatedEntry } : null)
+        setEntry((prev) => (prev ? { ...prev, ...updatedEntry } : null))
       }
 
+      setProcessingComplete(true)
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-
-      Alert.alert(
-        'Body Scan Complete!',
-        'Your body composition analysis is ready.',
-      )
     } catch (error) {
       console.error('Error running body scan:', error)
+      setShowProcessingModal(false)
+      setIsRunningBodyScan(false)
       Alert.alert(
         'Analysis Failed',
         'Failed to analyze your photos. Please try again.',
@@ -1027,11 +1032,29 @@ export default function BodyLogDetailScreen() {
   }
 
   // Handle teaser processing completion
-  const handleTeaserProcessingComplete = () => {
+  const handleTeaserProcessingComplete = async () => {
     setShowProcessingModal(false)
     setProcessingComplete(false)
-    // Don't set fake metrics - keep them null so they show "--"
-    // Just show the locked results overlay
+    
+    // Set realistic mock metrics for the teaser
+    setMetrics({
+      weight_kg: entry?.weight_kg ?? 75,
+      body_fat_percentage: 14.2,
+      bmi: 23.5,
+      lean_mass_kg: 64.3,
+      fat_mass_kg: 10.7,
+      score_v_taper: 82,
+      score_chest: 78,
+      score_shoulders: 85,
+      score_abs: 72,
+      score_arms: 80,
+      score_back: 84,
+      score_legs: 76,
+    })
+
+    // Trigger success haptic even for teaser for tactile feedback
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    // Show the locked results overlay
     setShowTeaserResults(true)
   }
 
@@ -1167,8 +1190,16 @@ export default function BodyLogDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <Stack.Screen options={{ headerShown: false }} />
+        
+        <ScreenHeader
+          title={entry?.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Entry'}
+          onLeftPress={handleBack}
+          leftIcon="arrow-back"
+          rightIcon="trash-outline"
+          onRightPress={handleDelete}
+        />
 
         <Animated.ScrollView
           onScroll={scrollHandler}
@@ -1177,11 +1208,10 @@ export default function BodyLogDetailScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: 100 }
+            { paddingBottom: 100, paddingTop: 16 }
           ]}
         >
-            {/* Header Space */}
-           <View style={{ height: insets.top + 60 }} />
+
 
            {/* Photos Section */}
            <View style={styles.photoSection}>
@@ -1240,116 +1270,107 @@ export default function BodyLogDetailScreen() {
               )}
            </View>
 
-           {/* Body Composition Section */}
-           <View style={styles.sectionContainer}>
-             <View style={styles.sectionHeader}>
-               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Body Composition</Text>
-               {!showTeaserResults && (
-                  <TouchableOpacity onPress={() => setInfoModalVisible(true)} hitSlop={10}>
-                     <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
-                  </TouchableOpacity>
-               )}
-             </View>
+            {/* Analysis Results Section */}
+            <View style={[styles.sectionContainer, { marginBottom: 100 }]}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Detailed Analysis</Text>
+                {!showTeaserResults && (
+                   <TouchableOpacity onPress={() => setInfoModalVisible(true)} hitSlop={10}>
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                   </TouchableOpacity>
+                )}
+              </View>
 
-             {showTeaserResults ? (
-                <LockedResultsOverlay onUnlock={handleUnlockResults} />
-             ) : (
-               <View style={styles.metricCardStack}>
-                 {/* Body Fat Card */}
-                 <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
-                   <LinearScale
-                     label="Body Fat %"
-                     value={metrics.body_fat_percentage ?? 0}
-                     min={5}
-                     max={40}
-                     subLabel={getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender)?.label}
-                     ranges={[
-                        { label: 'Ess.', start: 2, end: 5, color: '#EF4444' },
-                        { label: 'Ath.', start: 6, end: 13, color: '#10B981' },
-                        { label: 'Fit.', start: 14, end: 17, color: '#3B82F6' },
-                        { label: 'Avg.', start: 18, end: 24, color: '#F59E0B' },
-                        { label: 'Obs.', start: 25, end: 40, color: '#EF4444' },
-                     ]}
-                     colorResolver={(val) => getStatusColor(getBodyFatStatus(val, userGender)?.color || 'moderate').primary}
-                   />
-                 </View>
-
-                 {/* BMI Card */}
-                 <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
-                   <LinearScale
-                     label="BMI"
-                     value={metrics.bmi ?? 0}
-                     min={15}
-                     max={45}
-                     subLabel={getBMIStatus(metrics.bmi ?? 0, userGender)?.label}
+              <View style={styles.resultsWrapper}>
+                <View style={[styles.metricCardStack, showTeaserResults && styles.blurredContent]}>
+                  {/* Body Fat Card */}
+                  <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                    <LinearScale
+                      label="Body Fat %"
+                      value={metrics.body_fat_percentage ?? 0}
+                      min={5}
+                      max={40}
+                      subLabel={getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender)?.label}
                       ranges={[
-                        { label: 'U.', start: 15, end: 18.5, color: '#3B82F6' },
-                        { label: 'N.', start: 18.5, end: 25, color: '#10B981' },
-                        { label: 'O.', start: 25, end: 30, color: '#F59E0B' },
-                        { label: 'H.', start: 30, end: 45, color: '#EF4444' },
-                     ]}
-                     colorResolver={(val) => getStatusColor(getBMIStatus(val, userGender)?.color || 'moderate').primary}
-                   />
-                 </View>
-               </View>
-             )}
-           </View>
+                         { label: 'Ess.', start: 2, end: 5, color: '#EF4444' },
+                         { label: 'Ath.', start: 6, end: 13, color: '#10B981' },
+                         { label: 'Fit.', start: 14, end: 17, color: '#3B82F6' },
+                         { label: 'Avg.', start: 18, end: 24, color: '#F59E0B' },
+                         { label: 'Obs.', start: 25, end: 40, color: '#EF4444' },
+                      ]}
+                      colorResolver={(val) => getStatusColor(getBodyFatStatus(val, userGender)?.color || 'moderate').primary}
+                      styles={styles}
+                    />
+                  </View>
 
-           {/* Physique Analysis Section */}
-           <View style={[styles.sectionContainer, { marginBottom: 100 }]}>
-             <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Physique Analysis</Text>
-             </View>
+                  {/* BMI Card */}
+                  <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                    <LinearScale
+                      label="BMI"
+                      value={metrics.bmi ?? 0}
+                      min={15}
+                      max={45}
+                      subLabel={getBMIStatus(metrics.bmi ?? 0, userGender)?.label}
+                       ranges={[
+                         { label: 'U.', start: 15, end: 18.5, color: '#3B82F6' },
+                         { label: 'N.', start: 18.5, end: 25, color: '#10B981' },
+                         { label: 'O.', start: 25, end: 30, color: '#F59E0B' },
+                         { label: 'H.', start: 30, end: 45, color: '#EF4444' },
+                      ]}
+                      colorResolver={(val) => getStatusColor(getBMIStatus(val, userGender)?.color || 'moderate').primary}
+                      styles={styles}
+                    />
+                  </View>
 
-             {showTeaserResults ? (
-                <LockedResultsOverlay onUnlock={handleUnlockResults} />
-             ) : (
-               <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground, padding: 20 }]}>
-                    <Text style={[styles.physiqueCardSubTitle, { color: colors.textSecondary }]}>Detailed Muscle Distribution</Text>
-
-                    {/* Score Grid */}
+                  {/* Physique Scores Card */}
+                  <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                    <Text style={[styles.physiqueCardSubTitle, { color: colors.textSecondary }]}>Physique Breakdown</Text>
                     <View style={styles.scoreGridModern}>
                        {[
-                          { label: 'Chest', score: metrics.score_chest, icon: 'fitness' },
-                          { label: 'Shoulders', score: metrics.score_shoulders, icon: 'trending-up' },
-                          { label: 'Abs', score: metrics.score_abs, icon: 'grid' },
-                          { label: 'Arms', score: metrics.score_arms, icon: 'barbell' },
-                          { label: 'Back', score: metrics.score_back, icon: 'medal' },
-                          { label: 'Legs', score: metrics.score_legs, icon: 'walk' },
+                          { label: 'Chest', score: metrics.score_chest },
+                          { label: 'Shoulders', score: metrics.score_shoulders },
+                          { label: 'Abs', score: metrics.score_abs },
+                          { label: 'Arms', score: metrics.score_arms },
+                          { label: 'Back', score: metrics.score_back },
+                          { label: 'Legs', score: metrics.score_legs },
                        ].map((item, i) => {
                          const intensity = getScoreIntensity(item.score)
                          const color = ['#333', '#EF4444', '#F59E0B', '#10B981', '#3B82F6'][intensity]
                          return (
-                           <View key={i} style={[styles.modernScoreItem, { backgroundColor: colors.background }]}>
-                             <View style={styles.modernScoreHeader}>
-                               <Text style={[styles.modernScoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
-                               <Ionicons name={item.icon as any} size={14} color={color} />
-                             </View>
-                             <Text style={[styles.modernScoreValue, { color: colors.text }]}>{item.score ?? '--'}</Text>
-                             <View style={styles.modernProgressBarBg}>
-                                <View style={{ height: '100%', width: `${item.score ?? 0}%`, backgroundColor: color, borderRadius: 2 }} />
-                             </View>
-                           </View>
+                             <View key={i} style={styles.modernScoreItem}>
+                              <View style={styles.modernScoreHeader}>
+                                <Text style={[styles.modernScoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                              </View>
+                              <Text style={[styles.modernScoreValue, { color: colors.text }]}>{item.score ?? '--'}</Text>
+                              <View style={[styles.modernProgressBarBg, { backgroundColor: colors.border }]}>
+                                 <View style={{ height: '100%', width: `${item.score ?? 0}%`, backgroundColor: color, borderRadius: 2 }} />
+                              </View>
+                            </View>
                          )
                        })}
                     </View>
-               </View>
-             )}
-           </View>
+                  </View>
+                </View>
+
+                {showTeaserResults && (
+                  <LockedResultsOverlay onUnlock={handleUnlockResults} />
+                )}
+              </View>
+            </View>
 
 
          </Animated.ScrollView>
 
         {/* Dynamic Action Dock */}
         <Animated.View style={[styles.actionDockContainer, { bottom: insets.bottom + 20 }, dockAnimatedStyle]}>
-           <View style={[styles.actionDock, { backgroundColor: 'rgba(28, 28, 30, 0.85)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+           <View style={[styles.actionDock, { backgroundColor: colors.feedCardBackground, borderColor: colors.border, shadowColor: colors.shadow }]}>
               {/* Add Progress Photos */}
               <TouchableOpacity style={styles.dockAction} onPress={handleAddPhotos}>
                  <Ionicons name="camera" size={22} color={colors.primary} />
                  <Text style={[styles.dockLabel, { color: colors.text }]}>Photo</Text>
               </TouchableOpacity>
 
-              <View style={[styles.dockDivider, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+              <View style={[styles.dockDivider, { backgroundColor: colors.border }]} />
 
               {/* Log Weight */}
               <TouchableOpacity style={styles.dockAction} onPress={handleLogWeight}>
@@ -1361,7 +1382,7 @@ export default function BodyLogDetailScreen() {
                  </View>
               </TouchableOpacity>
 
-              <View style={[styles.dockDivider, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+              <View style={[styles.dockDivider, { backgroundColor: colors.border }]} />
 
               {/* Run Scan / Analyze */}
               <TouchableOpacity 
@@ -1381,22 +1402,7 @@ export default function BodyLogDetailScreen() {
            </View>
         </Animated.View>
 
-        {/* Floating Top Header */}
-        <View style={[styles.floatingHeader, { top: insets.top }]}>
-          <TouchableOpacity onPress={handleBack} style={[styles.headerCircleBtn, { backgroundColor: 'rgba(28, 28, 30, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
-             <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
 
-          <View style={styles.headerTitleContainer}>
-             <Text style={[styles.headerDateText, { color: colors.text }]}>
-               {entry?.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Entry'}
-             </Text>
-          </View>
-
-          <TouchableOpacity onPress={handleDelete} style={[styles.headerCircleBtn, { backgroundColor: 'rgba(28, 28, 30, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
-             <Ionicons name="trash-outline" size={20} color={colors.error} />
-          </TouchableOpacity>
-        </View>
 
         {/* Modals */}
         <WeightInputModal
@@ -1425,8 +1431,12 @@ export default function BodyLogDetailScreen() {
         imageUri={imageUrls[0] ?? null}
         isComplete={processingComplete}
             onComplete={() => {
-            setShowProcessingModal(false)
-            setProcessingComplete(false)
+              if (!isProMember) {
+                handleTeaserProcessingComplete()
+              } else {
+                setShowProcessingModal(false)
+                setProcessingComplete(false)
+              }
             }}
         />
 
@@ -1516,7 +1526,8 @@ export default function BodyLogDetailScreen() {
 
 type Colors = ReturnType<typeof useThemedColors>
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -1557,9 +1568,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(28, 28, 30, 0.8)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   headerDateText: {
     fontSize: 14,
@@ -1662,7 +1671,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderWidth: 1,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
@@ -1768,30 +1776,39 @@ const styles = StyleSheet.create({
   sectionContainer: {
     paddingHorizontal: 20,
     marginBottom: 32,
+    position: 'relative',
   },
+  resultsWrapper: {
+    position: 'relative',
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  blurredContent: {
+    opacity: 0.6,
+  },
+
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
 
   // Premium Cards
   premiumCard: {
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 20,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   metricCardStack: {
     gap: 16,
@@ -1799,41 +1816,42 @@ const styles = StyleSheet.create({
   physiqueCardSubTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 20,
-    opacity: 0.8,
+    marginBottom: 16,
+    opacity: 0.7,
   },
 
   // Score GridModern
   scoreGridModern: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
   modernScoreItem: {
-    width: '48.4%',
-    borderRadius: 20,
-    padding: 14,
-    gap: 6,
+    width: '48%',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    backgroundColor: colors.feedCardBackground === '#1c1c1c' ? colors.background : colors.backgroundLight,
+    borderColor: colors.border,
   },
   modernScoreHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   modernScoreLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: -0.2,
   },
   modernScoreValue: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
   modernProgressBarBg: {
     height: 4,
-    backgroundColor: '#333',
     borderRadius: 2,
     marginTop: 4,
     width: '100%',
@@ -1850,15 +1868,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   scaleLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   scaleValueBig: {
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -1,
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   scaleSubLabel: {
     fontSize: 14,
@@ -1889,7 +1906,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   scaleThumbInner: {
     width: 14,

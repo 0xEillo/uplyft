@@ -16,6 +16,8 @@ import React, {
     useCallback,
     useContext,
     useEffect,
+    useMemo,
+    useRef,
     useState,
 } from 'react'
 
@@ -67,15 +69,53 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   )
   const [isTutorialDismissed, setIsTutorialDismissed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Track the previous user ID to detect user changes
+  const previousUserIdRef = useRef<string | null>(null)
+  
+  // User-scoped storage keys to ensure each user has their own tutorial progress
+  const storageKeys = useMemo(() => {
+    const userId = user?.id
+    if (!userId) {
+      return {
+        progress: TUTORIAL_STORAGE_KEY,
+        dismissed: TUTORIAL_DISMISSED_KEY,
+        trial: TUTORIAL_TRIAL_USED_KEY,
+      }
+    }
+    return {
+      progress: `${TUTORIAL_STORAGE_KEY}_${userId}`,
+      dismissed: `${TUTORIAL_DISMISSED_KEY}_${userId}`,
+      trial: `${TUTORIAL_TRIAL_USED_KEY}_${userId}`,
+    }
+  }, [user?.id])
 
   // Load tutorial progress and trial usage from AsyncStorage
+  // Re-run when user changes to load the correct user's progress
   useEffect(() => {
     const loadProgress = async () => {
+      // Detect user change and reset state
+      const currentUserId = user?.id || null
+      if (previousUserIdRef.current !== null && previousUserIdRef.current !== currentUserId) {
+        // User changed - reset state before loading new user's data
+        console.log('[Tutorial] User changed, resetting tutorial state')
+        setCompletedSteps(new Set())
+        setConsumedTrials(new Set())
+        setIsTutorialDismissed(false)
+      }
+      previousUserIdRef.current = currentUserId
+      
+      // If no user, just set loading to false with default state
+      if (!user?.id) {
+        setIsLoading(false)
+        return
+      }
+      
       try {
         const [progressData, dismissedData, trialData] = await Promise.all([
-          AsyncStorage.getItem(TUTORIAL_STORAGE_KEY),
-          AsyncStorage.getItem(TUTORIAL_DISMISSED_KEY),
-          AsyncStorage.getItem(TUTORIAL_TRIAL_USED_KEY),
+          AsyncStorage.getItem(storageKeys.progress),
+          AsyncStorage.getItem(storageKeys.dismissed),
+          AsyncStorage.getItem(storageKeys.trial),
         ])
 
 
@@ -110,7 +150,29 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
 
     loadProgress()
-  }, [])
+  }, [user?.id, storageKeys])
+
+  // Save step progress (needs to use userId-scoped key) - defined before useEffect that uses it
+  const saveStepProgress = useCallback(async (steps: Set<TutorialStepId>) => {
+    if (!user?.id) return // Don't save if no user
+    try {
+      const stepsArray = Array.from(steps)
+      await AsyncStorage.setItem(storageKeys.progress, JSON.stringify(stepsArray))
+    } catch (error) {
+      console.error('[Tutorial] Error saving progress:', error)
+    }
+  }, [user?.id, storageKeys.progress])
+
+  // Save trial usage (needs to use userId-scoped key) - defined before useEffect that uses it
+  const saveTrialUsage = useCallback(async (trials: Set<TrialFeatureId>) => {
+    if (!user?.id) return // Don't save if no user
+    try {
+      const trialsArray = Array.from(trials)
+      await AsyncStorage.setItem(storageKeys.trial, JSON.stringify(trialsArray))
+    } catch (error) {
+      console.error('[Tutorial] Error saving trial usage:', error)
+    }
+  }, [user?.id, storageKeys.trial])
 
   // Auto-complete steps for existing users based on database state
   useEffect(() => {
@@ -152,27 +214,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
 
     checkExistingData()
-  }, [user, isLoading, completedSteps.size]) // Use size to avoid infinite loop if we update
-
-  // Save step progress
-  const saveStepProgress = useCallback(async (steps: Set<TutorialStepId>) => {
-    try {
-      const stepsArray = Array.from(steps)
-      await AsyncStorage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(stepsArray))
-    } catch (error) {
-      console.error('[Tutorial] Error saving progress:', error)
-    }
-  }, [])
-
-  // Save trial usage
-  const saveTrialUsage = useCallback(async (trials: Set<TrialFeatureId>) => {
-    try {
-      const trialsArray = Array.from(trials)
-      await AsyncStorage.setItem(TUTORIAL_TRIAL_USED_KEY, JSON.stringify(trialsArray))
-    } catch (error) {
-      console.error('[Tutorial] Error saving trial usage:', error)
-    }
-  }, [])
+  }, [user, isLoading, completedSteps.size, saveStepProgress]) // Use size to avoid infinite loop if we update
 
   // Complete a tutorial step (synchronous - storage saves in background)
   const completeStep = useCallback(
@@ -234,21 +276,23 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   // Dismiss the tutorial checklist
   const dismissTutorial = useCallback(async () => {
+    if (!user?.id) return // Don't save if no user
     try {
-      await AsyncStorage.setItem(TUTORIAL_DISMISSED_KEY, 'true')
+      await AsyncStorage.setItem(storageKeys.dismissed, 'true')
       setIsTutorialDismissed(true)
     } catch (error) {
       console.error('[Tutorial] Error dismissing tutorial:', error)
     }
-  }, [])
+  }, [user?.id, storageKeys.dismissed])
 
   // Reset tutorial (for testing)
   const resetTutorial = useCallback(async () => {
+    if (!user?.id) return // Don't reset if no user
     try {
       await Promise.all([
-        AsyncStorage.removeItem(TUTORIAL_STORAGE_KEY),
-        AsyncStorage.removeItem(TUTORIAL_DISMISSED_KEY),
-        AsyncStorage.removeItem(TUTORIAL_TRIAL_USED_KEY),
+        AsyncStorage.removeItem(storageKeys.progress),
+        AsyncStorage.removeItem(storageKeys.dismissed),
+        AsyncStorage.removeItem(storageKeys.trial),
       ])
       setCompletedSteps(new Set())
       setConsumedTrials(new Set())
@@ -256,7 +300,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[Tutorial] Error resetting tutorial:', error)
     }
-  }, [])
+  }, [user?.id, storageKeys])
 
   // Build tutorial steps with completion status
   const tutorialSteps: TutorialStep[] = TUTORIAL_STEPS.map((step) => ({

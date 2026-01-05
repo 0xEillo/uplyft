@@ -6,7 +6,7 @@ export type Goal =
   | 'improve_cardio'
   | 'become_flexible'
   | 'general_fitness'
-export type TrainingYears = 'beginner' | 'intermediate' | 'advanced'
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export interface Profile {
   id: string
@@ -23,7 +23,8 @@ export interface Profile {
   age: number | null
   goals: Goal[] | null
   commitment: string[] | null
-  training_years: TrainingYears | null
+  training_years: string | null
+  experience_level: ExperienceLevel | null
   expo_push_token: string | null
   has_requested_push_notifications: boolean
   created_at: string

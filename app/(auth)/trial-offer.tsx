@@ -10,7 +10,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { supabase } from '@/lib/supabase'
-import { Gender, Goal, TrainingYears } from '@/types/database.types'
+import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -59,7 +59,7 @@ export default function TrialOfferScreen() {
     age: number | null
     goal: Goal[]
     commitment: string[] | null
-    training_years: TrainingYears | null
+    experience_level: ExperienceLevel | null
     bio: string | null
     coach: string | null
   }
@@ -88,7 +88,7 @@ export default function TrialOfferScreen() {
         commitment: onboardingData.commitment && onboardingData.commitment.length > 0 
           ? onboardingData.commitment 
           : null,
-        training_years: onboardingData.training_years,
+        experience_level: onboardingData.experience_level,
         bio: onboardingData.bio,
         coach: onboardingData.coach,
         is_guest: true,

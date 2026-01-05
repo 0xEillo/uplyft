@@ -10,8 +10,8 @@ import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useFocusEffect, useRouter } from 'expo-router'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
@@ -65,9 +65,11 @@ export default function RoutinesScreen() {
     }
   }, [user?.id])
 
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData])
+  )
 
   const handleBack = useCallback(() => {
     setShouldExit(true)

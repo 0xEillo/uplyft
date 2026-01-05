@@ -3,15 +3,17 @@ import { Paywall } from '@/components/paywall'
 import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    generateRandomTintColor,
-    getRoutineImageUrl,
+  generateRandomTintColor,
+  getRoutineImageUrl,
 } from '@/lib/utils/routine-images'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -19,28 +21,28 @@ import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    LayoutAnimation,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import Animated, {
-    Easing,
-    SharedValue,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  Easing,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -367,6 +369,10 @@ export default function CreateRoutineScreen() {
   const handleExitComplete = useCallback(() => {
     router.back()
   }, [router])
+
+  const { coachId } = useProfile()
+  const coach = getCoach(coachId)
+  const coachFirstName = coach.name.split(' ')[1] || coach.name
 
   // Exercise selection hook
   const { registerCallback } = useExerciseSelection()
@@ -1209,8 +1215,8 @@ export default function CreateRoutineScreen() {
             setShowPaywall(false)
             handleExit()
           }}
-          title="Try Pro for FREE!"
-          message="Routines are a Pro feature"
+          title={`Build Your Perfect Program for FREE!`}
+          message={`Let ${coachFirstName} help you build unlimited custom routines to accelerate your progress.`}
         />
 
         {/* Rest Time Picker Modal */}

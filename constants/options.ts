@@ -1,4 +1,4 @@
-import { Gender, Goal, TrainingYears } from '@/types/database.types'
+import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 
 /**
@@ -40,8 +40,8 @@ export const COMMITMENTS: {
 ]
 
 
-export const TRAINING_YEARS: {
-  value: TrainingYears
+export const EXPERIENCE_LEVELS: {
+  value: ExperienceLevel
   label: string
 }[] = [
   { value: 'beginner', label: 'Beginner' },
