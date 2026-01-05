@@ -2,6 +2,7 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
+import { ExploreCard } from '@/components/Profile/ExploreCard'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { TutorialProgressCard } from '@/components/Tutorial/TutorialProgressCard'
 import { useAuth } from '@/contexts/auth-context'
@@ -12,9 +13,9 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  calculateTotalVolume,
-  calculateWorkoutStats,
-  formatVolume,
+    calculateTotalVolume,
+    calculateWorkoutStats,
+    formatVolume,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -22,15 +23,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -618,9 +619,10 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
-              {/* Tutorial Progress Card */}
-              <View style={styles.dashboardSection}>
+              {/* Tutorial Progress Card & Explore */}
+              <View style={[styles.dashboardSection, { gap: 12 }]}>
                 <TutorialProgressCard />
+                <ExploreCard />
               </View>
 
               {/* Dashboard Section */}

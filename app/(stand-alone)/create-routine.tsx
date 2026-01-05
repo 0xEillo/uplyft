@@ -1,40 +1,48 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { Paywall } from '@/components/paywall'
+import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
+import {
+  generateRandomTintColor,
+  getRoutineImageUrl,
+} from '@/lib/utils/routine-images'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    LayoutAnimation,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import Animated, {
-    Easing,
-    SharedValue,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  Easing,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -339,6 +347,11 @@ export default function CreateRoutineScreen() {
   const [restPickerMinutes, setRestPickerMinutes] = useState(0)
   const [restPickerSeconds, setRestPickerSeconds] = useState(0)
 
+  // Cover image state
+  const [imagePath, setImagePath] = useState<string | null>(null)
+  const [tintColor, setTintColor] = useState<string>(generateRandomTintColor())
+  const [imagePickerVisible, setImagePickerVisible] = useState(false)
+
   // Drag and drop state
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
 
@@ -356,6 +369,10 @@ export default function CreateRoutineScreen() {
   const handleExitComplete = useCallback(() => {
     router.back()
   }, [router])
+
+  const { coachId } = useProfile()
+  const coach = getCoach(coachId)
+  const coachFirstName = coach.name.split(' ')[1] || coach.name
 
   // Exercise selection hook
   const { registerCallback } = useExerciseSelection()
@@ -424,6 +441,14 @@ export default function CreateRoutineScreen() {
 
           setRoutineName(routine.name)
           setRoutineNotes(routine.notes || '')
+          
+          // Load cover image settings
+          if (routine.image_path) {
+            setImagePath(routine.image_path)
+          }
+          if (routine.tint_color) {
+            setTintColor(routine.tint_color)
+          }
 
           // Build exercise templates from routine exercises
           const templates: ExerciseTemplate[] = (
@@ -575,6 +600,8 @@ export default function CreateRoutineScreen() {
         await database.workoutRoutines.update(routineId, {
           name: routineName.trim(),
           notes: routineNotes.trim() || undefined,
+          image_path: imagePath,
+          tint_color: tintColor,
         })
 
         // Delete existing exercises and sets (cascade will handle sets)
@@ -589,7 +616,11 @@ export default function CreateRoutineScreen() {
         const routine = await database.workoutRoutines.create(
           user.id,
           routineName.trim(),
-          routineNotes.trim() || undefined,
+          {
+            notes: routineNotes.trim() || undefined,
+            imagePath: imagePath || undefined,
+            tintColor: tintColor,
+          },
         )
         routineIdToUse = routine.id
       }
@@ -1071,6 +1102,46 @@ export default function CreateRoutineScreen() {
               />
             </View>
 
+            {/* Cover Image */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Cover Image</Text>
+              <TouchableOpacity
+                style={[
+                  styles.coverImagePicker,
+                  { backgroundColor: tintColor + '30' },
+                ]}
+                onPress={() => setImagePickerVisible(true)}
+                activeOpacity={0.8}
+              >
+                {imagePath ? (
+                  <Image
+                    source={{ uri: getRoutineImageUrl(imagePath) || '' }}
+                    style={styles.coverImagePreview}
+                  />
+                ) : (
+                  <View style={styles.coverImagePlaceholder}>
+                    <Ionicons
+                      name="image-outline"
+                      size={32}
+                      color={tintColor}
+                    />
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.coverImageTint,
+                    { backgroundColor: tintColor, opacity: 0.2 },
+                  ]}
+                />
+                <View style={styles.coverImageEditBadge}>
+                  <Ionicons name="pencil" size={14} color="#FFF" />
+                  <Text style={styles.coverImageEditText}>
+                    {imagePath ? 'Change' : 'Add Cover'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
             {/* Exercises */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
@@ -1144,8 +1215,8 @@ export default function CreateRoutineScreen() {
             setShowPaywall(false)
             handleExit()
           }}
-          title="Try Pro for FREE!"
-          message="Routines are a Pro feature"
+          title={`Build Your Perfect Program for FREE!`}
+          message={`Let ${coachFirstName} help you build unlimited custom routines to accelerate your progress.`}
         />
 
         {/* Rest Time Picker Modal */}
@@ -1216,6 +1287,18 @@ export default function CreateRoutineScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Image Picker Sheet */}
+        <RoutineImagePickerSheet
+          visible={imagePickerVisible}
+          onClose={() => setImagePickerVisible(false)}
+          onSelect={(newImagePath: string | null, newTintColor: string) => {
+            setImagePath(newImagePath)
+            setTintColor(newTintColor)
+          }}
+          selectedImagePath={imagePath}
+          selectedTintColor={tintColor}
+        />
       </View>
     </SlideInView>
   )
@@ -1599,5 +1682,40 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
+    },
+    coverImagePicker: {
+      height: 120,
+      borderRadius: 12,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    coverImagePreview: {
+      width: '100%',
+      height: '100%',
+    },
+    coverImagePlaceholder: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    coverImageTint: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    coverImageEditBadge: {
+      position: 'absolute',
+      bottom: 12,
+      right: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    coverImageEditText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#FFF',
     },
   })

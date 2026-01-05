@@ -7,11 +7,11 @@ import { streamText, tool } from 'npm:ai@5.0.60'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
-  getExercisePercentile,
-  getExerciseStrengthProgressByName,
-  getMuscleGroupDistribution,
-  getStrengthScoreProgress,
-  getTopExercisesByEstimated1RM,
+    getExercisePercentile,
+    getExerciseStrengthProgressByName,
+    getMuscleGroupDistribution,
+    getStrengthScoreProgress,
+    getTopExercisesByEstimated1RM,
 } from '../_shared/stats.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 import { buildUserContextSummary, userContextToPrompt } from './user-context.ts'
@@ -152,7 +152,7 @@ serve(async (req) => {
     const modelToUse =
       payload.images && payload.images.length > 0
         ? openai('gpt-4o')
-        : google('gemini-2.5-flash-preview-09-2025')
+        : google('gemini-1.5-flash')
 
     const result = streamText({
       model: modelToUse,

@@ -1,8 +1,11 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
     Animated,
     Dimensions,
@@ -16,7 +19,8 @@ import {
     View,
 } from 'react-native'
 
-const SCREEN_HEIGHT = Dimensions.get('window').height
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+const CARD_WIDTH = (SCREEN_WIDTH - 52) / 2 // 20px padding each side + 12px gap
 
 interface RoutineSelectorSheetProps {
   visible: boolean
@@ -38,7 +42,7 @@ export function RoutineSelectorSheet({
   onDeleteRoutine,
 }: RoutineSelectorSheetProps) {
   const colors = useThemedColors()
-  const styles = createStyles(colors)
+  const styles = useMemo(() => createStyles(colors), [colors])
   const router = useRouter()
 
   // Animation refs
@@ -116,6 +120,132 @@ export function RoutineSelectorSheet({
     onClose()
   }
 
+  const handleRoutinePress = (routine: WorkoutRoutineWithDetails) => {
+    // Navigate to routine detail for viewing/editing
+    router.push({
+      pathname: '/routine/[routineId]',
+      params: { routineId: routine.id },
+    })
+    onClose()
+  }
+
+  const renderRoutineCard = (routine: WorkoutRoutineWithDetails, index: number) => {
+    const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
+    const tintColor = routine.tint_color || tintColors[index % tintColors.length]
+
+    const exerciseCount = routine.workout_routine_exercises?.length || 0
+    const setCount =
+      routine.workout_routine_exercises?.reduce(
+        (sum, ex) => sum + (ex.sets?.length || 0),
+        0,
+      ) || 0
+
+    // Get image source from storage bucket
+    const getRoutineImage = () => {
+      const imagePath = routine.image_path || `${routine.name}.png`
+      return getRoutineImageUrl(imagePath)
+    }
+
+    const imageSource = getRoutineImage()
+
+    return (
+      <View key={routine.id} style={styles.routineCardWrapper}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.routineCard}
+          onPress={() => handleRoutinePress(routine)}
+        >
+          {imageSource ? (
+            <>
+              <Image
+                source={typeof imageSource === 'string' ? { uri: imageSource } : imageSource}
+                style={styles.routineImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="normal"
+                transition={200}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.85)']}
+                style={styles.routineOverlay}
+              />
+              <View
+                style={[
+                  styles.colorTint,
+                  { backgroundColor: tintColor, opacity: 0.2 },
+                ]}
+              />
+            </>
+          ) : (
+            <LinearGradient
+              colors={[tintColor + '40', tintColor + '20']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.routineGradientBg}
+            />
+          )}
+
+          {/* Card Content */}
+          <View style={styles.routineContent}>
+            <Text
+              style={[
+                styles.routineTitle,
+                !imageSource && { color: colors.text },
+              ]}
+              numberOfLines={2}
+            >
+              {routine.name}
+            </Text>
+            <View style={styles.routineStats}>
+              <View style={styles.routineStatItem}>
+                <Ionicons
+                  name="barbell-outline"
+                  size={11}
+                  color={imageSource ? 'rgba(255,255,255,0.8)' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.routineStatText,
+                    !imageSource && { color: colors.textSecondary },
+                  ]}
+                >
+                  {exerciseCount}
+                </Text>
+              </View>
+              <View style={styles.routineStatItem}>
+                <Ionicons
+                  name="layers-outline"
+                  size={11}
+                  color={imageSource ? 'rgba(255,255,255,0.8)' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.routineStatText,
+                    !imageSource && { color: colors.textSecondary },
+                  ]}
+                >
+                  {setCount}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Start Button - Overlay on card */}
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={(e) => {
+              e.stopPropagation?.()
+              handleSelect(routine)
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="play" size={14} color="#FFF" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   return (
     <Modal
       visible={visible}
@@ -142,10 +272,9 @@ export function RoutineSelectorSheet({
               transform: [{ translateY: slideAnim }],
             },
           ]}
-          {...panResponder.panHandlers}
         >
           {/* Handle Bar */}
-          <View style={styles.handleContainer}>
+          <View style={styles.handleContainer} {...panResponder.panHandlers}>
             <View
               style={[styles.handle, { backgroundColor: colors.textSecondary }]}
             />
@@ -153,86 +282,55 @@ export function RoutineSelectorSheet({
 
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Routine</Text>
+            <Text style={styles.modalSubtitle}>
+              Choose a routine to start your workout
+            </Text>
           </View>
 
-          {/* Routines List */}
+          {/* Routines Grid */}
           <ScrollView
             style={styles.routineList}
+            contentContainerStyle={styles.routineListContent}
             showsVerticalScrollIndicator={false}
           >
             {routines.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons
-                  name="albums-outline"
-                  size={48}
-                  color={colors.textPlaceholder}
-                />
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons
+                    name="albums-outline"
+                    size={40}
+                    color={colors.textPlaceholder}
+                  />
+                </View>
                 <Text style={styles.emptyTitle}>No Routines Yet</Text>
+                <Text style={styles.emptyMessage}>
+                  Create your first routine to quickly{'\n'}start structured workouts
+                </Text>
               </View>
             ) : (
-              routines.map((routine) => {
-                const exerciseCount =
-                  routine.workout_routine_exercises?.length || 0
-                const setCount =
-                  routine.workout_routine_exercises?.reduce(
-                    (sum, ex) => sum + (ex.sets?.length || 0),
-                    0,
-                  ) || 0
-
-                return (
-                  <View key={routine.id} style={styles.routineItem}>
-                    <TouchableOpacity
-                      style={styles.routineMainContent}
-                      onPress={() => {
-                        // Navigate to routine detail
-                        router.push({
-                          pathname: '/routine-detail',
-                          params: { routineId: routine.id },
-                        })
-                        onClose()
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.routineInfo}>
-                        <Text style={styles.routineName}>{routine.name}</Text>
-                        <Text style={styles.routineStats}>
-                          {exerciseCount}{' '}
-                          {exerciseCount === 1 ? 'exercise' : 'exercises'} ·{' '}
-                          {setCount} sets
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Action Button */}
-                    <View style={styles.actionButtonsContainer}>
-                      <TouchableOpacity
-                        onPress={() => handleSelect(routine)}
-                        style={styles.startButton}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.startButtonText}>Start</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )
-              })
+              <View style={styles.routinesGrid}>
+                {routines.map((routine, index) =>
+                  renderRoutineCard(routine, index)
+                )}
+              </View>
             )}
 
-            {/* Create Routine Button - Always shown at bottom */}
-            <View style={styles.createRoutineContainer}>
-              <TouchableOpacity
-                style={styles.createRoutineButton}
-                onPress={handleCreateRoutine}
-                activeOpacity={0.6}
+            {/* Create Routine Button */}
+            <TouchableOpacity
+              style={styles.createRoutineButton}
+              onPress={handleCreateRoutine}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.primary + 'DD']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.createRoutineGradient}
               >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={24}
-                  color={colors.primary}
-                />
-                <Text style={styles.createRoutineText}>Create Routine</Text>
-              </TouchableOpacity>
-            </View>
+                <Ionicons name="add-circle" size={22} color="#FFF" />
+                <Text style={styles.createRoutineText}>Create New Routine</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </ScrollView>
         </Animated.View>
       </View>
@@ -248,45 +346,124 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
     modalContent: {
       backgroundColor: colors.white,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      maxHeight: SCREEN_HEIGHT * 0.9,
-      paddingBottom: 34,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      minHeight: SCREEN_HEIGHT * 0.92,
+      paddingBottom: 40,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 20,
-      elevation: 20,
-      flex: 1,
-      flexDirection: 'column',
+      shadowOffset: { width: 0, height: -8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 24,
+      elevation: 24,
     },
     handleContainer: {
       alignItems: 'center',
-      paddingTop: 12,
-      paddingBottom: 8,
+      paddingTop: 14,
+      paddingBottom: 6,
     },
     handle: {
-      width: 36,
+      width: 40,
       height: 4,
       borderRadius: 2,
-      opacity: 0.3,
+      opacity: 0.25,
     },
     modalHeader: {
       paddingHorizontal: 20,
-      paddingBottom: 16,
+      paddingTop: 8,
+      paddingBottom: 20,
     },
     modalTitle: {
-      fontSize: 24,
-      fontWeight: '700',
+      fontSize: 26,
+      fontWeight: '800',
       color: colors.text,
       letterSpacing: -0.5,
     },
+    modalSubtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
     routineList: {
-      paddingHorizontal: 16,
+      flex: 1,
+    },
+    routineListContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+    },
+    routinesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    routineCardWrapper: {
+      width: CARD_WIDTH,
+    },
+    routineCard: {
+      height: 160,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: colors.feedCardBackground,
+    },
+    routineImage: {
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
+    },
+    routineGradientBg: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    colorTint: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    routineOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    routineContent: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      padding: 12,
+      paddingBottom: 14,
+    },
+    routineTitle: {
+      color: '#FFF',
+      fontSize: 17,
+      fontWeight: '700',
+      marginBottom: 4,
+      letterSpacing: -0.3,
+    },
+    routineStats: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    routineStatItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    routineStatText: {
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    startButton: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 4,
     },
     emptyState: {
       alignItems: 'center',
@@ -294,11 +471,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 48,
       paddingHorizontal: 32,
     },
+    emptyIconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.backgroundLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
     emptyTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 20,
+      fontWeight: '700',
       color: colors.text,
-      marginTop: 16,
       marginBottom: 8,
     },
     emptyMessage: {
@@ -307,76 +492,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
       lineHeight: 22,
     },
-    routineItem: {
-      flexDirection: 'row',
-      padding: 16,
-      borderRadius: 12,
-      marginBottom: 8,
-      backgroundColor: colors.backgroundLight,
-      alignItems: 'center',
-      gap: 12,
-    },
-    routineMainContent: {
-      flex: 1,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    actionButtonsContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    actionButton: {
-      padding: 4,
-    },
-    startButton: {
-      backgroundColor: colors.success,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      minWidth: 70,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    startButtonText: {
-      color: '#fff',
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    routineInfo: {
-      flex: 1,
-    },
-    routineName: {
-      fontSize: 17,
-      fontWeight: '500',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    routineStats: {
-      fontSize: 14,
-      color: colors.textSecondary,
-    },
-    createRoutineContainer: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 16,
-    },
     createRoutineButton: {
+      marginTop: 20,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    createRoutineGradient: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 20,
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-      borderColor: colors.border,
-      gap: 6,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      gap: 10,
     },
     createRoutineText: {
       fontSize: 16,
-      fontWeight: '600',
-      color: colors.primary,
+      fontWeight: '700',
+      color: '#FFF',
     },
   })

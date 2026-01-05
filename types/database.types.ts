@@ -6,7 +6,7 @@ export type Goal =
   | 'improve_cardio'
   | 'become_flexible'
   | 'general_fitness'
-export type TrainingYears = 'less_than_1' | '1_to_3' | '3_to_5' | '5_plus'
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export interface Profile {
   id: string
@@ -23,7 +23,8 @@ export interface Profile {
   age: number | null
   goals: Goal[] | null
   commitment: string[] | null
-  training_years: TrainingYears | null
+  training_years: string | null
+  experience_level: ExperienceLevel | null
   expo_push_token: string | null
   has_requested_push_notifications: boolean
   created_at: string
@@ -103,6 +104,8 @@ export interface WorkoutRoutine {
   name: string
   notes: string | null
   is_archived: boolean
+  image_path: string | null
+  tint_color: string | null
   created_at: string
   updated_at: string
 }
@@ -254,4 +257,64 @@ export interface Notification {
 
 export interface NotificationWithProfiles extends Notification {
   actorProfiles: Profile[] // Enriched with actor profile data
+}
+
+// Explore content types
+export type ExploreLevel = 'beginner' | 'intermediate' | 'advanced'
+
+export interface ExploreProgram {
+  id: string
+  name: string
+  description: string | null
+  level: ExploreLevel | null
+  goal: string | null
+  is_published: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ExploreRoutine {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+  level: ExploreLevel | null
+  duration_minutes: number | null
+  equipment: string[] | null
+  is_published: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ExploreProgramRoutine {
+  id: string
+  program_id: string
+  routine_id: string
+  day_number: number | null
+  display_order: number
+  created_at: string
+}
+
+export interface ExploreRoutineExercise {
+  id: string
+  routine_id: string
+  exercise_id: string
+  order_index: number
+  sets: number
+  reps_min: number | null
+  reps_max: number | null
+  notes: string | null
+  created_at: string
+}
+
+// Extended types with relations
+export interface ExploreRoutineWithExercises extends ExploreRoutine {
+  exercises: (ExploreRoutineExercise & { exercise: Exercise })[]
+}
+
+export interface ExploreProgramWithRoutines extends ExploreProgram {
+  routines: ExploreRoutineWithExercises[]
+  routine_count: number
 }

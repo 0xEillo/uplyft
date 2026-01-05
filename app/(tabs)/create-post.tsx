@@ -10,6 +10,7 @@ import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -22,28 +23,29 @@ import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import {
-    clearExerciseHistoryCache,
-    getLastPerformanceForExercise,
-    getSetPerformance,
-    type SetPerformance,
+  clearExerciseHistoryCache,
+  getLastPerformanceForExercise,
+  getSetPerformance,
+  type SetPerformance,
 } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
+  clearDraft as clearWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -52,20 +54,20 @@ import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Alert,
-    Animated,
-    Easing,
-    InteractionManager,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Easing,
+  InteractionManager,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -229,6 +231,9 @@ const getExerciseSuggestion = (
 export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
+  const { coachId } = useProfile()
+  const coach = getCoach(coachId)
+  const coachFirstName = coach.name.split(' ')[1] || coach.name
   const insets = useSafeAreaInsets()
   const {
     selectedRoutineId: selectedRoutineIdParam,
@@ -611,15 +616,32 @@ export default function CreatePostScreen() {
     const source = pendingRoutineSource
 
     // Clear pending state synchronously BEFORE other state updates to prevent re-triggers
-    // (structuredData/notes in deps would cause infinite loops if cleared async)
     setPendingDraftRoutineId(null)
     setPendingRoutineSource(null)
 
     setSelectedRoutine(routine)
     setIsStructuredMode(true)
-    // Only clear structuredData if this is a fresh routine start (from route, not draft)
+
+    // Transform routine exercises into structured data format
+    const transformedExercises = (routine.workout_routine_exercises || [])
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((we) => ({
+        id: we.id,
+        name: we.exercise?.name || 'Exercise',
+        sets: (we.sets || [])
+          .sort((a, b) => a.set_number - b.set_number)
+          .map((s) => ({
+            weight: '',
+            reps: '',
+            targetRepsMin: s.reps_min ?? null,
+            targetRepsMax: s.reps_max ?? null,
+            targetRestSeconds: s.rest_seconds ?? null,
+          })),
+      }))
+
+    // Only set if this is a fresh routine start (from route, not draft)
     if (source === 'route') {
-      setStructuredData([])
+      setStructuredData(transformedExercises)
     }
     setLastRoutineWorkout(null)
 
@@ -628,10 +650,12 @@ export default function CreatePostScreen() {
     }
 
     // Persist the routine selection immediately to avoid losing it on navigation
+    // Use the transformed exercises if we just set them
     void saveWorkoutDraft({
       notes,
-      title: titleRef.current,
-      structuredData,
+      title: source === 'route' ? routine.name : titleRef.current,
+      structuredData:
+        source === 'route' ? transformedExercises : structuredData,
       isStructuredMode: true,
       selectedRoutineId: routine.id,
       timerStartedAt: workoutTimerSerializableState.timerStartedAt,
@@ -640,12 +664,38 @@ export default function CreatePostScreen() {
       console.error('[Routine] Immediate persist failed:', error),
     )
 
-    // Hydrate last workout data (async, but no longer controls loop prevention)
+    // Hydrate last workout data and update structured data with history if needed
     if (user?.id) {
       database.workoutSessions
         .getLastForRoutine(user.id, routine.id)
         .then((lastWorkout) => {
           setLastRoutineWorkout(lastWorkout)
+
+          // If we just applied this from route, we should update the history in the structuredData
+          if (source === 'route' && lastWorkout) {
+            setStructuredData((current) =>
+              current.map((exercise) => {
+                const exerciseName = exercise.name
+                const lastWorkoutExercise = lastWorkout.workout_exercises?.find(
+                  (we) => we.exercise?.name === exerciseName,
+                )
+
+                return {
+                  ...exercise,
+                  sets: exercise.sets.map((set, index) => {
+                    const lastSet = lastWorkoutExercise?.sets?.find(
+                      (s) => s.set_number === index + 1,
+                    )
+                    return {
+                      ...set,
+                      lastWorkoutWeight: lastSet?.weight ? lastSet.weight.toString() : null,
+                      lastWorkoutReps: lastSet?.reps ? lastSet.reps.toString() : null,
+                    }
+                  }),
+                }
+              }),
+            )
+          }
         })
         .catch((error) => {
           console.error('[Routine] Error loading last workout:', error)
@@ -1973,9 +2023,9 @@ export default function CreatePostScreen() {
       <SlideUpView
         key={slideKey}
         style={{ flex: 1 }}
-        backgroundColor="transparent"
+        backgroundColor={colors.background}
         fade={true}
-        fadeFrom={0.5}
+        fadeFrom={0}
         duration={200}
         tension={65}
         friction={14}
@@ -2234,8 +2284,8 @@ export default function CreatePostScreen() {
         <Paywall
           visible={showPaywall}
           onClose={() => setShowPaywall(false)}
-          title="Try Pro for FREE!"
-          message="Free workout limit reached"
+          title={`Take Your Training to the Next Level!`}
+          message={`Unlock ${coachFirstName}'s full coaching suite, unlimited workouts, and advanced progress tracking.`}
         />
 
         <FinalizeWorkoutOverlay

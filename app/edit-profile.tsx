@@ -1,31 +1,31 @@
 import {
-    COMMITMENTS,
-    GENDERS,
-    GOALS,
-    TRAINING_YEARS,
+  COMMITMENTS,
+  EXPERIENCE_LEVELS,
+  GENDERS,
+  GOALS,
 } from '@/constants/options'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { Gender, Goal, TrainingYears } from '@/types/database.types'
+import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -47,9 +47,9 @@ export default function EditProfileScreen() {
   const [editedGoals, setEditedGoals] = useState<Goal[]>([])
   const [editedCommitment, setEditedCommitment] = useState<string[]>([])
   const [
-    editedTrainingYears,
-    setEditedTrainingYears,
-  ] = useState<TrainingYears | null>(null)
+    editedExperienceLevel,
+    setEditedExperienceLevel,
+  ] = useState<ExperienceLevel | null>(null)
   const [editedBio, setEditedBio] = useState('')
   const [editedProfileDescription, setEditedProfileDescription] = useState('')
 
@@ -76,7 +76,7 @@ export default function EditProfileScreen() {
       setEditedAge(profile?.age?.toString() || '')
       setEditedGoals(profile?.goals || [])
       setEditedCommitment(profile?.commitment || [])
-      setEditedTrainingYears(profile?.training_years || null)
+      setEditedExperienceLevel(profile?.experience_level || null)
       setEditedBio(profile?.bio || '')
       setEditedProfileDescription(profile?.profile_description || '')
     } catch (error) {
@@ -175,7 +175,7 @@ export default function EditProfileScreen() {
         age: editedAge ? parseInt(editedAge) : null,
         goals: editedGoals.length > 0 ? editedGoals : null,
         commitment: editedCommitment.length > 0 ? editedCommitment : null,
-        training_years: editedTrainingYears,
+        experience_level: editedExperienceLevel,
         bio: editedBio.trim() || null,
         profile_description: editedProfileDescription.trim() || null,
       })
@@ -439,24 +439,24 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Training Years Selection */}
+          {/* Experience Level Selection */}
           <View style={styles.section}>
-            <Text style={styles.label}>Years of Training</Text>
+            <Text style={styles.label}>Experience Level</Text>
             <View style={styles.goalOptions}>
-              {TRAINING_YEARS.map((item) => (
+              {EXPERIENCE_LEVELS.map((item) => (
                 <TouchableOpacity
                   key={item.value}
                   style={[
                     styles.goalOption,
-                    editedTrainingYears === item.value &&
+                    editedExperienceLevel === item.value &&
                       styles.goalOptionSelected,
                   ]}
-                  onPress={() => setEditedTrainingYears(item.value)}
+                  onPress={() => setEditedExperienceLevel(item.value)}
                 >
                   <Text
                     style={[
                       styles.goalOptionText,
-                      editedTrainingYears === item.value &&
+                      editedExperienceLevel === item.value &&
                         styles.goalOptionTextSelected,
                     ]}
                   >

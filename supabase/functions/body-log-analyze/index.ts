@@ -10,8 +10,8 @@ import OpenAI from 'https://esm.sh/openai@4.55.3'
 import { z } from 'https://esm.sh/zod@3.23.8'
 
 import {
-    buildBodyLogPrompt,
-    parseBodyLogMetrics,
+  buildBodyLogPrompt,
+  parseBodyLogMetrics,
 } from '../_shared/body-log-analysis.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
@@ -216,11 +216,11 @@ serve(async (req: Request) => {
     })
 
     const content = completion.choices[0]?.message?.content
-    console.log('[BODY_LOG] AI Response Content:', content)
+
 
     // Parse the metrics from the response
     const metrics = parseBodyLogMetrics(content)
-    console.log('[BODY_LOG] Parsed Metrics:', JSON.stringify(metrics))
+
 
     // Calculate lean mass and fat mass if possible
     const weight =
@@ -249,7 +249,7 @@ serve(async (req: Request) => {
       lean_mass_kg: leanMass,
       fat_mass_kg: fatMass,
     }
-    console.log('[BODY_LOG] Update Payload:', JSON.stringify(updatePayload))
+
 
     // Update entry metrics
     const { data: updated, error: updateError } = await supabase

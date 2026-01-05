@@ -32,7 +32,7 @@ const metricsSchema = z.object({
   analysis_summary: z
     .union([z.string().min(1).max(400).trim(), z.null()])
     .optional()
-    .transform((value) => {
+    .transform((value: string | null | undefined) => {
       if (value === undefined || value === null) return null
       return typeof value === 'string' ? value.trim() : value
     }),
@@ -120,7 +120,7 @@ export function buildBodyLogPrompt({
 
   lines.push('You are an unforgiving physique analyst. No sugarcoating.')
   lines.push(
-    'Given one body photo, output raw measurements, physique scores, and a brief justification in JSON only.',
+    'Given body photos, output raw measurements, physique scores, and a brief justification in JSON only.',
   )
 
   const contextParts: string[] = [

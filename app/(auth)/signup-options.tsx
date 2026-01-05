@@ -3,19 +3,19 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { Gender, Goal, TrainingYears } from '@/types/database.types'
+import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -26,8 +26,8 @@ type OnboardingData = {
   weight_kg: number | null
   age: number | null
   goal: Goal[]
-  commitment: string | null
-  training_years: TrainingYears | null
+  commitment: string[]
+  experience_level: ExperienceLevel | null
   bio: string | null
 }
 
@@ -71,7 +71,7 @@ export default function SignupOptionsScreen() {
             age: onboardingData.age,
             goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
             commitment: onboardingData.commitment,
-            training_years: onboardingData.training_years,
+            experience_level: onboardingData.experience_level,
             bio: onboardingData.bio,
           })
         } catch (profileError) {
@@ -132,7 +132,7 @@ export default function SignupOptionsScreen() {
             age: onboardingData.age,
             goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
             commitment: onboardingData.commitment,
-            training_years: onboardingData.training_years,
+            experience_level: onboardingData.experience_level,
             bio: onboardingData.bio,
           })
         } catch (profileError) {

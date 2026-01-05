@@ -383,6 +383,8 @@ export function WorkoutChat({
     null,
   ) // Track which exercise is being replaced
   const { coachId } = useProfile()
+  const coach = getCoach(coachId)
+  const coachFirstName = coach.name.split(' ')[1] || coach.name
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [loadedDraftContext, setLoadedDraftContext] = useState<WorkoutContext | null>(null)
@@ -1784,7 +1786,7 @@ export function WorkoutChat({
 
       // Navigate directly to the routine detail page
       router.push({
-        pathname: '/routine-detail',
+        pathname: '/routine/[routineId]',
         params: { routineId: routine.id },
       })
     } catch (error) {
@@ -2483,8 +2485,8 @@ export function WorkoutChat({
       <Paywall
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title="Try Pro for FREE!"
-        message="AI chat is a Pro feature"
+        title={`Unlock coaching with ${coachFirstName} for FREE!`}
+        message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
       />
     </KeyboardAvoidingView>
   )

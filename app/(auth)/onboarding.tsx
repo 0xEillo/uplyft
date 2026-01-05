@@ -1,25 +1,34 @@
 import { AnimatedInput } from '@/components/animated-input'
+import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   COMMITMENTS,
+  EXPERIENCE_LEVELS,
   GENDERS,
   GOALS,
-  TRAINING_YEARS
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { BodyPartSlug } from '@/lib/body-mapping'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
-import { Gender, Goal, TrainingYears } from '@/types/database.types'
+import { markUserAsRated, requestReview } from '@/lib/rating'
+import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { Picker } from '@react-native-picker/picker'
+import { Asset } from 'expo-asset'
 import * as Haptics from 'expo-haptics'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
   Animated,
+  Dimensions,
+  Easing,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -27,7 +36,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Body from 'react-native-body-highlighter'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 type OnboardingData = {
   name: string
@@ -41,42 +53,1213 @@ type OnboardingData = {
   birth_year: string
   goal: Goal[]
   commitment: string[]
-  training_years: TrainingYears | null
+  experience_level: ExperienceLevel | null
   bio: string
   coach: string
 }
 
 // Map step numbers to their human-readable names
 const STEP_NAMES: { [key: number]: string } = {
-  2: 'coach_selection',
-  3: 'goals_selection',
-  4: 'name_entry',
-  5: 'gender_selection',
-  6: 'commitment_level',
-  7: 'experience_level',
-  8: 'training_bio',
+  1: 'coach_selection',
+  2: 'coach_greeting',
+  3: 'name_entry',
+  4: 'chat_feature_intro',
+  5: 'goals_selection',
+  6: 'gender_selection',
+  7: 'commitment_level',
+  8: 'experience_level',
+  9: 'tailored_preview',
+  10: 'stats_entry',
+  11: 'target_weight',
+  12: 'body_scan_feature',
+  13: 'focus_areas',
+  14: 'processing',
+  15: 'plan_ready',
+  16: 'commitment_pledge',
+}
+
+const FadeInWords = ({
+  text,
+  style,
+  delay = 500,
+}: {
+  text: string
+  style: any
+  delay?: number
+}) => {
+  const words = text.split(' ')
+  const anims = useRef(words.map(() => new Animated.Value(0))).current
+
+  useEffect(() => {
+    // Add initial delay before starting the animation
+    const timeout = setTimeout(() => {
+      Animated.stagger(
+        180,
+        anims.map((anim) =>
+          Animated.spring(anim, {
+            toValue: 1,
+            friction: 10,
+            tension: 30,
+            useNativeDriver: true,
+          }),
+        ),
+      ).start()
+    }, delay)
+
+    return () => clearTimeout(timeout)
+  }, [])
+
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      {words.map((word, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            opacity: anims[i],
+            transform: [
+              {
+                translateY: anims[i].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [10, 0],
+                }),
+              },
+            ],
+            marginRight: 8,
+            marginBottom: 4,
+          }}
+        >
+          <Text style={style}>{word}</Text>
+        </Animated.View>
+      ))}
+    </View>
+  )
+}
+
+// Animated Chat Mockup Component
+const AnimatedChatMockup = ({
+  colors,
+  coach,
+  userName,
+}: {
+  colors: ReturnType<typeof useThemedColors>
+  coach: typeof COACH_OPTIONS[0]
+  userName: string
+}) => {
+  // Get the coach's first name for personalized messages
+  const coachFirstName = coach?.name.split(' ').pop() || 'Coach'
+  const name = userName?.trim() || 'there'
+
+  // Chat messages with personalized coach name and more natural conversation
+  const chatMessages = [
+    {
+      role: 'coach',
+      content: `Hey ${name}! Great session yesterday. How are the muscles feeling? Ready for more? 🔥`,
+    },
+    { role: 'user', content: 'Feeling good coach! Ready to crush it today.' },
+    {
+      role: 'coach',
+      content: `That's what I like to hear. Today we're hitting Upper Body. I've tweaked your Bench Press targets based on that last PR! 😉`,
+    },
+    {
+      role: 'user',
+      content: "Sweet, I've been wanting to push it. Let's see it!",
+    },
+    {
+      role: 'coach',
+      content:
+        "Here's the plan. We're going for 3 sets of 8. Let's get that pump! 🚀",
+    },
+  ]
+
+  const [visibleMessages, setVisibleMessages] = useState<number[]>([])
+  const messageAnims = useRef(
+    Array(5)
+      .fill(0)
+      .map(() => new Animated.Value(0)),
+  ).current
+  const scaleAnims = useRef(
+    Array(5)
+      .fill(0)
+      .map(() => new Animated.Value(0.8)),
+  ).current
+
+  useEffect(() => {
+    // Animate messages appearing one by one
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+
+    chatMessages.forEach((_, index) => {
+      const timeout = setTimeout(() => {
+        setVisibleMessages((prev) => [...prev, index])
+
+        // Animate the message appearing with spring
+        Animated.parallel([
+          Animated.spring(messageAnims[index], {
+            toValue: 1,
+            damping: 12,
+            stiffness: 100,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnims[index], {
+            toValue: 1,
+            damping: 15,
+            stiffness: 120,
+            useNativeDriver: true,
+          }),
+        ]).start()
+      }, 400 + index * 600) // Stagger messages with 0.6s delay
+
+      timeouts.push(timeout)
+    })
+
+    return () => timeouts.forEach((t) => clearTimeout(t))
+  }, [])
+
+  return (
+    <View style={chatMockupStyles.container}>
+      {/* Phone Frame */}
+      <View style={[chatMockupStyles.phoneFrame, { borderColor: '#1A1A1A' }]}>
+        {/* Status Bar */}
+        <View style={chatMockupStyles.statusBar}>
+          <Text style={[chatMockupStyles.statusTime, { color: colors.text }]}>
+            9:41
+          </Text>
+          <View style={chatMockupStyles.dynamicIsland} />
+          <View style={chatMockupStyles.statusIcons}>
+            <Ionicons name="cellular" size={14} color={colors.text} />
+            <Ionicons name="wifi" size={14} color={colors.text} />
+            <Ionicons name="battery-full" size={14} color={colors.text} />
+          </View>
+        </View>
+
+        {/* Chat Header */}
+        <View
+          style={[
+            chatMockupStyles.chatHeader,
+            { borderBottomColor: colors.border },
+          ]}
+        >
+          <Image
+            source={coach?.image}
+            style={chatMockupStyles.coachAvatarImage}
+          />
+          <Text style={[chatMockupStyles.chatTitle, { color: colors.text }]}>
+            {coachFirstName}
+          </Text>
+        </View>
+
+        {/* Messages Container */}
+        <ScrollView
+          style={[
+            chatMockupStyles.messagesContainer,
+            { backgroundColor: colors.background },
+          ]}
+          contentContainerStyle={chatMockupStyles.messagesContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {chatMessages.map((message, index) => {
+            const isCoach = message.role === 'coach'
+            const isVisible = visibleMessages.includes(index)
+
+            if (!isVisible) return null
+
+            return (
+              <Animated.View
+                key={index}
+                style={[
+                  chatMockupStyles.messageRow,
+                  !isCoach && chatMockupStyles.userMessageRow,
+                  {
+                    opacity: messageAnims[index],
+                    transform: [
+                      { scale: scaleAnims[index] },
+                      {
+                        translateY: messageAnims[index].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                {isCoach && (
+                  <Image
+                    source={coach?.image}
+                    style={chatMockupStyles.messageAvatarImage}
+                  />
+                )}
+                <View
+                  style={[
+                    chatMockupStyles.messageBubble,
+                    isCoach
+                      ? [
+                          chatMockupStyles.coachBubble,
+                          { backgroundColor: colors.backgroundWhite },
+                        ]
+                      : [
+                          chatMockupStyles.userBubble,
+                          { backgroundColor: colors.primary },
+                        ],
+                  ]}
+                >
+                  <Text
+                    style={[
+                      chatMockupStyles.messageText,
+                      { color: isCoach ? colors.text : '#fff' },
+                    ]}
+                  >
+                    {message.content}
+                  </Text>
+                </View>
+              </Animated.View>
+            )
+          })}
+        </ScrollView>
+
+        {/* Input Bar */}
+        <View
+          style={[
+            chatMockupStyles.inputBar,
+            {
+              backgroundColor: colors.background,
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
+          <View
+            style={[
+              chatMockupStyles.inputField,
+              {
+                backgroundColor: colors.backgroundWhite,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                chatMockupStyles.inputPlaceholder,
+                { color: colors.textSecondary },
+              ]}
+            >
+              Message...
+            </Text>
+          </View>
+          <View
+            style={[
+              chatMockupStyles.sendButton,
+              { backgroundColor: colors.primary },
+            ]}
+          >
+            <Ionicons name="send" size={12} color="#fff" />
+          </View>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+// Styles for the chat mockup
+const chatMockupStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  phoneFrame: {
+    width: SCREEN_WIDTH * 0.72,
+    height: SCREEN_WIDTH * 1.45,
+    borderRadius: 40,
+    borderWidth: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  statusBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  statusTime: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dynamicIsland: {
+    width: 80,
+    height: 24,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+  },
+  statusIcons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    gap: 8,
+  },
+  coachAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  messagesContainer: {
+    flex: 1,
+  },
+  messagesContent: {
+    padding: 10,
+    gap: 8,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  userMessageRow: {
+    justifyContent: 'flex-end',
+  },
+  messageAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messageBubble: {
+    maxWidth: '78%',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  coachBubble: {
+    borderBottomLeftRadius: 4,
+  },
+  userBubble: {
+    borderBottomRightRadius: 4,
+  },
+  messageText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+    borderTopWidth: 0.5,
+  },
+  inputField: {
+    flex: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 0.5,
+  },
+  inputPlaceholder: {
+    fontSize: 11,
+  },
+  sendButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coachAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  messageAvatarImage: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+})
+
+const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
+  const [progress1, setProgress1] = useState(0)
+  const [progress2, setProgress2] = useState(0)
+  const [progress3, setProgress3] = useState(0)
+  const [testimonialIndex, setTestimonialIndex] = useState(0)
+
+  const testimonials = [
+    {
+      id: 1,
+      name: 'Mike T.',
+      time: '6 months training with Rep AI',
+      text:
+        "I've seen more progress in the last 6 months with Rep AI than I did in the previous 2 years on my own. The tailored workouts are exactly what I needed.",
+      rating: 5,
+      avatar: 'https://i.pravatar.cc/150?u=miket',
+    },
+  ]
+
+  useEffect(() => {
+    const t1 = setInterval(() => {
+      setProgress1((prev) => {
+        if (prev >= 100) {
+          clearInterval(t1)
+          return 100
+        }
+        return prev + 2
+      })
+    }, 30)
+
+    const t2 = setInterval(() => {
+      if (progress1 > 30) {
+        setProgress2((prev) => {
+          if (prev >= 100) {
+            clearInterval(t2)
+            return 100
+          }
+          return prev + 1.5
+        })
+      }
+    }, 40)
+
+    const t3 = setInterval(() => {
+      if (progress2 > 30) {
+        setProgress3((prev) => {
+          if (prev >= 100) {
+            clearInterval(t3)
+            return 100
+          }
+          return prev + 1
+        })
+      }
+    }, 50)
+
+    const tTestimonial = setInterval(() => {
+      setTestimonialIndex((prev) => (prev + 1) % testimonials.length)
+    }, 4000)
+
+    return () => {
+      clearInterval(t1)
+      clearInterval(t2)
+      clearInterval(t3)
+      clearInterval(tTestimonial)
+    }
+  }, [progress1, progress2])
+
+  useEffect(() => {
+    if (progress3 >= 100) {
+      setTimeout(() => setStep(15), 800)
+    }
+  }, [progress3])
+
+  const mainGoalLabel =
+    GOALS.find((g) => g.value === data.goal[0])?.label || 'Fitness'
+  const coloredGoal = mainGoalLabel.toUpperCase()
+
+  return (
+    <View style={styles.stepContainer}>
+      <View style={styles.processingHeader}>
+        <Text style={styles.processingTitle}>
+          Tweaking Your{' '}
+          <Text
+            style={{
+              color: '#A855F7',
+              fontFamily: 'System',
+              fontStyle: 'italic',
+              fontWeight: '900',
+            }}
+          >
+            {coloredGoal}
+          </Text>{' '}
+          Plan
+        </Text>
+      </View>
+
+      <View style={styles.progressSection}>
+        <View style={styles.progressItem}>
+          <View style={styles.progressLabelRow}>
+            <Text style={styles.progressLabel}>Your Body...</Text>
+            <Text style={styles.progressPercent}>{Math.round(progress1)}%</Text>
+          </View>
+          <View style={styles.progressBarBg}>
+            <Animated.View
+              style={[styles.progressBarFill, { width: `${progress1}%` }]}
+            />
+          </View>
+        </View>
+
+        <View style={styles.progressItem}>
+          <View style={styles.progressLabelRow}>
+            <Text style={styles.progressLabel}>Your Activity Level...</Text>
+            <Text style={styles.progressPercent}>{Math.round(progress2)}%</Text>
+          </View>
+          <View style={styles.progressBarBg}>
+            <Animated.View
+              style={[styles.progressBarFill, { width: `${progress2}%` }]}
+            />
+          </View>
+        </View>
+
+        <View style={styles.progressItem}>
+          <View style={styles.progressLabelRow}>
+            <Text style={styles.progressLabel}>
+              Your Workout Preferences...
+            </Text>
+            <Text style={styles.progressPercent}>{Math.round(progress3)}%</Text>
+          </View>
+          <View style={styles.progressBarBg}>
+            <Animated.View
+              style={[styles.progressBarFill, { width: `${progress3}%` }]}
+            />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.socialProofSection}>
+        <View style={styles.appStoreBadge}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name="leaf" size={24} color="#000" />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.ratingValue}>5.0 on App Store</Text>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Ionicons key={s} name="star" size={12} color="#F59E0B" />
+                ))}
+              </View>
+            </View>
+            <Ionicons
+              name="leaf"
+              size={24}
+              color="#000"
+              style={{ transform: [{ scaleX: -1 }] }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.testimonialCard}>
+          <View style={styles.testimonialHeader}>
+            <Image
+              source={{ uri: testimonials[testimonialIndex].avatar }}
+              style={styles.testimonialAvatar}
+            />
+            <View>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <Text style={styles.testimonialName}>
+                  {testimonials[testimonialIndex].name}
+                </Text>
+                <Ionicons name="logo-facebook" size={14} color="#1877F2" />
+              </View>
+              <Text style={styles.testimonialTime}>
+                {testimonials[testimonialIndex].time}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.testimonialText}>
+            {testimonials[testimonialIndex].text}
+          </Text>
+          <Text style={styles.testimonialSource}>
+            — Facebook Community Group
+          </Text>
+        </View>
+
+        <View style={styles.testimonialDots}>
+          {testimonials.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.testimonialDot,
+                i === testimonialIndex && styles.testimonialDotActive,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  )
+}
+
+const CommitmentStepContent = ({
+  data,
+  setStep,
+  onNext,
+  colors,
+  styles,
+}: any) => {
+  const [holding, setHolding] = useState(false)
+  const [isCommitted, setIsCommitted] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const progress = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(1)).current
+  const waveAnim = useRef(new Animated.Value(0)).current
+
+  const coach =
+    COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
+  const coachFirstName = coach.name.split(' ')[0]
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(waveAnim, {
+        toValue: 1,
+        duration: 3000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ).start()
+  }, [])
+
+  useEffect(() => {
+    if (isCommitted) {
+      const timer = setTimeout(() => setShowSuccess(true), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [isCommitted])
+
+  const handlePressIn = () => {
+    if (isCommitted) return
+    setHolding(true)
+
+    // Scale down button slightly
+    Animated.spring(scaleAnim, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start()
+
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 3000,
+      easing: Easing.inOut(Easing.ease), // Smoother rise
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        setIsCommitted(true)
+        setHolding(false)
+      }
+    })
+  }
+
+  const handlePressOut = () => {
+    if (isCommitted) return
+    setHolding(false)
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start()
+
+    if (!isCommitted) {
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start()
+    }
+  }
+
+  // Text Logic
+  const coachText = isCommitted
+    ? "That's how you take charge of your fitness! 💪"
+    : "Let's gain muscles, for good! 💪"
+
+  const screenHeight = Dimensions.get('window').height
+  const riseTransY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [screenHeight, -100],
+  })
+
+  // Calculate the counter-movement for the text so it appears fixed on screen
+  // while the masking container moves up.
+  const textTranslateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-screenHeight, 100], // Exact opposite of riseTransY
+  })
+
+  // Styles to break out of parent padding
+  const breakoutStyle = {
+    marginHorizontal: -24,
+    marginTop: -20,
+    marginBottom: -60, // Slightly more than the 40px default padding to ensure coverage
+    flex: 1,
+  }
+
+  const spin = waveAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  })
+
+  return (
+    <View style={[styles.stepContainer, breakoutStyle]}>
+      {/* Rising Water Animation Layer */}
+      <View
+        style={[StyleSheet.absoluteFill, { zIndex: 10, elevation: 10 }]}
+        pointerEvents="none"
+      >
+        {/* 1. Water Backdrop (Orange with Waves) */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [{ translateY: riseTransY }],
+              backgroundColor: 'transparent', // Container is transparent
+            },
+          ]}
+        >
+          {/* The Water Body */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: screenHeight * 2, // plenty of height
+              backgroundColor: '#F97316',
+            }}
+          />
+
+          {/* Rotating Waves sitting on TOP of the orange block */}
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: -300,
+              left: '-50%',
+              width: 1000,
+              height: 1000,
+              backgroundColor: '#F97316', // Same as body
+              borderRadius: 420,
+              transform: [{ rotate: spin }],
+            }}
+          />
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: -320,
+              right: '-40%',
+              width: 900,
+              height: 900,
+              backgroundColor: '#F97316',
+              borderRadius: 400, // slightly different for chaos
+              transform: [{ rotate: spin }],
+            }}
+          />
+        </Animated.View>
+
+        {/* 2. Text Content Mask (The emerging white text) */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [{ translateY: riseTransY }],
+              zIndex: 20,
+              overflow: 'hidden', // This doesn't strictly mask like MaskedView in RN Web/simple views but works for reveal if we replicate content
+              // However, for this visual effect, we just need the text to "appear" as water passes
+              // A simple way is to just have the text INSIDE the rising view fixed to screen coordinates
+            },
+          ]}
+        >
+          <Animated.View
+            style={{
+              height: screenHeight,
+              width: '100%',
+              position: 'absolute',
+              // We need to counteract the translation to keep text fixed on screen
+              transform: [{ translateY: textTranslateY }],
+              alignItems: 'center',
+              justifyContent: 'center',
+              top: 0,
+            }}
+          >
+            {/* 
+                     We use a simple View here since the transform is applied to the parent 
+                     Absolute container above. 
+                 */}
+            <View
+              style={{
+                width: '100%',
+                height: screenHeight,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <View style={{ alignItems: 'center' }}>
+                <Text
+                  style={{
+                    color: 'white',
+                    fontSize: 24,
+                    fontWeight: '800',
+                    marginBottom: 16,
+                  }}
+                >
+                  {isCommitted ? 'You are committed!' : 'Keep holding!'}
+                </Text>
+                <Text style={{ color: 'white', fontSize: 16, opacity: 0.9 }}>
+                  {isCommitted
+                    ? "Let's start your journey."
+                    : 'Commitment takes discipline.'}
+                </Text>
+
+                <Animated.View
+                  style={{
+                    marginTop: 60,
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    borderWidth: 4,
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    transform: [{ scale: scaleAnim }],
+                  }}
+                >
+                  <Ionicons
+                    name={isCommitted ? 'checkmark' : 'flash'}
+                    size={32}
+                    color="white"
+                  />
+                </Animated.View>
+              </View>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </View>
+
+      {/* Main Content Area */}
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: 24,
+          paddingTop: 20,
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={{ width: '100%' }}>
+          {/* Coach Message */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              gap: 12,
+              marginTop: 10,
+              opacity: holding ? 0 : 1,
+            }}
+          >
+            <Image
+              source={coach.image}
+              style={{ width: 48, height: 48, borderRadius: 24 }}
+            />
+            <View>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: colors.textSecondary,
+                  marginBottom: 4,
+                }}
+              >
+                Coach {coachFirstName}
+              </Text>
+              <View
+                style={{
+                  backgroundColor: colors.backgroundWhite,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderRadius: 20,
+                  borderBottomLeftRadius: 4,
+                  maxWidth: 260,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 16, lineHeight: 22, color: colors.text }}
+                >
+                  {coachText}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Simple Clean Pledge Text */}
+          {!isCommitted && !holding && (
+            <View style={{ marginTop: 40, paddingHorizontal: 4 }}>
+              <Text style={styles.stepTitle}>I, {data.name || 'User'},</Text>
+              <Text
+                style={{
+                  fontSize: 20,
+                  lineHeight: 32,
+                  color: colors.textSecondary,
+                  fontWeight: '500',
+                  marginTop: 8,
+                }}
+              >
+                commit to pushing my limits, fueling my body, and showing up
+                with discipline. This is about progress, not perfection.
+              </Text>
+            </View>
+          )}
+
+          {/* Committed Badge */}
+          {isCommitted && (
+            <Animated.View style={{ marginTop: 40, alignSelf: 'flex-start' }}>
+              <View
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  borderRadius: 100,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  shadowColor: colors.primary,
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 4 },
+                }}
+              >
+                <Text
+                  style={{ color: 'white', fontSize: 16, fontWeight: '700' }}
+                >
+                  Committed
+                </Text>
+                <Text style={{ fontSize: 16 }}>🤝</Text>
+              </View>
+            </Animated.View>
+          )}
+        </View>
+
+        {/* Bottom Interactive Area */}
+        <View
+          style={{
+            width: '100%',
+            alignItems: 'center',
+            paddingBottom: 40,
+            minHeight: 180, // Reserve space
+            justifyContent: 'flex-end',
+            zIndex: 50, // Higher than water (which is 10/20)
+            elevation: 50,
+          }}
+        >
+          {!isCommitted && !holding && (
+            <>
+              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                <TouchableOpacity
+                  activeOpacity={1}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderRadius: 45,
+                    backgroundColor: '#F97316',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    shadowColor: '#F97316',
+                    shadowOpacity: 0.4,
+                    shadowRadius: 16,
+                    shadowOffset: { width: 0, height: 8 },
+                    elevation: 8,
+                    marginBottom: 20,
+                    borderWidth: 4,
+                    borderColor: '#fff', // White border to separate from water if needed/at start
+                  }}
+                >
+                  <Ionicons name="flash" size={36} color="white" />
+                </TouchableOpacity>
+              </Animated.View>
+              <Animated.Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: '600',
+                  color: progress.interpolate({
+                    inputRange: [0, 0.15],
+                    outputRange: [colors.textSecondary, '#ffffff'],
+                  }),
+                }}
+              >
+                Tap and hold to commit
+              </Animated.Text>
+            </>
+          )}
+
+          {isCommitted && showSuccess && (
+            <HapticButton
+              style={{
+                backgroundColor: 'white',
+                paddingVertical: 18,
+                paddingHorizontal: 32,
+                borderRadius: 32,
+                width: '100%',
+                alignItems: 'center',
+                shadowColor: 'black',
+                shadowOpacity: 0.1,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 4 },
+              }}
+              onPress={onNext}
+            >
+              <Text
+                style={{ color: '#F97316', fontSize: 18, fontWeight: '700' }}
+              >
+                Continue
+              </Text>
+            </HapticButton>
+          )}
+        </View>
+      </View>
+    </View>
+  )
+}
+
+const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
+  const mainGoal =
+    GOALS.find((g) => g.value === data.goal[0])?.label || 'Gain Muscle'
+
+  // Calculate age
+  let displayAge = '35'
+  if (data.birth_year) {
+    displayAge = (
+      new Date().getFullYear() - parseInt(data.birth_year)
+    ).toString()
+  }
+
+  // Trigger App Store review prompt when user sees their plan
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        await requestReview()
+        await markUserAsRated()
+      } catch (error) {
+        console.error('Error requesting review:', error)
+      }
+    }, 1500) // Wait 1.5 seconds for the user to see their plan first
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  const stats = [
+    { label: 'Goal', value: mainGoal },
+    { label: 'Age', value: displayAge },
+    {
+      label: 'Gender',
+      value: data.gender
+        ? data.gender.charAt(0).toUpperCase() + data.gender.slice(1)
+        : 'Male',
+    },
+    {
+      label: 'Fitness Level',
+      value: data.experience_level
+        ? data.experience_level.charAt(0).toUpperCase() +
+          data.experience_level.slice(1)
+        : 'Beginner',
+    },
+    { label: 'Weight', value: `${data.weight_kg} ${weightUnit}` },
+    { label: 'Optimal Intensity', value: 'Moderate' },
+  ]
+
+  const planImage =
+    data.gender === 'female'
+      ? require('@/assets/images/female_plan_preview.png')
+      : require('@/assets/images/male_plan_preview.png')
+
+  return (
+    <View style={styles.stepContainer}>
+      <View style={styles.planReadyHeader}>
+        <Text style={styles.planReadyTitle}>
+          {data.name || 'Oli'}, your plan{'\n'}is ready!
+        </Text>
+      </View>
+
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryCardTitle}>It's all about you</Text>
+        <View style={styles.summaryGrid}>
+          {stats.map((stat, i) => (
+            <View key={i} style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>{stat.label}</Text>
+              <Text style={styles.summaryValue}>{stat.value}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.customCraftedSection}>
+        <Text style={styles.customCraftedTitle}>Custom-Crafted</Text>
+
+        <View style={styles.planPreviewCard}>
+          <Image source={planImage} style={styles.planPreviewImage} />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.95)']}
+            style={styles.planPreviewGradient}
+          >
+            <View style={styles.planPreviewContent}>
+              <Text style={styles.planPreviewName}>{mainGoal}</Text>
+              <Text style={styles.planPreviewDesc}>
+                Achieve an aesthetic physique with a focus on strength and
+                hypertrophy.
+              </Text>
+
+              <View style={styles.planPreviewStats}>
+                <View style={styles.planStatItem}>
+                  <Ionicons name="bar-chart" size={18} color="#fff" />
+                  <Text style={styles.planStatValue}>Advanced</Text>
+                  <Text style={styles.planStatLabel}>Level</Text>
+                </View>
+                <View style={styles.planStatDivider} />
+                <View style={styles.planStatItem}>
+                  <Ionicons name="barbell" size={18} color="#fff" />
+                  <Text style={styles.planStatValue}>Gym</Text>
+                  <Text style={styles.planStatLabel}>Location</Text>
+                </View>
+                <View style={styles.planStatDivider} />
+                <View style={styles.planStatItem}>
+                  <Ionicons name="time-outline" size={18} color="#fff" />
+                  <Text style={styles.planStatValue}>60 min</Text>
+                  <Text style={styles.planStatLabel}>Duration</Text>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+    </View>
+  )
 }
 
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(2)
+  const [step, setStep] = useState(1)
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [targetWeight, setTargetWeight] = useState<number>(75)
+  const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
   const [data, setData] = useState<OnboardingData>({
     name: '',
     gender: null,
     height_cm: '170',
     height_feet: '5',
-    height_inches: '8',
-    weight_kg: '70',
+    height_inches: '7',
+    weight_kg: '75',
     birth_day: '1',
     birth_month: '1',
-    birth_year: '2000',
+    birth_year: '2001', // Average age 25 (Current year 2026)
     goal: [],
     commitment: [],
-    training_years: null,
+    experience_level: null,
     bio: '',
     coach: DEFAULT_COACH_ID,
   })
   const colors = useThemedColors()
-  const { weightUnit, convertInputToKg } = useWeightUnits()
+  const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
   const { trackEvent } = useAnalytics()
   const styles = createStyles(colors, weightUnit)
 
@@ -87,8 +1270,19 @@ export default function OnboardingScreen() {
 
   // Progress dot animations
   const progressDotAnims = useRef(
-    Array.from({ length: 7 }, () => new Animated.Value(1)),
+    Array.from({ length: 13 }, () => new Animated.Value(1)),
   ).current
+
+  // Preload coach images on mount
+  useEffect(() => {
+    const preloadImages = async () => {
+      const imageAssets = COACH_OPTIONS.map((coach) =>
+        Asset.fromModule(coach.image).downloadAsync(),
+      )
+      await Promise.all(imageAssets)
+    }
+    preloadImages()
+  }, [])
 
   // Animate step transitions
   useEffect(() => {
@@ -107,29 +1301,33 @@ export default function OnboardingScreen() {
         slideAnim.setValue(30)
 
         Animated.parallel([
-          Animated.timing(fadeAnim, {
+          Animated.spring(fadeAnim, {
             toValue: 1,
-            duration: 400,
+            damping: 20,
+            stiffness: 90,
+            mass: 1,
             useNativeDriver: true,
           }),
-          Animated.timing(slideAnim, {
+          Animated.spring(slideAnim, {
             toValue: 0,
-            duration: 400,
+            damping: 20,
+            stiffness: 90,
+            mass: 1,
             useNativeDriver: true,
           }),
         ]).start()
       }
 
       // Animate progress dot
-      if (step >= 2 && step <= 8) {
+      if (step >= 1 && step <= 13) {
         Animated.sequence([
-          Animated.spring(progressDotAnims[step - 2], {
+          Animated.spring(progressDotAnims[step - 1], {
             toValue: 1.3,
             useNativeDriver: true,
             tension: 200,
             friction: 10,
           }),
-          Animated.spring(progressDotAnims[step - 2], {
+          Animated.spring(progressDotAnims[step - 1], {
             toValue: 1,
             useNativeDriver: true,
             tension: 200,
@@ -164,7 +1362,12 @@ export default function OnboardingScreen() {
       step_name: STEP_NAMES[step],
     })
 
-    if (step < 8) {
+    // Initialize target weight when entering step 11
+    if (step === 10 && data.weight_kg) {
+      setTargetWeight(parseFloat(data.weight_kg))
+    }
+
+    if (step < 16) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -217,7 +1420,7 @@ export default function OnboardingScreen() {
             age: age,
             goal: data.goal,
             commitment: data.commitment,
-            training_years: data.training_years,
+            experience_level: data.experience_level,
             bio: data.bio.trim() || null,
             coach: data.coach,
           }),
@@ -232,7 +1435,7 @@ export default function OnboardingScreen() {
         height: heightCm,
         weight: weightKg,
         commitment: data.commitment,
-        training_years: data.training_years,
+        experience_level: data.experience_level,
         bio: data.bio,
         coach: data.coach,
       })
@@ -243,7 +1446,7 @@ export default function OnboardingScreen() {
     // Strong haptic for back navigation
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
-    if (step > 2) {
+    if (step > 1) {
       setStep(step - 1)
     } else {
       router.back()
@@ -251,27 +1454,44 @@ export default function OnboardingScreen() {
   }
 
   const hasAutoSwipe = () => {
-    // Steps 5 (gender) and 7 (experience) auto-swipe when an option is selected
-    // Step 6 (commitment) is now multi-select, so it requires manual "Next"
-    return step === 5 || step === 7
+    // Steps 6 (gender) and 8 (experience) auto-swipe when an option is selected
+    // Step 7 (commitment) is now multi-select, so it requires manual "Next"
+    // Step 16 (commitment pledge) has its own custom footer/interaction
+    return step === 6 || step === 8 || step === 16
   }
 
   const canProceed = () => {
     switch (step) {
-      case 2:
+      case 1:
         return true // Coach selection
+      case 2:
+        return true // Greeting
       case 3:
-        return data.goal.length > 0
-      case 4:
         return data.name.trim() !== ''
+      case 4:
+        return true // Chat feature intro
       case 5:
-        return data.gender !== null
+        return data.goal.length > 0
       case 6:
-        return data.commitment.length > 0
+        return data.gender !== null
       case 7:
-        return data.training_years !== null
+        return data.commitment.length > 0
       case 8:
-        return true // Optional step
+        return data.experience_level !== null
+      case 9:
+        return true // Tailored preview step
+      case 10:
+        return true // Stats entry step - defaults are fine
+      case 11:
+        return true // Target weight is just UI
+      case 12:
+        return true // Body scan feature intro
+      case 13:
+        return true // Focus areas (optional)
+      case 14:
+        return false // Step 14 is processing, no next button
+      case 15:
+        return true // Step 15 has "Get Started"
       default:
         return false
     }
@@ -279,11 +1499,11 @@ export default function OnboardingScreen() {
 
   const renderStep = () => {
     switch (step) {
-      case 2:
+      case 1:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Choose your Coach</Text>
+              <Text style={styles.stepTitle}>Pick your personal trainer</Text>
             </View>
 
             <View style={styles.stepContent}>
@@ -332,7 +1552,89 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
+      case 2:
+        // Greeting Step
+        const activeCoachGreeting = COACH_OPTIONS.find(
+          (c) => c.id === data.coach,
+        )
+        const coachGreetingName =
+          activeCoachGreeting?.name.split(' ')[1] ||
+          activeCoachGreeting?.name ||
+          'Coach'
+
+        return (
+          <View style={styles.stepContainer}>
+            <View
+              style={[
+                styles.stepContent,
+                { justifyContent: 'center', paddingBottom: 60 },
+              ]}
+            >
+              <View style={styles.greetingAvatarContainer}>
+                <Image
+                  source={activeCoachGreeting?.image}
+                  style={styles.greetingAvatar}
+                  resizeMode="cover"
+                />
+                <View style={styles.greetingBadge}>
+                  <Ionicons name="chatbubble-ellipses" size={14} color="#FFF" />
+                </View>
+              </View>
+              <FadeInWords
+                text={`Hi there! I'm ${coachGreetingName}, your new AI Coach.`}
+                style={styles.greetingText}
+              />
+
+              {/* Second coach message - delayed */}
+            </View>
+          </View>
+        )
       case 3:
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>What should I call you?</Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              <AnimatedInput
+                style={styles.nameInput}
+                placeholder="Enter your name"
+                placeholderTextColor={colors.textSecondary}
+                value={data.name}
+                onChangeText={(text) => setData({ ...data, name: text })}
+                autoFocus
+                maxLength={50}
+                returnKeyType="done"
+                onSubmitEditing={handleNext}
+              />
+            </View>
+          </View>
+        )
+      case 4:
+        // Chat Feature Intro Step
+        // Get the selected coach for the animated mockup
+        const selectedCoachForMockup =
+          COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
+
+        return (
+          <View style={styles.chatIntroContainer}>
+            <View style={styles.chatIntroHeader}>
+              <Text style={styles.chatIntroTitle}>
+                {data.name ? `${data.name}, I'll` : "I'll"} be on hand 24/7 to
+                motivate you and give you tips.
+              </Text>
+            </View>
+
+            {/* Animated Chat Mockup */}
+            <AnimatedChatMockup
+              colors={colors}
+              coach={selectedCoachForMockup}
+              userName={data.name}
+            />
+          </View>
+        )
+      case 5:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -397,29 +1699,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 4:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>What&rsquo;s your name?</Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              <AnimatedInput
-                style={styles.nameInput}
-                placeholder="Enter your name"
-                placeholderTextColor={colors.textSecondary}
-                value={data.name}
-                onChangeText={(text) => setData({ ...data, name: text })}
-                autoFocus
-                maxLength={50}
-                returnKeyType="done"
-                onSubmitEditing={handleNext}
-              />
-            </View>
-          </View>
-        )
-      case 5:
+      case 6:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -436,8 +1716,21 @@ export default function OnboardingScreen() {
                       data.gender === gender.value && styles.cardSelected,
                     ]}
                     onPress={() => {
-                      setData({ ...data, gender: gender.value })
-                      setTimeout(() => setStep(step + 1), 300)
+                      // Set reasonable defaults based on gender to reduce scrolling
+                      // Average male: 5'10" (178 cm), 180 lbs (82 kg)
+                      // Average female: 5'4" (163 cm), 145 lbs (66 kg)
+                      const isMale = gender.value === 'male'
+                      const weightKg = isMale ? 82 : 66
+                      const weightLb = isMale ? 180 : 145
+                      setData({
+                        ...data,
+                        gender: gender.value,
+                        height_cm: isMale ? '178' : '163',
+                        height_feet: isMale ? '5' : '5',
+                        height_inches: isMale ? '10' : '4',
+                        weight_kg: weightUnit === 'kg' ? weightKg.toString() : weightLb.toString(),
+                      })
+                      setTimeout(() => setStep(step + 1), 600)
                     }}
                     hapticStyle="light"
                   >
@@ -461,12 +1754,12 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 6:
+      case 7:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>
-                Which days do you want to exercise?
+                How often do you want to exercise?
               </Text>
             </View>
 
@@ -522,27 +1815,25 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 7:
+      case 8:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>
-                How long have you been training?
-              </Text>
+              <Text style={styles.stepTitle}>What level are you?</Text>
             </View>
 
             <View style={styles.stepContent}>
               <View style={styles.optionsContainer}>
-                {TRAINING_YEARS.map((item) => (
+                {EXPERIENCE_LEVELS.map((item) => (
                   <HapticButton
                     key={item.value}
                     style={[
                       styles.card,
-                      data.training_years === item.value && styles.cardSelected,
+                      data.experience_level === item.value && styles.cardSelected,
                     ]}
                     onPress={() => {
-                      setData({ ...data, training_years: item.value })
-                      setTimeout(() => setStep(step + 1), 300)
+                      setData({ ...data, experience_level: item.value })
+                      setTimeout(() => setStep(step + 1), 600)
                     }}
                     hapticStyle="light"
                   >
@@ -551,11 +1842,11 @@ export default function OnboardingScreen() {
                       <View
                         style={[
                           styles.radioButton,
-                          data.training_years === item.value &&
+                          data.experience_level === item.value &&
                             styles.radioButtonSelected,
                         ]}
                       >
-                        {data.training_years === item.value && (
+                        {data.experience_level === item.value && (
                           <View style={styles.radioButtonInner} />
                         )}
                       </View>
@@ -566,70 +1857,898 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 8:
-        // Get the selected coach's first name for personalization
-        const selectedCoach = COACH_OPTIONS.find((c) => c.id === data.coach)
-        const coachFirstName = selectedCoach?.name.split(' ').pop() || 'your coach'
+      case 9:
+        // Tailored Preview Step
+        const primaryGoal = data.goal[0] || 'build_muscle'
+        const goalInfo: Record<
+          string,
+          { text: string; color: string; exercise: string; gif: string }
+        > = {
+          build_muscle: {
+            text: 'GAIN MUSCLE',
+            color: '#8B5CF6',
+            exercise: 'Barbell Incline Bench Press',
+            gif: '3TZduzM.gif',
+          },
+          lose_fat: {
+            text: 'LOSE FAT',
+            color: '#EF4444',
+            exercise: 'Burpee',
+            gif: 'dK9394r.gif',
+          },
+          gain_strength: {
+            text: 'GET STRONGER',
+            color: '#F59E0B',
+            exercise: 'Barbell Squat',
+            gif: 'DhMl549.gif',
+          },
+          improve_cardio: {
+            text: 'IMPROVE CARDIO',
+            color: '#3B82F6',
+            exercise: 'Burpee',
+            gif: 'dK9394r.gif',
+          },
+          become_flexible: {
+            text: 'GET FLEXIBLE',
+            color: '#10B981',
+            exercise: 'Stiff Leg Deadlift',
+            gif: 'kuMiR2T.gif',
+          },
+          general_fitness: {
+            text: 'STAY FIT',
+            color: '#6366F1',
+            exercise: 'Goblet Squat',
+            gif: 'ZA8b5hc.gif',
+          },
+        }
+
+        const currentGoalInfo =
+          goalInfo[primaryGoal as string] || goalInfo.build_muscle
 
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>
-                Anything {coachFirstName} should know about you?
+              <Text style={styles.tailoredTitle}>
+                Got it, I'll create workouts that will help you{' '}
+                <Text
+                  style={{ color: currentGoalInfo.color, fontStyle: 'italic' }}
+                >
+                  {currentGoalInfo.text}
+                </Text>
+                !
               </Text>
             </View>
 
-            <View style={styles.stepContent}>
-              <View>
-                <AnimatedInput
-                  style={styles.bioInput}
-                  placeholder="e.g., I have a lower back injury, prefer morning workouts, and want to focus on building my chest..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={data.bio}
-                  onChangeText={(text) => setData({ ...data, bio: text })}
-                  multiline
-                  numberOfLines={6}
-                  textAlignVertical="top"
-                  maxLength={500}
-                  returnKeyType="done"
-                  onSubmitEditing={handleNext}
-                />
-                <Text style={styles.characterCount}>{data.bio.length}/500</Text>
+            <View style={styles.tailoredMockupContainer}>
+              <View style={styles.tailoredPhoneFrame}>
+                <View style={styles.tailoredStatusBar}>
+                  <Text style={styles.tailoredStatusTime}>9:41</Text>
+                  <View style={styles.tailoredDynamicIsland} />
+                  <View style={styles.tailoredStatusIcons}>
+                    <Ionicons name="cellular" size={12} color="#000" />
+                    <Ionicons name="wifi" size={12} color="#000" />
+                    <Ionicons name="battery-full" size={12} color="#000" />
+                  </View>
+                </View>
+
+                <View style={styles.tailoredExerciseContent}>
+                  <View style={styles.tailoredGifContainer}>
+                    <ExerciseMediaThumbnail
+                      gifUrl={currentGoalInfo.gif}
+                      style={styles.tailoredGif}
+                    />
+                  </View>
+                  <View style={styles.tailoredExerciseInfo}>
+                    <View style={styles.tailoredExerciseMeta}>
+                      <View style={styles.tailoredExerciseIconContainer}>
+                        <Ionicons name="barbell" size={16} color="#4F46E5" />
+                      </View>
+                      <View>
+                        <Text style={styles.tailoredExerciseName}>
+                          {currentGoalInfo.exercise}
+                        </Text>
+                        <Text style={styles.tailoredExerciseSub}>
+                          Round 1/3 • Exercise 1/3
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
         )
+      case 10:
+        // Stats Entry Step
+        const selectedCoach =
+          COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
+
+        const StatRow = ({
+          label,
+          value,
+          onPress,
+        }: {
+          label: string
+          value: string
+          onPress: () => void
+        }) => (
+          <TouchableOpacity
+            style={styles.statRow}
+            onPress={onPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statRowLabel}>{label}</Text>
+            <View style={styles.statRowValueContainer}>
+              <Text style={styles.statRowValue}>{value}</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.textSecondary}
+              />
+            </View>
+          </TouchableOpacity>
+        )
+
+        const getAgeString = () => {
+          if (!data.birth_day || !data.birth_month || !data.birth_year)
+            return 'Select Age'
+          // Simple age calculation for display
+          const birthDate = new Date(
+            parseInt(data.birth_year),
+            parseInt(data.birth_month) - 1,
+            parseInt(data.birth_day),
+          )
+          const age = new Date().getFullYear() - birthDate.getFullYear()
+          return age.toString()
+        }
+
+        const getHeightString = () => {
+          if (weightUnit === 'kg') {
+            return `${data.height_cm || '180'} cm`
+          } else {
+            return `${data.height_feet || '5'}'${data.height_inches || '10'}"`
+          }
+        }
+
+        const getWeightString = () => {
+          return `${data.weight_kg || '75'} ${
+            weightUnit === 'kg' ? 'kg' : 'lb'
+          }`
+        }
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.statsTitle}>
+                Perfect! Let's just confirm your stats, {data.name}.
+              </Text>
+            </View>
+
+            <View style={styles.statsList}>
+              <StatRow
+                label="Units"
+                value={weightUnit === 'kg' ? 'Metric' : 'Imperial'}
+                onPress={() => setEditingField('units')}
+              />
+              <StatRow
+                label="Age"
+                value={getAgeString()}
+                onPress={() => setEditingField('age')}
+              />
+              <StatRow
+                label="Height"
+                value={getHeightString()}
+                onPress={() => setEditingField('height')}
+              />
+              <StatRow
+                label="Weight"
+                value={getWeightString()}
+                onPress={() => setEditingField('weight')}
+              />
+            </View>
+          </View>
+        )
+      case 11: {
+        // Target Weight Step
+        const selectedCoach =
+          COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
+        const currentW = parseFloat(data.weight_kg) || 75
+        const diff = targetWeight - currentW
+        const percentChange = (diff / currentW) * 100
+
+        let feedbackTitle = ''
+        let feedbackDesc = ''
+        let feedbackColor = ''
+
+        if (diff < 0) {
+          // Weight loss
+          const lossPercent = Math.abs(percentChange)
+          if (lossPercent <= 3) {
+            feedbackTitle = `Quick win: Lose ${Math.round(lossPercent)}%`
+            feedbackDesc =
+              "A great starting point! This is very achievable with some simple lifestyle changes. Build momentum with quick wins."
+            feedbackColor = '#22C55E' // Green
+          } else if (lossPercent <= 7) {
+            feedbackTitle = `Moderate goal: Lose ${Math.round(lossPercent)}%`
+            feedbackDesc =
+              "A solid, achievable target. With consistent effort and good habits, you'll see great results in a few months."
+            feedbackColor = '#84CC16' // Lime
+          } else if (lossPercent <= 12) {
+            feedbackTitle = `Challenging goal: Lose ${Math.round(lossPercent)}%`
+            feedbackDesc =
+              "This is ambitious but doable! It'll require real commitment to your nutrition and training. Stay disciplined!"
+            feedbackColor = '#F97316' // Orange
+          } else {
+            feedbackTitle = `Very ambitious: Lose ${Math.round(lossPercent)}%`
+            feedbackDesc =
+              "This is a significant transformation. Consider breaking it into smaller milestones and give yourself time to succeed."
+            feedbackColor = '#EF4444' // Red
+          }
+        } else if (diff > 0) {
+          // Weight gain (Muscle) - tighter thresholds since muscle gain is slower
+          const gainPercent = Math.round(percentChange)
+          if (gainPercent <= 2) {
+            feedbackTitle = `Steady gains: Add ${gainPercent}%`
+            feedbackDesc =
+              "A realistic target for lean muscle growth. Stay consistent with your training and protein intake."
+            feedbackColor = '#22C55E' // Green
+          } else if (gainPercent <= 5) {
+            feedbackTitle = `Solid goal: Gain ${gainPercent}%`
+            feedbackDesc =
+              "Good target! Building quality muscle takes time. Focus on progressive overload and proper nutrition."
+            feedbackColor = '#84CC16' // Lime
+          } else if (gainPercent <= 8) {
+            feedbackTitle = `Challenging goal: Gain ${gainPercent}%`
+            feedbackDesc =
+              "This will take serious dedication. Expect this to take 6+ months with optimal training and nutrition."
+            feedbackColor = '#F97316' // Orange
+          } else {
+            feedbackTitle = `Very ambitious: Gain ${gainPercent}%`
+            feedbackDesc =
+              "Building this much muscle takes significant time. Most people gain 1-2% muscle per month at best. Plan for the long haul!"
+            feedbackColor = '#EF4444' // Red
+          }
+        } else {
+          feedbackTitle = 'Maintenance Goal'
+          feedbackDesc =
+            'Keeping your current weight is a great way to focus on body recomposition and fitness.'
+          feedbackColor = '#22C55E' // Green
+        }
+
+        // Generate ruler ticks (range +/- 15 units)
+        const range = 15
+        const startWeight = Math.floor(currentW - range)
+        const ticks = Array.from(
+          { length: range * 2 * 10 + 1 },
+          (_, i) => startWeight + i * 0.1,
+        )
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.statsTitle}>What is your target weight?</Text>
+            </View>
+
+            <View style={styles.targetWeightContainer}>
+              <View style={styles.targetWeightDisplay}>
+                <Text style={styles.targetWeightValue}>
+                  {targetWeight.toFixed(1).replace('.', ',')}
+                </Text>
+                <Text style={styles.targetWeightUnit}>{weightUnit}</Text>
+              </View>
+
+              <View style={styles.rulerContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={10} // Snap to small ticks
+                  decelerationRate="fast"
+                  contentContainerStyle={styles.rulerContent}
+                  onScroll={(e) => {
+                    const offsetX = e.nativeEvent.contentOffset.x
+                    // 10px per 0.1 unit -> 100px per 1 unit
+                    // Offset 0 is startWeight
+                    const value = startWeight + offsetX / 100
+                    setTargetWeight(Math.round(value * 10) / 10)
+                  }}
+                  scrollEventThrottle={16}
+                  // Start in middle (current weight)
+                  contentOffset={{ x: (currentW - startWeight) * 100, y: 0 }}
+                >
+                  {ticks.map((t, i) => {
+                    const isInt = Math.abs(t % 1) < 0.05
+                    const isFilled = t <= targetWeight
+                    const tickColor = isFilled
+                      ? colors.primary
+                      : isInt
+                      ? colors.text + '40'
+                      : colors.text + '15'
+
+                    return (
+                      <View
+                        key={i}
+                        style={[styles.rulerTickContainer, { width: 10 }]}
+                      >
+                        {isInt && (
+                          <Text
+                            style={[
+                              styles.rulerTickText,
+                              {
+                                color: isFilled
+                                  ? colors.primary
+                                  : colors.textSecondary,
+                              },
+                            ]}
+                          >
+                            {Math.round(t)}
+                          </Text>
+                        )}
+                        <View
+                          style={[
+                            styles.rulerTick,
+                            {
+                              height: isInt ? 36 : 18,
+                              backgroundColor: tickColor,
+                              marginTop: isInt ? 0 : 24, // Align short ticks to bottom
+                            },
+                          ]}
+                        />
+                      </View>
+                    )
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={styles.feedbackCard}>
+                <View style={styles.feedbackCoachIconContainer}>
+                  <Image
+                    source={selectedCoach.image}
+                    style={styles.feedbackCoachImage}
+                  />
+                </View>
+                <Text style={[styles.feedbackTitle, { color: feedbackColor }]}>
+                  {feedbackTitle}
+                </Text>
+                <Text style={styles.feedbackDesc}>{feedbackDesc}</Text>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 12: {
+        // Body Scan Feature Step
+        const currentWeightNum = parseFloat(data.weight_kg) || 75
+        const isLosing = targetWeight < currentWeightNum
+        const goalAction = isLosing ? 'FAT LOSS' : 'MUSCLE GAIN'
+
+        // Placeholder values for the scan
+        const mockMuscleMass = (currentWeightNum * 0.78).toFixed(1)
+        const mockBodyFat = isLosing ? '24' : '18'
+
+        const scanImage =
+          data.gender === 'female'
+            ? require('../../assets/images/coach/body-scan-female.png')
+            : require('../../assets/images/coach/body-scan-male.png')
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.bodyScanTitle}>
+                Body Scan analyzes your lean muscle so you can accurately track
+                your{' '}
+                <Text style={{ color: '#8B5CF6', fontStyle: 'italic' }}>
+                  {goalAction}
+                </Text>
+                !
+              </Text>
+            </View>
+
+            <View style={styles.bodyScanMockupContainer}>
+              <View style={styles.bodyScanPhoneFrame}>
+                <Image
+                  source={scanImage}
+                  defaultSource={require('../../assets/images/icon.png')}
+                  style={styles.bodyScanImage}
+                />
+                <View style={styles.bodyScanOverlay}>
+                  <View style={styles.scanLine} />
+                  <View style={[styles.scanLine, { top: '45%' }]} />
+                  <View style={[styles.scanLine, { top: '60%' }]} />
+                </View>
+              </View>
+
+              {/* Right side callouts */}
+              <View style={styles.bodyScanCallouts}>
+                <View style={styles.bodyScanCalloutItem}>
+                  <Text style={styles.bodyScanCalloutLabel}>Muscle Mass</Text>
+                  <Text
+                    style={[styles.bodyScanCalloutValue, { color: '#F59E0B' }]}
+                  >
+                    {mockMuscleMass} kg
+                  </Text>
+                  <View style={styles.bodyScanCalloutLineContainer}>
+                    <View style={styles.bodyScanCalloutLine} />
+                  </View>
+                </View>
+
+                <View style={[styles.bodyScanCalloutItem, { marginTop: 60 }]}>
+                  <Text style={styles.bodyScanCalloutLabel}>Body Fat</Text>
+                  <Text
+                    style={[styles.bodyScanCalloutValue, { color: '#EF4444' }]}
+                  >
+                    {mockBodyFat}%
+                  </Text>
+                  <View style={styles.bodyScanCalloutLineContainer}>
+                    <View
+                      style={[
+                        styles.bodyScanCalloutLine,
+                        { transform: [{ rotate: '-10deg' }] },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 13: {
+        const MUSCLE_GROUP_MAPPING: Record<
+          string,
+          { label: string; slugs: BodyPartSlug[] }
+        > = {
+          shoulders: { label: 'Shoulders', slugs: ['deltoids', 'neck'] },
+          arms: { label: 'Arms', slugs: ['biceps', 'triceps', 'forearm'] },
+          back: {
+            label: 'Back',
+            slugs: ['upper-back', 'trapezius', 'lower-back'],
+          },
+          chest: { label: 'Chest', slugs: ['chest'] },
+          abs: { label: 'Abs', slugs: ['abs', 'obliques'] },
+          butt: { label: 'Butt', slugs: ['gluteal'] },
+          legs: {
+            label: 'Legs',
+            slugs: ['quadriceps', 'hamstring', 'calves', 'adductors'],
+          },
+        }
+
+        const allMuscleSlugs: BodyPartSlug[] = Object.values(
+          MUSCLE_GROUP_MAPPING,
+        ).flatMap((v) => v.slugs)
+
+        const bodyData = focusAreas.map((slug) => ({
+          slug,
+          intensity: 1,
+        }))
+
+        const selectableGroups = Object.keys(MUSCLE_GROUP_MAPPING)
+
+        const toggleArea = (groupKey: string) => {
+          const slugsToToggle = MUSCLE_GROUP_MAPPING[groupKey].slugs
+          setFocusAreas((prev) => {
+            const hasAll = slugsToToggle.every((s) => prev.includes(s))
+            if (hasAll) {
+              return prev.filter((p) => !slugsToToggle.includes(p))
+            } else {
+              const newAreas = [...prev]
+              slugsToToggle.forEach((s) => {
+                if (!newAreas.includes(s)) newAreas.push(s)
+              })
+              return newAreas
+            }
+          })
+        }
+
+        const handleBodyPartPress = (bodyPart: { slug?: string }) => {
+          if (!bodyPart.slug) return
+          // Find which group this anatomical slug belongs to
+          const groupKey = Object.keys(MUSCLE_GROUP_MAPPING).find((key) =>
+            MUSCLE_GROUP_MAPPING[key].slugs.includes(
+              bodyPart.slug as BodyPartSlug,
+            ),
+          )
+          if (groupKey) {
+            toggleArea(groupKey)
+          }
+        }
+
+        const isFullBody = focusAreas.length >= allMuscleSlugs.length
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.statsTitle}>
+                Which areas should your training{' '}
+                <Text style={{ color: colors.primary }}>focus on</Text>?
+              </Text>
+              <Text style={styles.stepSubtitle}>
+                Tap the muscles you want to prioritize.
+              </Text>
+            </View>
+
+            <View style={styles.bodyHighlightContainer}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                style={styles.bodyScrollView}
+                contentContainerStyle={styles.bodyScrollContent}
+              >
+                <View style={styles.bodyPage}>
+                  <Text style={styles.bodySideLabel}>FRONT</Text>
+                  <Body
+                    data={bodyData}
+                    gender={data.gender === 'female' ? 'female' : 'male'}
+                    side="front"
+                    scale={0.95}
+                    colors={[colors.primary]}
+                    onBodyPartPress={handleBodyPartPress}
+                    border={colors.text}
+                  />
+                </View>
+                <View style={styles.bodyPage}>
+                  <Text style={styles.bodySideLabel}>BACK</Text>
+                  <Body
+                    data={bodyData}
+                    gender={data.gender === 'female' ? 'female' : 'male'}
+                    side="back"
+                    scale={0.95}
+                    colors={[colors.primary]}
+                    onBodyPartPress={handleBodyPartPress}
+                    border={colors.text}
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={styles.swipeHintContainer}>
+                <Ionicons
+                  name="swap-horizontal"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.swipeHintText}>Swipe to rotate</Text>
+              </View>
+
+              <View style={styles.muscleGrid}>
+                <TouchableOpacity
+                  style={[
+                    styles.muscleButton,
+                    isFullBody && {
+                      backgroundColor: colors.primary + '15',
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (isFullBody) {
+                      setFocusAreas([])
+                    } else {
+                      setFocusAreas([...allMuscleSlugs])
+                    }
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.muscleButtonText,
+                      isFullBody && {
+                        color: colors.primary,
+                        fontWeight: '700',
+                      },
+                    ]}
+                  >
+                    Full Body
+                  </Text>
+                </TouchableOpacity>
+
+                {selectableGroups.map((key) => {
+                  const group = MUSCLE_GROUP_MAPPING[key]
+                  const isSelected =
+                    group.slugs.every((s) => focusAreas.includes(s)) &&
+                    !isFullBody
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[
+                        styles.muscleButton,
+                        isSelected && {
+                          backgroundColor: colors.primary + '15',
+                          borderColor: colors.primary,
+                        },
+                      ]}
+                      onPress={() => toggleArea(key)}
+                    >
+                      <Text
+                        style={[
+                          styles.muscleButtonText,
+                          isSelected && {
+                            color: colors.primary,
+                            fontWeight: '700',
+                          },
+                        ]}
+                      >
+                        {group.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 14: {
+        return (
+          <ProcessingStepContent
+            data={data}
+            setStep={setStep}
+            colors={colors}
+            styles={styles}
+          />
+        )
+      }
+      case 15: {
+        return (
+          <FinalPlanStepContent
+            data={data}
+            colors={colors}
+            styles={styles}
+            weightUnit={weightUnit}
+          />
+        )
+      }
+      case 16: {
+        return (
+          <CommitmentStepContent
+            data={data}
+            setStep={setStep}
+            onNext={handleNext}
+            colors={colors}
+            styles={styles}
+          />
+        )
+      }
       default:
         return null
     }
   }
 
+  const renderEditingModal = () => {
+    if (!editingField) return null
+
+    const renderPicker = () => {
+      switch (editingField) {
+        case 'units':
+          return (
+            <Picker
+              selectedValue={weightUnit}
+              onValueChange={(itemValue: 'kg' | 'lb') => {
+                if (itemValue === weightUnit) return
+
+                setData((prev) => {
+                  // Convert weight
+                  let newWeight = prev.weight_kg
+                  if (itemValue === 'lb') {
+                    newWeight = Math.round(
+                      parseFloat(prev.weight_kg) * 2.20462,
+                    ).toString()
+                  } else {
+                    newWeight = Math.round(
+                      parseFloat(prev.weight_kg) / 2.20462,
+                    ).toString()
+                  }
+
+                  // Convert height
+                  let newHeightCm = prev.height_cm
+                  let newHeightFeet = prev.height_feet
+                  let newHeightInches = prev.height_inches
+
+                  if (itemValue === 'lb') {
+                    // cm to ft/in
+                    const totalInches = parseFloat(prev.height_cm) / 2.54
+                    newHeightFeet = Math.floor(totalInches / 12).toString()
+                    newHeightInches = Math.round(totalInches % 12).toString()
+                    if (newHeightInches === '12') {
+                      newHeightFeet = (parseInt(newHeightFeet) + 1).toString()
+                      newHeightInches = '0'
+                    }
+                  } else {
+                    // ft/in to cm
+                    newHeightCm = Math.round(
+                      (parseFloat(prev.height_feet) * 12 +
+                        parseFloat(prev.height_inches)) *
+                        2.54,
+                    ).toString()
+                  }
+
+                  return {
+                    ...prev,
+                    weight_kg: newWeight,
+                    height_cm: newHeightCm,
+                    height_feet: newHeightFeet,
+                    height_inches: newHeightInches,
+                  }
+                })
+
+                setWeightUnit(itemValue)
+              }}
+              style={styles.picker}
+            >
+              <Picker.Item
+                label="Metric (kg/cm)"
+                value="kg"
+                color={colors.text}
+              />
+              <Picker.Item
+                label="Imperial (lb/in)"
+                value="lb"
+                color={colors.text}
+              />
+            </Picker>
+          )
+        case 'age':
+          const years = Array.from({ length: 80 }, (_, i) =>
+            (2024 - i - 13).toString(),
+          )
+          return (
+            <Picker
+              selectedValue={data.birth_year}
+              onValueChange={(itemValue: string) =>
+                setData((prev) => ({ ...prev, birth_year: itemValue }))
+              }
+              style={styles.picker}
+            >
+              {years.map((y) => (
+                <Picker.Item key={y} label={y} value={y} color={colors.text} />
+              ))}
+            </Picker>
+          )
+        case 'height':
+          if (weightUnit === 'kg') {
+            const cms = Array.from({ length: 151 }, (_, i) =>
+              (100 + i).toString(),
+            )
+            return (
+              <Picker
+                selectedValue={data.height_cm}
+                onValueChange={(itemValue: string) =>
+                  setData((prev) => ({ ...prev, height_cm: itemValue }))
+                }
+                style={styles.picker}
+              >
+                {cms.map((c) => (
+                  <Picker.Item
+                    key={c}
+                    label={`${c} cm`}
+                    value={c}
+                    color={colors.text}
+                  />
+                ))}
+              </Picker>
+            )
+          } else {
+            const feet = ['4', '5', '6', '7']
+            const inches = Array.from({ length: 12 }, (_, i) => i.toString())
+            return (
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={data.height_feet}
+                  onValueChange={(itemValue: string) =>
+                    setData((prev) => ({ ...prev, height_feet: itemValue }))
+                  }
+                  style={[styles.picker, { flex: 1 }]}
+                >
+                  {feet.map((f) => (
+                    <Picker.Item
+                      key={f}
+                      label={`${f} ft`}
+                      value={f}
+                      color={colors.text}
+                    />
+                  ))}
+                </Picker>
+                <Picker
+                  selectedValue={data.height_inches}
+                  onValueChange={(itemValue: string) =>
+                    setData((prev) => ({ ...prev, height_inches: itemValue }))
+                  }
+                  style={[styles.picker, { flex: 1 }]}
+                >
+                  {inches.map((i) => (
+                    <Picker.Item
+                      key={i}
+                      label={`${i} in`}
+                      value={i}
+                      color={colors.text}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            )
+          }
+        case 'weight':
+          const values =
+            weightUnit === 'kg'
+              ? Array.from({ length: 271 }, (_, i) => (30 + i).toString())
+              : Array.from({ length: 641 }, (_, i) => (60 + i).toString())
+          return (
+            <Picker
+              selectedValue={data.weight_kg}
+              onValueChange={(itemValue: string) =>
+                setData((prev) => ({ ...prev, weight_kg: itemValue }))
+              }
+              style={styles.picker}
+            >
+              {values.map((v) => (
+                <Picker.Item
+                  key={v}
+                  label={`${v} ${weightUnit === 'kg' ? 'kg' : 'lb'}`}
+                  value={v}
+                  color={colors.text}
+                />
+              ))}
+            </Picker>
+          )
+        default:
+          return null
+      }
+    }
+
+    return (
+      <Modal
+        visible={!!editingField}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setEditingField(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setEditingField(null)}
+        >
+          <TouchableOpacity activeOpacity={1} style={{ width: '100%' }}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setEditingField(null)}>
+                  <Text style={styles.modalCloseText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              {renderPicker()}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    )
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={styles.container}
+      edges={
+        step === 16
+          ? ['top', 'left', 'right']
+          : ['top', 'bottom', 'left', 'right']
+      }
+    >
       <View style={styles.wrapper}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <View style={styles.progressContainer}>
-            {[2, 3, 4, 5, 6, 7, 8].map((i) => (
+
+          <View style={styles.headerCenter}>
+            <View style={styles.progressBarWrapper}>
               <Animated.View
-                key={i}
                 style={[
-                  styles.progressDot,
-                  i <= step && styles.progressDotActive,
+                  styles.headerProgressBarFill,
                   {
-                    transform: [
-                      {
-                        scale: i === step ? progressDotAnims[i - 2] : 1,
-                      },
-                    ],
+                    width: `${(step / 16) * 100}%`,
+                    backgroundColor: colors.primary,
                   },
                 ]}
               />
-            ))}
+            </View>
           </View>
+
           <View style={styles.placeholder} />
         </View>
 
@@ -680,12 +2799,21 @@ export default function OnboardingScreen() {
                 hapticEnabled={canProceed()}
                 hapticStyle="heavy"
               >
-                <Text style={styles.nextButtonText}>Next</Text>
+                <Text style={styles.nextButtonText}>
+                  {step === 2
+                    ? "Let's Go"
+                    : step === 4
+                    ? "Let's Get Started!"
+                    : step === 15
+                    ? 'Get Started'
+                    : 'Next'}
+                </Text>
               </HapticButton>
             </View>
           )}
         </KeyboardAvoidingView>
       </View>
+      {renderEditingModal()}
     </SafeAreaView>
   )
 }
@@ -716,22 +2844,34 @@ const createStyles = (
     backButton: {
       padding: 4,
     },
-    progressContainer: {
-      flexDirection: 'row',
-      gap: 6,
-      height: 4,
-      borderRadius: 2,
-      overflow: 'hidden',
-      backgroundColor: colors.border,
-      width: 120,
-    },
-    progressDot: {
+    headerCenter: {
       flex: 1,
-      height: '100%',
-      backgroundColor: 'transparent',
+      alignItems: 'center',
+      gap: 12,
     },
-    progressDotActive: {
-      backgroundColor: colors.primary,
+    stepIndicatorContainer: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      backgroundColor: colors.border + '30',
+      borderRadius: 12,
+    },
+    stepIndicatorText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    progressBarWrapper: {
+      height: 6,
+      width: '70%',
+      backgroundColor: colors.border + '50',
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    headerProgressBarFill: {
+      height: '100%',
+      borderRadius: 3,
     },
     placeholder: {
       width: 32,
@@ -967,7 +3107,8 @@ const createStyles = (
       textAlign: 'center',
     },
     pickerContainer: {
-      width: '100%',
+      height: 200,
+      flexDirection: 'row',
       backgroundColor: colors.backgroundWhite,
       borderRadius: 16,
       overflow: 'hidden',
@@ -983,6 +3124,29 @@ const createStyles = (
       fontWeight: '600',
       color: colors.text,
       height: 200,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: colors.backgroundWhite,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+      paddingBottom: 40,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      padding: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalCloseText: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.primary,
     },
     unitToggleContainer: {
       flexDirection: 'row',
@@ -1085,5 +3249,676 @@ const createStyles = (
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 24,
+    },
+    // Greeting Styles
+    greetingAvatarContainer: {
+      marginBottom: 24,
+      position: 'relative',
+      alignSelf: 'flex-start',
+    },
+    greetingAvatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.textSecondary,
+    },
+    greetingBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      backgroundColor: '#8B5CF6', // Purple like Messenger/AI
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colors.background,
+    },
+    greetingText: {
+      fontSize: 34,
+      fontWeight: '800',
+      color: colors.text,
+      lineHeight: 42,
+      letterSpacing: -0.5,
+    },
+    coachMessageContainer: {
+      marginTop: 32,
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    coachSecondaryText: {
+      fontSize: 22,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      lineHeight: 30,
+    },
+    // Chat Intro Step Styles
+    chatIntroContainer: {
+      flex: 1,
+    },
+    chatIntroHeader: {
+      paddingBottom: 32,
+    },
+    chatIntroTitle: {
+      fontSize: 30,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'left',
+      letterSpacing: -0.5,
+      lineHeight: 38,
+    },
+
+    // Tailored Preview Styles
+    tailoredTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'left',
+      lineHeight: 38,
+      letterSpacing: -0.5,
+    },
+    tailoredMockupContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 20,
+    },
+    tailoredPhoneFrame: {
+      width: 280,
+      height: 480,
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 40,
+      borderWidth: 8,
+      borderColor: colors.textSecondary + '20',
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 20 },
+      shadowOpacity: 0.1,
+      shadowRadius: 30,
+      elevation: 10,
+    },
+    tailoredStatusBar: {
+      height: 34,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+    },
+    tailoredStatusTime: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    tailoredDynamicIsland: {
+      width: 60,
+      height: 18,
+      backgroundColor: '#000',
+      borderRadius: 9,
+    },
+    tailoredStatusIcons: {
+      flexDirection: 'row',
+      gap: 4,
+    },
+    tailoredExerciseContent: {
+      flex: 1,
+      backgroundColor: '#f6f6f8',
+    },
+    tailoredGifContainer: {
+      width: '100%',
+      aspectRatio: 1,
+      backgroundColor: '#fff',
+      overflow: 'hidden',
+    },
+    tailoredGif: {
+      width: '100%',
+      height: '100%',
+    },
+    tailoredExerciseInfo: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: '#fff',
+      borderTopWidth: 1,
+      borderTopColor: '#f0f0f0',
+    },
+    tailoredExerciseMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    tailoredExerciseIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: '#F3F4FB',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    tailoredExerciseName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#1A1A1A', // Fixed dark color for white background mockup
+      marginBottom: 2,
+    },
+    tailoredExerciseSub: {
+      fontSize: 12,
+      color: '#666666', // Fixed dark color for white background mockup
+      fontWeight: '500',
+    },
+
+    // Stats Entry Styles
+    statsTitle: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'left',
+      lineHeight: 40,
+      letterSpacing: -1,
+    },
+    statsList: {
+      marginTop: 32,
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 20,
+      paddingVertical: 8,
+    },
+    statRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border + '40',
+    },
+    statRowLabel: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    statRowValueContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    statRowValue: {
+      fontSize: 17,
+      color: colors.textSecondary,
+    },
+
+    // Target Weight Styles
+    targetWeightContainer: {
+      flex: 1,
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    targetWeightDisplay: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 6,
+      marginBottom: 32,
+    },
+    targetWeightValue: {
+      fontSize: 48,
+      fontWeight: '800',
+      color: colors.text,
+      letterSpacing: -1,
+    },
+    targetWeightUnit: {
+      fontSize: 20,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    rulerContainer: {
+      height: 100,
+      width: '100%',
+      marginBottom: 32,
+      justifyContent: 'center',
+    },
+    rulerContent: {
+      paddingHorizontal: SCREEN_WIDTH / 2 - 5, // Subtract half tick width (10/2)
+      alignItems: 'center',
+    },
+    rulerTickContainer: {
+      height: 70,
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    rulerTick: {
+      width: 2,
+      borderRadius: 1,
+    },
+    rulerTickText: {
+      position: 'absolute',
+      top: 0,
+      width: 40,
+      left: -19, // Center 40px label on 2px tick (40/2 - 2/2 = 19)
+      textAlign: 'center',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    feedbackCard: {
+      width: '100%',
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 20,
+      padding: 20,
+    },
+    feedbackCoachIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      position: 'absolute',
+      top: -18,
+      left: 20,
+      borderWidth: 2,
+      borderColor: colors.backgroundWhite,
+      overflow: 'hidden',
+      backgroundColor: colors.backgroundWhite,
+    },
+    feedbackCoachImage: {
+      width: '100%',
+      height: '100%',
+    },
+    feedbackTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      marginBottom: 6,
+      lineHeight: 22,
+    },
+    feedbackDesc: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      fontWeight: '400',
+    },
+
+    // Body Scan Styles
+    bodyScanTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'left',
+      lineHeight: 36,
+      letterSpacing: -0.5,
+    },
+    bodyScanMockupContainer: {
+      flex: 1,
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingLeft: 20,
+      marginTop: -20,
+    },
+    bodyScanPhoneFrame: {
+      width: SCREEN_WIDTH * 0.52,
+      height: SCREEN_WIDTH * 1.05,
+      borderRadius: 40,
+      borderWidth: 8,
+      borderColor: '#1a1a1a',
+      backgroundColor: '#000',
+      overflow: 'hidden',
+      transform: [{ rotate: '-10deg' }],
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 10,
+    },
+    bodyScanImage: {
+      width: '100%',
+      height: '100%',
+      opacity: 0.9,
+    },
+    bodyScanOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    scanLine: {
+      position: 'absolute',
+      width: '80%',
+      height: 1.5,
+      backgroundColor: 'rgba(255, 255, 255, 0.4)',
+      top: '30%',
+      shadowColor: '#fff',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 4,
+    },
+    bodyScanCallouts: {
+      flex: 1,
+      paddingLeft: 20,
+      paddingBottom: 40,
+    },
+    bodyScanCalloutItem: {
+      position: 'relative',
+    },
+    bodyScanCalloutLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    bodyScanCalloutValue: {
+      fontSize: 28,
+      fontWeight: '800',
+    },
+    bodyScanCalloutLineContainer: {
+      position: 'absolute',
+      left: -60,
+      top: 25,
+      width: 60,
+      height: 100,
+      overflow: 'visible',
+    },
+    bodyScanCalloutLine: {
+      width: 50,
+      height: 1,
+      backgroundColor: '#ccc',
+      transform: [{ rotate: '25deg' }],
+    },
+
+    // Focus Areas Styles
+    bodyHighlightContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      marginTop: 0,
+    },
+    stepSubtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'left',
+      marginTop: 4,
+      lineHeight: 20,
+    },
+    bodyScrollView: {
+      width: SCREEN_WIDTH - 48,
+      height: 310,
+      flexGrow: 0,
+    },
+    bodyScrollContent: {
+      alignItems: 'center',
+    },
+    bodyPage: {
+      width: SCREEN_WIDTH - 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bodySideLabel: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      marginBottom: 8,
+      letterSpacing: 1.5,
+    },
+    swipeHintContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 8,
+      marginBottom: 18,
+      opacity: 0.5,
+    },
+    swipeHintText: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    muscleGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      justifyContent: 'center',
+      paddingHorizontal: 0,
+    },
+    muscleButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border + '50',
+    },
+    muscleButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+
+    // Processing Step Styles
+    processingHeader: {
+      marginTop: 20,
+      marginBottom: 30,
+    },
+    processingTitle: {
+      fontSize: 34,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'center',
+      lineHeight: 42,
+    },
+    progressSection: {
+      gap: 24,
+      marginBottom: 40,
+    },
+    progressItem: {
+      gap: 10,
+    },
+    progressLabelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    progressLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    progressPercent: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    progressBarBg: {
+      height: 10,
+      backgroundColor: colors.border + '30',
+      borderRadius: 5,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      backgroundColor: '#A855F7',
+      borderRadius: 5,
+    },
+    socialProofSection: {
+      alignItems: 'center',
+    },
+    socialProofTitle: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 20,
+    },
+    testimonialCard: {
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 24,
+      padding: 24,
+      width: '100%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    testimonialHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+    },
+    testimonialAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    },
+    testimonialName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    testimonialTime: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    testimonialText: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 16,
+    },
+    testimonialSource: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontStyle: 'italic',
+    },
+    testimonialDots: {
+      flexDirection: 'row',
+      gap: 6,
+      marginTop: 16,
+      marginBottom: 10,
+    },
+    testimonialDot: {
+      width: 20,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+    },
+    testimonialDotActive: {
+      backgroundColor: colors.text,
+    },
+    appStoreBadge: {
+      backgroundColor: colors.backgroundWhite,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 20,
+      marginBottom: 20,
+    },
+    ratingValue: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 2,
+    },
+
+    // Plan Ready Styles
+    planReadyHeader: {
+      marginTop: 20,
+      marginBottom: 24,
+    },
+    planReadyTitle: {
+      fontSize: 36,
+      fontWeight: '900',
+      color: colors.text,
+      lineHeight: 44,
+      letterSpacing: -1,
+    },
+    summaryCard: {
+      backgroundColor: colors.backgroundWhite,
+      borderRadius: 28,
+      padding: 24,
+      marginBottom: 32,
+    },
+    summaryCardTitle: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 20,
+    },
+    summaryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 20,
+      justifyContent: 'space-between',
+    },
+    summaryItem: {
+      width: '45%',
+      gap: 4,
+    },
+    summaryLabel: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      fontWeight: '500',
+    },
+    summaryValue: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    customCraftedSection: {
+      gap: 16,
+    },
+    customCraftedTitle: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    planPreviewCard: {
+      width: '100%',
+      height: 450,
+      borderRadius: 32,
+      overflow: 'hidden',
+      backgroundColor: '#000',
+    },
+    planPreviewImage: {
+      width: '100%',
+      height: '100%',
+      opacity: 0.8,
+    },
+    planPreviewGradient: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'flex-end',
+    },
+    planPreviewContent: {
+      padding: 24,
+      gap: 12,
+    },
+    planPreviewName: {
+      fontSize: 32,
+      fontWeight: '900',
+      color: '#fff',
+    },
+    planPreviewDesc: {
+      fontSize: 16,
+      color: 'rgba(255,255,255,0.8)',
+      lineHeight: 22,
+      marginBottom: 12,
+    },
+    planPreviewStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.2)',
+    },
+    planStatItem: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    planStatValue: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: '#fff',
+    },
+    planStatLabel: {
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.6)',
+      fontWeight: '600',
+    },
+    planStatDivider: {
+      width: 1,
+      height: 30,
+      backgroundColor: 'rgba(255,255,255,0.2)',
     },
   })

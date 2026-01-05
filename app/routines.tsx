@@ -1,262 +1,364 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
+import { ScreenHeader } from '@/components/screen-header'
+import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import React, { useEffect, useState } from 'react'
+import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useFocusEffect, useRouter } from 'expo-router'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
-    FlatList,
+    Alert,
+    Dimensions,
+    RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const { width } = Dimensions.get('window')
 
 export default function RoutinesScreen() {
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const colors = useThemedColors()
   const router = useRouter()
-  const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
+  const insets = useSafeAreaInsets()
+
   const [isLoading, setIsLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
+  const [shouldExit, setShouldExit] = useState(false)
 
-  useEffect(() => {
-    const loadRoutines = async () => {
-      if (!user?.id) return
-      try {
-        const data = await database.workoutRoutines.getAll(user.id)
-        const activeRoutines = data.filter((r) => !r.is_archived)
-        setRoutines(activeRoutines)
-      } catch (error) {
-        console.error('Error loading routines:', error)
-      } finally {
-        setIsLoading(false)
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
+
+  const loadData = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const routinesData = await database.workoutRoutines.getAll(user.id)
+      const activeRoutines = routinesData.filter((r) => !r.is_archived)
+      setRoutines(activeRoutines)
+
+      // Preload routine images for faster display
+      const imageUrls = activeRoutines
+        .map((r) => r.image_path ? getRoutineImageUrl(r.image_path) : null)
+        .filter((url): url is string => url !== null)
+      if (imageUrls.length > 0) {
+        Image.prefetch(imageUrls)
       }
+    } catch (error) {
+      console.error('Error loading routines:', error)
+      Alert.alert('Error', 'Failed to load routines')
+    } finally {
+      setIsLoading(false)
+      setRefreshing(false)
     }
-
-    loadRoutines()
   }, [user?.id])
 
-  const renderItem = ({ item }: { item: WorkoutRoutineWithDetails }) => {
-    const exerciseCount = item.workout_routine_exercises?.length || 0
-    const setCount =
-      item.workout_routine_exercises?.reduce(
-        (sum, ex) => sum + (ex.sets?.length || 0),
-        0,
-      ) || 0
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData])
+  )
 
-    // Estimate duration
-    const DEFAULT_REST_SECONDS = 90
-    const SET_EXECUTION_SECONDS = 45
-    const EXERCISE_TRANSITION_SECONDS = 30
+  const handleBack = useCallback(() => {
+    setShouldExit(true)
+  }, [])
 
-    const totalRestSeconds =
-      item.workout_routine_exercises?.reduce((sum, ex) => {
-        return (
-          sum +
-          (ex.sets?.reduce((setSum, set) => {
-            return setSum + (set.rest_seconds ?? DEFAULT_REST_SECONDS)
-          }, 0) || 0)
-        )
-      }, 0) || 0
+  const handleExitComplete = useCallback(() => {
+    router.back()
+  }, [router])
 
-    const totalSetExecutionSeconds = setCount * SET_EXECUTION_SECONDS
-    const totalTransitionSeconds = exerciseCount * EXERCISE_TRANSITION_SECONDS
-    const estDurationSeconds =
-      totalSetExecutionSeconds + totalRestSeconds + totalTransitionSeconds
-    const estDurationMinutes = Math.ceil(estDurationSeconds / 60)
-    const estDurationHours = Math.floor(estDurationMinutes / 60)
-    const estDurationMinsRemainder = estDurationMinutes % 60
-    const estDurationString =
-      estDurationHours > 0
-        ? `${estDurationHours}h ${estDurationMinsRemainder}m`
-        : `${estDurationMinutes}min`
+  const handleCreateRoutine = useCallback(() => {
+    router.push('/create-routine')
+  }, [router])
 
-    return (
-      <TouchableOpacity
-        style={[
-          styles.card,
-          {
-            backgroundColor: colors.feedCardBackground,
-            borderColor: colors.border,
-          },
-        ]}
-        onPress={() =>
-          router.push({
-            pathname: '/routine-detail',
-            params: { routineId: item.id },
-          })
-        }
-      >
-        <View style={styles.cardHeader}>
-          <Text
-            style={[styles.routineName, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            {item.name}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </View>
+  const renderRoutineItem = useCallback(
+    ({ item, index }: { item: WorkoutRoutineWithDetails; index: number }) => {
+      // Use stored tint color or fallback to index-based color
+      const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
+      const tintColor = item.tint_color || tintColors[index % tintColors.length]
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={colors.textSecondary}
+      const exerciseCount = item.workout_routine_exercises?.length || 0
+      const setCount =
+        item.workout_routine_exercises?.reduce(
+          (sum, ex) => sum + (ex.sets?.length || 0),
+          0,
+        ) || 0
+
+      // Get image source from storage bucket based on item's name or image_path
+      const getRoutineImage = () => {
+        const imagePath = item.image_path || `${item.name}.png`
+        return getRoutineImageUrl(imagePath)
+      }
+
+      const imageSource = getRoutineImage()
+
+      return (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.routineCard}
+          onPress={() =>
+            router.push({
+              pathname: '/routine/[routineId]',
+              params: { routineId: item.id },
+            })
+          }
+        >
+          {imageSource ? (
+            <>
+              <Image
+                source={typeof imageSource === 'string' ? { uri: imageSource } : imageSource}
+                style={styles.routineImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="normal"
+                transition={200}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
+                style={styles.routineOverlay}
+              />
+              <View
+                style={[
+                  styles.colorTint,
+                  { backgroundColor: tintColor, opacity: 0.25 },
+                ]}
+              />
+            </>
+          ) : (
+            <LinearGradient
+              colors={[tintColor + '40', tintColor + '20']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.routineGradientBg}
             />
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              {estDurationString}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="barbell-outline"
-              size={14}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              {setCount} sets
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    )
-  }
+          )}
 
-  const styles = createStyles(colors)
+          <View style={styles.routineContent}>
+            <Text
+              style={[
+                styles.routineTitle,
+                !imageSource && { color: colors.text },
+              ]}
+              numberOfLines={2}
+            >
+              {item.name}
+            </Text>
+            <View style={styles.routineStats}>
+              <View style={styles.routineStatItem}>
+                <Ionicons
+                  name="barbell-outline"
+                  size={12}
+                  color={
+                    imageSource ? 'rgba(255,255,255,0.8)' : colors.textSecondary
+                  }
+                />
+                <Text
+                  style={[
+                    styles.routineStatText,
+                    !imageSource && { color: colors.textSecondary },
+                  ]}
+                >
+                  {exerciseCount} exercises
+                </Text>
+              </View>
+              <View style={styles.routineStatItem}>
+                <Ionicons
+                  name="layers-outline"
+                  size={12}
+                  color={
+                    imageSource ? 'rgba(255,255,255,0.8)' : colors.textSecondary
+                  }
+                />
+                <Text
+                  style={[
+                    styles.routineStatText,
+                    !imageSource && { color: colors.textSecondary },
+                  ]}
+                >
+                  {setCount} sets
+                </Text>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      )
+    },
+    [styles, router, colors],
+  )
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <BaseNavbar
-        leftContent={
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-            <Text style={{ fontSize: 17, color: colors.text }}>Back</Text>
-          </TouchableOpacity>
-        }
-        centerContent={
-          <NavbarIsland>
-            <Text style={styles.headerTitle}>Routines</Text>
-          </NavbarIsland>
-        }
-        rightContent={
-          <TouchableOpacity
-            onPress={() => router.push('/create-routine')}
-            style={{ padding: 4 }}
-          >
-            <Ionicons name="add" size={28} color={colors.text} />
-          </TouchableOpacity>
-        }
-      />
+    <SlideInView
+      style={{ flex: 1 }}
+      shouldExit={shouldExit}
+      onExitComplete={handleExitComplete}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenHeader
+          title="Routines"
+          onLeftPress={handleBack}
+          leftIcon="arrow-back"
+          rightIcon="add"
+          onRightPress={handleCreateRoutine}
+        />
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={routines}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <EmptyState
-              icon="albums-outline"
-              title="No routines yet"
-              description="Save your favorite workouts as routines to reuse them later and save time."
-              buttonText="Create Your First Routine"
-              onPress={() => router.push('/create-routine')}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true)
+                loadData()
+              }}
+              tintColor={colors.primary}
             />
           }
-        />
-      )}
-    </SafeAreaView>
+        >
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <>
+              {/* My Routines Section */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>My Routines</Text>
+                <Text style={styles.routineCount}>
+                  {routines.length} routine
+                  {routines.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+
+              {/* Routines Grid */}
+              <View style={styles.routinesGrid}>
+                {routines.map((routine, index) => (
+                  <View key={routine.id} style={styles.routineWrapper}>
+                    {renderRoutineItem({ item: routine, index })}
+                  </View>
+                ))}
+                {routines.length === 0 && (
+                  <EmptyState
+                    icon="albums-outline"
+                    title="No routines yet"
+                    description="Save your favorite workouts as routines to reuse them later and save time."
+                    buttonText="Create Your First Routine"
+                    onPress={handleCreateRoutine}
+                  />
+                )}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </SlideInView>
   )
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
-    headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.text,
+    scrollContent: {
+      paddingBottom: 100,
     },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      minHeight: 200,
     },
-    listContent: {
-      padding: 20,
-      gap: 12,
-    },
-    card: {
-      padding: 16,
-      borderRadius: 12,
-      borderWidth: 1,
-    },
-    cardHeader: {
+    sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 12,
+      paddingHorizontal: 20,
+      marginBottom: 16,
+      marginTop: 24,
     },
-    routineName: {
-      fontSize: 17,
-      fontWeight: '600',
-      flex: 1,
-      marginRight: 8,
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
     },
-    statsContainer: {
-      flexDirection: 'row',
-      gap: 16,
-    },
-    statItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    statText: {
+    routineCount: {
       fontSize: 14,
       fontWeight: '500',
+      color: colors.textSecondary,
     },
-    emptyState: {
+    routinesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 20,
+      gap: 16,
+      paddingTop: 12,
+    },
+    routineWrapper: {
+      width: (width - 56) / 2,
+      marginBottom: 8,
+    },
+    routineCard: {
+      height: 200,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: colors.feedCardBackground,
+    },
+    routineImage: {
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
+    },
+    routineGradientBg: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    colorTint: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    routineOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    routineContent: {
       flex: 1,
-      padding: 40,
+      justifyContent: 'flex-end',
+      padding: 16,
+      paddingBottom: 16,
+    },
+    routineTitle: {
+      color: '#FFF',
+      fontSize: 20,
+      fontWeight: '800',
+      marginBottom: 6,
+      letterSpacing: -0.5,
+    },
+    routineStats: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    routineStatItem: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      height: 400,
+      gap: 4,
     },
-    emptyButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 24,
-      paddingVertical: 14,
-      borderRadius: 12,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    emptyButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '700',
+    routineStatText: {
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 12,
+      fontWeight: '600',
     },
   })

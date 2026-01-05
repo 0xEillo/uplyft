@@ -91,7 +91,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
         ]}
         onPress={() =>
           router.push({
-            pathname: '/routine-detail',
+            pathname: '/routine/[routineId]',
             params: { routineId: item.id },
           })
         }

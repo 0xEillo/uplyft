@@ -3,6 +3,8 @@ import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { COACH_OPTIONS } from '@/lib/coaches'
+import { Asset } from 'expo-asset'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -52,6 +54,17 @@ export default function WelcomeScreen() {
       timestamp: Date.now(),
     })
   }, [trackEvent])
+
+  // Preload coach images so they're ready for onboarding
+  useEffect(() => {
+    const preloadCoachImages = async () => {
+      const imageAssets = COACH_OPTIONS.map(coach => 
+        Asset.fromModule(coach.image).downloadAsync()
+      )
+      await Promise.all(imageAssets)
+    }
+    preloadCoachImages()
+  }, [])
 
   useEffect(() => {
     const totalWidth = IMAGES.length * (ITEM_WIDTH + ITEM_SPACING)
@@ -126,7 +139,7 @@ export default function WelcomeScreen() {
               style={styles.getStartedButton}
               onPress={() => router.push('/(auth)/onboarding')}
             >
-              <Text style={styles.getStartedText}>Get Started for Free</Text>
+              <Text style={styles.getStartedText}>Get Started</Text>
             </HapticButton>
 
             <View style={styles.signInRow}>
@@ -169,10 +182,10 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   carouselContainer: {
-    height: 450,
+    height: 430,
     justifyContent: 'center',
     overflow: 'hidden',
-    marginTop: -40, // Pull up a bit
+    marginTop: 10, // Pull up a bit
   },
   carouselTrack: {
     flexDirection: 'row',
@@ -181,7 +194,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: ITEM_WIDTH,
-    height: 300,
+    height: 280,
     marginRight: ITEM_SPACING,
     borderRadius: 24,
     overflow: 'hidden',
