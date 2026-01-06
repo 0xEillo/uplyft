@@ -7,9 +7,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
-import {
-  getRoutineImageUrl
-} from '@/lib/utils/routine-images'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import {
   ExploreRoutineWithExercises,
   WorkoutRoutineWithDetails,
@@ -130,7 +128,7 @@ export default function RoutineDetailScreen() {
 
   const normalizeUserRoutine = (
     r: WorkoutRoutineWithDetails,
-    userId: string
+    userId: string,
   ): NormalizedRoutine => ({
     id: r.id,
     name: r.name,
@@ -161,7 +159,7 @@ export default function RoutineDetailScreen() {
   })
 
   const normalizeExploreRoutine = (
-    r: ExploreRoutineWithExercises
+    r: ExploreRoutineWithExercises,
   ): NormalizedRoutine => ({
     id: r.id,
     name: r.name,
@@ -201,23 +199,23 @@ export default function RoutineDetailScreen() {
 
     // 1. Reset everything: Clear the modal stack (RoutineDetail -> Routines -> Explore)
     // This returns us to the root tab navigator level.
-    router.dismissAll();
+    router.dismissAll()
 
     // 2. Perform the "cleansing" jump to Profile, then to the logger.
     // We use small delays to ensure the navigator state settles between transitions.
     setTimeout(() => {
-      router.navigate('/(tabs)/profile');
-      
+      router.navigate('/(tabs)/profile')
+
       setTimeout(() => {
         router.navigate({
           pathname: '/(tabs)/create-post',
-          params: { 
+          params: {
             selectedRoutineId: routine.userRoutineId,
-            refresh: Date.now().toString()
-          }
-        });
-      }, 50);
-    }, 100);
+            refresh: Date.now().toString(),
+          },
+        })
+      }, 50)
+    }, 100)
   }
 
   const handleEditRoutine = () => {
@@ -239,16 +237,21 @@ export default function RoutineDetailScreen() {
           onPress: async () => {
             try {
               await database.workoutRoutines.delete(routine.userRoutineId!)
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              )
               Alert.alert('Success', 'Routine deleted successfully')
               router.back()
             } catch (error) {
               console.error('Error deleting routine:', error)
-              Alert.alert('Error', 'Failed to delete routine. Please try again.')
+              Alert.alert(
+                'Error',
+                'Failed to delete routine. Please try again.',
+              )
             }
           },
         },
-      ]
+      ],
     )
   }
 
@@ -259,7 +262,7 @@ export default function RoutineDetailScreen() {
       setIsSaving(true)
       const savedRoutine = await database.explore.saveRoutineToUser(
         routine.id,
-        user.id
+        user.id,
       )
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       Alert.alert('Success', 'Routine saved to your library!', [
@@ -296,8 +299,6 @@ export default function RoutineDetailScreen() {
     return getRoutineImageUrl(routine.imagePath)
   }
 
-
-
   // Calculate stats
   const exerciseCount = routine?.exercises?.length || 0
   const setCount =
@@ -332,7 +333,10 @@ export default function RoutineDetailScreen() {
       onExitComplete={handleExitComplete}
     >
       <View
-        style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
       >
         <BaseNavbar
           leftContent={
@@ -408,7 +412,9 @@ export default function RoutineDetailScreen() {
             <Text style={[styles.routineName, { color: colors.text }]}>
               {routine.name}
             </Text>
-            <Text style={[styles.creatorLabel, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.creatorLabel, { color: colors.textSecondary }]}
+            >
               {routine.isOwner
                 ? 'Created by you'
                 : routine.source === 'explore'
@@ -418,7 +424,12 @@ export default function RoutineDetailScreen() {
 
             {/* Description */}
             {routine.description && (
-              <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.descriptionText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {routine.description}
               </Text>
             )}
@@ -429,25 +440,35 @@ export default function RoutineDetailScreen() {
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {estDurationString}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
                   Est Duration
                 </Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {exerciseCount}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
                   Exercises
                 </Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {setCount}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
                   Sets
                 </Text>
               </View>
@@ -456,17 +477,28 @@ export default function RoutineDetailScreen() {
             {/* Action Button - Different for pro vs non-pro */}
             {routine.source === 'user' ? (
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: colors.primary },
+                ]}
                 onPress={handleStartRoutine}
               >
                 <Text style={styles.primaryButtonText}>Start Routine</Text>
               </TouchableOpacity>
             ) : routine.source === 'explore' && !isProMember ? (
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: colors.primary },
+                ]}
                 onPress={() => setShowPaywall(true)}
               >
-                <Ionicons name="lock-closed" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                <Ionicons
+                  name="lock-closed"
+                  size={18}
+                  color="#FFF"
+                  style={{ marginRight: 8 }}
+                />
                 <Text style={styles.primaryButtonText}>Unlock</Text>
               </TouchableOpacity>
             ) : (
@@ -491,12 +523,16 @@ export default function RoutineDetailScreen() {
           {/* Exercises Section */}
           <View style={styles.exercisesSection}>
             <View style={styles.exercisesHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
                 Exercises
               </Text>
               {routine.isOwner && (
                 <TouchableOpacity onPress={handleEditRoutine}>
-                  <Text style={[styles.editButtonText, { color: colors.primary }]}>
+                  <Text
+                    style={[styles.editButtonText, { color: colors.primary }]}
+                  >
                     Edit Routine
                   </Text>
                 </TouchableOpacity>
@@ -514,9 +550,15 @@ export default function RoutineDetailScreen() {
                     locked={true}
                   />
                 ))}
-                
+
                 {routine.exercises.length === 0 && (
-                  <Text style={{ color: colors.textSecondary, fontStyle: 'italic', marginTop: 8 }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontStyle: 'italic',
+                      marginTop: 8,
+                    }}
+                  >
                     No exercises found
                   </Text>
                 )}
@@ -532,7 +574,13 @@ export default function RoutineDetailScreen() {
                 ))}
 
                 {routine.exercises.length === 0 && (
-                  <Text style={{ color: colors.textSecondary, fontStyle: 'italic', marginTop: 8 }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontStyle: 'italic',
+                      marginTop: 8,
+                    }}
+                  >
                     No exercises found
                   </Text>
                 )}
@@ -546,14 +594,17 @@ export default function RoutineDetailScreen() {
       <Paywall
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title="Pro Feature"
-        message="Unlock Pro to access premium routines and programs."
+        title="Unlock PRO Workout Routines"
+        message="Access proven training routines with complete exercise details, sets, reps, and rest periods. Transform your workouts with professionally crafted programs."
       />
     </SlideInView>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolean) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,

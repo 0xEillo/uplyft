@@ -1,3 +1,4 @@
+import { FacebookEvents } from '@/lib/facebook-sdk'
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
 import * as AppleAuthentication from 'expo-apple-authentication'
@@ -6,11 +7,11 @@ import * as Crypto from 'expo-crypto'
 import * as WebBrowser from 'expo-web-browser'
 import { usePostHog } from 'posthog-react-native'
 import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useState,
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useState,
 } from 'react'
 import { Platform } from 'react-native'
 
@@ -76,6 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId: data.user.id,
       email: email.toLowerCase(),
     })
+
+    // Log to Facebook for ad attribution
+    FacebookEvents.logCompletedRegistration('email')
+    FacebookEvents.setUserID(data.user.id)
+    FacebookEvents.setUserData({ email: email.toLowerCase() })
 
     return { userId: data.user.id }
   }
@@ -143,6 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     posthog?.capture('Auth Anonymous Sign In', {
       userId: data.user.id,
     })
+
+    // Log to Facebook for ad attribution (anonymous users are still acquisitions!)
+    FacebookEvents.logCompletedRegistration('anonymous')
+    FacebookEvents.setUserID(data.user.id)
 
     return { userId: data.user.id }
   }
@@ -320,7 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hashParams.get('refresh_token') || queryParams.get('refresh_token')
 
       if (accessToken && refreshToken) {
-        await supabase.auth.setSession({
+        const { data: sessionData } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         })
@@ -328,6 +338,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         posthog?.capture('Auth Account Linked', {
           method: 'google',
         })
+
+        // Log to Facebook for ad attribution (account link = registration)
+        FacebookEvents.logCompletedRegistration('google')
+        if (sessionData.user) {
+          FacebookEvents.setUserID(sessionData.user.id)
+          if (sessionData.user.email) {
+            FacebookEvents.setUserData({ email: sessionData.user.email.toLowerCase() })
+          }
+        }
       } else {
         throw new Error('No tokens received from OAuth')
       }
@@ -388,6 +407,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       posthog?.capture('Auth Account Linked', {
         method: 'apple',
       })
+
+      // Log to Facebook for ad attribution (account link = registration)
+      FacebookEvents.logCompletedRegistration('apple')
+      if (user) {
+        FacebookEvents.setUserID(user.id)
+        if (user.email) {
+          FacebookEvents.setUserData({ email: user.email.toLowerCase() })
+        }
+      }
     } catch (e) {
       if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') {
         throw new Error('Account linking cancelled')
@@ -414,6 +442,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'email',
       email: email.toLowerCase(),
     })
+
+    // Log to Facebook for ad attribution (account link = registration)
+    FacebookEvents.logCompletedRegistration('email')
+    if (user) {
+      FacebookEvents.setUserID(user.id)
+      FacebookEvents.setUserData({ email: email.toLowerCase() })
+    }
   }
 
   const signOut = async () => {
@@ -424,6 +459,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       timestamp: Date.now(),
     })
     posthog?.reset() // Clear user identity on logout
+
+    // Clear Facebook user data
+    FacebookEvents.clearUserID()
+    FacebookEvents.clearUserData()
   }
 
   return (

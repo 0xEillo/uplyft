@@ -39,7 +39,9 @@ export default function ProgramDetailScreen() {
   const { user } = useAuth()
   const { isProMember } = useSubscription()
 
-  const [program, setProgram] = useState<ExploreProgramWithRoutines | null>(null)
+  const [program, setProgram] = useState<ExploreProgramWithRoutines | null>(
+    null,
+  )
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
@@ -52,7 +54,7 @@ export default function ProgramDetailScreen() {
     if (item.image_url && item.image_url.startsWith('http')) {
       return item.image_url
     }
-    
+
     // Otherwise, construct a URL from the storage bucket based on the image_url (path) or name
     const imagePath = item.image_url || `${item.name}.png`
     return getRoutineImageUrl(imagePath)
@@ -84,7 +86,7 @@ export default function ProgramDetailScreen() {
       await database.explore.saveProgramToUser(program.id, user.id)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       Alert.alert('Success', 'Program saved to your workouts!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.back() },
       ])
     } catch (error) {
       console.error('Error saving program:', error)
@@ -97,7 +99,7 @@ export default function ProgramDetailScreen() {
   const handleExercisePress = (exerciseId: string) => {
     router.push({
       pathname: '/exercise/[exerciseId]',
-      params: { exerciseId }
+      params: { exerciseId },
     })
   }
 
@@ -118,17 +120,19 @@ export default function ProgramDetailScreen() {
     ['#EA580C', '#F97316'], // Orange
     ['#059669', '#10B981'], // Emerald
   ]
-  const gradient = (GRADIENTS[
-    (program.display_order - 1) % GRADIENTS.length
-  ] || GRADIENTS[0]) as [string, string, ...string[]]
+  const gradient = (GRADIENTS[(program.display_order - 1) % GRADIENTS.length] ||
+    GRADIENTS[0]) as [string, string, ...string[]]
 
   // Determine icon
   let iconName = 'barbell'
   const nameLower = program.name.toLowerCase()
   if (nameLower.includes('body')) iconName = 'body'
-  if (nameLower.includes('cardio') || nameLower.includes('hiit')) iconName = 'fitness'
-  if (nameLower.includes('strength') || nameLower.includes('power')) iconName = 'flash'
-  if (nameLower.includes('yoga') || nameLower.includes('stretch')) iconName = 'walk'
+  if (nameLower.includes('cardio') || nameLower.includes('hiit'))
+    iconName = 'fitness'
+  if (nameLower.includes('strength') || nameLower.includes('power'))
+    iconName = 'flash'
+  if (nameLower.includes('yoga') || nameLower.includes('stretch'))
+    iconName = 'walk'
 
   const handleBack = () => {
     setShouldExit(true)
@@ -144,13 +148,15 @@ export default function ProgramDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
+      >
         <BaseNavbar
           leftContent={
-            <TouchableOpacity
-              onPress={handleBack}
-              style={styles.backButton}
-            >
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
           }
@@ -160,9 +166,9 @@ export default function ProgramDetailScreen() {
             </NavbarIsland>
           }
           rightContent={
-             <TouchableOpacity style={styles.shareButton}>
-               <Ionicons name="share-outline" size={24} color={colors.text} />
-             </TouchableOpacity>
+            <TouchableOpacity style={styles.shareButton}>
+              <Ionicons name="share-outline" size={24} color={colors.text} />
+            </TouchableOpacity>
           }
         />
 
@@ -178,11 +184,10 @@ export default function ProgramDetailScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.headerGradient}
             >
-               <View style={styles.iconBadge}>
-                 <Ionicons name={iconName as any} size={40} color="#FFF" />
-               </View>
-               <Text style={styles.programTitle}>{program.name}</Text>
-
+              <View style={styles.iconBadge}>
+                <Ionicons name={iconName as any} size={40} color="#FFF" />
+              </View>
+              <Text style={styles.programTitle}>{program.name}</Text>
             </LinearGradient>
           </View>
 
@@ -193,7 +198,12 @@ export default function ProgramDetailScreen() {
               onPress={() => setShowPaywall(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="lock-closed" size={18} color="#FFF" style={{ marginRight: 8 }} />
+              <Ionicons
+                name="lock-closed"
+                size={18}
+                color="#FFF"
+                style={{ marginRight: 8 }}
+              />
               <Text style={styles.saveButtonText}>Unlock</Text>
             </TouchableOpacity>
           ) : (
@@ -214,21 +224,36 @@ export default function ProgramDetailScreen() {
           {/* Description & Stats */}
           <View style={styles.infoSection}>
             <Text style={styles.description}>{program.description}</Text>
-            
-            <View style={styles.statsGrid}>
 
-               <View style={styles.statItem}>
-                 <Ionicons name="fitness-outline" size={20} color={colors.textSecondary} />
-                 <Text style={styles.statLabel}>Gym</Text>
-               </View>
-               <View style={styles.statItem}>
-                 <Ionicons name="trophy-outline" size={20} color={colors.textSecondary} />
-                 <Text style={styles.statLabel}>{program.goal?.replace('_', ' ') || 'General'}</Text>
-               </View>
-               <View style={styles.statItem}>
-                 <Ionicons name="list-outline" size={20} color={colors.textSecondary} />
-                 <Text style={styles.statLabel}>{program.routine_count} Routines</Text>
-               </View>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="fitness-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.statLabel}>Gym</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="trophy-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.statLabel}>
+                  {program.goal?.replace('_', ' ') || 'General'}
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="list-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.statLabel}>
+                  {program.routine_count} Routines
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -238,9 +263,9 @@ export default function ProgramDetailScreen() {
             {program.routines.map((routine) => (
               <View key={routine.id} style={styles.routineItem}>
                 <View style={styles.routineCardPreview}>
-                  <Image 
-                    source={getRoutineImage(routine)} 
-                    style={styles.routinePreviewImage} 
+                  <Image
+                    source={getRoutineImage(routine)}
+                    style={styles.routinePreviewImage}
                     contentFit="cover"
                     cachePolicy="memory-disk"
                     transition={200}
@@ -250,10 +275,12 @@ export default function ProgramDetailScreen() {
                     style={styles.routinePreviewOverlay}
                   />
                   <View style={styles.routinePreviewContent}>
-                    <Text style={styles.routinePreviewName}>{routine.name}</Text>
+                    <Text style={styles.routinePreviewName}>
+                      {routine.name}
+                    </Text>
                   </View>
                 </View>
-                
+
                 <Text style={styles.routineDescription}>
                   {routine.description}
                 </Text>
@@ -264,13 +291,17 @@ export default function ProgramDetailScreen() {
                     <View key={exItem.id} style={styles.exerciseRow}>
                       <View style={styles.exerciseImageContainer}>
                         {exItem.exercise?.gif_url ? (
-                          <ExerciseMediaThumbnail 
-                             gifUrl={exItem.exercise.gif_url}
-                             style={{ width: '100%', height: '100%' }}
+                          <ExerciseMediaThumbnail
+                            gifUrl={exItem.exercise.gif_url}
+                            style={{ width: '100%', height: '100%' }}
                           />
                         ) : (
                           <View style={styles.exercisePlaceholder}>
-                             <Ionicons name="barbell" size={20} color={colors.textSecondary} />
+                            <Ionicons
+                              name="barbell"
+                              size={20}
+                              color={colors.textSecondary}
+                            />
                           </View>
                         )}
                       </View>
@@ -282,7 +313,11 @@ export default function ProgramDetailScreen() {
                               {exItem.exercise?.name || 'Unknown Exercise'}
                             </Text>
                             <Text style={styles.exerciseDetails}>
-                              {exItem.sets} sets • {exItem.reps_min}{exItem.reps_max ? `-${exItem.reps_max}` : ''} reps
+                              {exItem.sets} sets • {exItem.reps_min}
+                              {exItem.reps_max
+                                ? `-${exItem.reps_max}`
+                                : ''}{' '}
+                              reps
                             </Text>
                             <BlurView
                               intensity={60}
@@ -293,23 +328,40 @@ export default function ProgramDetailScreen() {
                         ) : (
                           // Visible text for pro
                           <>
-                            <Text style={styles.exerciseName} numberOfLines={1}>{exItem.exercise?.name || 'Unknown Exercise'}</Text>
+                            <Text style={styles.exerciseName} numberOfLines={1}>
+                              {exItem.exercise?.name || 'Unknown Exercise'}
+                            </Text>
                             <Text style={styles.exerciseDetails}>
-                              {exItem.sets} sets • {exItem.reps_min}{exItem.reps_max ? `-${exItem.reps_max}` : ''} reps
+                              {exItem.sets} sets • {exItem.reps_min}
+                              {exItem.reps_max
+                                ? `-${exItem.reps_max}`
+                                : ''}{' '}
+                              reps
                             </Text>
                           </>
                         )}
                       </View>
                       {isProMember && (
-                        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                        <Ionicons
+                          name="chevron-forward"
+                          size={16}
+                          color={colors.textTertiary}
+                        />
                       )}
                     </View>
                   ))}
                   {(!routine.exercises || routine.exercises.length === 0) && (
-                     <Text style={{color: colors.textSecondary, fontStyle: 'italic', marginTop: 8}}>No exercises preview available</Text>
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontStyle: 'italic',
+                        marginTop: 8,
+                      }}
+                    >
+                      No exercises preview available
+                    </Text>
                   )}
                 </View>
-
               </View>
             ))}
           </View>
@@ -323,14 +375,17 @@ export default function ProgramDetailScreen() {
       <Paywall
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title="Pro Feature"
-        message="Unlock Pro to access premium programs and routines."
+        title="Unlock PRO training programs"
+        message="Get instant access to structured, multi-week training programs designed by experts. Each program includes multiple routines with detailed exercise plans to maximize your gains."
       />
     </SlideInView>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolean) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,

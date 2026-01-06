@@ -2,20 +2,12 @@ import { HapticButton } from '@/components/haptic-button'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS } from '@/lib/coaches'
 import { Asset } from 'expo-asset'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
-} from 'react-native'
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -41,8 +33,6 @@ const ITEM_WIDTH = 200
 const ITEM_SPACING = 20
 
 export default function WelcomeScreen() {
-  const colors = useThemedColors()
-  const { width } = useWindowDimensions()
   const [showSignInSheet, setShowSignInSheet] = useState(false)
   const { trackEvent } = useAnalytics()
 
@@ -58,8 +48,8 @@ export default function WelcomeScreen() {
   // Preload coach images so they're ready for onboarding
   useEffect(() => {
     const preloadCoachImages = async () => {
-      const imageAssets = COACH_OPTIONS.map(coach => 
-        Asset.fromModule(coach.image).downloadAsync()
+      const imageAssets = COACH_OPTIONS.map((coach) =>
+        Asset.fromModule(coach.image).downloadAsync(),
       )
       await Promise.all(imageAssets)
     }
@@ -96,7 +86,7 @@ export default function WelcomeScreen() {
             <Text style={styles.logoText}>Rep AI</Text>
           </View>
 
-          {/* Carousel */}
+          {/* Carousel - flex: 1 takes remaining space */}
           <View style={styles.carouselContainer}>
             <Animated.View style={[styles.carouselTrack, animatedStyle]}>
               {CAROUSEL_IMAGES.map((img, index) => {
@@ -118,8 +108,6 @@ export default function WelcomeScreen() {
                       style={styles.cardImage}
                       resizeMode="cover"
                     />
-                    {/* Add a subtle overlay for better text contrast if needed, or just the image */}
-                    {/* Name tag could be added here if desired, like in the screenshot "@danielnavas" */}
                   </View>
                 )
               })}
@@ -168,7 +156,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
@@ -182,10 +169,9 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   carouselContainer: {
-    height: 430,
+    flex: 1,
     justifyContent: 'center',
     overflow: 'hidden',
-    marginTop: 10, // Pull up a bit
   },
   carouselTrack: {
     flexDirection: 'row',

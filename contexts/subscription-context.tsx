@@ -2,6 +2,7 @@ import {
   cancelTrialNotification,
   checkAndRescheduleTrialNotification,
 } from '@/lib/services/notification-service'
+import { FacebookEvents } from '@/lib/facebook-sdk'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import React, {
@@ -301,11 +302,28 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         throw new Error(`Package ${packageId} not found`)
       }
 
+      // Log initiated checkout to Facebook
+      const price = selectedPackage.product.price
+      FacebookEvents.logInitiatedCheckout(price, 'USD', selectedPackage.packageType)
+
       // Make the purchase
       const { customerInfo: info } = await Purchases.purchasePackage(
         selectedPackage,
       )
       setCustomerInfo(info)
+
+      // Log successful purchase/subscription to Facebook for ad attribution
+      const newEntitlement = info.entitlements.active['Pro']
+      if (newEntitlement) {
+        if (newEntitlement.periodType === 'trial') {
+          // User started a free trial
+          FacebookEvents.logStartTrial(selectedPackage.packageType, 'USD', 0)
+        } else {
+          // User subscribed (paid)
+          FacebookEvents.logSubscribe(price, 'USD', selectedPackage.packageType)
+        }
+      }
+
       return info
     } catch (error) {
       console.error('[RevenueCat] Purchase error:', error)

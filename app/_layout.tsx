@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider as NavigationThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -26,6 +26,10 @@ import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import {
+  initializeFacebookSDK,
+  requestTrackingPermission,
+} from '@/lib/facebook-sdk'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
 // Set global refresh control tint color for iOS
@@ -34,6 +38,9 @@ if (Platform.OS === 'ios') {
     UIManager.setLayoutAnimationEnabledExperimental(true)
   }
 }
+
+// Initialize Facebook SDK early
+initializeFacebookSDK()
 
 // Custom navigation themes with our app colors
 const CustomLightTheme = {
@@ -70,6 +77,31 @@ function RootLayoutNav() {
       console.warn('[RootLayout] Failed to initialize exercise lookup:', err)
     })
   }, [])
+
+  // Request ATT permission once when user is authenticated and enters main app
+  // We use a ref to store the timer so it doesn't get cancelled on segment changes
+  const hasRequestedTracking = useRef(false)
+  const attTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
+  useEffect(() => {
+    const inMainApp = segments[0] === '(tabs)'
+    const isAuthenticated = !!user
+    
+    // Only request ATT when user is authenticated and in the main app
+    // This prevents the timer from being set during the initial redirect dance
+    if (inMainApp && isAuthenticated && !isLoading && !hasRequestedTracking.current) {
+      hasRequestedTracking.current = true
+      // Small delay so it doesn't feel jarring
+      attTimerRef.current = setTimeout(() => {
+        requestTrackingPermission()
+      }, 1000)
+    }
+    
+    // Only cleanup on unmount, not on every segment change
+    return () => {
+      // Don't clear the timer - we want it to fire even if user briefly navigates
+    }
+  }, [segments, isLoading, user])
 
   const hasTrackedAppOpen = useRef(false)
 

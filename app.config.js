@@ -48,6 +48,28 @@ if (!supabaseAnonKey) {
   )
 }
 
+// Facebook SDK config (optional - only include if env vars are set)
+const facebookAppId = process.env.FACEBOOK_APP_ID
+const facebookClientToken = process.env.FACEBOOK_CLIENT_TOKEN
+const facebookPluginConfig =
+  facebookAppId && facebookClientToken
+    ? [
+        'react-native-fbsdk-next',
+        {
+          appID: facebookAppId,
+          clientToken: facebookClientToken,
+          displayName: 'Rep AI',
+          scheme: `fb${facebookAppId}`,
+          // IMPORTANT: Disable auto-tracking until ATT consent is granted
+          advertiserIDCollectionEnabled: false,
+          autoLogAppEventsEnabled: false,
+          isAutoInitEnabled: false,
+          iosUserTrackingPermission:
+            'This identifier will be used to deliver personalized ads to you.',
+        },
+      ]
+    : null
+
 module.exports = {
   expo: {
     name: 'Rep AI',
@@ -71,6 +93,15 @@ module.exports = {
           'This app needs access to your photo library to select workout images.',
         NSUserNotificationsUsageDescription:
           'This app needs permission to send you reminders about your trial expiration.',
+        // SKAdNetwork identifiers for Meta/Facebook attribution (required for iOS 14+)
+        SKAdNetworkItems: [
+          { SKAdNetworkIdentifier: 'v9wttpbfk9.skadnetwork' }, // Facebook
+          { SKAdNetworkIdentifier: 'n38lu8286q.skadnetwork' }, // Facebook
+          { SKAdNetworkIdentifier: '22mmun2rn5.skadnetwork' }, // Google
+          { SKAdNetworkIdentifier: '4fzdc2evr5.skadnetwork' }, // Google
+          { SKAdNetworkIdentifier: 'su67r6k2v3.skadnetwork' }, // TikTok
+          { SKAdNetworkIdentifier: 'yclnxrl5pm.skadnetwork' }, // Snap
+        ],
       },
       bundleIdentifier: 'com.viralstudio.repai',
     },
@@ -133,6 +164,15 @@ module.exports = {
           sounds: [],
         },
       ],
+      [
+        'expo-tracking-transparency',
+        {
+          userTrackingPermission:
+            'This identifier will be used to deliver personalized ads to you.',
+        },
+      ],
+      // Facebook SDK - only included when env vars are configured
+      ...(facebookPluginConfig ? [facebookPluginConfig] : []),
     ],
     experiments: {
       typedRoutes: true,
