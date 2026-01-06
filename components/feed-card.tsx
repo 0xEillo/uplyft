@@ -884,19 +884,9 @@ const createStyles = (
     workoutDescription: {
       fontSize: 15,
       color: colors.text,
-      backgroundColor: colors.feedCardBackground,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 20,
-      borderTopLeftRadius: 4, // More of a 'bubble' feel from the side
-      alignSelf: 'flex-start',
       marginTop: 4,
-      marginBottom: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 1,
+      marginBottom: 12,
+      lineHeight: 22,
     },
     exercisesContainer: {
       marginBottom: 12,
