@@ -761,6 +761,8 @@ export default function CreateRoutineScreen() {
     isEditMode,
     routineId,
     from,
+    imagePath,
+    tintColor,
   ])
 
   const handleCancel = useCallback(() => {

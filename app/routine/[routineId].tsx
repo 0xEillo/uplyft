@@ -342,7 +342,7 @@ export default function RoutineDetailScreen() {
           leftContent={
             <NavbarIsland>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={28} color={colors.text} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -360,7 +360,7 @@ export default function RoutineDetailScreen() {
                 >
                   <Ionicons
                     name="trash-outline"
-                    size={24}
+                    size={28}
                     color={colors.error}
                   />
                 </TouchableOpacity>
@@ -616,6 +616,7 @@ const createStyles = (
     },
     backButton: {
       zIndex: 1,
+      padding: 4,
     },
     actionButton: {
       padding: 4,
