@@ -2,16 +2,16 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -45,6 +45,13 @@ export function FinalizeWorkoutOverlay({
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const [showPhotoMenu, setShowPhotoMenu] = React.useState(false)
+
+  // Reset photo menu state when modal closes to prevent stale state
+  React.useEffect(() => {
+    if (!visible) {
+      setShowPhotoMenu(false)
+    }
+  }, [visible])
 
   return (
     <Modal

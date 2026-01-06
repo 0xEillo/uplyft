@@ -17,6 +17,13 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
+import {
+  getExerciseSuggestion,
+  parseRepRange,
+  useExerciseAutocomplete,
+  useShowConvertButton
+} from '@/hooks/useExerciseAutocomplete'
+import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
@@ -25,12 +32,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
-import {
-  clearExerciseHistoryCache,
-  getLastPerformanceForExercise,
-  getSetPerformance,
-  type SetPerformance,
-} from '@/lib/services/exerciseHistoryService'
+import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
   clearDraft as clearWorkoutDraft,
@@ -140,101 +142,20 @@ Finished with 10min cardio. Shoulder felt great today!`,
   },
 ]
 
-// Helper function moved outside component to avoid hoisting issues
-// Detect if current line looks like an exercise name
-const detectExerciseName = (text: string, cursorPos: number) => {
-  // Only check if we have text
-  if (!text) return false
-
-  // Find text before cursor without full substring/split if possible,
-  // but cursor might be in middle.
-  // Optimization: find start of current line
-  const textBeforeCursor = text.substring(0, cursorPos)
-  const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
-  const currentLine = textBeforeCursor.substring(lastNewlineIndex + 1).trim()
-
-  // Simple heuristic: if current line is non-empty and doesn't look like a set (no numbers/weights)
-  // and is on its own line or at start of text, it might be an exercise name
-  if (!currentLine) return false
-
-  // Check if line looks like a set (has numbers, x, lbs/kg, etc)
-  const setPattern = /(\d+|\d+\.\d+)\s*(x|×|lbs?|kg|reps?)/i
-  if (setPattern.test(currentLine)) return false
-
-  // Check if it's a reasonable length for an exercise name (2-50 chars)
-  if (currentLine.length < 2 || currentLine.length > 50) return false
-
-  // Check if previous line is empty or doesn't exist (exercise names are usually on their own line)
-  // Find end of previous line
-  if (lastNewlineIndex > 0) {
-    const textBeforeCurrentLine = text.substring(0, lastNewlineIndex)
-    const prevLineLastNewline = textBeforeCurrentLine.lastIndexOf('\n')
-    const prevLine = textBeforeCurrentLine
-      .substring(prevLineLastNewline + 1)
-      .trim()
-    if (prevLine && !prevLine.match(setPattern)) return false
-  }
-
-  return true
-}
-
-const getExerciseSuggestion = (
-  text: string,
-  cursorPos: number,
-  exercises: Exercise[],
-): { name: string; inputLength: number } | null => {
-  if (!text || !exercises.length) return null
-
-  // Find start of current line
-  const textBeforeCursor = text.substring(0, cursorPos)
-  const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
-  const currentLineStart = lastNewlineIndex + 1
-
-  // Get text from start of line to cursor
-  const currentLinePrefix = textBeforeCursor.substring(currentLineStart)
-  const trimmedPrefix = currentLinePrefix.trimStart() // Allow indentation but trim for matching
-
-  // Check text AFTER cursor on the current line
-  const textAfterCursor = text.substring(cursorPos)
-  const nextNewlineIndex = textAfterCursor.indexOf('\n')
-  const currentLineSuffix =
-    nextNewlineIndex === -1
-      ? textAfterCursor
-      : textAfterCursor.substring(0, nextNewlineIndex)
-
-  // Only suggest if the cursor is at the end of the line or followed by whitespace
-  // This prevents ghost text from overlaying existing text in the middle of a line
-  if (currentLineSuffix.trim().length > 0) return null
-
-  // Only suggest if at least 2 chars typed and prefix doesn't look like a set/numbers
-  if (trimmedPrefix.length < 2) return null
-  if (/^[\d\sxX.]+$/.test(trimmedPrefix)) return null
-  if (/(\d+(?:\.\d+)?)\s*(?:x|×|lbs?|kg)/i.test(trimmedPrefix)) return null
-
-  const normalizedInput = trimmedPrefix.toLowerCase()
-
-  // Find best match
-  // 1. Exact start match
-  // 2. Word boundary match (optional, but start match is standard for autocomplete)
-  const match = exercises.find((ex) =>
-    ex.name.toLowerCase().startsWith(normalizedInput),
-  )
-
-  // Only return if it's a strictly longer match
-  if (match && match.name.toLowerCase() !== normalizedInput) {
-    return { name: match.name, inputLength: trimmedPrefix.length }
-  }
-
-  return null
-}
-
 export default function CreatePostScreen() {
   const colors = useThemedColors()
-  const { weightUnit, convertToPreferred } = useWeightUnits()
+  const { weightUnit } = useWeightUnits()
   const { coachId } = useProfile()
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
   const insets = useSafeAreaInsets()
+
+  // Exercise history hook for creating exercises with last performance data
+  const {
+    createExerciseWithHistory,
+    createEmptySet,
+    fetchSetHistory,
+  } = useExerciseHistory()
   const {
     selectedRoutineId: selectedRoutineIdParam,
     refresh: refreshParam,
@@ -371,14 +292,14 @@ export default function CreatePostScreen() {
     setLastRoutineWorkout,
   ] = useState<WorkoutSessionWithDetails | null>(null)
 
+
   // =============================================================================
   // TEXT-TO-STRUCTURED CONVERSION STATE
   // =============================================================================
   const [cursorPosition, setCursorPosition] = useState(0)
 
-  const showConvertButton = useMemo(() => {
-    return isNotesFocused && detectExerciseName(notes, cursorPosition)
-  }, [notes, cursorPosition, isNotesFocused])
+  // Use hook for convert button visibility
+  const showConvertButton = useShowConvertButton(notes, cursorPosition, isNotesFocused)
 
   const previousLineCount = useRef(0)
 
@@ -386,7 +307,6 @@ export default function CreatePostScreen() {
   // IMAGE ATTACHMENT STATE
   // =============================================================================
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
-  const [imageLoading, setImageLoading] = useState(false)
 
   const { showOverlay } = useSuccessOverlay()
   const { showPrompt } = useRatingPrompt()
@@ -879,15 +799,19 @@ export default function CreatePostScreen() {
     // This ensures we persist the routine ID even while waiting for routines to load
     const routineIdToSave = selectedRoutine?.id ?? pendingDraftRoutineId ?? null
 
-    void saveWorkoutDraft({
-      notes,
-      title: workoutTitle,
-      structuredData,
-      isStructuredMode,
-      selectedRoutineId: routineIdToSave,
-      timerStartedAt: workoutTimerSerializableState.timerStartedAt,
-      timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-    }).catch((error) => console.error('[Draft] Save failed:', error))
+    const timeoutId = setTimeout(() => {
+      void saveWorkoutDraft({
+        notes,
+        title: workoutTitle,
+        structuredData,
+        isStructuredMode,
+        selectedRoutineId: routineIdToSave,
+        timerStartedAt: workoutTimerSerializableState.timerStartedAt,
+        timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
+      }).catch((error) => console.error('[Draft] Save failed:', error))
+    }, 2000)
+
+    return () => clearTimeout(timeoutId)
   }, [
     notes,
     workoutTitle,
@@ -1128,12 +1052,16 @@ export default function CreatePostScreen() {
       refreshFreemiumLimits,
       getWorkoutElapsedSeconds,
       resetWorkoutTimer,
+      completeStep,
     ],
   )
 
   const submitWorkout = async (caption?: string) => {
     // Check if user can post workout (freemium limit)
     if (!canPostWorkout) {
+      // Reset loading state before showing paywall
+      isSubmittingRef.current = false
+      setIsLoading(false)
       setShowPaywall(true)
       trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
         feature: 'workout_logging',
@@ -1573,178 +1501,41 @@ export default function CreatePostScreen() {
   )
 
   // =============================================================================
-  // EXERCISE HISTORY HELPERS
-  // =============================================================================
-
-  /**
-   * Convert a SetPerformance from the history service to display format.
-   * Handles weight unit conversion and formatting.
-   */
-  const formatSetHistoryForDisplay = useCallback(
-    (
-      historySet: SetPerformance | null,
-    ): { weight: string | null; reps: string | null } => {
-      if (!historySet) {
-        return { weight: null, reps: null }
-      }
-
-      const weightInPreferredUnit = historySet.weight
-        ? convertToPreferred(historySet.weight)
-        : null
-
-      return {
-        weight: weightInPreferredUnit
-          ? Math.round(weightInPreferredUnit).toString()
-          : null,
-        reps: historySet.reps?.toString() ?? null,
-      }
-    },
-    [convertToPreferred],
-  )
-
-  /**
-   * Create an empty set with optional target rep range.
-   */
-  const createEmptySet = useCallback(
-    (targetRepsMin: number | null = null, targetRepsMax: number | null = null) => ({
-      weight: '',
-      reps: '',
-      lastWorkoutWeight: null,
-      lastWorkoutReps: null,
-      targetRepsMin,
-      targetRepsMax,
-      targetRestSeconds: null,
-    }),
-    [],
-  )
-
-  /**
-   * Create a StructuredExerciseDraft with last performance data.
-   *
-   * Fetches the user's most recent workout for this exercise and populates
-   * placeholder values with their previous weight/reps for each set.
-   *
-   * Standard workout tracker approach:
-   * - Match by set number (Set 1 history → Set 1 placeholder)
-   * - Show empty placeholders for sets beyond previous workout
-   */
-  const createExerciseWithHistory = useCallback(
-    async (
-      exerciseName: string,
-      numberOfSets = 1,
-      targetRepsMin: number | null = null,
-      targetRepsMax: number | null = null,
-    ): Promise<StructuredExerciseDraft> => {
-      // Create base exercise with empty sets
-      const baseExercise: StructuredExerciseDraft = {
-        id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-        name: exerciseName,
-        sets: Array.from({ length: numberOfSets }, () =>
-          createEmptySet(targetRepsMin, targetRepsMax),
-        ),
-      }
-
-      // Early return if user not authenticated
-      if (!user?.id) {
-        return baseExercise
-      }
-
-      try {
-        const lastPerformance = await getLastPerformanceForExercise(
-          user.id,
-          exerciseName,
-        )
-
-        if (!lastPerformance?.sets?.length) {
-          return baseExercise
-        }
-
-        // Enrich each set with history data
-        const enrichedSets = baseExercise.sets.map((set, index) => {
-          const setNumber = index + 1
-          const historySet = lastPerformance.sets.find(
-            (s) => s.setNumber === setNumber,
-          )
-          const formatted = formatSetHistoryForDisplay(historySet ?? null)
-
-          return {
-            ...set,
-            lastWorkoutWeight: formatted.weight,
-            lastWorkoutReps: formatted.reps,
-          }
-        })
-
-        return { ...baseExercise, sets: enrichedSets }
-      } catch (error) {
-        console.error('[createExerciseWithHistory] Error:', error)
-        return baseExercise
-      }
-    },
-    [user?.id, createEmptySet, formatSetHistoryForDisplay],
-  )
-
-  /**
-   * Fetch and format history for a specific set number.
-   *
-   * Used by StructuredWorkoutInput when the user adds new sets via the + button.
-   * Returns weight/reps in display format (user's preferred units, stringified).
-   */
-  const handleFetchSetHistory = useCallback(
-    async (
-      exerciseName: string,
-      setNumber: number,
-    ): Promise<{ weight: string | null; reps: string | null } | null> => {
-      if (!user?.id) return null
-
-      try {
-        const historySet = await getSetPerformance(user.id, exerciseName, setNumber)
-        const formatted = formatSetHistoryForDisplay(historySet)
-
-        // Return null if no data to avoid creating empty placeholders
-        if (!formatted.weight && !formatted.reps) {
-          return null
-        }
-
-        return formatted
-      } catch (error) {
-        console.error('[handleFetchSetHistory] Error:', error)
-        return null
-      }
-    },
-    [user?.id, formatSetHistoryForDisplay],
-  )
-
-  // =============================================================================
   // AUTOCOMPLETE STATE
   // =============================================================================
-  const currentSuggestion = useMemo(() => {
-    return isNotesFocused
-      ? getExerciseSuggestion(notes, cursorPosition, allExercises)
-      : null
-  }, [notes, cursorPosition, allExercises, isNotesFocused])
+  const currentSuggestion = useExerciseAutocomplete({
+    text: notes,
+    cursorPosition,
+    exercises: allExercises,
+    isInputFocused: isNotesFocused,
+  })
 
   const handleAcceptSuggestion = useCallback(async () => {
     if (!currentSuggestion) return
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-    // 1. Create structured workout entry with history data
-    const newExercise = await createExerciseWithHistory(currentSuggestion.name)
+      // 1. Create structured workout entry with history data
+      const newExercise = await createExerciseWithHistory(currentSuggestion.name)
 
-    setStructuredData((prev) => [...prev, newExercise])
-    setIsStructuredMode(true)
+      setStructuredData((prev) => [...prev, newExercise])
+      setIsStructuredMode(true)
 
-    // 2. Remove the text that triggered the suggestion from the notes
-    // Find current line start/end
-    const textBeforeCursor = notes.substring(0, cursorPosition)
-    const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
-    const startOfLine = lastNewlineIndex + 1
+      // 2. Remove the text that triggered the suggestion from the notes
+      // Find current line start/end
+      const textBeforeCursor = notes.substring(0, cursorPosition)
+      const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+      const startOfLine = lastNewlineIndex + 1
 
-    // We simply remove the line where the user was typing
-    const newText =
-      notes.substring(0, startOfLine) + notes.substring(cursorPosition)
+      // We simply remove the line where the user was typing
+      const newText =
+        notes.substring(0, startOfLine) + notes.substring(cursorPosition)
 
-    setNotes(newText)
+      setNotes(newText)
+    } catch (error) {
+      console.error('[handleAcceptSuggestion] Error accepting suggestion:', error)
+    }
   }, [currentSuggestion, notes, cursorPosition, createExerciseWithHistory])
 
   // Handle text change
@@ -1762,25 +1553,30 @@ export default function CreatePostScreen() {
           allExercises,
         )
         if (suggestion) {
-          // Manually call accept suggestion logic with the calculated suggestion
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          try {
+            // Manually call accept suggestion logic with the calculated suggestion
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
-          // 1. Create structured workout entry with history data
-          const newExercise = await createExerciseWithHistory(suggestion.name)
+            // 1. Create structured workout entry with history data
+            const newExercise = await createExerciseWithHistory(suggestion.name)
 
-          setStructuredData((prev) => [...prev, newExercise])
-          setIsStructuredMode(true)
+            setStructuredData((prev) => [...prev, newExercise])
+            setIsStructuredMode(true)
 
-          // 2. Remove the text line
-          const textBeforeCursor = notes.substring(0, cursorPosition)
-          const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
-          const startOfLine = lastNewlineIndex + 1
+            // 2. Remove the text line
+            const textBeforeCursor = notes.substring(0, cursorPosition)
+            const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+            const startOfLine = lastNewlineIndex + 1
 
-          const newText =
-            notes.substring(0, startOfLine) + notes.substring(cursorPosition)
+            const newText =
+              notes.substring(0, startOfLine) + notes.substring(cursorPosition)
 
-          setNotes(newText)
-
+            setNotes(newText)
+          } catch (error) {
+            console.error('[handleNotesChange] Error creating exercise:', error)
+            // Fallback: just set the text with the newline
+            setNotes(text)
+          }
           return
         }
       }
@@ -1858,24 +1654,6 @@ export default function CreatePostScreen() {
       scrollViewRef.current?.scrollToEnd({ animated: true })
     }, 100)
   }, [createExerciseWithHistory])
-
-  // Helper: Parse rep range from string like "10-12" or "10"
-  const parseRepRange = (
-    reps: string,
-  ): { targetRepsMin: number | null; targetRepsMax: number | null } => {
-    const rangeMatch = reps.match(/(\d+)[-–](\d+)/)
-    if (rangeMatch) {
-      return {
-        targetRepsMin: parseInt(rangeMatch[1], 10),
-        targetRepsMax: parseInt(rangeMatch[2], 10),
-      }
-    }
-    const singleRep = parseInt(reps, 10)
-    if (!isNaN(singleRep)) {
-      return { targetRepsMin: singleRep, targetRepsMax: singleRep }
-    }
-    return { targetRepsMin: null, targetRepsMax: null }
-  }
 
   // Handler for adding exercise from AI coach suggestions
   const handleAddExerciseFromCoach = useCallback(
@@ -2144,7 +1922,7 @@ export default function CreatePostScreen() {
                   onInputFocus={() => setIsStructuredInputFocused(true)}
                   onInputBlur={() => setIsStructuredInputFocused(false)}
                   editorToolbarProps={editorToolbarProps}
-                  onFetchSetHistory={handleFetchSetHistory}
+                  onFetchSetHistory={fetchSetHistory}
                 />
               </View>
             )}
@@ -2298,16 +2076,18 @@ export default function CreatePostScreen() {
           }}
           onSkip={() => {
             // "Skip" pressed - submit without caption
-            setShowFinalizeOverlay(false)
+            // Set submitting state FIRST to prevent race conditions
             isSubmittingRef.current = true
             setIsLoading(true)
+            setShowFinalizeOverlay(false)
             submitWorkout()
           }}
           onFinish={() => {
             // "Finish" pressed - submit with caption
-            setShowFinalizeOverlay(false)
+            // Set submitting state FIRST to prevent race conditions
             isSubmittingRef.current = true
             setIsLoading(true)
+            setShowFinalizeOverlay(false)
             submitWorkout(finalizeDescription)
           }}
           onAttachWithCamera={handleAttachWithCamera}

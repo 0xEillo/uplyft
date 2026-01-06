@@ -1650,7 +1650,7 @@ export function WorkoutChat({
       const routine = await database.workoutRoutines.create(
         user.id,
         routineData.title || 'AI Generated Routine',
-        routineData.description || 'Generated from AI Chat',
+        { notes: routineData.description || 'Generated from AI Chat' },
       )
       createdRoutineId = routine.id
 
