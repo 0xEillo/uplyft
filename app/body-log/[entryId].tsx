@@ -85,6 +85,7 @@ const LinearScale = ({
   label, 
   subLabel,
   colorResolver,
+  onPress,
   styles
 }: {
   value: number
@@ -94,63 +95,88 @@ const LinearScale = ({
   label: string
   subLabel?: string
   colorResolver?: (val: number) => string
+  onPress?: () => void
   styles: any
 }) => {
   const colors = useThemedColors()
   const percent = Math.min(Math.max((value - min) / (max - min), 0), 1) * 100
   
   // Calculate specific markers position if ranges provided
-  const markers = ranges ? ranges.map(r => ({
-    left: Math.min(Math.max((r.start - min) / (max - min), 0), 1) * 100,
-    label: r.start
-  })) : []
+  // Only show markers that are within range and not at the very ends to avoid overlap
+  const markers = ranges ? ranges
+    .filter(r => r.start > min && r.start < max)
+    .map(r => ({
+      left: Math.min(Math.max((r.start - min) / (max - min), 0), 1) * 100,
+      label: r.start
+    })) : []
   
   const hideMin = markers.some(m => m.left < 10)
   const hideMax = markers.some(m => m.left > 90)
 
   return (
-    <View style={styles.scaleContainer}>
+    <TouchableOpacity 
+      activeOpacity={0.7} 
+      onPress={onPress}
+      style={styles.scaleContainer}
+    >
       <View style={styles.scaleHeader}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.scaleLabel, { color: colors.textSecondary }]}>{label}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
             <Text style={[styles.scaleValueBig, { color: colors.text }]}>{value}</Text>
-            {subLabel && <Text style={[styles.scaleSubLabel, { color: colors.textSecondary }]}>{subLabel}</Text>}
+            {subLabel && (
+              <View style={[styles.statusBadge, { backgroundColor: colorResolver ? `${colorResolver(value)}20` : 'transparent' }]}>
+                <Text style={[styles.scaleSubLabel, { color: colorResolver ? colorResolver(value) : colors.textSecondary }]}>
+                  {subLabel}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        <View style={[styles.chevronCircle, { backgroundColor: colors.border }]}>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+        </View>
       </View>
 
       <View style={styles.scaleTrackContainer}>
         {/* Track Background */}
-        <View style={[styles.scaleTrack, { backgroundColor: colors.border }]}>
+        <View style={[styles.scaleTrack, { backgroundColor: colors.border, opacity: 0.5 }]}>
           {ranges && ranges.map((range, index) => {
              const left = Math.min(Math.max((range.start - min) / (max - min), 0), 1) * 100
              const width = Math.min(Math.max((range.end - range.start) / (max - min), 0), 1) * 100
              return (
-               <View 
-                 key={index} 
-                 style={{ 
-                   position: 'absolute', 
-                   left: `${left}%`, 
-                   width: `${width}%`, 
-                   height: '100%', 
-                   backgroundColor: range.color || colors.primary,
-                   opacity: 0.3
-                 }} 
-               />
-             )
-          })}
-          
-          {/* Main Gradient Bar (Fallback) */}
-          {(!ranges || ranges.length === 0) && (
-            <LinearGradient
-                colors={['#FFB74D', '#F57C00', '#EF6C00']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[StyleSheet.absoluteFill, { borderRadius: 4, opacity: 0.8 }]} 
-            />
-          )}
+                <View 
+                  key={index} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: `${left}%`, 
+                    width: `${width}%`, 
+                    height: '100%', 
+                    backgroundColor: range.color || colors.primary,
+                    opacity: 0.35,
+                    borderRadius: 2,
+                  }} 
+                />
+              )
+           })}
+           
+           {/* Color segments border (optional subtle dividers) */}
+           {ranges && ranges.map((range, index) => {
+              const left = Math.min(Math.max((range.start - min) / (max - min), 0), 1) * 100
+              if (left === 0) return null
+              return (
+                <View 
+                  key={`div-${index}`} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: `${left}%`, 
+                    width: 1, 
+                    height: '100%', 
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                  }} 
+                />
+              )
+           })}
         </View>
 
         {/* Thumb */}
@@ -160,16 +186,29 @@ const LinearScale = ({
         
         {/* Markers */}
         <View style={styles.scaleMarkers}>
-           {!hideMin && <Text style={[styles.scaleMarkerText, { color: colors.textSecondary, left: '0%' }]}>{min}</Text>}
-           {!hideMax && <Text style={[styles.scaleMarkerText, { color: colors.textSecondary, right: '0%' }]}>{max}</Text>}
+           {!hideMin && (
+             <View style={{ position: 'absolute', left: '0%', width: 30, marginLeft: -15, alignItems: 'center' }}>
+               <View style={[styles.markerTick, { backgroundColor: colors.textSecondary }]} />
+               <Text style={[styles.scaleMarkerText, { color: colors.textSecondary }]}>{min}</Text>
+             </View>
+           )}
+           {!hideMax && (
+             <View style={{ position: 'absolute', right: '0%', width: 30, marginRight: -15, alignItems: 'center' }}>
+               <View style={[styles.markerTick, { backgroundColor: colors.textSecondary }]} />
+               <Text style={[styles.scaleMarkerText, { color: colors.textSecondary }]}>{max}</Text>
+             </View>
+           )}
            {markers.map((m, i) => (
-             <Text key={i} style={[styles.scaleMarkerText, { color: colors.textSecondary, left: `${m.left}%`, transform: [{translateX: -10}] }]}>
-               {m.label}
-             </Text>
+             <View key={i} style={{ position: 'absolute', left: `${m.left}%`, width: 30, marginLeft: -15, alignItems: 'center' }}>
+               <View style={[styles.markerTick, { backgroundColor: colors.textSecondary }]} />
+               <Text style={[styles.scaleMarkerText, { color: colors.textSecondary, textAlign: 'center' }]}>
+                 {m.label}
+               </Text>
+             </View>
            ))}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   )
 }
 
@@ -1274,11 +1313,6 @@ export default function BodyLogDetailScreen() {
             <View style={[styles.sectionContainer, { marginBottom: 100 }]}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Detailed Analysis</Text>
-                {!showTeaserResults && (
-                   <TouchableOpacity onPress={() => setInfoModalVisible(true)} hitSlop={10}>
-                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
-                   </TouchableOpacity>
-                )}
               </View>
 
               <View style={styles.resultsWrapper}>
@@ -1291,14 +1325,21 @@ export default function BodyLogDetailScreen() {
                       min={5}
                       max={40}
                       subLabel={getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender)?.label}
-                      ranges={[
-                         { label: 'Ess.', start: 2, end: 5, color: '#EF4444' },
-                         { label: 'Ath.', start: 6, end: 13, color: '#10B981' },
-                         { label: 'Fit.', start: 14, end: 17, color: '#3B82F6' },
-                         { label: 'Avg.', start: 18, end: 24, color: '#F59E0B' },
-                         { label: 'Obs.', start: 25, end: 40, color: '#EF4444' },
+                      ranges={userGender === 'male' ? [
+                         { label: 'Low', start: 5, end: 7, color: '#F59E0B' },
+                         { label: 'Ath.', start: 7, end: 12, color: '#10B981' },
+                         { label: 'Fit.', start: 12, end: 15, color: '#3B82F6' },
+                         { label: 'Avg.', start: 15, end: 20, color: '#F59E0B' },
+                         { label: 'Obs.', start: 20, end: 40, color: '#EF4444' },
+                      ] : [
+                        { label: 'Low', start: 12, end: 15, color: '#F59E0B' },
+                        { label: 'Ath.', start: 15, end: 22, color: '#10B981' },
+                        { label: 'Fit.', start: 22, end: 25, color: '#3B82F6' },
+                        { label: 'Avg.', start: 25, end: 30, color: '#F59E0B' },
+                        { label: 'Obs.', start: 30, end: 45, color: '#EF4444' },
                       ]}
                       colorResolver={(val) => getStatusColor(getBodyFatStatus(val, userGender)?.color || 'moderate').primary}
+                      onPress={() => handleInfoPress('bodyFat', (metrics.body_fat_percentage ?? 0).toString(), getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender))}
                       styles={styles}
                     />
                   </View>
@@ -1318,6 +1359,7 @@ export default function BodyLogDetailScreen() {
                          { label: 'H.', start: 30, end: 45, color: '#EF4444' },
                       ]}
                       colorResolver={(val) => getStatusColor(getBMIStatus(val, userGender)?.color || 'moderate').primary}
+                      onPress={() => handleInfoPress('bmi', (metrics.bmi ?? 0).toString(), getBMIStatus(metrics.bmi ?? 0, userGender))}
                       styles={styles}
                     />
                   </View>
@@ -1715,7 +1757,7 @@ const createStyles = (colors: Colors) =>
   },
   emptyPhotoState: {
     height: 240,
-    borderRadius: 28,
+    borderRadius: 16,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1743,7 +1785,7 @@ const createStyles = (colors: Colors) =>
     gap: 12,
   },
   photoCard: {
-    borderRadius: 24,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   photoImage: {
@@ -1762,7 +1804,7 @@ const createStyles = (colors: Colors) =>
     fontWeight: '700',
   },
   addPhotoSmall: {
-    borderRadius: 24,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
@@ -1780,7 +1822,7 @@ const createStyles = (colors: Colors) =>
   },
   resultsWrapper: {
     position: 'relative',
-    borderRadius: 28,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   blurredContent: {
@@ -1802,13 +1844,13 @@ const createStyles = (colors: Colors) =>
 
   // Premium Cards
   premiumCard: {
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
   metricCardStack: {
     gap: 16,
@@ -1868,61 +1910,85 @@ const createStyles = (colors: Colors) =>
     marginBottom: 16,
   },
   scaleLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    opacity: 0.6,
   },
   scaleValueBig: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 12,
+    alignSelf: 'center',
   },
   scaleSubLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    opacity: 0.9,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chevronCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scaleTrackContainer: {
-    height: 32,
+    height: 40,
     justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 20,
   },
   scaleTrack: {
     width: '100%',
-    height: 10,
-    borderRadius: 5,
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
   },
   scaleThumb: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: -14,
+    marginLeft: -12,
     shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-    borderWidth: 1.5,
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    borderWidth: 2,
   },
   scaleThumbInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   scaleMarkers: {
     position: 'absolute',
-    top: 36,
+    bottom: -24,
     left: 0,
     right: 0,
+    height: 20,
+  },
+  markerTick: {
+    width: 1,
+    height: 4,
+    opacity: 0.3,
+    marginBottom: 4,
   },
   scaleMarkerText: {
-    position: 'absolute',
-    fontSize: 11,
-    fontWeight: '700',
-    opacity: 0.6,
+    fontSize: 10,
+    fontWeight: '600',
+    opacity: 0.5,
+    width: 30,
+    textAlign: 'center',
   },
 
   // Fullscreen Image Modal

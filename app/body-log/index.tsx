@@ -628,7 +628,7 @@ const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
     cardContainer: {
       width: IMAGE_SIZE,
       height: IMAGE_SIZE,
-      borderRadius: 12,
+      borderRadius: 16,
       overflow: 'hidden',
       backgroundColor: colors.backgroundLight,
       shadowColor: '#000',
