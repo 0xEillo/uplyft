@@ -1,7 +1,10 @@
+import { CalendarShareScreen } from '@/components/calendar-share-screen'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
+import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
@@ -26,6 +29,9 @@ export default function WorkoutCalendarScreen() {
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
   const [currentDate, setCurrentDate] = useState(new Date())
   const [shouldExit, setShouldExit] = useState(false)
+  const [showShareScreen, setShowShareScreen] = useState(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const { shareWorkoutWidget } = useWorkoutShare()
 
   const loadWorkoutDates = useCallback(async () => {
     if (!user?.id) return
@@ -43,6 +49,10 @@ export default function WorkoutCalendarScreen() {
         endDate,
       )
       setWorkoutDates(new Set(dates))
+      
+      // Also load profile for sharing
+      const profileData = await database.profiles.getByIdOrNull(user.id)
+      setProfile(profileData)
     } catch (error) {
       console.error('Error loading workout dates:', error)
     } finally {
@@ -60,6 +70,18 @@ export default function WorkoutCalendarScreen() {
 
   const handleExitComplete = () => {
     router.back()
+  }
+
+  const handleShare = () => {
+    setShowShareScreen(true)
+  }
+
+  const handleShareWidget = async (
+    widgetIndex: number,
+    shareType: 'instagram' | 'general',
+    widgetRef: View,
+  ) => {
+    await shareWorkoutWidget(widgetRef, shareType)
   }
 
   const renderMonthView = () => {
@@ -415,7 +437,9 @@ export default function WorkoutCalendarScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Workout Calendar</Text>
-          <View style={styles.headerRightSpacer} />
+          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+            <Ionicons name="share-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
         </View>
 
         {/* View Mode Selector */}
@@ -487,6 +511,17 @@ export default function WorkoutCalendarScreen() {
             {viewMode === 'multi-year' && renderMultiYearView()}
           </ScrollView>
         )}
+
+        {showShareScreen && (
+          <CalendarShareScreen
+            visible={showShareScreen}
+            workoutDates={workoutDates}
+            userTag={profile?.user_tag}
+            displayName={profile?.display_name}
+            onClose={() => setShowShareScreen(false)}
+            onShare={handleShareWidget}
+          />
+        )}
       </View>
     </SlideInView>
   )
@@ -524,8 +559,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
       flex: 1,
     },
-    headerRightSpacer: {
-      width: 44,
+    shareButton: {
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginRight: -7,
     },
     viewModeSelectorContainer: {

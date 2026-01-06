@@ -335,7 +335,9 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
     justifyContent: 'space-between',
   },
   topSection: {

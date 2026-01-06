@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footer: {
-    marginTop: 24,
+    marginTop: 48,
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 40,

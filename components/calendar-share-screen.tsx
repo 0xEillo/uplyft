@@ -1,9 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { PrService } from '@/lib/pr'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
     Animated,
     Dimensions,
@@ -16,20 +14,16 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { AchievementWidget } from './shareable-widgets/AchievementWidget'
-import { StatsMetricsWidget } from './shareable-widgets/StatsMetricsWidget'
-import { StravaOverlayWidget } from './shareable-widgets/StravaOverlayWidget'
-import { WorkoutSummaryWidget } from './shareable-widgets/WorkoutSummaryWidget'
+import { ConsistencyWidget } from './shareable-widgets/ConsistencyWidget'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const SCREEN_HEIGHT = Dimensions.get('window').height
 
-interface WorkoutShareScreenProps {
+interface CalendarShareScreenProps {
   visible: boolean
-  workout: WorkoutSessionWithDetails
-  weightUnit: 'kg' | 'lb'
-  workoutCountThisWeek: number
-  workoutTitle?: string
+  workoutDates: string[] | Set<string>
+  userTag?: string
+  displayName?: string
   onClose: () => void
   onShare: (
     widgetIndex: number,
@@ -38,82 +32,29 @@ interface WorkoutShareScreenProps {
   ) => void
 }
 
-export function WorkoutShareScreen({
+export function CalendarShareScreen({
   visible,
-  workout,
-  weightUnit,
-  workoutCountThisWeek,
-  workoutTitle,
+  workoutDates,
+  userTag,
+  displayName,
   onClose,
   onShare,
-}: WorkoutShareScreenProps) {
+}: CalendarShareScreenProps) {
   const colors = useThemedColors()
   const { user } = useAuth()
   const scrollViewRef = useRef<ScrollView>(null)
   const [currentPage, setCurrentPage] = useState(0)
-  const [prData, setPrData] = useState<{ exerciseName: string; prs: any[] }[]>(
-    [],
-  )
-  const [hasPRs, setHasPRs] = useState(false)
   const [backgroundMode, setBackgroundMode] = useState<
     'light' | 'dark' | 'transparent'
   >('dark')
 
-  // Compute PRs when workout or visibility changes
-  useEffect(() => {
-    if (!visible || !user?.id || !workout.workout_exercises?.length) {
-      setPrData([])
-      setHasPRs(false)
-      return
-    }
+  // Refs for each widget
+  const widgetMonthRef = useRef<View>(null)
+  const widgetYearlyRef = useRef<View>(null)
+  const widgetMultiYearRef = useRef<View>(null)
 
-    const computePRs = async () => {
-      try {
-        const ctx = {
-          sessionId: workout.id,
-          userId: user.id,
-          createdAt: workout.created_at,
-          exercises: (workout.workout_exercises || []).map((we) => ({
-            exerciseId: we.exercise_id,
-            exerciseName: we.exercise?.name || 'Exercise',
-            sets: (we.sets || []).map((s) => ({
-              reps: s.reps,
-              weight: s.weight,
-            })),
-          })),
-        }
-
-        const result = await PrService.computePrsForSession(ctx)
-        const exercisesWithPRs = result.perExercise.filter((ex) =>
-          ex.prs.some((pr) => pr.isCurrent),
-        )
-
-        setPrData(exercisesWithPRs)
-        setHasPRs(exercisesWithPRs.length > 0)
-      } catch (error) {
-        console.error('Error computing PRs:', error)
-        setPrData([])
-        setHasPRs(false)
-      }
-    }
-
-    computePRs()
-  }, [visible, workout, user?.id])
-
-  // Refs for each widget (for capturing) - needs to be accessible from parent
-  const widget1Ref = useRef<View>(null)
-  const widget2Ref = useRef<View>(null)
-  const widget3Ref = useRef<View>(null)
-  const widget4Ref = useRef<View>(null)
-
-  // Build widget refs array dynamically based on whether PRs exist
-  // Build widget refs array dynamically based on whether PRs exist
-  const widgetRefs = [
-    widget1Ref,
-    widget2Ref,
-    widget4Ref,
-    ...(hasPRs ? [widget3Ref] : []),
-  ]
+  const widgetRefs = [widgetMonthRef, widgetYearlyRef, widgetMultiYearRef]
+  const widgetVariants: ('month' | 'yearly' | 'multi-year')[] = ['month', 'yearly', 'multi-year']
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
@@ -150,12 +91,10 @@ export function WorkoutShareScreen({
     }
   }, [visible, slideAnim, backdropAnim])
 
-  // Pan responder for swipe-to-dismiss - only intercepts vertical swipes
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only intercept if gesture is primarily vertical (downward)
         return (
           gestureState.dy > 5 && gestureState.dy > Math.abs(gestureState.dx)
         )
@@ -229,12 +168,10 @@ export function WorkoutShareScreen({
           ]}
           {...panResponder.panHandlers}
         >
-          {/* Header */}
           <View style={styles.header}>
             <View style={styles.handleBar} />
           </View>
 
-          {/* Swipeable widgets */}
           <ScrollView
             ref={scrollViewRef}
             horizontal
@@ -248,86 +185,40 @@ export function WorkoutShareScreen({
             style={styles.scrollView}
             contentContainerStyle={styles.scrollViewContent}
           >
-            {/* Widget 1: Summary */}
-            <View style={styles.widgetPage}>
-              <WorkoutSummaryWidget
-                ref={widget1Ref}
-                workout={workout}
-                weightUnit={weightUnit}
-                workoutTitle={workoutTitle}
-                backgroundMode={backgroundMode}
-              />
-            </View>
-
-            {/* Widget 2: Stats */}
-            <View style={styles.widgetPage}>
-              <StatsMetricsWidget
-                ref={widget2Ref}
-                workout={workout}
-                weightUnit={weightUnit}
-                workoutCountThisWeek={workoutCountThisWeek}
-                backgroundMode={backgroundMode}
-              />
-            </View>
-
-            {/* Widget 3: Strava Overlay */}
-            <View style={styles.widgetPage}>
-              {/* Checkerboard background for transparent mode preview */}
-              {backgroundMode === 'transparent' && (
-                <View style={[StyleSheet.absoluteFill, styles.checkerboardContainer]}>
-                  <View style={styles.checkerboardRow}>
-                    {Array.from({ length: 420 }).map((_, i) => {
-                      const squaresPerRow = Math.floor((SCREEN_WIDTH - 40) / 20);
-                      const row = Math.floor(i / squaresPerRow);
-                      const col = i % squaresPerRow;
-                      return (
-                        <View
-                          key={i}
-                          style={[
-                            styles.checkerboardSquare,
-                            { backgroundColor: (row + col) % 2 === 0 ? '#3A3A3C' : '#2C2C2E' },
-                          ]}
-                        />
-                      );
-                    })}
+            {widgetVariants.map((variant, index) => (
+              <View key={variant} style={styles.widgetPage}>
+                {backgroundMode === 'transparent' && (
+                  <View style={[StyleSheet.absoluteFill, styles.checkerboardContainer]}>
+                    <View style={styles.checkerboardRow}>
+                      {Array.from({ length: 420 }).map((_, i) => {
+                        const squaresPerRow = Math.floor((SCREEN_WIDTH - 40) / 20);
+                        const row = Math.floor(i / squaresPerRow);
+                        const col = i % squaresPerRow;
+                        return (
+                          <View
+                            key={i}
+                            style={[
+                              styles.checkerboardSquare,
+                              { backgroundColor: (row + col) % 2 === 0 ? '#3A3A3C' : '#2C2C2E' },
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
                   </View>
-                </View>
-              )}
-              {/* Dark background for preview visibility only - positioned absolutely behind */}
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  {
-                    backgroundColor: 'transparent', // Removed dark background, using checkerboard or actual background
-                    marginVertical: 10,
-                    marginHorizontal: 20,
-                    borderRadius: 20,
-                  },
-                ]}
-              />
-              <StravaOverlayWidget
-                ref={widget4Ref}
-                workout={workout}
-                weightUnit={weightUnit}
-                backgroundMode={backgroundMode}
-              />
-            </View>
-
-            {/* Widget 3: Achievement - only show if PRs exist */}
-            {hasPRs && (
-              <View style={styles.widgetPage}>
-                <AchievementWidget
-                  ref={widget3Ref}
-                  workout={workout}
-                  weightUnit={weightUnit}
-                  prData={prData}
+                )}
+                <ConsistencyWidget
+                  ref={widgetRefs[index]}
+                  workoutDates={workoutDates}
+                  variant={variant}
                   backgroundMode={backgroundMode}
+                  userTag={userTag}
+                  displayName={displayName}
                 />
               </View>
-            )}
+            ))}
           </ScrollView>
 
-          {/* Page indicators */}
           <View style={styles.pageIndicators}>
             {widgetRefs.map((_, index) => (
               <View
@@ -343,7 +234,6 @@ export function WorkoutShareScreen({
             ))}
           </View>
 
-          {/* Share buttons */}
           <View style={styles.shareButtons}>
             <TouchableOpacity
               style={[styles.shareButton, styles.backgroundButton]}
@@ -518,7 +408,7 @@ const styles = StyleSheet.create({
   checkerboardContainer: {
     marginVertical: 10,
     marginHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 0,
     overflow: 'hidden',
     flexDirection: 'row',
     flexWrap: 'wrap',
