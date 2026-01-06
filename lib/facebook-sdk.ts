@@ -3,7 +3,26 @@ import {
   requestTrackingPermissionsAsync,
 } from 'expo-tracking-transparency'
 import { Platform } from 'react-native'
-import { AppEventsLogger, Settings } from 'react-native-fbsdk-next'
+
+// Only import Facebook SDK on native platforms to avoid server-side bundling errors
+// react-native-fbsdk-next uses requireNativeComponent which isn't available on server
+let AppEventsLogger: typeof import('react-native-fbsdk-next').AppEventsLogger | null = null
+let Settings: typeof import('react-native-fbsdk-next').Settings | null = null
+
+// Check if we're in a native environment (not web/server)
+const isNative = Platform.OS === 'ios' || Platform.OS === 'android'
+
+if (isNative) {
+  try {
+    const fbsdk = require('react-native-fbsdk-next')
+    AppEventsLogger = fbsdk.AppEventsLogger
+    Settings = fbsdk.Settings
+  } catch (error) {
+    if (__DEV__) {
+      console.log('[FacebookSDK] Failed to load react-native-fbsdk-next:', error)
+    }
+  }
+}
 
 type Params = Record<string, string | number>
 
@@ -12,13 +31,18 @@ type Params = Record<string, string | number>
  * Since isAutoInitEnabled=false, we must manually initialize.
  */
 export async function initializeFacebookSDK() {
+  if (!Settings) {
+    if (__DEV__) console.log('[FacebookSDK] SDK not available')
+    return
+  }
+
   try {
     // Initialize the SDK (no events are logged yet due to autoLogAppEventsEnabled=false)
-    await Settings.initializeSDK()
+    await Settings!.initializeSDK()
 
     // On Android, enable tracking immediately (no ATT required)
     if (Platform.OS === 'android') {
-      await Settings.setAdvertiserTrackingEnabled(true)
+      await Settings!.setAdvertiserTrackingEnabled(true)
     }
 
     if (__DEV__) {
@@ -48,14 +72,19 @@ export async function requestTrackingPermission(): Promise<boolean> {
     return true
   }
 
+  if (!Settings) {
+    if (__DEV__) console.log('[FacebookSDK] SDK not available for ATT')
+    return false
+  }
+
   try {
     // Check if already determined
     const { status: currentStatus } = await getTrackingPermissionsAsync()
 
     if (currentStatus === 'granted') {
       // Already granted - enable full tracking
-      await Settings.setAdvertiserTrackingEnabled(true)
-      await Settings.setAdvertiserIDCollectionEnabled(true)
+      await Settings!.setAdvertiserTrackingEnabled(true)
+      await Settings!.setAdvertiserIDCollectionEnabled(true)
       if (__DEV__)
         console.log('[FacebookSDK] Tracking already granted, enabled')
       return true
@@ -63,7 +92,7 @@ export async function requestTrackingPermission(): Promise<boolean> {
 
     if (currentStatus === 'denied') {
       // Already denied - respect the decision
-      await Settings.setAdvertiserTrackingEnabled(false)
+      await Settings!.setAdvertiserTrackingEnabled(false)
       if (__DEV__) console.log('[FacebookSDK] Tracking previously denied')
       return false
     }
@@ -73,9 +102,9 @@ export async function requestTrackingPermission(): Promise<boolean> {
     const granted = status === 'granted'
 
     // Enable/disable tracking based on user choice
-    await Settings.setAdvertiserTrackingEnabled(granted)
+    await Settings!.setAdvertiserTrackingEnabled(granted)
     if (granted) {
-      await Settings.setAdvertiserIDCollectionEnabled(true)
+      await Settings!.setAdvertiserIDCollectionEnabled(true)
     }
 
     if (__DEV__) {
@@ -99,8 +128,9 @@ export const FacebookEvents = {
    * Log when user completes registration/signup
    */
   logCompletedRegistration: (registrationMethod?: string) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.logEvent('fb_mobile_complete_registration', {
+      AppEventsLogger!.logEvent('fb_mobile_complete_registration', {
         fb_registration_method: registrationMethod ?? 'email',
       })
     } catch (error) {
@@ -114,8 +144,9 @@ export const FacebookEvents = {
    * Log when user starts a subscription trial
    */
   logStartTrial: (trialType?: string, currency = 'USD', value = 0) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.logEvent('StartTrial', value, {
+      AppEventsLogger!.logEvent('StartTrial', value, {
         fb_currency: currency,
         fb_content_type: trialType ?? 'subscription',
       })
@@ -132,8 +163,9 @@ export const FacebookEvents = {
     currency = 'USD',
     subscriptionType?: string,
   ) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.logPurchase(amount, currency, {
+      AppEventsLogger!.logPurchase(amount, currency, {
         fb_content_type: subscriptionType ?? 'subscription',
       })
     } catch (error) {
@@ -149,8 +181,9 @@ export const FacebookEvents = {
     currency = 'USD',
     contentType?: string,
   ) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.logEvent('fb_mobile_initiated_checkout', amount, {
+      AppEventsLogger!.logEvent('fb_mobile_initiated_checkout', amount, {
         fb_currency: currency,
         fb_content_type: contentType ?? 'subscription',
       })
@@ -164,11 +197,12 @@ export const FacebookEvents = {
    * Log when user completes a workout (custom event for engagement)
    */
   logCompletedWorkout: (workoutData?: Params) => {
+    if (!AppEventsLogger) return
     try {
       if (workoutData) {
-        AppEventsLogger.logEvent('CompletedWorkout', workoutData)
+        AppEventsLogger!.logEvent('CompletedWorkout', workoutData)
       } else {
-        AppEventsLogger.logEvent('CompletedWorkout')
+        AppEventsLogger!.logEvent('CompletedWorkout')
       }
     } catch (error) {
       if (__DEV__)
@@ -180,8 +214,9 @@ export const FacebookEvents = {
    * Log when user achieves a level/milestone
    */
   logAchievedLevel: (level: string) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.logEvent('fb_mobile_level_achieved', {
+      AppEventsLogger!.logEvent('fb_mobile_level_achieved', {
         fb_level: level,
       })
     } catch (error) {
@@ -197,11 +232,12 @@ export const FacebookEvents = {
     contentId?: string,
     contentName?: string,
   ) => {
+    if (!AppEventsLogger) return
     try {
       const params: Params = { fb_content_type: contentType }
       if (contentId) params.fb_content_id = contentId
       if (contentName) params.fb_content = contentName
-      AppEventsLogger.logEvent('fb_mobile_content_view', params)
+      AppEventsLogger!.logEvent('fb_mobile_content_view', params)
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] logViewContent error:', error)
     }
@@ -215,15 +251,16 @@ export const FacebookEvents = {
     valueToSum?: number,
     parameters?: Params,
   ) => {
+    if (!AppEventsLogger) return
     try {
       if (valueToSum !== undefined && parameters) {
-        AppEventsLogger.logEvent(eventName, valueToSum, parameters)
+        AppEventsLogger!.logEvent(eventName, valueToSum, parameters)
       } else if (valueToSum !== undefined) {
-        AppEventsLogger.logEvent(eventName, valueToSum)
+        AppEventsLogger!.logEvent(eventName, valueToSum)
       } else if (parameters) {
-        AppEventsLogger.logEvent(eventName, parameters)
+        AppEventsLogger!.logEvent(eventName, parameters)
       } else {
-        AppEventsLogger.logEvent(eventName)
+        AppEventsLogger!.logEvent(eventName)
       }
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] logCustomEvent error:', error)
@@ -246,8 +283,9 @@ export const FacebookEvents = {
     zip?: string
     country?: string // Two-letter country code
   }) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.setUserData(userData)
+      AppEventsLogger!.setUserData(userData)
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] setUserData error:', error)
     }
@@ -258,8 +296,9 @@ export const FacebookEvents = {
    * Note: SDK doesn't have clearUserData, so we set empty values
    */
   clearUserData: () => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.setUserData({})
+      AppEventsLogger!.setUserData({})
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] clearUserData error:', error)
     }
@@ -269,8 +308,9 @@ export const FacebookEvents = {
    * Set user ID for cross-platform tracking
    */
   setUserID: (userId: string) => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.setUserID(userId)
+      AppEventsLogger!.setUserID(userId)
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] setUserID error:', error)
     }
@@ -280,8 +320,9 @@ export const FacebookEvents = {
    * Clear user ID (e.g., on logout)
    */
   clearUserID: () => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.clearUserID()
+      AppEventsLogger!.clearUserID()
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] clearUserID error:', error)
     }
@@ -291,8 +332,9 @@ export const FacebookEvents = {
    * Flush events immediately (useful before app goes to background)
    */
   flush: () => {
+    if (!AppEventsLogger) return
     try {
-      AppEventsLogger.flush()
+      AppEventsLogger!.flush()
     } catch (error) {
       if (__DEV__) console.error('[FacebookSDK] flush error:', error)
     }
