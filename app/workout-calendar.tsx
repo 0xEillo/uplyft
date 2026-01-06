@@ -32,10 +32,10 @@ export default function WorkoutCalendarScreen() {
 
     setIsLoading(true)
     try {
-      // For now, load all workout dates for the year
-      const year = currentDate.getFullYear()
-      const startDate = new Date(year, 0, 1)
-      const endDate = new Date(year, 11, 31)
+      // Load workout dates for the last 5 years to support multi-year view
+      const currentYear = new Date().getFullYear()
+      const startDate = new Date(currentYear - 4, 0, 1) // 5 years ago
+      const endDate = new Date(currentYear, 11, 31)
 
       const dates = await database.stats.getWorkoutDatesInRange(
         user.id,
@@ -207,163 +207,188 @@ export default function WorkoutCalendarScreen() {
   }
 
   const renderMultiYearView = () => {
-    const currentYear = currentDate.getFullYear()
+    // Determine which years to show
+    const yearsToShow = new Set<number>()
+    const currentYear = new Date().getFullYear()
+    yearsToShow.add(currentYear) // Always show current year
 
-    // Build a proper GitHub-style contribution graph
-    // Rows = days of week (0-6, Sun-Sat)
-    // Columns = weeks of year (~53 weeks)
+    workoutDates.forEach((dateStr) => {
+      const year = parseInt(dateStr.split('-')[0])
+      if (!isNaN(year)) yearsToShow.add(year)
+    })
 
-    // Get the first day of the year
-    const firstDayOfYear = new Date(currentYear, 0, 1)
-    const lastDayOfYear = new Date(currentYear, 11, 31)
+    const sortedYears = Array.from(yearsToShow).sort((a, b) => b - a)
 
-    // Calculate total days and weeks
-    const totalDays =
-      Math.ceil(
-        (lastDayOfYear.getTime() - firstDayOfYear.getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1
+    const renderYearGraph = (year: number) => {
+      // Build a proper GitHub-style contribution graph
+      // Rows = days of week (0-6, Sun-Sat)
+      // Columns = weeks of year (~53 weeks)
 
-    // Build a 2D structure: weeks as columns
-    // Each week is an array of 7 days (some might be null for padding)
-    const weeks: (Date | null)[][] = []
+      // Get the first day of the year
+      const firstDayOfYear = new Date(year, 0, 1)
+      const lastDayOfYear = new Date(year, 11, 31)
 
-    // First, add padding for days before Jan 1 in the first week
-    const firstDayOfWeek = firstDayOfYear.getDay() // 0=Sun, 6=Sat
-    let currentWeek: (Date | null)[] = []
+      // Calculate total days and weeks
+      const totalDays =
+        Math.ceil(
+          (lastDayOfYear.getTime() - firstDayOfYear.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1
 
-    // Pad the beginning of first week with nulls
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      currentWeek.push(null)
-    }
+      // Build a 2D structure: weeks as columns
+      // Each week is an array of 7 days (some might be null for padding)
+      const weeks: (Date | null)[][] = []
 
-    // Iterate through all days of the year
-    for (let i = 0; i < totalDays; i++) {
-      const date = new Date(currentYear, 0, 1 + i)
+      // First, add padding for days before Jan 1 in the first week
+      const firstDayOfWeek = firstDayOfYear.getDay() // 0=Sun, 6=Sat
+      let currentWeek: (Date | null)[] = []
 
-      currentWeek.push(date)
-
-      // If we've filled a week (7 days), start a new one
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek)
-        currentWeek = []
-      }
-    }
-
-    // Push the last partial week if any
-    if (currentWeek.length > 0) {
-      // Pad the end of the last week with nulls
-      while (currentWeek.length < 7) {
+      // Pad the beginning of first week with nulls
+      for (let i = 0; i < firstDayOfWeek; i++) {
         currentWeek.push(null)
       }
-      weeks.push(currentWeek)
-    }
 
-    // Calculate month label positions (which week each month starts in)
-    const monthLabels: { month: string; weekIndex: number }[] = []
-    const monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ]
+      // Iterate through all days of the year
+      for (let i = 0; i < totalDays; i++) {
+        const date = new Date(year, 0, 1 + i)
 
-    for (let month = 0; month < 12; month++) {
-      const firstOfMonth = new Date(currentYear, month, 1)
-      // Find which week this falls into
-      const daysSinceYearStart = Math.floor(
-        (firstOfMonth.getTime() - firstDayOfYear.getTime()) /
-          (1000 * 60 * 60 * 24),
-      )
-      const weekIndex = Math.floor(
-        (daysSinceYearStart + firstDayOfWeek) / 7,
-      )
-      monthLabels.push({ month: monthNames[month], weekIndex })
-    }
+        currentWeek.push(date)
 
-    // Grid dimensions - dynamically sized to fill screen width
-    // Account for padding (16 on each side = 32 total)
-    const screenWidth = Dimensions.get('window').width
-    const availableWidth = screenWidth - 32 // Subtract padding
-    const numWeeks = weeks.length
-    
-    // Calculate cell size and gap to fill available width exactly
-    // Use a fixed gap of 1px for clean rendering
-    // Formula: availableWidth = numWeeks * cellSize + (numWeeks - 1) * gap
-    // cellSize = (availableWidth - (numWeeks - 1) * gap) / numWeeks
-    const cellGap = 1
-    const cellSize = (availableWidth - (numWeeks - 1) * cellGap) / numWeeks
+        // If we've filled a week (7 days), start a new one
+        if (currentWeek.length === 7) {
+          weeks.push(currentWeek)
+          currentWeek = []
+        }
+      }
 
-    return (
-      <View style={styles.content}>
-        <Text style={styles.yearTitle}>{currentYear}</Text>
+      // Push the last partial week if any
+      if (currentWeek.length > 0) {
+        // Pad the end of the last week with nulls
+        while (currentWeek.length < 7) {
+          currentWeek.push(null)
+        }
+        weeks.push(currentWeek)
+      }
 
-        {/* Month labels - positioned above their starting weeks */}
-        <View style={styles.multiYearMonthRow}>
-          {monthLabels.map((label, idx) => (
-            <Text
-              key={idx}
-              style={[
-                styles.multiYearMonth,
-                {
-                  position: 'absolute',
-                  left: label.weekIndex * (cellSize + cellGap),
-                },
-              ]}
-            >
-              {label.month}
-            </Text>
-          ))}
-        </View>
+      // Calculate month label positions (which week each month starts in)
+      const monthLabels: { month: string; weekIndex: number }[] = []
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ]
 
-        {/* Main grid - rows are days of week, columns are weeks */}
-        <View style={[styles.multiYearWeeksContainer, { gap: cellGap }]}>
-          {weeks.map((week, weekIdx) => (
-            <View key={weekIdx} style={[styles.multiYearWeek, { gap: cellGap }]}>
-              {week.map((date, dayIdx) => {
-                const dayStyle = {
-                  width: cellSize,
-                  height: cellSize,
-                  borderRadius: Math.max(1, Math.floor(cellSize / 4)),
-                }
+      for (let month = 0; month < 12; month++) {
+        const firstOfMonth = new Date(year, month, 1)
+        // Find which week this falls into
+        const daysSinceYearStart = Math.floor(
+          (firstOfMonth.getTime() - firstDayOfYear.getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+        const weekIndex = Math.floor((daysSinceYearStart + firstDayOfWeek) / 7)
+        monthLabels.push({ month: monthNames[month], weekIndex })
+      }
 
-                if (!date) {
+      // Grid dimensions - dynamically sized to fill screen width
+      // Account for padding (16 on each side = 32 total)
+      const screenWidth = Dimensions.get('window').width
+      const availableWidth = screenWidth - 32 // Subtract padding
+      const numWeeks = weeks.length
+
+      // Calculate cell size and gap to fill available width exactly
+      // Use a fixed gap of 1px for clean rendering
+      // Formula: availableWidth = numWeeks * cellSize + (numWeeks - 1) * gap
+      // cellSize = (availableWidth - (numWeeks - 1) * gap) / numWeeks
+      const cellGap = 1
+      const cellSize = (availableWidth - (numWeeks - 1) * cellGap) / numWeeks
+
+      return (
+        <View style={styles.content}>
+          <Text style={styles.yearTitle}>{year}</Text>
+
+          {/* Month labels - positioned above their starting weeks */}
+          <View style={styles.multiYearMonthRow}>
+            {monthLabels.map((label, idx) => (
+              <Text
+                key={idx}
+                style={[
+                  styles.multiYearMonth,
+                  {
+                    position: 'absolute',
+                    left: label.weekIndex * (cellSize + cellGap),
+                  },
+                ]}
+              >
+                {label.month}
+              </Text>
+            ))}
+          </View>
+
+          {/* Main grid - rows are days of week, columns are weeks */}
+          <View style={[styles.multiYearWeeksContainer, { gap: cellGap }]}>
+            {weeks.map((week, weekIdx) => (
+              <View
+                key={weekIdx}
+                style={[styles.multiYearWeek, { gap: cellGap }]}
+              >
+                {week.map((date, dayIdx) => {
+                  const dayStyle = {
+                    width: cellSize,
+                    height: cellSize,
+                    borderRadius: Math.max(1, Math.floor(cellSize / 4)),
+                  }
+
+                  if (!date) {
+                    return (
+                      <View
+                        key={dayIdx}
+                        style={[
+                          styles.multiYearDay,
+                          styles.multiYearDayEmpty,
+                          dayStyle,
+                        ]}
+                      />
+                    )
+                  }
+
+                  const dateStr = date.toISOString().split('T')[0]
+                  const hasWorkout = workoutDates.has(dateStr)
+                  const isToday =
+                    dateStr === new Date().toISOString().split('T')[0]
+
                   return (
                     <View
                       key={dayIdx}
-                      style={[styles.multiYearDay, styles.multiYearDayEmpty, dayStyle]}
+                      style={[
+                        styles.multiYearDay,
+                        dayStyle,
+                        hasWorkout && styles.multiYearDayWorkout,
+                        isToday && styles.multiYearDayToday,
+                      ]}
                     />
                   )
-                }
-
-                const dateStr = date.toISOString().split('T')[0]
-                const hasWorkout = workoutDates.has(dateStr)
-                const isToday =
-                  dateStr === new Date().toISOString().split('T')[0]
-
-                return (
-                  <View
-                    key={dayIdx}
-                    style={[
-                      styles.multiYearDay,
-                      dayStyle,
-                      hasWorkout && styles.multiYearDayWorkout,
-                      isToday && styles.multiYearDayToday,
-                    ]}
-                  />
-                )
-              })}
-            </View>
-          ))}
+                })}
+              </View>
+            ))}
+          </View>
         </View>
+      )
+    }
+
+    return (
+      <View>
+        {sortedYears.map((year) => (
+          <View key={year}>{renderYearGraph(year)}</View>
+        ))}
       </View>
     )
   }
