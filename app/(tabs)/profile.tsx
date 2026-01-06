@@ -13,9 +13,9 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    calculateTotalVolume,
-    calculateWorkoutStats,
-    formatVolume,
+  calculateTotalVolume,
+  calculateWorkoutStats,
+  formatVolume,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -23,15 +23,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -408,6 +408,25 @@ export default function ProfileScreen() {
   // Theme-aware starting color for navbar elements over the image
   const startColor = isDark ? '#F5F5F5' : colors.text
 
+  // Animation interpolations for the cover photo
+  const coverTranslateY = scrollY.interpolate({
+    inputRange: [-400, 0, 400],
+    outputRange: [-400, 0, 200], // Pin to top on pull-down, parallax on scroll-up
+    extrapolateRight: 'clamp',
+  })
+
+  const coverScale = scrollY.interpolate({
+    inputRange: [-400, 0],
+    outputRange: [1.3, 1],
+    extrapolate: 'clamp',
+  })
+
+  const coverOpacity = scrollY.interpolate({
+    inputRange: [0, 300],
+    outputRange: [1, 0.7],
+    extrapolate: 'clamp',
+  })
+
   return (
     <View style={styles.container}>
       <Animated.View
@@ -416,11 +435,7 @@ export default function ProfileScreen() {
           {
             paddingTop: insets.top,
             backgroundColor: navbarBgColor,
-            borderBottomWidth: scrollY.interpolate({
-              inputRange: [0, 100],
-              outputRange: [0, 1],
-              extrapolate: 'clamp',
-            }),
+            borderBottomWidth: 0,
             borderBottomColor: colors.border,
           },
         ]}
@@ -487,11 +502,23 @@ export default function ProfileScreen() {
           ListHeaderComponent={
             <View style={styles.profileHeader}>
               {/* Cover Photo Section */}
-              <View style={styles.coverContainer}>
+              <Animated.View 
+                style={[
+                  styles.coverContainer,
+                  {
+                    transform: [
+                      { translateY: coverTranslateY },
+                      { scale: coverScale }
+                    ],
+                    opacity: coverOpacity
+                  }
+                ]}
+              >
                 {profile?.avatar_url ? (
-                  <Image
+                  <Animated.Image
                     source={{ uri: profile.avatar_url }}
                     style={styles.coverImage}
+                    blurRadius={1} // Even tinier blur
                   />
                 ) : (
                   <View style={[styles.coverImage, styles.coverPlaceholder]} />
@@ -502,8 +529,8 @@ export default function ProfileScreen() {
                     styles.coverGradient,
                     {
                       backgroundColor: isDark
-                        ? 'rgba(0,0,0,0.45)'
-                        : 'rgba(255,255,255,0.55)',
+                        ? 'rgba(0,0,0,0.7)'
+                        : 'rgba(255,255,255,0.65)',
                     },
                   ]}
                 />
@@ -511,11 +538,13 @@ export default function ProfileScreen() {
                 <LinearGradient
                   colors={[
                     isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
+                    isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
                     colors.background,
                   ]}
+                  locations={[0, 0.6, 1]}
                   style={styles.coverBottomGradient}
                 />
-              </View>
+              </Animated.View>
 
               {/* Profile Section with Avatar and Info */}
               <View style={styles.profileSection}>
@@ -812,21 +841,22 @@ const createStyles = (
     profileHeader: {
       backgroundColor: colors.background,
       position: 'relative',
+      minHeight: 280,
     },
     coverContainer: {
-      height: 300,
+      height: 300, // Reduced height as requested
       width: '100%',
       position: 'absolute',
       top: 0,
       left: 0,
-      overflow: 'hidden',
-      backgroundColor: isDark ? '#000' : '#fff', // Theme-aware base color
+      overflow: 'visible',
+      backgroundColor: isDark ? '#000' : '#fff',
     },
     coverImage: {
       width: '100%',
       height: '100%',
       resizeMode: 'cover',
-      opacity: 0.85, // Reduced fade (increased opacity) to make it slightly more vibrant
+      opacity: isDark ? 0.7 : 0.9,
     },
     coverPlaceholder: {
       backgroundColor: colors.primary + '20',
@@ -843,7 +873,7 @@ const createStyles = (
       left: 0,
       right: 0,
       bottom: 0,
-      height: '25%',
+      height: '35%', // Adjusted for shorter image
     },
     profileSection: {
       paddingHorizontal: 14,

@@ -428,11 +428,7 @@ export default function UserProfileScreen() {
             {
               paddingTop: insets.top,
               backgroundColor: navbarBgColor,
-              borderBottomWidth: scrollY.interpolate({
-                inputRange: [0, 100],
-                outputRange: [0, 1],
-                extrapolate: 'clamp',
-              }),
+              borderBottomWidth: 0,
               borderBottomColor: colors.border,
             },
           ]}
