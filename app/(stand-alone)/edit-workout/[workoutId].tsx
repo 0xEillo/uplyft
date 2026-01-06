@@ -264,8 +264,11 @@ export default function EditWorkoutScreen() {
       setEditingExerciseId(workoutExerciseId)
 
       // Register callback for when exercise is selected
-      registerCallback((selectedExercise: Exercise) => {
-        handleSelectExercise(selectedExercise, workoutExerciseId)
+      registerCallback((selectedExercise: Exercise | Exercise[]) => {
+        const exercise = Array.isArray(selectedExercise) ? selectedExercise[0] : selectedExercise
+        if (exercise) {
+          handleSelectExercise(exercise, workoutExerciseId)
+        }
       })
 
       // Get current exercise name for highlighting
@@ -338,8 +341,12 @@ export default function EditWorkoutScreen() {
     setIsAddingExercise(true)
 
     // Register callback for when exercise is selected
-    registerCallback((selectedExercise: Exercise) => {
-      handleAddNewExercise(selectedExercise)
+    registerCallback((selectedExercise: Exercise | Exercise[]) => {
+      if (Array.isArray(selectedExercise)) {
+        selectedExercise.forEach(ex => handleAddNewExercise(ex))
+      } else {
+        handleAddNewExercise(selectedExercise)
+      }
     })
 
     // Navigate to select-exercise page

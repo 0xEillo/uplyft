@@ -462,6 +462,15 @@ export default function ExerciseDetailScreen() {
           >
           {activeTab === 'records' ? (
             <View style={styles.summaryContainer}>
+              {/* Media Section */}
+              <View style={styles.mediaContainer}>
+                  <ExerciseMedia 
+                      gifUrl={exercise?.gif_url} 
+                      mode="full" 
+                      style={styles.media}
+                  />
+              </View>
+
               {/* Stats Section */}
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Stats</Text>

@@ -919,16 +919,22 @@ export default function CreateRoutineScreen() {
     setRestPickerSetIndex(null)
   }, [])
 
-  const handleSelectExercise = useCallback((selectedExercise: Exercise) => {
+  const handleSelectExercise = useCallback((selectedExercise: Exercise | Exercise[]) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    
+    const newExercises = Array.isArray(selectedExercise) 
+      ? selectedExercise 
+      : [selectedExercise]
+
     setExercises((prev) => [
       ...prev,
-      {
-        exerciseId: selectedExercise.id,
-        exerciseName: selectedExercise.name,
-        sets: [{ repsMin: '', repsMax: '', restSeconds: null }], // Start with 1 set
+      ...newExercises.map(ex => ({
+        exerciseId: ex.id,
+        exerciseName: ex.name,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sets: [{ repsMin: '', repsMax: '', restSeconds: null } as any], // Start with 1 set
         notes: null,
-      },
+      }))
     ])
   }, [])
 
@@ -1063,6 +1069,46 @@ export default function CreateRoutineScreen() {
             style={styles.content}
             showsVerticalScrollIndicator={false}
           >
+            {/* Cover Image */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Cover Image</Text>
+              <TouchableOpacity
+                style={[
+                  styles.coverImagePicker,
+                  { backgroundColor: tintColor + '30' },
+                ]}
+                onPress={() => setImagePickerVisible(true)}
+                activeOpacity={0.8}
+              >
+                {imagePath ? (
+                  <Image
+                    source={{ uri: getRoutineImageUrl(imagePath) || '' }}
+                    style={styles.coverImagePreview}
+                  />
+                ) : (
+                  <View style={styles.coverImagePlaceholder}>
+                    <Ionicons
+                      name="image-outline"
+                      size={32}
+                      color={tintColor}
+                    />
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.coverImageTint,
+                    { backgroundColor: tintColor, opacity: 0.2 },
+                  ]}
+                />
+                <View style={styles.coverImageEditBadge}>
+                  <Ionicons name="pencil" size={14} color="#FFF" />
+                  <Text style={styles.coverImageEditText}>
+                    {imagePath ? 'Change' : 'Add Cover'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
             {/* Name Input */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Routine Name</Text>
@@ -1102,46 +1148,6 @@ export default function CreateRoutineScreen() {
                 numberOfLines={4}
                 textAlignVertical="top"
               />
-            </View>
-
-            {/* Cover Image */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Cover Image</Text>
-              <TouchableOpacity
-                style={[
-                  styles.coverImagePicker,
-                  { backgroundColor: tintColor + '30' },
-                ]}
-                onPress={() => setImagePickerVisible(true)}
-                activeOpacity={0.8}
-              >
-                {imagePath ? (
-                  <Image
-                    source={{ uri: getRoutineImageUrl(imagePath) || '' }}
-                    style={styles.coverImagePreview}
-                  />
-                ) : (
-                  <View style={styles.coverImagePlaceholder}>
-                    <Ionicons
-                      name="image-outline"
-                      size={32}
-                      color={tintColor}
-                    />
-                  </View>
-                )}
-                <View
-                  style={[
-                    styles.coverImageTint,
-                    { backgroundColor: tintColor, opacity: 0.2 },
-                  ]}
-                />
-                <View style={styles.coverImageEditBadge}>
-                  <Ionicons name="pencil" size={14} color="#FFF" />
-                  <Text style={styles.coverImageEditText}>
-                    {imagePath ? 'Change' : 'Add Cover'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
             </View>
 
             {/* Exercises */}

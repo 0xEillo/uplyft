@@ -1,9 +1,7 @@
 import { EditorToolbar } from '@/components/editor-toolbar'
-import { ExerciseSearchModal } from '@/components/exercise-search-modal'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { Paywall } from '@/components/paywall'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
-import { RoutineSelectorSheet } from '@/components/routine-selector-sheet'
 import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
@@ -24,8 +22,10 @@ import {
   useShowConvertButton
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
+import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
+import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -193,8 +193,6 @@ export default function CreatePostScreen() {
   // ROUTINE & STRUCTURED WORKOUT STATE
   // =============================================================================
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
-  const [showRoutineSelector, setShowRoutineSelector] = useState(false)
-  const [showExerciseSearch, setShowExerciseSearch] = useState(false)
   const [isStructuredMode, setIsStructuredMode] = useState(false)
   const [allExercises, setAllExercises] = useState<Exercise[]>([])
   const [
@@ -636,28 +634,22 @@ export default function CreatePostScreen() {
   // Track animation state to reset on each focus
   const [slideKey, setSlideKey] = useState(0)
   const [shouldExit, setShouldExit] = useState(false)
-  const showExerciseSearchRef = useRef(showExerciseSearch)
-
-  useEffect(() => {
-    showExerciseSearchRef.current = showExerciseSearch
-  }, [showExerciseSearch])
+  
+  // Use exercise selection hook for navigation-based exercise search
+  const { registerCallback } = useExerciseSelection()
+  
+  // Use routine selection hook for navigation-based routine selection
+  const { registerCallback: registerRoutineCallback } = useRoutineSelection()
 
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
-      // Only reset key if not showing exercise search (prevent remount when returning from detail)
-      // Use ref to avoid re-running effect when modal state changes
-      if (!showExerciseSearchRef.current) {
-        setSlideKey((prev) => prev + 1)
-      }
+      setSlideKey((prev) => prev + 1)
       setShouldExit(false)
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
-      // Don't blur inputs immediately when returning from exercise search
-      if (!showExerciseSearchRef.current) {
-        blurInputs()
-      }
+      blurInputs()
 
       trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
         mode: 'text',
@@ -666,15 +658,11 @@ export default function CreatePostScreen() {
       })
 
       const timeoutId = setTimeout(() => {
-        if (!showExerciseSearchRef.current) {
-          blurInputs()
-        }
+        blurInputs()
       }, 0)
 
       const interactionHandle = InteractionManager.runAfterInteractions(() => {
-        if (!showExerciseSearchRef.current) {
-          blurInputs()
-        }
+        blurInputs()
       })
 
       const randomExample =
@@ -1026,7 +1014,6 @@ export default function CreatePostScreen() {
       setPendingRoutineSource(null)
       setStructuredData([])
       setLastRoutineWorkout(null)
-      setShowRoutineSelector(false)
       setFinalizeDescription('')
       blurInputs()
 
@@ -1172,7 +1159,14 @@ export default function CreatePostScreen() {
   const handleOpenRoutineSelector = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     blurInputs()
-    setShowRoutineSelector(true)
+    
+    // Register callback for routine selection
+    registerRoutineCallback((routine: WorkoutRoutineWithDetails) => {
+      handleSelectRoutine(routine)
+    })
+    
+    // Navigate to the full-screen routine selector
+    router.push('/select-routine')
   }
 
   const handleSelectRoutine = useCallback(
@@ -1213,7 +1207,6 @@ export default function CreatePostScreen() {
   )
 
   const handleEditRoutine = (routine: WorkoutRoutineWithDetails) => {
-    setShowRoutineSelector(false)
     router.push(`/create-routine?routineId=${routine.id}`)
   }
 
@@ -1586,9 +1579,7 @@ export default function CreatePostScreen() {
     [notes, cursorPosition, allExercises, createExerciseWithHistory],
   )
 
-  const handleChooseExercisePress = useCallback(() => {
-    setShowExerciseSearch(true)
-  }, [])
+
 
   // Convert text to structured format
   const handleConvertToStructured = useCallback(async () => {
@@ -1654,6 +1645,19 @@ export default function CreatePostScreen() {
       scrollViewRef.current?.scrollToEnd({ animated: true })
     }, 100)
   }, [createExerciseWithHistory])
+
+  const handleChooseExercisePress = useCallback(() => {
+    // Register callback for exercise selection
+    registerCallback((selectedExercises: Exercise | Exercise[]) => {
+      const exercises = Array.isArray(selectedExercises) 
+        ? selectedExercises 
+        : [selectedExercises]
+      handleMultiSelectExercises(exercises)
+    })
+    
+    // Navigate to the full-screen exercise selector
+    router.push('/select-exercise')
+  }, [registerCallback, handleMultiSelectExercises])
 
   // Handler for adding exercise from AI coach suggestions
   const handleAddExerciseFromCoach = useCallback(
@@ -2039,24 +2043,6 @@ export default function CreatePostScreen() {
             </View>
           </View>
         )}
-
-        {/* Routine Selector Modal */}
-        <RoutineSelectorSheet
-          visible={showRoutineSelector}
-          routines={routines}
-          onClose={() => setShowRoutineSelector(false)}
-          onSelectRoutine={handleSelectRoutine}
-          onCreateRoutine={() => router.push('/create-routine')}
-          onEditRoutine={handleEditRoutine}
-          onDeleteRoutine={handleDeleteRoutine}
-        />
-
-        <ExerciseSearchModal
-          visible={showExerciseSearch}
-          onClose={() => setShowExerciseSearch(false)}
-          onMultiSelect={handleMultiSelectExercises}
-          multiSelect={true}
-        />
 
         {/* Paywall Modal */}
         <Paywall
