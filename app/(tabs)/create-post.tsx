@@ -1816,7 +1816,7 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="chevron-down" size={30} color={colors.text} />
+            <Ionicons name="chevron-down" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.headerCenter}>
@@ -1848,7 +1848,7 @@ export default function CreatePostScreen() {
                 transform: [{ scale: buttonScaleAnim }],
               }}
             >
-              <Ionicons name="checkmark" size={30} color={colors.white} />
+              <Ionicons name="checkmark" size={24} color={colors.white} />
             </Animated.View>
           </TouchableOpacity>
         </Pressable>

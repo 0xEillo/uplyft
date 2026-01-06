@@ -446,7 +446,7 @@ export default function SettingsScreen() {
         leftContent={
           <NavbarIsland>
             <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
           </NavbarIsland>
         }
@@ -913,8 +913,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.background,
     },
     headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
     },

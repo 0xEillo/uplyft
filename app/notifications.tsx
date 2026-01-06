@@ -455,8 +455,8 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       zIndex: 1,
     },
     headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
     },

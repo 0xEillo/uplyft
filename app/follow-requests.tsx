@@ -320,8 +320,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 4,
     },
     headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
       color: colors.text,
     },
     headerPlaceholder: {

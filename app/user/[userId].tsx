@@ -864,8 +864,8 @@ const createStyles = (
       alignItems: 'center',
     },
     headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
     },
     profileHeader: {
       backgroundColor: colors.background,
