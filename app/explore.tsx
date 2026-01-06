@@ -20,7 +20,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -266,14 +265,7 @@ export default function ExploreScreen() {
             />
           }
         >
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
-            <TextInput
-              placeholder="Search"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.searchInput}
-            />
-          </View>
+
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
@@ -340,22 +332,7 @@ const createStyles = (
     scrollContent: {
       paddingBottom: 100,
     },
-    searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-      marginHorizontal: 20,
-      paddingHorizontal: 12,
-      height: 44,
-      borderRadius: 12,
-      marginBottom: 16,
-    },
-    searchInput: {
-      flex: 1,
-      marginLeft: 8,
-      fontSize: 17,
-      color: colors.text,
-    },
+
 
     loadingContainer: {
       flex: 1,

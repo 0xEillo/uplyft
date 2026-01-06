@@ -154,14 +154,14 @@ const UL_PROGRAM = {
 
 const UL_ROUTINES = [
   {
-    name: 'Upper Body A',
+    name: 'Upper Body',
     description: 'Focuses on compound upper body pushing and pulling movements.',
     level: 'intermediate',
     duration_minutes: 60,
     equipment: ['Barbell', 'Dumbbell'],
     is_published: true,
     display_order: 1,
-    image_url: 'Upper Body A.png', // Gym upper body
+    image_url: 'Upper Body A.png',
     exercises: [
         { name: 'Bench Press (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
         { name: 'Bent Over Row (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
@@ -172,14 +172,14 @@ const UL_ROUTINES = [
     ]
   },
   {
-    name: 'Lower Body A',
+    name: 'Lower Body',
     description: 'Heavy lower body compound movements for leg development.',
     level: 'intermediate',
     duration_minutes: 60,
     equipment: ['Barbell', 'Machine'],
     is_published: true,
     display_order: 2,
-    image_url: 'Lower Body A.png', // Squat/Legs
+    image_url: 'Lower Body A.png',
     exercises: [
         { name: 'Squat (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
         { name: 'Romanian Deadlift (Barbell)', sets: 3, reps_min: 6, reps_max: 8 },
@@ -257,10 +257,189 @@ const FB_ROUTINES = [
   }
 ]
 
+// 4. 5x5 Strength - Classic Strength Program
+const STRENGTH_5X5_PROGRAM = {
+  name: '5x5 Strength',
+  description: 'The classic beginner strength program. Simple, effective, and time-tested. Alternating A/B workouts 3x per week with linear progression.',
+  level: 'beginner',
+  goal: 'get_stronger',
+  is_published: true,
+  display_order: 4,
+}
+
+const STRENGTH_5X5_ROUTINES = [
+  {
+    name: 'Bench & Row',
+    description: 'Squat, Bench Press, Barbell Row. The foundation of building strength.',
+    level: 'beginner',
+    duration_minutes: 45,
+    equipment: ['Barbell'],
+    is_published: true,
+    display_order: 1,
+    image_url: 'Bench & Row.png',
+    exercises: [
+      { name: 'Squat (Barbell)', sets: 5, reps_min: 5, reps_max: 5 },
+      { name: 'Bench Press (Barbell)', sets: 5, reps_min: 5, reps_max: 5 },
+      { name: 'Bent Over Row (Barbell)', sets: 5, reps_min: 5, reps_max: 5 },
+    ]
+  },
+  {
+    name: 'Press & Deadlift',
+    description: 'Squat, Overhead Press, Deadlift. Building raw power.',
+    level: 'beginner',
+    duration_minutes: 45,
+    equipment: ['Barbell'],
+    is_published: true,
+    display_order: 2,
+    image_url: 'Press & Deadlift.png',
+    exercises: [
+      { name: 'Squat (Barbell)', sets: 5, reps_min: 5, reps_max: 5 },
+      { name: 'Overhead Press (Barbell)', sets: 5, reps_min: 5, reps_max: 5 },
+      { name: 'Deadlift (Barbell)', sets: 1, reps_min: 5, reps_max: 5 },
+    ]
+  }
+]
+
+// 5. Arnold Split - Classic 6-Day Bodybuilding
+const ARNOLD_PROGRAM = {
+  name: 'Arnold Split',
+  description: 'The legendary 6-day split used by Arnold Schwarzenegger. High volume training for serious muscle growth. Chest/Back, Shoulders/Arms, Legs repeated twice per week.',
+  level: 'advanced',
+  goal: 'build_muscle',
+  is_published: true,
+  display_order: 5,
+}
+
+const ARNOLD_ROUTINES = [
+  {
+    name: 'Chest & Back',
+    description: 'High volume chest and back supersets for maximum pump.',
+    level: 'advanced',
+    duration_minutes: 75,
+    equipment: ['Barbell', 'Dumbbell', 'Cable'],
+    is_published: true,
+    display_order: 1,
+    image_url: 'Chest & Back.png',
+    exercises: [
+      { name: 'Bench Press (Barbell)', sets: 4, reps_min: 8, reps_max: 12 },
+      { name: 'Incline Bench Press (Dumbbell)', sets: 4, reps_min: 8, reps_max: 12 },
+      { name: 'Fly (Dumbbell)', sets: 3, reps_min: 10, reps_max: 15 },
+      { name: 'Chin Up', sets: 4, reps_min: 8, reps_max: 12 },
+      { name: 'Bent Over Row (Barbell)', sets: 4, reps_min: 8, reps_max: 12 },
+      { name: 'Low Seated Row (Cable)', sets: 3, reps_min: 10, reps_max: 12 },
+    ]
+  },
+  {
+    name: 'Shoulders & Arms',
+    description: 'Shoulder development and arm training for complete upper body aesthetics.',
+    level: 'advanced',
+    duration_minutes: 60,
+    equipment: ['Barbell', 'Dumbbell', 'Cable'],
+    is_published: true,
+    display_order: 2,
+    image_url: 'Shoulders & Arms.png',
+    exercises: [
+      { name: 'Overhead Press (Barbell)', sets: 4, reps_min: 8, reps_max: 10 },
+      { name: 'Lateral Raise (Dumbbell)', sets: 4, reps_min: 10, reps_max: 15 },
+      { name: 'Rear Delt Fly (Dumbbell)', sets: 3, reps_min: 12, reps_max: 15 },
+      { name: 'Bicep Curl (Barbell)', sets: 4, reps_min: 8, reps_max: 12 },
+      { name: 'Hammer Curl (Dumbbell)', sets: 3, reps_min: 10, reps_max: 12 },
+      { name: 'Cable Triceps Pushdown (v-Bar)', sets: 4, reps_min: 10, reps_max: 12 },
+      { name: 'Skullcrusher (Barbell)', sets: 3, reps_min: 8, reps_max: 12 },
+    ]
+  },
+  {
+    name: 'Arnold Legs',
+    description: 'Complete leg development with heavy compounds and isolation work.',
+    level: 'advanced',
+    duration_minutes: 75,
+    equipment: ['Barbell', 'Machine'],
+    is_published: true,
+    display_order: 3,
+    image_url: 'Arnold Legs.png',
+    exercises: [
+      { name: 'Squat (Barbell)', sets: 5, reps_min: 6, reps_max: 10 },
+      { name: 'Leg Press (Machine)', sets: 4, reps_min: 10, reps_max: 12 },
+      { name: 'Leg Extension (Machine)', sets: 3, reps_min: 12, reps_max: 15 },
+      { name: 'Romanian Deadlift (Barbell)', sets: 4, reps_min: 8, reps_max: 10 },
+      { name: 'Lying Leg Curl (Machine)', sets: 4, reps_min: 10, reps_max: 12 },
+      { name: 'Standing Calf Raise (Machine)', sets: 4, reps_min: 12, reps_max: 15 },
+    ]
+  }
+]
+
+// 6. Bodyweight Basics - Home/No Equipment
+const BW_PROGRAM = {
+  name: 'Bodyweight Basics',
+  description: 'Build muscle and strength at home with zero equipment. A proven 3-day routine focusing on progressive bodyweight movements.',
+  level: 'beginner',
+  goal: 'build_muscle',
+  is_published: true,
+  display_order: 6,
+}
+
+const BW_ROUTINES = [
+  {
+    name: 'Push Day',
+    description: 'Chest, shoulders, and triceps using only your bodyweight.',
+    level: 'beginner',
+    duration_minutes: 30,
+    equipment: ['Bodyweight'],
+    is_published: true,
+    display_order: 1,
+    image_url: 'Push Day.png',
+    exercises: [
+      { name: 'Push Up', sets: 4, reps_min: 8, reps_max: 15 },
+      { name: 'Diamond Push Up', sets: 3, reps_min: 6, reps_max: 12 },
+      { name: 'Decline Push Up', sets: 3, reps_min: 8, reps_max: 12 },
+      { name: 'Triceps Dip', sets: 3, reps_min: 8, reps_max: 15 },
+      { name: 'Handstand Push Up', sets: 3, reps_min: 3, reps_max: 8 },
+    ]
+  },
+  {
+    name: 'Pull Day',
+    description: 'Back and biceps with bodyweight pulling movements.',
+    level: 'beginner',
+    duration_minutes: 30,
+    equipment: ['Bodyweight'],
+    is_published: true,
+    display_order: 2,
+    image_url: 'Pull Day.png',
+    exercises: [
+      { name: 'Chin Up', sets: 4, reps_min: 5, reps_max: 10 },
+      { name: 'Wide Grip Pull Up', sets: 3, reps_min: 5, reps_max: 10 },
+      { name: 'Inverted Row', sets: 3, reps_min: 8, reps_max: 12 },
+      { name: 'Lumbar Superman', sets: 3, reps_min: 10, reps_max: 15 },
+      { name: 'Hanging Leg Raise', sets: 3, reps_min: 8, reps_max: 12 },
+    ]
+  },
+  {
+    name: 'Legs (Bodyweight)',
+    description: 'Legs and glutes using bodyweight movements at home.',
+    level: 'beginner',
+    duration_minutes: 30,
+    equipment: ['Bodyweight'],
+    is_published: true,
+    display_order: 3,
+    image_url: 'Lower Body.png',
+    exercises: [
+      { name: 'Bodyweight Squats', sets: 4, reps_min: 15, reps_max: 20 },
+      { name: 'Walking Lunge', sets: 3, reps_min: 10, reps_max: 12 },
+      { name: 'Glute Bridge March', sets: 3, reps_min: 12, reps_max: 15 },
+      { name: 'Lunge With Jump', sets: 3, reps_min: 8, reps_max: 12 },
+      { name: 'Mountain Climber', sets: 3, reps_min: 20, reps_max: 30 },
+      { name: 'Crunches', sets: 3, reps_min: 15, reps_max: 20 },
+    ]
+  }
+]
+
 const ALL_PROGRAMS = [
   { meta: PPL_PROGRAM, routines: PPL_ROUTINES },
   { meta: UL_PROGRAM, routines: UL_ROUTINES },
-  { meta: FB_PROGRAM, routines: FB_ROUTINES }
+  { meta: FB_PROGRAM, routines: FB_ROUTINES },
+  { meta: STRENGTH_5X5_PROGRAM, routines: STRENGTH_5X5_ROUTINES },
+  { meta: ARNOLD_PROGRAM, routines: ARNOLD_ROUTINES },
+  { meta: BW_PROGRAM, routines: BW_ROUTINES }
 ]
 
 async function seed() {

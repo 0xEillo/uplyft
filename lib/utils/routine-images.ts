@@ -19,6 +19,17 @@ export const RESERVED_ROUTINE_IMAGES = [
   'Full Body A',
   'Full Body B',
   'Full Body C',
+  // 5x5 Strength
+  'Bench & Row',
+  'Press & Deadlift',
+  // Arnold Split
+  'Chest & Back',
+  'Shoulders & Arms',
+  'Arnold Legs',
+  // Bodyweight
+  'Push Day',
+  'Pull Day',
+  'Lower Body',
 ]
 
 // Available tint colors for routine cards
