@@ -37,6 +37,7 @@ import {
   View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
+import ConfettiCannon from 'react-native-confetti-cannon'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -67,15 +68,16 @@ const STEP_NAMES: { [key: number]: string } = {
   5: 'goals_selection',
   6: 'gender_selection',
   7: 'commitment_level',
-  8: 'experience_level',
-  9: 'tailored_preview',
-  10: 'stats_entry',
-  11: 'target_weight',
-  12: 'body_scan_feature',
-  13: 'focus_areas',
-  14: 'processing',
-  15: 'plan_ready',
-  16: 'commitment_pledge',
+  8: 'habit_reinforcement',
+  9: 'experience_level',
+  10: 'tailored_preview',
+  11: 'stats_entry',
+  12: 'target_weight',
+  13: 'body_scan_feature',
+  14: 'focus_areas',
+  15: 'processing',
+  16: 'plan_ready',
+  17: 'commitment_pledge',
 }
 
 const FadeInWords = ({
@@ -494,6 +496,58 @@ const chatMockupStyles = StyleSheet.create({
   },
 })
 
+const HabitReinforcementStepContent = ({ data, colors, styles }: any) => {
+  useEffect(() => {
+    const triggerReview = async () => {
+      try {
+        await requestReview()
+        await markUserAsRated()
+      } catch (error) {
+        console.error('Error requesting review in habit step:', error)
+      }
+    }
+    triggerReview()
+  }, [])
+
+  const activeGoal = data.goal[0] || 'build_muscle'
+  const habitGoalInfo: Record<string, { text: string; color: string }> = {
+    build_muscle: { text: 'GAIN MUSCLE', color: '#8B5CF6' },
+    lose_fat: { text: 'LOSE FAT', color: '#EF4444' },
+    gain_strength: { text: 'GET STRONGER', color: '#F59E0B' },
+    improve_cardio: { text: 'IMPROVE CARDIO', color: '#3B82F6' },
+    become_flexible: { text: 'GET FLEXIBLE', color: '#10B981' },
+    general_fitness: { text: 'STAY FIT', color: '#6366F1' },
+  }
+  const currentHabitGoal =
+    habitGoalInfo[activeGoal] || habitGoalInfo.build_muscle
+
+  return (
+    <View style={styles.stepContainer}>
+      <View style={styles.stepHeader}>
+        <Text
+          style={[
+            styles.stepTitle,
+            { fontSize: 34, lineHeight: 42, fontWeight: '800' },
+          ]}
+        >
+          That&rsquo;s awesome! It&rsquo;s easier to{' '}
+          <Text
+            style={{
+              color: currentHabitGoal.color,
+              fontStyle: 'italic',
+              fontWeight: '900',
+              fontFamily: 'System',
+            }}
+          >
+            {currentHabitGoal.text}
+          </Text>{' '}
+          when you already have good fitness habits.
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
   const [progress1, setProgress1] = useState(0)
   const [progress2, setProgress2] = useState(0)
@@ -508,9 +562,38 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
       text:
         "I've seen more progress in the last 6 months with Rep AI than I did in the previous 2 years on my own. The tailored workouts are exactly what I needed.",
       rating: 5,
-      avatar: 'https://i.pravatar.cc/150?u=miket',
+      avatar: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+    },
+    {
+      id: 2,
+      name: 'Sarah L.',
+      time: '3 months training with Rep AI',
+      text:
+        "Finally an app that actually adapts to my progress! Down 12lbs and feeling stronger than ever. The AI coach feels like having a real trainer in my pocket.",
+      rating: 5,
+      avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+    },
+    {
+      id: 3,
+      name: 'David R.',
+      time: '1 year training with Rep AI',
+      text:
+        "The workout variety is insane and the UI is so sleek. Best fitness investment I've made this year. I actually look forward to my sessions now!",
+      rating: 5,
+      avatar: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&h=300&q=80',
+    },
+    {
+      id: 4,
+      name: 'Jessica M.',
+      time: '4 months training with Rep AI',
+      text:
+        "The AI coaching is a game changer for my busy schedule. I don't have to think about what to do next, I just follow the plan and get results!",
+      rating: 5,
+      avatar: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
     },
   ]
+
+  const testimonialFadeAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
     const t1 = setInterval(() => {
@@ -524,56 +607,68 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
     }, 30)
 
     const t2 = setInterval(() => {
-      if (progress1 > 30) {
-        setProgress2((prev) => {
-          if (prev >= 100) {
-            clearInterval(t2)
-            return 100
-          }
-          return prev + 1.5
-        })
-      }
+      setProgress2((prev) => {
+        if (prev >= 100) {
+          clearInterval(t2)
+          return 100
+        }
+        // Only progress if first bar is far enough
+        return progress1 > 30 ? prev + 1.5 : prev
+      })
     }, 40)
 
     const t3 = setInterval(() => {
-      if (progress2 > 30) {
-        setProgress3((prev) => {
-          if (prev >= 100) {
-            clearInterval(t3)
-            return 100
-          }
-          return prev + 1
-        })
-      }
+      setProgress3((prev) => {
+        if (prev >= 100) {
+          clearInterval(t3)
+          return 100
+        }
+        // Only progress if second bar is far enough
+        return progress2 > 30 ? prev + 1 : prev
+      })
     }, 50)
-
-    const tTestimonial = setInterval(() => {
-      setTestimonialIndex((prev) => (prev + 1) % testimonials.length)
-    }, 4000)
 
     return () => {
       clearInterval(t1)
       clearInterval(t2)
       clearInterval(t3)
-      clearInterval(tTestimonial)
     }
   }, [progress1, progress2])
 
   useEffect(() => {
+    const tTestimonial = setInterval(() => {
+      Animated.timing(testimonialFadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setTestimonialIndex((prev) => (prev + 1) % testimonials.length)
+        Animated.timing(testimonialFadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start()
+      })
+    }, 2500)
+
+    return () => clearInterval(tTestimonial)
+  }, []) // No dependencies so it never resets
+
+  useEffect(() => {
     if (progress3 >= 100) {
-      setTimeout(() => setStep(15), 800)
+      setTimeout(() => setStep(16), 800)
     }
   }, [progress3])
 
   const mainGoalLabel =
     GOALS.find((g) => g.value === data.goal[0])?.label || 'Fitness'
-  const coloredGoal = mainGoalLabel.toUpperCase()
+  const coloredGoal = mainGoalLabel.toLowerCase()
 
   return (
     <View style={styles.stepContainer}>
       <View style={styles.processingHeader}>
         <Text style={styles.processingTitle}>
-          Tweaking Your{' '}
+          Tweaking your{' '}
           <Text
             style={{
               color: '#A855F7',
@@ -584,7 +679,7 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
           >
             {coloredGoal}
           </Text>{' '}
-          Plan
+          plan
         </Text>
       </View>
 
@@ -649,7 +744,9 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
           </View>
         </View>
 
-        <View style={styles.testimonialCard}>
+        <Animated.View
+          style={[styles.testimonialCard, { opacity: testimonialFadeAnim }]}
+        >
           <View style={styles.testimonialHeader}>
             <Image
               source={{ uri: testimonials[testimonialIndex].avatar }}
@@ -672,10 +769,23 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
           <Text style={styles.testimonialText}>
             {testimonials[testimonialIndex].text}
           </Text>
-          <Text style={styles.testimonialSource}>
-            — Facebook Community Group
-          </Text>
-        </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={styles.testimonialSource}>
+              — Facebook Community Group
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 2 }}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Ionicons key={s} name="star" size={10} color="#F59E0B" />
+              ))}
+            </View>
+          </View>
+        </Animated.View>
 
         <View style={styles.testimonialDots}>
           {testimonials.map((_, i) => (
@@ -706,6 +816,7 @@ const CommitmentStepContent = ({
   const progress = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const waveAnim = useRef(new Animated.Value(0)).current
+  const confettiRef = useRef<any>(null)
 
   const coach =
     COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
@@ -749,6 +860,8 @@ const CommitmentStepContent = ({
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
         setIsCommitted(true)
         setHolding(false)
+        // Celebration!
+        confettiRef.current?.start()
       }
     })
   }
@@ -803,6 +916,25 @@ const CommitmentStepContent = ({
 
   return (
     <View style={[styles.stepContainer, breakoutStyle]}>
+      {/* Confetti Celebration */}
+      <ConfettiCannon
+        ref={confettiRef}
+        count={150}
+        origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
+        autoStart={false}
+        fadeOut
+        explosionSpeed={350}
+        fallSpeed={3000}
+        colors={[
+          colors.primary,
+          '#FFD700',
+          '#FFA500',
+          '#FF6B35',
+          '#4ECDC4',
+          '#A855F7',
+        ]}
+      />
+
       {/* Rising Water Animation Layer */}
       <View
         style={[StyleSheet.absoluteFill, { zIndex: 10, elevation: 10 }]}
@@ -894,42 +1026,70 @@ const CommitmentStepContent = ({
                 justifyContent: 'center',
               }}
             >
-              <View style={{ alignItems: 'center' }}>
+              <View style={{ alignItems: 'center', width: '100%', paddingHorizontal: 40 }}>
+                <Animated.View
+                  style={{
+                    marginBottom: 40,
+                    width: 140,
+                    height: 140,
+                    borderRadius: 70,
+                    borderWidth: isCommitted ? 0 : 4,
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    backgroundColor: isCommitted ? 'rgba(255,255,255,0.2)' : 'transparent',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    transform: [{ scale: scaleAnim }],
+                    shadowColor: '#fff',
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: isCommitted ? 0.4 : 0,
+                    shadowRadius: 30,
+                    elevation: isCommitted ? 10 : 0,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 100,
+                      height: 100,
+                      borderRadius: 50,
+                      backgroundColor: 'rgba(255,255,255,0.25)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Ionicons
+                      name={isCommitted ? 'checkmark' : 'flash'}
+                      size={64}
+                      color="white"
+                    />
+                  </View>
+                </Animated.View>
+
                 <Text
                   style={{
                     color: 'white',
-                    fontSize: 24,
+                    fontSize: 34,
                     fontWeight: '800',
-                    marginBottom: 16,
+                    marginBottom: 12,
+                    textAlign: 'center',
+                    letterSpacing: -1,
                   }}
                 >
                   {isCommitted ? 'You are committed!' : 'Keep holding!'}
                 </Text>
-                <Text style={{ color: 'white', fontSize: 16, opacity: 0.9 }}>
-                  {isCommitted
-                    ? "Let's start your journey."
-                    : 'Commitment takes discipline.'}
-                </Text>
-
-                <Animated.View
+                <Text
                   style={{
-                    marginTop: 60,
-                    width: 80,
-                    height: 80,
-                    borderRadius: 40,
-                    borderWidth: 4,
-                    borderColor: 'rgba(255,255,255,0.4)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    transform: [{ scale: scaleAnim }],
+                    color: 'white',
+                    fontSize: 18,
+                    opacity: 0.85,
+                    textAlign: 'center',
+                    fontWeight: '500',
+                    lineHeight: 24,
                   }}
                 >
-                  <Ionicons
-                    name={isCommitted ? 'checkmark' : 'flash'}
-                    size={32}
-                    color="white"
-                  />
-                </Animated.View>
+                  {isCommitted
+                    ? "The hardest part is over. Let's build your future."
+                    : 'Commitment takes discipline.'}
+                </Text>
               </View>
             </View>
           </Animated.View>
@@ -1045,8 +1205,8 @@ const CommitmentStepContent = ({
           style={{
             width: '100%',
             alignItems: 'center',
-            paddingBottom: 40,
-            minHeight: 180, // Reserve space
+            paddingBottom: 100,
+            minHeight: 320, // Increased to fit larger button and text comfortably
             justifyContent: 'flex-end',
             zIndex: 50, // Higher than water (which is 10/20)
             elevation: 50,
@@ -1060,9 +1220,9 @@ const CommitmentStepContent = ({
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
                   style={{
-                    width: 90,
-                    height: 90,
-                    borderRadius: 45,
+                    width: 140,
+                    height: 140,
+                    borderRadius: 70,
                     backgroundColor: '#F97316',
                     justifyContent: 'center',
                     alignItems: 'center',
@@ -1071,18 +1231,18 @@ const CommitmentStepContent = ({
                     shadowRadius: 16,
                     shadowOffset: { width: 0, height: 8 },
                     elevation: 8,
-                    marginBottom: 20,
-                    borderWidth: 4,
+                    marginBottom: 24,
+                    borderWidth: 6,
                     borderColor: '#fff', // White border to separate from water if needed/at start
                   }}
                 >
-                  <Ionicons name="flash" size={36} color="white" />
+                  <Ionicons name="flash" size={56} color="white" />
                 </TouchableOpacity>
               </Animated.View>
               <Animated.Text
                 style={{
-                  fontSize: 15,
-                  fontWeight: '600',
+                  fontSize: 18,
+                  fontWeight: '700',
                   color: progress.interpolate({
                     inputRange: [0, 0.15],
                     outputRange: [colors.textSecondary, '#ffffff'],
@@ -1098,20 +1258,21 @@ const CommitmentStepContent = ({
             <HapticButton
               style={{
                 backgroundColor: 'white',
-                paddingVertical: 18,
+                paddingVertical: 20,
                 paddingHorizontal: 32,
-                borderRadius: 32,
+                borderRadius: 40,
                 width: '100%',
                 alignItems: 'center',
                 shadowColor: 'black',
-                shadowOpacity: 0.1,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 15,
+                shadowOffset: { width: 0, height: 8 },
+                elevation: 5,
               }}
               onPress={onNext}
             >
               <Text
-                style={{ color: '#F97316', fontSize: 18, fontWeight: '700' }}
+                style={{ color: '#F97316', fontSize: 19, fontWeight: '800', letterSpacing: 0.5 }}
               >
                 Continue
               </Text>
@@ -1134,20 +1295,6 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
       new Date().getFullYear() - parseInt(data.birth_year)
     ).toString()
   }
-
-  // Trigger App Store review prompt when user sees their plan
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      try {
-        await requestReview()
-        await markUserAsRated()
-      } catch (error) {
-        console.error('Error requesting review:', error)
-      }
-    }, 1500) // Wait 1.5 seconds for the user to see their plan first
-
-    return () => clearTimeout(timer)
-  }, [])
 
   const stats = [
     { label: 'Goal', value: mainGoal },
@@ -1367,7 +1514,7 @@ export default function OnboardingScreen() {
       setTargetWeight(parseFloat(data.weight_kg))
     }
 
-    if (step < 16) {
+    if (step < 17) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -1456,8 +1603,9 @@ export default function OnboardingScreen() {
   const hasAutoSwipe = () => {
     // Steps 6 (gender) and 8 (experience) auto-swipe when an option is selected
     // Step 7 (commitment) is now multi-select, so it requires manual "Next"
-    // Step 16 (commitment pledge) has its own custom footer/interaction
-    return step === 6 || step === 8 || step === 16
+    // Step 15 is processing (auto-advances after bars fill)
+    // Step 17 (commitment pledge) has its own custom footer/interaction
+    return step === 6 || step === 9 || step === 15 || step === 17
   }
 
   const canProceed = () => {
@@ -1477,21 +1625,23 @@ export default function OnboardingScreen() {
       case 7:
         return data.commitment.length > 0
       case 8:
-        return data.experience_level !== null
+        return true // Habit reinforcement
       case 9:
-        return true // Tailored preview step
+        return data.experience_level !== null
       case 10:
-        return true // Stats entry step - defaults are fine
+        return true // Tailored preview step
       case 11:
-        return true // Target weight is just UI
+        return true // Stats entry step - defaults are fine
       case 12:
-        return true // Body scan feature intro
+        return true // Target weight is just UI
       case 13:
-        return true // Focus areas (optional)
+        return true // Body scan feature intro
       case 14:
-        return false // Step 14 is processing, no next button
+        return true // Focus areas (optional)
       case 15:
-        return true // Step 15 has "Get Started"
+        return false // Step 15 is processing, no next button
+      case 16:
+        return true // Step 16 has "Get Started"
       default:
         return false
     }
@@ -1817,6 +1967,14 @@ export default function OnboardingScreen() {
         )
       case 8:
         return (
+          <HabitReinforcementStepContent
+            data={data}
+            colors={colors}
+            styles={styles}
+          />
+        )
+      case 9:
+        return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>What level are you?</Text>
@@ -1829,7 +1987,8 @@ export default function OnboardingScreen() {
                     key={item.value}
                     style={[
                       styles.card,
-                      data.experience_level === item.value && styles.cardSelected,
+                      data.experience_level === item.value &&
+                        styles.cardSelected,
                     ]}
                     onPress={() => {
                       setData({ ...data, experience_level: item.value })
@@ -1857,7 +2016,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 9:
+      case 10:
         // Tailored Preview Step
         const primaryGoal = data.goal[0] || 'build_muscle'
         const goalInfo: Record<
@@ -1909,7 +2068,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.tailoredTitle}>
-                Got it, I'll create workouts that will help you{' '}
+                I'll create workouts that will help you{' '}
                 <Text
                   style={{ color: currentGoalInfo.color, fontStyle: 'italic' }}
                 >
@@ -1958,11 +2117,8 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 10:
+      case 11:
         // Stats Entry Step
-        const selectedCoach =
-          COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
-
         const StatRow = ({
           label,
           value,
@@ -2048,9 +2204,9 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 11: {
+      case 12: {
         // Target Weight Step
-        const selectedCoach =
+        const selectedCoachForWeight =
           COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
         const currentW = parseFloat(data.weight_kg) || 75
         const diff = targetWeight - currentW
@@ -2066,7 +2222,7 @@ export default function OnboardingScreen() {
           if (lossPercent <= 3) {
             feedbackTitle = `Quick win: Lose ${Math.round(lossPercent)}%`
             feedbackDesc =
-              "A great starting point! This is very achievable with some simple lifestyle changes. Build momentum with quick wins."
+              'A great starting point! This is very achievable with some simple lifestyle changes. Build momentum with quick wins.'
             feedbackColor = '#22C55E' // Green
           } else if (lossPercent <= 7) {
             feedbackTitle = `Moderate goal: Lose ${Math.round(lossPercent)}%`
@@ -2081,7 +2237,7 @@ export default function OnboardingScreen() {
           } else {
             feedbackTitle = `Very ambitious: Lose ${Math.round(lossPercent)}%`
             feedbackDesc =
-              "This is a significant transformation. Consider breaking it into smaller milestones and give yourself time to succeed."
+              'This is a significant transformation. Consider breaking it into smaller milestones and give yourself time to succeed.'
             feedbackColor = '#EF4444' // Red
           }
         } else if (diff > 0) {
@@ -2090,12 +2246,12 @@ export default function OnboardingScreen() {
           if (gainPercent <= 2) {
             feedbackTitle = `Steady gains: Add ${gainPercent}%`
             feedbackDesc =
-              "A realistic target for lean muscle growth. Stay consistent with your training and protein intake."
+              'A realistic target for lean muscle growth. Stay consistent with your training and protein intake.'
             feedbackColor = '#22C55E' // Green
           } else if (gainPercent <= 5) {
             feedbackTitle = `Solid goal: Gain ${gainPercent}%`
             feedbackDesc =
-              "Good target! Building quality muscle takes time. Focus on progressive overload and proper nutrition."
+              'Good target! Building quality muscle takes time. Focus on progressive overload and proper nutrition.'
             feedbackColor = '#84CC16' // Lime
           } else if (gainPercent <= 8) {
             feedbackTitle = `Challenging goal: Gain ${gainPercent}%`
@@ -2105,7 +2261,7 @@ export default function OnboardingScreen() {
           } else {
             feedbackTitle = `Very ambitious: Gain ${gainPercent}%`
             feedbackDesc =
-              "Building this much muscle takes significant time. Most people gain 1-2% muscle per month at best. Plan for the long haul!"
+              'Building this much muscle takes significant time. Most people gain 1-2% muscle per month at best. Plan for the long haul!'
             feedbackColor = '#EF4444' // Red
           }
         } else {
@@ -2202,7 +2358,7 @@ export default function OnboardingScreen() {
               <View style={styles.feedbackCard}>
                 <View style={styles.feedbackCoachIconContainer}>
                   <Image
-                    source={selectedCoach.image}
+                    source={selectedCoachForWeight.image}
                     style={styles.feedbackCoachImage}
                   />
                 </View>
@@ -2215,7 +2371,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 12: {
+      case 13: {
         // Body Scan Feature Step
         const currentWeightNum = parseFloat(data.weight_kg) || 75
         const isLosing = targetWeight < currentWeightNum
@@ -2292,7 +2448,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 13: {
+      case 14: {
         const MUSCLE_GROUP_MAPPING: Record<
           string,
           { label: string; slugs: BodyPartSlug[] }
@@ -2475,7 +2631,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 14: {
+      case 15: {
         return (
           <ProcessingStepContent
             data={data}
@@ -2485,17 +2641,17 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 15: {
+      case 16: {
         return (
           <FinalPlanStepContent
             data={data}
             colors={colors}
             styles={styles}
-            weightUnit={weightUnit}
+            onNext={handleNext}
           />
         )
       }
-      case 16: {
+      case 17: {
         return (
           <CommitmentStepContent
             data={data}
@@ -2723,7 +2879,7 @@ export default function OnboardingScreen() {
     <SafeAreaView
       style={styles.container}
       edges={
-        step === 16
+        step === 16 || step === 17
           ? ['top', 'left', 'right']
           : ['top', 'bottom', 'left', 'right']
       }
@@ -2741,7 +2897,7 @@ export default function OnboardingScreen() {
                 style={[
                   styles.headerProgressBarFill,
                   {
-                    width: `${(step / 16) * 100}%`,
+                    width: `${(step / 17) * 100}%`,
                     backgroundColor: colors.primary,
                   },
                 ]}
@@ -2762,12 +2918,13 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
-              !hasAutoSwipe() && { paddingBottom: 140 },
+              (step === 16 || step === 17) && { paddingBottom: 0 },
+              !hasAutoSwipe() && step !== 16 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            bounces={true}
+            bounces={step !== 16}
           >
             <View style={styles.contentWrapper}>
               <Animated.View
@@ -2804,7 +2961,7 @@ export default function OnboardingScreen() {
                     ? "Let's Go"
                     : step === 4
                     ? "Let's Get Started!"
-                    : step === 15
+                    : step === 16
                     ? 'Get Started'
                     : 'Next'}
                 </Text>

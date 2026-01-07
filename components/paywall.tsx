@@ -1,22 +1,22 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-    useRevenueCatPackages
+  useRevenueCatPackages
 } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import React, { useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -86,20 +86,21 @@ export function Paywall({
       {
         type: 'monthly',
         package: monthlyPackage,
-        label: 'MONTHLY',
-        subtitle: 'Billed monthly',
-        price: monthlyPrice,
+        label: 'Monthly',
+        subtitle: null,
+        price: `${monthlyPrice} / mo.`,
         popular: false,
         bestValue: false,
       },
       {
         type: 'yearly',
         package: yearlyPackage,
-        label: 'YEARLY',
-        subtitle: 'Billed yearly',
-        price: yearlyPrice,
+        label: 'Yearly',
+        subtitle: `${yearlyPrice} / yr.`,
+        price: `${perMonthFormatted}.`,
         popular: false,
         bestValue: true,
+        badge: 'Limited Time Offer',
       },
     ]
   }, [yearlyPackage, monthlyPackage])
@@ -254,8 +255,7 @@ export function Paywall({
             <View style={styles.plansContainer}>
               {plans.map((plan, index) => {
                 const isSelected = selectedPlanIndex === index
-                const isBestValue = plan.bestValue
-                const isPopular = plan.popular
+                const hasBadge = plan.badge
 
                 return (
                   <TouchableOpacity
@@ -264,31 +264,31 @@ export function Paywall({
                     onPress={() => setSelectedPlanIndex(index)}
                     style={[
                       styles.planCard,
-                      isBestValue && styles.planCardBestValue,
-                      isPopular && styles.planCardPopular,
-                      isSelected && !isBestValue && !isPopular && styles.planCardSelected,
-                      isSelected && isBestValue && styles.planCardBestValueSelected,
-                      isSelected && isPopular && styles.planCardPopularSelected,
+                      isSelected && styles.planCardSelected,
                     ]}
                   >
-                    {/* Badge Header for Best Value / Popular */}
-                    {isBestValue && (
-                      <View style={[styles.cardBadge, { backgroundColor: colors.primary }]}>
-                        <Text style={styles.cardBadgeText}>BEST VALUE</Text>
-                      </View>
-                    )}
-                    {isPopular && (
-                      <View style={[styles.cardBadge, { backgroundColor: colors.textTertiary }]}>
-                        <Text style={styles.cardBadgeText}>POPULAR</Text>
+                    {/* Badge Overlay */}
+                    {hasBadge && (
+                      <View style={styles.cardBadge}>
+                        <Text style={styles.cardBadgeText}>{plan.badge}</Text>
                       </View>
                     )}
 
-                    <View style={[styles.cardInner, (isBestValue || isPopular) && styles.cardInnerWithBadge]}>
-                      <Text style={styles.planLabel}>{plan.label}</Text>
-                      <Text style={styles.planPrice}>
-                        {plan.package?.product.priceString || plan.price}
-                      </Text>
-                      <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+                    <View style={styles.cardInner}>
+                      <View style={styles.planInfoLeft}>
+                        <Text style={[styles.planLabel, isSelected && styles.planLabelSelected]}>
+                          {plan.label}
+                        </Text>
+                        {plan.subtitle && (
+                          <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+                        )}
+                      </View>
+                      
+                      <View style={styles.planPriceRight}>
+                        <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>
+                          {plan.price}
+                        </Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 )
@@ -309,7 +309,6 @@ export function Paywall({
               </View>
             </View>
 
-            {/* Continue Button */}
             <TouchableOpacity
               style={styles.mainButton}
               onPress={handleSubscribe}
@@ -326,7 +325,8 @@ export function Paywall({
             {/* Footer text */}
             <View style={styles.footerContainer}>
               <Text style={styles.footerGuaranteeText}>
-                Cancel anytime. No questions asked.
+                {selectedPlanIndex === 1 ? 'Billed annually. ' : 'Billed monthly. '}
+                Cancel anytime.
               </Text>
             </View>
           </View>
@@ -413,19 +413,16 @@ function createStyles(colors: any, screenHeight: number = 800) {
       flex: 1,
     },
     plansContainer: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       justifyContent: 'center',
-      alignItems: 'flex-end',
       marginBottom: 24,
       gap: 12,
-      paddingHorizontal: 8,
     },
     planCard: {
-      flex: 0,
-      width: '48%',
+      width: '100%',
       backgroundColor: colors.backgroundWhite,
       borderRadius: 18,
-      height: 140,
+      height: 74,
       borderWidth: 2,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -433,92 +430,66 @@ function createStyles(colors: any, screenHeight: number = 800) {
       shadowOpacity: 0.04,
       shadowRadius: 8,
       elevation: 2,
-      overflow: 'hidden',
+      position: 'relative',
     },
     planCardSelected: {
+      height: 82,
       borderColor: colors.primary,
       backgroundColor: colors.backgroundWhite,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 4,
-    },
-    planCardBestValue: {
-      height: 165,
-      borderColor: colors.border,
-      backgroundColor: colors.backgroundWhite,
-    },
-    planCardBestValueSelected: {
-      borderColor: colors.primary,
-      borderWidth: 2,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 4,
-    },
-    planCardPopular: {
-      height: 165,
-      borderColor: colors.border,
-      backgroundColor: colors.backgroundWhite,
-    },
-    planCardPopularSelected: {
-      borderColor: colors.primary,
-      borderWidth: 2,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 4,
     },
     cardInner: {
       flex: 1,
-      justifyContent: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 16,
+      paddingHorizontal: 20,
     },
-    cardInnerWithBadge: {
-      paddingTop: 30,
+    planInfoLeft: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    planPriceRight: {
+      justifyContent: 'center',
+      alignItems: 'flex-end',
     },
     cardBadge: {
-      width: '100%',
-      height: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
       position: 'absolute',
-      top: 0,
+      top: -12,
+      right: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      zIndex: 10,
+      backgroundColor: colors.primary,
     },
     cardBadgeText: {
-      color: colors.buttonText,
-      fontSize: 10,
-      fontWeight: '800',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      color: colors.backgroundWhite,
+      fontSize: 12,
+      fontWeight: '700',
     },
     planLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      textAlign: 'center',
+      fontSize: 18,
+      fontWeight: '600',
       color: colors.textSecondary,
-      marginBottom: 8,
-      lineHeight: 16,
-      letterSpacing: 0.2,
+      marginBottom: 4,
+    },
+    planLabelSelected: {
+      color: colors.text,
+      fontWeight: '700',
     },
     planPrice: {
-      fontSize: 22,
-      fontWeight: '800',
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    planPriceSelected: {
       color: colors.text,
-      marginBottom: 6,
-      textAlign: 'center',
-      letterSpacing: -0.4,
+      fontWeight: '700',
     },
     planSubtitle: {
-      fontSize: 12,
+      fontSize: 14,
       fontWeight: '500',
       color: colors.textTertiary,
-      textAlign: 'center',
-      lineHeight: 16,
     },
     trialToggleContainer: {
       flexDirection: 'row',

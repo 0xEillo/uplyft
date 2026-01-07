@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 50,
     zIndex: 10,
   },
   logoText: {
