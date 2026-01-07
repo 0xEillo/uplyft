@@ -506,7 +506,12 @@ const HabitReinforcementStepContent = ({ data, colors, styles }: any) => {
         console.error('Error requesting review in habit step:', error)
       }
     }
-    triggerReview()
+
+    const timeoutId = setTimeout(() => {
+      triggerReview()
+    }, 200)
+
+    return () => clearTimeout(timeoutId)
   }, [])
 
   const activeGoal = data.goal[0] || 'build_muscle'
