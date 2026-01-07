@@ -100,7 +100,7 @@ export function Paywall({
         price: `${perMonthFormatted}.`,
         popular: false,
         bestValue: true,
-        badge: 'Limited Time Offer',
+        badge: '70% OFF Limited Time Offer',
       },
     ]
   }, [yearlyPackage, monthlyPackage])
