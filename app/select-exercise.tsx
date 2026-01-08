@@ -8,6 +8,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { BodyPartSlug } from '@/lib/body-mapping'
 import {
   fuzzySearchExercises,
   hasExactOrFuzzyMatch,
@@ -29,7 +30,67 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+// Mapping from database muscle group names to body part slugs for highlighting
+// Simplified: just show upper half or lower half of body
+interface MuscleBodyMapping {
+  slug: BodyPartSlug
+  side: 'front' | 'back'
+  bodyHalf: 'upper' | 'lower'
+}
+
+// Consistent values for upper and lower body views
+const BODY_HALF_CONFIG = {
+  upper: { scale: 0.52, offsetY: 42 },
+  lower: { scale: 0.36, offsetY: -26 },
+}
+
+const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
+  // Upper body muscles
+  'Chest': { slug: 'chest', side: 'front', bodyHalf: 'upper' },
+  'Shoulders': { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+  'Triceps': { slug: 'triceps', side: 'back', bodyHalf: 'upper' },
+  'Biceps': { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
+  'Back': { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  'Lats': { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  'Traps': { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
+  'Abs': { slug: 'abs', side: 'front', bodyHalf: 'upper' },
+  'Core': { slug: 'abs', side: 'front', bodyHalf: 'upper' },
+  'Lower Back': { slug: 'lower-back', side: 'back', bodyHalf: 'upper' },
+  'Forearms': { slug: 'forearm', side: 'front', bodyHalf: 'upper' },
+  // Lower body muscles
+  'Glutes': { slug: 'gluteal', side: 'back', bodyHalf: 'lower' },
+  'Quads': { slug: 'quadriceps', side: 'front', bodyHalf: 'lower' },
+  'Hamstrings': { slug: 'hamstring', side: 'back', bodyHalf: 'lower' },
+  'Calves': { slug: 'calves', side: 'back', bodyHalf: 'lower' },
+}
+
+// Display order for muscle groups - most popular first, similar groups together
+const MUSCLE_GROUP_ORDER = [
+  // Push muscles (most popular)
+  'Chest',
+  'Shoulders',
+  // Pull muscles
+  'Back',
+  'Lats',
+  // Arms
+  'Biceps',
+  'Triceps',
+  'Forearms',
+  // Core
+  'Abs',
+  'Core',
+  // Upper back
+  'Traps',
+  'Lower Back',
+  // Legs
+  'Quads',
+  'Hamstrings',
+  'Glutes',
+  'Calves',
+]
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const GAP = 12
@@ -439,11 +500,13 @@ export default function SelectExerciseScreen() {
 
   const keyExtractor = useCallback((item: Exercise) => item.id, [])
 
-  // Create exercise header component (Only shows if search is active and no match)
-  const ListHeader = useMemo(() => {
-    if (!trimmedQuery || hasExactMatch || isLoading) return <View style={{ height: 16 }} />
+  // Show recent performed section in list header
+  const shouldShowRecent = recentExercises.length > 0 && !trimmedQuery && !hasFilters
 
-    return (
+  // Create exercise header component (includes Recent Performed and All Exercises header)
+  const ListHeader = useMemo(() => {
+    // Create exercise option (when search is active and no match)
+    const createExerciseOption = trimmedQuery && !hasExactMatch && !isLoading ? (
       <View style={styles.createExerciseContainer}>
         <TouchableOpacity
           style={[
@@ -474,6 +537,61 @@ export default function SelectExerciseScreen() {
           {!isProMember && <ProBadge size="small" />}
         </TouchableOpacity>
       </View>
+    ) : null
+
+    // Recent Performed section
+    const recentSection = shouldShowRecent ? (
+      <View style={styles.recentSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Performed</Text>
+          <TouchableOpacity onPress={toggleViewMode}>
+            <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.recentScrollView}
+          contentContainerStyle={styles.recentScrollContainer}
+        >
+          {recentExercises.map((exercise) => {
+            const isCurrentExercise = exercise.name === currentExerciseName
+            const isSelected = selectedIds.has(exercise.id)
+            return (
+              <ExerciseGridItem
+                key={exercise.id}
+                exercise={exercise}
+                isCurrentExercise={isCurrentExercise}
+                isSelected={isSelected}
+                onSelect={() => handleSelectExercise(exercise)}
+                onInfo={() => handleViewExercise(exercise)}
+                colors={colors}
+              />
+            )
+          })}
+        </ScrollView>
+      </View>
+    ) : null
+
+    // All Exercises section header
+    const allExercisesHeader = (
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>All Exercises</Text>
+        {/* Only show toggle here if Recent Performed is not visible */}
+        {!shouldShowRecent && (
+          <TouchableOpacity onPress={toggleViewMode}>
+            <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    )
+
+    return (
+      <View>
+        {createExerciseOption}
+        {recentSection}
+        {allExercisesHeader}
+      </View>
     )
   }, [
     trimmedQuery,
@@ -482,6 +600,14 @@ export default function SelectExerciseScreen() {
     colors,
     handleCreateExercise,
     isProMember,
+    shouldShowRecent,
+    recentExercises,
+    currentExerciseName,
+    selectedIds,
+    handleSelectExercise,
+    handleViewExercise,
+    viewMode,
+    toggleViewMode,
   ])
 
   // Empty state component
@@ -550,55 +676,60 @@ export default function SelectExerciseScreen() {
             </View>
         )}
 
-        {/* Expandable Filters */}
+        {/* Muscle Filter with Body Diagrams - Always visible */}
+        {muscleGroups.length > 0 && (
+            <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.muscleFilterScrollView}
+            contentContainerStyle={styles.muscleFilterContainer}
+            >
+            {MUSCLE_GROUP_ORDER
+              .filter((group) => muscleGroups.includes(group) && MUSCLE_TO_BODY_PARTS[group]) // Only show muscles that exist in data and have body mapping
+              .map((group) => {
+                const isSelected = selectedMuscleGroups.includes(group)
+                const muscleMapping = MUSCLE_TO_BODY_PARTS[group]
+                const bodyData = [{ slug: muscleMapping.slug, intensity: 1 }]
+                
+                return (
+                <TouchableOpacity
+                    key={group}
+                    style={[
+                      styles.muscleChip,
+                      {
+                        borderColor: isSelected ? colors.primary : 'transparent',
+                        backgroundColor: isSelected ? colors.primary + '15' : 'transparent',
+                      },
+                    ]}
+                    onPress={() => toggleMuscleGroup(group)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                    <View style={styles.muscleBodyContainer} pointerEvents="none">
+                      <View style={[styles.muscleBodyWrapper, {
+                        transform: [
+                          { translateY: BODY_HALF_CONFIG[muscleMapping.bodyHalf].offsetY },
+                        ],
+                      }]}>
+                        <Body
+                          data={bodyData}
+                          gender="male"
+                          side={muscleMapping.side}
+                          scale={BODY_HALF_CONFIG[muscleMapping.bodyHalf].scale}
+                          colors={[isSelected ? colors.primary : '#EF4444']}
+                          border="#D1D5DB"
+                        />
+                      </View>
+                    </View>
+                </TouchableOpacity>
+                )
+            })}
+            </ScrollView>
+        )}
+
+        {/* Expandable Equipment Filter */}
         {isFilterVisible && (
             <View style={styles.filtersWrapper}>
-                 {/* Muscle Filter */}
-                {muscleGroups.length > 0 && (
-                    <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.filterScrollView}
-                    contentContainerStyle={styles.filterContainer}
-                    >
-                    <Text
-                        style={[styles.filterLabel, { color: colors.textSecondary }]}
-                    >
-                        Muscles:
-                    </Text>
-                    {muscleGroups.map((group) => {
-                        const isSelected = selectedMuscleGroups.includes(group)
-                        return (
-                        <TouchableOpacity
-                            key={group}
-                            style={[
-                            styles.filterChip,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.backgroundLight,
-                            },
-                            isSelected && {
-                                borderColor: colors.primary,
-                                backgroundColor: colors.primaryLight,
-                            },
-                            ]}
-                            onPress={() => toggleMuscleGroup(group)}
-                        >
-                            <Text
-                            style={[
-                                styles.filterChipText,
-                                { color: colors.textSecondary },
-                                isSelected && { color: colors.primary },
-                            ]}
-                            >
-                            {group}
-                            </Text>
-                        </TouchableOpacity>
-                        )
-                    })}
-                    </ScrollView>
-                )}
-
                 {/* Equipment Filter */}
                 {equipmentTypes.length > 0 && (
                     <ScrollView
@@ -646,100 +777,6 @@ export default function SelectExerciseScreen() {
                 )}
             </View>
         )}
-
-        {/* Recent Performed Section */}
-        {recentExercises.length > 0 && !trimmedQuery && !hasFilters && (
-          <View style={styles.recentSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Performed</Text>
-              <TouchableOpacity onPress={toggleViewMode}>
-                <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.recentScrollContainer}
-            >
-              {recentExercises.map((exercise) => {
-                const isCurrentExercise = exercise.name === currentExerciseName
-                const isSelected = selectedIds.has(exercise.id)
-                return (
-                  <TouchableOpacity
-                    key={exercise.id}
-                    style={[
-                      styles.recentCard,
-                      { backgroundColor: colors.feedCardBackground, borderColor: colors.border },
-                      isCurrentExercise && { borderColor: colors.primary, borderWidth: 2 },
-                      isSelected && { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primary + '10' },
-                    ]}
-                    onPress={() => handleSelectExercise(exercise)}
-                  >
-                    <View style={styles.recentCardImageContainer}>
-                      <ExerciseMediaThumbnail
-                        gifUrl={exercise.gif_url}
-                        style={styles.recentCardImage}
-                      />
-                      {/* Overlay Icons */}
-                      <View style={styles.cardOverlay}>
-                        {isSelected ? (
-                          <View style={styles.selectionBadge}>
-                            <Ionicons name="checkbox" size={20} color={colors.primary} />
-                          </View>
-                        ) : (
-                          <View style={styles.iconButtonSmall} />
-                        )}
-                        <TouchableOpacity 
-                          style={styles.infoButton}
-                          onPress={(e) => {
-                            e.stopPropagation()
-                            handleViewExercise(exercise)
-                          }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="information-circle" size={22} color="rgba(0,0,0,0.6)" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.cardContent}>
-                      <Text
-                        style={[
-                          styles.cardTitle,
-                          { color: colors.text },
-                          (isCurrentExercise || isSelected) && { color: colors.primary },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {exercise.name}
-                      </Text>
-                      {exercise.muscle_group && (
-                        <Text
-                          style={[
-                            styles.cardSubtitle,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {exercise.muscle_group}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                )
-              })}
-            </ScrollView>
-          </View>
-        )}
-        
-        <View style={styles.sectionHeader}>
-             <Text style={[styles.sectionTitle, { color: colors.text }]}>All Exercises</Text>
-            {/* Only show toggle here if Recent Performed is not visible */}
-            {!(recentExercises.length > 0 && !trimmedQuery && !hasFilters) && (
-              <TouchableOpacity onPress={toggleViewMode}>
-                   <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-        </View>
 
         {/* Exercise List/Grid */}
         <View style={styles.listContainer}>
@@ -799,7 +836,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 0,
   },
   headerButton: {
     width: 40,
@@ -822,9 +860,8 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 16,
       marginBottom: 12,
-      marginTop: 8,
+      marginTop: 4,
   },
   sectionTitle: {
       fontSize: 16,
@@ -832,7 +869,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   searchInput: {
     padding: 12,
@@ -1000,26 +1037,54 @@ const styles = StyleSheet.create({
   },
   // Recent Exercises Section Styles
   recentSection: {
-    marginBottom: 8,
+    marginBottom: 0, // Using card's marginBottom
+  },
+  recentScrollView: {
+    marginHorizontal: -16, // Bleed to edges
   },
   recentScrollContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 16, // Align first card with content below
+    paddingBottom: 0,
   },
-  recentCard: {
-    width: ITEM_WIDTH,
-    marginRight: GAP,
-    borderRadius: 12,
-    borderWidth: 1,
+  // Muscle Filter Body Diagram Styles
+  muscleFilterScrollView: {
+    maxHeight: 100,
+    flexGrow: 0,
+    marginBottom: 0,
+  },
+  muscleFilterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    alignItems: 'center',
+    gap: 2,
+  },
+  muscleChip: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
-  recentCardImageContainer: {
-    height: ITEM_WIDTH * 1.1,
-    backgroundColor: '#000',
+  muscleBodyContainer: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
     position: 'relative',
   },
-  recentCardImage: {
-    width: '100%',
-    height: '100%',
+  muscleBodyWrapper: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 120,
+    height: 240,
+    marginTop: -120,
+    marginLeft: -60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 })
