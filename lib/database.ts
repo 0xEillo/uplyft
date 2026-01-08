@@ -786,7 +786,7 @@ export const database = {
       return equipment
     },
 
-    async getRecent(userId: string, limit = 5) {
+    async getRecent(userId: string, limit = 15) {
       // Get recent workout sessions for the user
       const { data: sessions, error: sessionsError } = await supabase
         .from('workout_sessions')
@@ -801,7 +801,7 @@ export const database = {
         )
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(20) // Fetch last 20 workouts to get a good spread
+        .limit(40) // Fetch last 40 workouts to get a good spread (ensure we find unique exercises)
 
       if (sessionsError) throw sessionsError
 
