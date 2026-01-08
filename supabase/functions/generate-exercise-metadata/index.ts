@@ -2,9 +2,9 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 // @ts-ignore: Remote import for Deno edge runtime
-import { google } from 'npm:@ai-sdk/google@2.0.46'
+import { google } from 'npm:@ai-sdk/google'
 // @ts-ignore: Remote import for Deno edge runtime
-import { generateObject } from 'npm:ai@5.0.60'
+import { generateObject } from 'npm:ai'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 

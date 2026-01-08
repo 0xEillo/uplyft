@@ -1,9 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
-import { google } from 'npm:@ai-sdk/google@2.0.46'
+import { google } from 'npm:@ai-sdk/google'
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
-import { streamText, tool } from 'npm:ai@5.0.60'
+import { streamText, tool } from 'npm:ai'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {

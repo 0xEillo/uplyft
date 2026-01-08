@@ -1,8 +1,8 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { google } from 'npm:@ai-sdk/google@2.0.46'
+import { google } from 'npm:@ai-sdk/google'
 // @ts-ignore: Remote import for Deno edge runtime
-import { generateObject } from 'npm:ai@5.0.60'
-import { PARSER_MODEL } from './constants.ts'
+import { generateObject } from 'npm:ai'
+import { PARSER_MODEL, PARSE_TIMEOUT_MS } from './constants.ts'
 import { ApiError } from './errors.ts'
 import { ParsedWorkout, WorkoutRequest, workoutSchema } from './schemas.ts'
 
@@ -10,22 +10,44 @@ export async function parseWorkoutNotes(
   payload: WorkoutRequest,
   correlationId: string,
 ): Promise<ParsedWorkout> {
+  const startTime = Date.now()
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    console.error(
+      `[ParseWorkout][${correlationId}] AI call timed out after ${PARSE_TIMEOUT_MS}ms`,
+    )
+    controller.abort()
+  }, PARSE_TIMEOUT_MS)
+
   try {
+    console.log(
+      `[ParseWorkout][${correlationId}] Initiating generateObject with model: ${PARSER_MODEL}, timeout: ${PARSE_TIMEOUT_MS}ms`,
+    )
     const structured = await generateObject({
       model: google(PARSER_MODEL),
       schema: workoutSchema,
       prompt: buildParsePrompt(payload.notes, payload.weightUnit ?? 'kg'),
+      abortSignal: controller.signal,
       providerOptions: {
         google: {
           thinkingConfig: {
-            thinkingLevel: 'low',
+            thinkingLevel: 'minimal', // fastest - no thinking for parsing
           },
         },
       },
     })
 
+    const elapsed = Date.now() - startTime
+    console.log(
+      `[ParseWorkout][${correlationId}] generateObject succeeded in ${elapsed}ms`,
+    )
     return structured.object
   } catch (error) {
+    const elapsed = Date.now() - startTime
+    console.error(
+      `[ParseWorkout][${correlationId}] generateObject failed after ${elapsed}ms:`,
+      error,
+    )
 
     if (
       error &&
@@ -40,16 +62,13 @@ export async function parseWorkoutNotes(
       )
     }
 
-    throw new ApiError(
-      500,
-      'PARSE_FAILED',
-      'Workout parsing failed',
-      {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        errorObject: JSON.stringify(error, Object.getOwnPropertyNames(error))
-      }
-    )
+    throw new ApiError(500, 'PARSE_FAILED', 'Workout parsing failed', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      errorObject: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    })
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

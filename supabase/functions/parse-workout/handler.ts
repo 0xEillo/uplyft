@@ -16,10 +16,21 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 
   const correlationId = createCorrelationId()
+  console.log(
+    `[ParseWorkout][${correlationId}] Request received: ${req.method} ${req.url}`,
+  )
 
   try {
     const rawBody = await req.json()
+    console.log(
+      `[ParseWorkout][${correlationId}] Payload parsed, keys: ${Object.keys(
+        rawBody,
+      ).join(', ')}`,
+    )
     const payload = requestSchema.parse(rawBody)
+    console.log(
+      `[ParseWorkout][${correlationId}] Schema validated, userId: ${payload.userId}, createWorkout: ${payload.createWorkout}`,
+    )
 
     if (payload.createWorkout && !payload.userId) {
       throw new ApiError(
@@ -29,7 +40,13 @@ export async function handleRequest(req: Request): Promise<Response> {
       )
     }
 
+    console.log(`[ParseWorkout][${correlationId}] Calling AI parser...`)
     const parsedWorkout = await parseWorkoutNotes(payload, correlationId)
+    console.log(
+      `[ParseWorkout][${correlationId}] AI parsing complete, exercises: ${
+        parsedWorkout.exercises?.length ?? 0
+      }`,
+    )
 
     if (!parsedWorkout.isWorkoutRelated) {
       throw new ApiError(
@@ -130,6 +147,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       })
     }
   } catch (error) {
+    console.error(`[ParseWorkout][${correlationId}] Request failed:`, error)
     const apiError = normalizeError(error, inferError(error))
     return toErrorResponse(apiError, correlationId)
   }

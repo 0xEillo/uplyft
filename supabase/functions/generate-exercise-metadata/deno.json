@@ -1,9 +1,9 @@
 {
   "lock": false,
   "imports": {
-    "@ai-sdk/openai": "npm:@ai-sdk/openai@2.0.42",
-    "@ai-sdk/google": "npm:@ai-sdk/google@2.0.46",
-    "ai": "npm:ai@5.0.60",
+    "@ai-sdk/openai": "npm:@ai-sdk/openai",
+    "@ai-sdk/google": "npm:@ai-sdk/google",
+    "ai": "npm:ai",
     "zod": "npm:zod@3.25.76"
   }
 }

@@ -1,5 +1,5 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { google } from 'npm:@ai-sdk/google@2.0.46'
+import { google } from 'npm:@ai-sdk/google'
 
 export const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025'
 
