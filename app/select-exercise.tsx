@@ -3,6 +3,7 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
 import { SlideInView } from '@/components/slide-in-view'
+import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -189,6 +190,7 @@ export default function SelectExerciseScreen() {
   }>()
   const { callCallback } = useExerciseSelection()
   const { isProMember } = useSubscription()
+  const { user } = useAuth()
 
   // If currentExerciseName is present, we are selecting ONE exercise (e.g. replacing).
   // Otherwise, we are adding exercises (Multi-select allowed).
@@ -214,14 +216,16 @@ export default function SelectExerciseScreen() {
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
 
-  // Use cached exercises hook
+  // Use cached exercises hook with recent exercises support
   const {
     exercises,
+    recentExercises,
     muscleGroups,
     equipmentTypes,
     isLoading,
   } = useExercises({
     initialLoad: true,
+    userId: user?.id,
   })
 
   const trimmedQuery = searchQuery.trim()
@@ -642,12 +646,99 @@ export default function SelectExerciseScreen() {
                 )}
             </View>
         )}
+
+        {/* Recent Performed Section */}
+        {recentExercises.length > 0 && !trimmedQuery && !hasFilters && (
+          <View style={styles.recentSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Performed</Text>
+              <TouchableOpacity onPress={toggleViewMode}>
+                <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.recentScrollContainer}
+            >
+              {recentExercises.map((exercise) => {
+                const isCurrentExercise = exercise.name === currentExerciseName
+                const isSelected = selectedIds.has(exercise.id)
+                return (
+                  <TouchableOpacity
+                    key={exercise.id}
+                    style={[
+                      styles.recentCard,
+                      { backgroundColor: colors.feedCardBackground, borderColor: colors.border },
+                      isCurrentExercise && { borderColor: colors.primary, borderWidth: 2 },
+                      isSelected && { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primary + '10' },
+                    ]}
+                    onPress={() => handleSelectExercise(exercise)}
+                  >
+                    <View style={styles.recentCardImageContainer}>
+                      <ExerciseMediaThumbnail
+                        gifUrl={exercise.gif_url}
+                        style={styles.recentCardImage}
+                      />
+                      {/* Overlay Icons */}
+                      <View style={styles.cardOverlay}>
+                        {isSelected ? (
+                          <View style={styles.selectionBadge}>
+                            <Ionicons name="checkbox" size={20} color={colors.primary} />
+                          </View>
+                        ) : (
+                          <View style={styles.iconButtonSmall} />
+                        )}
+                        <TouchableOpacity 
+                          style={styles.infoButton}
+                          onPress={(e) => {
+                            e.stopPropagation()
+                            handleViewExercise(exercise)
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="information-circle" size={22} color="rgba(0,0,0,0.6)" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.cardContent}>
+                      <Text
+                        style={[
+                          styles.cardTitle,
+                          { color: colors.text },
+                          (isCurrentExercise || isSelected) && { color: colors.primary },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {exercise.name}
+                      </Text>
+                      {exercise.muscle_group && (
+                        <Text
+                          style={[
+                            styles.cardSubtitle,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {exercise.muscle_group}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </View>
+        )}
         
         <View style={styles.sectionHeader}>
              <Text style={[styles.sectionTitle, { color: colors.text }]}>All Exercises</Text>
-            <TouchableOpacity onPress={toggleViewMode}>
-                 <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
+            {/* Only show toggle here if Recent Performed is not visible */}
+            {!(recentExercises.length > 0 && !trimmedQuery && !hasFilters) && (
+              <TouchableOpacity onPress={toggleViewMode}>
+                   <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
         </View>
 
         {/* Exercise List/Grid */}
@@ -906,5 +997,29 @@ const styles = StyleSheet.create({
       fontWeight: '700',
       color: '#000000',
       letterSpacing: -0.2,
+  },
+  // Recent Exercises Section Styles
+  recentSection: {
+    marginBottom: 8,
+  },
+  recentScrollContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  recentCard: {
+    width: ITEM_WIDTH,
+    marginRight: GAP,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  recentCardImageContainer: {
+    height: ITEM_WIDTH * 1.1,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  recentCardImage: {
+    width: '100%',
+    height: '100%',
   },
 })

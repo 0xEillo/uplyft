@@ -96,6 +96,11 @@ export default function EditWorkoutScreen() {
   const [editedDate, setEditedDate] = useState<Date | null>(null)
   const [showDatePicker, setShowDatePicker] = useState(false)
 
+  // Duration editing states (stored in seconds, edited as h:m:s)
+  const [editedDurationHours, setEditedDurationHours] = useState('')
+  const [editedDurationMinutes, setEditedDurationMinutes] = useState('')
+  const [editedDurationSeconds, setEditedDurationSeconds] = useState('')
+
   // Slide in view state
   const [shouldExit, setShouldExit] = useState(false)
 
@@ -180,6 +185,16 @@ export default function EditWorkoutScreen() {
       // Initialize edited date from workout date
       if (data.date) {
         setEditedDate(new Date(data.date))
+      }
+      // Initialize duration from workout
+      if (data.duration !== null && data.duration !== undefined) {
+        const totalSeconds = Math.max(0, Math.floor(data.duration))
+        const hours = Math.floor(totalSeconds / 3600)
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
+        const seconds = totalSeconds % 60
+        setEditedDurationHours(hours > 0 ? String(hours) : '')
+        setEditedDurationMinutes(String(minutes))
+        setEditedDurationSeconds(String(seconds))
       }
     } catch (error) {
       console.error('Error loading workout:', error)
@@ -384,6 +399,13 @@ export default function EditWorkoutScreen() {
         updates.date = editedDate.toISOString()
       }
 
+      // Handle duration updates - calculate total seconds
+      const hours = parseInt(editedDurationHours) || 0
+      const minutes = parseInt(editedDurationMinutes) || 0
+      const seconds = parseInt(editedDurationSeconds) || 0
+      const totalDuration = (hours * 3600) + (minutes * 60) + seconds
+      updates.duration = totalDuration > 0 ? totalDuration : null
+
       await database.workoutSessions.update(workoutId, updates)
 
       // Delete old image from storage if it was replaced or deleted
@@ -480,6 +502,9 @@ export default function EditWorkoutScreen() {
     editedTitle,
     editedImageUrl,
     editedDate,
+    editedDurationHours,
+    editedDurationMinutes,
+    editedDurationSeconds,
     imageDeleted,
     handleExit,
     workout,
@@ -762,6 +787,51 @@ export default function EditWorkoutScreen() {
                 />
               )
             )}
+
+            {/* Duration Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Duration</Text>
+              <View style={styles.durationContainer}>
+                <View style={styles.durationInputGroup}>
+                  <TextInput
+                    style={styles.durationInput}
+                    value={editedDurationHours}
+                    onChangeText={(text) => setEditedDurationHours(text.replace(/[^0-9]/g, ''))}
+                    placeholder="0"
+                    placeholderTextColor={colors.textPlaceholder}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                  <Text style={styles.durationLabel}>h</Text>
+                </View>
+                <Text style={styles.durationSeparator}>:</Text>
+                <View style={styles.durationInputGroup}>
+                  <TextInput
+                    style={styles.durationInput}
+                    value={editedDurationMinutes}
+                    onChangeText={(text) => setEditedDurationMinutes(text.replace(/[^0-9]/g, ''))}
+                    placeholder="0"
+                    placeholderTextColor={colors.textPlaceholder}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                  <Text style={styles.durationLabel}>m</Text>
+                </View>
+                <Text style={styles.durationSeparator}>:</Text>
+                <View style={styles.durationInputGroup}>
+                  <TextInput
+                    style={styles.durationInput}
+                    value={editedDurationSeconds}
+                    onChangeText={(text) => setEditedDurationSeconds(text.replace(/[^0-9]/g, ''))}
+                    placeholder="0"
+                    placeholderTextColor={colors.textPlaceholder}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                  <Text style={styles.durationLabel}>s</Text>
+                </View>
+              </View>
+            </View>
 
             {/* Notes Section */}
             <View style={styles.section}>
@@ -1340,5 +1410,45 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 15,
       fontWeight: '600',
       color: colors.primary,
+    },
+    durationContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.white,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 4,
+    },
+    durationInputGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    durationInput: {
+      backgroundColor: colors.backgroundLight,
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+      minWidth: 52,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    durationLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    durationSeparator: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginHorizontal: 4,
     },
   })
