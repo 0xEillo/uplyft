@@ -423,7 +423,7 @@ async function generateExerciseMetadata(
 
   try {
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: exerciseMetadataSchema,
       prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
 
@@ -445,11 +445,7 @@ Examples:
 
 Return the metadata as JSON.`,
       providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingLevel: 'low',
-          },
-        },
+        google: {},
       },
     })
 

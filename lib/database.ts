@@ -2,19 +2,19 @@ import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-    Exercise,
-    Follow,
-    FollowRelationshipStatus,
-    FollowRequest,
-    ParsedWorkout,
-    Profile,
-    WorkoutComment,
-    WorkoutLike,
-    WorkoutRoutine,
-    WorkoutRoutineWithDetails,
-    WorkoutSession,
-    WorkoutSessionWithDetails,
-    WorkoutSocialStats,
+  Exercise,
+  Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
+  ParsedWorkout,
+  Profile,
+  WorkoutComment,
+  WorkoutLike,
+  WorkoutRoutine,
+  WorkoutRoutineWithDetails,
+  WorkoutSession,
+  WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -1465,6 +1465,38 @@ export const database = {
 
       if (error) throw error
       return count || 0
+    },
+
+    /**
+     * Get workout sessions with muscle group info for recovery tracking
+     * Returns sessions from the specified date onwards, including set details for intensity calculation
+     */
+    async getWithMuscleGroups(userId: string, fromDate: Date) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(`
+          id,
+          created_at,
+          workout_exercises (
+            id,
+            exercise:exercises (
+              id,
+              name,
+              muscle_group,
+              secondary_muscles
+            ),
+            sets (
+              id,
+              reps,
+              weight
+            )
+          )
+        `)
+        .eq('user_id', userId)
+        .gte('created_at', fromDate.toISOString())
+        .order('created_at', { ascending: false })
+
+      return { data, error }
     },
   },
 

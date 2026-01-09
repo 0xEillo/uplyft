@@ -6,8 +6,8 @@ import { generateObject } from 'npm:ai'
 import { z } from 'https://esm.sh/zod@3.25.76'
 
 import {
-  handleCreateExercise,
-  handleSearchExercises,
+    handleCreateExercise,
+    handleSearchExercises,
 } from '../../_shared/tools.ts'
 import { logWithCorrelation } from '../metrics.ts'
 
@@ -165,15 +165,11 @@ IMPORTANT: When matching, you must return the exact ID (UUID) from the candidate
 Be lenient with matching - prefer matching over creating when reasonable.`
 
   const result = await generateObject({
-    model: google('gemini-3-flash-preview'),
+    model: google('gemini-2.5-flash'),
     schema: aiResolutionSchema,
     prompt,
     providerOptions: {
-      google: {
-        thinkingConfig: {
-          thinkingLevel: 'low',
-        },
-      },
+      google: {},
     },
   })
 

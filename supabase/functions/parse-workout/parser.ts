@@ -14,7 +14,7 @@ export async function parseWorkoutNotes(
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
     console.error(
-      `[ParseWorkout][${correlationId}] AI call timed out after ${PARSE_TIMEOUT_MS}ms`,
+      `[ParseWorkout][${correlationId}] AI call (${PARSER_MODEL}) timed out after ${PARSE_TIMEOUT_MS}ms`,
     )
     controller.abort()
   }, PARSE_TIMEOUT_MS)
@@ -23,23 +23,20 @@ export async function parseWorkoutNotes(
     console.log(
       `[ParseWorkout][${correlationId}] Initiating generateObject with model: ${PARSER_MODEL}, timeout: ${PARSE_TIMEOUT_MS}ms`,
     )
+
     const structured = await generateObject({
       model: google(PARSER_MODEL),
       schema: workoutSchema,
       prompt: buildParsePrompt(payload.notes, payload.weightUnit ?? 'kg'),
       abortSignal: controller.signal,
       providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingLevel: 'minimal', // fastest - no thinking for parsing
-          },
-        },
+        google: {},
       },
     })
 
     const elapsed = Date.now() - startTime
     console.log(
-      `[ParseWorkout][${correlationId}] generateObject succeeded in ${elapsed}ms`,
+      `[ParseWorkout][${correlationId}] ${PARSER_MODEL} succeeded in ${elapsed}ms`,
     )
     return structured.object
   } catch (error) {

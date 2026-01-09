@@ -1,6 +1,8 @@
+import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
+import { useExercises } from '@/hooks/useExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
@@ -61,6 +63,7 @@ export default function CreateExerciseScreen() {
     exerciseName?: string
   }>()
   const { callCallback } = useExerciseSelection()
+  const { addExercise } = useExercises({ initialLoad: false })
 
   const [exerciseName, setExerciseName] = useState(initialName || '')
   const [muscleGroup, setMuscleGroup] = useState<string>('')
@@ -165,6 +168,9 @@ export default function CreateExerciseScreen() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
+      // Add to local cache so it appears in search immediately
+      addExercise(newExercise)
+
       // Trigger the callback to select this exercise
       callCallback(newExercise)
 
@@ -204,13 +210,11 @@ export default function CreateExerciseScreen() {
         style={styles.container}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={26} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Exercise</Text>
-          <View style={styles.backButton} />
-        </View>
+        <ScreenHeader
+          title="Create Exercise"
+          onLeftPress={handleBack}
+          leftIcon="chevron-back"
+        />
 
         <ScrollView
           style={styles.content}
@@ -464,28 +468,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      backgroundColor: colors.backgroundWhite,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    backButton: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: -8,
-    },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.text,
-    },
+
+
     content: {
       flex: 1,
       paddingHorizontal: 20,

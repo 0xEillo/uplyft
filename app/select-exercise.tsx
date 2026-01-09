@@ -1,7 +1,6 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
-import { ProBadge } from '@/components/pro-badge'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -17,7 +16,7 @@ import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as Haptics from 'expo-haptics'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Dimensions,
@@ -284,10 +283,18 @@ export default function SelectExerciseScreen() {
     muscleGroups,
     equipmentTypes,
     isLoading,
+    loadExercises,
   } = useExercises({
     initialLoad: true,
     userId: user?.id,
   })
+
+  // Refresh exercises when screen is focused (to pick up new creations)
+  useFocusEffect(
+    useCallback(() => {
+        loadExercises()
+    }, [loadExercises])
+  )
 
   const trimmedQuery = searchQuery.trim()
   const hasMuscleFilter = selectedMuscleGroups.length > 0
@@ -505,40 +512,6 @@ export default function SelectExerciseScreen() {
 
   // Create exercise header component (includes Recent Performed and All Exercises header)
   const ListHeader = useMemo(() => {
-    // Create exercise option (when search is active and no match)
-    const createExerciseOption = trimmedQuery && !hasExactMatch && !isLoading ? (
-      <View style={styles.createExerciseContainer}>
-        <TouchableOpacity
-          style={[
-            styles.createExerciseItem,
-            {
-              backgroundColor: colors.primaryLight,
-              borderColor: colors.primary,
-            },
-          ]}
-          onPress={handleCreateExercise}
-        >
-          <Ionicons name="add-circle" size={24} color={colors.primary} />
-          <View style={styles.exerciseItemContent}>
-            <Text
-              style={[styles.createExerciseText, { color: colors.primary }]}
-            >
-              Create &quot;{trimmedQuery}&quot;
-            </Text>
-            <Text
-              style={[
-                styles.cardSubtitle,
-                { color: colors.textSecondary },
-              ]}
-            >
-              New exercise
-            </Text>
-          </View>
-          {!isProMember && <ProBadge size="small" />}
-        </TouchableOpacity>
-      </View>
-    ) : null
-
     // Recent Performed section
     const recentSection = shouldShowRecent ? (
       <View style={styles.recentSection}>
@@ -588,7 +561,6 @@ export default function SelectExerciseScreen() {
 
     return (
       <View>
-        {createExerciseOption}
         {recentSection}
         {allExercisesHeader}
       </View>
