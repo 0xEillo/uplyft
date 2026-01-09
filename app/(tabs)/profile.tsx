@@ -56,6 +56,19 @@ export default function ProfileScreen() {
   const flatListRef = useRef<FlatList>(null)
   const { level: userLevel } = useUserLevel(user?.id)
   const insets = useSafeAreaInsets()
+  // const params = useLocalSearchParams() // Removed redundant param check
+  // const [showPaywall, setShowPaywall] = useState(false)
+  // const [isPaywallForced, setIsPaywallForced] = useState(false)
+
+  // useEffect(() => {
+  //   if (params.showPaywall === 'true') {
+  //     const timer = setTimeout(() => {
+  //       setShowPaywall(true)
+  //       setIsPaywallForced(true)
+  //     }, 400)
+  //     return () => clearTimeout(timer)
+  //   }
+  // }, [params.showPaywall])
 
   const scrollY = useRef(new Animated.Value(0)).current
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])

@@ -1,8 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
-import {
-  useRevenueCatPackages
-} from '@/hooks/useRevenueCatPackages'
+import { registerForPushNotifications } from '@/hooks/usePushNotifications'
+import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
@@ -26,6 +25,7 @@ type PaywallProps = {
   onClose: () => void
   title?: string
   message?: string
+  allowClose?: boolean
 }
 
 export function Paywall({
@@ -33,6 +33,7 @@ export function Paywall({
   onClose,
   title = 'Unlock Your Full Potential',
   message = 'Get full access to all premium features',
+  allowClose = true,
 }: PaywallProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -50,7 +51,7 @@ export function Paywall({
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(1) // Default to Yearly
-  const [isTrialEnabled, setIsTrialEnabled] = useState(true)
+  const [isTrialEnabled, setIsTrialEnabled] = useState(false)
 
   const {
     monthly: monthlyPackage,
@@ -120,6 +121,31 @@ export function Paywall({
     }
     return 'Subscribe Now'
   }, [isTrialEnabled])
+
+  const handleTrialToggle = async (value: boolean) => {
+    if (value) {
+      Alert.alert(
+        'Enable Notifications',
+        'Allow notifications so we can notify you 24 hours before your trial ends.',
+        [
+          {
+            text: 'Not Now',
+            style: 'cancel',
+            onPress: () => setIsTrialEnabled(true),
+          },
+          {
+            text: 'Allow',
+            onPress: async () => {
+              setIsTrialEnabled(true)
+              await registerForPushNotifications()
+            },
+          },
+        ],
+      )
+    } else {
+      setIsTrialEnabled(false)
+    }
+  }
 
   const handleSubscribe = async () => {
     try {
@@ -205,7 +231,11 @@ export function Paywall({
       visible={visible}
       animationType="slide"
       transparent={false}
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        if (allowClose) {
+          onClose()
+        }
+      }}
     >
       <View style={styles.container}>
         {/* Hero Image Section */}
@@ -218,13 +248,17 @@ export function Paywall({
 
           {/* Top Buttons Overlay */}
           <View style={[styles.headerOverlay, { top: insets.top + 10 }]}>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={onClose}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
+            {allowClose ? (
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={onClose}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            ) : (
+              <View />
+            )}
 
             <TouchableOpacity
               style={styles.restoreButton}
@@ -301,7 +335,7 @@ export function Paywall({
               <View style={styles.switchContainer}>
                 <Switch
                   value={isTrialEnabled}
-                  onValueChange={setIsTrialEnabled}
+                  onValueChange={handleTrialToggle}
                   trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor={colors.backgroundWhite}
                   ios_backgroundColor={colors.border}

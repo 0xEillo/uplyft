@@ -2,7 +2,6 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { NotificationBadge } from '@/components/notification-badge'
-import { Paywall } from '@/components/paywall'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -94,7 +93,6 @@ export default function FeedScreen() {
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  const [showPaywall, setShowPaywall] = useState(false)
   const [newWorkoutId, setNewWorkoutId] = useState<string | null>(null)
   const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
     null,
@@ -109,6 +107,8 @@ export default function FeedScreen() {
   useEffect(() => {
     registerScrollRef('index', flatListRef)
   }, [registerScrollRef])
+
+  // Hard Paywall is handled globally in (tabs)/_layout.tsx with a 0.4s delay
 
   const loadWorkouts = useCallback(
     async (showLoading = false, loadMore = false) => {
@@ -431,8 +431,7 @@ export default function FeedScreen() {
             ) : (
               <TouchableOpacity
                 style={styles.proBadge}
-                onPress={() => setShowPaywall(true)}
-                activeOpacity={0.7}
+                activeOpacity={1}
               >
                 <Text style={styles.proBadgeText}>PRO</Text>
               </TouchableOpacity>
@@ -508,7 +507,6 @@ export default function FeedScreen() {
           }
         />
       )}
-      <Paywall visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   )
 }

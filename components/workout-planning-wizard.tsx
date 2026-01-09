@@ -170,7 +170,7 @@ const DURATION_OPTIONS = [
   { label: '90 min', value: '90 minutes', icon: 'time-outline' },
 ]
 
-const EQUIPMENT_OPTIONS: {
+export const EQUIPMENT_OPTIONS: {
   label: string
   value: EquipmentType
   description: string

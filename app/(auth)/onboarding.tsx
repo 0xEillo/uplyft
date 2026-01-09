@@ -1,6 +1,10 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
+import {
+  EQUIPMENT_PREF_KEY,
+  WORKOUT_PLANNING_PREFS_KEY,
+} from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   COMMITMENTS,
@@ -9,13 +13,17 @@ import {
   GOALS,
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
+import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BodyPartSlug } from '@/lib/body-mapping'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
+import { database } from '@/lib/database'
 import { markUserAsRated, requestReview } from '@/lib/rating'
+import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Picker } from '@react-native-picker/picker'
 import { Asset } from 'expo-asset'
 import * as Haptics from 'expo-haptics'
@@ -38,7 +46,7 @@ import {
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import ConfettiCannon from 'react-native-confetti-cannon'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -55,6 +63,7 @@ type OnboardingData = {
   goal: Goal[]
   commitment: string[]
   experience_level: ExperienceLevel | null
+  equipment: string[]
   bio: string
   coach: string
 }
@@ -66,24 +75,25 @@ const STEP_NAMES: { [key: number]: string } = {
   3: 'name_entry',
   4: 'chat_feature_intro',
   5: 'goals_selection',
-  6: 'gender_selection',
-  7: 'commitment_level',
-  8: 'habit_reinforcement',
-  9: 'experience_level',
-  10: 'tailored_preview',
-  11: 'stats_entry',
-  12: 'target_weight',
-  13: 'body_scan_feature',
-  14: 'focus_areas',
-  15: 'processing',
-  16: 'plan_ready',
-  17: 'commitment_pledge',
+  6: 'tailored_preview',
+  7: 'gender_selection',
+  8: 'commitment_level',
+  9: 'habit_reinforcement',
+  10: 'experience_level',
+  11: 'equipment_selection',
+  12: 'stats_entry',
+  13: 'target_weight',
+  14: 'body_scan_feature',
+  15: 'focus_areas',
+  16: 'processing',
+  17: 'plan_ready',
+  18: 'commitment_pledge',
 }
 
 const FadeInWords = ({
   text,
   style,
-  delay = 500,
+  delay = 150,
 }: {
   text: string
   style: any
@@ -96,12 +106,12 @@ const FadeInWords = ({
     // Add initial delay before starting the animation
     const timeout = setTimeout(() => {
       Animated.stagger(
-        180,
+        80,
         anims.map((anim) =>
           Animated.spring(anim, {
             toValue: 1,
             friction: 10,
-            tension: 30,
+            tension: 60,
             useNativeDriver: true,
           }),
         ),
@@ -208,7 +218,7 @@ const AnimatedChatMockup = ({
             useNativeDriver: true,
           }),
         ]).start()
-      }, 400 + index * 600) // Stagger messages with 0.6s delay
+      }, 200 + index * 350) // Stagger messages with 0.35s delay
 
       timeouts.push(timeout)
     })
@@ -535,7 +545,7 @@ const HabitReinforcementStepContent = ({ data, colors, styles }: any) => {
             { fontSize: 34, lineHeight: 42, fontWeight: '800' },
           ]}
         >
-          That&rsquo;s awesome! It&rsquo;s easier to{' '}
+          Great! It&rsquo;s easier to{' '}
           <Text
             style={{
               color: currentHabitGoal.color,
@@ -607,7 +617,7 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
           clearInterval(t1)
           return 100
         }
-        return prev + 2
+        return prev + 3.5
       })
     }, 30)
 
@@ -618,7 +628,7 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
           return 100
         }
         // Only progress if first bar is far enough
-        return progress1 > 30 ? prev + 1.5 : prev
+        return progress1 > 30 ? prev + 2.5 : prev
       })
     }, 40)
 
@@ -629,7 +639,7 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
           return 100
         }
         // Only progress if second bar is far enough
-        return progress2 > 30 ? prev + 1 : prev
+        return progress2 > 30 ? prev + 2 : prev
       })
     }, 50)
 
@@ -661,7 +671,7 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
 
   useEffect(() => {
     if (progress3 >= 100) {
-      setTimeout(() => setStep(16), 800)
+      setTimeout(() => setStep(17), 400)
     }
   }, [progress3])
 
@@ -814,6 +824,8 @@ const CommitmentStepContent = ({
   onNext,
   colors,
   styles,
+  insets,
+  onHoldingChange,
 }: any) => {
   const [holding, setHolding] = useState(false)
   const [isCommitted, setIsCommitted] = useState(false)
@@ -840,7 +852,7 @@ const CommitmentStepContent = ({
 
   useEffect(() => {
     if (isCommitted) {
-      const timer = setTimeout(() => setShowSuccess(true), 1500)
+      const timer = setTimeout(() => setShowSuccess(true), 800)
       return () => clearTimeout(timer)
     }
   }, [isCommitted])
@@ -848,6 +860,7 @@ const CommitmentStepContent = ({
   const handlePressIn = () => {
     if (isCommitted) return
     setHolding(true)
+    onHoldingChange?.(true)
 
     // Scale down button slightly
     Animated.spring(scaleAnim, {
@@ -874,6 +887,7 @@ const CommitmentStepContent = ({
   const handlePressOut = () => {
     if (isCommitted) return
     setHolding(false)
+    onHoldingChange?.(false)
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -909,8 +923,8 @@ const CommitmentStepContent = ({
   // Styles to break out of parent padding
   const breakoutStyle = {
     marginHorizontal: -24,
-    marginTop: -20,
-    marginBottom: -60, // Slightly more than the 40px default padding to ensure coverage
+    marginTop: 0, // Removed negative margin to stay below header correctly
+    marginBottom: -60,
     flex: 1,
   }
 
@@ -1106,7 +1120,7 @@ const CommitmentStepContent = ({
         style={{
           flex: 1,
           paddingHorizontal: 24,
-          paddingTop: 20,
+          paddingTop: 50 + (insets?.top || 0), // Match standard header spacing
           justifyContent: 'space-between',
         }}
       >
@@ -1117,7 +1131,7 @@ const CommitmentStepContent = ({
               flexDirection: 'row',
               alignItems: 'flex-end',
               gap: 12,
-              marginTop: 10,
+              marginTop: 20,
               opacity: holding ? 0 : 1,
             }}
           >
@@ -1159,7 +1173,7 @@ const CommitmentStepContent = ({
 
           {/* Simple Clean Pledge Text */}
           {!isCommitted && !holding && (
-            <View style={{ marginTop: 40, paddingHorizontal: 4 }}>
+            <View style={{ marginTop: 24, paddingHorizontal: 4 }}>
               <Text style={styles.stepTitle}>I, {data.name || 'User'},</Text>
               <Text
                 style={{
@@ -1207,18 +1221,21 @@ const CommitmentStepContent = ({
 
         {/* Bottom Interactive Area */}
         <View
-          style={{
-            width: '100%',
-            alignItems: 'center',
-            paddingBottom: 100,
-            minHeight: 320, // Increased to fit larger button and text comfortably
-            justifyContent: 'flex-end',
-            zIndex: 50, // Higher than water (which is 10/20)
-            elevation: 50,
-          }}
+          style={[
+            styles.footer,
+            {
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50,
+              elevation: 50,
+              paddingBottom: Math.max(insets?.bottom || 0, 20) + 20,
+            },
+          ]}
         >
           {!isCommitted && !holding && (
-            <>
+            <View style={{ alignItems: 'center', width: '100%', marginBottom: 20 }}>
               <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                 <TouchableOpacity
                   activeOpacity={1}
@@ -1238,47 +1255,38 @@ const CommitmentStepContent = ({
                     elevation: 8,
                     marginBottom: 24,
                     borderWidth: 6,
-                    borderColor: '#fff', // White border to separate from water if needed/at start
+                    borderColor: '#fff',
                   }}
                 >
                   <Ionicons name="flash" size={56} color="white" />
                 </TouchableOpacity>
               </Animated.View>
-              <Animated.Text
+              <Text
                 style={{
                   fontSize: 18,
                   fontWeight: '700',
-                  color: progress.interpolate({
-                    inputRange: [0, 0.15],
-                    outputRange: [colors.textSecondary, '#ffffff'],
-                  }),
+                  color: '#fff',
                 }}
               >
                 Tap and hold to commit
-              </Animated.Text>
-            </>
+              </Text>
+            </View>
           )}
 
           {isCommitted && showSuccess && (
             <HapticButton
-              style={{
-                backgroundColor: 'white',
-                paddingVertical: 20,
-                paddingHorizontal: 32,
-                borderRadius: 40,
-                width: '100%',
-                alignItems: 'center',
-                shadowColor: 'black',
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                shadowOffset: { width: 0, height: 8 },
-                elevation: 5,
-              }}
+              style={[
+                styles.nextButton,
+                {
+                  backgroundColor: 'white',
+                  shadowColor: '#000',
+                  shadowOpacity: 0.15,
+                },
+              ]}
               onPress={onNext}
+              hapticStyle="heavy"
             >
-              <Text
-                style={{ color: '#F97316', fontSize: 19, fontWeight: '800', letterSpacing: 0.5 }}
-              >
+              <Text style={[styles.nextButtonText, { color: colors.primary }]}>
                 Continue
               </Text>
             </HapticButton>
@@ -1390,7 +1398,10 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
 }
 
 export default function OnboardingScreen() {
+  const { signInAnonymously, user } = useAuth()
+  const insets = useSafeAreaInsets()
   const [step, setStep] = useState(1)
+  const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [targetWeight, setTargetWeight] = useState<number>(75)
   const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
@@ -1407,6 +1418,7 @@ export default function OnboardingScreen() {
     goal: [],
     commitment: [],
     experience_level: null,
+    equipment: [],
     bio: '',
     coach: DEFAULT_COACH_ID,
   })
@@ -1422,8 +1434,17 @@ export default function OnboardingScreen() {
 
   // Progress dot animations
   const progressDotAnims = useRef(
-    Array.from({ length: 13 }, () => new Animated.Value(1)),
+    Array.from({ length: 15 }, () => new Animated.Value(1)),
   ).current
+
+  const scrollViewRef = useRef<ScrollView>(null)
+
+  // Reset scroll position for specific steps
+  useEffect(() => {
+    if (step === 18) {
+      scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
+    }
+  }, [step])
 
   // Preload coach images on mount
   useEffect(() => {
@@ -1456,14 +1477,14 @@ export default function OnboardingScreen() {
           Animated.spring(fadeAnim, {
             toValue: 1,
             damping: 20,
-            stiffness: 90,
+            stiffness: 150,
             mass: 1,
             useNativeDriver: true,
           }),
           Animated.spring(slideAnim, {
             toValue: 0,
             damping: 20,
-            stiffness: 90,
+            stiffness: 150,
             mass: 1,
             useNativeDriver: true,
           }),
@@ -1471,7 +1492,7 @@ export default function OnboardingScreen() {
       }
 
       // Animate progress dot
-      if (step >= 1 && step <= 13) {
+      if (step >= 1 && step <= 15) {
         Animated.sequence([
           Animated.spring(progressDotAnims[step - 1], {
             toValue: 1.3,
@@ -1514,12 +1535,77 @@ export default function OnboardingScreen() {
       step_name: STEP_NAMES[step],
     })
 
-    // Initialize target weight when entering step 11
-    if (step === 10 && data.weight_kg) {
+    // Save goal preference when leaving goal selection step
+    // This pre-fills the "Goal" in the workout generation wizard
+    if (step === 5 && data.goal.length > 0) {
+      const primaryGoal = data.goal[0]
+      let wizardGoal = 'Hypertrophy'
+
+      switch (primaryGoal) {
+        case 'gain_strength':
+          wizardGoal = 'Strength'
+          break
+        case 'build_muscle':
+          wizardGoal = 'Hypertrophy'
+          break
+        case 'lose_fat':
+          wizardGoal = 'Fat Loss / HIIT'
+          break
+        case 'improve_cardio':
+          wizardGoal = 'Endurance'
+          break
+        case 'become_flexible':
+        case 'general_fitness':
+          wizardGoal = 'General Fitness'
+          break
+      }
+
+      AsyncStorage.getItem(WORKOUT_PLANNING_PREFS_KEY).then((prefsJson) => {
+        let prefs = { goal: '', muscles: '', duration: '', specifics: '' }
+        if (prefsJson) {
+          try {
+            prefs = { ...prefs, ...JSON.parse(prefsJson) }
+          } catch (e) {}
+        }
+        AsyncStorage.setItem(
+          WORKOUT_PLANNING_PREFS_KEY,
+          JSON.stringify({ ...prefs, goal: wizardGoal }),
+        )
+      })
+    }
+
+    // Save equipment preference to AsyncStorage when leaving equipment step
+    // This will be used by the workout wizard to pre-fill the equipment setting
+    if (step === 11 && data.equipment.length > 0) {
+      let equipmentType = 'home_minimal'
+      
+      if (data.equipment.includes('full_gym')) {
+        equipmentType = 'full_gym'
+      } else if (data.equipment.includes('machines')) {
+        // Machines implies gym access
+        equipmentType = 'full_gym'
+      } else if (data.equipment.includes('barbells') && data.equipment.includes('dumbbells')) {
+        equipmentType = 'full_gym'
+      } else if (data.equipment.includes('barbells')) {
+        equipmentType = 'barbell_only'
+      } else if (data.equipment.includes('dumbbells')) {
+        equipmentType = 'dumbbells_only'
+      } else if (data.equipment.includes('kettlebells')) {
+        // Kettlebells are similar to dumbbells for workout planning
+        equipmentType = 'dumbbells_only'
+      } else if (data.equipment.includes('none')) {
+        equipmentType = 'bodyweight'
+      }
+      
+      AsyncStorage.setItem(EQUIPMENT_PREF_KEY, JSON.stringify(equipmentType))
+    }
+
+    // Initialize target weight when entering step 12
+    if (step === 11 && data.weight_kg) {
       setTargetWeight(parseFloat(data.weight_kg))
     }
 
-    if (step < 17) {
+    if (step < 18) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -1560,24 +1646,62 @@ export default function OnboardingScreen() {
         ? convertInputToKg(parseFloat(data.weight_kg))
         : null
 
-      // Navigate to trial offer screen with onboarding data
-      router.push({
-        pathname: '/(auth)/trial-offer',
-        params: {
-          onboarding_data: JSON.stringify({
-            name: data.name,
-            gender: data.gender,
-            height_cm: heightCm,
-            weight_kg: weightKg,
-            age: age,
-            goal: data.goal,
-            commitment: data.commitment,
-            experience_level: data.experience_level,
-            bio: data.bio.trim() || null,
-            coach: data.coach,
-          }),
-        },
-      })
+      // Create guest profile and navigate to profile page with paywall flag
+      const finishOnboarding = async () => {
+        try {
+          let currentUserId = user?.id
+          if (!currentUserId) {
+            const { userId } = await signInAnonymously()
+            currentUserId = userId
+          }
+
+          if (currentUserId) {
+            // Ensure we have a valid base for the user tag
+            const cleanName = (data.name || 'Guest').replace(/[^a-zA-Z0-9]/g, '')
+            const tagBase = cleanName.length >= 3 ? data.name : 'Athlete'
+
+            const userTag = await database.profiles.generateUniqueUserTag(
+              tagBase || 'Athlete',
+            )
+
+            const profileUpdates = {
+              id: currentUserId,
+              user_tag: userTag,
+              display_name: data.name || 'Guest',
+              gender: data.gender,
+              height_cm: heightCm,
+              weight_kg: weightKg,
+              age: age,
+              goals: data.goal.length > 0 ? data.goal : null,
+              commitment:
+                data.commitment && data.commitment.length > 0
+                  ? data.commitment
+                  : null,
+              experience_level: data.experience_level,
+              bio: data.bio.trim() || null,
+              coach: data.coach,
+            }
+
+            const { error } = await supabase
+              .from('profiles')
+              .upsert(profileUpdates)
+            if (error) {
+              console.error('Error creating profile:', error)
+            }
+          }
+
+          router.replace({
+            pathname: '/(tabs)/profile',
+            params: { showPaywall: 'true' },
+          })
+        } catch (error) {
+          console.error('Onboarding finish error:', error)
+          // Fallback
+          router.replace('/(tabs)/profile')
+        }
+      }
+
+      finishOnboarding()
 
       trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED, {
         name: data.name,
@@ -1606,11 +1730,11 @@ export default function OnboardingScreen() {
   }
 
   const hasAutoSwipe = () => {
-    // Steps 6 (gender) and 8 (experience) auto-swipe when an option is selected
-    // Step 7 (commitment) is now multi-select, so it requires manual "Next"
-    // Step 15 is processing (auto-advances after bars fill)
-    // Step 17 (commitment pledge) has its own custom footer/interaction
-    return step === 6 || step === 9 || step === 15 || step === 17
+    // Step 7 (gender) and 10 (experience) auto-swipe when an option is selected
+    // Step 8 (commitment) is now multi-select, so it requires manual "Next"
+    // Step 16 is processing (auto-advances after bars fill)
+    // Step 18 (commitment pledge) has its own custom footer/interaction
+    return step === 7 || step === 10 || step === 16 || step === 18
   }
 
   const canProceed = () => {
@@ -1626,27 +1750,29 @@ export default function OnboardingScreen() {
       case 5:
         return data.goal.length > 0
       case 6:
-        return data.gender !== null
-      case 7:
-        return data.commitment.length > 0
-      case 8:
-        return true // Habit reinforcement
-      case 9:
-        return data.experience_level !== null
-      case 10:
         return true // Tailored preview step
+      case 7:
+        return data.gender !== null
+      case 8:
+        return data.commitment.length > 0
+      case 9:
+        return true // Habit reinforcement
+      case 10:
+        return data.experience_level !== null
       case 11:
-        return true // Stats entry step - defaults are fine
+        return data.equipment.length > 0 // Equipment selection
       case 12:
-        return true // Target weight is just UI
+        return true // Stats entry step - defaults are fine
       case 13:
-        return true // Body scan feature intro
+        return true // Target weight is just UI
       case 14:
-        return true // Focus areas (optional)
+        return true // Body scan feature intro
       case 15:
-        return false // Step 15 is processing, no next button
+        return true // Focus areas (optional)
       case 16:
-        return true // Step 16 has "Get Started"
+        return false // Step 16 is processing, no next button
+      case 17:
+        return true // Step 17 has "Get Started"
       default:
         return false
     }
@@ -1854,7 +1980,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 6:
+      case 7:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -1885,7 +2011,7 @@ export default function OnboardingScreen() {
                         height_inches: isMale ? '10' : '4',
                         weight_kg: weightUnit === 'kg' ? weightKg.toString() : weightLb.toString(),
                       })
-                      setTimeout(() => setStep(step + 1), 600)
+                      setTimeout(() => setStep(step + 1), 400)
                     }}
                     hapticStyle="light"
                   >
@@ -1909,7 +2035,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 7:
+      case 8:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -1970,7 +2096,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 8:
+      case 9:
         return (
           <HabitReinforcementStepContent
             data={data}
@@ -1978,7 +2104,7 @@ export default function OnboardingScreen() {
             styles={styles}
           />
         )
-      case 9:
+      case 10:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -1997,7 +2123,7 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => {
                       setData({ ...data, experience_level: item.value })
-                      setTimeout(() => setStep(step + 1), 600)
+                      setTimeout(() => setStep(step + 1), 400)
                     }}
                     hapticStyle="light"
                   >
@@ -2021,7 +2147,81 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 10:
+      case 11:
+        // Equipment Selection Step
+        const EQUIPMENT_OPTIONS = [
+          { value: 'full_gym', label: 'Full gym' },
+          { value: 'barbells', label: 'Barbells' },
+          { value: 'dumbbells', label: 'Dumbbells' },
+          { value: 'kettlebells', label: 'Kettlebells' },
+          { value: 'machines', label: 'Machines' },
+        ]
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>What equipment do you have?</Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                {EQUIPMENT_OPTIONS.map((item) => {
+                  const isSelected = data.equipment.includes(item.value)
+                  
+                  return (
+                    <HapticButton
+                      key={item.value}
+                      style={[
+                        styles.card,
+                        isSelected && styles.cardSelected,
+                      ]}
+                      onPress={() => {
+                        // If selecting equipment, remove "none" if present
+                        const withoutNone = data.equipment.filter(e => e !== 'none')
+                        if (withoutNone.includes(item.value)) {
+                          // Deselect
+                          setData({ ...data, equipment: withoutNone.filter(e => e !== item.value) })
+                        } else {
+                          // Select
+                          setData({ ...data, equipment: [...withoutNone, item.value] })
+                        }
+                      }}
+                      hapticStyle="light"
+                    >
+                      <View style={styles.cardContent}>
+                        <Text style={styles.cardLabel}>{item.label}</Text>
+                        <View style={[
+                          styles.radioButton,
+                          isSelected && styles.radioButtonSelected,
+                        ]}>
+                          {isSelected && <View style={styles.radioButtonInner} />}
+                        </View>
+                      </View>
+                    </HapticButton>
+                  )
+                })}
+              </View>
+              
+              {/* None of the above - simple text option */}
+              <HapticButton
+                style={styles.equipmentNoneOption}
+                onPress={() => {
+                  setData({ ...data, equipment: ['none'] })
+                }}
+                hapticStyle="light"
+              >
+                <View style={[
+                  styles.radioButton,
+                  data.equipment.includes('none') && styles.radioButtonSelected,
+                ]}>
+                  {data.equipment.includes('none') && <View style={styles.radioButtonInner} />}
+                </View>
+                <Text style={styles.equipmentNoneText}>None of the above</Text>
+              </HapticButton>
+            </View>
+          </View>
+        )
+      case 6:
         // Tailored Preview Step
         const primaryGoal = data.goal[0] || 'build_muscle'
         const goalInfo: Record<
@@ -2122,7 +2322,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 11:
+      case 12:
         // Stats Entry Step
         const StatRow = ({
           label,
@@ -2209,7 +2409,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 12: {
+      case 13: {
         // Target Weight Step
         const selectedCoachForWeight =
           COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
@@ -2376,7 +2576,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 13: {
+      case 14: {
         // Body Scan Feature Step
         const currentWeightNum = parseFloat(data.weight_kg) || 75
         const isLosing = targetWeight < currentWeightNum
@@ -2453,7 +2653,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 14: {
+      case 15: {
         const MUSCLE_GROUP_MAPPING: Record<
           string,
           { label: string; slugs: BodyPartSlug[] }
@@ -2515,128 +2715,169 @@ export default function OnboardingScreen() {
 
         const isFullBody = focusAreas.length >= allMuscleSlugs.length
 
+        // Define button order to match the screenshot layout
+        const buttonOrder = [
+          'back',
+          'arms',
+          'shoulders',
+          'abs',
+          'chest',
+          'legs',
+          'butt',
+          'fullBody',
+        ]
+
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.statsTitle}>
-                Which areas should your training{' '}
-                <Text style={{ color: colors.primary }}>focus on</Text>?
-              </Text>
-              <Text style={styles.stepSubtitle}>
-                Tap the muscles you want to prioritize.
+            <View style={styles.focusAreasHeader}>
+              <Text style={styles.focusAreasTitle}>
+                Choose your focus areas
               </Text>
             </View>
 
             <View style={styles.bodyHighlightContainer}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                style={styles.bodyScrollView}
-                contentContainerStyle={styles.bodyScrollContent}
-              >
-                <View style={styles.bodyPage}>
-                  <Text style={styles.bodySideLabel}>FRONT</Text>
+              {/* Side-by-side body views */}
+              <View style={styles.bodySideBySide}>
+                <View style={styles.bodyViewItem}>
                   <Body
                     data={bodyData}
                     gender={data.gender === 'female' ? 'female' : 'male'}
                     side="front"
-                    scale={0.95}
+                    scale={0.72}
                     colors={[colors.primary]}
                     onBodyPartPress={handleBodyPartPress}
                     border={colors.text}
                   />
                 </View>
-                <View style={styles.bodyPage}>
-                  <Text style={styles.bodySideLabel}>BACK</Text>
+                <View style={styles.bodyViewItem}>
                   <Body
                     data={bodyData}
                     gender={data.gender === 'female' ? 'female' : 'male'}
                     side="back"
-                    scale={0.95}
+                    scale={0.72}
                     colors={[colors.primary]}
                     onBodyPartPress={handleBodyPartPress}
                     border={colors.text}
                   />
                 </View>
-              </ScrollView>
-
-              <View style={styles.swipeHintContainer}>
-                <Ionicons
-                  name="swap-horizontal"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.swipeHintText}>Swipe to rotate</Text>
               </View>
 
-              <View style={styles.muscleGrid}>
-                <TouchableOpacity
-                  style={[
-                    styles.muscleButton,
-                    isFullBody && {
-                      backgroundColor: colors.primary + '15',
-                      borderColor: colors.primary,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (isFullBody) {
-                      setFocusAreas([])
-                    } else {
-                      setFocusAreas([...allMuscleSlugs])
-                    }
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.muscleButtonText,
-                      isFullBody && {
-                        color: colors.primary,
-                        fontWeight: '700',
-                      },
-                    ]}
-                  >
-                    Full Body
-                  </Text>
-                </TouchableOpacity>
-
-                {selectableGroups.map((key) => {
-                  const group = MUSCLE_GROUP_MAPPING[key]
-                  const isSelected =
-                    group.slugs.every((s) => focusAreas.includes(s)) &&
-                    !isFullBody
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      style={[
-                        styles.muscleButton,
-                        isSelected && {
-                          backgroundColor: colors.primary + '15',
-                          borderColor: colors.primary,
-                        },
-                      ]}
-                      onPress={() => toggleArea(key)}
-                    >
-                      <Text
+              {/* Muscle selection buttons in organized rows */}
+              <View style={styles.focusMuscleGrid}>
+                {/* Row 1: Back, Arm, Shoulder */}
+                <View style={styles.focusMuscleRow}>
+                  {['back', 'arms', 'shoulders'].map((key) => {
+                    const group = MUSCLE_GROUP_MAPPING[key]
+                    const isSelected =
+                      group.slugs.every((s) => focusAreas.includes(s)) &&
+                      !isFullBody
+                    return (
+                      <TouchableOpacity
+                        key={key}
                         style={[
-                          styles.muscleButtonText,
-                          isSelected && {
-                            color: colors.primary,
-                            fontWeight: '700',
-                          },
+                          styles.focusMuscleButton,
+                          isSelected && styles.focusMuscleButtonSelected,
                         ]}
+                        onPress={() => toggleArea(key)}
                       >
-                        {group.label}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
+                        <Text
+                          style={[
+                            styles.focusMuscleButtonText,
+                            isSelected && styles.focusMuscleButtonTextSelected,
+                          ]}
+                        >
+                          {group.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+
+                {/* Row 2: Abs, Chest, Leg */}
+                <View style={styles.focusMuscleRow}>
+                  {['abs', 'chest', 'legs'].map((key) => {
+                    const group = MUSCLE_GROUP_MAPPING[key]
+                    const isSelected =
+                      group.slugs.every((s) => focusAreas.includes(s)) &&
+                      !isFullBody
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.focusMuscleButton,
+                          isSelected && styles.focusMuscleButtonSelected,
+                        ]}
+                        onPress={() => toggleArea(key)}
+                      >
+                        <Text
+                          style={[
+                            styles.focusMuscleButtonText,
+                            isSelected && styles.focusMuscleButtonTextSelected,
+                          ]}
+                        >
+                          {group.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+
+                {/* Row 3: Glutes, Full body */}
+                <View style={styles.focusMuscleRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.focusMuscleButton,
+                      MUSCLE_GROUP_MAPPING['butt'].slugs.every((s) =>
+                        focusAreas.includes(s),
+                      ) &&
+                        !isFullBody &&
+                        styles.focusMuscleButtonSelected,
+                    ]}
+                    onPress={() => toggleArea('butt')}
+                  >
+                    <Text
+                      style={[
+                        styles.focusMuscleButtonText,
+                        MUSCLE_GROUP_MAPPING['butt'].slugs.every((s) =>
+                          focusAreas.includes(s),
+                        ) &&
+                          !isFullBody &&
+                          styles.focusMuscleButtonTextSelected,
+                      ]}
+                    >
+                      Glutes
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.focusMuscleButton,
+                      isFullBody && styles.focusMuscleButtonSelected,
+                    ]}
+                    onPress={() => {
+                      if (isFullBody) {
+                        setFocusAreas([])
+                      } else {
+                        setFocusAreas([...allMuscleSlugs])
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.focusMuscleButtonText,
+                        isFullBody && styles.focusMuscleButtonTextSelected,
+                      ]}
+                    >
+                      Full body
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
         )
       }
-      case 15: {
+      case 16: {
         return (
           <ProcessingStepContent
             data={data}
@@ -2646,7 +2887,7 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 16: {
+      case 17: {
         return (
           <FinalPlanStepContent
             data={data}
@@ -2656,7 +2897,7 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 17: {
+      case 18: {
         return (
           <CommitmentStepContent
             data={data}
@@ -2664,6 +2905,8 @@ export default function OnboardingScreen() {
             onNext={handleNext}
             colors={colors}
             styles={styles}
+            insets={insets}
+            onHoldingChange={setIsCommitmentHolding}
           />
         )
       }
@@ -2884,19 +3127,44 @@ export default function OnboardingScreen() {
     <SafeAreaView
       style={styles.container}
       edges={
-        step === 16 || step === 17
+        step === 18
+          ? ['left', 'right']
+          : step === 16 || step === 17
           ? ['top', 'left', 'right']
           : ['top', 'bottom', 'left', 'right']
       }
     >
       <View style={styles.wrapper}>
         {/* Header */}
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            step === 18 && {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 1000,
+              paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0) + 20,
+              backgroundColor: 'transparent',
+            },
+          ]}
+        >
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={
+                step === 18
+                  ? isCommitmentHolding || step === 18 && false // Logic for transition could go here, for now stick to consistency
+                    ? '#fff'
+                    : colors.text
+                  : colors.text
+              }
+            />
           </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
+          <View style={[styles.headerCenter, { opacity: 0, height: 0 }]}>
             <View style={styles.progressBarWrapper}>
               <Animated.View
                 style={[
@@ -2920,11 +3188,12 @@ export default function OnboardingScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 25 : 20}
         >
           <ScrollView
+            ref={scrollViewRef}
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
               (step === 16 || step === 17) && { paddingBottom: 0 },
-              !hasAutoSwipe() && step !== 16 && { paddingBottom: 140 },
+              !hasAutoSwipe() && step !== 16 && step !== 17 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -3095,6 +3364,19 @@ const createStyles = (
     cardSelected: {
       borderColor: colors.primary,
       backgroundColor: colors.backgroundWhite, // Keep white background
+    },
+    equipmentNoneOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      marginTop: 16,
+      gap: 10,
+    },
+    equipmentNoneText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.textSecondary,
     },
     cardContent: {
       flexDirection: 'row',
@@ -3848,10 +4130,68 @@ const createStyles = (
       color: colors.textSecondary,
     },
 
+    // Focus Areas Step - New Styles
+    focusAreasHeader: {
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    focusAreasTitle: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    bodySideBySide: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 16,
+      marginBottom: 24,
+      paddingHorizontal: 8,
+    },
+    bodyViewItem: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    focusMuscleGrid: {
+      gap: 12,
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    focusMuscleRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    focusMuscleButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      backgroundColor: colors.border + '40',
+      borderRadius: 12,
+      minWidth: 80,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border + '60',
+    },
+    focusMuscleButtonSelected: {
+      backgroundColor: colors.primary + '20',
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+    },
+    focusMuscleButtonText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    focusMuscleButtonTextSelected: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+
     // Processing Step Styles
     processingHeader: {
-      marginTop: 20,
-      marginBottom: 30,
+      marginBottom: 32,
     },
     processingTitle: {
       fontSize: 34,
@@ -3975,8 +4315,7 @@ const createStyles = (
 
     // Plan Ready Styles
     planReadyHeader: {
-      marginTop: 20,
-      marginBottom: 24,
+      marginBottom: 32,
     },
     planReadyTitle: {
       fontSize: 36,

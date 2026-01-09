@@ -1,3 +1,4 @@
+import { Paywall } from '@/components/paywall'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { BlurView } from 'expo-blur'
@@ -27,6 +28,7 @@ import {
   ScrollToTopProvider,
   useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import {
   SuccessOverlayProvider,
   useSuccessOverlay,
@@ -128,6 +130,23 @@ function TabLayoutContent() {
   const { weightUnit } = useWeightUnits()
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
   const { isVisible: isRatingPromptVisible } = useRatingPrompt()
+  const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
+  const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
+
+  useEffect(() => {
+    if (!isSubscriptionLoading && !isProMember) {
+      const timer = setTimeout(() => {
+        setDelayedShowPaywall(true)
+      }, 400)
+      return () => clearTimeout(timer)
+    } else {
+      setDelayedShowPaywall(false)
+    }
+  }, [isSubscriptionLoading, isProMember])
+
+  // Enforce Hard Paywall
+  // Use the delayed state to allow the user to see the app briefly
+  const showGlobalPaywall = delayedShowPaywall && !isProMember
 
   // Track if we've already shown the share screen for this workout
   const shownWorkoutIdRef = React.useRef<string | null>(null)
@@ -381,6 +400,13 @@ function TabLayoutContent() {
         />
       )}
       <RatingPromptModal />
+      <Paywall
+        visible={showGlobalPaywall}
+        onClose={() => {}} // No-op, cannot close
+        allowClose={false}
+        title="Unlock your full potential"
+        message="Start your free trial to access Uplyft"
+      />
     </>
   )
 }

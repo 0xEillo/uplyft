@@ -1194,6 +1194,8 @@ export function WorkoutChat({
           build_muscle: 'Hypertrophy',
           lose_fat: 'Fat Loss / HIIT',
           gain_strength: 'Strength',
+          improve_cardio: 'Endurance',
+          become_flexible: 'General Fitness',
           general_fitness: 'General Fitness',
         }
         profileGoal = goalMap[profile.goals[0]] || ''
