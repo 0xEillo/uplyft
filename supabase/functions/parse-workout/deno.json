@@ -2,7 +2,7 @@
   "lock": false,
   "imports": {
     "@ai-sdk/openai": "npm:@ai-sdk/openai",
-    "@ai-sdk/google": "npm:@ai-sdk/google",
+    "@openrouter/ai-sdk-provider": "npm:@openrouter/ai-sdk-provider",
     "ai": "npm:ai",
     "zod": "npm:zod@3.25.76"
   }

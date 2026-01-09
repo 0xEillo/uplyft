@@ -1,9 +1,8 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { google } from 'npm:@ai-sdk/google'
-// @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
 // @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai'
+import { openrouter, GEMINI_MODEL } from './openrouter.ts'
 
 import { createServiceClient } from './supabase.ts'
 
@@ -423,7 +422,7 @@ async function generateExerciseMetadata(
 
   try {
     const result = await generateObject({
-      model: google('gemini-2.5-flash'),
+      model: openrouter.chat(GEMINI_MODEL),
       schema: exerciseMetadataSchema,
       prompt: `You are a fitness expert. Analyze the exercise name and determine its metadata.
 
@@ -444,9 +443,6 @@ Examples:
 - "Leg Extension" → muscle_group: Legs, type: isolation, equipment: machine
 
 Return the metadata as JSON.`,
-      providerOptions: {
-        google: {},
-      },
     })
 
     return result.object

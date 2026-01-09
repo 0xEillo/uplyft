@@ -2,9 +2,8 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 // @ts-ignore: Remote import for Deno edge runtime
-import { google } from 'npm:@ai-sdk/google'
-// @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai'
+import { openrouter, GEMINI_MODEL } from '../_shared/openrouter.ts'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 
@@ -52,7 +51,7 @@ serve(async (req) => {
     const payload = requestSchema.parse(await req.json())
 
     const result = await generateObject({
-      model: google('gemini-2.5-flash-preview-09-2025'),
+      model: openrouter.chat(GEMINI_MODEL),
       schema: metadataSchema,
       prompt: buildPrompt(payload.exerciseName),
     })

@@ -1,9 +1,8 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { google } from 'npm:@ai-sdk/google'
-// @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai'
 // @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
+import { openrouter, GEMINI_MODEL } from '../../_shared/openrouter.ts'
 
 import {
     handleCreateExercise,
@@ -165,12 +164,9 @@ IMPORTANT: When matching, you must return the exact ID (UUID) from the candidate
 Be lenient with matching - prefer matching over creating when reasonable.`
 
   const result = await generateObject({
-    model: google('gemini-2.5-flash'),
+    model: openrouter.chat(GEMINI_MODEL),
     schema: aiResolutionSchema,
     prompt,
-    providerOptions: {
-      google: {},
-    },
   })
 
   return result.object

@@ -1,9 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
-import { google } from 'npm:@ai-sdk/google'
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 import { streamText, tool } from 'npm:ai'
+import { openrouter, GEMINI_MODEL } from '../_shared/openrouter.ts'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
@@ -148,11 +148,11 @@ serve(async (req) => {
       }
     })
 
-    // Use OpenAI vision model if images are present, otherwise use Gemini
+    // Use OpenAI vision model if images are present, otherwise use Gemini via OpenRouter
     const modelToUse =
       payload.images && payload.images.length > 0
         ? openai('gpt-4o')
-        : google('gemini-1.5-flash')
+        : openrouter.chat(GEMINI_MODEL)
 
     const result = streamText({
       model: modelToUse,

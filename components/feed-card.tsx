@@ -8,19 +8,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-    ActivityIndicator,
-    Animated,
-    Image,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Animated,
+  Image,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PrTooltip } from './pr-tooltip'
@@ -158,7 +158,6 @@ export const FeedCard = memo(function FeedCard({
   const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
 
-
   const displayRoutine = routine || workout?.routine
 
   const [tooltipVisible, setTooltipVisible] = useState(false)
@@ -203,8 +202,7 @@ export const FeedCard = memo(function FeedCard({
 
   const styles = createStyles(colors, isDark)
 
-  // Show more exercises if image exists to match height (up to 6), otherwise just 3
-  const PREVIEW_LIMIT = workoutImageUrl ? 6 : 3
+  const PREVIEW_LIMIT = 3
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
@@ -341,7 +339,11 @@ export const FeedCard = memo(function FeedCard({
             {stats.durationSeconds !== undefined && stats.durationSeconds > 0 && (
               <View style={styles.statItem}>
                 <View style={styles.statLabelContainer}>
-                  <Ionicons name="time-outline" size={14} color={colors.success} />
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={colors.success}
+                  />
                   <Text style={styles.statLabel}>Duration</Text>
                 </View>
                 <Text style={styles.statValue}>
@@ -359,7 +361,11 @@ export const FeedCard = memo(function FeedCard({
             {stats.volume !== undefined && stats.volume > 0 && (
               <View style={styles.statItem}>
                 <View style={styles.statLabelContainer}>
-                  <Ionicons name="barbell-outline" size={14} color={colors.primary} />
+                  <Ionicons
+                    name="barbell-outline"
+                    size={14}
+                    color={colors.primary}
+                  />
                   <Text style={styles.statLabel}>Volume</Text>
                 </View>
                 <Text style={styles.statValue}>
@@ -385,7 +391,10 @@ export const FeedCard = memo(function FeedCard({
                     <Animated.View
                       style={[
                         styles.exerciseThumbnail,
-                        { opacity: shimmerOpacity, backgroundColor: isDark ? '#444' : '#eee' },
+                        {
+                          opacity: shimmerOpacity,
+                          backgroundColor: isDark ? '#444' : '#eee',
+                        },
                       ]}
                     />
                     <Animated.View
