@@ -174,6 +174,50 @@ function AnimatedSuggestion({
   )
 }
 
+// Animated typing dot for loading indicator
+function TypingDot({
+  delay,
+  colors,
+}: {
+  delay: number
+  colors: ReturnType<typeof useThemedColors>
+}) {
+  const opacity = useSharedValue(0.3)
+
+  useEffect(() => {
+    const animate = () => {
+      opacity.value = withDelay(
+        delay,
+        withTiming(1, { duration: 400 }, () => {
+          opacity.value = withTiming(0.3, { duration: 400 })
+        }),
+      )
+    }
+    animate()
+    const interval = setInterval(animate, 1200)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delay])
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }))
+
+  return (
+    <AnimatedReanimated.View
+      style={[
+        {
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: colors.textSecondary,
+        },
+        animatedStyle,
+      ]}
+    />
+  )
+}
+
 // Workout context passed from create-post
 export interface WorkoutContextSet {
   weight?: string
@@ -1817,31 +1861,36 @@ export function WorkoutChat({
                         </View>
                       </View>
                     ) : (
-                      <View style={styles.assistantMessageContent}>
-                        {/* Check if this message contains a parsed workout plan, even if it's not the very last message */}
+                      <>
+                        {/* Check if this message contains a parsed workout plan */}
                         {(() => {
                           const messageParsedWorkout = parseWorkoutForDisplay(
                             message.content,
                           )
 
+                          // Workout cards render full-width with coach branding inside the card
                           if (messageParsedWorkout) {
                             return (
-                              <WorkoutCard
-                                workout={messageParsedWorkout}
-                                onStartWorkout={() => {
-                                  setParsedWorkout(messageParsedWorkout)
-                                  setGeneratedPlanContent(message.content)
-                                  setTimeout(handleStartWorkout, 0)
-                                }}
-                                onSaveRoutine={() => {
-                                  setParsedWorkout(messageParsedWorkout)
-                                  setGeneratedPlanContent(message.content)
-                                  setTimeout(handleSaveRoutine, 0)
-                                }}
-                              />
+                              <View style={styles.workoutCardContainer}>
+                                <WorkoutCard
+                                  workout={messageParsedWorkout}
+                                  coachImage={coach.image}
+                                  onStartWorkout={() => {
+                                    setParsedWorkout(messageParsedWorkout)
+                                    setGeneratedPlanContent(message.content)
+                                    setTimeout(handleStartWorkout, 0)
+                                  }}
+                                  onSaveRoutine={() => {
+                                    setParsedWorkout(messageParsedWorkout)
+                                    setGeneratedPlanContent(message.content)
+                                    setTimeout(handleSaveRoutine, 0)
+                                  }}
+                                />
+                              </View>
                             )
                           }
 
+                          // Regular messages show with coach avatar
                           const displayContent = message.content
                             .replace(JSON_BLOCK_REGEX, '')
                             .trim()
@@ -1851,17 +1900,26 @@ export function WorkoutChat({
 
                           return (
                             <>
+                              {/* Coach Avatar */}
+                              <View style={styles.messageAvatarContainer}>
+                                <Image
+                                  source={coach.image}
+                                  style={styles.messageAvatar}
+                                />
+                              </View>
+                              <View style={styles.assistantMessageContent}>
+                              <View style={styles.assistantMessageBubble}>
                               <Markdown
                                 style={{
                                   body: {
-                                    fontSize: 17,
-                                    lineHeight: 24,
+                                    fontSize: 16,
+                                    lineHeight: 23,
                                     color: colors.text,
                                     margin: 0,
                                   },
                                   paragraph: {
                                     marginTop: 0,
-                                    marginBottom: 12,
+                                    marginBottom: 8,
                                   },
                                   heading1: {
                                     fontSize: 22,
@@ -1885,11 +1943,11 @@ export function WorkoutChat({
                                     marginBottom: 6,
                                   },
                                   code_inline: {
-                                    backgroundColor: colors.backgroundLight,
+                                    backgroundColor: colors.background,
                                     paddingHorizontal: 4,
                                     paddingVertical: 2,
                                     borderRadius: 4,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontFamily:
                                       Platform.OS === 'ios'
                                         ? 'Menlo'
@@ -1897,10 +1955,10 @@ export function WorkoutChat({
                                     color: colors.text,
                                   },
                                   code_block: {
-                                    backgroundColor: colors.backgroundLight,
+                                    backgroundColor: colors.background,
                                     padding: 12,
                                     borderRadius: 8,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontFamily:
                                       Platform.OS === 'ios'
                                         ? 'Menlo'
@@ -1910,10 +1968,10 @@ export function WorkoutChat({
                                     overflow: 'hidden',
                                   },
                                   fence: {
-                                    backgroundColor: colors.backgroundLight,
+                                    backgroundColor: colors.background,
                                     padding: 12,
                                     borderRadius: 8,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontFamily:
                                       Platform.OS === 'ios'
                                         ? 'Menlo'
@@ -1950,9 +2008,10 @@ export function WorkoutChat({
                                     borderLeftColor: colors.primary,
                                     paddingLeft: 12,
                                     marginVertical: 8,
-                                    backgroundColor: colors.backgroundLight,
+                                    backgroundColor: colors.background,
                                     paddingVertical: 8,
                                     paddingRight: 8,
+                                    borderRadius: 4,
                                   },
                                   link: {
                                     color: colors.primary,
@@ -1962,6 +2021,7 @@ export function WorkoutChat({
                               >
                                 {displayContent}
                               </Markdown>
+                              </View>
 
                               {exerciseSuggestions.length > 0 && (
                                 <View style={styles.exerciseCardsContainer}>
@@ -2076,16 +2136,27 @@ export function WorkoutChat({
                                   )}
                                 </View>
                               )}
+                              </View>
                             </>
                           )
                         })()}
-                      </View>
+                      </>
                     )}
                   </View>
                 ))}
                 {isLoading && (
                   <View style={styles.loadingMessageContainer}>
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <View style={styles.messageAvatarContainer}>
+                      <Image
+                        source={coach.image}
+                        style={styles.messageAvatar}
+                      />
+                    </View>
+                    <View style={styles.typingIndicator}>
+                      <TypingDot delay={0} colors={colors} />
+                      <TypingDot delay={150} colors={colors} />
+                      <TypingDot delay={300} colors={colors} />
+                    </View>
                   </View>
                 )}
                 {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
@@ -2476,13 +2547,25 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-start',
-      marginBottom: 24,
+      marginBottom: 16,
     },
     assistantMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
-      alignItems: 'flex-start',
-      marginBottom: 24,
+      alignItems: 'flex-end',
+      marginBottom: 16,
+      gap: 8,
+    },
+    messageAvatarContainer: {
+      width: 32,
+      height: 32,
+      flexShrink: 0,
+    },
+    messageAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.backgroundLight,
     },
     userMessageBubble: {
       maxWidth: '80%',
@@ -2490,17 +2573,30 @@ function createStyles(
     userMessageContent: {
       backgroundColor: colors.primary,
       padding: 12,
-      borderRadius: 16,
+      paddingHorizontal: 14,
+      borderRadius: 18,
       borderBottomRightRadius: 4,
     },
     userMessageText: {
-      fontSize: 17,
+      fontSize: 16,
       lineHeight: 22,
       color: colors.white,
     },
     assistantMessageContent: {
       flex: 1,
-      paddingVertical: 4,
+      maxWidth: '85%',
+      paddingVertical: 0,
+    },
+    workoutCardContainer: {
+      flex: 1,
+      width: '100%',
+    },
+    assistantMessageBubble: {
+      backgroundColor: colors.backgroundLight,
+      padding: 12,
+      paddingHorizontal: 14,
+      borderRadius: 18,
+      borderBottomLeftRadius: 4,
     },
     inputContainer: {
       backgroundColor: 'transparent',
@@ -2555,8 +2651,19 @@ function createStyles(
     loadingMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
+      alignItems: 'flex-end',
+      marginBottom: 16,
+      gap: 8,
+    },
+    typingIndicator: {
+      flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 8,
+      backgroundColor: colors.backgroundLight,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 18,
+      borderBottomLeftRadius: 4,
+      gap: 4,
     },
     loadingText: {
       fontSize: 15,

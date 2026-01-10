@@ -549,27 +549,32 @@ export const FeedCard = memo(function FeedCard({
               <Text style={styles.avatarText}>{userName[0]}</Text>
             </View>
           )}
-          <View>
+          <View style={styles.userTextContainer}>
             <View style={styles.userNameRow}>
-              <Text style={styles.userName}>{userName}</Text>
+              <Text style={styles.userName} numberOfLines={1}>
+                {userName}
+              </Text>
             </View>
             {displayRoutine ? (
               <View style={styles.routineContainer}>
-                <Text style={styles.actionText}>finished </Text>
-                <TouchableOpacity
+                <Text style={styles.actionText} numberOfLines={1}>
+                  finished{' '}
+                </Text>
+                <Text
+                  style={[styles.routineLink, { flexShrink: 1 }]}
+                  numberOfLines={1}
                   onPress={onRoutinePress}
-                  disabled={!onRoutinePress}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Text style={styles.routineLink}>
-                    {displayRoutine.name} ›
-                  </Text>
-                </TouchableOpacity>
-                <Text style={styles.timeAgo}> • {timeAgo}</Text>
+                  {displayRoutine.name} ›
+                </Text>
+                <Text style={styles.timeAgo} numberOfLines={1}>
+                  • {timeAgo}
+                </Text>
               </View>
             ) : (
-              <Text style={styles.timeAgo}>{timeAgo}</Text>
+              <Text style={styles.timeAgo} numberOfLines={1}>
+                {timeAgo}
+              </Text>
             )}
           </View>
         </TouchableOpacity>
@@ -592,7 +597,9 @@ export const FeedCard = memo(function FeedCard({
         ]}
       >
         {workoutTitle && (
-          <Text style={styles.workoutTitle}>{workoutTitle}</Text>
+          <Text style={styles.workoutTitle} numberOfLines={2}>
+            {workoutTitle}
+          </Text>
         )}
         {workoutDescription && (
           <Text style={styles.workoutDescription}>{workoutDescription}</Text>
@@ -838,6 +845,11 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+      flex: 1,
+    },
+    userTextContainer: {
+      flex: 1,
+      justifyContent: 'center',
     },
     avatar: {
       width: 41,
@@ -871,7 +883,6 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       marginTop: 2,
-      flexWrap: 'wrap',
     },
     actionText: {
       fontSize: 13,

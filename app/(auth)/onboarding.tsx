@@ -1771,14 +1771,11 @@ export default function OnboardingScreen() {
             coach: data.coach,
           })
 
-          router.replace({
-            pathname: '/(tabs)/profile',
-            params: { showPaywall: 'true' },
-          })
+          router.replace('/(tabs)')
         } catch (error) {
           console.error('Onboarding finish error:', error)
           // Fallback
-          router.replace('/(tabs)/profile')
+          router.replace('/(tabs)')
         }
       }
 
@@ -2446,8 +2443,32 @@ export default function OnboardingScreen() {
             parseInt(data.birth_month) - 1,
             parseInt(data.birth_day),
           )
-          const age = new Date().getFullYear() - birthDate.getFullYear()
-          return age.toString()
+          const today = new Date()
+          let age = today.getFullYear() - birthDate.getFullYear()
+          const monthDiff = today.getMonth() - birthDate.getMonth()
+          if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < birthDate.getDate())
+          ) {
+            age--
+          }
+
+          const months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ]
+          const monthName = months[parseInt(data.birth_month) - 1] || 'Jan'
+          return `${age} (${monthName} ${data.birth_day}, ${data.birth_year})`
         }
 
         const getHeightString = () => {
@@ -3061,23 +3082,81 @@ export default function OnboardingScreen() {
               />
             </Picker>
           )
-        case 'age':
-          const years = Array.from({ length: 80 }, (_, i) =>
-            (2024 - i - 13).toString(),
+        case 'age': {
+          const currentYear = new Date().getFullYear()
+          const years = Array.from({ length: 100 }, (_, i) =>
+            (currentYear - i).toString(),
           )
+          const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString())
+          const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString())
+          const monthNames = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ]
+
           return (
-            <Picker
-              selectedValue={data.birth_year}
-              onValueChange={(itemValue: string) =>
-                setData((prev) => ({ ...prev, birth_year: itemValue }))
-              }
-              style={styles.picker}
-            >
-              {years.map((y) => (
-                <Picker.Item key={y} label={y} value={y} color={colors.text} />
-              ))}
-            </Picker>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={data.birth_day}
+                onValueChange={(itemValue: string) =>
+                  setData((prev) => ({ ...prev, birth_day: itemValue }))
+                }
+                style={[styles.picker, { flex: 1 }]}
+              >
+                {days.map((d) => (
+                  <Picker.Item
+                    key={d}
+                    label={d}
+                    value={d}
+                    color={colors.text}
+                  />
+                ))}
+              </Picker>
+              <Picker
+                selectedValue={data.birth_month}
+                onValueChange={(itemValue: string) =>
+                  setData((prev) => ({ ...prev, birth_month: itemValue }))
+                }
+                style={[styles.picker, { flex: 1 }]}
+              >
+                {months.map((m) => (
+                  <Picker.Item
+                    key={m}
+                    label={monthNames[parseInt(m) - 1]}
+                    value={m}
+                    color={colors.text}
+                  />
+                ))}
+              </Picker>
+              <Picker
+                selectedValue={data.birth_year}
+                onValueChange={(itemValue: string) =>
+                  setData((prev) => ({ ...prev, birth_year: itemValue }))
+                }
+                style={[styles.picker, { flex: 1 }]}
+              >
+                {years.map((y) => (
+                  <Picker.Item
+                    key={y}
+                    label={y}
+                    value={y}
+                    color={colors.text}
+                  />
+                ))}
+              </Picker>
+            </View>
           )
+        }
         case 'height':
           if (weightUnit === 'kg') {
             const cms = Array.from({ length: 151 }, (_, i) =>

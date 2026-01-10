@@ -5,3 +5,4 @@ declare module '@shopify/flash-list' {
     estimatedItemSize?: number
   }
 }
+

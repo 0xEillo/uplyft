@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import React, { useState } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ImageSourcePropType, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -8,12 +8,14 @@ import { ParsedWorkoutDisplay, getExerciseIcon } from '@/lib/ai/workoutParsing'
 
 interface WorkoutCardProps {
   workout: ParsedWorkoutDisplay
+  coachImage?: ImageSourcePropType
   onStartWorkout?: () => void
   onSaveRoutine?: () => void
 }
 
 export function WorkoutCard({
   workout,
+  coachImage,
   onStartWorkout,
   onSaveRoutine,
 }: WorkoutCardProps) {
@@ -33,6 +35,16 @@ export function WorkoutCard({
 
   return (
     <View style={styles.container}>
+      {/* Coach attribution */}
+      {coachImage && (
+        <View style={styles.coachRow}>
+          <Image source={coachImage} style={styles.coachAvatar} />
+          <Text style={styles.coachLabel}>
+            Here's what I put together for you
+          </Text>
+        </View>
+      )}
+      
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{workout.title}</Text>
         <View style={styles.durationBadge}>
@@ -179,6 +191,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       elevation: 3,
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    coachRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+      gap: 10,
+    },
+    coachAvatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.backgroundLight,
+    },
+    coachLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
     cardHeader: {
       flexDirection: 'row',
