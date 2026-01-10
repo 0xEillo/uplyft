@@ -1,4 +1,4 @@
-import type { NotificationType } from '@/types/database.types'
+import type { NotificationType } from '@/types/database.types';
 
 /**
  * Format notification text based on type and actors
@@ -45,6 +45,11 @@ export function formatNotificationText(
       title: 'Request Declined',
       body: `${firstActor} declined your follow request`,
     }
+  } else if (type === 'trial_reminder') {
+    return {
+      title: 'Trial Ending Soon',
+      body: 'Your free trial ends in 2 days. Keep crushing your fitness goals!',
+    }
   }
 
   // Fallback for unknown types
@@ -71,6 +76,8 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'checkmark-circle'
     case 'follow_request_declined':
       return 'close-circle'
+    case 'trial_reminder':
+      return 'time'
     default:
       return 'notifications'
   }

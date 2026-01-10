@@ -1,24 +1,24 @@
-import {
-  cancelTrialNotification,
-  checkAndRescheduleTrialNotification,
-} from '@/lib/services/notification-service'
 import { FacebookEvents } from '@/lib/facebook-sdk'
+import {
+    cancelTrialNotification,
+    checkAndRescheduleTrialNotification,
+} from '@/lib/services/notification-service'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
 } from 'react'
-import { Alert, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import type { CustomerInfoUpdateListener } from 'react-native-purchases'
 import Purchases, {
-  CustomerInfo,
-  LOG_LEVEL,
-  PurchasesOffering,
+    CustomerInfo,
+    LOG_LEVEL,
+    PurchasesOffering,
 } from 'react-native-purchases'
 import { useAuth } from './auth-context'
 
@@ -212,9 +212,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     handleNotifications()
   }, [user?.id, isLoading, hasPaidEntitlement, proEntitlement])
 
-  // In-app reminder the day before trial ends (no OS push)
+  // In-app reminder 2 days before trial ends (respects user preference from paywall)
   useEffect(() => {
-    const maybeShowInAppTrialReminder = async () => {
+    const maybeCreateTrialReminderNotification = async () => {
       try {
         if (!user?.id || isLoading) return
         if (!proEntitlement) return
@@ -223,6 +223,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         // Only relevant during trial period
         const isTrial = proEntitlement?.periodType === 'trial'
         if (!isTrial) return
+
+        // Check if user opted-in to reminders
+        const reminderEnabled = await AsyncStorage.getItem('@trial_reminder_enabled')
+        if (reminderEnabled !== '1') return
 
         // Determine expiration date
         let expiration: Date | null = null
@@ -246,31 +250,24 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         if (!expiration) return
 
         const now = new Date()
-        const reminder = new Date(expiration)
-        reminder.setDate(reminder.getDate() - 1)
+        const twoDaysBefore = new Date(expiration)
+        twoDaysBefore.setDate(twoDaysBefore.getDate() - 2)
 
-        // Only show on the reminder day window (>= reminder and < expiration)
-        if (!(now >= reminder && now < expiration)) return
+        // Only create notification if we're within 2 days of expiration
+        if (!(now >= twoDaysBefore && now < expiration)) return
 
-        // Prevent duplicate alerts per user per expiration date
-        const expKeyDate = expiration.toISOString().slice(0, 10)
-        const shownKey = `@trial_reminder_shown_${user.id}_${expKeyDate}`
-        const alreadyShown = await AsyncStorage.getItem(shownKey)
-        if (alreadyShown === '1') return
+        // Dynamically import database to avoid circular dependencies
+        const { database } = await import('@/lib/database')
 
-        Alert.alert(
-          'Trial ends tomorrow',
-          'Your 7-day free trial ends in 24 hours. You can cancel anytime in Settings.',
-          [{ text: 'OK' }],
-        )
-        await AsyncStorage.setItem(shownKey, '1')
+        // Create the in-app notification (function handles deduplication)
+        await database.notifications.createTrialReminder(user.id)
       } catch (err) {
         // Non-fatal
-        console.warn('[Subscription] In-app trial reminder error:', err)
+        console.warn('[Subscription] Trial reminder notification error:', err)
       }
     }
 
-    maybeShowInAppTrialReminder()
+    maybeCreateTrialReminderNotification()
   }, [user?.id, isLoading, hasPaidEntitlement, proEntitlement])
 
   // Restore purchases

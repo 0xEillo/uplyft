@@ -8,9 +8,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-  formatNotificationText,
-  getNotificationIcon,
-  getNotificationIconColor,
+    formatNotificationText,
+    getNotificationIcon,
+    getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -18,15 +18,15 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, usePathname } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -116,6 +116,9 @@ export default function NotificationsScreen() {
               returnTo: pathname,
             },
           })
+        } else if (notification.type === 'trial_reminder') {
+          // Navigate to profile page where subscription can be managed
+          router.push('/(tabs)/profile')
         } else {
           // For other notifications, go to the feed
           router.push('/(tabs)')
@@ -303,37 +306,51 @@ export default function NotificationsScreen() {
                     onPress={() => handleNotificationPress(notification)}
                     activeOpacity={0.7}
                   >
-                    {/* Actor avatars (show first 2) */}
+                    {/* Actor avatars or system icon */}
                     <View style={styles.avatarsContainer}>
-                      {notification.actorProfiles
-                        .slice(0, 2)
-                        .map((actor, index) => (
-                          <View
-                            key={actor.id}
-                            style={[
-                              styles.avatarWrapper,
-                              index > 0 && { marginLeft: -8 },
-                            ]}
-                          >
-                            {actor.avatar_url ? (
-                              <Image
-                                source={{ uri: actor.avatar_url }}
-                                style={styles.avatar}
-                              />
-                            ) : (
-                              <View
-                                style={[
-                                  styles.avatar,
-                                  styles.avatarPlaceholder,
-                                ]}
-                              >
-                                <Text style={styles.avatarText}>
-                                  {actor.display_name[0]?.toUpperCase() || '?'}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        ))}
+                      {notification.type === 'trial_reminder' ? (
+                        // System notification - show icon instead of avatars
+                        <View
+                          style={[
+                            styles.avatar,
+                            styles.avatarPlaceholder,
+                            { backgroundColor: colors.primary }
+                          ]}
+                        >
+                          <Ionicons name="time" size={18} color={colors.white} />
+                        </View>
+                      ) : (
+                        // User notifications - show actor avatars
+                        notification.actorProfiles
+                          .slice(0, 2)
+                          .map((actor, index) => (
+                            <View
+                              key={actor.id}
+                              style={[
+                                styles.avatarWrapper,
+                                index > 0 && { marginLeft: -8 },
+                              ]}
+                            >
+                              {actor.avatar_url ? (
+                                <Image
+                                  source={{ uri: actor.avatar_url }}
+                                  style={styles.avatar}
+                                />
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.avatar,
+                                    styles.avatarPlaceholder,
+                                  ]}
+                                >
+                                  <Text style={styles.avatarText}>
+                                    {actor.display_name[0]?.toUpperCase() || '?'}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          ))
+                      )}
                     </View>
 
                     {/* Notification content */}

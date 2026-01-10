@@ -5,6 +5,7 @@ import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import React, { useMemo, useState } from 'react'
 import {
@@ -20,6 +21,9 @@ import {
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+// AsyncStorage key for trial reminder preference
+export const TRIAL_REMINDER_ENABLED_KEY = '@trial_reminder_enabled'
 
 type PaywallProps = {
   visible: boolean
@@ -47,7 +51,7 @@ export function Paywall({
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(1) // Default to Yearly
-  const [isTrialEnabled, setIsTrialEnabled] = useState(false)
+  const [isReminderEnabled, setIsReminderEnabled] = useState(false) // Reminder toggle for notifications
 
   const {
     monthly: monthlyPackage,
@@ -109,36 +113,18 @@ export function Paywall({
     return require('@/assets/images/onboarding/male_muscle_flex.png')
   }
 
-  // Dynamic button text based on trial toggle
-  const buttonText = useMemo(() => {
-    if (isTrialEnabled) {
-      return 'Start Free Trial'
-    }
-    return 'Subscribe Now'
-  }, [isTrialEnabled])
+  // Button text - always show "Start Free Trial" since trial is default
+  const buttonText = 'Start Free Trial'
 
-  const handleTrialToggle = async (value: boolean) => {
+  const handleReminderToggle = async (value: boolean) => {
     if (value) {
-      Alert.alert(
-        'Enable Notifications',
-        'Allow notifications so we can notify you 24 hours before your trial ends.',
-        [
-          {
-            text: 'Not Now',
-            style: 'cancel',
-            onPress: () => setIsTrialEnabled(true),
-          },
-          {
-            text: 'Allow',
-            onPress: async () => {
-              setIsTrialEnabled(true)
-              await registerForPushNotifications()
-            },
-          },
-        ],
-      )
+      // User wants a reminder - request notification permissions and store preference
+      setIsReminderEnabled(true)
+      await AsyncStorage.setItem(TRIAL_REMINDER_ENABLED_KEY, '1')
+      await registerForPushNotifications()
     } else {
-      setIsTrialEnabled(false)
+      setIsReminderEnabled(false)
+      await AsyncStorage.removeItem(TRIAL_REMINDER_ENABLED_KEY)
     }
   }
 
@@ -153,7 +139,8 @@ export function Paywall({
 
       trackEvent(AnalyticsEvents.SUBSCRIPTION_STARTED, {
         plan_type: plans[selectedPlanIndex].type,
-        trial_enabled: isTrialEnabled,
+        trial_enabled: true, // Trial is always enabled
+        reminder_enabled: isReminderEnabled,
         price: selectedPackage.product.priceString,
       })
 
@@ -170,7 +157,8 @@ export function Paywall({
         // Purchase successful and entitlement verified - close the paywall
         trackEvent(AnalyticsEvents.SUBSCRIPTION_COMPLETED, {
           plan_type: plans[selectedPlanIndex].type,
-          trial_enabled: isTrialEnabled,
+          trial_enabled: true,
+          reminder_enabled: isReminderEnabled,
         })
         Alert.alert(
           'Success!',
@@ -365,13 +353,15 @@ export function Paywall({
               })}
             </View>
 
-            {/* Free Trial Toggle */}
+            {/* Reminder Toggle - Trial is always included */}
             <View style={styles.trialToggleContainer}>
-              <Text style={styles.trialToggleText}>Try free for 7-days</Text>
+              <View style={styles.reminderTextContainer}>
+                <Text style={styles.trialToggleText}>Remind me before trial ends</Text>
+              </View>
               <View style={styles.switchContainer}>
                 <Switch
-                  value={isTrialEnabled}
-                  onValueChange={handleTrialToggle}
+                  value={isReminderEnabled}
+                  onValueChange={handleReminderToggle}
                   trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor={colors.backgroundWhite}
                   ios_backgroundColor={colors.border}
@@ -584,10 +574,13 @@ function createStyles(
       elevation: 2,
     },
     trialToggleText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.text,
+    },
+    reminderTextContainer: {
       flex: 1,
+      paddingRight: 12,
     },
     switchContainer: {
       justifyContent: 'center',

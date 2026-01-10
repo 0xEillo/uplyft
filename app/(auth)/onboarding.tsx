@@ -1105,45 +1105,39 @@ const CommitmentStepContent = ({
                   paddingHorizontal: 40,
                 }}
               >
-                <Animated.View
-                  style={{
-                    marginBottom: 40,
-                    width: 140,
-                    height: 140,
-                    borderRadius: 70,
-                    borderWidth: isCommitted ? 0 : 4,
-                    borderColor: 'rgba(255,255,255,0.4)',
-                    backgroundColor: isCommitted
-                      ? 'rgba(255,255,255,0.2)'
-                      : 'transparent',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    transform: [{ scale: scaleAnim }],
-                    shadowColor: '#fff',
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: isCommitted ? 0.4 : 0,
-                    shadowRadius: 30,
-                    elevation: isCommitted ? 10 : 0,
-                  }}
-                >
-                  <View
+                {isCommitted && (
+                  <Animated.View
                     style={{
-                      width: 100,
-                      height: 100,
-                      borderRadius: 50,
-                      backgroundColor: 'rgba(255,255,255,0.25)',
+                      marginBottom: 40,
+                      width: 140,
+                      height: 140,
+                      borderRadius: 70,
+                      borderWidth: 0,
+                      backgroundColor: 'rgba(255,255,255,0.2)',
                       justifyContent: 'center',
                       alignItems: 'center',
+                      transform: [{ scale: scaleAnim }],
+                      shadowColor: '#fff',
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.4,
+                      shadowRadius: 30,
+                      elevation: 10,
                     }}
                   >
-                    <Ionicons
-                      name={isCommitted ? 'checkmark' : 'flash'}
-                      size={64}
-                      color="white"
-                    />
-                  </View>
-                </Animated.View>
-
+                    <View
+                      style={{
+                        width: 100,
+                        height: 100,
+                        borderRadius: 50,
+                        backgroundColor: 'rgba(255,255,255,0.25)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Ionicons name="checkmark" size={64} color="white" />
+                    </View>
+                  </Animated.View>
+                )}
                 <Text
                   style={{
                     color: 'white',
@@ -3099,7 +3093,9 @@ export default function OnboardingScreen() {
           const years = Array.from({ length: 100 }, (_, i) =>
             (currentYear - i).toString(),
           )
-          const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString())
+          const months = Array.from({ length: 12 }, (_, i) =>
+            (i + 1).toString(),
+          )
           const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString())
           const monthNames = [
             'Jan',

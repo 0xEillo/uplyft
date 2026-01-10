@@ -1,28 +1,28 @@
+import type { BodyLogEntryWithImages, BodyLogImage } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  Exercise,
-  ExploreProgram,
-  ExploreProgramRoutine,
-  ExploreRoutine,
-  ExploreRoutineExercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  Set,
-  WorkoutComment,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineExercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    Exercise,
+    ExploreProgram,
+    ExploreProgramRoutine,
+    ExploreRoutine,
+    ExploreRoutineExercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    Set,
+    WorkoutComment,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineExercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
-import type { BodyLogEntryWithImages, BodyLogImage } from '@/lib/body-log/metadata'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
@@ -3276,6 +3276,44 @@ export const database = {
         .eq('id', notificationId)
 
       if (error) throw error
+    },
+
+    /**
+     * Create a trial reminder notification for a user
+     * Only creates if one doesn't already exist for this trial period
+     */
+    async createTrialReminder(userId: string) {
+      // Check if a trial reminder was already created in the last 7 days
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('recipient_id', userId)
+        .eq('type', 'trial_reminder')
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .limit(1)
+
+      if (existing && existing.length > 0) {
+        // Already have a trial reminder for this period
+        return null
+      }
+
+      // Create the notification
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert({
+          recipient_id: userId,
+          type: 'trial_reminder',
+          actors: [],
+          read: false,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
     },
   },
 

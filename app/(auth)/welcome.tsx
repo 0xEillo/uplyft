@@ -163,9 +163,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   logoText: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: '900',
-    letterSpacing: 8,
+    letterSpacing: 4,
     color: '#000',
   },
   carouselContainer: {
