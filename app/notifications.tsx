@@ -1,14 +1,16 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    formatNotificationText,
-    getNotificationIcon,
-    getNotificationIconColor,
+  formatNotificationText,
+  getNotificationIcon,
+  getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -16,15 +18,15 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, usePathname } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -32,6 +34,7 @@ export default function NotificationsScreen() {
   const colors = useThemedColors()
   const styles = createStyles(colors)
   const pathname = usePathname()
+  const { trackEvent } = useAnalytics()
   const {
     notifications,
     unreadCount,
@@ -49,12 +52,15 @@ export default function NotificationsScreen() {
   const [shouldExit, setShouldExit] = useState(false)
   const [shouldAnimate] = useState(true)
 
-  // Reset responded requests state when screen is focused
-  // The database filtering will handle not showing already-responded requests
+  // Track screen view and reset responded requests state when screen is focused
   useFocusEffect(
     useCallback(() => {
+      trackEvent(AnalyticsEvents.NOTIFICATIONS_VIEWED, {
+        notification_count: notifications.length,
+        unread_count: unreadCount,
+      })
       setRespondedRequests(new Map())
-    }, []),
+    }, [trackEvent, notifications.length, unreadCount]),
   )
 
   const handleRefresh = useCallback(async () => {
@@ -81,6 +87,11 @@ export default function NotificationsScreen() {
   const handleNotificationPress = useCallback(
     async (notification: NotificationWithProfiles) => {
       try {
+        trackEvent(AnalyticsEvents.NOTIFICATION_TAPPED, {
+          notification_id: notification.id,
+          notification_type: notification.type,
+        })
+
         await database.notifications.markAsRead(notification.id)
         await refreshNotifications()
 
@@ -113,7 +124,7 @@ export default function NotificationsScreen() {
         console.error('Error handling notification press:', error)
       }
     },
-    [refreshNotifications, pathname],
+    [refreshNotifications, pathname, trackEvent],
   )
 
   const handleMarkAllAsRead = useCallback(async () => {

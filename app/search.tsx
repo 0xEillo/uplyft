@@ -1,6 +1,8 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -11,18 +13,18 @@ import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Keyboard,
-    Platform,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -49,6 +51,7 @@ interface UserWithFollowStatus extends Profile {
 export default function SearchScreen() {
   const colors = useThemedColors()
   const { user, isAnonymous } = useAuth()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
@@ -93,14 +96,9 @@ export default function SearchScreen() {
     }, [shouldSkipNextEntryRef]),
   )
 
-  // Early return for anonymous users (after all hooks)
-  if (isAnonymous) return null
-
-  const styles = createStyles(colors)
-  const trimmedQuery = searchQuery.trim()
-
   // Load users when search query changes
   useEffect(() => {
+    const trimmedQuery = searchQuery.trim()
     if (!trimmedQuery) {
       setUsers([])
       return
@@ -112,6 +110,12 @@ export default function SearchScreen() {
       try {
         setIsLoading(true)
         const results = await database.profiles.searchByUserTag(trimmedQuery)
+
+        // Track search performed
+        trackEvent(AnalyticsEvents.SEARCH_PERFORMED, {
+          query: trimmedQuery,
+          result_count: results.length,
+        })
 
         // Filter out current user from results
         const filteredResults = results.filter((u) => u.id !== user.id)
@@ -148,7 +152,7 @@ export default function SearchScreen() {
     // Debounce search
     const timeoutId = setTimeout(loadUsers, 300)
     return () => clearTimeout(timeoutId)
-  }, [searchQuery, user])
+  }, [searchQuery, user, trackEvent])
 
   const handleToggleFollow = useCallback(
     async (targetUser: UserWithFollowStatus) => {
@@ -231,17 +235,7 @@ export default function SearchScreen() {
     [user, followingInProgress],
   )
 
-  const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    Keyboard.dismiss()
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = () => {
-    router.back()
-  }
-
-  const handleInvite = async () => {
+  const handleInvite = useCallback(async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
@@ -261,6 +255,7 @@ export default function SearchScreen() {
       )
 
       if (result.action === Share.sharedAction) {
+        trackEvent(AnalyticsEvents.SEARCH_INVITE_SHARED)
         await Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success,
         )
@@ -269,7 +264,7 @@ export default function SearchScreen() {
       console.error('Error sharing:', error)
       Alert.alert('Error', 'Failed to share invite. Please try again.')
     }
-  }
+  }, [trackEvent])
 
   const markNextFocusAsChildReturn = useCallback(() => {
     markSearchEntrySkipFlag()
@@ -283,11 +278,30 @@ export default function SearchScreen() {
 
   const handleNavigateToProfile = useCallback(
     (userId: string) => {
+      trackEvent(AnalyticsEvents.SEARCH_RESULT_TAPPED, {
+        user_id: userId,
+      })
       markNextFocusAsChildReturn()
       router.push(`/user/${userId}`)
     },
-    [router, markNextFocusAsChildReturn],
+    [router, markNextFocusAsChildReturn, trackEvent],
   )
+
+  const handleBack = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    Keyboard.dismiss()
+    setShouldExit(true)
+  }, [])
+
+  const handleExitComplete = useCallback(() => {
+    router.back()
+  }, [router])
+
+  // Early return for anonymous users (after all hooks)
+  if (isAnonymous) return null
+
+  const styles = createStyles(colors)
+  const trimmedQuery = searchQuery.trim()
 
   return (
     <SlideInView
@@ -315,7 +329,6 @@ export default function SearchScreen() {
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.contentWrapper}>
-
             {/* Search Input */}
             <View style={styles.searchContainer}>
               <Ionicons
@@ -369,7 +382,8 @@ export default function SearchScreen() {
                 buttonText="Invite Friends"
                 onPress={() => {
                   Share.share({
-                    message: 'Join me on Rep AI! Track your workouts and progress with me.',
+                    message:
+                      'Join me on Rep AI! Track your workouts and progress with me.',
                     url: 'https://rep.ai',
                   })
                 }}

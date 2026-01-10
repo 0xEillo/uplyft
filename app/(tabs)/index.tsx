@@ -188,6 +188,7 @@ export default function FeedScreen() {
   const handleRefresh = useCallback(async () => {
     if (!user || isRefreshing) return
 
+    trackEvent(AnalyticsEvents.FEED_REFRESHED)
     setIsRefreshing(true)
     try {
       // Reset pagination and reload from scratch
@@ -197,7 +198,7 @@ export default function FeedScreen() {
     } finally {
       setIsRefreshing(false)
     }
-  }, [user, isRefreshing, loadWorkouts])
+  }, [user, isRefreshing, loadWorkouts, trackEvent])
 
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return

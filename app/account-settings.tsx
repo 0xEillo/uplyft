@@ -1,4 +1,6 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -12,21 +14,22 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Linking,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function SettingsScreen() {
   const { user, signOut, isAnonymous } = useAuth()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const { themePreference, setThemePreference, isDark } = useTheme()
@@ -86,6 +89,10 @@ export default function SettingsScreen() {
     if (!user || !profile) return
 
     const nextValue = !profile.is_private
+    trackEvent(AnalyticsEvents.SETTINGS_CHANGED, {
+      setting: 'privacy',
+      value: nextValue ? 'private' : 'public',
+    })
     try {
       setIsPrivacyUpdating(true)
       const updated = await database.profiles.update(user.id, {
@@ -101,7 +108,7 @@ export default function SettingsScreen() {
     } finally {
       setIsPrivacyUpdating(false)
     }
-  }, [user, profile])
+  }, [user, profile, trackEvent])
 
   const handleUpdateCoach = useCallback(
     async (coachId: string) => {
@@ -165,6 +172,9 @@ export default function SettingsScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
+                trackEvent(AnalyticsEvents.USER_SIGNED_OUT, {
+                  is_anonymous: true,
+                })
                 await signOut()
                 router.replace('/(auth)/welcome')
               } catch (error) {
@@ -194,6 +204,9 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
+            trackEvent(AnalyticsEvents.USER_SIGNED_OUT, {
+              is_anonymous: false,
+            })
             await signOut()
             router.replace('/(auth)/welcome')
           } catch (error) {
@@ -221,6 +234,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              trackEvent(AnalyticsEvents.ACCOUNT_DELETED)
               // Delete user account via Supabase admin API
               const { error } = await supabase.rpc('delete_user')
 

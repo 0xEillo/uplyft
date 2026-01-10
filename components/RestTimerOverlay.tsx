@@ -1,3 +1,5 @@
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
@@ -92,6 +94,7 @@ export function RestTimerOverlay({
 }: RestTimerOverlayProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const { trackEvent } = useAnalytics()
   const styles = createStyles(colors)
 
   // Animation refs
@@ -211,11 +214,18 @@ export function RestTimerOverlay({
   const handleStart = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     initialDurationRef.current = selectedDuration
+    trackEvent(AnalyticsEvents.REST_TIMER_STARTED, {
+      duration_seconds: selectedDuration,
+    })
     onStart(selectedDuration)
   }
 
   const handleStopPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    trackEvent(AnalyticsEvents.REST_TIMER_COMPLETED, {
+      duration_seconds: initialDurationRef.current,
+      completed: false,
+    })
     onStop()
   }
 

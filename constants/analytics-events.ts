@@ -88,6 +88,11 @@ export const AnalyticsEvents = {
   BODY_SCAN_FAILED: 'Body Scan Failed',
   BODY_SCAN_IMAGE_VIEWED: 'Body Scan Image Viewed',
 
+  // Body Log
+  BODY_LOG_ENTRY_VIEWED: 'Body Log Entry Viewed',
+  BODY_LOG_ENTRY_STARTED: 'Body Log Entry Started',
+  BODY_LOG_ENTRY_SAVED: 'Body Log Entry Saved',
+
   // Analytics & Insights
   STRENGTH_SCORE_VIEWED: 'Strength Score Viewed',
   MUSCLE_BALANCE_VIEWED: 'Muscle Balance Viewed',
@@ -103,7 +108,9 @@ export const AnalyticsEvents = {
   PROFILE_EDIT_COMPLETED: 'Profile Edit Completed',
   PROFILE_EDIT_CANCELLED: 'Profile Edit Cancelled',
   SETTINGS_VIEWED: 'Settings Viewed',
-  SETTING_CHANGED: 'Setting Changed',
+  SETTINGS_CHANGED: 'Settings Changed',
+  ACCOUNT_DELETED: 'Account Deleted',
+  USER_SIGNED_OUT: 'User Signed Out',
 
   // Notifications
   NOTIFICATIONS_VIEWED: 'Notifications Viewed',
@@ -117,10 +124,37 @@ export const AnalyticsEvents = {
 
   // Subscriptions
   SUBSCRIPTION_TRIAL_STARTED: 'Subscription Trial Started',
+  SUBSCRIPTION_STARTED: 'Subscription Started',
   SUBSCRIPTION_PURCHASED: 'Subscription Purchased',
+  SUBSCRIPTION_COMPLETED: 'Subscription Completed',
   SUBSCRIPTION_CANCELLED: 'Subscription Cancelled',
+  SUBSCRIPTION_FAILED: 'Subscription Failed',
   SUBSCRIPTION_RESTORED: 'Subscription Restored',
   SUBSCRIPTION_EXPIRED: 'Subscription Expired',
+
+  // Search
+  SEARCH_PERFORMED: 'Search Performed',
+  SEARCH_RESULT_TAPPED: 'Search Result Tapped',
+  SEARCH_INVITE_SHARED: 'Search Invite Shared',
+
+  // Routines
+  ROUTINE_VIEWED: 'Routine Viewed',
+  ROUTINE_SELECTED: 'Routine Selected',
+  ROUTINE_CREATED: 'Routine Created',
+  ROUTINE_EDITED: 'Routine Edited',
+  ROUTINE_DELETED: 'Routine Deleted',
+
+  // Workout Actions
+  EXERCISE_ADDED: 'Exercise Added',
+  REST_TIMER_STARTED: 'Rest Timer Started',
+  REST_TIMER_COMPLETED: 'Rest Timer Completed',
+
+  // Tutorial
+  TUTORIAL_STEP_COMPLETED: 'Tutorial Step Completed',
+  TUTORIAL_DISMISSED: 'Tutorial Dismissed',
+
+  // Explore
+  EXPLORE_CARD_TAPPED: 'Explore Card Tapped',
 
   // Errors & Performance
   API_ERROR: 'API Error',
@@ -273,6 +307,12 @@ export interface BodyScanProperties extends BaseEventProperties {
   error_message?: string
 }
 
+export interface BodyLogProperties extends BaseEventProperties {
+  entry_id?: string
+  has_images?: boolean
+  has_weight?: boolean
+}
+
 export interface AnalyticsViewProperties extends BaseEventProperties {
   view_type: 'strength_score' | 'muscle_balance'
   exercise?: string
@@ -295,9 +335,13 @@ export interface ProfileEditProperties extends BaseEventProperties {
 }
 
 export interface SettingProperties extends BaseEventProperties {
-  setting_name: string
-  setting_value?: string | boolean | number
+  setting?: string
+  value?: string | boolean | number
   previous_value?: string | boolean | number
+}
+
+export interface SignOutProperties extends BaseEventProperties {
+  is_anonymous?: boolean
 }
 
 export interface NotificationProperties extends BaseEventProperties {
@@ -340,6 +384,39 @@ export interface PerformanceProperties extends BaseEventProperties {
   operation: string
   duration: number
   success: boolean
+}
+
+export interface SearchProperties extends BaseEventProperties {
+  query?: string
+  result_count?: number
+  user_id?: string
+}
+
+export interface RoutineProperties extends BaseEventProperties {
+  routine_id?: string
+  routine_name?: string
+  exercise_count?: number
+  source?: 'create_post' | 'routines_screen' | 'profile'
+}
+
+export interface ExerciseAddedProperties extends BaseEventProperties {
+  exercise_name?: string
+  source?: 'autocomplete' | 'search' | 'routine' | 'ai_coach' | 'equipment_scan'
+}
+
+export interface RestTimerProperties extends BaseEventProperties {
+  duration_seconds?: number
+  completed?: boolean
+}
+
+export interface TutorialProperties extends BaseEventProperties {
+  step_id?: string
+  step_name?: string
+}
+
+export interface ExploreCardProperties extends BaseEventProperties {
+  card_type?: string
+  destination?: string
 }
 
 // ============================================================================
@@ -394,7 +471,15 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.USER_UNFOLLOWED]: SocialActionProperties
   [AnalyticsEvents.PROFILE_EDIT_STARTED]: ProfileEditProperties
   [AnalyticsEvents.PROFILE_EDIT_COMPLETED]: ProfileEditProperties
-  [AnalyticsEvents.SETTING_CHANGED]: SettingProperties
+  [AnalyticsEvents.SETTINGS_CHANGED]: SettingProperties
+  [AnalyticsEvents.USER_SIGNED_OUT]: SignOutProperties
+  [AnalyticsEvents.ACCOUNT_DELETED]: BaseEventProperties
+  [AnalyticsEvents.BODY_LOG_ENTRY_VIEWED]: BodyLogProperties
+  [AnalyticsEvents.BODY_LOG_ENTRY_STARTED]: BaseEventProperties
+  [AnalyticsEvents.BODY_LOG_ENTRY_SAVED]: BodyLogProperties
+  [AnalyticsEvents.SUBSCRIPTION_STARTED]: SubscriptionProperties
+  [AnalyticsEvents.SUBSCRIPTION_COMPLETED]: SubscriptionProperties
+  [AnalyticsEvents.SUBSCRIPTION_FAILED]: SubscriptionProperties
   [AnalyticsEvents.NOTIFICATION_TAPPED]: NotificationProperties
   [AnalyticsEvents.PAYWALL_SHOWN]: PaywallProperties
   [AnalyticsEvents.PAYWALL_CTA_TAPPED]: PaywallProperties
@@ -408,4 +493,18 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.TRANSCRIPTION_STARTED]: TranscriptionProperties
   [AnalyticsEvents.TRANSCRIPTION_COMPLETED]: TranscriptionProperties
   [AnalyticsEvents.TRANSCRIPTION_FAILED]: TranscriptionProperties
+  [AnalyticsEvents.SEARCH_PERFORMED]: SearchProperties
+  [AnalyticsEvents.SEARCH_RESULT_TAPPED]: SearchProperties
+  [AnalyticsEvents.SEARCH_INVITE_SHARED]: BaseEventProperties
+  [AnalyticsEvents.ROUTINE_VIEWED]: RoutineProperties
+  [AnalyticsEvents.ROUTINE_SELECTED]: RoutineProperties
+  [AnalyticsEvents.ROUTINE_CREATED]: RoutineProperties
+  [AnalyticsEvents.ROUTINE_EDITED]: RoutineProperties
+  [AnalyticsEvents.ROUTINE_DELETED]: RoutineProperties
+  [AnalyticsEvents.EXERCISE_ADDED]: ExerciseAddedProperties
+  [AnalyticsEvents.REST_TIMER_STARTED]: RestTimerProperties
+  [AnalyticsEvents.REST_TIMER_COMPLETED]: RestTimerProperties
+  [AnalyticsEvents.TUTORIAL_STEP_COMPLETED]: TutorialProperties
+  [AnalyticsEvents.TUTORIAL_DISMISSED]: TutorialProperties
+  [AnalyticsEvents.EXPLORE_CARD_TAPPED]: ExploreCardProperties
 }

@@ -5,6 +5,8 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { ExploreCard } from '@/components/Profile/ExploreCard'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { TutorialProgressCard } from '@/components/Tutorial/TutorialProgressCard'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -48,6 +50,7 @@ const getBadgeSizeFromFontSize = (
 
 export default function ProfileScreen() {
   const { user } = useAuth()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { isDark } = useTheme()
   const colors = useThemedColors()
@@ -250,6 +253,9 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      trackEvent(AnalyticsEvents.PROFILE_VIEWED, {
+        is_self: true,
+      })
       // Only show loading spinner on first load, silent refresh after
       const showLoading = !hasLoadedOnce.current
       loadProfileData()
@@ -257,7 +263,7 @@ export default function ProfileScreen() {
         hasLoadedOnce.current = true
       })
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
+    }, [trackEvent]),
   )
 
   const renderWorkoutItem = useCallback(

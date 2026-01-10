@@ -2,6 +2,8 @@ import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
 import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -320,6 +322,7 @@ const sectionStyles = StyleSheet.create({
 export default function BodyLogScreen() {
   const colors = useThemedColors()
   const { user } = useAuth()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
@@ -481,6 +484,12 @@ export default function BodyLogScreen() {
 
   const handleEntryOpen = useCallback(
     (entry: EntryWithSignedUrl) => {
+      trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_VIEWED, {
+        entry_id: entry.id,
+        has_images: entry.images.length > 0,
+        has_weight: entry.weight_kg !== null,
+      })
+
       const params: {
         entryId: string
         createdAt: string
@@ -505,7 +514,7 @@ export default function BodyLogScreen() {
         params,
       })
     },
-    [router],
+    [router, trackEvent],
   )
 
   const handleAddNewEntry = useCallback(async () => {
@@ -514,6 +523,7 @@ export default function BodyLogScreen() {
       return
     }
 
+    trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
     router.push({
@@ -522,7 +532,7 @@ export default function BodyLogScreen() {
         entryId: 'new',
       },
     })
-  }, [user, router])
+  }, [user, router, trackEvent])
 
   const handleRefresh = useCallback(() => {
     loadEntries(true)

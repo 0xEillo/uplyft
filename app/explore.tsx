@@ -1,5 +1,7 @@
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -31,6 +33,7 @@ export default function ExploreScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
   const colors = useThemedColors()
+  const { trackEvent } = useAnalytics()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
 
@@ -61,8 +64,9 @@ export default function ExploreScreen() {
   }, [])
 
   useEffect(() => {
+    trackEvent(AnalyticsEvents.EXPLORE_VIEWED)
     loadData()
-  }, [loadData])
+  }, [loadData, trackEvent])
 
   const handleBack = useCallback(() => {
     setShouldExit(true)
@@ -120,12 +124,16 @@ export default function ExploreScreen() {
         <TouchableOpacity
           activeOpacity={0.9}
           style={styles.programCard}
-          onPress={() =>
+          onPress={() => {
+            trackEvent(AnalyticsEvents.EXPLORE_CARD_TAPPED, {
+              card_type: 'program',
+              destination: item.id,
+            })
             router.push({
               pathname: '/explore/program/[programId]',
               params: { programId: item.id },
             })
-          }
+          }}
         >
           <LinearGradient
             colors={gradient}
@@ -160,7 +168,7 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       )
     },
-    [styles, router],
+    [styles, router, trackEvent],
   )
 
   const renderRoutineItem = useCallback(
@@ -184,12 +192,16 @@ export default function ExploreScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.routineCard}
-          onPress={() =>
+          onPress={() => {
+            trackEvent(AnalyticsEvents.EXPLORE_CARD_TAPPED, {
+              card_type: 'routine',
+              destination: item.id,
+            })
             router.push({
               pathname: '/routine/[routineId]',
               params: { routineId: item.id },
             })
-          }
+          }}
         >
           <Image
             source={getRoutineImage(item)}
@@ -235,7 +247,7 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       )
     },
-    [styles, handleSaveRoutine, savingRoutineId, router],
+    [styles, handleSaveRoutine, savingRoutineId, router, trackEvent],
   )
 
   return (

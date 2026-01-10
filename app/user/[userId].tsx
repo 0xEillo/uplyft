@@ -5,6 +5,8 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -13,8 +15,8 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { calculateTotalVolume, formatVolume } from '@/lib/utils/workout-stats'
 import {
-    FollowRelationshipStatus,
-    WorkoutSessionWithDetails,
+  FollowRelationshipStatus,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -22,15 +24,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Dimensions,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -60,6 +62,7 @@ const consumeProfileEntrySkipFlag = () => {
 export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
   const { user, isAnonymous } = useAuth()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { isDark } = useTheme()
   const colors = useThemedColors()
@@ -226,6 +229,9 @@ export default function UserProfileScreen() {
     try {
       setRelationshipBusy(true)
       if (relationship.is_following) {
+        trackEvent(AnalyticsEvents.USER_UNFOLLOWED, {
+          target_user_id: userId,
+        })
         await database.follows.unfollow(user.id, userId)
         setRelationship((prev) =>
           prev
@@ -238,6 +244,9 @@ export default function UserProfileScreen() {
         // Reload follow counts after unfollowing
         await loadFollowCounts()
       } else {
+        trackEvent(AnalyticsEvents.USER_FOLLOWED, {
+          target_user_id: userId,
+        })
         const result = await database.follows.follow(user.id, userId)
         if (
           result.status === 'following' ||
@@ -283,6 +292,7 @@ export default function UserProfileScreen() {
     loadFollowCounts,
     isAnonymous,
     router,
+    trackEvent,
   ])
 
   useFocusEffect(

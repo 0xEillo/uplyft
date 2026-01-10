@@ -1690,6 +1690,21 @@ export default function OnboardingScreen() {
             }
           }
 
+          // Track after account created so funnel order is correct:
+          // Auth Anonymous Sign In -> Onboarding Completed
+          trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED, {
+            name: data.name,
+            goal: data.goal,
+            age,
+            gender: data.gender,
+            height: heightCm,
+            weight: weightKg,
+            commitment: data.commitment,
+            experience_level: data.experience_level,
+            bio: data.bio,
+            coach: data.coach,
+          })
+
           router.replace({
             pathname: '/(tabs)/profile',
             params: { showPaywall: 'true' },
@@ -1702,19 +1717,6 @@ export default function OnboardingScreen() {
       }
 
       finishOnboarding()
-
-      trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED, {
-        name: data.name,
-        goal: data.goal,
-        age,
-        gender: data.gender,
-        height: heightCm,
-        weight: weightKg,
-        commitment: data.commitment,
-        experience_level: data.experience_level,
-        bio: data.bio,
-        coach: data.coach,
-      })
     }
   }
 

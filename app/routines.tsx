@@ -1,6 +1,8 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -31,6 +33,7 @@ export default function RoutinesScreen() {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const colors = useThemedColors()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
@@ -67,8 +70,11 @@ export default function RoutinesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      trackEvent(AnalyticsEvents.ROUTINE_VIEWED, {
+        source: 'routines_screen',
+      })
       loadData()
-    }, [loadData])
+    }, [loadData, trackEvent])
   )
 
   const handleBack = useCallback(() => {
@@ -108,12 +114,18 @@ export default function RoutinesScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.routineCard}
-          onPress={() =>
+          onPress={() => {
+            trackEvent(AnalyticsEvents.ROUTINE_SELECTED, {
+              routine_id: item.id,
+              routine_name: item.name,
+              exercise_count: exerciseCount,
+              source: 'routines_screen',
+            })
             router.push({
               pathname: '/routine/[routineId]',
               params: { routineId: item.id },
             })
-          }
+          }}
         >
           {imageSource ? (
             <>
@@ -195,7 +207,7 @@ export default function RoutinesScreen() {
         </TouchableOpacity>
       )
     },
-    [styles, router, colors],
+    [styles, router, colors, trackEvent],
   )
 
   return (

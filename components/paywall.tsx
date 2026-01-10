@@ -1,3 +1,5 @@
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
@@ -40,6 +42,7 @@ export function Paywall({
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
   const styles = createStyles(colors, screenHeight)
 
+  const { trackEvent } = useAnalytics()
   const { user } = useAuth()
   const {
     purchasePackage,
@@ -156,7 +159,15 @@ export function Paywall({
         return
       }
 
-      const updatedCustomerInfo = await purchasePackage(selectedPackage.identifier)
+      trackEvent(AnalyticsEvents.SUBSCRIPTION_STARTED, {
+        plan_type: plans[selectedPlanIndex].type,
+        trial_enabled: isTrialEnabled,
+        price: selectedPackage.product.priceString,
+      })
+
+      const updatedCustomerInfo = await purchasePackage(
+        selectedPackage.identifier,
+      )
 
       // Verify the Pro entitlement was actually granted
       const hasProEntitlement = Boolean(
@@ -165,6 +176,10 @@ export function Paywall({
 
       if (hasProEntitlement) {
         // Purchase successful and entitlement verified - close the paywall
+        trackEvent(AnalyticsEvents.SUBSCRIPTION_COMPLETED, {
+          plan_type: plans[selectedPlanIndex].type,
+          trial_enabled: isTrialEnabled,
+        })
         Alert.alert(
           'Success!',
           'Your subscription is now active. Enjoy all premium features!',
@@ -178,11 +193,19 @@ export function Paywall({
           [{ text: 'OK' }],
         )
       }
-    } catch (error: any) {
+    } catch (error) {
       // Handle user cancellation
       if (error?.userCancelled) {
+        trackEvent(AnalyticsEvents.SUBSCRIPTION_CANCELLED, {
+          plan_type: plans[selectedPlanIndex].type,
+        })
         return
       }
+
+      trackEvent(AnalyticsEvents.SUBSCRIPTION_FAILED, {
+        plan_type: plans[selectedPlanIndex].type,
+        error: error?.message || 'Unknown error',
+      })
 
       Alert.alert(
         'Purchase Failed',
@@ -197,6 +220,7 @@ export function Paywall({
   const handleRestore = async () => {
     try {
       setIsRestoring(true)
+      trackEvent(AnalyticsEvents.SUBSCRIPTION_RESTORED)
       const restoredCustomerInfo = await restorePurchases()
 
       // Check if Pro entitlement was restored
@@ -278,7 +302,10 @@ export function Paywall({
         <View style={styles.whiteSection}>
           {/* Title */}
           <View style={styles.heroSection}>
-            <Animated.Text entering={FadeInDown.delay(200)} style={styles.heroTitle}>
+            <Animated.Text
+              entering={FadeInDown.delay(200)}
+              style={styles.heroTitle}
+            >
               {title}
             </Animated.Text>
           </View>
@@ -310,16 +337,28 @@ export function Paywall({
 
                     <View style={styles.cardInner}>
                       <View style={styles.planInfoLeft}>
-                        <Text style={[styles.planLabel, isSelected && styles.planLabelSelected]}>
+                        <Text
+                          style={[
+                            styles.planLabel,
+                            isSelected && styles.planLabelSelected,
+                          ]}
+                        >
                           {plan.label}
                         </Text>
                         {plan.subtitle && (
-                          <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+                          <Text style={styles.planSubtitle}>
+                            {plan.subtitle}
+                          </Text>
                         )}
                       </View>
-                      
+
                       <View style={styles.planPriceRight}>
-                        <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>
+                        <Text
+                          style={[
+                            styles.planPrice,
+                            isSelected && styles.planPriceSelected,
+                          ]}
+                        >
                           {plan.price}
                         </Text>
                       </View>
@@ -359,7 +398,9 @@ export function Paywall({
             {/* Footer text */}
             <View style={styles.footerContainer}>
               <Text style={styles.footerGuaranteeText}>
-                {selectedPlanIndex === 1 ? 'Billed annually. ' : 'Billed monthly. '}
+                {selectedPlanIndex === 1
+                  ? 'Billed annually. '
+                  : 'Billed monthly. '}
                 Cancel anytime.
               </Text>
             </View>
