@@ -14,6 +14,7 @@ import {
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BodyPartSlug } from '@/lib/body-mapping'
@@ -939,11 +940,18 @@ const CommitmentStepContent = ({
     }).start()
 
     if (!isCommitted) {
-      Animated.timing(progress, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start()
+      // Stop the current fill animation and get the current progress value
+      progress.stopAnimation((currentValue) => {
+        // Animate back down with duration proportional to how far it went up
+        // Full 3000ms up = proportionally less going back down, but at least 300ms
+        const reverseDuration = Math.max(currentValue * 1500, 300)
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: reverseDuration,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start()
+      })
     }
   }
 
@@ -1287,7 +1295,7 @@ const CommitmentStepContent = ({
             },
           ]}
         >
-          {!isCommitted && !holding && (
+          {!isCommitted && (
             <View
               style={{ alignItems: 'center', width: '100%', marginBottom: 20 }}
             >
@@ -1320,7 +1328,7 @@ const CommitmentStepContent = ({
                 style={{
                   fontSize: 18,
                   fontWeight: '700',
-                  color: '#fff',
+                  color: holding ? 'transparent' : '#fff',
                 }}
               >
                 Tap and hold to commit
@@ -1459,6 +1467,7 @@ const FinalPlanStepContent = ({
 
 export default function OnboardingScreen() {
   const { signInAnonymously, user } = useAuth()
+  const { refreshProfile } = useProfile()
   const insets = useSafeAreaInsets()
   const [step, setStep] = useState(1)
   const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
@@ -1753,6 +1762,9 @@ export default function OnboardingScreen() {
               .upsert(profileUpdates)
             if (error) {
               console.error('Error creating profile:', error)
+            } else {
+              // Refresh profile context so chat has the correct coach data
+              await refreshProfile()
             }
           }
 

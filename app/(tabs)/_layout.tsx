@@ -227,7 +227,7 @@ function TabLayoutContent() {
     if (!isSubscriptionLoading && !isProMember) {
       const timer = setTimeout(() => {
         setDelayedShowPaywall(true)
-      }, 600)
+      }, 800)
       return () => clearTimeout(timer)
     } else {
       setDelayedShowPaywall(false)
