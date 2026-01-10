@@ -20,7 +20,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
 // 3 columns with 20px horizontal padding and 12px gaps between images
@@ -42,7 +41,6 @@ export function RoutineImagePickerSheet({
   selectedTintColor,
 }: RoutineImagePickerSheetProps) {
   const colors = useThemedColors()
-  const insets = useSafeAreaInsets()
   const styles = createStyles(colors)
 
   const [images, setImages] = useState<RoutineImage[]>([])

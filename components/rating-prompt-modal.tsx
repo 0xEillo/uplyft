@@ -59,6 +59,7 @@ export function RatingPromptModal() {
         setModalVisible(false)
       })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs
   }, [isVisible])
 
   const handleRatePress = async () => {

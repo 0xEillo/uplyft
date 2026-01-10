@@ -28,7 +28,7 @@ import {
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 // Custom colors for the body highlighter based on strength levels
 // Custom colors for the body highlighter based on strength levels
@@ -54,7 +54,6 @@ export function StrengthBodyView() {
     refreshing,
     onRefresh,
     overallLevel,
-    groupLevels,
     muscleGroups,
   } = useStrengthData()
 
@@ -68,11 +67,11 @@ export function StrengthBodyView() {
 
   // Generate body data for highlighting
   const bodyData = useMemo(() => {
-    const data: Array<{
+    const data: {
       slug: BodyPartSlug
       intensity: number
       side?: 'left' | 'right'
-    }> = []
+    }[] = []
 
     // Map database muscle names to their data for easy lookup
     const muscleMap = new Map<string, MuscleGroupData>()

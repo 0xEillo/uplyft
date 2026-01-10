@@ -32,7 +32,7 @@ import Animated, {
 export default function TrialOfferScreen() {
   const params = useLocalSearchParams()
   const colors = useThemedColors()
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
+  const { height: screenHeight } = Dimensions.get('window')
   const styles = createStyles(colors, screenHeight)
   const { trackEvent } = useAnalytics()
   
@@ -46,7 +46,6 @@ export default function TrialOfferScreen() {
     offerings,
     purchasePackage,
     restorePurchases,
-    isLoading: subscriptionLoading,
   } = useSubscription()
   const { requestPermission, hasPermission } = useNotifications()
 
@@ -76,7 +75,21 @@ export default function TrialOfferScreen() {
         onboardingData.name || 'Guest',
       )
 
-      const profileUpdates: any = {
+      const profileUpdates: {
+        id: string
+        user_tag: string
+        display_name: string
+        gender: Gender | null
+        height_cm: number | null
+        weight_kg: number | null
+        age: number | null
+        goals: Goal[] | null
+        commitment: string[] | null
+        experience_level: ExperienceLevel | null
+        bio: string | null
+        coach?: string | null
+        is_guest?: boolean
+      } = {
         id: userId,
         user_tag: userTag,
         display_name: onboardingData.name || 'Guest',
@@ -227,13 +240,14 @@ export default function TrialOfferScreen() {
             await scheduleTrialExpirationNotification(currentUserId, new Date())
           }
         }
-      } catch (e) {}
+      } catch {}
 
       trackEvent(AnalyticsEvents.TRIAL_OFFER_ACCEPTED, { trial_enabled: isTrialEnabled })
       router.replace('/(tabs)')
-    } catch (error: any) {
-      if (!error?.userCancelled) {
-        Alert.alert('Error', error?.message || 'Failed to complete purchase', [{ text: 'OK' }])
+    } catch (error: unknown) {
+      const e = error as { userCancelled?: boolean; message?: string }
+      if (!e?.userCancelled) {
+        Alert.alert('Error', e?.message || 'Failed to complete purchase', [{ text: 'OK' }])
       }
     } finally {
       setIsPurchasing(false)
@@ -291,7 +305,7 @@ export default function TrialOfferScreen() {
       const { userId } = await signInAnonymously()
       await setupGuestProfile(userId)
       router.replace('/(tabs)')
-    } catch (error) {
+    } catch {
        router.replace('/(tabs)')
     } finally {
       setIsPurchasing(false)
@@ -429,8 +443,8 @@ export default function TrialOfferScreen() {
   )
 }
 
-function createStyles(colors: any, screenHeight: number = 800) {
-    const { width, height } = Dimensions.get('window');
+function createStyles(colors: ReturnType<typeof useThemedColors>, screenHeight: number = 800) {
+    const { height } = Dimensions.get('window');
     
   return StyleSheet.create({
     container: {

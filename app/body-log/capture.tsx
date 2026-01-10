@@ -1,4 +1,3 @@
-import { useUnit, type WeightUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -13,23 +12,19 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, {
-  FadeIn,
-  FadeOut,
   Layout,
   ZoomIn,
-  ZoomOut,
 } from 'react-native-reanimated'
 import { useState } from 'react'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const GRID_PADDING = 20
-const SLOT_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - 12) / 2 // 20px padding each side, 12px gap
+const SLOT_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - 12) / 2
 
 interface CapturedPhoto {
   uri: string
@@ -37,7 +32,6 @@ interface CapturedPhoto {
 }
 
 const MAX_PHOTOS = 3
-const WEIGHT_UNITS: WeightUnit[] = ['kg', 'lb']
 
 export default function BodyLogCaptureScreen() {
   const colors = useThemedColors()
@@ -184,7 +178,6 @@ export default function BodyLogCaptureScreen() {
     try {
       const { uploadBodyLogImages } = await import('@/lib/utils/body-log-storage')
       const { database } = await import('@/lib/database')
-      const { useAuth } = await import('@/contexts/auth-context')
 
       // Get user ID (we need to access it properly)
       const photoUris = photos

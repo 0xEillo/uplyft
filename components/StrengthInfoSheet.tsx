@@ -100,7 +100,7 @@ export function StrengthInfoSheet({
   )
 }
 
-const createStyles = (colors: any, insets: any) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top: number; bottom: number }) =>
   StyleSheet.create({
     modalOverlay: {
       flex: 1,

@@ -511,6 +511,7 @@ export const FeedCard = memo(function FeedCard({
         )}
       </>
     ),
+
     [
       isPending,
       onCardPress,
@@ -522,6 +523,9 @@ export const FeedCard = memo(function FeedCard({
       prInfo,
       weightUnit,
       colors.primary,
+      colors.info,
+      colors.success,
+      isDark,
       exercises.length,
       styles,
       PREVIEW_LIMIT,

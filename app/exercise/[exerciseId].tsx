@@ -139,12 +139,19 @@ export default function ExerciseDetailScreen() {
         
         // Calculate Best Session Volume from history
         let maxSessionVol = 0
-        const formattedHistory = historyData.map((session: any) => {
+        type HistorySession = {
+          date: string
+          workout_exercises?: {
+            exercise: { name: string }
+            sets: { weight: number | null; reps: number | null }[]
+          }[]
+        }
+        const formattedHistory = (historyData as unknown as HistorySession[]).map((session) => {
             let sessionVol = 0
             const sessionSets: { weight: number | null; reps: number | null }[] = []
             
-            session.workout_exercises?.forEach((we: any) => {
-                we.sets?.forEach((set: any) => {
+            session.workout_exercises?.forEach((we) => {
+                we.sets?.forEach((set) => {
                     sessionSets.push({ weight: set.weight, reps: set.reps })
                     if(set.weight && set.reps) {
                         sessionVol += (set.weight * set.reps)
@@ -167,10 +174,9 @@ export default function ExerciseDetailScreen() {
       // Load Leaderboard Data
       // 1. Get following list
       const following = await database.follows.listFollowing(user.id)
-      const followingIds = following.map(f => f.followee_id)
-      
-      // 2. Add current user to the list
-      const allUserIds = [...followingIds, user.id]
+      // Note: followingIds would be used for batch queries in future
+      const _followingIds = following.map(f => f.followee_id)
+      void _followingIds // suppress unused warning - reserved for batch queries
 
       // 3. Get max weight for each user on this exercise
       // We need to fetch max weight for each user. Since we don't have a batch function for this specific query across users yet,

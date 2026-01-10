@@ -212,15 +212,6 @@ const SPECIFICS_TAGS = [
   'Focus on Form',
 ]
 
-const STEPS: WizardStep[] = [
-  'goal',
-  'muscles',
-  'duration',
-  'equipment',
-  'specifics',
-  'confirm',
-]
-
 export function WorkoutPlanningWizard({
   colors,
   onComplete,
@@ -247,6 +238,7 @@ export function WorkoutPlanningWizard({
   // Load saved preferences on mount
   useEffect(() => {
     loadSavedPreferences()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount
   }, [])
 
   const loadSavedPreferences = async () => {
@@ -714,7 +706,7 @@ export function WorkoutPlanningWizard({
           Equipment
         </Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-          What's available to you right now?
+          What&apos;s available to you right now?
         </Text>
       </View>
       {savedEquipment && (

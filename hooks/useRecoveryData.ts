@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { BODY_PART_TO_DATABASE_MUSCLE, type BodyPartSlug } from '@/lib/body-mapping'
 import { database } from '@/lib/database'
-import { Profile } from '@/types/database.types'
+import { Exercise, Profile, Set } from '@/types/database.types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export type RecoveryStatus = 'not_recovered' | 'recovering' | 'recovered' | 'untrained'
@@ -205,7 +205,15 @@ export function useRecoveryData() {
       }>()
       let mostRecentWorkout: Date | null = null
 
-      data?.forEach((session: any) => {
+      type RecoverySessionResult = {
+        id: string
+        created_at: string
+        workout_exercises?: {
+          exercise?: Pick<Exercise, 'muscle_group' | 'secondary_muscles'>
+          sets?: Pick<Set, 'weight'>[]
+        }[]
+      }
+      ;(data as unknown as RecoverySessionResult[])?.forEach((session) => {
         const sessionDate = new Date(session.created_at)
 
         // Track overall last workout
@@ -216,13 +224,13 @@ export function useRecoveryData() {
         // Group sets by muscle group for this session
         const sessionMuscleData = new Map<string, { sets: number; hadWeight: boolean }>()
 
-        session.workout_exercises?.forEach((we: any) => {
+        session.workout_exercises?.forEach((we) => {
           const primaryMuscle = we.exercise?.muscle_group
           const secondaryMuscles: string[] = we.exercise?.secondary_muscles || []
 
           const sets = we.sets || []
           const setCount = sets.length
-          const hadWeight = sets.some((s: any) => s.weight && s.weight > 0)
+          const hadWeight = sets.some((s) => s.weight && s.weight > 0)
 
           // Track primary muscle group
           if (primaryMuscle) {

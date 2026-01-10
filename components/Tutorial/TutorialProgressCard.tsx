@@ -1,4 +1,3 @@
-import { useTheme } from '@/contexts/theme-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
@@ -15,23 +14,26 @@ import Animated, { FadeIn } from 'react-native-reanimated'
 export const TutorialProgressCard = memo(() => {
   const colors = useThemedColors()
   const router = useRouter()
-  const { isDark } = useTheme()
-  const { tutorialSteps, completedSteps, isTutorialComplete, isTutorialDismissed } = useTutorial()
+  const {
+    tutorialSteps,
+    completedSteps,
+    isTutorialComplete,
+    isTutorialDismissed,
+  } = useTutorial()
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    router.push('/tutorial')
+  }, [router])
 
   // Don't show if dismissed or complete
   if (isTutorialDismissed || isTutorialComplete) return null
 
   const completedCount = completedSteps.size
   const totalSteps = tutorialSteps.length
-  const progressPercent = (completedCount / totalSteps) * 100
 
   // Find current step
   const currentStep = tutorialSteps.find((s) => !s.completed)
-
-  const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    router.push('/tutorial')
-  }, [router])
 
   return (
     <Animated.View entering={FadeIn.duration(300)}>
@@ -42,9 +44,7 @@ export const TutorialProgressCard = memo(() => {
           styles.container,
           {
             backgroundColor: colors.backgroundWhite,
-            borderColor: isTutorialComplete
-              ? '#10B98130'
-              : colors.border,
+            borderColor: isTutorialComplete ? '#10B98130' : colors.border,
           },
         ]}
       >
@@ -56,9 +56,7 @@ export const TutorialProgressCard = memo(() => {
               backgroundColor: isTutorialComplete
                 ? '#10B98115'
                 : colors.backgroundWhite,
-              borderColor: isTutorialComplete
-                ? '#10B981'
-                : colors.primary,
+              borderColor: isTutorialComplete ? '#10B981' : colors.primary,
             },
           ]}
         >

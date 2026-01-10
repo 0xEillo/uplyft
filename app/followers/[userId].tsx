@@ -34,15 +34,6 @@ export default function FollowersScreen() {
   const insets = useSafeAreaInsets()
   const styles = createStyles(colors)
 
-  // Block anonymous users from social features
-  useEffect(() => {
-    if (isAnonymous) {
-      router.replace('/(auth)/create-account')
-    }
-  }, [isAnonymous, router])
-
-  if (isAnonymous) return null
-
   const [followers, setFollowers] = useState<FollowerItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -53,7 +44,7 @@ export default function FollowersScreen() {
 
   const handleBack = useCallback(() => {
     if (returnTo) {
-      router.dismissTo(returnTo as any)
+      router.dismissTo(returnTo as Parameters<typeof router.dismissTo>[0])
     } else {
       router.back()
     }
@@ -64,16 +55,13 @@ export default function FollowersScreen() {
 
     try {
       setIsLoading(true)
-      const data = await database.follows.listFollowers(userId, 100) // Fetching more to handle client-side search better initially
+      const data = await database.follows.listFollowers(userId, 100)
 
-      // Normalize data: filter out any missing follower profiles if necessary
       const validFollowers = data.filter((item) => item.follower)
       setFollowers(validFollowers)
 
-      // Load relationship statuses if logged in
       if (currentUser) {
         const followerIds = validFollowers.map((f) => f.follower.id)
-        // Filter out own ID from status check
         const idsToCheck = followerIds.filter((id) => id !== currentUser.id)
 
         if (idsToCheck.length > 0) {
@@ -95,10 +83,6 @@ export default function FollowersScreen() {
       setIsRefreshing(false)
     }
   }, [userId, currentUser])
-
-  useEffect(() => {
-    loadFollowers()
-  }, [loadFollowers])
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true)
@@ -181,6 +165,19 @@ export default function FollowersScreen() {
     },
     [currentUser, relationships, router],
   )
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
+
+  useEffect(() => {
+    loadFollowers()
+  }, [loadFollowers])
+
+  if (isAnonymous) return null
 
   const filteredFollowers = followers.filter((item) => {
     if (!searchQuery) return true

@@ -3,21 +3,71 @@ import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
   Exercise,
+  ExploreProgram,
+  ExploreProgramRoutine,
+  ExploreRoutine,
+  ExploreRoutineExercise,
   Follow,
   FollowRelationshipStatus,
   FollowRequest,
   ParsedWorkout,
   Profile,
+  Set,
   WorkoutComment,
   WorkoutLike,
   WorkoutRoutine,
+  WorkoutRoutineExercise,
   WorkoutRoutineWithDetails,
   WorkoutSession,
   WorkoutSessionWithDetails,
   WorkoutSocialStats,
 } from '@/types/database.types'
+import type { BodyLogEntryWithImages, BodyLogImage } from '@/lib/body-log/metadata'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+
+// Local types for Supabase query results
+type WorkoutExerciseQueryResult = {
+  exercise: Exercise | null
+  sets?: Set[]
+}
+
+type SessionWithExercisesQueryResult = {
+  id: string
+  created_at: string
+  workout_exercises?: WorkoutExerciseQueryResult[]
+}
+
+type ExploreProgramQueryResult = ExploreProgram & {
+  explore_program_routines?: { routine_id: string }[]
+}
+
+type ExploreProgramRoutineQueryResult = ExploreProgramRoutine & {
+  routine: (ExploreRoutine & {
+    explore_routine_exercises?: (ExploreRoutineExercise & {
+      exercise: Pick<Exercise, 'id' | 'name' | 'target_muscles' | 'gif_url'>
+    })[]
+  }) | null
+}
+
+type ExploreRoutineQueryResult = ExploreRoutine & {
+  explore_routine_exercises?: (ExploreRoutineExercise & {
+    exercise: Exercise
+  })[]
+}
+
+// Body log entry from Supabase before transformation
+type BodyLogEntryQueryResult = {
+  id: string
+  user_id: string
+  created_at: string
+  weight_kg: number | null
+  body_fat_percentage: number | null
+  bmi: number | null
+  muscle_mass_kg?: number | null
+  analysis_summary: string | null
+  body_log_images?: BodyLogImage[]
+}
 
 type FollowActionStatus = 'following' | 'request_pending' | 'already_following'
 type FollowRequestDecision = 'approve' | 'decline'
@@ -810,11 +860,12 @@ export const database = {
       const recentExercises: Exercise[] = []
 
       // Iterate through sessions (newest first)
-      sessions?.forEach((session: any) => {
+      type SessionResult = { workout_exercises?: { exercise?: Exercise }[] }
+      ;(sessions as unknown as SessionResult[])?.forEach((session) => {
         // Sort exercises in session by created_at (though usually consistent)
         const sessionExercises = session.workout_exercises || []
 
-        sessionExercises.forEach((we: any) => {
+        sessionExercises.forEach((we) => {
           if (we.exercise && !exerciseMap.has(we.exercise.id)) {
             exerciseMap.set(we.exercise.id, we.exercise)
             recentExercises.push(we.exercise)
@@ -847,8 +898,9 @@ export const database = {
 
       const muscleCounts = new Map<string, number>()
 
-      sessions?.forEach((session: any) => {
-        session.workout_exercises?.forEach((we: any) => {
+      type MuscleQueryResult = { workout_exercises?: { exercise?: { muscle_group: string } }[] }
+      ;(sessions as unknown as MuscleQueryResult[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
           const muscle = we.exercise?.muscle_group
           if (muscle) {
             muscleCounts.set(muscle, (muscleCounts.get(muscle) || 0) + 1)
@@ -894,9 +946,9 @@ export const database = {
 
         // Extract unique exercises
         const exerciseMap = new Map<string, Exercise>()
-        const typedSessions = sessions as any
-        typedSessions?.forEach((session: any) => {
-          session.workout_exercises?.forEach((we: any) => {
+        type ExerciseSessionResult = { workout_exercises?: { exercise?: Exercise }[] }
+        ;(sessions as unknown as ExerciseSessionResult[])?.forEach((session) => {
+          session.workout_exercises?.forEach((we) => {
             const exercise = we.exercise
             if (exercise && !exerciseMap.has(exercise.id)) {
               exerciseMap.set(exercise.id, exercise)
@@ -1963,12 +2015,19 @@ export const database = {
       // Calculate volume per muscle group
       const muscleGroupVolumes = new Map<string, number>()
 
-      ;(data as any)?.forEach((session: any) => {
-        session.workout_exercises?.forEach((we: any) => {
+      type VolumeSessionResult = {
+        workout_exercises?: {
+          exercise?: { muscle_group: string }
+          sets?: { reps: number | null }[]
+        }[]
+      }
+
+      ;(data as unknown as VolumeSessionResult[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
           const muscleGroup = we.exercise?.muscle_group
           if (!muscleGroup) return
 
-          we.sets?.forEach((set: any) => {
+          we.sets?.forEach((set) => {
             const reps = set.reps || 0
             if (!reps) return
 
@@ -2032,7 +2091,16 @@ export const database = {
       // Group by week (Sunday start)
       const weeklyData = new Map<string, Map<string, number>>()
 
-      ;(data as any)?.forEach((session: any) => {
+      type WeeklyVolumeSession = {
+        id: string
+        created_at: string
+        workout_exercises?: {
+          exercise?: { muscle_group: string }
+          sets?: { reps: number | null }[]
+        }[]
+      }
+
+      ;(data as unknown as WeeklyVolumeSession[])?.forEach((session) => {
         const sessionDate = new Date(session.created_at)
 
         // Get Sunday of the week
@@ -2048,11 +2116,11 @@ export const database = {
 
         const weekMuscleGroups = weeklyData.get(weekKey)!
 
-        session.workout_exercises?.forEach((we: any) => {
+        session.workout_exercises?.forEach((we) => {
           const muscleGroup = we.exercise?.muscle_group
           if (!muscleGroup) return
 
-          we.sets?.forEach((set: any) => {
+          we.sets?.forEach((set) => {
             if (set.reps) {
               const currentSets = weekMuscleGroups.get(muscleGroup) || 0
               weekMuscleGroups.set(muscleGroup, currentSets + 1)
@@ -2099,9 +2167,16 @@ export const database = {
       let totalSets = 0
       const totalWorkouts = data?.length || 0
 
-      ;(data as any)?.forEach((session: any) => {
-        session.workout_exercises?.forEach((we: any) => {
-          we.sets?.forEach((set: any) => {
+      type SessionStatsResult = {
+        id: string
+        workout_exercises?: {
+          sets?: { reps: number | null }[]
+        }[]
+      }
+
+      ;(data as unknown as SessionStatsResult[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          we.sets?.forEach((set) => {
             if (set.reps) {
               totalSets++
             }
@@ -2140,11 +2215,20 @@ export const database = {
         { name: string; muscleGroup: string | null; max1RM: number; gifUrl: string | null }
       >()
 
-      ;(data as any)?.forEach((session: any) => {
-        session.workout_exercises?.forEach((we: any) => {
-          if (!we.exercise) return
+      type Max1RMSessionResult = {
+        workout_exercises?: {
+          exercise_id: string
+          exercise?: { id: string; name: string; muscle_group: string; gif_url: string | null }
+          sets?: { reps: number | null; weight: number | null }[]
+        }[]
+      }
 
-          we.sets?.forEach((set: any) => {
+      ;(data as unknown as Max1RMSessionResult[])?.forEach((session) => {
+        session.workout_exercises?.forEach((we) => {
+          const exercise = we.exercise
+          if (!exercise) return
+
+          we.sets?.forEach((set) => {
             if (set.reps && set.weight) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
               const estimated1RM = set.weight * (1 + set.reps / 30)
@@ -2152,10 +2236,10 @@ export const database = {
               const current = exerciseMax1RMs.get(we.exercise_id)
               if (!current || estimated1RM > current.max1RM) {
                 exerciseMax1RMs.set(we.exercise_id, {
-                  name: we.exercise.name,
-                  muscleGroup: we.exercise.muscle_group,
+                  name: exercise.name,
+                  muscleGroup: exercise.muscle_group,
                   max1RM: Math.round(estimated1RM),
-                  gifUrl: we.exercise.gif_url,
+                  gifUrl: exercise.gif_url,
                 })
               }
             }
@@ -2712,8 +2796,15 @@ export const database = {
       if (error) throw error
 
       // Transform body_log_images to images for consistency
-      const transformedData = data?.map((entry: any) => ({
-        ...entry,
+      const transformedData = data?.map((entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
+        id: entry.id,
+        user_id: entry.user_id,
+        created_at: entry.created_at,
+        weight_kg: entry.weight_kg,
+        body_fat_percentage: entry.body_fat_percentage,
+        bmi: entry.bmi,
+        muscle_mass_kg: entry.muscle_mass_kg,
+        analysis_summary: entry.analysis_summary,
         images: entry.body_log_images || [],
       }))
 
@@ -2729,7 +2820,7 @@ export const database = {
       page: number = 0,
       pageSize: number = 40,
     ): Promise<{
-      entries: any[]
+      entries: BodyLogEntryWithImages[]
       hasMore: boolean
     }> {
       const from = page * pageSize
@@ -2765,8 +2856,15 @@ export const database = {
       if (error) throw error
 
       // Transform body_log_images to images for consistency
-      const transformedData = (data ?? []).map((entry: any) => ({
-        ...entry,
+      const transformedData = (data ?? []).map((entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
+        id: entry.id,
+        user_id: entry.user_id,
+        created_at: entry.created_at,
+        weight_kg: entry.weight_kg,
+        body_fat_percentage: entry.body_fat_percentage,
+        bmi: entry.bmi,
+        muscle_mass_kg: entry.muscle_mass_kg,
+        analysis_summary: entry.analysis_summary,
         images: entry.body_log_images || [],
       }))
 
@@ -2921,7 +3019,7 @@ export const database = {
       if (exercisesError) throw exercisesError
 
       const insertedExerciseByOrder = new Map<number, string>()
-      insertedExercises?.forEach((exercise: any) => {
+      insertedExercises?.forEach((exercise: WorkoutRoutineExercise) => {
         if (
           typeof exercise.order_index === 'number' &&
           !Number.isNaN(exercise.order_index)
@@ -3200,7 +3298,7 @@ export const database = {
 
       if (error) throw error
 
-      return (data || []).map((program: any) => ({
+      return (data || []).map((program: ExploreProgramQueryResult) => ({
         ...program,
         routine_count: program.explore_program_routines?.length || 0,
         routines: [],
@@ -3238,14 +3336,14 @@ export const database = {
       if (error) throw error
 
       const routines = (data.explore_program_routines || [])
-        .sort((a: any, b: any) => a.display_order - b.display_order)
-        .map((pr: any) => {
+        .sort((a: ExploreProgramRoutineQueryResult, b: ExploreProgramRoutineQueryResult) => a.display_order - b.display_order)
+        .map((pr: ExploreProgramRoutineQueryResult) => {
           const routine = pr.routine
           if (!routine) return null
           
           // Sort exercises by order_index
           const exercises = (routine.explore_routine_exercises || [])
-            .sort((a: any, b: any) => a.order_index - b.order_index)
+            .sort((a, b) => a.order_index - b.order_index)
             
           return {
             ...routine,
@@ -3304,11 +3402,12 @@ export const database = {
 
       if (error) throw error
 
-      const exercises = (data.explore_routine_exercises || [])
-        .sort((a: any, b: any) => a.order_index - b.order_index)
+      const typedData = data as ExploreRoutineQueryResult
+      const exercises = (typedData.explore_routine_exercises || [])
+        .sort((a, b) => a.order_index - b.order_index)
 
       return {
-        ...data,
+        ...typedData,
         exercises,
       }
     },
@@ -3335,7 +3434,8 @@ export const database = {
 
       // Insert routine exercises
       if (exploreRoutine.exercises && exploreRoutine.exercises.length > 0) {
-        const routineExercises = exploreRoutine.exercises.map((ex: any) => ({
+        type ExploreExerciseWithExercise = ExploreRoutineExercise & { exercise: Exercise }
+        const routineExercises = exploreRoutine.exercises.map((ex: ExploreExerciseWithExercise) => ({
           routine_id: routine.id,
           exercise_id: ex.exercise_id,
           order_index: ex.order_index,
@@ -3350,10 +3450,15 @@ export const database = {
         if (exercisesError) throw exercisesError
 
         // Create sets for each exercise
-        const routineSets: any[] = []
-        exploreRoutine.exercises.forEach((ex: any, exIndex: number) => {
+        const routineSets: {
+          routine_exercise_id: string
+          set_number: number
+          reps_min: number | null
+          reps_max: number | null
+        }[] = []
+        exploreRoutine.exercises.forEach((ex: ExploreExerciseWithExercise) => {
           const insertedEx = insertedExercises?.find(
-            (ie: any) => ie.order_index === ex.order_index
+            (ie: WorkoutRoutineExercise) => ie.order_index === ex.order_index
           )
           if (!insertedEx) return
 

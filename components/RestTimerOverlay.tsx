@@ -112,7 +112,7 @@ export function RestTimerOverlay({
         if (saved) {
           setSelectedDuration(parseInt(saved, 10))
         }
-      } catch (e) {
+      } catch {
         // Ignore error
       }
     }
@@ -124,7 +124,7 @@ export function RestTimerOverlay({
     const saveDuration = async () => {
       try {
         await AsyncStorage.setItem(STORAGE_KEY, selectedDuration.toString())
-      } catch (e) {
+      } catch {
         // Ignore error
       }
     }

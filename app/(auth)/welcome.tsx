@@ -119,7 +119,7 @@ export default function WelcomeScreen() {
             <View style={styles.textContainer}>
               <Text style={styles.title}>Your AI personal trainer.</Text>
               <Text style={styles.subtitle}>
-                Champions aren't born. They're trained.
+                Champions aren&apos;t born. They&apos;re trained.
               </Text>
             </View>
 

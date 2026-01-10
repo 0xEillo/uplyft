@@ -83,6 +83,7 @@ export default function RoutineDetailScreen() {
 
   useEffect(() => {
     loadRoutine()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRoutine changes don't need to trigger refetch
   }, [routineId, user])
 
   const loadRoutine = async () => {

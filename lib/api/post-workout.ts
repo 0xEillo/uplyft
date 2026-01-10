@@ -84,7 +84,7 @@ export async function postWorkout(
     })
   }
 
-  let body: any = null
+  let body: ErrorPayload | null = null
   try {
     body = await response.json()
   } catch {
@@ -97,7 +97,7 @@ export async function postWorkout(
       code: 'UNKNOWN' as ApiErrorCode,
       httpStatus: response.status,
     }
-    const shape = toApiErrorShape(body as ErrorPayload, fallback)
+    const shape = toApiErrorShape(body ?? {}, fallback)
     shape.httpStatus = response.status
     throw new ApiError(shape)
   }

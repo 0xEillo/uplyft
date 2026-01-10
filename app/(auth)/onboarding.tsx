@@ -41,6 +41,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextStyle,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -66,6 +67,29 @@ type OnboardingData = {
   equipment: string[]
   bio: string
   coach: string
+}
+
+// Colors type for themed colors
+type ThemedColors = ReturnType<typeof useThemedColors>
+
+// Step content props
+interface StepContentProps {
+  data: OnboardingData
+  colors: ThemedColors
+  styles: ReturnType<typeof createStyles>
+}
+
+interface ProcessingStepProps extends StepContentProps {
+  setStep: (step: number) => void
+}
+
+interface CommitmentPledgeStepProps extends StepContentProps {
+  insets: { top: number; bottom: number; left: number; right: number }
+  onHoldingChange: (holding: boolean) => void
+}
+
+interface FinalPlanStepProps extends StepContentProps {
+  weightUnit: string
 }
 
 // Map step numbers to their human-readable names
@@ -96,7 +120,7 @@ const FadeInWords = ({
   delay = 150,
 }: {
   text: string
-  style: any
+  style: TextStyle
   delay?: number
 }) => {
   const words = text.split(' ')
@@ -119,6 +143,7 @@ const FadeInWords = ({
     }, delay)
 
     return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
   }, [])
 
   return (
@@ -224,6 +249,7 @@ const AnimatedChatMockup = ({
     })
 
     return () => timeouts.forEach((t) => clearTimeout(t))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
   }, [])
 
   return (
@@ -506,7 +532,11 @@ const chatMockupStyles = StyleSheet.create({
   },
 })
 
-const HabitReinforcementStepContent = ({ data, colors, styles }: any) => {
+const HabitReinforcementStepContent = ({
+  data,
+  colors,
+  styles,
+}: StepContentProps) => {
   useEffect(() => {
     const triggerReview = async () => {
       try {
@@ -563,7 +593,12 @@ const HabitReinforcementStepContent = ({ data, colors, styles }: any) => {
   )
 }
 
-const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
+const ProcessingStepContent = ({
+  data,
+  setStep,
+  colors,
+  styles,
+}: ProcessingStepProps) => {
   const [progress1, setProgress1] = useState(0)
   const [progress2, setProgress2] = useState(0)
   const [progress3, setProgress3] = useState(0)
@@ -577,16 +612,18 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
       text:
         "I've seen more progress in the last 6 months with Rep AI than I did in the previous 2 years on my own. The tailored workouts are exactly what I needed.",
       rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+      avatar:
+        'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
     },
     {
       id: 2,
       name: 'Sarah L.',
       time: '3 months training with Rep AI',
       text:
-        "Finally an app that actually adapts to my progress! Down 12lbs and feeling stronger than ever. The AI coach feels like having a real trainer in my pocket.",
+        'Finally an app that actually adapts to my progress! Down 12lbs and feeling stronger than ever. The AI coach feels like having a real trainer in my pocket.',
       rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+      avatar:
+        'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
     },
     {
       id: 3,
@@ -595,7 +632,8 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
       text:
         "The workout variety is insane and the UI is so sleek. Best fitness investment I've made this year. I actually look forward to my sessions now!",
       rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&h=300&q=80',
+      avatar:
+        'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&h=300&q=80',
     },
     {
       id: 4,
@@ -604,7 +642,8 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
       text:
         "The AI coaching is a game changer for my busy schedule. I don't have to think about what to do next, I just follow the plan and get results!",
       rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
+      avatar:
+        'https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
     },
   ]
 
@@ -667,12 +706,14 @@ const ProcessingStepContent = ({ data, setStep, colors, styles }: any) => {
     }, 2500)
 
     return () => clearInterval(tTestimonial)
-  }, []) // No dependencies so it never resets
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
+  }, [])
 
   useEffect(() => {
     if (progress3 >= 100) {
       setTimeout(() => setStep(17), 400)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setStep is stable from parent
   }, [progress3])
 
   const mainGoalLabel =
@@ -826,7 +867,10 @@ const CommitmentStepContent = ({
   styles,
   insets,
   onHoldingChange,
-}: any) => {
+}: CommitmentPledgeStepProps & {
+  setStep: (step: number) => void
+  onNext: () => void
+}) => {
   const [holding, setHolding] = useState(false)
   const [isCommitted, setIsCommitted] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -848,6 +892,7 @@ const CommitmentStepContent = ({
         useNativeDriver: true,
       }),
     ).start()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
   }, [])
 
   useEffect(() => {
@@ -1045,7 +1090,13 @@ const CommitmentStepContent = ({
                 justifyContent: 'center',
               }}
             >
-              <View style={{ alignItems: 'center', width: '100%', paddingHorizontal: 40 }}>
+              <View
+                style={{
+                  alignItems: 'center',
+                  width: '100%',
+                  paddingHorizontal: 40,
+                }}
+              >
                 <Animated.View
                   style={{
                     marginBottom: 40,
@@ -1054,7 +1105,9 @@ const CommitmentStepContent = ({
                     borderRadius: 70,
                     borderWidth: isCommitted ? 0 : 4,
                     borderColor: 'rgba(255,255,255,0.4)',
-                    backgroundColor: isCommitted ? 'rgba(255,255,255,0.2)' : 'transparent',
+                    backgroundColor: isCommitted
+                      ? 'rgba(255,255,255,0.2)'
+                      : 'transparent',
                     justifyContent: 'center',
                     alignItems: 'center',
                     transform: [{ scale: scaleAnim }],
@@ -1235,7 +1288,9 @@ const CommitmentStepContent = ({
           ]}
         >
           {!isCommitted && !holding && (
-            <View style={{ alignItems: 'center', width: '100%', marginBottom: 20 }}>
+            <View
+              style={{ alignItems: 'center', width: '100%', marginBottom: 20 }}
+            >
               <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                 <TouchableOpacity
                   activeOpacity={1}
@@ -1297,7 +1352,12 @@ const CommitmentStepContent = ({
   )
 }
 
-const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
+const FinalPlanStepContent = ({
+  data,
+  colors,
+  styles,
+  weightUnit,
+}: FinalPlanStepProps) => {
   const mainGoal =
     GOALS.find((g) => g.value === data.goal[0])?.label || 'Gain Muscle'
 
@@ -1343,7 +1403,7 @@ const FinalPlanStepContent = ({ data, colors, styles, weightUnit }: any) => {
       </View>
 
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryCardTitle}>It's all about you</Text>
+        <Text style={styles.summaryCardTitle}>It&apos;s all about you</Text>
         <View style={styles.summaryGrid}>
           {stats.map((stat, i) => (
             <View key={i} style={styles.summaryItem}>
@@ -1565,7 +1625,7 @@ export default function OnboardingScreen() {
         if (prefsJson) {
           try {
             prefs = { ...prefs, ...JSON.parse(prefsJson) }
-          } catch (e) {}
+          } catch {}
         }
         AsyncStorage.setItem(
           WORKOUT_PLANNING_PREFS_KEY,
@@ -1578,13 +1638,16 @@ export default function OnboardingScreen() {
     // This will be used by the workout wizard to pre-fill the equipment setting
     if (step === 11 && data.equipment.length > 0) {
       let equipmentType = 'home_minimal'
-      
+
       if (data.equipment.includes('full_gym')) {
         equipmentType = 'full_gym'
       } else if (data.equipment.includes('machines')) {
         // Machines implies gym access
         equipmentType = 'full_gym'
-      } else if (data.equipment.includes('barbells') && data.equipment.includes('dumbbells')) {
+      } else if (
+        data.equipment.includes('barbells') &&
+        data.equipment.includes('dumbbells')
+      ) {
         equipmentType = 'full_gym'
       } else if (data.equipment.includes('barbells')) {
         equipmentType = 'barbell_only'
@@ -1596,7 +1659,7 @@ export default function OnboardingScreen() {
       } else if (data.equipment.includes('none')) {
         equipmentType = 'bodyweight'
       }
-      
+
       AsyncStorage.setItem(EQUIPMENT_PREF_KEY, JSON.stringify(equipmentType))
     }
 
@@ -1657,7 +1720,10 @@ export default function OnboardingScreen() {
 
           if (currentUserId) {
             // Ensure we have a valid base for the user tag
-            const cleanName = (data.name || 'Guest').replace(/[^a-zA-Z0-9]/g, '')
+            const cleanName = (data.name || 'Guest').replace(
+              /[^a-zA-Z0-9]/g,
+              '',
+            )
             const tagBase = cleanName.length >= 3 ? data.name : 'Athlete'
 
             const userTag = await database.profiles.generateUniqueUserTag(
@@ -2011,7 +2077,10 @@ export default function OnboardingScreen() {
                         height_cm: isMale ? '178' : '163',
                         height_feet: isMale ? '5' : '5',
                         height_inches: isMale ? '10' : '4',
-                        weight_kg: weightUnit === 'kg' ? weightKg.toString() : weightLb.toString(),
+                        weight_kg:
+                          weightUnit === 'kg'
+                            ? weightKg.toString()
+                            : weightLb.toString(),
                       })
                       setTimeout(() => setStep(step + 1), 400)
                     }}
@@ -2169,41 +2238,52 @@ export default function OnboardingScreen() {
               <View style={styles.optionsContainer}>
                 {EQUIPMENT_OPTIONS.map((item) => {
                   const isSelected = data.equipment.includes(item.value)
-                  
+
                   return (
                     <HapticButton
                       key={item.value}
-                      style={[
-                        styles.card,
-                        isSelected && styles.cardSelected,
-                      ]}
+                      style={[styles.card, isSelected && styles.cardSelected]}
                       onPress={() => {
                         // If selecting equipment, remove "none" if present
-                        const withoutNone = data.equipment.filter(e => e !== 'none')
+                        const withoutNone = data.equipment.filter(
+                          (e) => e !== 'none',
+                        )
                         if (withoutNone.includes(item.value)) {
                           // Deselect
-                          setData({ ...data, equipment: withoutNone.filter(e => e !== item.value) })
+                          setData({
+                            ...data,
+                            equipment: withoutNone.filter(
+                              (e) => e !== item.value,
+                            ),
+                          })
                         } else {
                           // Select
-                          setData({ ...data, equipment: [...withoutNone, item.value] })
+                          setData({
+                            ...data,
+                            equipment: [...withoutNone, item.value],
+                          })
                         }
                       }}
                       hapticStyle="light"
                     >
                       <View style={styles.cardContent}>
                         <Text style={styles.cardLabel}>{item.label}</Text>
-                        <View style={[
-                          styles.radioButton,
-                          isSelected && styles.radioButtonSelected,
-                        ]}>
-                          {isSelected && <View style={styles.radioButtonInner} />}
+                        <View
+                          style={[
+                            styles.radioButton,
+                            isSelected && styles.radioButtonSelected,
+                          ]}
+                        >
+                          {isSelected && (
+                            <View style={styles.radioButtonInner} />
+                          )}
                         </View>
                       </View>
                     </HapticButton>
                   )
                 })}
               </View>
-              
+
               {/* None of the above - simple text option */}
               <HapticButton
                 style={styles.equipmentNoneOption}
@@ -2212,11 +2292,16 @@ export default function OnboardingScreen() {
                 }}
                 hapticStyle="light"
               >
-                <View style={[
-                  styles.radioButton,
-                  data.equipment.includes('none') && styles.radioButtonSelected,
-                ]}>
-                  {data.equipment.includes('none') && <View style={styles.radioButtonInner} />}
+                <View
+                  style={[
+                    styles.radioButton,
+                    data.equipment.includes('none') &&
+                      styles.radioButtonSelected,
+                  ]}
+                >
+                  {data.equipment.includes('none') && (
+                    <View style={styles.radioButtonInner} />
+                  )}
                 </View>
                 <Text style={styles.equipmentNoneText}>None of the above</Text>
               </HapticButton>
@@ -2275,7 +2360,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.tailoredTitle}>
-                I'll create workouts that will help you{' '}
+                I&apos;ll create workouts that will help you{' '}
                 <Text
                   style={{ color: currentGoalInfo.color, fontStyle: 'italic' }}
                 >
@@ -2383,7 +2468,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.statsTitle}>
-                Perfect! Let's just confirm your stats, {data.name}.
+                Perfect! Let&apos;s just confirm your stats, {data.name}.
               </Text>
             </View>
 
@@ -2463,7 +2548,7 @@ export default function OnboardingScreen() {
           } else if (gainPercent <= 8) {
             feedbackTitle = `Challenging goal: Gain ${gainPercent}%`
             feedbackDesc =
-              "This will take serious dedication. Expect this to take 6+ months with optimal training and nutrition."
+              'This will take serious dedication. Expect this to take 6+ months with optimal training and nutrition.'
             feedbackColor = '#F97316' // Orange
           } else {
             feedbackTitle = `Very ambitious: Gain ${gainPercent}%`
@@ -2684,8 +2769,6 @@ export default function OnboardingScreen() {
           intensity: 1,
         }))
 
-        const selectableGroups = Object.keys(MUSCLE_GROUP_MAPPING)
-
         const toggleArea = (groupKey: string) => {
           const slugsToToggle = MUSCLE_GROUP_MAPPING[groupKey].slugs
           setFocusAreas((prev) => {
@@ -2716,18 +2799,6 @@ export default function OnboardingScreen() {
         }
 
         const isFullBody = focusAreas.length >= allMuscleSlugs.length
-
-        // Define button order to match the screenshot layout
-        const buttonOrder = [
-          'back',
-          'arms',
-          'shoulders',
-          'abs',
-          'chest',
-          'legs',
-          'butt',
-          'fullBody',
-        ]
 
         return (
           <View style={styles.stepContainer}>
@@ -2895,7 +2966,7 @@ export default function OnboardingScreen() {
             data={data}
             colors={colors}
             styles={styles}
-            onNext={handleNext}
+            weightUnit={weightUnit}
           />
         )
       }
@@ -3147,7 +3218,8 @@ export default function OnboardingScreen() {
               left: 0,
               right: 0,
               zIndex: 1000,
-              paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0) + 20,
+              paddingTop:
+                Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0) + 20,
               backgroundColor: 'transparent',
             },
           ]}
@@ -3158,7 +3230,7 @@ export default function OnboardingScreen() {
               size={24}
               color={
                 step === 18
-                  ? isCommitmentHolding || step === 18 && false // Logic for transition could go here, for now stick to consistency
+                  ? isCommitmentHolding || (step === 18 && false) // Logic for transition could go here, for now stick to consistency
                     ? '#fff'
                     : colors.text
                   : colors.text
@@ -3195,7 +3267,9 @@ export default function OnboardingScreen() {
             contentContainerStyle={[
               styles.contentContainer,
               (step === 16 || step === 17) && { paddingBottom: 0 },
-              !hasAutoSwipe() && step !== 16 && step !== 17 && { paddingBottom: 140 },
+              !hasAutoSwipe() &&
+                step !== 16 &&
+                step !== 17 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"

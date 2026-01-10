@@ -44,8 +44,6 @@ const LEVEL_COLORS: Record<StrengthLevel, string> = {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
-const CARD_WIDTH = SCREEN_WIDTH * 0.85
-const SPACING = (SCREEN_WIDTH - CARD_WIDTH) / 2
 
 export function LifterLevelsSheet({
   isVisible,
@@ -91,6 +89,7 @@ export function LifterLevelsSheet({
       fadeAnim.setValue(0)
       slideAnim.setValue(50)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs
   }, [isVisible, currentLevel])
 
   const getCurrentLevelIndex = () => LEVEL_ORDER.indexOf(currentLevel)
@@ -229,8 +228,7 @@ export function LifterLevelsSheet({
 
           {/* Indicators */}
           <View style={styles.indicators}>
-            {LEVEL_ORDER.map((level, index) => {
-              const isActive = false // We'd need state to track scroll position for this, keep simple for now
+            {LEVEL_ORDER.map((level) => {
               const isPassed = !isLocked(level)
 
               return (
@@ -253,7 +251,7 @@ export function LifterLevelsSheet({
   )
 }
 
-const createStyles = (colors: any, insets: any) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top: number; bottom: number }) =>
   StyleSheet.create({
     container: {
       flex: 1,

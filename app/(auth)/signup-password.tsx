@@ -28,7 +28,7 @@ type OnboardingData = {
   weight_kg: number | null
   age: number | null
   goal: Goal[]
-  commitment: string | null
+  commitment: string[] | null
   bio: string | null
 }
 
@@ -95,14 +95,14 @@ export default function SignupPasswordScreen() {
         }
       }
 
-      // Navigate to congratulations if we have onboarding data
+      // Navigate to trial offer after signup if we have onboarding data
       if (onboardingData) {
         router.replace({
-          pathname: '/(auth)/congratulations',
+          pathname: '/(auth)/trial-offer',
           params: {
             onboarding_data: params.onboarding_data as string,
           },
-        })
+        } as Parameters<typeof router.replace>[0])
       } else {
         Alert.alert(
           'Success',

@@ -79,10 +79,8 @@ export default function EditWorkoutScreen() {
   const [editedExercises, setEditedExercises] = useState<
     Record<string, string>
   >({}) // workoutExerciseId -> new exerciseId
-  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
-    null,
-  )
-  const [isAddingExercise, setIsAddingExercise] = useState(false)
+  const [, setEditingExerciseId] = useState<string | null>(null)
+  const [, setIsAddingExercise] = useState(false)
   const { registerCallback } = useExerciseSelection()
 
   // Image management states

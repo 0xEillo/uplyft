@@ -102,13 +102,6 @@ export default function SelectRoutineScreen() {
     const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
     const tintColor = routine.tint_color || tintColors[index % tintColors.length]
 
-    const exerciseCount = routine.workout_routine_exercises?.length || 0
-    const setCount =
-      routine.workout_routine_exercises?.reduce(
-        (sum, ex) => sum + (ex.sets?.length || 0),
-        0,
-      ) || 0
-
     const getRoutineImage = () => {
       const imagePath = routine.image_path || `${routine.name}.png`
       return getRoutineImageUrl(imagePath)

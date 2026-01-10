@@ -47,7 +47,6 @@ export function RecoveryBodyView() {
     isLoading,
     refreshing,
     onRefresh,
-    getRecoveryForBodyPart,
   } = useRecoveryData()
 
   const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
@@ -63,11 +62,11 @@ export function RecoveryBodyView() {
 
   // Generate body data for highlighting
   const bodyData = useMemo(() => {
-    const data: Array<{
+    const data: {
       slug: BodyPartSlug
       intensity: number
       side?: 'left' | 'right'
-    }> = []
+    }[] = []
 
     // Iterate over all supported body part slugs
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(([slug, dbMuscleName]) => {

@@ -27,7 +27,7 @@ export default function WorkoutCalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const [isLoading, setIsLoading] = useState(true)
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate] = useState(new Date())
   const [shouldExit, setShouldExit] = useState(false)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -58,7 +58,8 @@ export default function WorkoutCalendarScreen() {
     } finally {
       setIsLoading(false)
     }
-  }, [user?.id, currentDate])
+     
+  }, [user?.id])
 
   useEffect(() => {
     loadWorkoutDates()

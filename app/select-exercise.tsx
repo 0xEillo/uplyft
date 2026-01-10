@@ -8,10 +8,7 @@ import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { BodyPartSlug } from '@/lib/body-mapping'
-import {
-  fuzzySearchExercises,
-  hasExactOrFuzzyMatch,
-} from '@/lib/utils/fuzzy-search'
+import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
@@ -346,11 +343,6 @@ export default function SelectExerciseScreen() {
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
   }, [trimmedQuery, selectedMuscleGroups, selectedEquipment])
 
-  const hasExactMatch = useMemo(() => {
-    if (!trimmedQuery) return false
-    return hasExactOrFuzzyMatch(exercises, trimmedQuery)
-  }, [exercises, trimmedQuery])
-
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {
       return hasFilters
@@ -565,13 +557,8 @@ export default function SelectExerciseScreen() {
         {allExercisesHeader}
       </View>
     )
+     
   }, [
-    trimmedQuery,
-    hasExactMatch,
-    isLoading,
-    colors,
-    handleCreateExercise,
-    isProMember,
     shouldShowRecent,
     recentExercises,
     currentExerciseName,
@@ -580,6 +567,7 @@ export default function SelectExerciseScreen() {
     handleViewExercise,
     viewMode,
     toggleViewMode,
+    colors,
   ])
 
   // Empty state component
@@ -593,7 +581,8 @@ export default function SelectExerciseScreen() {
         description={emptyStateText}
       />
     )
-  }, [isLoading, colors, emptyStateText])
+     
+  }, [isLoading, emptyStateText])
 
   return (
     <SlideInView
@@ -752,11 +741,11 @@ export default function SelectExerciseScreen() {
 
         {/* Exercise List/Grid */}
         <View style={styles.listContainer}>
-          <FlashList
+          <FlashList<Exercise>
             ref={listRef}
-            key={viewMode} // Forces re-render when changing columns
+            key={viewMode}
             data={filteredExercises}
-            extraData={[searchQuery, selectedIds.size, isLoading]} // Forces re-render on these state changes
+            extraData={[searchQuery, selectedIds.size, isLoading]}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             numColumns={viewMode === 'grid' ? 2 : 1}
@@ -766,7 +755,7 @@ export default function SelectExerciseScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentContainerStyle={{
-              paddingBottom: keyboardHeight + 100, // Extra padding for FAB
+              paddingBottom: keyboardHeight + 100,
               paddingHorizontal: 16,
             }}
           />

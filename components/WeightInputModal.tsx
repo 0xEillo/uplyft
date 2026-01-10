@@ -4,14 +4,14 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useState } from 'react'
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 const WEIGHT_UNITS: WeightUnit[] = ['kg', 'lb']
@@ -30,7 +30,7 @@ export function WeightInputModal({
   initialValue,
 }: WeightInputModalProps) {
   const colors = useThemedColors()
-  const { weightUnit, setWeightUnit, convertInputToKg, formatWeight } = useUnit()
+  const { weightUnit, setWeightUnit, convertInputToKg } = useUnit()
 
   const [weightInput, setWeightInput] = useState(
     initialValue !== null && initialValue !== undefined

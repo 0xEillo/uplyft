@@ -27,7 +27,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   FlatList,
   Image,
   StyleSheet,
@@ -36,8 +35,6 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { width } = Dimensions.get('window')
 
 // Helper function to determine badge size based on text fontSize
 const getBadgeSizeFromFontSize = (
@@ -404,6 +401,7 @@ export default function ProfileScreen() {
         onPress={() => router.push('/(tabs)/create-post')}
       />
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
   }, [isLoading, colors, styles])
 
   const navbarBgColor = scrollY.interpolate({

@@ -116,7 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!existingProfile) {
       const baseTag = 'guest' + data.user.id.replace(/-/g, '').substring(0, 8)
-      const profileData: any = {
+      const profileData: {
+        id: string
+        user_tag: string
+        display_name: string
+        is_guest?: boolean
+      } = {
         id: data.user.id,
         user_tag: baseTag,
         display_name: 'Guest',

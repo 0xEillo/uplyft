@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
+import type { ExploreRoutine, ExploreProgramWithRoutines } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
@@ -39,8 +40,8 @@ export default function ExploreScreen() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [programs, setPrograms] = useState<any[]>([])
-  const [routines, setRoutines] = useState<any[]>([])
+  const [programs, setPrograms] = useState<(ExploreProgramWithRoutines & { routine_count: number })[]>([])
+  const [routines, setRoutines] = useState<ExploreRoutine[]>([])
   const [savingRoutineId, setSavingRoutineId] = useState<string | null>(null)
   const [shouldExit, setShouldExit] = useState(false)
 
@@ -102,7 +103,7 @@ export default function ExploreScreen() {
   )
 
   const renderProgramCard = useCallback(
-    ({ item }: { item: any }) => {
+    ({ item }: { item: ExploreProgramWithRoutines & { routine_count: number } }) => {
       const GRADIENTS = [
         ['#2563EB', '#3B82F6'], // Blue
         ['#7C3AED', '#8B5CF6'], // Purple
@@ -172,19 +173,19 @@ export default function ExploreScreen() {
   )
 
   const renderRoutineItem = useCallback(
-    ({ item, index }: { item: any; index: number }) => {
+    ({ item, index }: { item: ExploreRoutine; index: number }) => {
       const isSaving = savingRoutineId === item.id
       const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
       const tintColor = tintColors[index % tintColors.length]
 
-      const getRoutineImage = (item: any) => {
+      const getRoutineImage = (routine: ExploreRoutine) => {
         // If the database already has a full URL, use it
-        if (item.image_url && item.image_url.startsWith('http')) {
-          return item.image_url
+        if (routine.image_url && routine.image_url.startsWith('http')) {
+          return routine.image_url
         }
         
         // Otherwise, construct a URL from the storage bucket based on the image_url (path) or name
-        const imagePath = item.image_url || `${item.name}.png`
+        const imagePath = routine.image_url || `${routine.name}.png`
         return getRoutineImageUrl(imagePath)
       }
 

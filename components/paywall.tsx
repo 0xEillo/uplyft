@@ -1,6 +1,5 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
@@ -39,17 +38,11 @@ export function Paywall({
 }: PaywallProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
+  const { height: screenHeight } = Dimensions.get('window')
   const styles = createStyles(colors, screenHeight)
 
   const { trackEvent } = useAnalytics()
-  const { user } = useAuth()
-  const {
-    purchasePackage,
-    restorePurchases,
-    offerings,
-    isLoading: subscriptionLoading,
-  } = useSubscription()
+  const { purchasePackage, restorePurchases, offerings } = useSubscription()
 
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
@@ -59,7 +52,6 @@ export function Paywall({
   const {
     monthly: monthlyPackage,
     yearly: yearlyPackage,
-    lifetime: lifetimePackage,
   } = useRevenueCatPackages(offerings)
 
   // Plans array matching trial-offer layout
@@ -195,7 +187,11 @@ export function Paywall({
       }
     } catch (error) {
       // Handle user cancellation
-      if (error?.userCancelled) {
+      const purchaseError = error as {
+        userCancelled?: boolean
+        message?: string
+      }
+      if (purchaseError?.userCancelled) {
         trackEvent(AnalyticsEvents.SUBSCRIPTION_CANCELLED, {
           plan_type: plans[selectedPlanIndex].type,
         })
@@ -204,12 +200,13 @@ export function Paywall({
 
       trackEvent(AnalyticsEvents.SUBSCRIPTION_FAILED, {
         plan_type: plans[selectedPlanIndex].type,
-        error: error?.message || 'Unknown error',
+        error: purchaseError?.message || 'Unknown error',
       })
 
       Alert.alert(
         'Purchase Failed',
-        error?.message || 'Unable to complete purchase. Please try again.',
+        purchaseError?.message ||
+          'Unable to complete purchase. Please try again.',
         [{ text: 'OK' }],
       )
     } finally {
@@ -411,8 +408,11 @@ export function Paywall({
   )
 }
 
-function createStyles(colors: any, screenHeight: number = 800) {
-  const { width, height } = Dimensions.get('window')
+function createStyles(
+  colors: ReturnType<typeof useThemedColors>,
+  screenHeight: number = 800,
+) {
+  const { height } = Dimensions.get('window')
 
   return StyleSheet.create({
     container: {

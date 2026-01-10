@@ -32,7 +32,7 @@ export default function SettingsScreen() {
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>()
-  const { themePreference, setThemePreference, isDark } = useTheme()
+  const { themePreference, setThemePreference } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit } = useWeightUnits()
   const { isProMember, customerInfo, restorePurchases } = useSubscription()
@@ -41,7 +41,6 @@ export default function SettingsScreen() {
   const [isRestoring, setIsRestoring] = useState(false)
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
-  const [isCoachUpdating, setIsCoachUpdating] = useState(false)
   const resolvedReturnTo =
     Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
@@ -109,27 +108,6 @@ export default function SettingsScreen() {
       setIsPrivacyUpdating(false)
     }
   }, [user, profile, trackEvent])
-
-  const handleUpdateCoach = useCallback(
-    async (coachId: string) => {
-      if (!user || !profile) return
-      if (profile.coach === coachId) return
-
-      try {
-        setIsCoachUpdating(true)
-        const updated = await database.profiles.update(user.id, {
-          coach: coachId,
-        })
-        setProfile(updated)
-      } catch (error) {
-        console.error('Error updating coach:', error)
-        Alert.alert('Error', 'Unable to update coach. Please try again.')
-      } finally {
-        setIsCoachUpdating(false)
-      }
-    },
-    [user, profile],
-  )
 
   const handleOpenFollowRequests = useCallback(() => {
     router.push('/follow-requests')

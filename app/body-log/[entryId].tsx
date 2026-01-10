@@ -2,9 +2,8 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -44,7 +43,6 @@ import {
   getBMIStatus,
   getBodyFatExplanation,
   getBodyFatStatus,
-  getOverallStatus,
   getStatusColor,
   getWeightExplanation,
   type BMIRange,
@@ -52,7 +50,8 @@ import {
   type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-  type BodyLogEntryWithImages
+  type BodyLogEntryWithImages,
+  type BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -63,7 +62,6 @@ import {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.45
-const CARD_RADIUS = 24
 
 // Helper for intensity (1-4)
 const getScoreIntensity = (score: number | null) => {
@@ -73,8 +71,6 @@ const getScoreIntensity = (score: number | null) => {
   if (score < 90) return 3 // Green
   return 4 // Blue
 }
-
-const METRIC_CARD_RADIUS = 20
 
 // Helper component for linear scale (Body Fat / BMI)
 const LinearScale = ({ 
@@ -96,7 +92,7 @@ const LinearScale = ({
   subLabel?: string
   colorResolver?: (val: number) => string
   onPress?: () => void
-  styles: any
+  styles: ReturnType<typeof createStyles>
 }) => {
   const colors = useThemedColors()
   const percent = Math.min(Math.max((value - min) / (max - min), 0), 1) * 100
@@ -213,12 +209,11 @@ const LinearScale = ({
 }
 
 export default function BodyLogDetailScreen() {
-  const { entryId, weightKg, bodyFatPercentage, bmi, isNew } = useLocalSearchParams<{
+  const { entryId, weightKg, bodyFatPercentage, bmi } = useLocalSearchParams<{
     entryId: string
     weightKg?: string
     bodyFatPercentage?: string
     bmi?: string
-    isNew?: string
   }>()
 
   const colors = useThemedColors()
@@ -233,7 +228,7 @@ export default function BodyLogDetailScreen() {
   const [entry, setEntry] = useState<BodyLogEntryWithImages | null>(null)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [imagesLoading, setImagesLoading] = useState(false)
+  const [, setImagesLoading] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [userGender, setUserGender] = useState<Gender>('male')
   const [shouldExit, setShouldExit] = useState(false)
@@ -275,7 +270,6 @@ export default function BodyLogDetailScreen() {
   const [imageModalVisible, setImageModalVisible] = useState(false)
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const scrollXRef = useRef(0)
 
   // Animation for the bottom dock
   const isDockHidden = useSharedValue(0)
@@ -403,7 +397,7 @@ export default function BodyLogDetailScreen() {
           score_back: entryData.score_back,
           score_legs: entryData.score_legs,
           images: (entryData.body_log_images || []).sort(
-            (a: any, b: any) => a.sequence - b.sequence,
+            (a: BodyLogImage, b: BodyLogImage) => a.sequence - b.sequence,
           ),
         }
 
@@ -494,24 +488,6 @@ export default function BodyLogDetailScreen() {
     }
   }, [user])
 
-  // Get status for metrics
-  const bodyFatStatus = getBodyFatStatus(metrics.body_fat_percentage, userGender)
-  const bmiStatus = getBMIStatus(metrics.bmi, userGender)
-  const overallStatus = getOverallStatus(
-    metrics.body_fat_percentage,
-    metrics.bmi,
-    userGender,
-  )
-
-  const analysisSummary = entry?.analysis_summary?.trim()
-  const summaryText = analysisSummary && analysisSummary.length > 0
-    ? analysisSummary
-    : overallStatus?.summary ?? null
-  const summaryStatusColors = overallStatus
-    ? getStatusColor(overallStatus.color)
-    : null
-  const summaryTitle = overallStatus?.title ?? 'AI Summary'
-
   // Handle opening info modal
   const handleInfoPress = async (
     type: 'bodyFat' | 'bmi' | 'weight',
@@ -572,7 +548,7 @@ export default function BodyLogDetailScreen() {
 
         if (fullEntry) {
           const images = (fullEntry.body_log_images || []).sort(
-            (a: any, b: any) => a.sequence - b.sequence
+            (a: BodyLogImage, b: BodyLogImage) => a.sequence - b.sequence
           )
 
           // Update entry with full data
@@ -801,7 +777,7 @@ export default function BodyLogDetailScreen() {
 
       if (updatedEntry) {
         const images = (updatedEntry.body_log_images || []).sort(
-          (a: any, b: any) => a.sequence - b.sequence
+          (a: BodyLogImage, b: BodyLogImage) => a.sequence - b.sequence
         )
 
         setEntry((prev) =>
@@ -813,7 +789,7 @@ export default function BodyLogDetailScreen() {
         // Refresh image URLs - map to file paths (hero size)
         if (images.length > 0) {
           setImagesLoading(true)
-          const filePaths = images.map((img: any) => img.file_path)
+          const filePaths = images.map((img: BodyLogImage) => img.file_path)
           const newUrls = await getBodyLogImageUrls(filePaths, 'hero')
           setImageUrls(newUrls)
           setImagesLoading(false)
@@ -880,7 +856,7 @@ export default function BodyLogDetailScreen() {
 
               if (updatedEntry) {
                 const images = (updatedEntry.body_log_images || []).sort(
-                  (a: any, b: any) => a.sequence - b.sequence
+                  (a: BodyLogImage, b: BodyLogImage) => a.sequence - b.sequence
                 )
 
                 // Check if entry is now empty (no images AND no weight)
@@ -911,7 +887,7 @@ export default function BodyLogDetailScreen() {
                 // Refresh image URLs (hero size)
                 if (images.length > 0) {
                   setImagesLoading(true)
-                  const filePaths = images.map((img: any) => img.file_path)
+                  const filePaths = images.map((img: BodyLogImage) => img.file_path)
                   const newUrls = await getBodyLogImageUrls(filePaths, 'hero')
                   setImageUrls(newUrls)
                   setImagesLoading(false)
@@ -1022,7 +998,7 @@ export default function BodyLogDetailScreen() {
           if (errorData.error || errorData.message) {
             errorMessage = errorData.error || errorData.message
           }
-        } catch (e) {}
+        } catch {}
         throw new Error(errorMessage)
       }
 
@@ -1164,30 +1140,6 @@ export default function BodyLogDetailScreen() {
       },
     ])
   }
-
-  const renderImageItem = ({ item, index }: { item: string; index: number }) => (
-    <TouchableOpacity
-      activeOpacity={0.95}
-      onPress={() => {
-        setCurrentImageIndex(index)
-        setImageModalVisible(true)
-      }}
-      style={styles.carouselImageContainer}
-    >
-      <Image
-        source={{ uri: item }}
-        style={styles.heroImage}
-        contentFit="cover"
-        cachePolicy="disk"
-        transition={200}
-        recyclingKey={`hero-${index}`}
-      />
-      <LinearGradient
-        colors={['transparent', 'transparent', 'rgba(0,0,0,0.6)']}
-        style={styles.heroGradient}
-      />
-    </TouchableOpacity>
-  )
 
   if (loading) {
     return (

@@ -62,10 +62,10 @@ export function NotificationProvider({
 
       const unread = data.filter((n) => !n.read).length
       setUnreadCount(unread)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Silently handle transient server errors (like 502 Bad Gateway) 
       // instead of printing full HTML blobs to the console.
-      const errorMessage = error?.message || String(error)
+      const errorMessage = (error as { message?: string })?.message || String(error)
       if (!errorMessage.includes('502') && !errorMessage.includes('<html>')) {
         console.error('[Notifications] Error loading notifications:', errorMessage)
       }

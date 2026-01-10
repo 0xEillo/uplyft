@@ -39,7 +39,7 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
   const [isLoading, setIsLoading] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
   const colors = useThemedColors()
-  const { weightUnit, formatWeight } = useWeightUnits()
+  const { weightUnit } = useWeightUnits()
 
   // Animation refs for info modal
   const infoSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
@@ -241,7 +241,6 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
 
   // Get end date label for the time range
   const getEndDateLabel = () => {
-    const now = new Date()
     if (timeRange === '30D') {
       return '30 days'
     } else if (timeRange === '3M') {
@@ -387,9 +386,7 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
               />
             </ScrollView>
             <View style={styles.xAxisEndLabel}>
-              <Text style={styles.xAxisEndLabelText}>
-                {getEndDateLabel()}
-              </Text>
+              <Text style={styles.xAxisEndLabelText}>{getEndDateLabel()}</Text>
             </View>
             {needsScroll && (
               <View style={styles.scrollHint}>
@@ -726,4 +723,3 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.text,
     },
   })
-

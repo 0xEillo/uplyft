@@ -12,8 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
 import { HapticTab } from '@/components/haptic-tab'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
@@ -39,8 +37,6 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
-
-const PENDING_POST_KEY = '@pending_workout_post'
 
 const formatTimerCompact = (seconds: number) => {
   const mins = Math.floor(seconds / 60)
@@ -116,8 +112,6 @@ function TikTokPlusButton() {
 function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const insets = useSafeAreaInsets()
-  const router = useRouter()
   const navigation = useNavigation()
   const { scrollToTop } = useScrollToTop()
   const {

@@ -6,15 +6,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -31,20 +31,23 @@ export default function FollowRequestsScreen() {
   const colors = useThemedColors()
   const styles = createStyles(colors)
 
-  // Block anonymous users from social features
-  useEffect(() => {
-    if (isAnonymous) {
-      router.replace('/(auth)/create-account')
-    }
-  }, [isAnonymous, router])
-
-  if (isAnonymous) return null
-
   const [incoming, setIncoming] = useState<IncomingRequest[]>([])
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [busyRequestIds, setBusyRequestIds] = useState<Set<string>>(new Set())
+
+  const markBusy = useCallback((requestId: string, add: boolean) => {
+    setBusyRequestIds((prev) => {
+      const next = new Set(prev)
+      if (add) {
+        next.add(requestId)
+      } else {
+        next.delete(requestId)
+      }
+      return next
+    })
+  }, [])
 
   const loadRequests = useCallback(async () => {
     if (!user) return
@@ -66,29 +69,11 @@ export default function FollowRequestsScreen() {
     }
   }, [user])
 
-  useFocusEffect(
-    useCallback(() => {
-      loadRequests()
-    }, [loadRequests]),
-  )
-
   const handleRefresh = useCallback(() => {
     if (!user) return
     setIsRefreshing(true)
     loadRequests()
   }, [user, loadRequests])
-
-  const markBusy = (requestId: string, add: boolean) => {
-    setBusyRequestIds((prev) => {
-      const next = new Set(prev)
-      if (add) {
-        next.add(requestId)
-      } else {
-        next.delete(requestId)
-      }
-      return next
-    })
-  }
 
   const handleRespond = useCallback(
     async (requestId: string, decision: 'approve' | 'decline') => {
@@ -107,7 +92,7 @@ export default function FollowRequestsScreen() {
         markBusy(requestId, false)
       }
     },
-    [user],
+    [user, markBusy],
   )
 
   const handleCancel = useCallback(
@@ -124,8 +109,23 @@ export default function FollowRequestsScreen() {
         markBusy(requestId, false)
       }
     },
-    [user],
+    [user, markBusy],
   )
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRequests()
+    }, [loadRequests]),
+  )
+
+  if (isAnonymous) return null
 
   const renderAvatar = (profile?: RequestProfile) => {
     if (profile?.avatar_url) {

@@ -1,6 +1,5 @@
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { WorkoutDetailView } from '@/components/WorkoutDetail/WorkoutDetailView'
-import { getColors } from '@/constants/colors'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -12,7 +11,7 @@ import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
+import { Alert, View } from 'react-native'
 
 interface PrDetailForDisplay {
   label: string
@@ -35,8 +34,7 @@ export default function WorkoutDetailScreen() {
   const { workoutId } = params
   const router = useRouter()
   const { user } = useAuth()
-  const { isDark } = useTheme()
-  const colors = getColors(isDark)
+  useTheme() // for theme context subscription
   const { shareWorkoutWidget } = useWorkoutShare()
   const { weightUnit } = useWeightUnits()
 
@@ -310,10 +308,3 @@ export default function WorkoutDetailScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-})

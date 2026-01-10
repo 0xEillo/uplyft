@@ -116,11 +116,12 @@ function SubmitSuccessOverlayComponent({
     const id = fadeAnim.addListener(({ value }) => {
       latestFadeValue.current = value
     })
+    const timeoutId = timeoutRef.current
     return () => {
       fadeAnim.removeListener(id)
       // Clean up timeout on unmount
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
     }
   }, [fadeAnim])

@@ -156,7 +156,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
   )
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       marginBottom: 24,

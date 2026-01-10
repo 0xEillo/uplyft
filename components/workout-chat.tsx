@@ -2,9 +2,6 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  EQUIPMENT_PREF_KEY,
-  MUSCLE_OPTIONS,
-  WORKOUT_PLANNING_PREFS_KEY,
   WorkoutPlanningData,
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
@@ -17,6 +14,7 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
+  AiWorkoutConversionResult,
   convertAiPlanToRoutine,
   convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
@@ -35,7 +33,6 @@ import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import { loadDraft as loadWorkoutDraft, saveDraft } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
@@ -54,24 +51,23 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   TouchableOpacity,
-  View
+  View,
+  ViewStyle,
 } from 'react-native'
-import {
-  Gesture
-} from 'react-native-gesture-handler'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withSpring,
-  withTiming
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -117,12 +113,12 @@ function AnimatedSuggestion({
 }: {
   index: number
   onPress: () => void
-  style?: any
-  textStyle?: any
+  style?: StyleProp<ViewStyle>
+  textStyle?: StyleProp<TextStyle>
   icon?: React.ReactNode
   text?: string
   isBack?: boolean
-  colors: any
+  colors: ReturnType<typeof useThemedColors>
 }) {
   const translateY = useSharedValue(40)
   const opacity = useSharedValue(0)
@@ -142,6 +138,7 @@ function AnimatedSuggestion({
       }),
     )
     opacity.value = withDelay(index * 60, withTiming(1, { duration: 300 }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reanimated values are stable
   }, [index, text, isBack]) // Re-run when text or mode changes
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -360,7 +357,6 @@ export function WorkoutChat({
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [selectedImages, setSelectedImages] = useState<string[]>([])
-  const [showImagePickerModal, setShowImagePickerModal] = useState(false)
   const [viewerImages, setViewerImages] = useState<string[]>([])
   const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null)
   const [planningState, setPlanningState] = useState<PlanningState>({
@@ -388,7 +384,6 @@ export function WorkoutChat({
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [loadedDraftContext, setLoadedDraftContext] = useState<WorkoutContext | null>(null)
-  const translateY = useSharedValue(0)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
@@ -548,43 +543,6 @@ export function WorkoutChat({
       keyboardWillHideListener.remove()
     }
   }, [])
-
-  // Reset bottom sheet position when modal opens
-  useEffect(() => {
-    if (showImagePickerModal) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-      translateY.value = 0
-    }
-  }, [showImagePickerModal, translateY])
-
-  // Bottom sheet swipe-down gesture
-  const closeImagePickerSheet = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setShowImagePickerModal(false)
-  }
-
-  const pan = Gesture.Pan()
-    .onUpdate((event) => {
-      if (event.translationY > 0) {
-        translateY.value = event.translationY
-      }
-    })
-    .onEnd((event) => {
-      if (event.translationY > 100 || event.velocityY > 1000) {
-        translateY.value = withTiming(500, { duration: 200 }, () => {
-          runOnJS(closeImagePickerSheet)()
-        })
-      } else {
-        translateY.value = withSpring(0, {
-          damping: 20,
-          stiffness: 300,
-        })
-      }
-    })
-
-  const animatedBottomSheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }))
 
   const processStreamingResponse = async (
     reader: ReadableStreamDefaultReader<Uint8Array>,
@@ -1031,7 +989,18 @@ export function WorkoutChat({
       }
 
       // Prepare request body with images as separate field
-      const requestBody: any = {
+      type ChatRequestBody = {
+        messages: { role: string; content: string }[]
+        userId: string | undefined
+        weightUnit: string
+        workoutContext?: {
+          title?: string
+          notes?: string
+          exercises?: unknown
+        }
+        images?: { type: string; image_url: { url: string } }[]
+      }
+      const requestBody: ChatRequestBody = {
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
@@ -1148,93 +1117,6 @@ export function WorkoutChat({
     Keyboard.dismiss()
   }
 
-  const handlePlanWorkout = async () => {
-    // 1. Fetch user profile for goal
-    // 2. Fetch saved prefs
-    // 3. Fetch common muscles
-    // 4. Decide if we can show recap
-
-    setIsLoading(true)
-    try {
-      const [
-        profile,
-        prefsJson,
-        equipmentJson,
-        commonMuscles,
-      ] = await Promise.all([
-        user?.id ? database.profiles.getById(user.id) : null,
-        AsyncStorage.getItem(WORKOUT_PLANNING_PREFS_KEY),
-        AsyncStorage.getItem(EQUIPMENT_PREF_KEY),
-        user?.id ? database.exercises.getMostFrequentMuscleGroups(user.id) : [],
-      ])
-
-      // Filter common muscles to only include valid options from the wizard
-      const validMuscleValues = new Set(MUSCLE_OPTIONS.map((o) => o.value))
-      const filteredCommonMuscles = (commonMuscles || []).filter((m: string) =>
-        validMuscleValues.has(m),
-      )
-
-      const savedPrefs = prefsJson ? JSON.parse(prefsJson) : {}
-
-      // Sanitize saved muscles to remove invalid/legacy values
-      if (savedPrefs.muscles) {
-        const muscles = (savedPrefs.muscles as string)
-          .split(',')
-          .map((m) => m.trim())
-          .filter((m) => validMuscleValues.has(m))
-        savedPrefs.muscles = muscles.join(', ')
-      }
-
-      const savedEquipment = equipmentJson ? JSON.parse(equipmentJson) : null
-
-      // Map profile goal to wizard goal
-      let profileGoal = ''
-      if (profile?.goals && profile.goals.length > 0) {
-        const goalMap: Record<string, string> = {
-          build_muscle: 'Hypertrophy',
-          lose_fat: 'Fat Loss / HIIT',
-          gain_strength: 'Strength',
-          improve_cardio: 'Endurance',
-          become_flexible: 'General Fitness',
-          general_fitness: 'General Fitness',
-        }
-        profileGoal = goalMap[profile.goals[0]] || ''
-      }
-
-      const proposedData: Partial<WorkoutPlanningData> = {
-        ...savedPrefs,
-        goal: savedPrefs.goal || profileGoal,
-        equipment: savedEquipment || savedPrefs.equipment || 'full_gym',
-      }
-
-      // If we have enough data to show a recap (at least goal and equipment)
-      // we show the recap screen. Otherwise, we go straight to wizard.
-      // Actually, let's show recap if we have ANY saved prefs OR a profile goal.
-      // const hasData =
-      //   !!proposedData.goal || !!savedPrefs.muscles || !!savedPrefs.duration
-
-      // With the new menu-based wizard, we always go straight to the wizard
-      // which now acts as the recap/menu itself.
-      setPlanningState({
-        isActive: true,
-        step: 'wizard',
-        data: proposedData,
-        commonMuscles: filteredCommonMuscles,
-      })
-    } catch (error) {
-      console.error('Error preparing workout plan:', error)
-      // Fallback to wizard
-      setPlanningState({
-        isActive: true,
-        step: 'wizard',
-        data: {},
-        commonMuscles: [],
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleSuggestionPress = (
     item: string | { id: string; text: string; icon: string },
   ) => {
@@ -1308,18 +1190,6 @@ export function WorkoutChat({
     }
   }
 
-  const handleSuggestionBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setSuggestionMode('main')
-    if (
-      input === 'Tell me about ' ||
-      input === 'How to ' ||
-      suggestionMode === 'replace_exercise'
-    ) {
-      setInput('')
-    }
-  }
-
   const handleWizardComplete = async (data: WorkoutPlanningData) => {
     // Check if user is pro member or has tutorial trial available
     const canAccessAiChat = isProMember || canUseTrial('ai_workout')
@@ -1380,7 +1250,7 @@ export function WorkoutChat({
         { role: 'user', content: finalPrompt },
       ]
 
-      const requestBody: any = {
+      const requestBody = {
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
@@ -1542,10 +1412,13 @@ export function WorkoutChat({
       const generateId = () =>
         Date.now().toString(36) + Math.random().toString(36).substr(2)
 
-      const structuredData = workoutData.exercises.map((ex: any) => ({
+      type WorkoutExercise = AiWorkoutConversionResult['exercises'][number]
+      type WorkoutSet = WorkoutExercise['sets'][number] & { restSeconds?: number }
+      
+      const structuredData = workoutData.exercises.map((ex: WorkoutExercise) => ({
         id: generateId(),
         name: ex.name,
-        sets: ex.sets.map((s: any) => ({
+        sets: ex.sets.map((s: WorkoutSet) => ({
           weight: s.weight || '',
           reps: '', // Actual reps should be empty for user to fill
           lastWorkoutWeight: null,

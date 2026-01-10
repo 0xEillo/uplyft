@@ -1,7 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { ReactNode } from 'react'
-import { StyleSheet, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { StyleSheet, View, ViewStyle } from 'react-native'
 
 interface BaseNavbarProps {
   leftContent: ReactNode
@@ -21,8 +20,6 @@ export function BaseNavbar({
   paddingVertical = 8,
 }: BaseNavbarProps) {
   const colors = useThemedColors()
-  const insets = useSafeAreaInsets()
-
   const styles = createStyles(colors, paddingVertical)
 
   return (
@@ -42,7 +39,7 @@ export function BaseNavbar({
   )
 }
 
-export function NavbarIsland({ children, style }: { children: ReactNode; style?: any }) {
+export function NavbarIsland({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={style}>{children}</View>
 }
 

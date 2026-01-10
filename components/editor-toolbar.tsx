@@ -46,8 +46,8 @@ export function EditorToolbar({
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const styles = createStyles(colors, insets)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const [, setKeyboardHeight] = useState(0)
+  const [, setIsKeyboardVisible] = useState(false)
 
   // Animation for padding bottom (safe area)
   const paddingBottom = useRef(new Animated.Value(insets.bottom)).current

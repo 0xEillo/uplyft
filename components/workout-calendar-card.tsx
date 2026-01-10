@@ -27,8 +27,8 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
   const [currentStreak, setCurrentStreak] = useState(0)
   const [monthWorkoutCount, setMonthWorkoutCount] = useState(0)
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [weeklyGoal, setWeeklyGoal] = useState(2)
+  const [currentMonth] = useState(new Date())
+  const [, setWeeklyGoal] = useState(2)
 
   const loadData = useCallback(async () => {
     setIsLoading(true)

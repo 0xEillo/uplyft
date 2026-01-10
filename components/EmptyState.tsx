@@ -51,6 +51,7 @@ export function EmptyState({ icon, title, description, buttonText, onPress }: Em
         }),
       ])
     ).start()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
   }, [])
 
   const translateY = floatAnim.interpolate({

@@ -10,11 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { LineChart } from 'react-native-gifted-charts'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const GRID_PADDING = 20
 const CHART_WIDTH = SCREEN_WIDTH - GRID_PADDING * 2
-import { LineChart } from 'react-native-gifted-charts'
 
 interface BodyWeightChartProps {
   userId: string
@@ -24,7 +24,7 @@ type TimeRange = 'W' | 'M' | 'All'
 
 export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   const colors = useThemedColors()
-  const { weightUnit, formatWeight } = useWeightUnits()
+  const { formatWeight } = useWeightUnits()
   const [data, setData] = useState<{ created_at: string; weight_kg: number }[]>(
     [],
   )
@@ -52,9 +52,6 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   }, [loadData])
 
   const styles = createStyles(colors)
-
-  // Calculate stats for header (always based on latest data point vs start of period)
-  const latestWeight = data.length > 0 ? data[data.length - 1].weight_kg : 0
 
   if (isLoading && data.length === 0) {
     return (
@@ -175,7 +172,9 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
                 pointerLabelHeight: 90,
                 activatePointersOnLongPress: false,
                 autoAdjustPointerLabelPosition: false,
-                pointerLabelComponent: (items: any) => {
+                pointerLabelComponent: (
+                  items: { value: number; date: string; label: string }[],
+                ) => {
                   const item = items[0]
                   return (
                     <View

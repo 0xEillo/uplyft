@@ -171,7 +171,6 @@ export function ExerciseSearchModal({
   const isKeyboardVisible = useSharedValue(false)
 
   const trimmedQuery = searchQuery.trim()
-  const normalizedQuery = trimmedQuery.toLowerCase()
 
   const hasExactMatch = useMemo(() => {
     if (!trimmedQuery) return false

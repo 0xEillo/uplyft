@@ -42,7 +42,7 @@ interface StructuredWorkoutInputProps {
   onRestTimerStart?: (seconds: number) => void
   onInputFocus?: () => void
   onInputBlur?: () => void
-  editorToolbarProps?: any
+  editorToolbarProps?: Parameters<typeof EditorToolbar>[0]
   /**
    * Callback to fetch history data for a specific set when adding new sets.
    * Returns the last workout's weight/reps for the given exercise and set number.

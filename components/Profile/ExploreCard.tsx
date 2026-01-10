@@ -1,4 +1,3 @@
-import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -10,7 +9,6 @@ import Animated, { FadeIn } from 'react-native-reanimated'
 export const ExploreCard = memo(() => {
   const colors = useThemedColors()
   const router = useRouter()
-  const { isDark } = useTheme()
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)

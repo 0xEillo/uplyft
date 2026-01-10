@@ -32,7 +32,17 @@ export function parseWorkoutForDisplay(
 
     if (jsonMatch) {
       const jsonStr = jsonMatch[1] || jsonMatch[0]
-      let data: any
+      type ParsedExercise = {
+        name: string
+        sets: { type?: string; reps?: string; restSeconds?: number; rest?: number }[]
+      }
+      type ParsedData = {
+        description?: string
+        title?: string
+        estimatedDuration?: number
+        exercises?: ParsedExercise[]
+      }
+      let data: ParsedData
       try {
         data = JSON.parse(jsonStr)
       } catch {
@@ -46,14 +56,14 @@ export function parseWorkoutForDisplay(
           duration: data.estimatedDuration
             ? `${data.estimatedDuration}:00`
             : '45:00',
-          exercises: data.exercises.map((ex: any) => {
+          exercises: data.exercises.map((ex) => {
             // Use the exerciseLookup service to find exact match by name
             const match = exerciseLookup.findByName(ex.name)
             return {
               name: ex.name,
               gifUrl: match?.gifUrl ?? null,
-              sets: ex.sets.map((s: any) => ({
-                type: s.type || 'working',
+              sets: ex.sets.map((s) => ({
+                type: (s.type === 'warmup' ? 'warmup' : 'working') as 'warmup' | 'working',
                 weight: '', // Strip weight suggestions
                 reps: s.reps || '',
                 rest: s.restSeconds || s.rest || 60,

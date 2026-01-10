@@ -1,4 +1,5 @@
 import { calculateWorkoutStats } from '@/lib/utils/workout-stats'
+import { PrDetail } from '@/lib/pr'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
@@ -24,7 +25,7 @@ const formatStopwatch = (seconds: number) => {
 interface AchievementWidgetProps {
   workout: WorkoutSessionWithDetails
   weightUnit: 'kg' | 'lb'
-  prData?: { exerciseName: string; prs: any[] }[]
+  prData?: { exerciseName: string; prs: PrDetail[] }[]
   backgroundMode?: 'light' | 'dark' | 'transparent'
 }
 

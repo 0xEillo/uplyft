@@ -13,7 +13,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface FinalizeWorkoutOverlayProps {
   visible: boolean
@@ -43,7 +42,6 @@ export function FinalizeWorkoutOverlay({
   isLoading = false,
 }: FinalizeWorkoutOverlayProps) {
   const colors = useThemedColors()
-  const insets = useSafeAreaInsets()
   const [showPhotoMenu, setShowPhotoMenu] = React.useState(false)
 
   // Reset photo menu state when modal closes to prevent stale state

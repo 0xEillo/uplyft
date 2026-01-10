@@ -15,7 +15,7 @@ import {
   generateRandomTintColor,
   getRoutineImageUrl,
 } from '@/lib/utils/routine-images'
-import { Exercise } from '@/types/database.types'
+import { Exercise, WorkoutRoutineExercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -67,12 +67,14 @@ interface ExerciseTemplate {
   notes: string | null
 }
 
+type ThemedColors = ReturnType<typeof useThemedColors>
+
 interface ExerciseItemProps {
   exercise: ExerciseTemplate
   index: number
   isExpanded: boolean
   isDragging: boolean
-  colors: any
+  colors: ThemedColors
   draggingScale: SharedValue<number>
   draggingOpacity: SharedValue<number>
   onToggle: (index: number) => void
@@ -91,7 +93,7 @@ interface ExerciseItemProps {
   onMoveUp: (index: number) => void
   onMoveDown: (index: number) => void
   onDrop: () => void
-  styles: any
+  styles: ReturnType<typeof createStyles>
 }
 
 const ExerciseItem = React.memo((props: ExerciseItemProps) => {
@@ -525,6 +527,7 @@ export default function CreateRoutineScreen() {
 
     // Otherwise start with empty routine
     setIsLoading(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- canUseTrial is stable after mount
   }, [from, routineId, user, router, isProMember, isEditMode, handleExit])
 
   const handleSave = useCallback(async () => {
@@ -644,7 +647,7 @@ export default function CreateRoutineScreen() {
       if (exercisesError) throw exercisesError
 
       const insertedExerciseByOrder = new Map<number, string>()
-      insertedExercises?.forEach((exercise: any) => {
+      insertedExercises?.forEach((exercise: WorkoutRoutineExercise) => {
         if (typeof exercise.order_index === 'number') {
           insertedExerciseByOrder.set(exercise.order_index, exercise.id)
         }
@@ -752,6 +755,7 @@ export default function CreateRoutineScreen() {
     } finally {
       setIsSaving(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- completeStep/consumeTrial/isProMember are stable after mount
   }, [
     routineName,
     routineNotes,
@@ -931,7 +935,7 @@ export default function CreateRoutineScreen() {
       ...newExercises.map(ex => ({
         exerciseId: ex.id,
         exerciseName: ex.name,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         sets: [{ repsMin: '', repsMax: '', restSeconds: null } as any], // Start with 1 set
         notes: null,
       }))

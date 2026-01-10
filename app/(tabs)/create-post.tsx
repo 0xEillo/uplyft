@@ -9,7 +9,6 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
-import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
@@ -72,8 +71,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const IMAGE_FADE_DURATION = 200
 
 const formatTimerDisplay = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -307,7 +304,6 @@ export default function CreatePostScreen() {
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
 
   const { showOverlay } = useSuccessOverlay()
-  const { showPrompt } = useRatingPrompt()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
@@ -867,12 +863,12 @@ export default function CreatePostScreen() {
     setAttachedImageUri(null)
   }
 
-  const handleToggleRecording = async () => {
+  const handleToggleRecording = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     await toggleRecording()
-  }
+  }, [toggleRecording])
 
-  const handleDumbbellPress = async () => {
+  const handleDumbbellPress = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     blurInputs()
 
@@ -911,12 +907,7 @@ export default function CreatePostScreen() {
       // Fallback to opening directly if storage fails
       handleScanEquipment()
     }
-  }
-
-  const spin = spinValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  })
+  }, [blurInputs, handleScanEquipment])
 
   const performSubmission = useCallback(
     async (
@@ -1156,18 +1147,6 @@ export default function CreatePostScreen() {
   // 7. On routine deletion → if selected, all routine state cleared
   // =============================================================================
 
-  const handleOpenRoutineSelector = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    blurInputs()
-    
-    // Register callback for routine selection
-    registerRoutineCallback((routine: WorkoutRoutineWithDetails) => {
-      handleSelectRoutine(routine)
-    })
-    
-    // Navigate to the full-screen routine selector
-    router.push('/select-routine')
-  }
 
   const handleSelectRoutine = useCallback(
     async (routine: WorkoutRoutineWithDetails) => {
@@ -1206,55 +1185,19 @@ export default function CreatePostScreen() {
     [user, trackEvent],
   )
 
-  const handleEditRoutine = (routine: WorkoutRoutineWithDetails) => {
-    router.push(`/create-routine?routineId=${routine.id}`)
-  }
-
-  const handleDeleteRoutine = useCallback(
-    async (routine: WorkoutRoutineWithDetails) => {
-      Alert.alert(
-        'Delete Routine',
-        `Are you sure you want to delete "${routine.name}"? This cannot be undone.`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await database.workoutRoutines.delete(routine.id)
-
-                // If the deleted routine is currently selected, clear the selection
-                if (selectedRoutine?.id === routine.id) {
-                  setSelectedRoutine(null)
-                  setIsStructuredMode(false)
-                  setStructuredData([])
-                  setLastRoutineWorkout(null)
-                  setWorkoutTitle('')
-                  setPendingDraftRoutineId(null)
-                  setPendingRoutineSource(null)
-                }
-
-                // Refresh routines list
-                await loadRoutinesAndExercises()
-                Alert.alert('Success', 'Routine deleted successfully')
-              } catch (error) {
-                console.error('Error deleting routine:', error)
-                Alert.alert(
-                  'Error',
-                  'Failed to delete routine. Please try again.',
-                )
-              }
-            },
-          },
-        ],
-      )
-    },
-    [loadRoutinesAndExercises, selectedRoutine],
-  )
+  const handleOpenRoutineSelector = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    blurInputs()
+    
+    // Register callback for routine selection
+    registerRoutineCallback((routine: WorkoutRoutineWithDetails) => {
+      handleSelectRoutine(routine)
+    })
+    
+    // Navigate to the full-screen routine selector
+    router.push('/select-routine')
+   
+  }, [blurInputs, registerRoutineCallback, handleSelectRoutine])
 
   const handlePost = async () => {
     // Prevent double-tap race condition using synchronous ref check
@@ -1734,6 +1677,7 @@ export default function CreatePostScreen() {
         return updated
       })
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- createEmptySet is stable
     [createExerciseWithHistory, structuredData],
   )
 

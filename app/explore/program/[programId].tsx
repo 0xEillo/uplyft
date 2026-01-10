@@ -8,7 +8,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
-import { ExploreProgramWithRoutines } from '@/types/database.types'
+import { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
@@ -19,7 +19,6 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,7 +27,6 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const { width } = Dimensions.get('window')
 
 export default function ProgramDetailScreen() {
   const { programId } = useLocalSearchParams()
@@ -49,14 +47,14 @@ export default function ProgramDetailScreen() {
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
 
-  const getRoutineImage = (item: any) => {
+  const getRoutineImage = (routine: ExploreRoutine) => {
     // If the database already has a full URL, use it
-    if (item.image_url && item.image_url.startsWith('http')) {
-      return item.image_url
+    if (routine.image_url && routine.image_url.startsWith('http')) {
+      return routine.image_url
     }
 
     // Otherwise, construct a URL from the storage bucket based on the image_url (path) or name
-    const imagePath = item.image_url || `${item.name}.png`
+    const imagePath = routine.image_url || `${routine.name}.png`
     return getRoutineImageUrl(imagePath)
   }
 
@@ -94,13 +92,6 @@ export default function ProgramDetailScreen() {
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const handleExercisePress = (exerciseId: string) => {
-    router.push({
-      pathname: '/exercise/[exerciseId]',
-      params: { exerciseId },
-    })
   }
 
   if (isLoading) {

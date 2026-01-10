@@ -5,14 +5,18 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
-import { useCallback, useState } from 'react'
+import { RefObject, useCallback, useState } from 'react'
 import {
     Alert,
     InteractionManager,
     Linking,
     Platform,
     Share,
+    View,
 } from 'react-native'
+
+// Type for view refs that can be captured (supports both RefObject and View directly)
+type CaptureableViewRef = RefObject<View> | View
 import { useWeightUnits } from './useWeightUnits'
 
 // Lazy import expo-sharing to avoid crashes in Expo Go (requires native module)
@@ -40,15 +44,15 @@ export interface UseWorkoutShareResult {
   shareWorkout: (
     workout: WorkoutSessionWithDetails,
     workoutTitle: string,
-    viewRef: any,
+    viewRef: CaptureableViewRef,
   ) => Promise<void>
   shareToInstagramStories: (
     workout: WorkoutSessionWithDetails,
-    viewRef: any,
+    viewRef: CaptureableViewRef,
     widgetType?: string,
   ) => Promise<void>
   shareWorkoutWidget: (
-    viewRef: any,
+    viewRef: CaptureableViewRef,
     shareType: 'instagram' | 'general',
   ) => Promise<void>
   isSharing: boolean
@@ -73,7 +77,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
     async (
       workout: WorkoutSessionWithDetails,
       workoutTitle: string,
-      viewRef: any,
+      viewRef: CaptureableViewRef,
     ) => {
       if (isSharing) return
 
@@ -212,7 +216,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
   const shareToInstagramStories = useCallback(
     async (
       workout: WorkoutSessionWithDetails,
-      viewRef: any,
+      viewRef: CaptureableViewRef,
       widgetType?: string,
     ) => {
       if (isSharing) return
@@ -378,7 +382,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
   )
 
   const shareWorkoutWidget = useCallback(
-    async (viewRef: any, shareType: 'instagram' | 'general') => {
+    async (viewRef: CaptureableViewRef, shareType: 'instagram' | 'general') => {
       if (isSharing) return
 
       if (isSimulator) {

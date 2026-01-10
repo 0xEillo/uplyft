@@ -1,4 +1,3 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import {
     calculateWorkoutStats,
     formatDuration,
@@ -18,7 +17,6 @@ export const StravaOverlayWidget = React.forwardRef<
   View,
   StravaOverlayWidgetProps
 >(({ workout, weightUnit, backgroundMode = 'transparent' }, ref) => {
-  const colors = useThemedColors()
   const stats = calculateWorkoutStats(workout, weightUnit)
   const volume = formatVolume(stats.totalVolume, weightUnit)
   
@@ -26,9 +24,8 @@ export const StravaOverlayWidget = React.forwardRef<
   const durationText = formatDuration(stats.durationSeconds)
     .replace('h ', 'h ')
     .replace('m ', 'm')
-    .replace('s', '') // Remove 's' if it's just seconds, though formatDuration usually returns "Xm Ys" or "Xh Ym"
+    .replace('s', '')
 
-  const isDark = backgroundMode === 'dark'
   const isLight = backgroundMode === 'light'
   const isTransparent = backgroundMode === 'transparent'
 

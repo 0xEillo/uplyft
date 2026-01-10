@@ -1,4 +1,3 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
@@ -37,7 +36,6 @@ export const WorkoutSummaryWidget = React.forwardRef<
   View,
   WorkoutSummaryWidgetProps
 >(  ({ workout, weightUnit, workoutTitle, backgroundMode = 'light' }, ref) => {
-  const colors = useThemedColors()
   const durationDisplay = formatStopwatch(workout.duration ?? 0)
 
   // Determine colors based on background mode

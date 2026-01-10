@@ -1,4 +1,3 @@
-import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useRef, useState } from 'react'
@@ -41,7 +40,6 @@ export function CalendarShareScreen({
   onShare,
 }: CalendarShareScreenProps) {
   const colors = useThemedColors()
-  const { user } = useAuth()
   const scrollViewRef = useRef<ScrollView>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [backgroundMode, setBackgroundMode] = useState<
@@ -119,7 +117,7 @@ export function CalendarShareScreen({
     }),
   ).current
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
     const offsetX = event.nativeEvent.contentOffset.x
     const page = Math.round(offsetX / SCREEN_WIDTH)
     setCurrentPage(page)

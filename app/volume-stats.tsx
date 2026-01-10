@@ -11,12 +11,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -108,11 +108,6 @@ export default function VolumeStatsScreen() {
     router.back()
   }
 
-  const formatWeekLabel = (weekStart: string) => {
-    const date = new Date(weekStart)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
 
@@ -166,7 +161,9 @@ export default function VolumeStatsScreen() {
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading your training data...</Text>
+            <Text style={styles.loadingText}>
+              Loading your training data...
+            </Text>
           </View>
         ) : (
           <ScrollView
@@ -175,138 +172,154 @@ export default function VolumeStatsScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Section 1: Session Stats */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconContainer}>
-                <Ionicons name="stats-chart" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.cardTitle}>Workout Summary</Text>
-            </View>
-
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{sessionStats.totalSets}</Text>
-                <Text style={styles.statLabel}>Total Sets</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>
-                  {sessionStats.totalWorkouts}
-                </Text>
-                <Text style={styles.statLabel}>Workouts</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>
-                  {sessionStats.avgSetsPerWorkout}
-                </Text>
-                <Text style={styles.statLabel}>Avg Sets/Workout</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Section 2: Volume by Muscle Group */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconContainer}>
-                <Ionicons name="bar-chart" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.cardTitle}>Total Sets by Muscle Group</Text>
-            </View>
-
-            {!isProMember ? (
-              <TouchableOpacity
-                onPress={() => setPaywallVisible(true)}
-                style={styles.proOnlyContainer}
-              >
-                <ProBadge size="medium" />
-                <Text style={styles.proOnlySubtext}>Unlock detailed muscle group breakdown</Text>
-              </TouchableOpacity>
-            ) : weeklyData.length === 0 ? (
-              <EmptyState
-                icon="trending-up-outline"
-                title="No volume data"
-                description="Complete workouts in this period to see your volume breakdown."
-              />
-            ) : (
-              <View style={styles.volumeChartContainer}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.muscleGroupBarsContent}
-                >
-                  <View style={styles.muscleGroupBars}>
-                    {(() => {
-                      // Aggregate all muscle groups across all weeks
-                      const muscleGroupTotals = new Map<string, number>()
-
-                      weeklyData.forEach((week) => {
-                        week.muscleGroups.forEach((mg) => {
-                          const current = muscleGroupTotals.get(mg.name) || 0
-                          muscleGroupTotals.set(mg.name, current + mg.sets)
-                        })
-                      })
-
-                      // Convert to array and sort by volume
-                      const sortedMuscleGroups = Array.from(muscleGroupTotals.entries())
-                        .map(([name, sets]) => ({ name, sets }))
-                        .sort((a, b) => b.sets - a.sets)
-
-                      const maxSets = Math.max(...sortedMuscleGroups.map((mg) => mg.sets))
-                      const maxBarHeight = 100 // Fixed max height in pixels for bars
-
-                      return sortedMuscleGroups.map((mg, index) => {
-                        const barHeight = maxSets > 0 ? (mg.sets / maxSets) * maxBarHeight : 0
-                        return (
-                          <View
-                            key={index}
-                            style={styles.muscleGroupBarContainer}
-                          >
-                            <Text style={styles.setCount}>{mg.sets}</Text>
-                            <View
-                              style={[
-                                styles.muscleGroupBar,
-                                {
-                                  height: barHeight,
-                                  backgroundColor:
-                                    MUSCLE_GROUP_COLORS[mg.name] ||
-                                    colors.primary,
-                                },
-                              ]}
-                            />
-                            <Text style={styles.muscleGroupName}>
-                              {mg.name}
-                            </Text>
-                          </View>
-                        )
-                      })
-                    })()}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
-          {/* Section 3: Volume Over Time Chart */}
-          {user?.id && (
-            !isProMember ? (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardIconContainer}>
-                    <Ionicons name="trending-up" size={20} color={colors.primary} />
-                  </View>
-                  <Text style={styles.cardTitle}>Volume Over Time</Text>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIconContainer}>
+                  <Ionicons
+                    name="stats-chart"
+                    size={20}
+                    color={colors.primary}
+                  />
                 </View>
+                <Text style={styles.cardTitle}>Workout Summary</Text>
+              </View>
+
+              <View style={styles.statsGrid}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{sessionStats.totalSets}</Text>
+                  <Text style={styles.statLabel}>Total Sets</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>
+                    {sessionStats.totalWorkouts}
+                  </Text>
+                  <Text style={styles.statLabel}>Workouts</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>
+                    {sessionStats.avgSetsPerWorkout}
+                  </Text>
+                  <Text style={styles.statLabel}>Avg Sets/Workout</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Section 2: Volume by Muscle Group */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIconContainer}>
+                  <Ionicons name="bar-chart" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.cardTitle}>Total Sets by Muscle Group</Text>
+              </View>
+
+              {!isProMember ? (
                 <TouchableOpacity
                   onPress={() => setPaywallVisible(true)}
                   style={styles.proOnlyContainer}
                 >
                   <ProBadge size="medium" />
-                  <Text style={styles.proOnlySubtext}>Track your volume progression over time</Text>
+                  <Text style={styles.proOnlySubtext}>
+                    Unlock detailed muscle group breakdown
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <VolumeProgressChart userId={user.id} timeRange={timeRange} />
-            )
-          )}
+              ) : weeklyData.length === 0 ? (
+                <EmptyState
+                  icon="trending-up-outline"
+                  title="No volume data"
+                  description="Complete workouts in this period to see your volume breakdown."
+                />
+              ) : (
+                <View style={styles.volumeChartContainer}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.muscleGroupBarsContent}
+                  >
+                    <View style={styles.muscleGroupBars}>
+                      {(() => {
+                        // Aggregate all muscle groups across all weeks
+                        const muscleGroupTotals = new Map<string, number>()
+
+                        weeklyData.forEach((week) => {
+                          week.muscleGroups.forEach((mg) => {
+                            const current = muscleGroupTotals.get(mg.name) || 0
+                            muscleGroupTotals.set(mg.name, current + mg.sets)
+                          })
+                        })
+
+                        // Convert to array and sort by volume
+                        const sortedMuscleGroups = Array.from(
+                          muscleGroupTotals.entries(),
+                        )
+                          .map(([name, sets]) => ({ name, sets }))
+                          .sort((a, b) => b.sets - a.sets)
+
+                        const maxSets = Math.max(
+                          ...sortedMuscleGroups.map((mg) => mg.sets),
+                        )
+                        const maxBarHeight = 100 // Fixed max height in pixels for bars
+
+                        return sortedMuscleGroups.map((mg, index) => {
+                          const barHeight =
+                            maxSets > 0 ? (mg.sets / maxSets) * maxBarHeight : 0
+                          return (
+                            <View
+                              key={index}
+                              style={styles.muscleGroupBarContainer}
+                            >
+                              <Text style={styles.setCount}>{mg.sets}</Text>
+                              <View
+                                style={[
+                                  styles.muscleGroupBar,
+                                  {
+                                    height: barHeight,
+                                    backgroundColor:
+                                      MUSCLE_GROUP_COLORS[mg.name] ||
+                                      colors.primary,
+                                  },
+                                ]}
+                              />
+                              <Text style={styles.muscleGroupName}>
+                                {mg.name}
+                              </Text>
+                            </View>
+                          )
+                        })
+                      })()}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            {/* Section 3: Volume Over Time Chart */}
+            {user?.id &&
+              (!isProMember ? (
+                <View style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardIconContainer}>
+                      <Ionicons
+                        name="trending-up"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <Text style={styles.cardTitle}>Volume Over Time</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setPaywallVisible(true)}
+                    style={styles.proOnlyContainer}
+                  >
+                    <ProBadge size="medium" />
+                    <Text style={styles.proOnlySubtext}>
+                      Track your volume progression over time
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <VolumeProgressChart userId={user.id} timeRange={timeRange} />
+              ))}
           </ScrollView>
         )}
       </View>

@@ -128,7 +128,7 @@ export default function CoachSelectionScreen() {
   )
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -165,7 +165,7 @@ const createStyles = (colors: any) =>
       marginLeft: 4,
     },
     card: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.backgroundWhite,
       borderRadius: 16,
       overflow: 'hidden',
     },
@@ -174,7 +174,7 @@ const createStyles = (colors: any) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: 16,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.backgroundWhite,
     },
     coachRowBorder: {
       borderBottomWidth: 1,
@@ -198,14 +198,14 @@ const createStyles = (colors: any) =>
       position: 'absolute',
       bottom: -2,
       right: -2,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.backgroundWhite,
       borderRadius: 10,
       width: 20,
       height: 20,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1.5,
-      borderColor: colors.surface,
+      borderColor: colors.backgroundWhite,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,

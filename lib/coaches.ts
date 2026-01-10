@@ -6,7 +6,7 @@ export interface Coach {
   title: string
   description: string
   systemPrompt: string
-  image: any // Using any for require() result
+  image: number // require() returns a number for bundled assets
 }
 
 export const COACHES: Record<CoachId, Coach> = {

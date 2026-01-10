@@ -15,17 +15,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useMemo } from 'react'
 import {
-    Dimensions,
     Modal,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    ViewStyle
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface MuscleGroupDetailSheetProps {
   isVisible: boolean
@@ -62,24 +60,24 @@ export function MuscleGroupDetailSheet({
     });
   }, [groupData, bodyPartSlug]);
 
-  const getStrengthInfo = (exerciseName: string, max1RM: number) => {
-    if (!profile?.gender || !profile?.weight_kg) {
-      return null
-    }
-
-    if (!hasStrengthStandards(exerciseName)) {
-      return null
-    }
-
-    return getStrengthStandard(
-      exerciseName,
-      profile.gender as 'male' | 'female',
-      profile.weight_kg,
-      max1RM,
-    )
-  }
-
   const allMuscleExercises = useMemo(() => {
+    const getStrengthInfo = (exerciseName: string, max1RM: number) => {
+      if (!profile?.gender || !profile?.weight_kg) {
+        return null
+      }
+
+      if (!hasStrengthStandards(exerciseName)) {
+        return null
+      }
+
+      return getStrengthStandard(
+        exerciseName,
+        profile.gender as 'male' | 'female',
+        profile.weight_kg,
+        max1RM,
+      )
+    }
+
     if (!bodyPartSlug) return []
     const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
     if (!dbMuscle) return []
@@ -103,7 +101,7 @@ export function MuscleGroupDetailSheet({
       if (!a.isDone && b.isDone) return 1
       return a.exerciseName.localeCompare(b.exerciseName)
     })
-  }, [bodyPartSlug, filteredExercises, getStrengthInfo])
+  }, [bodyPartSlug, filteredExercises, profile?.gender, profile?.weight_kg])
 
   const navigateToExercise = (exerciseId: string) => {
     onClose()
@@ -176,7 +174,7 @@ export function MuscleGroupDetailSheet({
                   <View style={styles.thumbnailContainer}>
                     <ExerciseMediaThumbnail
                       gifUrl={exercise.gifUrl}
-                      style={[styles.exerciseThumbnail, !exercise.isDone && styles.untrackedThumbnail]}
+                      style={StyleSheet.flatten([styles.exerciseThumbnail, !exercise.isDone && styles.untrackedThumbnail]) as ViewStyle}
                     />
                     {!exercise.isDone && (
                       <View style={styles.lockOverlay}>

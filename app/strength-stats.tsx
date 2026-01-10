@@ -119,7 +119,8 @@ export default function StrengthStatsScreen() {
         params: { exerciseId },
       })
     },
-    [router],
+     
+    [],
   )
 
   const getStrengthInfo = useCallback(

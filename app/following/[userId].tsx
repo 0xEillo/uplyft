@@ -8,14 +8,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -34,15 +34,6 @@ export default function FollowingScreen() {
   const insets = useSafeAreaInsets()
   const styles = createStyles(colors)
 
-  // Block anonymous users from social features
-  useEffect(() => {
-    if (isAnonymous) {
-      router.replace('/(auth)/create-account')
-    }
-  }, [isAnonymous, router])
-
-  if (isAnonymous) return null
-
   const [following, setFollowing] = useState<FollowingItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -53,7 +44,7 @@ export default function FollowingScreen() {
 
   const handleBack = useCallback(() => {
     if (returnTo) {
-      router.dismissTo(returnTo as any)
+      router.dismissTo(returnTo as Parameters<typeof router.dismissTo>[0])
     } else {
       router.back()
     }
@@ -66,11 +57,9 @@ export default function FollowingScreen() {
       setIsLoading(true)
       const data = await database.follows.listFollowing(userId, 100)
 
-      // Normalize data: filter out any missing followee profiles
       const validFollowing = data.filter((item) => item.followee)
       setFollowing(validFollowing)
 
-      // Load relationship statuses if logged in
       if (currentUser) {
         const followeeIds = validFollowing.map((f) => f.followee.id)
         const idsToCheck = followeeIds.filter((id) => id !== currentUser.id)
@@ -94,10 +83,6 @@ export default function FollowingScreen() {
       setIsRefreshing(false)
     }
   }, [userId, currentUser])
-
-  useEffect(() => {
-    loadFollowing()
-  }, [loadFollowing])
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true)
@@ -180,6 +165,19 @@ export default function FollowingScreen() {
     },
     [currentUser, relationships, router],
   )
+
+  // Block anonymous users from social features
+  useEffect(() => {
+    if (isAnonymous) {
+      router.replace('/(auth)/create-account')
+    }
+  }, [isAnonymous, router])
+
+  useEffect(() => {
+    loadFollowing()
+  }, [loadFollowing])
+
+  if (isAnonymous) return null
 
   const filteredFollowing = following.filter((item) => {
     if (!searchQuery) return true

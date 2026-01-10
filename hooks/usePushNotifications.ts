@@ -29,9 +29,9 @@ export function usePushNotifications() {
 
     // Listen for notifications received while app is in foreground
     notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification: any) => {
+      Notifications.addNotificationReceivedListener((_notification) => {
         // You could show an in-app toast here
-      }) as any
+      })
 
     // Listen for user tapping on notification
     responseListener.current =

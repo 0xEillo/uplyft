@@ -1,3 +1,22 @@
+import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect } from '@react-navigation/native'
+import { useRouter } from 'expo-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  LayoutAnimation,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
@@ -18,24 +37,9 @@ import { database } from '@/lib/database'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { Ionicons } from '@expo/vector-icons'
-import { useFocusEffect } from '@react-navigation/native'
-import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  LayoutAnimation,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Extended type to include pending workouts (placeholders)
+type WorkoutWithPending = WorkoutSessionWithDetails & { isPending?: boolean }
 
 // Enable LayoutAnimation on Android
 if (
@@ -141,7 +145,7 @@ export default function FeedScreen() {
           // Append new workouts to existing list
           setWorkouts((prev) => {
             // Filter out placeholder before appending
-            const filtered = prev.filter((w: any) => !w.isPending)
+            const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
 
             // Deduplicate: only add workouts that aren't already in the list
             const existingIds = new Set(filtered.map((w) => w.id))
@@ -182,6 +186,7 @@ export default function FeedScreen() {
         setIsLoadingMore(false)
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isLoadingMore/workouts.length intentionally omitted to prevent infinite re-renders
     [user, isInitialLoad, offset],
   )
 
@@ -286,7 +291,7 @@ export default function FeedScreen() {
       }
 
       const { error } = result
-      setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
+      setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
 
       if (error instanceof Error && error.message.includes('idempotency')) {
         // Silent fail for idempotency errors - they mean it's already working
@@ -301,8 +306,9 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('Error processing pending post:', error)
       // Also ensure placeholder is removed if an unexpected error occurs
-      setWorkouts((prev) => prev.filter((w: any) => !w.isPending))
+      setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadWorkouts intentionally omitted to prevent re-creation
   }, [
     user,
     isProcessingPending,
@@ -339,7 +345,7 @@ export default function FeedScreen() {
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
           setWorkouts((prev) => {
             // Remove any existing placeholder first
-            const filtered = prev.filter((w: any) => !w.isPending)
+            const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
             return [
               (placeholder as unknown) as WorkoutSessionWithDetails,
               ...filtered,

@@ -131,6 +131,7 @@ export function SlideUpView({
         onExitComplete?.()
       })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fadeFrom is stable initial value
   }, [shouldExit, slideAnim, opacityAnim, duration, fade, onExitComplete])
 
   const bgColor = backgroundColor || colors.background

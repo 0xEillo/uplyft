@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { PrService } from '@/lib/pr'
+import { PrDetail, PrService } from '@/lib/pr'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
@@ -51,7 +51,7 @@ export function WorkoutShareScreen({
   const { user } = useAuth()
   const scrollViewRef = useRef<ScrollView>(null)
   const [currentPage, setCurrentPage] = useState(0)
-  const [prData, setPrData] = useState<{ exerciseName: string; prs: any[] }[]>(
+  const [prData, setPrData] = useState<{ exerciseName: string; prs: PrDetail[] }[]>(
     [],
   )
   const [hasPRs, setHasPRs] = useState(false)
@@ -180,7 +180,7 @@ export function WorkoutShareScreen({
     }),
   ).current
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
     const offsetX = event.nativeEvent.contentOffset.x
     const page = Math.round(offsetX / SCREEN_WIDTH)
     setCurrentPage(page)
