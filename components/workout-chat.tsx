@@ -271,6 +271,9 @@ export interface WorkoutChatProps {
 
   // Callback for closing the sheet (sheet mode only)
   onClose?: () => void
+
+  // Callback when chat has started (has messages) - useful for sheet mode header
+  onChatStarted?: (hasMessages: boolean) => void
 }
 
 const DEFAULT_SUGGESTIONS: SuggestionsConfig = {
@@ -425,6 +428,7 @@ export function WorkoutChat({
   hideImagePicker = false,
   hidePlanningWizard = false,
   onClose,
+  onChatStarted,
 }: WorkoutChatProps = {}) {
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
@@ -454,7 +458,7 @@ export function WorkoutChat({
   const [exerciseToReplace, setExerciseToReplace] = useState<string | null>(
     null,
   ) // Track which exercise is being replaced
-  const { coachId, profile } = useProfile()
+  const { coachId, profile, isLoading: isProfileLoading } = useProfile()
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
@@ -515,7 +519,8 @@ export function WorkoutChat({
 
   // Show welcome message for first-time users (fullscreen mode only)
   useEffect(() => {
-    if (mode !== 'fullscreen' || hasLoadedWelcome || !user?.id) return
+    // Wait for profile to load before showing welcome message so we have the user's name
+    if (mode !== 'fullscreen' || hasLoadedWelcome || !user?.id || isProfileLoading) return
 
     const checkAndShowWelcome = async () => {
       try {
@@ -549,7 +554,7 @@ export function WorkoutChat({
     }
 
     checkAndShowWelcome()
-  }, [mode, hasLoadedWelcome, user?.id, coachId, profile?.display_name])
+  }, [mode, hasLoadedWelcome, user?.id, coachId, profile?.display_name, isProfileLoading])
 
   // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
   // This ensures the AI always knows about the current workout in progress
@@ -636,6 +641,11 @@ export function WorkoutChat({
       scrollToBottom()
     }
   }, [messages.length])
+
+  // Notify parent when chat has started (has messages)
+  useEffect(() => {
+    onChatStarted?.(messages.length > 0 || isLoading)
+  }, [messages.length, isLoading, onChatStarted])
 
   // Coach is now managed by ProfileContext - automatically updates when changed
 
@@ -2257,12 +2267,6 @@ export function WorkoutChat({
                           below to get started
                         </Text>
                       </View>
-                      <Ionicons
-                        name="arrow-down"
-                        size={18}
-                        color={colors.textTertiary}
-                        style={styles.welcomeHintArrow}
-                      />
                     </View>
                   )}
 

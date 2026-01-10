@@ -1,8 +1,6 @@
-import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { getCoach } from '@/lib/coaches'
-import { database } from '@/lib/database'
-import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
 import {
@@ -14,8 +12,7 @@ import {
     Pressable,
     StyleSheet,
     Text,
-    TouchableOpacity,
-    View,
+    View
 } from 'react-native'
 import {
     Gesture,
@@ -100,11 +97,11 @@ export function WorkoutCoachSheet({
 }: WorkoutCoachSheetProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
-  const { user } = useAuth()
+  const { coachId } = useProfile()
 
-  const [coachId, setCoachId] = useState<string>('ross')
   const [sheetHeight, setSheetHeight] = useState(INITIAL_SHEET_HEIGHT)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [chatHasStarted, setChatHasStarted] = useState(false)
 
   const translateY = useSharedValue(0)
 
@@ -130,22 +127,6 @@ export function WorkoutCoachSheet({
       hideSub.remove()
     }
   }, [])
-
-  // Load coach preference
-  useEffect(() => {
-    async function loadCoach() {
-      if (!user?.id) return
-      try {
-        const profile = await database.profiles.getByIdOrNull(user.id)
-        if (profile?.coach) {
-          setCoachId(profile.coach)
-        }
-      } catch (error) {
-        console.error('Error loading coach:', error)
-      }
-    }
-    loadCoach()
-  }, [user?.id])
 
   // Reset state when sheet opens
   useEffect(() => {
@@ -237,18 +218,17 @@ export function WorkoutCoachSheet({
               <View style={styles.handle} />
             </View>
 
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.coachInfo}>
-                <Image source={coach.image} style={styles.coachAvatar} />
-                <Text style={styles.headerTitle}>
-                  Ask {coach.name.split(' ')[1] || coach.name}...
-                </Text>
+            {/* Header - only show when chat hasn't started */}
+            {!chatHasStarted && (
+              <View style={styles.header}>
+                <View style={styles.coachInfo}>
+                  <Image source={coach.image} style={styles.coachAvatar} />
+                  <Text style={styles.headerTitle}>
+                    Ask {coach.name.split(' ')[1] || coach.name}...
+                  </Text>
+                </View>
               </View>
-              <TouchableOpacity style={styles.closeButton} onPress={closeSheet}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+            )}
 
             {/* WorkoutChat in sheet mode */}
             <View style={styles.chatContainer}>
@@ -260,6 +240,7 @@ export function WorkoutCoachSheet({
                 customSuggestions={suggestions}
                 hideImagePicker
                 onClose={closeSheet}
+                onChatStarted={setChatHasStarted}
               />
             </View>
           </Animated.View>
