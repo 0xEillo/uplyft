@@ -31,8 +31,12 @@ import { database } from '@/lib/database'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
-import { loadDraft as loadWorkoutDraft, saveDraft } from '@/lib/utils/workout-draft'
+import {
+  loadDraft as loadWorkoutDraft,
+  saveDraft,
+} from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
@@ -149,12 +153,12 @@ function AnimatedSuggestion({
   if (isBack) {
     return (
       <AnimatedReanimated.View style={animatedStyle}>
-        <TouchableOpacity
-          style={style}
-          onPress={onPress}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
+        <TouchableOpacity style={style} onPress={onPress} activeOpacity={0.7}>
+          <Ionicons
+            name="chevron-back"
+            size={18}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
       </AnimatedReanimated.View>
     )
@@ -162,11 +166,7 @@ function AnimatedSuggestion({
 
   return (
     <AnimatedReanimated.View style={animatedStyle}>
-      <TouchableOpacity
-        style={style}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={style} onPress={onPress} activeOpacity={0.7}>
         {icon}
         <Text style={textStyle}>{text}</Text>
       </TouchableOpacity>
@@ -320,6 +320,38 @@ const MAX_IMAGES = 10
 
 const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
 
+// Storage key for tracking welcome message
+const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
+
+// Check if user has unread welcome message (for badge display)
+export async function hasUnreadWelcomeMessage(
+  userId: string | undefined,
+): Promise<boolean> {
+  if (!userId) return false
+  try {
+    const storageKey = `${WELCOME_MESSAGE_SEEN_KEY}_${userId}`
+    const hasSeen = await AsyncStorage.getItem(storageKey)
+    return !hasSeen
+  } catch {
+    return false
+  }
+}
+
+// Get personalized welcome message based on coach personality
+function getWelcomeMessage(coachId: string, userName?: string): string {
+  const greeting = userName ? `Hey ${userName}!` : 'Hey there!'
+
+  switch (coachId) {
+    case 'kino':
+      return `${greeting} Glad you made it in. Now the real work begins. I've got your stats from onboarding. We're skipping the fluff and focusing on pure strength. Ready to get your first session on the books?`
+    case 'maya':
+      return `${greeting} Yay, you're officially here! 🎉 I've been so looking forward to this. We're going to build such incredible momentum together. Let's start this journey off right, want me to put together your first workout?`
+    case 'ross':
+    default:
+      return `${greeting} Glad you made it inside! I've already started processing your goals from onboarding. I'm ready to help you train smarter and optimize every set. Shall we generate your first science-based plan?`
+  }
+}
+
 // Parse exercise suggestions from AI response
 function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
   const suggestions: ExerciseSuggestion[] = []
@@ -422,12 +454,16 @@ export function WorkoutChat({
   const [exerciseToReplace, setExerciseToReplace] = useState<string | null>(
     null,
   ) // Track which exercise is being replaced
-  const { coachId } = useProfile()
+  const { coachId, profile } = useProfile()
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
-  const [loadedDraftContext, setLoadedDraftContext] = useState<WorkoutContext | null>(null)
+  const [
+    loadedDraftContext,
+    setLoadedDraftContext,
+  ] = useState<WorkoutContext | null>(null)
+  const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
@@ -477,6 +513,44 @@ export function WorkoutChat({
     })
   }, [])
 
+  // Show welcome message for first-time users (fullscreen mode only)
+  useEffect(() => {
+    if (mode !== 'fullscreen' || hasLoadedWelcome || !user?.id) return
+
+    const checkAndShowWelcome = async () => {
+      try {
+        const storageKey = `${WELCOME_MESSAGE_SEEN_KEY}_${user.id}`
+        const hasSeen = await AsyncStorage.getItem(storageKey)
+
+        if (!hasSeen) {
+          // Show welcome message from coach
+          const welcomeContent = getWelcomeMessage(
+            coachId,
+            profile?.display_name?.split(' ')[0], // First name only
+          )
+
+          const welcomeMessage: Message = {
+            id: 'welcome-message',
+            role: 'assistant',
+            content: welcomeContent,
+          }
+
+          setMessages([welcomeMessage])
+
+          // Mark as seen
+          await AsyncStorage.setItem(storageKey, 'true')
+        }
+
+        setHasLoadedWelcome(true)
+      } catch (error) {
+        console.error('[WorkoutChat] Error checking welcome message:', error)
+        setHasLoadedWelcome(true)
+      }
+    }
+
+    checkAndShowWelcome()
+  }, [mode, hasLoadedWelcome, user?.id, coachId, profile?.display_name])
+
   // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
   // This ensures the AI always knows about the current workout in progress
   useFocusEffect(
@@ -497,10 +571,13 @@ export function WorkoutChat({
               exercises: (draft.structuredData || []).map((e) => ({
                 name: e.name,
                 setsCount: e.sets?.length || 0,
-                sets: e.sets?.map((set) => ({
-                  weight: set.weight || undefined,
-                  reps: set.reps || undefined,
-                })).filter((set) => set.weight || set.reps) || [],
+                sets:
+                  e.sets
+                    ?.map((set) => ({
+                      weight: set.weight || undefined,
+                      reps: set.reps || undefined,
+                    }))
+                    .filter((set) => set.weight || set.reps) || [],
               })),
             }
             setLoadedDraftContext(context)
@@ -513,34 +590,41 @@ export function WorkoutChat({
       }
 
       loadDraftContext()
-    }, [workoutContext])
+    }, [workoutContext]),
   )
 
   // Combined context: prefer passed prop, fall back to loaded draft
-  const effectiveWorkoutContext = workoutContext || loadedDraftContext || undefined
+  const effectiveWorkoutContext =
+    workoutContext || loadedDraftContext || undefined
 
   // Combine initial context exercises with any proposed exercises for the "current workout" state
-  const currentWorkoutExercises = useMemo(() => [
-    ...(effectiveWorkoutContext?.exercises.map((e) => e.name) || []),
-    ...proposedWorkout.map((e) => e.name),
-  ], [effectiveWorkoutContext, proposedWorkout])
-  
+  const currentWorkoutExercises = useMemo(
+    () => [
+      ...(effectiveWorkoutContext?.exercises.map((e) => e.name) || []),
+      ...proposedWorkout.map((e) => e.name),
+    ],
+    [effectiveWorkoutContext, proposedWorkout],
+  )
+
   const hasWorkout = currentWorkoutExercises.length > 0
 
   // Update suggestions based on state
-  const activeSuggestions = useMemo(() => ({
-    ...suggestions,
-    main: hasWorkout
-      ? [
-          {
-            id: 'adjust_workout',
-            text: 'Adjust Workout',
-            icon: 'options-outline',
-          },
-          ...suggestions.main.filter((s) => s.id !== 'plan_workout'),
-        ]
-      : suggestions.main,
-  }), [suggestions, hasWorkout])
+  const activeSuggestions = useMemo(
+    () => ({
+      ...suggestions,
+      main: hasWorkout
+        ? [
+            {
+              id: 'adjust_workout',
+              text: 'Adjust Workout',
+              icon: 'options-outline',
+            },
+            ...suggestions.main.filter((s) => s.id !== 'plan_workout'),
+          ]
+        : suggestions.main,
+    }),
+    [suggestions, hasWorkout],
+  )
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
@@ -724,7 +808,7 @@ export function WorkoutChat({
   // Show native action sheet for image picker
   const showImagePickerActionSheet = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    
+
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
@@ -737,19 +821,15 @@ export function WorkoutChat({
           } else if (buttonIndex === 2) {
             launchLibrary()
           }
-        }
+        },
       )
     } else {
       // Android fallback using Alert
-      Alert.alert(
-        'Add Image',
-        'Choose an option',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Take Photo', onPress: launchCamera },
-          { text: 'Choose from Library', onPress: launchLibrary },
-        ]
-      )
+      Alert.alert('Add Image', 'Choose an option', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: launchCamera },
+        { text: 'Choose from Library', onPress: launchLibrary },
+      ])
     }
   }
 
@@ -1049,11 +1129,13 @@ export function WorkoutChat({
         userId: user?.id,
         weightUnit,
         // Include current workout context so AI knows what workout is in progress
-        workoutContext: effectiveWorkoutContext ? {
-          title: effectiveWorkoutContext.title,
-          notes: effectiveWorkoutContext.notes,
-          exercises: effectiveWorkoutContext.exercises,
-        } : undefined,
+        workoutContext: effectiveWorkoutContext
+          ? {
+              title: effectiveWorkoutContext.title,
+              notes: effectiveWorkoutContext.notes,
+              exercises: effectiveWorkoutContext.exercises,
+            }
+          : undefined,
       }
 
       // Add images array if present
@@ -1457,21 +1539,25 @@ export function WorkoutChat({
         Date.now().toString(36) + Math.random().toString(36).substr(2)
 
       type WorkoutExercise = AiWorkoutConversionResult['exercises'][number]
-      type WorkoutSet = WorkoutExercise['sets'][number] & { restSeconds?: number }
-      
-      const structuredData = workoutData.exercises.map((ex: WorkoutExercise) => ({
-        id: generateId(),
-        name: ex.name,
-        sets: ex.sets.map((s: WorkoutSet) => ({
-          weight: s.weight || '',
-          reps: '', // Actual reps should be empty for user to fill
-          lastWorkoutWeight: null,
-          lastWorkoutReps: null,
-          targetRepsMin: s.repsMin || null,
-          targetRepsMax: s.repsMax || null,
-          targetRestSeconds: s.restSeconds || null,
-        })),
-      }))
+      type WorkoutSet = WorkoutExercise['sets'][number] & {
+        restSeconds?: number
+      }
+
+      const structuredData = workoutData.exercises.map(
+        (ex: WorkoutExercise) => ({
+          id: generateId(),
+          name: ex.name,
+          sets: ex.sets.map((s: WorkoutSet) => ({
+            weight: s.weight || '',
+            reps: '', // Actual reps should be empty for user to fill
+            lastWorkoutWeight: null,
+            lastWorkoutReps: null,
+            targetRepsMin: s.repsMin || null,
+            targetRepsMax: s.repsMax || null,
+            targetRestSeconds: s.restSeconds || null,
+          })),
+        }),
+      )
 
       // Save draft
       await saveDraft({
@@ -1908,234 +1994,238 @@ export function WorkoutChat({
                                 />
                               </View>
                               <View style={styles.assistantMessageContent}>
-                              <View style={styles.assistantMessageBubble}>
-                              <Markdown
-                                style={{
-                                  body: {
-                                    fontSize: 16,
-                                    lineHeight: 23,
-                                    color: colors.text,
-                                    margin: 0,
-                                  },
-                                  paragraph: {
-                                    marginTop: 0,
-                                    marginBottom: 8,
-                                  },
-                                  heading1: {
-                                    fontSize: 22,
-                                    fontWeight: '700',
-                                    color: colors.text,
-                                    marginTop: 16,
-                                    marginBottom: 8,
-                                  },
-                                  heading2: {
-                                    fontSize: 20,
-                                    fontWeight: '700',
-                                    color: colors.text,
-                                    marginTop: 14,
-                                    marginBottom: 6,
-                                  },
-                                  heading3: {
-                                    fontSize: 18,
-                                    fontWeight: '600',
-                                    color: colors.text,
-                                    marginTop: 12,
-                                    marginBottom: 6,
-                                  },
-                                  code_inline: {
-                                    backgroundColor: colors.background,
-                                    paddingHorizontal: 4,
-                                    paddingVertical: 2,
-                                    borderRadius: 4,
-                                    fontSize: 15,
-                                    fontFamily:
-                                      Platform.OS === 'ios'
-                                        ? 'Menlo'
-                                        : 'monospace',
-                                    color: colors.text,
-                                  },
-                                  code_block: {
-                                    backgroundColor: colors.background,
-                                    padding: 12,
-                                    borderRadius: 8,
-                                    fontSize: 15,
-                                    fontFamily:
-                                      Platform.OS === 'ios'
-                                        ? 'Menlo'
-                                        : 'monospace',
-                                    color: colors.text,
-                                    marginVertical: 8,
-                                    overflow: 'hidden',
-                                  },
-                                  fence: {
-                                    backgroundColor: colors.background,
-                                    padding: 12,
-                                    borderRadius: 8,
-                                    fontSize: 15,
-                                    fontFamily:
-                                      Platform.OS === 'ios'
-                                        ? 'Menlo'
-                                        : 'monospace',
-                                    color: colors.text,
-                                    marginVertical: 8,
-                                  },
-                                  strong: {
-                                    fontWeight: '600',
-                                    color: colors.text,
-                                  },
-                                  em: {
-                                    fontStyle: 'italic',
-                                  },
-                                  bullet_list: {
-                                    marginTop: 0,
-                                    marginBottom: 12,
-                                  },
-                                  ordered_list: {
-                                    marginTop: 0,
-                                    marginBottom: 12,
-                                  },
-                                  list_item: {
-                                    marginTop: 4,
-                                    marginBottom: 4,
-                                  },
-                                  hr: {
-                                    backgroundColor: colors.border,
-                                    height: 1,
-                                    marginVertical: 16,
-                                  },
-                                  blockquote: {
-                                    borderLeftWidth: 3,
-                                    borderLeftColor: colors.primary,
-                                    paddingLeft: 12,
-                                    marginVertical: 8,
-                                    backgroundColor: colors.background,
-                                    paddingVertical: 8,
-                                    paddingRight: 8,
-                                    borderRadius: 4,
-                                  },
-                                  link: {
-                                    color: colors.primary,
-                                    textDecorationLine: 'underline',
-                                  },
-                                }}
-                              >
-                                {displayContent}
-                              </Markdown>
-                              </View>
+                                <View style={styles.assistantMessageBubble}>
+                                  <Markdown
+                                    style={{
+                                      body: {
+                                        fontSize: 16,
+                                        lineHeight: 23,
+                                        color: colors.text,
+                                        margin: 0,
+                                      },
+                                      paragraph: {
+                                        marginTop: 0,
+                                        marginBottom: 8,
+                                      },
+                                      heading1: {
+                                        fontSize: 22,
+                                        fontWeight: '700',
+                                        color: colors.text,
+                                        marginTop: 16,
+                                        marginBottom: 8,
+                                      },
+                                      heading2: {
+                                        fontSize: 20,
+                                        fontWeight: '700',
+                                        color: colors.text,
+                                        marginTop: 14,
+                                        marginBottom: 6,
+                                      },
+                                      heading3: {
+                                        fontSize: 18,
+                                        fontWeight: '600',
+                                        color: colors.text,
+                                        marginTop: 12,
+                                        marginBottom: 6,
+                                      },
+                                      code_inline: {
+                                        backgroundColor: colors.background,
+                                        paddingHorizontal: 4,
+                                        paddingVertical: 2,
+                                        borderRadius: 4,
+                                        fontSize: 15,
+                                        fontFamily:
+                                          Platform.OS === 'ios'
+                                            ? 'Menlo'
+                                            : 'monospace',
+                                        color: colors.text,
+                                      },
+                                      code_block: {
+                                        backgroundColor: colors.background,
+                                        padding: 12,
+                                        borderRadius: 8,
+                                        fontSize: 15,
+                                        fontFamily:
+                                          Platform.OS === 'ios'
+                                            ? 'Menlo'
+                                            : 'monospace',
+                                        color: colors.text,
+                                        marginVertical: 8,
+                                        overflow: 'hidden',
+                                      },
+                                      fence: {
+                                        backgroundColor: colors.background,
+                                        padding: 12,
+                                        borderRadius: 8,
+                                        fontSize: 15,
+                                        fontFamily:
+                                          Platform.OS === 'ios'
+                                            ? 'Menlo'
+                                            : 'monospace',
+                                        color: colors.text,
+                                        marginVertical: 8,
+                                      },
+                                      strong: {
+                                        fontWeight: '600',
+                                        color: colors.text,
+                                      },
+                                      em: {
+                                        fontStyle: 'italic',
+                                      },
+                                      bullet_list: {
+                                        marginTop: 0,
+                                        marginBottom: 12,
+                                      },
+                                      ordered_list: {
+                                        marginTop: 0,
+                                        marginBottom: 12,
+                                      },
+                                      list_item: {
+                                        marginTop: 4,
+                                        marginBottom: 4,
+                                      },
+                                      hr: {
+                                        backgroundColor: colors.border,
+                                        height: 1,
+                                        marginVertical: 16,
+                                      },
+                                      blockquote: {
+                                        borderLeftWidth: 3,
+                                        borderLeftColor: colors.primary,
+                                        paddingLeft: 12,
+                                        marginVertical: 8,
+                                        backgroundColor: colors.background,
+                                        paddingVertical: 8,
+                                        paddingRight: 8,
+                                        borderRadius: 4,
+                                      },
+                                      link: {
+                                        color: colors.primary,
+                                        textDecorationLine: 'underline',
+                                      },
+                                    }}
+                                  >
+                                    {displayContent}
+                                  </Markdown>
+                                </View>
 
-                              {exerciseSuggestions.length > 0 && (
-                                <View style={styles.exerciseCardsContainer}>
-                                  {exerciseSuggestions.map(
-                                    (suggestion, idx) => {
-                                      const exerciseMatch = findExerciseByName(
-                                        suggestion.name,
-                                      )
-                                      const gifUrl = exerciseMatch?.gifUrl
-                                      const isLast =
-                                        idx === exerciseSuggestions.length - 1
+                                {exerciseSuggestions.length > 0 && (
+                                  <View style={styles.exerciseCardsContainer}>
+                                    {exerciseSuggestions.map(
+                                      (suggestion, idx) => {
+                                        const exerciseMatch = findExerciseByName(
+                                          suggestion.name,
+                                        )
+                                        const gifUrl = exerciseMatch?.gifUrl
+                                        const isLast =
+                                          idx === exerciseSuggestions.length - 1
 
-                                      return (
-                                        <View
-                                          key={idx}
-                                          style={styles.suggestionTimelineRow}
-                                        >
+                                        return (
                                           <View
-                                            style={
-                                              styles.suggestionTimelineColumn
-                                            }
+                                            key={idx}
+                                            style={styles.suggestionTimelineRow}
                                           >
                                             <View
                                               style={
-                                                styles.suggestionTimelineLineTop
+                                                styles.suggestionTimelineColumn
                                               }
-                                            />
-                                            <View
-                                              style={[
-                                                styles.suggestionTimelineNode,
-                                                gifUrl
-                                                  ? styles.suggestionTimelineNodeImage
-                                                  : null,
-                                              ]}
                                             >
-                                              {gifUrl ? (
-                                                <ExerciseMediaThumbnail
-                                                  gifUrl={gifUrl}
+                                              <View
+                                                style={
+                                                  styles.suggestionTimelineLineTop
+                                                }
+                                              />
+                                              <View
+                                                style={[
+                                                  styles.suggestionTimelineNode,
+                                                  gifUrl
+                                                    ? styles.suggestionTimelineNodeImage
+                                                    : null,
+                                                ]}
+                                              >
+                                                {gifUrl ? (
+                                                  <ExerciseMediaThumbnail
+                                                    gifUrl={gifUrl}
+                                                    style={
+                                                      styles.suggestionThumbnailImage
+                                                    }
+                                                  />
+                                                ) : (
+                                                  <Ionicons
+                                                    name="barbell-outline"
+                                                    size={18}
+                                                    color={colors.textSecondary}
+                                                  />
+                                                )}
+                                              </View>
+                                              {!isLast && (
+                                                <View
                                                   style={
-                                                    styles.suggestionThumbnailImage
+                                                    styles.suggestionTimelineLineBottom
                                                   }
-                                                />
-                                              ) : (
-                                                <Ionicons
-                                                  name="barbell-outline"
-                                                  size={18}
-                                                  color={colors.textSecondary}
                                                 />
                                               )}
                                             </View>
-                                            {!isLast && (
-                                              <View
-                                                style={
-                                                  styles.suggestionTimelineLineBottom
-                                                }
-                                              />
-                                            )}
-                                          </View>
 
-                                          <View
-                                            style={
-                                              styles.suggestionContentColumn
-                                            }
-                                          >
-                                            <View style={styles.exerciseCard}>
-                                              <View
-                                                style={styles.exerciseCardInfo}
-                                              >
-                                                <Text
+                                            <View
+                                              style={
+                                                styles.suggestionContentColumn
+                                              }
+                                            >
+                                              <View style={styles.exerciseCard}>
+                                                <View
                                                   style={
-                                                    styles.exerciseCardName
+                                                    styles.exerciseCardInfo
                                                   }
                                                 >
-                                                  {suggestion.name}
-                                                </Text>
-                                                <Text
+                                                  <Text
+                                                    style={
+                                                      styles.exerciseCardName
+                                                    }
+                                                  >
+                                                    {suggestion.name}
+                                                  </Text>
+                                                  <Text
+                                                    style={
+                                                      styles.exerciseCardDetails
+                                                    }
+                                                  >
+                                                    {suggestion.sets} sets ×{' '}
+                                                    {suggestion.reps} reps
+                                                  </Text>
+                                                </View>
+                                                <TouchableOpacity
                                                   style={
-                                                    styles.exerciseCardDetails
+                                                    styles.addExerciseButton
                                                   }
-                                                >
-                                                  {suggestion.sets} sets ×{' '}
-                                                  {suggestion.reps} reps
-                                                </Text>
-                                              </View>
-                                              <TouchableOpacity
-                                                style={styles.addExerciseButton}
-                                                onPress={() =>
-                                                  exerciseToReplace
-                                                    ? handleReplaceExercise(
-                                                        suggestion,
-                                                      )
-                                                    : handleAddExercise(
-                                                        suggestion,
-                                                      )
-                                                }
-                                              >
-                                                <Ionicons
-                                                  name={
+                                                  onPress={() =>
                                                     exerciseToReplace
-                                                      ? 'swap-horizontal'
-                                                      : 'add'
+                                                      ? handleReplaceExercise(
+                                                          suggestion,
+                                                        )
+                                                      : handleAddExercise(
+                                                          suggestion,
+                                                        )
                                                   }
-                                                  size={20}
-                                                  color={colors.white}
-                                                />
-                                              </TouchableOpacity>
+                                                >
+                                                  <Ionicons
+                                                    name={
+                                                      exerciseToReplace
+                                                        ? 'swap-horizontal'
+                                                        : 'add'
+                                                    }
+                                                    size={20}
+                                                    color={colors.white}
+                                                  />
+                                                </TouchableOpacity>
+                                              </View>
                                             </View>
                                           </View>
-                                        </View>
-                                      )
-                                    },
-                                  )}
-                                </View>
-                              )}
+                                        )
+                                      },
+                                    )}
+                                  </View>
+                                )}
                               </View>
                             </>
                           )
@@ -2144,6 +2234,38 @@ export function WorkoutChat({
                     )}
                   </View>
                 ))}
+
+                {/* Welcome hint - shown after welcome message */}
+                {messages.length === 1 &&
+                  messages[0]?.id === 'welcome-message' &&
+                  !isLoading && (
+                    <View style={styles.welcomeHintContainer}>
+                      <View style={styles.welcomeHintRow}>
+                        <Text style={styles.welcomeHintText}>Tap </Text>
+                        <View style={styles.welcomeHintButton}>
+                          <Ionicons
+                            name="flash"
+                            size={13}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.welcomeHintButtonText}>
+                            Generate Workout
+                          </Text>
+                        </View>
+                        <Text style={styles.welcomeHintText}>
+                          {' '}
+                          below to get started
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name="arrow-down"
+                        size={18}
+                        color={colors.textTertiary}
+                        style={styles.welcomeHintArrow}
+                      />
+                    </View>
+                  )}
+
                 {isLoading && (
                   <View style={styles.loadingMessageContainer}>
                     <View style={styles.messageAvatarContainer}>
@@ -2206,8 +2328,8 @@ export function WorkoutChat({
                             styles.planWorkoutText,
                         ]}
                         icon={
-                          (item.id === 'plan_workout' ||
-                            item.id === 'adjust_workout') ? (
+                          item.id === 'plan_workout' ||
+                          item.id === 'adjust_workout' ? (
                             <Ionicons
                               name="flash"
                               size={14}
@@ -2232,7 +2354,9 @@ export function WorkoutChat({
                       />
                     ))
                   : suggestionMode === 'adjust_workout'
-                  ? (activeSuggestions.adjust_workout || []).map((item, index) => (
+                  ? (
+                      activeSuggestions.adjust_workout || []
+                    ).map((item, index) => (
                       <AnimatedSuggestion
                         key={item.id}
                         index={index + 1}
@@ -2257,7 +2381,9 @@ export function WorkoutChat({
                         onPress={() => handleSuggestionPress(item)}
                       />
                     ))
-                  : (activeSuggestions[suggestionMode] || []).map((item, index) => (
+                  : (
+                      activeSuggestions[suggestionMode] || []
+                    ).map((item, index) => (
                       <AnimatedSuggestion
                         key={index}
                         index={index + 1}
@@ -2278,7 +2404,11 @@ export function WorkoutChat({
               styles.inputContainer,
               {
                 paddingBottom:
-                  mode === 'sheet' ? Math.max(insets.bottom, 16) : (isKeyboardVisible ? 0 : 60),
+                  mode === 'sheet'
+                    ? Math.max(insets.bottom, 16)
+                    : isKeyboardVisible
+                    ? 0
+                    : 60,
               },
             ]}
             onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
@@ -2371,7 +2501,6 @@ export function WorkoutChat({
               </View>
             </View>
           </View>
-
 
           {/* Image Viewer Modal */}
           <Modal
@@ -2597,6 +2726,41 @@ function createStyles(
       paddingHorizontal: 14,
       borderRadius: 18,
       borderBottomLeftRadius: 4,
+    },
+    welcomeHintContainer: {
+      alignItems: 'center',
+      marginTop: 24,
+      marginBottom: 8,
+    },
+    welcomeHintRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+    },
+    welcomeHintText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    welcomeHintButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${colors.primary}12`,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      gap: 5,
+      marginHorizontal: 2,
+    },
+    welcomeHintButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    welcomeHintArrow: {
+      marginTop: 8,
     },
     inputContainer: {
       backgroundColor: 'transparent',

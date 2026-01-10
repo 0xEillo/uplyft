@@ -1,23 +1,15 @@
-import { Paywall } from '@/components/paywall'
-import { Ionicons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native'
-import { BlurView } from 'expo-blur'
-import { Tabs, useRouter } from 'expo-router'
-import React, { useEffect, useState } from 'react'
-import {
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
 import { HapticTab } from '@/components/haptic-tab'
+import { Paywall } from '@/components/paywall'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { IconSymbol } from '@/components/ui/icon-symbol'
+import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
-import { RatingPromptProvider, useRatingPrompt } from '@/contexts/rating-prompt-context'
+import { useAuth } from '@/contexts/auth-context'
+import {
+  RatingPromptProvider,
+  useRatingPrompt,
+} from '@/contexts/rating-prompt-context'
 import {
   RestTimerProvider,
   useRestTimerContext,
@@ -35,6 +27,26 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
+import { BlurView } from 'expo-blur'
+import { Tabs, useRouter } from 'expo-router'
+import React, { useEffect, useState } from 'react'
+import {
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated'
 
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
 
@@ -45,6 +57,75 @@ const formatTimerCompact = (seconds: number) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
   return `${secs}`
+}
+
+// Pulsing notification badge
+function PulsingBadge({
+  color,
+  borderColor,
+}: {
+  color: string
+  borderColor: string
+}) {
+  const scale = useSharedValue(1)
+  const opacity = useSharedValue(1)
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withTiming(1.3, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    )
+    opacity.value = withRepeat(
+      withTiming(0.6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    )
+  }, [scale, opacity])
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }))
+
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        top: -3,
+        right: -5,
+        width: 14,
+        height: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      {/* Pulse ring */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            backgroundColor: color,
+          },
+          pulseStyle,
+        ]}
+      />
+      {/* Solid center */}
+      <View
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: 6,
+          backgroundColor: color,
+          borderWidth: 2,
+          borderColor: borderColor,
+        }}
+      />
+    </View>
+  )
 }
 
 function TikTokPlusButton() {
@@ -125,7 +206,22 @@ function TabLayoutContent() {
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
   const { isVisible: isRatingPromptVisible } = useRatingPrompt()
   const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
+  const { user } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
+  const [hasUnreadChat, setHasUnreadChat] = useState(false)
+
+  // Check for unread welcome message
+  useEffect(() => {
+    const checkUnread = async () => {
+      const hasUnread = await hasUnreadWelcomeMessage(user?.id)
+      setHasUnreadChat(hasUnread)
+    }
+    checkUnread()
+
+    // Re-check periodically in case user reads it
+    const interval = setInterval(checkUnread, 2000)
+    return () => clearInterval(interval)
+  }, [user?.id])
 
   useEffect(() => {
     if (!isSubscriptionLoading && !isProMember) {
@@ -161,7 +257,13 @@ function TabLayoutContent() {
       shownWorkoutIdRef.current = data.workout.id
       setShowShareScreen(true)
     }
-  }, [data.workout, isVisible, showShareScreen, setShowShareScreen, isRatingPromptVisible])
+  }, [
+    data.workout,
+    isVisible,
+    showShareScreen,
+    setShowShareScreen,
+    isRatingPromptVisible,
+  ])
 
   const handleAnimationComplete = () => {
     hideOverlay()
@@ -315,15 +417,23 @@ function TabLayoutContent() {
           options={{
             title: 'Plan',
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={
-                  focused
-                    ? 'chatbubble-ellipses'
-                    : 'chatbubble-ellipses-outline'
-                }
-                size={30}
-                color={color}
-              />
+              <View>
+                <Ionicons
+                  name={
+                    focused
+                      ? 'chatbubble-ellipses'
+                      : 'chatbubble-ellipses-outline'
+                  }
+                  size={30}
+                  color={color}
+                />
+                {hasUnreadChat && (
+                  <PulsingBadge
+                    color={colors.primary}
+                    borderColor={isDark ? '#000' : '#fff'}
+                  />
+                )}
+              </View>
             ),
           }}
         />
