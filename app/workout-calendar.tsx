@@ -31,6 +31,7 @@ export default function WorkoutCalendarScreen() {
   const [shouldExit, setShouldExit] = useState(false)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [currentStreak, setCurrentStreak] = useState<number | null>(null)
   const { shareWorkoutWidget } = useWorkoutShare()
 
   const loadWorkoutDates = useCallback(async () => {
@@ -43,22 +44,20 @@ export default function WorkoutCalendarScreen() {
       const startDate = new Date(currentYear - 4, 0, 1) // 5 years ago
       const endDate = new Date(currentYear, 11, 31)
 
-      const dates = await database.stats.getWorkoutDatesInRange(
-        user.id,
-        startDate,
-        endDate,
-      )
+      const [dates, profileData, streakResult] = await Promise.all([
+        database.stats.getWorkoutDatesInRange(user.id, startDate, endDate),
+        database.profiles.getByIdOrNull(user.id),
+        database.stats.calculateStreak(user.id),
+      ])
+
       setWorkoutDates(new Set(dates))
-      
-      // Also load profile for sharing
-      const profileData = await database.profiles.getByIdOrNull(user.id)
       setProfile(profileData)
+      setCurrentStreak(streakResult.currentStreak)
     } catch (error) {
       console.error('Error loading workout dates:', error)
     } finally {
       setIsLoading(false)
     }
-     
   }, [user?.id])
 
   useEffect(() => {
@@ -156,8 +155,8 @@ export default function WorkoutCalendarScreen() {
                     <Text
                       style={[
                         styles.dayTextLarge,
-                        hasWorkout && styles.dayTextWorkout,
                         isToday && styles.dayTextToday,
+                        hasWorkout && styles.dayTextWorkout,
                       ]}
                     >
                       {day.date}
@@ -416,6 +415,29 @@ export default function WorkoutCalendarScreen() {
     )
   }
 
+  /* Gamified Streak Hero Section */
+  const renderStreakHero = () => {
+    const streakValue = currentStreak || 0
+    const isActive = streakValue > 0
+    
+    return (
+      <View style={styles.streakHeroContainer}>
+        <View style={styles.streakTopRow}>
+          <View>
+            <Text style={styles.streakBigNumber}>{streakValue}</Text>
+            <Text style={styles.streakLabel}>{streakValue === 1 ? 'Week streak!' : 'Weeks streak!'}</Text>
+          </View>
+          <Ionicons 
+            name="flame" 
+            size={64} 
+            color={isActive ? '#FF5500' : colors.textSecondary + '40'} // Strava-like orange
+             style={styles.streakHeroIcon}
+          />
+        </View>
+      </View>
+    )
+  }
+
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
 
@@ -437,7 +459,9 @@ export default function WorkoutCalendarScreen() {
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Workout Calendar</Text>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitleText}>Workout Calendar</Text>
+          </View>
           <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
             <Ionicons name="share-outline" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -507,6 +531,7 @@ export default function WorkoutCalendarScreen() {
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
           >
+            {renderStreakHero()}
             {viewMode === 'month' && renderMonthView()}
             {viewMode === 'year' && renderYearView()}
             {viewMode === 'multi-year' && renderMultiYearView()}
@@ -553,12 +578,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       marginLeft: -7,
     },
-    headerTitle: {
+    headerTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitleText: {
       fontSize: 20,
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
-      flex: 1,
     },
     shareButton: {
       minWidth: 44,
@@ -567,6 +596,40 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       marginRight: -7,
     },
+    /* Streak Hero Styles */
+    streakHeroContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    streakTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 0,
+    },
+    streakBigNumber: {
+      fontSize: 72,
+      fontWeight: '800', // Extra bold
+      color: colors.text,
+      lineHeight: 72,
+      letterSpacing: -2,
+      includeFontPadding: false,
+    },
+    streakLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: -2,
+      letterSpacing: -0.5,
+    },
+    streakHeroIcon: {
+      marginTop: 8,
+      // Add a subtle shadow for the "premium" feel
+      textShadowColor: 'rgba(255, 85, 0, 0.3)',
+      textShadowOffset: { width: 0, height: 4 },
+      textShadowRadius: 10,
+    },
+    /* End Streak Hero Styles */
     viewModeSelectorContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -649,7 +712,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     dayNumberWorkout: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.primary,
     },
     dayTextLarge: {
       fontSize: 16,
@@ -657,8 +720,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.text,
     },
     dayTextWorkout: {
-      color: colors.primary,
-      fontWeight: '600',
+      color: '#FFFFFF',
+      fontWeight: '700',
     },
     dayTextToday: {
       color: colors.primary,

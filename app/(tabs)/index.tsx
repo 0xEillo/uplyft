@@ -3,17 +3,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  LayoutAnimation,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    LayoutAnimation,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -105,7 +105,18 @@ export default function FeedScreen() {
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [currentStreak, setCurrentStreak] = useState(0)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
+
+  const loadStreak = useCallback(async () => {
+    if (!user) return
+    try {
+      const { currentStreak } = await database.stats.calculateStreak(user.id)
+      setCurrentStreak(currentStreak)
+    } catch (error) {
+      console.error('Error loading streak:', error)
+    }
+  }, [user])
 
   // Register FlatList ref for scroll-to-top functionality
   useEffect(() => {
@@ -362,6 +373,9 @@ export default function FeedScreen() {
         checkAndLoadPlaceholder()
       }
 
+      // Always refresh streak when screen is focused
+      loadStreak()
+
       // Process pending post in background (non-blocking)
       // CreateButton spinner in tab bar responds via shared pending status
       handlePendingPost()
@@ -441,6 +455,23 @@ export default function FeedScreen() {
                 activeOpacity={1}
               >
                 <Text style={styles.proBadgeText}>PRO</Text>
+              </TouchableOpacity>
+            )}
+            {currentStreak > 0 && (
+              <TouchableOpacity
+                style={styles.streakButton}
+                onPress={() => router.push('/workout-calendar')}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name="flame" 
+                  size={24} 
+                  color={colors.primary} 
+                  style={{ marginTop: 2 }} // Moved down by 2px (1px requested, but 2 looks better usually)
+                />
+                <View style={[styles.streakBadge, { bottom: -3 }]}> 
+                  <Text style={styles.streakBadgeText}>{currentStreak}</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -527,7 +558,27 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitleContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 0,
+      gap: 12,
+    },
+    streakButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    streakBadge: {
+      position: 'absolute',
+      bottom: -4,
+      right: -6,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      paddingHorizontal: 2,
+      borderWidth: 1,
+      borderColor: colors.background,
+    },
+    streakBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.text,
     },
     proBadge: {
       backgroundColor: colors.primary,
