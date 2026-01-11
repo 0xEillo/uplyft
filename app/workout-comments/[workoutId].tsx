@@ -1,5 +1,6 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -31,6 +32,7 @@ interface CommentWithProfile extends WorkoutComment {
 export default function WorkoutCommentsScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
   const { user, isAnonymous } = useAuth()
+  const { profile } = useProfile()
   const router = useRouter()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -176,15 +178,15 @@ export default function WorkoutCommentsScreen() {
       <View style={styles.emptyState}>
         {user && (
           <View style={styles.emptyAvatar}>
-            {user.user_metadata?.avatar_url ? (
+            {profile?.avatar_url ? (
               <Image
-                source={{ uri: user.user_metadata.avatar_url }}
+                source={{ uri: profile.avatar_url }}
                 style={styles.avatar}
               />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <Text style={styles.avatarText}>
-                  {user.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'}
+                  {profile?.display_name?.[0]?.toUpperCase() || 'U'}
                 </Text>
               </View>
             )}
@@ -193,7 +195,7 @@ export default function WorkoutCommentsScreen() {
         <Text style={styles.emptyText}>Be the first to comment</Text>
       </View>
     ),
-    [user, styles],
+    [user, profile, styles],
   )
 
   // Early return for anonymous users (after all hooks)

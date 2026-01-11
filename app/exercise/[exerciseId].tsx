@@ -51,7 +51,7 @@ interface LeaderboardEntry {
   displayName: string
   userTag: string
   avatarUrl: string | null
-  maxWeight: number
+  max1RM: number
   isCurrentUser: boolean
   strengthLevel: StrengthLevel | null
 }
@@ -184,16 +184,12 @@ export default function ExerciseDetailScreen() {
       const _followingIds = following.map(f => f.followee_id)
       void _followingIds // suppress unused warning - reserved for batch queries
 
-      // 3. Get max weight for each user on this exercise
-      // We need to fetch max weight for each user. Since we don't have a batch function for this specific query across users yet,
+      // 3. Get max estimated 1RM (Epley) for each user on this exercise
+      // We need to fetch per-user stats. Since we don't have a batch function for this specific query across users yet,
       // we'll iterate for now. In production, a dedicated RPC or view would be better.
       
       const leaderboardData: LeaderboardEntry[] = []
 
-      // Get current user's max weight (already fetched in records above, but let's be consistent)
-      // We use heaviest weight lifted, not estimated 1RM, to match "Heaviest Weight" title in screenshot
-      // For strength standards, we need 1RM though.
-      const myMaxWeight = records.length > 0 ? Math.max(...records.map(r => r.weight)) : 0
       const myEstimated1RM = records.length > 0 ? Math.max(...records.map(r => r.estimated1RM)) : 0
       
       if (profileData) {
@@ -214,13 +210,13 @@ export default function ExerciseDetailScreen() {
             displayName: 'You', // Display "You" for current user
             userTag: profileData.user_tag || '',
             avatarUrl: profileData.avatar_url,
-            maxWeight: myMaxWeight,
+            max1RM: myEstimated1RM,
             isCurrentUser: true,
             strengthLevel
         })
       }
 
-      // Get friends' max weights
+      // Get friends' max estimated 1RMs
       // Limit concurrent requests
       await Promise.all(following.map(async (follow) => {
           const friendId = follow.followee_id
@@ -231,10 +227,9 @@ export default function ExerciseDetailScreen() {
               const fullFriendProfile = await database.profiles.getById(friendId)
 
               const friendRecords = await database.stats.getExerciseRecordsByWeight(friendId, exerciseId)
-              const friendMaxWeight = friendRecords.length > 0 ? Math.max(...friendRecords.map(r => r.weight)) : 0
               const friendEstimated1RM = friendRecords.length > 0 ? Math.max(...friendRecords.map(r => r.estimated1RM)) : 0
               
-              if (friendMaxWeight > 0) { // Only include if they have lifted this weight
+              if (friendEstimated1RM > 0) { // Only include if they have any tracked sets for this exercise
                   let strengthLevel: StrengthLevel | null = null
                   if (exerciseData && exerciseData.name && fullFriendProfile?.weight_kg && fullFriendProfile?.gender) {
                        const info = getStrengthStandard(
@@ -252,7 +247,7 @@ export default function ExerciseDetailScreen() {
                       displayName: friendProfile.display_name || 'User',
                       userTag: friendProfile.user_tag || '',
                       avatarUrl: friendProfile.avatar_url,
-                      maxWeight: friendMaxWeight,
+                      max1RM: friendEstimated1RM,
                       isCurrentUser: false,
                       strengthLevel
                   })
@@ -262,8 +257,8 @@ export default function ExerciseDetailScreen() {
           }
       }))
 
-      // Sort by max weight descending
-      leaderboardData.sort((a, b) => b.maxWeight - a.maxWeight)
+      // Sort by max estimated 1RM descending
+      leaderboardData.sort((a, b) => b.max1RM - a.max1RM)
 
       // Assign ranks
       leaderboardData.forEach((entry, index) => {
@@ -651,7 +646,7 @@ export default function ExerciseDetailScreen() {
             </View>
           ) : activeTab === 'leaderboard' ? (
             <View style={styles.leaderboardContainer}>
-                <Text style={styles.leaderboardSubtitle}>Following</Text>
+                <Text style={styles.leaderboardSubtitle}>Following (Est. 1RM)</Text>
 
                 <View style={styles.leaderboardList}>
                     {leaderboard.map((entry) => (
@@ -681,7 +676,7 @@ export default function ExerciseDetailScreen() {
                                 </View>
                             </View>
                             <Text style={styles.leaderboardValue}>
-                                {formatWeight(entry.maxWeight, { maximumFractionDigits: 1 })}
+                                {formatWeight(entry.max1RM, { maximumFractionDigits: 0 })}
                             </Text>
                         </View>
                     ))}
