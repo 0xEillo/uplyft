@@ -16,15 +16,15 @@ import * as Haptics from 'expo-haptics'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Dimensions,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -269,6 +269,7 @@ export default function SelectExerciseScreen() {
   const listRef = useRef<FlashListRef<Exercise>>(null)
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
+  const [showOnlyMine, setShowOnlyMine] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
@@ -296,7 +297,7 @@ export default function SelectExerciseScreen() {
   const trimmedQuery = searchQuery.trim()
   const hasMuscleFilter = selectedMuscleGroups.length > 0
   const hasEquipmentFilter = selectedEquipment.length > 0
-  const hasFilters = hasMuscleFilter || hasEquipmentFilter
+  const hasFilters = hasMuscleFilter || hasEquipmentFilter || showOnlyMine
 
   // Debounced filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
@@ -328,6 +329,11 @@ export default function SelectExerciseScreen() {
       })
     }
 
+    // Apply "Yours" filter - show only exercises created by current user
+    if (showOnlyMine && user?.id) {
+      result = result.filter((e) => e.created_by === user.id)
+    }
+
     return result
   }, [
     exercises,
@@ -336,12 +342,14 @@ export default function SelectExerciseScreen() {
     selectedMuscleGroups,
     hasEquipmentFilter,
     selectedEquipment,
+    showOnlyMine,
+    user?.id,
   ])
 
   // Scroll to top when search results change
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
-  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment])
+  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment, showOnlyMine])
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {
@@ -691,6 +699,44 @@ export default function SelectExerciseScreen() {
         {/* Expandable Equipment Filter */}
         {isFilterVisible && (
             <View style={styles.filtersWrapper}>
+                {/* Yours Filter */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.filterScrollView}
+                    contentContainerStyle={styles.filterContainer}
+                >
+                    <Text
+                        style={[styles.filterLabel, { color: colors.textSecondary }]}
+                    >
+                        Exercises:
+                    </Text>
+                    <TouchableOpacity
+                        style={[
+                            styles.filterChip,
+                            {
+                                borderColor: colors.border,
+                                backgroundColor: colors.backgroundLight,
+                            },
+                            showOnlyMine && {
+                                borderColor: colors.primary,
+                                backgroundColor: colors.primaryLight,
+                            },
+                        ]}
+                        onPress={() => setShowOnlyMine(!showOnlyMine)}
+                    >
+                        <Text
+                            style={[
+                                styles.filterChipText,
+                                { color: colors.textSecondary },
+                                showOnlyMine && { color: colors.primary },
+                            ]}
+                        >
+                            Yours
+                        </Text>
+                    </TouchableOpacity>
+                </ScrollView>
+
                 {/* Equipment Filter */}
                 {equipmentTypes.length > 0 && (
                     <ScrollView
@@ -855,6 +901,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   filterChip: {
+    flexDirection: 'row',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,

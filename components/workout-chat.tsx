@@ -2,8 +2,8 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  WorkoutPlanningData,
-  WorkoutPlanningWizard,
+    WorkoutPlanningData,
+    WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -14,17 +14,17 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  AiWorkoutConversionResult,
-  convertAiPlanToRoutine,
-  convertAiPlanToWorkout,
+    AiWorkoutConversionResult,
+    convertAiPlanToRoutine,
+    convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-  ParsedWorkoutDisplay,
-  parseWorkoutForDisplay,
+    ParsedWorkoutDisplay,
+    parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-  buildWorkoutCreationPrompt,
-  buildWorkoutModificationSuffix,
+    buildWorkoutCreationPrompt,
+    buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -32,8 +32,8 @@ import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
-  loadDraft as loadWorkoutDraft,
-  saveDraft,
+    loadDraft as loadWorkoutDraft,
+    saveDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -44,34 +44,34 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleProp,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleProp,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -2127,8 +2127,16 @@ export function WorkoutChat({
                                           suggestion.name,
                                         )
                                         const gifUrl = exerciseMatch?.gifUrl
+                                        const exerciseId = exerciseMatch?.id
+                                        const canNavigate = !!exerciseId
                                         const isLast =
                                           idx === exerciseSuggestions.length - 1
+                                        
+                                        const handleNavigateToExercise = () => {
+                                          if (exerciseId) {
+                                            router.push(`/exercise/${exerciseId}`)
+                                          }
+                                        }
 
                                         return (
                                           <View
@@ -2145,13 +2153,16 @@ export function WorkoutChat({
                                                   styles.suggestionTimelineLineTop
                                                 }
                                               />
-                                              <View
+                                              <TouchableOpacity
                                                 style={[
                                                   styles.suggestionTimelineNode,
                                                   gifUrl
                                                     ? styles.suggestionTimelineNodeImage
                                                     : null,
                                                 ]}
+                                                onPress={handleNavigateToExercise}
+                                                disabled={!canNavigate}
+                                                activeOpacity={canNavigate ? 0.7 : 1}
                                               >
                                                 {gifUrl ? (
                                                   <ExerciseMediaThumbnail
@@ -2167,7 +2178,7 @@ export function WorkoutChat({
                                                     color={colors.textSecondary}
                                                   />
                                                 )}
-                                              </View>
+                                              </TouchableOpacity>
                                               {!isLast && (
                                                 <View
                                                   style={
@@ -2188,13 +2199,28 @@ export function WorkoutChat({
                                                     styles.exerciseCardInfo
                                                   }
                                                 >
-                                                  <Text
-                                                    style={
-                                                      styles.exerciseCardName
-                                                    }
-                                                  >
-                                                    {suggestion.name}
-                                                  </Text>
+                                                  <View style={styles.exerciseCardNameRow}>
+                                                    <Text
+                                                      style={
+                                                        styles.exerciseCardName
+                                                      }
+                                                    >
+                                                      {suggestion.name}
+                                                    </Text>
+                                                    {canNavigate && (
+                                                      <TouchableOpacity
+                                                        onPress={handleNavigateToExercise}
+                                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                        style={styles.exerciseCardInfoButton}
+                                                      >
+                                                        <Ionicons
+                                                          name="information-circle-outline"
+                                                          size={16}
+                                                          color={colors.textTertiary}
+                                                        />
+                                                      </TouchableOpacity>
+                                                    )}
+                                                  </View>
                                                   <Text
                                                     style={
                                                       styles.exerciseCardDetails
@@ -3132,11 +3158,20 @@ function createStyles(
     exerciseCardInfo: {
       flex: 1,
     },
+    exerciseCardNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    exerciseCardInfoButton: {
+      padding: 2,
+    },
     exerciseCardName: {
       fontSize: 15,
       fontWeight: '600',
       color: colors.text,
       marginBottom: 2,
+      flex: 1,
     },
     exerciseCardDetails: {
       fontSize: 13,

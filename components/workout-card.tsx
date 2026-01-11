@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import React, { useState } from 'react'
 import { Image, ImageSourcePropType, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { ParsedWorkoutDisplay, getExerciseIcon } from '@/lib/ai/workoutParsing'
+import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 
 interface WorkoutCardProps {
   workout: ParsedWorkoutDisplay
@@ -65,13 +67,28 @@ export function WorkoutCard({
           const isLast = index === visibleExercises.length - 1 && !hasMoreExercises
           const isExpanded = expandedExerciseIndices.includes(index)
           const setSummary = `${exercise.sets.length} sets`
+          
+          // Get exercise ID for navigation
+          const exerciseMatch = findExerciseByName(exercise.name)
+          const canNavigate = !!exerciseMatch?.id
+          
+          const handleNavigateToExercise = () => {
+            if (exerciseMatch?.id) {
+              router.push(`/exercise/${exerciseMatch.id}`)
+            }
+          }
 
           return (
             <View key={index} style={styles.timelineRow}>
               {/* Timeline Connector */}
               <View style={styles.timelineColumn}>
                 <View style={styles.timelineLineTop} />
-                <View style={[styles.timelineNode, exercise.gifUrl ? styles.timelineNodeImage : null]}>
+                <TouchableOpacity 
+                  style={[styles.timelineNode, exercise.gifUrl ? styles.timelineNodeImage : null]}
+                  onPress={handleNavigateToExercise}
+                  disabled={!canNavigate}
+                  activeOpacity={canNavigate ? 0.7 : 1}
+                >
                    {exercise.gifUrl ? (
                       <ExerciseMediaThumbnail
                         gifUrl={exercise.gifUrl}
@@ -84,7 +101,7 @@ export function WorkoutCard({
                         color={colors.textSecondary}
                       />
                     )}
-                </View>
+                </TouchableOpacity>
                 {/* Draw line to next item unless it's the very last one */}
                  {!isLast && <View style={styles.timelineLineBottom} />}
               </View>
@@ -104,7 +121,22 @@ export function WorkoutCard({
                 >
                   <View style={styles.exerciseHeader}>
                     <View style={styles.exerciseHeaderText}>
-                      <Text style={styles.exerciseName}>{exercise.name}</Text>
+                      <View style={styles.exerciseNameRow}>
+                        <Text style={styles.exerciseName}>{exercise.name}</Text>
+                        {canNavigate && (
+                          <TouchableOpacity 
+                            onPress={handleNavigateToExercise}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={styles.infoButton}
+                          >
+                            <Ionicons
+                              name="information-circle-outline"
+                              size={18}
+                              color={colors.textTertiary}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <View style={styles.setSummaryContainer}>
                          <Text style={styles.setSummaryText}>{setSummary}</Text>
                           <Ionicons
@@ -301,11 +333,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseHeaderText: {
        // flex: 1,
     },
+    exerciseNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    infoButton: {
+      padding: 2,
+    },
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
       marginBottom: 4,
+      flex: 1,
     },
     setSummaryContainer: {
       flexDirection: 'row',

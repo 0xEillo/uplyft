@@ -1165,6 +1165,44 @@ export const database = {
       )
       return data as Exercise
     },
+
+    async delete(exerciseId: string, userId: string) {
+      // First, verify the user owns this exercise
+      const { data: exercise, error: fetchError } = await supabase
+        .from('exercises')
+        .select('id, created_by')
+        .eq('id', exerciseId)
+        .single()
+
+      if (fetchError) {
+        console.error('[database.exercises.delete] Error fetching exercise:', fetchError)
+        throw fetchError
+      }
+
+      if (!exercise) {
+        throw new Error('Exercise not found')
+      }
+
+      // Check if the user owns this exercise
+      if (exercise.created_by !== userId) {
+        throw new Error('You can only delete exercises that you created')
+      }
+
+      // Delete the exercise
+      const { error: deleteError } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('id', exerciseId)
+        .eq('created_by', userId) // Double-check ownership at DB level
+
+      if (deleteError) {
+        console.error('[database.exercises.delete] Error deleting exercise:', deleteError)
+        throw deleteError
+      }
+
+      console.log('[database.exercises.delete] Exercise deleted successfully:', exerciseId)
+      return true
+    },
   },
 
   // Workout session operations

@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
     ActivityIndicator,
+    Alert,
     Image,
     RefreshControl,
     ScrollView,
@@ -86,7 +87,11 @@ export default function ExerciseDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('records')
   const [paywallVisible, setPaywallVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const insets = useSafeAreaInsets()
+
+  // Check if current user owns this exercise
+  const isOwner = exercise?.created_by === user?.id && user?.id
 
   const loadData = useCallback(async () => {
     if (!user?.id || !exerciseId) return
@@ -344,6 +349,41 @@ export default function ExerciseDetailScreen() {
     }
   }
 
+  const handleDeleteExercise = () => {
+    Alert.alert(
+      'Delete Exercise',
+      `Are you sure you want to delete "${exercise?.name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user?.id || !exerciseId) return
+            
+            setIsDeleting(true)
+            try {
+              await database.exercises.delete(exerciseId, user.id)
+              // Navigate back after successful deletion
+              setShouldExit(true)
+            } catch (error) {
+              console.error('Error deleting exercise:', error)
+              Alert.alert(
+                'Error',
+                error instanceof Error ? error.message : 'Failed to delete exercise. Please try again.'
+              )
+            } finally {
+              setIsDeleting(false)
+            }
+          },
+        },
+      ]
+    )
+  }
+
   const styles = createStyles(colors)
   const strengthInfo = getStrengthInfo()
 
@@ -365,7 +405,21 @@ export default function ExerciseDetailScreen() {
           <Text style={styles.headerTitle} numberOfLines={1}>
             {exercise?.name || 'Exercise Details'}
           </Text>
-          <View style={styles.headerRightSpacer} />
+          {isOwner ? (
+            <TouchableOpacity
+              onPress={handleDeleteExercise}
+              style={styles.headerDeleteButton}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <Ionicons name="trash-outline" size={22} color="#EF4444" />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerRightSpacer} />
+          )}
         </View>
 
         {/* Tabs */}
@@ -750,6 +804,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerRightSpacer: {
       width: 32,
       alignItems: 'flex-end'
+    },
+    headerDeleteButton: {
+      padding: 4,
+      marginRight: -4,
     },
     tabsBorder: {
       borderBottomWidth: 1,
