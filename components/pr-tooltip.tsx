@@ -1,7 +1,5 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactElement } from 'react'
 import {
   Animated,
   Modal,
@@ -10,6 +8,9 @@ import {
   Text,
   View,
 } from 'react-native'
+
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
 
 export interface PrDetailForTooltip {
   label: string // e.g., "1RM", "11 reps @ 65kg"
@@ -40,7 +41,7 @@ export function PrTooltip({
   prDetails,
   exerciseName,
   weightUnitOverride,
-}: PrTooltipProps) {
+}: PrTooltipProps): ReactElement {
   const colors = useThemedColors()
   const { weightUnit: userWeightUnit } = useWeightUnits()
   const weightUnit = weightUnitOverride || userWeightUnit
@@ -112,39 +113,58 @@ export function PrTooltip({
 
             {/* PR Details */}
             <View style={styles.prList}>
-              {prDetails.map((pr, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.prItem,
-                    !pr.isCurrent && styles.prItemHistorical,
-                  ]}
-                >
-                  <View style={styles.prHeaderRow}>
-                    <Text style={[styles.prLabel, !pr.isCurrent && styles.prLabelHistorical]}>
-                      {pr.isCurrent ? 'New Record' : 'Previous Record'}
-                    </Text>
-                  </View>
-                  
-                  <Text
-                    style={[
-                      styles.prText,
-                      !pr.isCurrent && styles.prTextHistorical,
-                    ]}
-                  >
-                    {pr.weight.toFixed(weightUnit === 'kg' ? 1 : 0)}{weightUnit} x {pr.currentReps} {pr.currentReps === 1 ? 'rep' : 'reps'}
-                  </Text>
+              {prDetails.map((pr, index) => {
+                const weightDecimals = weightUnit === 'kg' ? 1 : 0
+                const formattedWeight = pr.weight.toFixed(weightDecimals)
+                const currentRepsLabel = pr.currentReps === 1 ? 'rep' : 'reps'
 
-                  {pr.previousReps !== undefined && pr.previousReps > 0 && pr.previousReps !== pr.currentReps && (
-                    <View style={styles.beatContainer}>
-                      <Ionicons name="trending-up" size={12} color={colors.success} />
-                      <Text style={styles.beatText}>
-                        Beat: {pr.previousReps} {pr.previousReps === 1 ? 'rep' : 'reps'}
+                const showBeat =
+                  pr.previousReps !== undefined &&
+                  pr.previousReps > 0 &&
+                  pr.previousReps !== pr.currentReps
+                const previousRepsLabel = pr.previousReps === 1 ? 'rep' : 'reps'
+
+                return (
+                  <View
+                    key={index}
+                    style={[styles.prItem, !pr.isCurrent && styles.prItemHistorical]}
+                  >
+                    <View style={styles.prHeaderRow}>
+                      <Text
+                        style={[
+                          styles.prLabel,
+                          !pr.isCurrent && styles.prLabelHistorical,
+                        ]}
+                      >
+                        {pr.isCurrent ? 'New Record' : 'Previous Record'}
                       </Text>
                     </View>
-                  )}
-                </View>
-              ))}
+
+                    <Text
+                      style={[
+                        styles.prText,
+                        !pr.isCurrent && styles.prTextHistorical,
+                      ]}
+                    >
+                      {formattedWeight}
+                      {weightUnit} x {pr.currentReps} {currentRepsLabel}
+                    </Text>
+
+                    {showBeat && (
+                      <View style={styles.beatContainer}>
+                        <Ionicons
+                          name="trending-up"
+                          size={12}
+                          color={colors.success}
+                        />
+                        <Text style={styles.beatText}>
+                          Beat: {pr.previousReps} {previousRepsLabel}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
             </View>
           </View>
         </Animated.View>
@@ -153,8 +173,8 @@ export function PrTooltip({
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
-  StyleSheet.create({
+function createStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -251,3 +271,4 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.success,
     },
   })
+}

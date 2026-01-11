@@ -1,19 +1,18 @@
-import { useTheme } from '@/contexts/theme-context'
-import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useWorkoutShare } from '@/hooks/useWorkoutShare'
-import { database } from '@/lib/database'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import {
+    memo,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactElement,
+} from 'react'
 
 import {
     ActivityIndicator,
     Animated,
     Image,
     Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -21,7 +20,17 @@ import {
     TouchableOpacity,
     useWindowDimensions,
     View,
+    type NativeScrollEvent,
+    type NativeSyntheticEvent,
 } from 'react-native'
+
+import { useTheme } from '@/contexts/theme-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { database } from '@/lib/database'
+import type { WorkoutSessionWithDetails } from '@/types/database.types'
+
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
@@ -31,7 +40,7 @@ const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
 const FULLSCREEN_FADE_DURATION = 300 // Duration for fullscreen image fade-in
 
 // Helper functions for compact formatting
-const formatDurationCompact = (seconds: number) => {
+function formatDurationCompact(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const mins = Math.floor((safeSeconds % 3600) / 60)
@@ -45,7 +54,10 @@ const formatDurationCompact = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-const formatVolumeCompact = (volumeKg: number, targetUnit: 'kg' | 'lb') => {
+function formatVolumeCompact(
+  volumeKg: number,
+  targetUnit: 'kg' | 'lb',
+): string {
   if (targetUnit === 'lb') {
     const volumeLb = Math.round(volumeKg * 2.20462)
     return `${volumeLb.toLocaleString()} lb`
@@ -151,7 +163,7 @@ export const FeedCard = memo(function FeedCard({
   onComment,
   routine,
   onRoutinePress,
-}: FeedCardProps) {
+}: FeedCardProps): ReactElement {
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
@@ -421,11 +433,6 @@ export const FeedCard = memo(function FeedCard({
           {!isPending && (
             <Animated.View style={{ opacity: exercisesFadeAnim }}>
               {displayedExercises.map((exercise, index) => {
-                const exercisePR = prInfo.find(
-                  (pr) => pr.exerciseName === exercise.name,
-                )
-                const hasPR = exercisePR && exercisePR.prSetIndices.size > 0
-
                 return (
                   <View
                     key={index}
@@ -504,7 +511,6 @@ export const FeedCard = memo(function FeedCard({
       exercisesFadeAnim,
       displayedExercises,
       hasMoreExercises,
-      prInfo,
       weightUnit,
       colors.primary,
       colors.info,
@@ -806,11 +812,11 @@ export const FeedCard = memo(function FeedCard({
   )
 })
 
-const createStyles = (
+function createStyles(
   colors: ReturnType<typeof useThemedColors>,
   isDark: boolean,
-) =>
-  StyleSheet.create({
+) {
+  return StyleSheet.create({
     card: {
       backgroundColor: colors.background,
       paddingHorizontal: 14,
@@ -1262,3 +1268,4 @@ const createStyles = (
       borderRadius: 3,
     },
   })
+}

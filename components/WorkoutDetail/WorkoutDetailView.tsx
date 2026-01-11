@@ -1,14 +1,7 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { SlideInView } from '@/components/slide-in-view'
-import { getColors } from '@/constants/colors'
-import { useTheme } from '@/contexts/theme-context'
-import { formatTimeAgo } from '@/lib/utils/formatters'
-import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import type { Href } from 'expo-router'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, type ReactElement } from 'react'
 
 import {
     ActivityIndicator,
@@ -21,6 +14,15 @@ import {
     View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { SlideInView } from '@/components/slide-in-view'
+import { getColors } from '@/constants/colors'
+import { useTheme } from '@/contexts/theme-context'
+import { formatTimeAgo } from '@/lib/utils/formatters'
+import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
+import type { WorkoutSessionWithDetails } from '@/types/database.types'
+
 import { ExerciseDetailCard } from './ExerciseDetailCard'
 import { MuscleSplitChart } from './MuscleSplitChart'
 import { WorkoutStatsGrid } from './WorkoutStatsGrid'
@@ -60,6 +62,28 @@ interface WorkoutDetailViewProps {
   isLoading?: boolean
 }
 
+function normalizeReturnToParam(
+  rawReturnTo: string | string[] | undefined,
+): string | undefined {
+  const raw = rawReturnTo
+  if (!raw) return undefined
+
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (!value) return undefined
+
+  try {
+    const decoded = decodeURIComponent(value)
+    if (decoded.startsWith('http')) {
+      console.warn('[WorkoutDetail] Ignoring external returnTo param:', decoded)
+      return undefined
+    }
+    return decoded.startsWith('/') ? decoded : `/${decoded}`
+  } catch (error) {
+    console.warn('[WorkoutDetail] Failed to decode returnTo param:', value, error)
+    return undefined
+  }
+}
+
 export function WorkoutDetailView({
   workout,
   prInfo = [],
@@ -74,38 +98,18 @@ export function WorkoutDetailView({
   onCreateRoutine,
   onExercisePress,
   isLoading = false,
-}: WorkoutDetailViewProps) {
+}: WorkoutDetailViewProps): ReactElement {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const router = useRouter()
-  const params = useLocalSearchParams<{ returnTo?: string }>()
+  const params = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const insets = useSafeAreaInsets()
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
-  const normalizedReturnTo = useMemo(() => {
-    const raw = params.returnTo
-    if (!raw) return undefined
-    const value = Array.isArray(raw) ? raw[0] : raw
-    if (!value) return undefined
-    try {
-      const decoded = decodeURIComponent(value)
-      if (decoded.startsWith('http')) {
-        console.warn(
-          '[WorkoutDetail] Ignoring external returnTo param:',
-          decoded,
-        )
-        return undefined
-      }
-      return decoded.startsWith('/') ? decoded : `/${decoded}`
-    } catch (error) {
-      console.warn(
-        '[WorkoutDetail] Failed to decode returnTo param:',
-        value,
-        error,
-      )
-      return undefined
-    }
-  }, [params.returnTo])
+  const normalizedReturnTo = useMemo(
+    () => normalizeReturnToParam(params.returnTo),
+    [params.returnTo],
+  )
 
   // Get workout metadata
   const muscleGroups = workout ? getWorkoutMuscleGroups(workout) : ''

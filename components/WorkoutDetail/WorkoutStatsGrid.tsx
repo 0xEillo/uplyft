@@ -1,36 +1,39 @@
+import { Ionicons } from '@expo/vector-icons'
+import type { ReactElement } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { useUnit } from '@/contexts/unit-context'
-import {
-    calculateWorkoutStats,
-    formatVolume,
-} from '@/lib/utils/workout-stats'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { Ionicons } from '@expo/vector-icons'
-import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { calculateWorkoutStats, formatVolume } from '@/lib/utils/workout-stats'
+import type { WorkoutSessionWithDetails } from '@/types/database.types'
 
 interface WorkoutStatsGridProps {
   workout: WorkoutSessionWithDetails
   prCount?: number
 }
 
-const formatDurationStopwatch = (seconds: number) => {
+function formatDurationStopwatch(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const mins = Math.floor((safeSeconds % 3600) / 60)
   const secs = safeSeconds % 60
 
   if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, '0')}:${secs
+    return `${hours}:${mins
       .toString()
-      .padStart(2, '0')}`
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`
 }
 
-export function WorkoutStatsGrid({ workout, prCount }: WorkoutStatsGridProps) {
+export function WorkoutStatsGrid({
+  workout,
+  prCount,
+}: WorkoutStatsGridProps): ReactElement {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
@@ -44,7 +47,9 @@ export function WorkoutStatsGrid({ workout, prCount }: WorkoutStatsGridProps) {
       <View style={styles.statItem}>
         <View style={styles.labelContainer}>
           <Ionicons name="time-outline" size={14} color={colors.success} />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Duration</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            Duration
+          </Text>
         </View>
         <Text style={[styles.value, { color: colors.text }]}>
           {durationDisplay}
@@ -54,7 +59,9 @@ export function WorkoutStatsGrid({ workout, prCount }: WorkoutStatsGridProps) {
       <View style={[styles.statItem, styles.statItemCenter]}>
         <View style={styles.labelContainer}>
           <Ionicons name="barbell-outline" size={14} color={colors.info} />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Volume</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            Volume
+          </Text>
         </View>
         <Text style={[styles.value, { color: colors.text }]}>
           {volumeFormatted.value.toLocaleString()} {volumeFormatted.unit}
@@ -64,7 +71,9 @@ export function WorkoutStatsGrid({ workout, prCount }: WorkoutStatsGridProps) {
       <View style={[styles.statItem, styles.statItemRight]}>
         <View style={styles.labelContainer}>
           <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Records</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            Records
+          </Text>
         </View>
         <Text style={[styles.value, { color: colors.text }]}>
           {prCount ?? stats.prCount}

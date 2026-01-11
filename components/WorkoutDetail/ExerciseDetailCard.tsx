@@ -1,10 +1,12 @@
+import { useState, type ReactElement } from 'react'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
-import { WorkoutExerciseWithDetails } from '@/types/database.types'
-import React, { useState } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import type { WorkoutExerciseWithDetails } from '@/types/database.types'
+
 import { PrTooltip } from '../pr-tooltip'
 
 interface PrDetailForDisplay {
@@ -29,7 +31,35 @@ interface ExerciseDetailCardProps {
   onExercisePress?: (exerciseId: string) => void
 }
 
-export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }: ExerciseDetailCardProps) {
+function formatWeightRepsText(
+  weightKg: number | null,
+  reps: number | null,
+  weightUnit: 'kg' | 'lb',
+): string {
+  if (weightKg !== null && reps !== null) {
+    const convertedWeight = kgToPreferred(weightKg, weightUnit)
+    const formattedWeight = convertedWeight.toFixed(weightUnit === 'kg' ? 1 : 0)
+    return `${formattedWeight}${weightUnit} x ${reps} reps`
+  }
+
+  if (reps !== null) {
+    return `${reps} reps`
+  }
+
+  if (weightKg !== null) {
+    const convertedWeight = kgToPreferred(weightKg, weightUnit)
+    const formattedWeight = convertedWeight.toFixed(weightUnit === 'kg' ? 1 : 0)
+    return `${formattedWeight}${weightUnit}`
+  }
+
+  return '--'
+}
+
+export function ExerciseDetailCard({
+  workoutExercise,
+  prInfo,
+  onExercisePress,
+}: ExerciseDetailCardProps): ReactElement | null {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
@@ -42,7 +72,81 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
     return null
   }
 
-  const hasPR = prInfo && prInfo.prSetIndices.size > 0
+  const hasPr = (prInfo?.prSetIndices.size ?? 0) > 0
+
+  let workingSetNumber = 0
+  const setRows = sets.map((set, index) => {
+    const weight = set.weight
+    const reps = set.reps
+    const setHasPr = prInfo?.prSetIndices.has(index) === true
+
+    const isWarmup = set.is_warmup === true
+    if (!isWarmup) {
+      workingSetNumber += 1
+    }
+    const setLabel = isWarmup ? 'W' : String(workingSetNumber)
+
+    const weightRepsText = formatWeightRepsText(weight, reps, weightUnit)
+
+    return (
+      <View
+        key={set.id}
+        style={[
+          styles.setRow,
+          index % 2 === 0 && { backgroundColor: colors.backgroundLight },
+          setHasPr && { backgroundColor: colors.primaryLight },
+        ]}
+      >
+        <View style={[styles.setCell, styles.setCol, styles.centerCell]}>
+          <View
+            style={[
+              styles.setBadge,
+              {
+                backgroundColor: isWarmup
+                  ? `${colors.warning}25`
+                  : colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.setBadgeText,
+                { color: isWarmup ? colors.warning : colors.textSecondary },
+              ]}
+            >
+              {setLabel}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.setCell, styles.weightCol]}>
+          <Text style={[styles.setDetail, { color: colors.text }]}>
+            {weightRepsText}
+          </Text>
+        </View>
+
+        {hasPr && (
+          <View style={[styles.setCell, styles.prCol]}>
+            {setHasPr && prInfo && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setTooltipVisible(true)}
+                style={[
+                  styles.prBadgeSmall,
+                  { backgroundColor: colors.primary },
+                  !prInfo.hasCurrentPR && {
+                    backgroundColor: colors.textTertiary,
+                  },
+                ]}
+              >
+                <Text style={styles.prBadgeTextSmall}>PR</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
+    )
+  })
 
   return (
     <View style={[styles.container, { borderBottomColor: colors.border }]}>
@@ -66,106 +170,37 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
 
       {/* Sets header */}
       <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerCell, styles.setCol, { color: colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.headerCell,
+            styles.setCol,
+            { color: colors.textSecondary },
+          ]}
+        >
           SET
         </Text>
-        <Text style={[styles.headerCell, styles.weightCol, { color: colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.headerCell,
+            styles.weightCol,
+            { color: colors.textSecondary },
+          ]}
+        >
           WEIGHT & REPS
         </Text>
-        {hasPR && (
-          <Text style={[styles.headerCell, styles.prCol, { color: colors.textSecondary }]}>
-
-          </Text>
+        {hasPr && (
+          <Text
+            style={[
+              styles.headerCell,
+              styles.prCol,
+              { color: colors.textSecondary },
+            ]}
+          />
         )}
       </View>
 
       {/* Sets list */}
-      {(() => {
-        let workingSetNumber = 0
-
-        return sets.map((set, index) => {
-        const weight = set.weight
-        const reps = set.reps
-        const setHasPR = prInfo?.prSetIndices.has(index)
-
-          const isWarmup = set.is_warmup === true
-          if (!isWarmup) {
-            workingSetNumber += 1
-          }
-          const setLabel = isWarmup ? 'W' : String(workingSetNumber)
-
-        // Format weight and reps
-        let weightRepsText: string
-        if (weight !== null && reps !== null) {
-          const convertedWeight = kgToPreferred(weight, weightUnit)
-          const formattedWeight = convertedWeight.toFixed(weightUnit === 'kg' ? 1 : 0)
-          weightRepsText = `${formattedWeight}${weightUnit} x ${reps} reps`
-        } else if (reps !== null) {
-          weightRepsText = `${reps} reps`
-        } else if (weight !== null) {
-          const convertedWeight = kgToPreferred(weight, weightUnit)
-          const formattedWeight = convertedWeight.toFixed(weightUnit === 'kg' ? 1 : 0)
-          weightRepsText = `${formattedWeight}${weightUnit}`
-        } else {
-          weightRepsText = '--'
-        }
-
-        return (
-          <View
-            key={set.id}
-            style={[
-              styles.setRow,
-              index % 2 === 0 && { backgroundColor: colors.backgroundLight },
-              setHasPR && { backgroundColor: colors.primaryLight },
-            ]}
-          >
-              <View style={[styles.setCell, styles.setCol, styles.centerCell]}>
-                <View
-                  style={[
-                    styles.setBadge,
-                    {
-                      backgroundColor: isWarmup ? `${colors.warning}25` : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.setBadgeText,
-                      { color: isWarmup ? colors.warning : colors.textSecondary },
-                    ]}
-                  >
-                {setLabel}
-              </Text>
-                </View>
-            </View>
-            <View style={[styles.setCell, styles.weightCol]}>
-              <Text style={[styles.setDetail, { color: colors.text }]}>
-                {weightRepsText}
-              </Text>
-            </View>
-            {hasPR && (
-              <View style={[styles.setCell, styles.prCol]}>
-                {setHasPR && prInfo && (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => setTooltipVisible(true)}
-                    style={[
-                      { backgroundColor: colors.primary },
-                      styles.prBadgeSmall,
-                      !prInfo.hasCurrentPR && {
-                        backgroundColor: colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.prBadgeTextSmall}>PR</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        )
-        })
-      })()}
+      {setRows}
       {/* PR Tooltip */}
       {prInfo && (
         <PrTooltip
