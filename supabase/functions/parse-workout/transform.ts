@@ -64,6 +64,7 @@ function normalizeSet(
     weight: normalizedWeight ?? undefined,
     rpe: normalizedRpe ?? undefined,
     notes: (set.notes as string | null | undefined) ?? undefined,
+    is_warmup: set.is_warmup === true,
   }
 }
 

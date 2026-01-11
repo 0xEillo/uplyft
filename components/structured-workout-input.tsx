@@ -21,6 +21,7 @@ import {
 interface SetData {
   weight: string
   reps: string
+  isWarmup?: boolean
   lastWorkoutWeight?: string | null
   lastWorkoutReps?: string | null
   targetRepsMin?: number | null
@@ -309,6 +310,15 @@ export function StructuredWorkoutInput({
     onDataChange(newExercises)
   }
 
+  const handleToggleWarmup = async (exerciseIndex: number, setIndex: number) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    const newExercises = [...exercises]
+    const set = newExercises[exerciseIndex].sets[setIndex]
+    set.isWarmup = !set.isWarmup
+    setExercises(newExercises)
+    onDataChange(newExercises)
+  }
+
   const handleDeleteExercise = async (exerciseIndex: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     const newExercises = exercises.filter((_, index) => index !== exerciseIndex)
@@ -403,108 +413,123 @@ export function StructuredWorkoutInput({
           </View>
 
           {/* Sets as inline text with inputs */}
-          {exercise.sets.map((set, setIndex) => {
-            // Format target text for this set
-            let targetText = ''
-            if (set.targetRepsMin !== null && set.targetRepsMax !== null) {
-              if (set.targetRepsMin === set.targetRepsMax) {
-                targetText = ` (${set.targetRepsMin})`
-              } else {
-                targetText = ` (${set.targetRepsMin}-${set.targetRepsMax})`
+          {(() => {
+            let workingSetNumber = 0
+            return exercise.sets.map((set, setIndex) => {
+              const isWarmup = set.isWarmup === true
+              if (!isWarmup) workingSetNumber++
+              const displayLabel = isWarmup ? 'W' : workingSetNumber
+              
+              // Format target text for this set
+              let targetText = ''
+              if (set.targetRepsMin !== null && set.targetRepsMax !== null) {
+                if (set.targetRepsMin === set.targetRepsMax) {
+                  targetText = ` (${set.targetRepsMin})`
+                } else {
+                  targetText = ` (${set.targetRepsMin}-${set.targetRepsMax})`
+                }
               }
-            }
 
-            return (
-                <View key={setIndex} style={styles.setRow}>
-                  <Text style={styles.setText}>Set {setIndex + 1}: </Text>
-                  <TextInput
-                    ref={(ref) => {
-                      inputRefs.current[
-                        `${exerciseIndex}-${setIndex}-weight`
-                      ] = ref
-                    }}
-                    style={styles.inlineInput}
-                    placeholder={
-                      set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
-                    }
-                    placeholderTextColor={
-                      set.lastWorkoutWeight
-                        ? colors.textTertiary
-                        : colors.textPlaceholder
-                    }
-                    keyboardType="decimal-pad"
-                    value={set.weight}
-                    onChangeText={(value) =>
-                      handleWeightChange(exerciseIndex, setIndex, value)
-                    }
-                    onSubmitEditing={() =>
-                      focusNextInput(exerciseIndex, setIndex, 'weight')
-                    }
-                    returnKeyType="next"
-                    cursorColor={colors.primary}
-                    selectionColor={colors.primary}
-                    onFocus={() =>
-                      handleFocus(exerciseIndex, setIndex, 'weight')
-                    }
-                    onBlur={handleBlur}
-                    inputAccessoryViewID={inputAccessoryViewID}
-                  />
-                  <Text style={styles.setText}> {unitDisplay} x </Text>
-                  <TextInput
-                    ref={(ref) => {
-                      inputRefs.current[
-                        `${exerciseIndex}-${setIndex}-reps`
-                      ] = ref
-                    }}
-                    style={styles.inlineInput}
-                    placeholder={
-                      set.lastWorkoutReps ? set.lastWorkoutReps : '___'
-                    }
-                    placeholderTextColor={
-                      set.lastWorkoutReps
-                        ? colors.textTertiary
-                        : colors.textPlaceholder
-                    }
-                    keyboardType="number-pad"
-                    value={set.reps}
-                    onChangeText={(value) =>
-                      handleRepsChange(exerciseIndex, setIndex, value)
-                    }
-                    onSubmitEditing={() =>
-                      focusNextInput(exerciseIndex, setIndex, 'reps')
-                    }
-                    returnKeyType="next"
-                    cursorColor={colors.primary}
-                    selectionColor={colors.primary}
-                    onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
-                    onBlur={handleBlur}
-                    inputAccessoryViewID={inputAccessoryViewID}
-                  />
-                  <Text style={styles.setText}> reps</Text>
-                  {targetText && (
-                    <Text style={styles.targetText}>{targetText}</Text>
-                  )}
-                  <View style={styles.deleteSetButtonContainer}>
-                    {setIndex === exercise.sets.length - 1 &&
-                      exercise.sets.length > 1 && (
-                        <TouchableOpacity
-                          style={styles.deleteSetButton}
-                          onPress={() =>
-                            handleDeleteSet(exerciseIndex, setIndex)
-                          }
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons
-                            name="close-circle"
-                            size={18}
-                            color={colors.textTertiary}
-                          />
-                        </TouchableOpacity>
-                      )}
+              return (
+                  <View key={setIndex} style={styles.setRow}>
+                    <TouchableOpacity
+                      style={[styles.setNumberBadge, isWarmup && styles.warmupBadge]}
+                      onPress={() => handleToggleWarmup(exerciseIndex, setIndex)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
+                        {displayLabel}
+                      </Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      ref={(ref) => {
+                        inputRefs.current[
+                          `${exerciseIndex}-${setIndex}-weight`
+                        ] = ref
+                      }}
+                      style={styles.inlineInput}
+                      placeholder={
+                        set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
+                      }
+                      placeholderTextColor={
+                        set.lastWorkoutWeight
+                          ? colors.textTertiary
+                          : colors.textPlaceholder
+                      }
+                      keyboardType="decimal-pad"
+                      value={set.weight}
+                      onChangeText={(value) =>
+                        handleWeightChange(exerciseIndex, setIndex, value)
+                      }
+                      onSubmitEditing={() =>
+                        focusNextInput(exerciseIndex, setIndex, 'weight')
+                      }
+                      returnKeyType="next"
+                      cursorColor={colors.primary}
+                      selectionColor={colors.primary}
+                      onFocus={() =>
+                        handleFocus(exerciseIndex, setIndex, 'weight')
+                      }
+                      onBlur={handleBlur}
+                      inputAccessoryViewID={inputAccessoryViewID}
+                    />
+                    <Text style={styles.setText}> {unitDisplay} x </Text>
+                    <TextInput
+                      ref={(ref) => {
+                        inputRefs.current[
+                          `${exerciseIndex}-${setIndex}-reps`
+                        ] = ref
+                      }}
+                      style={styles.inlineInput}
+                      placeholder={
+                        set.lastWorkoutReps ? set.lastWorkoutReps : '___'
+                      }
+                      placeholderTextColor={
+                        set.lastWorkoutReps
+                          ? colors.textTertiary
+                          : colors.textPlaceholder
+                      }
+                      keyboardType="number-pad"
+                      value={set.reps}
+                      onChangeText={(value) =>
+                        handleRepsChange(exerciseIndex, setIndex, value)
+                      }
+                      onSubmitEditing={() =>
+                        focusNextInput(exerciseIndex, setIndex, 'reps')
+                      }
+                      returnKeyType="next"
+                      cursorColor={colors.primary}
+                      selectionColor={colors.primary}
+                      onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
+                      onBlur={handleBlur}
+                      inputAccessoryViewID={inputAccessoryViewID}
+                    />
+                    <Text style={styles.setText}> reps</Text>
+                    {targetText && (
+                      <Text style={styles.targetText}>{targetText}</Text>
+                    )}
+                    <View style={styles.deleteSetButtonContainer}>
+                      {setIndex === exercise.sets.length - 1 &&
+                        exercise.sets.length > 1 && (
+                          <TouchableOpacity
+                            style={styles.deleteSetButton}
+                            onPress={() =>
+                              handleDeleteSet(exerciseIndex, setIndex)
+                            }
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons
+                              name="close-circle"
+                              size={18}
+                              color={colors.textTertiary}
+                            />
+                          </TouchableOpacity>
+                        )}
+                    </View>
                   </View>
-                </View>
-              )
-            })}
+                )
+              })
+          })()}
 
           {/* Add Set Button */}
           <TouchableOpacity
@@ -563,6 +588,26 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 2,
       lineHeight: 24,
       width: '100%',
+    },
+    setNumberBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+    warmupBadge: {
+      backgroundColor: `${colors.warning}25`,
+    },
+    setNumberText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    warmupText: {
+      color: colors.warning,
     },
     setText: {
       fontSize: 17,

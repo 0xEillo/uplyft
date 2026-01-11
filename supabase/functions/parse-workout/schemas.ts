@@ -17,6 +17,7 @@ export const workoutSchema = z.object({
             weight: z.number().nullable().optional(),
             rpe: z.number().nullable().optional(),
             notes: z.string().nullish(),
+            is_warmup: z.boolean().optional(),
           }),
         ),
       }),
@@ -45,6 +46,7 @@ export interface NormalizedSet {
   weight?: number | null
   rpe?: number | null
   notes?: string | null
+  is_warmup?: boolean
 }
 
 export interface NormalizedExercise {

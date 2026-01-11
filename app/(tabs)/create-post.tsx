@@ -937,6 +937,8 @@ export default function CreatePostScreen() {
         routineId: routineIdValue,
         durationSeconds,
         description: descriptionValue?.trim() || undefined,
+        structuredData: isStructuredMode ? structuredData : undefined,
+        isStructuredMode,
       })
 
       // Refresh freemium limits after successful submission
@@ -1031,6 +1033,8 @@ export default function CreatePostScreen() {
       getWorkoutElapsedSeconds,
       resetWorkoutTimer,
       completeStep,
+      isStructuredMode,
+      structuredData,
     ],
   )
 

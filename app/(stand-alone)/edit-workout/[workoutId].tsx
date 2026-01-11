@@ -1018,56 +1018,83 @@ export default function EditWorkoutScreen() {
                           </View>
 
                           {/* Sets Rows */}
-                          {activeSets?.map((set, setIndex) => {
-                            const repsValue = getSetValue(
-                              set.id,
-                              'reps',
-                              set.reps,
-                            )
-                            const weightValue = getSetValue(
-                              set.id,
-                              'weight',
-                              set.weight,
-                            )
-
+                          {(() => {
+                            let workingSetNumber = 0
                             return (
-                              <View key={set.id} style={styles.setRow}>
-                                <Text style={styles.setNumber}>
-                                  {setIndex + 1}
-                                </Text>
-                                <TextInput
-                                  style={styles.setInput}
-                                  value={repsValue}
-                                  onChangeText={(val) =>
-                                    updateSet(set.id, 'reps', val)
-                                  }
-                                  keyboardType="decimal-pad"
-                                  placeholder="--"
-                                  placeholderTextColor={colors.textPlaceholder}
-                                />
-                                <TextInput
-                                  style={styles.setInput}
-                                  value={weightValue}
-                                  onChangeText={(val) =>
-                                    updateSet(set.id, 'weight', val)
-                                  }
-                                  keyboardType="decimal-pad"
-                                  placeholder="BW"
-                                  placeholderTextColor={colors.textPlaceholder}
-                                />
-                                <TouchableOpacity
-                                  onPress={() => deleteSet(set.id)}
-                                  style={styles.deleteSetButton}
-                                >
-                                  <Ionicons
-                                    name="close-circle"
-                                    size={20}
-                                    color={colors.error}
-                                  />
-                                </TouchableOpacity>
-                              </View>
+                              activeSets?.map((set) => {
+                                const repsValue = getSetValue(
+                                  set.id,
+                                  'reps',
+                                  set.reps,
+                                )
+                                const weightValue = getSetValue(
+                                  set.id,
+                                  'weight',
+                                  set.weight,
+                                )
+
+                                const isWarmup = set.is_warmup === true
+                                if (!isWarmup) {
+                                  workingSetNumber += 1
+                                }
+                                const displayLabel = isWarmup
+                                  ? 'W'
+                                  : String(workingSetNumber)
+
+                                return (
+                                  <View key={set.id} style={styles.setRow}>
+                                    <View style={styles.setNumberCell}>
+                                      <View
+                                        style={[
+                                          styles.setNumberBadge,
+                                          isWarmup && styles.warmupBadge,
+                                        ]}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.setNumberBadgeText,
+                                            isWarmup && styles.warmupText,
+                                          ]}
+                                        >
+                                          {displayLabel}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                    <TextInput
+                                      style={styles.setInput}
+                                      value={repsValue}
+                                      onChangeText={(val) =>
+                                        updateSet(set.id, 'reps', val)
+                                      }
+                                      keyboardType="decimal-pad"
+                                      placeholder="--"
+                                      placeholderTextColor={colors.textPlaceholder}
+                                    />
+                                    <TextInput
+                                      style={styles.setInput}
+                                      value={weightValue}
+                                      onChangeText={(val) =>
+                                        updateSet(set.id, 'weight', val)
+                                      }
+                                      keyboardType="decimal-pad"
+                                      placeholder="BW"
+                                      placeholderTextColor={colors.textPlaceholder}
+                                    />
+                                    <TouchableOpacity
+                                      onPress={() => deleteSet(set.id)}
+                                      style={styles.deleteSetButton}
+                                    >
+                                      <Ionicons
+                                        name="close-circle"
+                                        size={20}
+                                        color={colors.error}
+                                      />
+                                    </TouchableOpacity>
+                                  </View>
+                                )
+                              }) ?? null
                             )
-                          })}
+                          })()}
 
                           {/* Add Set Button */}
                           <TouchableOpacity
@@ -1362,6 +1389,30 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
+    },
+    setNumberCell: {
+      width: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    setNumberBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    warmupBadge: {
+      backgroundColor: `${colors.warning}25`,
+    },
+    setNumberBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    warmupText: {
+      color: colors.warning,
     },
     setInput: {
       flex: 1,

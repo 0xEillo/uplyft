@@ -95,6 +95,7 @@ export interface Set {
   weight: number | null
   rpe: number | null
   notes: string | null
+  is_warmup: boolean
   created_at: string
 }
 
@@ -231,6 +232,7 @@ export interface ParsedSet {
   weight?: number
   rpe?: number
   notes?: string
+  is_warmup?: boolean
 }
 
 // Notification types

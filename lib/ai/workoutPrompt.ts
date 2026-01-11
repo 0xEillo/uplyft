@@ -25,18 +25,22 @@ const CREATION_PROMPT_TEMPLATE = ({
   duration,
   equipmentLabel,
   specifics,
+  trainingGuidelines,
 }: {
   goal: string
   muscles: string
   duration: string
   equipmentLabel: string
   specifics?: string | null
+  trainingGuidelines?: string
 }) => `Create a reusable workout routine (a single workout template the user can save and reuse).
 Focus/Goal: ${goal}
 Muscle Groups: ${muscles}
 Target Duration: ${duration}
 Equipment Available: ${equipmentLabel}
 Custom Specifications: ${specifics || 'None'}
+
+${trainingGuidelines || ''}
 
 IMPORTANT: You must output ONLY a JSON object with the following structure:
 ${WORKOUT_JSON_SCHEMA}
@@ -45,6 +49,7 @@ Do not wrap in markdown code blocks. Do not add intro/outro text. Just the JSON.
 export function buildWorkoutCreationPrompt(
   wizardData: WorkoutPlanningData,
   equipmentLabel: string,
+  trainingGuidelines?: string,
 ) {
   return CREATION_PROMPT_TEMPLATE({
     goal: wizardData.goal,
@@ -52,6 +57,7 @@ export function buildWorkoutCreationPrompt(
     duration: wizardData.duration,
     equipmentLabel,
     specifics: wizardData.specifics,
+    trainingGuidelines,
   })
 }
 

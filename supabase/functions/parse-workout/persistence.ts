@@ -101,6 +101,7 @@ export async function createWorkoutSession(
       weight: set.weight ?? null,
       rpe: set.rpe ?? null,
       notes: set.notes ?? null,
+      is_warmup: set.is_warmup === true,
     }))
   })
 

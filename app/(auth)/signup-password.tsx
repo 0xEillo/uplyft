@@ -9,15 +9,15 @@ import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -38,7 +38,7 @@ export default function SignupPasswordScreen() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { signUp } = useAuth()
+  const { signUp, linkWithEmail, isAnonymous, user } = useAuth()
   const colors = useThemedColors()
   const styles = createStyles(colors)
 
@@ -65,7 +65,26 @@ export default function SignupPasswordScreen() {
 
     setIsLoading(true)
     try {
-      const { userId } = await signUp(email, password)
+      let userId: string | undefined
+
+      if (isAnonymous && user) {
+        // Link email to existing anonymous account
+        await linkWithEmail(email, password)
+        userId = user.id
+
+        // Update profile to remove guest status
+        try {
+          await database.profiles.update(userId, {
+            is_guest: false,
+          })
+        } catch (profileError) {
+          console.error('[SignupPassword] Error updating profile guest status:', profileError)
+        }
+      } else {
+        // Create new account
+        const result = await signUp(email, password)
+        userId = result.userId
+      }
 
       // If we have onboarding data, update the profile
       if (userId && onboardingData) {
@@ -104,16 +123,24 @@ export default function SignupPasswordScreen() {
           },
         } as Parameters<typeof router.replace>[0])
       } else {
-        Alert.alert(
-          'Success',
-          'Account created! Please check your email to verify your account.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/(auth)/welcome'),
-            },
-          ],
-        )
+        // For anonymous linking, we don't necessarily need verification, but for fresh signup we might.
+        // Assuming linkWithEmail (updateUser) might confirm immediately or ask for verification depending on Supabase config.
+        // If it was an anonymous upgrade, we are already logged in as that user, so we can go to tabs/trial.
+        
+        if (isAnonymous) {
+             router.replace('/(tabs)')
+        } else {
+             Alert.alert(
+              'Success',
+              'Account created! Please check your email to verify your account.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/(auth)/welcome'),
+                },
+              ],
+            )
+        }
       }
     } catch (error) {
       const message =

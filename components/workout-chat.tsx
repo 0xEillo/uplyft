@@ -26,7 +26,7 @@ import {
     buildWorkoutCreationPrompt,
     buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
-import { getCoach } from '@/lib/coaches'
+import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
@@ -1364,8 +1364,11 @@ export function WorkoutChat({
     }
     const equipmentLabel = equipmentLabels[data.equipment] || data.equipment
 
+    // Get coach-specific training guidelines
+    const trainingGuidelines = getCoachTrainingGuidelines(coachId)
+
     // Construct the hidden prompt for the AI
-    const finalPrompt = buildWorkoutCreationPrompt(data, equipmentLabel)
+    const finalPrompt = buildWorkoutCreationPrompt(data, equipmentLabel, trainingGuidelines)
 
     // Now call the API
     setIsLoading(true)
@@ -1525,6 +1528,7 @@ export function WorkoutChat({
               }
 
               return {
+                type: s.type,
                 reps: s.reps,
                 weight: s.weight,
                 repsMin,
@@ -1551,6 +1555,7 @@ export function WorkoutChat({
       type WorkoutExercise = AiWorkoutConversionResult['exercises'][number]
       type WorkoutSet = WorkoutExercise['sets'][number] & {
         restSeconds?: number
+        type?: 'warmup' | 'working'
       }
 
       const structuredData = workoutData.exercises.map(
@@ -1560,6 +1565,7 @@ export function WorkoutChat({
           sets: ex.sets.map((s: WorkoutSet) => ({
             weight: s.weight || '',
             reps: '', // Actual reps should be empty for user to fill
+            isWarmup: s.type === 'warmup',
             lastWorkoutWeight: null,
             lastWorkoutReps: null,
             targetRepsMin: s.repsMin || null,
@@ -1572,7 +1578,7 @@ export function WorkoutChat({
       // Save draft
       await saveDraft({
         title: workoutData.title || 'AI Generated Workout',
-        notes: workoutData.description || 'Generated from AI Chat',
+        notes: '', // Don't prefill notes with AI description
         structuredData,
         isStructuredMode: true,
       })

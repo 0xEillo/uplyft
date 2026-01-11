@@ -78,12 +78,19 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
       </View>
 
       {/* Sets list */}
-      {sets.map((set, index) => {
+      {(() => {
+        let workingSetNumber = 0
+
+        return sets.map((set, index) => {
         const weight = set.weight
         const reps = set.reps
         const setHasPR = prInfo?.prSetIndices.has(index)
 
-        const setLabel = String(index + 1)
+          const isWarmup = set.is_warmup === true
+          if (!isWarmup) {
+            workingSetNumber += 1
+          }
+          const setLabel = isWarmup ? 'W' : String(workingSetNumber)
 
         // Format weight and reps
         let weightRepsText: string
@@ -110,10 +117,24 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
               setHasPR && { backgroundColor: colors.primaryLight },
             ]}
           >
-            <View style={[styles.setCell, styles.setCol]}>
-              <Text style={[styles.setNumber, { color: colors.text }]}>
+              <View style={[styles.setCell, styles.setCol, styles.centerCell]}>
+                <View
+                  style={[
+                    styles.setBadge,
+                    {
+                      backgroundColor: isWarmup ? `${colors.warning}25` : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.setBadgeText,
+                      { color: isWarmup ? colors.warning : colors.textSecondary },
+                    ]}
+                  >
                 {setLabel}
               </Text>
+                </View>
             </View>
             <View style={[styles.setCell, styles.weightCol]}>
               <Text style={[styles.setDetail, { color: colors.text }]}>
@@ -127,7 +148,9 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
                     style={[
                       { backgroundColor: colors.primary },
                       styles.prBadgeSmall,
-                      !prInfo.hasCurrentPR && { backgroundColor: colors.textTertiary },
+                        !prInfo.hasCurrentPR && {
+                          backgroundColor: colors.textTertiary,
+                        },
                     ]}
                   >
                     <Text style={styles.prBadgeTextSmall}>PR</Text>
@@ -137,7 +160,8 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
             )}
           </View>
         )
-      })}
+        })
+      })()}
     </View>
   )
 }
@@ -185,9 +209,19 @@ const styles = StyleSheet.create({
   setCell: {
     justifyContent: 'center',
   },
-  setNumber: {
-    fontSize: 14,
-    fontWeight: '500',
+  centerCell: {
+    alignItems: 'center',
+  },
+  setBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   setDetail: {
     fontSize: 14,

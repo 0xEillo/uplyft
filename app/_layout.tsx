@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -27,8 +27,8 @@ import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import {
-  initializeFacebookSDK,
-  requestTrackingPermission,
+    initializeFacebookSDK,
+    requestTrackingPermission,
 } from '@/lib/facebook-sdk'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
@@ -126,6 +126,8 @@ function RootLayoutNav() {
       'signup-options',
       'trial-offer',
       'create-account',
+      'signup-email',
+      'signup-password',
     ]
 
     if (!user && !inAuthGroup) {

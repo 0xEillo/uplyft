@@ -12,6 +12,7 @@ export type WeightUnit = 'kg' | 'lb'
 export interface StructuredSetDraft {
   weight: string
   reps: string
+  isWarmup?: boolean
   lastWorkoutWeight?: string | null
   lastWorkoutReps?: string | null
   targetRepsMin?: number | null
@@ -45,6 +46,8 @@ export interface PendingWorkout {
   routineId?: string | null
   durationSeconds?: number | null
   description?: string
+  structuredData?: StructuredExerciseDraft[]
+  isStructuredMode?: boolean
 }
 
 export interface PlaceholderWorkout {

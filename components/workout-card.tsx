@@ -24,6 +24,7 @@ export function WorkoutCard({
   const colors = useThemedColors()
   const styles = createStyles(colors)
   const [isWorkoutExpanded, setIsWorkoutExpanded] = useState(false)
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [expandedExerciseIndices, setExpandedExerciseIndices] = useState<
     number[]
   >([])
@@ -32,6 +33,7 @@ export function WorkoutCard({
   const visibleExercises = isWorkoutExpanded
     ? workout.exercises
     : workout.exercises.slice(0, 4)
+
 
   const hasMoreExercises = workout.exercises.length > 4
 
@@ -55,12 +57,30 @@ export function WorkoutCard({
         </View>
       </View>
 
-      {/* Optional: Limit description line count or keep it concise */}
-      {workout.description ? (
-        <Text style={styles.description} numberOfLines={2}>
-          {workout.description}
-        </Text>
-      ) : null}
+      {/* Expandable description */}
+      {workout.description ? (() => {
+        // Show expand option if description is likely to need more than 2 lines (~120 chars)
+        const needsExpand = workout.description.length > 120
+        return (
+          <TouchableOpacity 
+            onPress={() => needsExpand && setIsDescriptionExpanded(!isDescriptionExpanded)}
+            activeOpacity={needsExpand ? 0.7 : 1}
+            disabled={!needsExpand}
+          >
+            <Text 
+              style={[styles.description, !needsExpand && { marginBottom: 20 }]} 
+              numberOfLines={isDescriptionExpanded ? undefined : 2}
+            >
+              {workout.description}
+            </Text>
+            {needsExpand && (
+              <Text style={styles.descriptionMoreText}>
+                {isDescriptionExpanded ? 'less' : 'more'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )
+      })() : null}
 
       <View style={styles.exerciseList}>
         {visibleExercises.map((exercise, index) => {
@@ -151,18 +171,27 @@ export function WorkoutCard({
 
                   {isExpanded && (
                     <View style={styles.setsDetailContainer}>
-                      {exercise.sets.map((set, setIndex) => (
-                        <View key={setIndex} style={styles.setRow}>
-                           <View style={[styles.setBadge, set.type === 'warmup' && styles.warmupBadge]}>
-                             <Text style={[styles.setText, set.type === 'warmup' && styles.warmupText]}>
-                               {setIndex + 1}
-                             </Text>
-                           </View>
-                           <Text style={styles.setDetailText}>
-                              {set.reps} reps {set.weight ? `@ ${set.weight}` : ''}
-                           </Text>
-                        </View>
-                      ))}
+                      {(() => {
+                        let workingSetNumber = 0
+                        return exercise.sets.map((set, setIndex) => {
+                          const isWarmup = set.type === 'warmup'
+                          if (!isWarmup) workingSetNumber++
+                          const displayLabel = isWarmup ? 'W' : workingSetNumber
+                          
+                          return (
+                            <View key={setIndex} style={styles.setRow}>
+                              <View style={[styles.setBadge, isWarmup && styles.warmupBadge]}>
+                                <Text style={[styles.setText, isWarmup && styles.warmupText]}>
+                                  {displayLabel}
+                                </Text>
+                              </View>
+                              <Text style={styles.setDetailText}>
+                                {set.reps} reps {set.weight ? `@ ${set.weight}` : ''}
+                              </Text>
+                            </View>
+                          )
+                        })
+                      })()}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -273,7 +302,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       color: colors.textSecondary,
       lineHeight: 20,
-      marginBottom: 20,
+      marginBottom: 4,
+    },
+    descriptionMoreText: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginBottom: 16,
+      marginTop: 2,
     },
     exerciseList: {
       marginBottom: 20,

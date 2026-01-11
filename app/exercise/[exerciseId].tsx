@@ -41,6 +41,7 @@ interface WorkoutSessionRecord {
   sets: {
     weight: number | null
     reps: number | null
+    is_warmup: boolean
   }[]
 }
 
@@ -148,16 +149,16 @@ export default function ExerciseDetailScreen() {
           date: string
           workout_exercises?: {
             exercise: { name: string }
-            sets: { weight: number | null; reps: number | null }[]
+            sets: { weight: number | null; reps: number | null; is_warmup: boolean }[]
           }[]
         }
         const formattedHistory = (historyData as unknown as HistorySession[]).map((session) => {
             let sessionVol = 0
-            const sessionSets: { weight: number | null; reps: number | null }[] = []
+            const sessionSets: { weight: number | null; reps: number | null; is_warmup: boolean }[] = []
             
             session.workout_exercises?.forEach((we) => {
                 we.sets?.forEach((set) => {
-                    sessionSets.push({ weight: set.weight, reps: set.reps })
+                    sessionSets.push({ weight: set.weight, reps: set.reps, is_warmup: set.is_warmup === true })
                     if(set.weight && set.reps) {
                         sessionVol += (set.weight * set.reps)
                     }
@@ -745,14 +746,48 @@ export default function ExerciseDetailScreen() {
                                     <Text style={styles.setHeaderText}>SET</Text>
                                     <Text style={styles.setHeaderText}>WEIGHT & REPS</Text>
                                 </View>
-                                {session.sets.map((set, setIndex) => (
+                                {(() => {
+                                  let workingSetNumber = 0
+                                  return session.sets.map((set, setIndex) => {
+                                    const isWarmup = set.is_warmup === true
+                                    if (!isWarmup) {
+                                      workingSetNumber += 1
+                                    }
+                                    const displayLabel = isWarmup
+                                      ? 'W'
+                                      : String(workingSetNumber)
+
+                                    return (
                                     <View key={setIndex} style={styles.setRow}>
-                                        <Text style={styles.setNumber}>{setIndex + 1}</Text>
+                                        <View style={styles.setNumberCell}>
+                                          <View
+                                            style={[
+                                              styles.setNumberBadge,
+                                              isWarmup && styles.warmupBadge,
+                                            ]}
+                                          >
+                                            <Text
+                                              style={[
+                                                styles.setNumberBadgeText,
+                                                isWarmup && styles.warmupText,
+                                              ]}
+                                            >
+                                              {displayLabel}
+                                            </Text>
+                                          </View>
+                                        </View>
                                         <Text style={styles.setDetails}>
-                                            {set.weight ? formatWeight(set.weight, { maximumFractionDigits: 1 }) : '-'} x {set.reps || 0} reps
+                                          {set.weight
+                                            ? formatWeight(set.weight, {
+                                                maximumFractionDigits: 1,
+                                              })
+                                            : '-'}{' '}
+                                          x {set.reps || 0} reps
                                         </Text>
                                     </View>
-                                ))}
+                                    )
+                                  })
+                                })()}
                             </View>
                         </View>
                     ))
@@ -1069,6 +1104,30 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: colors.textSecondary,
         width: 30,
         textAlign: 'center'
+    },
+    setNumberCell: {
+        width: 30,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    setNumberBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: colors.border,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    warmupBadge: {
+        backgroundColor: `${colors.warning}25`,
+    },
+    setNumberBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: colors.textSecondary,
+    },
+    warmupText: {
+        color: colors.warning,
     },
     setDetails: {
         fontSize: 14,

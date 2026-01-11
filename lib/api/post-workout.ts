@@ -24,6 +24,7 @@ export interface ParsedSet {
   weight?: number | null
   rpe?: number | null
   notes?: string | null
+  is_warmup?: boolean
 }
 
 export interface ParsedExercise {
