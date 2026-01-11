@@ -114,7 +114,7 @@ export function Paywall({
   }
 
   // Button text - always show "Start Free Trial" since trial is default
-  const buttonText = 'Start Free Trial'
+  const buttonText = 'Start 7-day Free Trial'
 
   const handleReminderToggle = async (value: boolean) => {
     if (value) {
@@ -356,7 +356,9 @@ export function Paywall({
             {/* Reminder Toggle - Trial is always included */}
             <View style={styles.trialToggleContainer}>
               <View style={styles.reminderTextContainer}>
-                <Text style={styles.trialToggleText}>Remind me before trial ends</Text>
+                <Text style={styles.trialToggleText}>
+                  Remind me before my trial ends
+                </Text>
               </View>
               <View style={styles.switchContainer}>
                 <Switch
