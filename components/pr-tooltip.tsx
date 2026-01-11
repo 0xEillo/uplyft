@@ -120,14 +120,29 @@ export function PrTooltip({
                     !pr.isCurrent && styles.prItemHistorical,
                   ]}
                 >
+                  <View style={styles.prHeaderRow}>
+                    <Text style={[styles.prLabel, !pr.isCurrent && styles.prLabelHistorical]}>
+                      {pr.isCurrent ? 'New Record' : 'Previous Record'}
+                    </Text>
+                  </View>
+                  
                   <Text
                     style={[
                       styles.prText,
                       !pr.isCurrent && styles.prTextHistorical,
                     ]}
                   >
-                    {pr.isCurrent ? 'PR: ' : 'Old PR: '}{pr.weight.toFixed(weightUnit === 'kg' ? 1 : 0)}{weightUnit} for {pr.currentReps} {pr.currentReps === 1 ? 'rep' : 'reps'}
+                    {pr.weight.toFixed(weightUnit === 'kg' ? 1 : 0)}{weightUnit} x {pr.currentReps} {pr.currentReps === 1 ? 'rep' : 'reps'}
                   </Text>
+
+                  {pr.previousReps !== undefined && pr.previousReps > 0 && pr.previousReps !== pr.currentReps && (
+                    <View style={styles.beatContainer}>
+                      <Ionicons name="trending-up" size={12} color={colors.success} />
+                      <Text style={styles.beatText}>
+                        Beat: {pr.previousReps} {pr.previousReps === 1 ? 'rep' : 'reps'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
@@ -197,11 +212,42 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderLeftColor: colors.textPlaceholder,
     },
     prText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.primary,
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 2,
     },
     prTextHistorical: {
       color: colors.textSecondary,
+    },
+    prHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 2,
+    },
+    prLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.primary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    prLabelHistorical: {
+      color: colors.textSecondary,
+    },
+    beatContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 6,
+      paddingTop: 6,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(0,0,0,0.05)',
+    },
+    beatText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.success,
     },
   })

@@ -11,14 +11,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useMemo, useState } from 'react'
 
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ExerciseDetailCard } from './ExerciseDetailCard'
@@ -379,7 +379,10 @@ export function WorkoutDetailView({
 
               {/* Stats grid */}
               <View style={styles.statsContainer}>
-                <WorkoutStatsGrid workout={workout} />
+                <WorkoutStatsGrid 
+                  workout={workout} 
+                  prCount={prInfo.reduce((total, ex) => total + ex.prSetIndices.size, 0)}
+                />
               </View>
 
               {/* Social actions bar */}

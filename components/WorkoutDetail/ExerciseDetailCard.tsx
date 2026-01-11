@@ -3,8 +3,9 @@ import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
 import { WorkoutExerciseWithDetails } from '@/types/database.types'
-import React from 'react'
+import React, { useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { PrTooltip } from '../pr-tooltip'
 
 interface PrDetailForDisplay {
   label: string
@@ -32,6 +33,7 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
+  const [tooltipVisible, setTooltipVisible] = useState(false)
 
   const exercise = workoutExercise.exercise
   const sets = workoutExercise.sets || []
@@ -144,17 +146,19 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
             {hasPR && (
               <View style={[styles.setCell, styles.prCol]}>
                 {setHasPR && prInfo && (
-                  <View
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setTooltipVisible(true)}
                     style={[
                       { backgroundColor: colors.primary },
                       styles.prBadgeSmall,
-                        !prInfo.hasCurrentPR && {
-                          backgroundColor: colors.textTertiary,
-                        },
+                      !prInfo.hasCurrentPR && {
+                        backgroundColor: colors.textTertiary,
+                      },
                     ]}
                   >
                     <Text style={styles.prBadgeTextSmall}>PR</Text>
-                  </View>
+                  </TouchableOpacity>
                 )}
               </View>
             )}
@@ -162,6 +166,15 @@ export function ExerciseDetailCard({ workoutExercise, prInfo, onExercisePress }:
         )
         })
       })()}
+      {/* PR Tooltip */}
+      {prInfo && (
+        <PrTooltip
+          visible={tooltipVisible}
+          onClose={() => setTooltipVisible(false)}
+          prDetails={prInfo.prDetails}
+          exerciseName={prInfo.exerciseName}
+        />
+      )}
     </View>
   )
 }
@@ -227,14 +240,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   prBadgeSmall: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 32,
+    alignItems: 'center',
   },
   prBadgeTextSmall: {
     color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 })

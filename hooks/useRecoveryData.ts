@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { BODY_PART_TO_DATABASE_MUSCLE, type BodyPartSlug } from '@/lib/body-mapping'
 import { database } from '@/lib/database'
-import { Exercise, Profile, Set } from '@/types/database.types'
+import type { Set as DbSet, Exercise, Profile } from '@/types/database.types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export type RecoveryStatus = 'not_recovered' | 'recovering' | 'recovered' | 'untrained'
@@ -210,7 +210,7 @@ export function useRecoveryData() {
         created_at: string
         workout_exercises?: {
           exercise?: Pick<Exercise, 'muscle_group' | 'secondary_muscles'>
-          sets?: Pick<Set, 'weight'>[]
+          sets?: Pick<DbSet, 'weight'>[]
         }[]
       }
       ;(data as unknown as RecoverySessionResult[])?.forEach((session) => {

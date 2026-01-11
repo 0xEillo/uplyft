@@ -8,19 +8,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    Animated,
+    Image,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PrTooltip } from './pr-tooltip'
@@ -336,43 +336,43 @@ export const FeedCard = memo(function FeedCard({
             disabled={!onCardPress}
             style={styles.statsContainer}
           >
-            {stats.durationSeconds !== undefined && stats.durationSeconds > 0 && (
-              <View style={styles.statItem}>
-                <View style={styles.statLabelContainer}>
-                  <Ionicons
-                    name="time-outline"
-                    size={14}
-                    color={colors.success}
-                  />
-                  <Text style={styles.statLabel}>Duration</Text>
-                </View>
-                <Text style={styles.statValue}>
-                  {formatDurationCompact(stats.durationSeconds)}
-                </Text>
-              </View>
-            )}
             <View style={styles.statItem}>
               <View style={styles.statLabelContainer}>
-                <Ionicons name="layers-outline" size={13} color={colors.info} />
-                <Text style={styles.statLabel}>Sets</Text>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={colors.success}
+                />
+                <Text style={styles.statLabel}>Duration</Text>
               </View>
-              <Text style={styles.statValue}>{stats.sets}</Text>
+              <Text style={styles.statValue}>
+                {formatDurationCompact(stats.durationSeconds || 0)}
+              </Text>
             </View>
-            {stats.volume !== undefined && stats.volume > 0 && (
-              <View style={styles.statItem}>
-                <View style={styles.statLabelContainer}>
-                  <Ionicons
-                    name="barbell-outline"
-                    size={14}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.statLabel}>Volume</Text>
-                </View>
-                <Text style={styles.statValue}>
-                  {formatVolumeCompact(stats.volume, weightUnit)}
-                </Text>
+            <View style={styles.statItem}>
+              <View style={styles.statLabelContainer}>
+                <Ionicons
+                  name="barbell-outline"
+                  size={14}
+                  color={colors.info}
+                />
+                <Text style={styles.statLabel}>Volume</Text>
               </View>
-            )}
+              <Text style={styles.statValue}>
+                {formatVolumeCompact(stats.volume || 0, weightUnit)}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <View style={styles.statLabelContainer}>
+                <Ionicons
+                  name="trophy-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={styles.statLabel}>Records</Text>
+              </View>
+              <Text style={styles.statValue}>{stats.prs}</Text>
+            </View>
           </Pressable>
         )}
 
@@ -454,22 +454,6 @@ export const FeedCard = memo(function FeedCard({
                         >
                           {exercise.name}
                         </Text>
-                        {hasPR && exercisePR && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              setSelectedExercisePR(exercisePR)
-                              setTooltipVisible(true)
-                            }}
-                            activeOpacity={0.7}
-                            style={[
-                              styles.prBadge,
-                              !exercisePR.hasCurrentPR &&
-                                styles.prBadgeHistorical,
-                            ]}
-                          >
-                            <Text style={styles.prBadgeText}>PR</Text>
-                          </TouchableOpacity>
-                        )}
                       </View>
                     </View>
                     <Text style={styles.setsText}>
@@ -1167,7 +1151,7 @@ const createStyles = (
       flex: 1,
     },
     setsText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '400',
       color: colors.textSecondary,
     },
