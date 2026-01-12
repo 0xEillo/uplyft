@@ -420,6 +420,10 @@ export function useImageTranscription(
     launchCamera('scan-equipment')
   }, [launchCamera])
 
+  const handleScanWorkout = useCallback(() => {
+    launchLibrary('scan')
+  }, [launchLibrary])
+
   return {
     isProcessing,
     pickImage,
@@ -430,5 +434,6 @@ export function useImageTranscription(
     handleAttachWithCamera,
     handleAttachWithLibrary,
     handleScanEquipment,
+    handleScanWorkout,
   }
 }

@@ -17,3 +17,4 @@ alter table public.workout_routine_exercises
   add constraint workout_routine_exercises_exercise_id_fkey
   foreign key (exercise_id) references public.exercises(id) on delete cascade;
 
+

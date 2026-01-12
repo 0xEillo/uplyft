@@ -384,7 +384,7 @@ export default function CreatePostScreen() {
     isProcessing: isProcessingImage,
     handleAttachWithCamera,
     handleAttachWithLibrary,
-    handleScanEquipment,
+    handleScanWorkout,
   } = useImageTranscription({
     onExtractionComplete: (data) => {
       // Set title if extracted
@@ -400,29 +400,6 @@ export default function CreatePostScreen() {
     onImageAttached: (uri) => {
       imageOpacity.setValue(0)
       setAttachedImageUri(uri)
-    },
-    onEquipmentIdentified: (equipmentName) => {
-      const newExercise: StructuredExerciseDraft = {
-        id: `auto-${Date.now()}`,
-        name: equipmentName,
-        sets: [
-          {
-            weight: '',
-            reps: '',
-            lastWorkoutWeight: null,
-            lastWorkoutReps: null,
-            targetRepsMin: null,
-            targetRepsMax: null,
-            targetRestSeconds: null,
-          },
-        ],
-      }
-
-      setStructuredData((prev) => [...prev, newExercise])
-      setIsStructuredMode(true)
-
-      // Feedback to user
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     },
   })
 
@@ -868,36 +845,36 @@ export default function CreatePostScreen() {
     await toggleRecording()
   }, [toggleRecording])
 
-  const handleDumbbellPress = useCallback(async () => {
+  const handleScanWorkoutPress = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     blurInputs()
 
     try {
       const hasSeenPrompt = await AsyncStorage.getItem(
-        '@has_seen_scan_equipment_prompt',
+        '@has_seen_scan_workout_prompt',
       )
 
       if (hasSeenPrompt) {
-        handleScanEquipment()
+        handleScanWorkout()
         return
       }
 
       Alert.alert(
-        'Scan Equipment',
-        "Take a photo of the equipment you're using, and we'll add it to your workout.",
+        'Scan Workout',
+        "Select a photo of a workout (e.g., whiteboard, program, or notes), and we'll extract the exercises for you.",
         [
           {
             text: 'Cancel',
             style: 'cancel',
           },
           {
-            text: 'Scan',
+            text: 'Select Photo',
             onPress: async () => {
               await AsyncStorage.setItem(
-                '@has_seen_scan_equipment_prompt',
+                '@has_seen_scan_workout_prompt',
                 'true',
               )
-              handleScanEquipment()
+              handleScanWorkout()
             },
           },
         ],
@@ -905,9 +882,9 @@ export default function CreatePostScreen() {
     } catch (error) {
       console.error('Error checking scan prompt status:', error)
       // Fallback to opening directly if storage fails
-      handleScanEquipment()
+      handleScanWorkout()
     }
-  }, [blurInputs, handleScanEquipment])
+  }, [blurInputs, handleScanWorkout])
 
   const performSubmission = useCallback(
     async (
@@ -1713,7 +1690,7 @@ export default function CreatePostScreen() {
 
   const editorToolbarProps = useMemo(
     () => ({
-      onScanEquipment: handleDumbbellPress,
+      onScanWorkout: handleScanWorkoutPress,
       onMicPress: handleToggleRecording,
       onStopwatchPress: () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -1732,7 +1709,7 @@ export default function CreatePostScreen() {
       restTimerRemaining: restTimer.remainingSeconds,
     }),
     [
-      handleDumbbellPress,
+      handleScanWorkoutPress,
       handleToggleRecording,
       blurInputs,
       handleOpenRoutineSelector,

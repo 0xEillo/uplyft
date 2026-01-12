@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface EditorToolbarProps {
-  onScanEquipment: () => void
+  onScanWorkout: () => void
   onMicPress: () => void
   onStopwatchPress: () => void
   onRoutinePress: () => void
@@ -29,7 +29,7 @@ interface EditorToolbarProps {
 }
 
 export function EditorToolbar({
-  onScanEquipment,
+  onScanWorkout,
   onMicPress,
   onStopwatchPress,
   onRoutinePress,
@@ -105,13 +105,13 @@ export function EditorToolbar({
       ]}
     >
       <View style={styles.toolbar}>
-        {/* Scan Equipment */}
+        {/* Scan Workout */}
         <TouchableOpacity
           style={styles.button}
-          onPress={onScanEquipment}
+          onPress={onScanWorkout}
           disabled={isDisabled}
         >
-          <Ionicons name="barbell-outline" size={24} color={colors.text} />
+          <Ionicons name="camera-outline" size={24} color={colors.text} />
         </TouchableOpacity>
 
         {/* Microphone */}

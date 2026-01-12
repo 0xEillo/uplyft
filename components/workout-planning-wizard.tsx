@@ -1,30 +1,34 @@
+import { BodyPartSlug } from '@/lib/body-mapping'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useState } from 'react'
 import {
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native'
+import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { WizardIcon } from './WizardIcons'
 
 export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
 export const EQUIPMENT_PREF_KEY = '@equipment_preference'
 
 export type EquipmentType =
   | 'full_gym'
-  | 'dumbbells_only'
   | 'home_minimal'
+  | 'dumbbells_only'
   | 'bodyweight'
-  | 'barbell_only'
 
 export interface WorkoutPlanningData {
   goal: string
@@ -58,6 +62,68 @@ type WizardStep =
   | 'specifics'
   | 'confirm'
 
+// Mapping from muscle group names to body part slugs for SVG highlighting
+interface MuscleBodyMapping {
+  slug: BodyPartSlug
+  side: 'front' | 'back'
+  bodyHalf: 'upper' | 'lower' | 'full'
+}
+
+// Body diagram scale/offset config for upper and lower body views
+const BODY_HALF_CONFIG = {
+  upper: { scale: 0.52, offsetY: 42 },
+  lower: { scale: 0.38, offsetY: -26 },
+  full: { scale: 0.28, offsetY: 0 }, // Show complete body
+}
+
+const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping | MuscleBodyMapping[]> = {
+  // Compound muscle groups - show multiple highlights
+  'Push': [
+    { slug: 'chest', side: 'front', bodyHalf: 'upper' },
+    { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+    { slug: 'triceps', side: 'front', bodyHalf: 'upper' },
+  ],
+  'Pull': [
+    { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+    { slug: 'biceps', side: 'back', bodyHalf: 'upper' },
+    { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
+  ],
+  'Full Body': [
+    { slug: 'chest', side: 'front', bodyHalf: 'full' },
+    { slug: 'deltoids', side: 'front', bodyHalf: 'full' },
+    { slug: 'abs', side: 'front', bodyHalf: 'full' },
+    { slug: 'quadriceps', side: 'front', bodyHalf: 'full' },
+    { slug: 'biceps', side: 'front', bodyHalf: 'full' },
+  ],
+  'Upper Body': [
+    { slug: 'chest', side: 'front', bodyHalf: 'upper' },
+    { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+    { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
+    { slug: 'triceps', side: 'front', bodyHalf: 'upper' },
+  ],
+  'Lower Body': [
+    { slug: 'quadriceps', side: 'front', bodyHalf: 'lower' },
+    { slug: 'hamstring', side: 'front', bodyHalf: 'lower' },
+    { slug: 'gluteal', side: 'front', bodyHalf: 'lower' },
+    { slug: 'calves', side: 'front', bodyHalf: 'lower' },
+  ],
+  // Specific muscle groups
+  'Chest': { slug: 'chest', side: 'front', bodyHalf: 'upper' },
+  'Back': [
+    { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+    { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
+  ],
+  'Shoulders': { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+  'Arms': [
+    { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
+    { slug: 'triceps', side: 'front', bodyHalf: 'upper' },
+  ],
+  'Core': [
+    { slug: 'abs', side: 'front', bodyHalf: 'upper' },
+    { slug: 'obliques', side: 'front', bodyHalf: 'upper' },
+  ],
+}
+
 // Enhanced options with icons and cleaner values
 const GOAL_OPTIONS = [
   {
@@ -90,12 +156,7 @@ const GOAL_OPTIONS = [
     icon: 'trophy',
     description: 'S/B/D focus',
   },
-  {
-    label: 'Athletic',
-    value: 'Athletic Performance',
-    icon: 'flash',
-    description: 'Speed & agility',
-  },
+
   {
     label: 'General Fitness',
     value: 'General Fitness',
@@ -114,11 +175,6 @@ export const MUSCLE_OPTIONS = [
     label: 'Pull',
     value: 'Pull',
     description: 'Back, Biceps',
-  },
-  {
-    label: 'Legs',
-    value: 'Legs',
-    description: 'Quads, Hamstrings, Glutes',
   },
   {
     label: 'Full Body',
@@ -170,35 +226,42 @@ const DURATION_OPTIONS = [
   { label: '90 min', value: '90 minutes', icon: 'time-outline' },
 ]
 
+const EQUIPMENT_IMAGES: Record<EquipmentType, any> = {
+  full_gym: require('@/assets/images/equipment/full_gym.png'),
+  home_minimal: require('@/assets/images/equipment/home_minimal.png'),
+  dumbbells_only: require('@/assets/images/equipment/dumbbells.png'),
+  bodyweight: require('@/assets/images/equipment/bodyweight.png'),
+}
+
 export const EQUIPMENT_OPTIONS: {
   label: string
   value: EquipmentType
   description: string
+  image: any
 }[] = [
   {
     label: 'Full Gym',
     value: 'full_gym',
     description: 'All machines & free weights',
+    image: EQUIPMENT_IMAGES.full_gym,
   },
   {
-    label: 'Dumbbells Only',
+    label: 'Dumbbells',
     value: 'dumbbells_only',
-    description: 'Just dumbbells',
+    description: 'Adjustable or fixed pairs',
+    image: EQUIPMENT_IMAGES.dumbbells_only,
   },
   {
-    label: 'Home / Minimal',
+    label: 'Minimal',
     value: 'home_minimal',
-    description: 'Basic home equipment',
+    description: 'Bands, kettlebell, or a bench',
+    image: EQUIPMENT_IMAGES.home_minimal,
   },
   {
     label: 'Bodyweight',
     value: 'bodyweight',
     description: 'No equipment needed',
-  },
-  {
-    label: 'Barbell Only',
-    value: 'barbell_only',
-    description: 'Barbell & plates',
+    image: EQUIPMENT_IMAGES.bodyweight,
   },
 ]
 
@@ -416,17 +479,8 @@ export function WorkoutPlanningWizard({
     field: keyof WorkoutPlanningData,
     multiSelect = false,
   ) => (
-    <View
-      style={[
-        styles.cardsContainer,
-        {
-          backgroundColor: colors.backgroundLight,
-          borderRadius: 12,
-          overflow: 'hidden',
-        },
-      ]}
-    >
-      {options.map((option, index) => {
+    <View style={styles.gridContainer}>
+      {options.map((option) => {
         let isSelected = false
         if (multiSelect) {
           const current = data[field]
@@ -439,57 +493,28 @@ export function WorkoutPlanningWizard({
         } else {
           isSelected = data[field] === option.value
         }
-        const isLast = index === options.length - 1
 
         return (
           <TouchableOpacity
             key={option.value}
             style={[
-              styles.card,
+              styles.gridCard,
               {
                 backgroundColor: isSelected
-                  ? `${colors.primary}12`
-                  : 'transparent',
-                borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                borderBottomColor: colors.border,
+                  ? `${colors.primary}15`
+                  : colors.backgroundLight,
+                borderColor: isSelected ? colors.primary : colors.border,
+                borderWidth: isSelected ? 2 : 1,
               },
             ]}
             onPress={() => handleSelectOption(field, option.value, multiSelect)}
-            activeOpacity={0.6}
+            activeOpacity={0.7}
           >
-            {option.icon && (
-              <Ionicons
-                name={option.icon as any}
-                size={18}
-                color={isSelected ? colors.primary : colors.textSecondary}
-                style={styles.cardIcon}
-              />
-            )}
-            <View style={styles.cardContent}>
-              <Text
-                style={[
-                  styles.cardTitle,
-                  { color: isSelected ? colors.primary : colors.text },
-                ]}
-              >
-                {option.label}
-              </Text>
-              {option.description && (
-                <Text
-                  style={[
-                    styles.cardDescription,
-                    { color: colors.textSecondary },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {option.description}
-                </Text>
-              )}
-            </View>
+            {/* Selection indicator */}
             {multiSelect ? (
               <View
                 style={[
-                  styles.checkbox,
+                  styles.gridCheckbox,
                   {
                     borderColor: isSelected ? colors.primary : colors.border,
                     backgroundColor: isSelected
@@ -504,9 +529,232 @@ export function WorkoutPlanningWizard({
               </View>
             ) : (
               isSelected && (
-                <Ionicons name="checkmark" size={18} color={colors.primary} />
+                <View style={styles.gridSelectedIndicator}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color={colors.primary}
+                  />
+                </View>
               )
             )}
+
+            {/* Icon */}
+            {option.icon && (
+              <View
+                style={[
+                  styles.gridIconContainer,
+                  {
+                    backgroundColor: isSelected
+                      ? `${colors.primary}20`
+                      : `${colors.textSecondary}10`,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={option.icon as any}
+                  size={24}
+                  color={isSelected ? colors.primary : colors.textSecondary}
+                />
+              </View>
+            )}
+
+            {/* Content */}
+            <View style={styles.gridCardContent}>
+              <Text
+                style={[
+                  styles.gridCardTitle,
+                  { color: isSelected ? colors.primary : colors.text },
+                ]}
+                numberOfLines={1}
+              >
+                {option.label}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )
+      })}
+    </View>
+  )
+
+  // Specialized render function for muscle cards with body SVG illustrations
+  const renderMuscleCards = (
+    options: {
+      label: string
+      value: string
+      description?: string
+    }[],
+  ) => (
+    <View style={styles.gridContainer}>
+      {options.map((option) => {
+        const current = data.muscles
+          ? (data.muscles as string)
+              .split(', ')
+              .map((v) => v.trim())
+              .filter((v) => v.length > 0)
+          : []
+        const isSelected = current.includes(option.value)
+        const muscleMapping = MUSCLE_TO_BODY_PARTS[option.value]
+
+        // Get mappings as array (normalize single to array)
+        const mappingsArray = muscleMapping
+          ? Array.isArray(muscleMapping)
+            ? muscleMapping
+            : [muscleMapping]
+          : []
+
+        // Get the primary mapping for display config (side, bodyHalf)
+        const primaryMapping = mappingsArray[0]
+
+        // Build body data with ALL muscle slugs for highlighting
+        const bodyData = mappingsArray.map((m) => ({
+          slug: m.slug,
+          intensity: 1,
+        }))
+
+        return (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.gridCard,
+              styles.muscleCard,
+              {
+                backgroundColor: isSelected
+                  ? `${colors.primary}15`
+                  : colors.backgroundLight,
+                borderColor: isSelected ? colors.primary : colors.border,
+                borderWidth: isSelected ? 2 : 1,
+              },
+            ]}
+            onPress={() => handleSelectOption('muscles', option.value, true)}
+            activeOpacity={0.7}
+          >
+            {/* Multi-select checkbox */}
+            <View
+              style={[
+                styles.gridCheckbox,
+                {
+                  borderColor: isSelected ? colors.primary : colors.border,
+                  backgroundColor: isSelected ? colors.primary : 'transparent',
+                },
+              ]}
+            >
+              {isSelected && (
+                <Ionicons name="checkmark" size={12} color={colors.white} />
+              )}
+            </View>
+
+            {/* Body SVG Illustration */}
+            {primaryMapping && (
+              <View style={styles.muscleBodyContainer} pointerEvents="none">
+                <View
+                  style={[
+                    styles.muscleBodyWrapper,
+                    {
+                      transform: [
+                        {
+                          translateY:
+                            BODY_HALF_CONFIG[primaryMapping.bodyHalf].offsetY,
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Body
+                    data={bodyData}
+                    gender="male"
+                    side={primaryMapping.side}
+                    scale={BODY_HALF_CONFIG[primaryMapping.bodyHalf].scale}
+                    colors={[isSelected ? colors.primary : '#EF4444']}
+                    border="#D1D5DB"
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Content - Title only, no description */}
+            <View style={styles.gridCardContent}>
+              <Text
+                style={[
+                  styles.gridCardTitle,
+                  { color: isSelected ? colors.primary : colors.text },
+                ]}
+                numberOfLines={1}
+              >
+                {option.label}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )
+      })}
+    </View>
+  )
+
+  // Specialized render function for equipment cards with background images
+  const renderEquipmentCards = (
+    options: {
+      label: string
+      value: string
+      description?: string
+      image?: any
+    }[],
+  ) => (
+    <View style={styles.gridContainer}>
+      {options.map((option) => {
+        const isSelected = data.equipment === option.value
+
+        return (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.gridCard,
+              styles.equipmentCard,
+              {
+                borderColor: isSelected ? colors.primary : colors.border,
+                borderWidth: isSelected ? 2 : 1,
+              },
+            ]}
+            onPress={() => handleSelectOption('equipment', option.value)}
+            activeOpacity={0.8}
+          >
+            {/* Background Image */}
+            {option.image && (
+              <Image source={option.image} style={styles.equipmentImage} />
+            )}
+
+            {/* Gradient Overlay */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
+              style={styles.equipmentOverlay}
+            />
+
+            {/* Selection Checkmark */}
+            {isSelected && (
+              <View
+                style={[
+                  styles.gridSelectedIndicator,
+                  {
+                    backgroundColor: colors.primary,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    top: 10,
+                    right: 10,
+                  },
+                ]}
+              >
+                <Ionicons name="checkmark" size={16} color={colors.white} />
+              </View>
+            )}
+
+            {/* Content */}
+            <View style={styles.equipmentContent}>
+              <Text style={styles.equipmentTitle} numberOfLines={1}>
+                {option.label}
+              </Text>
+            </View>
           </TouchableOpacity>
         )
       })}
@@ -673,7 +921,7 @@ export function WorkoutPlanningWizard({
           </View>
         </View>
       )}
-      {renderOptionCards(MUSCLE_OPTIONS, 'muscles', true)}
+      {renderMuscleCards(MUSCLE_OPTIONS)}
       {renderCustomInput('e.g., Calves, Neck...', 'muscles')}
     </ScrollView>
   )
@@ -723,7 +971,7 @@ export function WorkoutPlanningWizard({
           </Text>
         </View>
       )}
-      {renderOptionCards(EQUIPMENT_OPTIONS, 'equipment')}
+      {renderEquipmentCards(EQUIPMENT_OPTIONS)}
     </ScrollView>
   )
 
@@ -859,9 +1107,6 @@ export function WorkoutPlanningWizard({
           <Text style={[styles.stepTitle, { color: colors.text }]}>
             Workout Plan
           </Text>
-          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-            Customize your session details below.
-          </Text>
         </View>
 
         <View
@@ -871,37 +1116,37 @@ export function WorkoutPlanningWizard({
           ]}
         >
           <SummaryRow
+            label="Equipment"
+            value={equipmentLabel || 'Select Equipment'}
+            icon="equipment"
+            colors={colors}
+            onEdit={() => setEditingField('equipment')}
+          />
+          <SummaryRow
             label="Goal"
             value={data.goal || 'Select Goal'}
-            icon={goalIcon}
+            icon="goal"
             colors={colors}
             onEdit={() => setEditingField('goal')}
           />
           <SummaryRow
             label="Muscles"
             value={musclesLabel}
-            icon="body"
+            icon="muscles"
             colors={colors}
             onEdit={() => setEditingField('muscles')}
           />
           <SummaryRow
             label="Duration"
             value={data.duration || 'Select Duration'}
-            icon="time"
+            icon="duration"
             colors={colors}
             onEdit={() => setEditingField('duration')}
           />
           <SummaryRow
-            label="Equipment"
-            value={equipmentLabel || 'Select Equipment'}
-            icon="fitness"
-            colors={colors}
-            onEdit={() => setEditingField('equipment')}
-          />
-          <SummaryRow
             label="Notes"
             value={data.specifics || 'Add Notes'}
-            icon="document-text"
+            icon="notes"
             colors={colors}
             onEdit={() => setEditingField('specifics')}
           />
@@ -1055,7 +1300,7 @@ function SummaryRow({
       activeOpacity={0.6}
     >
       <View style={summaryStyles.iconContainer}>
-        <Ionicons name={icon as any} size={16} color={colors.primary} />
+        <WizardIcon name={icon as any} size={20} color={colors.primary} />
       </View>
       <View style={summaryStyles.contentContainer}>
         <Text style={[summaryStyles.label, { color: colors.textSecondary }]}>
@@ -1105,7 +1350,7 @@ const summaryStyles = StyleSheet.create({
 
 const createStyles = (
   colors: WorkoutPlanningWizardProps['colors'],
-  insets: { bottom: number },
+  insets: { top: number; bottom: number },
 ) =>
   StyleSheet.create({
     container: {
@@ -1133,6 +1378,7 @@ const createStyles = (
       flex: 1,
     },
     headerContainer: {
+      paddingTop: 12,
       marginBottom: 16,
     },
     stepTitle: {
@@ -1144,6 +1390,121 @@ const createStyles = (
       fontSize: 14,
       opacity: 0.8,
     },
+    // Grid layout styles
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    gridCard: {
+      width: '48%' as any, // Slightly wider base with smaller gap
+      flexGrow: 1,
+      minHeight: 110,
+      borderRadius: 16,
+      padding: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    gridIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    gridCardContent: {
+      alignItems: 'center',
+    },
+    gridCardTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      textAlign: 'center',
+      marginBottom: 2,
+    },
+    gridCardDescription: {
+      fontSize: 12,
+      textAlign: 'center',
+      lineHeight: 16,
+    },
+    gridCheckbox: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    gridSelectedIndicator: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+    },
+    // Muscle card with body SVG styles
+    muscleCard: {
+      minHeight: 130,
+      paddingTop: 12,
+      paddingBottom: 10,
+    },
+    muscleBodyContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+      marginBottom: 8,
+    },
+    muscleBodyWrapper: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      width: 140,
+      height: 280,
+      marginTop: -140,
+      marginLeft: -70,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Equipment card with background images styles
+    equipmentCard: {
+      height: 220, // Taller aspect ratio
+      padding: 0, // Image covers the whole card
+      backgroundColor: '#000',
+    },
+    equipmentImage: {
+      ...StyleSheet.absoluteFillObject,
+      width: '100%',
+      height: '100%',
+    },
+    equipmentOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    equipmentContent: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 16,
+    },
+    equipmentTitle: {
+      color: '#FFF',
+      fontSize: 20,
+      fontWeight: '800',
+      marginBottom: 2,
+    },
+    equipmentDescription: {
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    // Legacy card styles (keeping for compatibility)
     cardsContainer: {
       gap: 0,
     },
