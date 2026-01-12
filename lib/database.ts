@@ -1,27 +1,30 @@
-import type { BodyLogEntryWithImages, BodyLogImage } from '@/lib/body-log/metadata'
+import type {
+  BodyLogEntryWithImages,
+  BodyLogImage,
+} from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-    Exercise,
-    ExploreProgram,
-    ExploreProgramRoutine,
-    ExploreRoutine,
-    ExploreRoutineExercise,
-    Follow,
-    FollowRelationshipStatus,
-    FollowRequest,
-    ParsedWorkout,
-    Profile,
-    Set,
-    WorkoutComment,
-    WorkoutLike,
-    WorkoutRoutine,
-    WorkoutRoutineExercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSession,
-    WorkoutSessionWithDetails,
-    WorkoutSocialStats,
+  Exercise,
+  ExploreProgram,
+  ExploreProgramRoutine,
+  ExploreRoutine,
+  ExploreRoutineExercise,
+  Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
+  ParsedWorkout,
+  Profile,
+  Set,
+  WorkoutComment,
+  WorkoutLike,
+  WorkoutRoutine,
+  WorkoutRoutineExercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSession,
+  WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -43,11 +46,13 @@ type ExploreProgramQueryResult = ExploreProgram & {
 }
 
 type ExploreProgramRoutineQueryResult = ExploreProgramRoutine & {
-  routine: (ExploreRoutine & {
-    explore_routine_exercises?: (ExploreRoutineExercise & {
-      exercise: Pick<Exercise, 'id' | 'name' | 'target_muscles' | 'gif_url'>
-    })[]
-  }) | null
+  routine:
+    | (ExploreRoutine & {
+        explore_routine_exercises?: (ExploreRoutineExercise & {
+          exercise: Pick<Exercise, 'id' | 'name' | 'target_muscles' | 'gif_url'>
+        })[]
+      })
+    | null
 }
 
 type ExploreRoutineQueryResult = ExploreRoutine & {
@@ -861,7 +866,7 @@ export const database = {
 
       // Iterate through sessions (newest first)
       type SessionResult = { workout_exercises?: { exercise?: Exercise }[] }
-      ;(sessions as unknown as SessionResult[])?.forEach((session) => {
+      ;((sessions as unknown) as SessionResult[])?.forEach((session) => {
         // Sort exercises in session by created_at (though usually consistent)
         const sessionExercises = session.workout_exercises || []
 
@@ -898,8 +903,10 @@ export const database = {
 
       const muscleCounts = new Map<string, number>()
 
-      type MuscleQueryResult = { workout_exercises?: { exercise?: { muscle_group: string } }[] }
-      ;(sessions as unknown as MuscleQueryResult[])?.forEach((session) => {
+      type MuscleQueryResult = {
+        workout_exercises?: { exercise?: { muscle_group: string } }[]
+      }
+      ;((sessions as unknown) as MuscleQueryResult[])?.forEach((session) => {
         session.workout_exercises?.forEach((we) => {
           const muscle = we.exercise?.muscle_group
           if (muscle) {
@@ -946,15 +953,19 @@ export const database = {
 
         // Extract unique exercises
         const exerciseMap = new Map<string, Exercise>()
-        type ExerciseSessionResult = { workout_exercises?: { exercise?: Exercise }[] }
-        ;(sessions as unknown as ExerciseSessionResult[])?.forEach((session) => {
-          session.workout_exercises?.forEach((we) => {
-            const exercise = we.exercise
-            if (exercise && !exerciseMap.has(exercise.id)) {
-              exerciseMap.set(exercise.id, exercise)
-            }
-          })
-        })
+        type ExerciseSessionResult = {
+          workout_exercises?: { exercise?: Exercise }[]
+        }
+        ;((sessions as unknown) as ExerciseSessionResult[])?.forEach(
+          (session) => {
+            session.workout_exercises?.forEach((we) => {
+              const exercise = we.exercise
+              if (exercise && !exerciseMap.has(exercise.id)) {
+                exerciseMap.set(exercise.id, exercise)
+              }
+            })
+          },
+        )
 
         const exercises = Array.from(exerciseMap.values()).sort((a, b) =>
           a.name.localeCompare(b.name),
@@ -1175,7 +1186,10 @@ export const database = {
         .single()
 
       if (fetchError) {
-        console.error('[database.exercises.delete] Error fetching exercise:', fetchError)
+        console.error(
+          '[database.exercises.delete] Error fetching exercise:',
+          fetchError,
+        )
         throw fetchError
       }
 
@@ -1196,11 +1210,17 @@ export const database = {
         .eq('created_by', userId) // Double-check ownership at DB level
 
       if (deleteError) {
-        console.error('[database.exercises.delete] Error deleting exercise:', deleteError)
+        console.error(
+          '[database.exercises.delete] Error deleting exercise:',
+          deleteError,
+        )
         throw deleteError
       }
 
-      console.log('[database.exercises.delete] Exercise deleted successfully:', exerciseId)
+      console.log(
+        '[database.exercises.delete] Exercise deleted successfully:',
+        exerciseId,
+      )
       return true
     },
   },
@@ -1565,7 +1585,8 @@ export const database = {
     async getWithMuscleGroups(userId: string, fromDate: Date) {
       const { data, error } = await supabase
         .from('workout_sessions')
-        .select(`
+        .select(
+          `
           id,
           created_at,
           workout_exercises (
@@ -1582,7 +1603,8 @@ export const database = {
               weight
             )
           )
-        `)
+        `,
+        )
         .eq('user_id', userId)
         .gte('created_at', fromDate.toISOString())
         .order('created_at', { ascending: false })
@@ -1640,11 +1662,7 @@ export const database = {
 
   // Workout Exercise operations
   workoutExercises: {
-    async create(
-      sessionId: string,
-      exerciseId: string,
-      orderIndex: number,
-    ) {
+    async create(sessionId: string, exerciseId: string, orderIndex: number) {
       const { data, error } = await supabase
         .from('workout_exercises')
         .insert({
@@ -2060,8 +2078,7 @@ export const database = {
           sets?: { reps: number | null }[]
         }[]
       }
-
-      ;(data as unknown as VolumeSessionResult[])?.forEach((session) => {
+      ;((data as unknown) as VolumeSessionResult[])?.forEach((session) => {
         session.workout_exercises?.forEach((we) => {
           const muscleGroup = we.exercise?.muscle_group
           if (!muscleGroup) return
@@ -2138,8 +2155,7 @@ export const database = {
           sets?: { reps: number | null }[]
         }[]
       }
-
-      ;(data as unknown as WeeklyVolumeSession[])?.forEach((session) => {
+      ;((data as unknown) as WeeklyVolumeSession[])?.forEach((session) => {
         const sessionDate = new Date(session.created_at)
 
         // Get Sunday of the week
@@ -2212,8 +2228,7 @@ export const database = {
           sets?: { reps: number | null }[]
         }[]
       }
-
-      ;(data as unknown as SessionStatsResult[])?.forEach((session) => {
+      ;((data as unknown) as SessionStatsResult[])?.forEach((session) => {
         session.workout_exercises?.forEach((we) => {
           we.sets?.forEach((set) => {
             if (set.reps) {
@@ -2251,18 +2266,27 @@ export const database = {
       // Calculate max 1RM for each exercise
       const exerciseMax1RMs = new Map<
         string,
-        { name: string; muscleGroup: string | null; max1RM: number; gifUrl: string | null }
+        {
+          name: string
+          muscleGroup: string | null
+          max1RM: number
+          gifUrl: string | null
+        }
       >()
 
       type Max1RMSessionResult = {
         workout_exercises?: {
           exercise_id: string
-          exercise?: { id: string; name: string; muscle_group: string; gif_url: string | null }
+          exercise?: {
+            id: string
+            name: string
+            muscle_group: string
+            gif_url: string | null
+          }
           sets?: { reps: number | null; weight: number | null }[]
         }[]
       }
-
-      ;(data as unknown as Max1RMSessionResult[])?.forEach((session) => {
+      ;((data as unknown) as Max1RMSessionResult[])?.forEach((session) => {
         session.workout_exercises?.forEach((we) => {
           const exercise = we.exercise
           if (!exercise) return
@@ -2835,17 +2859,19 @@ export const database = {
       if (error) throw error
 
       // Transform body_log_images to images for consistency
-      const transformedData = data?.map((entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
-        id: entry.id,
-        user_id: entry.user_id,
-        created_at: entry.created_at,
-        weight_kg: entry.weight_kg,
-        body_fat_percentage: entry.body_fat_percentage,
-        bmi: entry.bmi,
-        muscle_mass_kg: entry.muscle_mass_kg,
-        analysis_summary: entry.analysis_summary,
-        images: entry.body_log_images || [],
-      }))
+      const transformedData = data?.map(
+        (entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
+          id: entry.id,
+          user_id: entry.user_id,
+          created_at: entry.created_at,
+          weight_kg: entry.weight_kg,
+          body_fat_percentage: entry.body_fat_percentage,
+          bmi: entry.bmi,
+          muscle_mass_kg: entry.muscle_mass_kg,
+          analysis_summary: entry.analysis_summary,
+          images: entry.body_log_images || [],
+        }),
+      )
 
       return transformedData
     },
@@ -2895,17 +2921,19 @@ export const database = {
       if (error) throw error
 
       // Transform body_log_images to images for consistency
-      const transformedData = (data ?? []).map((entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
-        id: entry.id,
-        user_id: entry.user_id,
-        created_at: entry.created_at,
-        weight_kg: entry.weight_kg,
-        body_fat_percentage: entry.body_fat_percentage,
-        bmi: entry.bmi,
-        muscle_mass_kg: entry.muscle_mass_kg,
-        analysis_summary: entry.analysis_summary,
-        images: entry.body_log_images || [],
-      }))
+      const transformedData = (data ?? []).map(
+        (entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
+          id: entry.id,
+          user_id: entry.user_id,
+          created_at: entry.created_at,
+          weight_kg: entry.weight_kg,
+          body_fat_percentage: entry.body_fat_percentage,
+          bmi: entry.bmi,
+          muscle_mass_kg: entry.muscle_mass_kg,
+          analysis_summary: entry.analysis_summary,
+          images: entry.body_log_images || [],
+        }),
+      )
 
       return {
         entries: transformedData,
@@ -2990,7 +3018,7 @@ export const database = {
         notes?: string
         imagePath?: string
         tintColor?: string
-      }
+      },
     ) {
       const { data, error } = await supabase
         .from('workout_routines')
@@ -3364,12 +3392,14 @@ export const database = {
     async getPrograms() {
       const { data, error } = await supabase
         .from('explore_programs')
-        .select(`
+        .select(
+          `
           *,
           explore_program_routines (
             routine_id
           )
-        `)
+        `,
+        )
         .eq('is_published', true)
         .order('display_order', { ascending: true })
 
@@ -3388,7 +3418,8 @@ export const database = {
     async getProgramById(programId: string) {
       const { data, error } = await supabase
         .from('explore_programs')
-        .select(`
+        .select(
+          `
           *,
           explore_program_routines (
             *,
@@ -3405,7 +3436,8 @@ export const database = {
               )
             )
           )
-        `)
+        `,
+        )
         .eq('id', programId)
         .eq('is_published', true)
         .single()
@@ -3413,18 +3445,24 @@ export const database = {
       if (error) throw error
 
       const routines = (data.explore_program_routines || [])
-        .sort((a: ExploreProgramRoutineQueryResult, b: ExploreProgramRoutineQueryResult) => a.display_order - b.display_order)
+        .sort(
+          (
+            a: ExploreProgramRoutineQueryResult,
+            b: ExploreProgramRoutineQueryResult,
+          ) => a.display_order - b.display_order,
+        )
         .map((pr: ExploreProgramRoutineQueryResult) => {
           const routine = pr.routine
           if (!routine) return null
-          
+
           // Sort exercises by order_index
-          const exercises = (routine.explore_routine_exercises || [])
-            .sort((a, b) => a.order_index - b.order_index)
-            
+          const exercises = (routine.explore_routine_exercises || []).sort(
+            (a, b) => a.order_index - b.order_index,
+          )
+
           return {
             ...routine,
-            exercises
+            exercises,
           }
         })
         .filter(Boolean)
@@ -3466,13 +3504,15 @@ export const database = {
     async getRoutineById(routineId: string) {
       const { data, error } = await supabase
         .from('explore_routines')
-        .select(`
+        .select(
+          `
           *,
           explore_routine_exercises (
             *,
             exercise:exercises (*)
           )
-        `)
+        `,
+        )
         .eq('id', routineId)
         .eq('is_published', true)
         .single()
@@ -3480,8 +3520,9 @@ export const database = {
       if (error) throw error
 
       const typedData = data as ExploreRoutineQueryResult
-      const exercises = (typedData.explore_routine_exercises || [])
-        .sort((a, b) => a.order_index - b.order_index)
+      const exercises = (typedData.explore_routine_exercises || []).sort(
+        (a, b) => a.order_index - b.order_index,
+      )
 
       return {
         ...typedData,
@@ -3511,15 +3552,22 @@ export const database = {
 
       // Insert routine exercises
       if (exploreRoutine.exercises && exploreRoutine.exercises.length > 0) {
-        type ExploreExerciseWithExercise = ExploreRoutineExercise & { exercise: Exercise }
-        const routineExercises = exploreRoutine.exercises.map((ex: ExploreExerciseWithExercise) => ({
-          routine_id: routine.id,
-          exercise_id: ex.exercise_id,
-          order_index: ex.order_index,
-          notes: ex.notes,
-        }))
+        type ExploreExerciseWithExercise = ExploreRoutineExercise & {
+          exercise: Exercise
+        }
+        const routineExercises = exploreRoutine.exercises.map(
+          (ex: ExploreExerciseWithExercise) => ({
+            routine_id: routine.id,
+            exercise_id: ex.exercise_id,
+            order_index: ex.order_index,
+            notes: ex.notes,
+          }),
+        )
 
-        const { data: insertedExercises, error: exercisesError } = await supabase
+        const {
+          data: insertedExercises,
+          error: exercisesError,
+        } = await supabase
           .from('workout_routine_exercises')
           .insert(routineExercises)
           .select()
@@ -3535,7 +3583,7 @@ export const database = {
         }[] = []
         exploreRoutine.exercises.forEach((ex: ExploreExerciseWithExercise) => {
           const insertedEx = insertedExercises?.find(
-            (ie: WorkoutRoutineExercise) => ie.order_index === ex.order_index
+            (ie: WorkoutRoutineExercise) => ie.order_index === ex.order_index,
           )
           if (!insertedEx) return
 
@@ -3577,4 +3625,3 @@ export const database = {
     },
   },
 }
-

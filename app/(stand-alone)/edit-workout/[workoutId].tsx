@@ -6,32 +6,32 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    deleteWorkoutImage,
-    uploadWorkoutImage,
+  deleteWorkoutImage,
+  uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
-    DateTimePickerEvent,
+  DateTimePickerEvent,
 } from '@react-native-community/datetimepicker'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    LayoutAnimation,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -278,7 +278,9 @@ export default function EditWorkoutScreen() {
 
       // Register callback for when exercise is selected
       registerCallback((selectedExercise: Exercise | Exercise[]) => {
-        const exercise = Array.isArray(selectedExercise) ? selectedExercise[0] : selectedExercise
+        const exercise = Array.isArray(selectedExercise)
+          ? selectedExercise[0]
+          : selectedExercise
         if (exercise) {
           handleSelectExercise(exercise, workoutExerciseId)
         }
@@ -309,7 +311,7 @@ export default function EditWorkoutScreen() {
         const activeExercises = workout.workout_exercises?.filter(
           (we) => !deletedExerciseIds.has(we.id),
         )
-        const nextOrderIndex = (activeExercises?.length || 0)
+        const nextOrderIndex = activeExercises?.length || 0
 
         // Create the new workout exercise in the database
         const newWorkoutExercise = await database.workoutExercises.create(
@@ -356,7 +358,7 @@ export default function EditWorkoutScreen() {
     // Register callback for when exercise is selected
     registerCallback((selectedExercise: Exercise | Exercise[]) => {
       if (Array.isArray(selectedExercise)) {
-        selectedExercise.forEach(ex => handleAddNewExercise(ex))
+        selectedExercise.forEach((ex) => handleAddNewExercise(ex))
       } else {
         handleAddNewExercise(selectedExercise)
       }
@@ -401,7 +403,7 @@ export default function EditWorkoutScreen() {
       const hours = parseInt(editedDurationHours) || 0
       const minutes = parseInt(editedDurationMinutes) || 0
       const seconds = parseInt(editedDurationSeconds) || 0
-      const totalDuration = (hours * 3600) + (minutes * 60) + seconds
+      const totalDuration = hours * 3600 + minutes * 60 + seconds
       updates.duration = totalDuration > 0 ? totalDuration : null
 
       await database.workoutSessions.update(workoutId, updates)
@@ -674,9 +676,7 @@ export default function EditWorkoutScreen() {
               </TouchableOpacity>
             </NavbarIsland>
           }
-          centerContent={
-            <Text style={styles.headerTitle}>Edit Workout</Text>
-          }
+          centerContent={<Text style={styles.headerTitle}>Edit Workout</Text>}
           rightContent={
             <TouchableOpacity
               onPress={handleSave}
@@ -695,7 +695,6 @@ export default function EditWorkoutScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-
           <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}
@@ -728,7 +727,9 @@ export default function EditWorkoutScreen() {
                   />
                   <Text style={styles.dateButtonText}>
                     {editedDate
-                      ? `${formatDisplayDate(editedDate)} at ${formatDisplayTime(editedDate)}`
+                      ? `${formatDisplayDate(
+                          editedDate,
+                        )} at ${formatDisplayTime(editedDate)}`
                       : 'Select date'}
                   </Text>
                 </View>
@@ -794,7 +795,9 @@ export default function EditWorkoutScreen() {
                   <TextInput
                     style={styles.durationInput}
                     value={editedDurationHours}
-                    onChangeText={(text) => setEditedDurationHours(text.replace(/[^0-9]/g, ''))}
+                    onChangeText={(text) =>
+                      setEditedDurationHours(text.replace(/[^0-9]/g, ''))
+                    }
                     placeholder="0"
                     placeholderTextColor={colors.textPlaceholder}
                     keyboardType="number-pad"
@@ -807,7 +810,9 @@ export default function EditWorkoutScreen() {
                   <TextInput
                     style={styles.durationInput}
                     value={editedDurationMinutes}
-                    onChangeText={(text) => setEditedDurationMinutes(text.replace(/[^0-9]/g, ''))}
+                    onChangeText={(text) =>
+                      setEditedDurationMinutes(text.replace(/[^0-9]/g, ''))
+                    }
                     placeholder="0"
                     placeholderTextColor={colors.textPlaceholder}
                     keyboardType="number-pad"
@@ -820,7 +825,9 @@ export default function EditWorkoutScreen() {
                   <TextInput
                     style={styles.durationInput}
                     value={editedDurationSeconds}
-                    onChangeText={(text) => setEditedDurationSeconds(text.replace(/[^0-9]/g, ''))}
+                    onChangeText={(text) =>
+                      setEditedDurationSeconds(text.replace(/[^0-9]/g, ''))
+                    }
                     placeholder="0"
                     placeholderTextColor={colors.textPlaceholder}
                     keyboardType="number-pad"
@@ -1068,7 +1075,9 @@ export default function EditWorkoutScreen() {
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="--"
-                                      placeholderTextColor={colors.textPlaceholder}
+                                      placeholderTextColor={
+                                        colors.textPlaceholder
+                                      }
                                     />
                                     <TextInput
                                       style={styles.setInput}
@@ -1078,7 +1087,9 @@ export default function EditWorkoutScreen() {
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="BW"
-                                      placeholderTextColor={colors.textPlaceholder}
+                                      placeholderTextColor={
+                                        colors.textPlaceholder
+                                      }
                                     />
                                     <TouchableOpacity
                                       onPress={() => deleteSet(set.id)}

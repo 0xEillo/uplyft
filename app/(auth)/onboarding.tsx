@@ -20,6 +20,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BodyPartSlug } from '@/lib/body-mapping'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
+import { requestTrackingPermission } from '@/lib/facebook-sdk'
 import { markUserAsRated, requestReview } from '@/lib/rating'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
@@ -1518,6 +1519,16 @@ export default function OnboardingScreen() {
       await Promise.all(imageAssets)
     }
     preloadImages()
+  }, [])
+
+  // Request ATT permission early in onboarding (before registration/subscription)
+  // This ensures high-value events like registration and purchase are properly attributed
+  useEffect(() => {
+    // Small delay so it doesn't feel jarring right as the screen loads
+    const timer = setTimeout(() => {
+      requestTrackingPermission()
+    }, 800)
+    return () => clearTimeout(timer)
   }, [])
 
   // Animate step transitions
