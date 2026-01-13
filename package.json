@@ -12,7 +12,8 @@
     "lint": "expo lint"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.42",
+    "@ai-sdk/openai": "^3.0.9",
+    "@ai-sdk/react": "^3.0.33",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
@@ -22,7 +23,7 @@
     "@react-navigation/native": "^7.1.8",
     "@shopify/flash-list": "^2.2.0",
     "@supabase/supabase-js": "^2.58.0",
-    "ai": "^5.0.60",
+    "ai": "^6.0.31",
     "expo": "~54.0.12",
     "expo-apple-authentication": "~8.0.7",
     "expo-application": "~7.0.7",

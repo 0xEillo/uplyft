@@ -29,6 +29,7 @@ import {
 } from '@/lib/ai/workoutPrompt'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
+import { appFetch } from '@/lib/fetch'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
@@ -385,7 +386,7 @@ function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
         if (suggestions.length > 0) return suggestions
       }
     } catch (e) {
-      console.warn('Failed to parse exercise suggestions JSON:', e)
+      // Incomplete JSON during streaming is expected
     }
   }
 
@@ -592,7 +593,7 @@ export function WorkoutChat({
             setLoadedDraftContext(null)
           }
         } catch (error) {
-          console.error('[WorkoutChat] Failed to load workout draft:', error)
+          // console.error('[WorkoutChat] Failed to load workout draft:', error)
         }
       }
 
@@ -686,12 +687,14 @@ export function WorkoutChat({
 
   const processStreamingResponse = async (
     reader: ReadableStreamDefaultReader<Uint8Array>,
-    assistantMessageId: string,
+    assistantMessageId: string | null,
+    options?: { silent?: boolean },
   ) => {
     const decoder = new TextDecoder()
     let buffer = ''
     let acc = ''
     let ndjsonMode: boolean | null = null
+    let hasDisabledLoading = false
 
     while (true) {
       const { value, done } = await reader.read()
@@ -705,11 +708,27 @@ export function WorkoutChat({
 
       if (!ndjsonMode) {
         acc += chunk
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: acc } : m,
-          ),
-        )
+        // Check if content looks like a raw JSON or code block (likely a workout plan)
+        // If it starts with typical JSON/code block markers, hide it
+        const isHiddenStream = 
+          /^\s*(\[|\{|```)/.test(acc) || 
+          acc.includes('```') || 
+          acc.includes('\n[') || 
+          acc.includes('\n{') ||
+          acc.includes(': [') ||
+          acc.includes(': {')
+        
+        if (!options?.silent && assistantMessageId && !isHiddenStream) {
+          if (!hasDisabledLoading) {
+            setIsLoading(false)
+            hasDisabledLoading = true
+          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: acc } : m,
+            ),
+          )
+        }
         continue
       }
 
@@ -734,11 +753,26 @@ export function WorkoutChat({
           acc += line
         }
 
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: acc } : m,
-          ),
-        )
+        // More aggressive detection: skip update if we see typical JSON/code block markers anywhere
+        const isHiddenStream = 
+          /^\s*(\[|\{|```)/.test(acc) || 
+          acc.includes('```') || 
+          acc.includes('\n[') || 
+          acc.includes('\n{') ||
+          acc.includes(': [') ||
+          acc.includes(': {')
+
+        if (!options?.silent && assistantMessageId && !isHiddenStream) {
+          if (!hasDisabledLoading) {
+            setIsLoading(false)
+            hasDisabledLoading = true
+          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: acc } : m,
+            ),
+          )
+        }
       }
     }
 
@@ -758,12 +792,29 @@ export function WorkoutChat({
         } catch {
           acc += line
         }
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: acc } : m,
-          ),
-        )
+        const isHiddenStream = /^\s*(\[|```)/.test(acc) || acc.includes('```json') || acc.includes('\n[')
+        if (!options?.silent && assistantMessageId && !isHiddenStream) {
+          if (!hasDisabledLoading) {
+            setIsLoading(false)
+            hasDisabledLoading = true
+          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: acc } : m,
+            ),
+          )
+        }
       }
+    }
+
+    // If we were hiding the stream (because it was JSON), or just finished normally,
+    // make sure the final content is updated.
+    if (!options?.silent && assistantMessageId) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId ? { ...m, content: acc } : m,
+        ),
+      )
     }
 
     const parsed = parseWorkoutForDisplay(acc)
@@ -1027,14 +1078,6 @@ export function WorkoutChat({
 
     // Check if user is pro member or has tutorial trial available
     const canAccessAiChat = isProMember || canUseTrial('ai_workout')
-    console.log(
-      '[WorkoutChat] handleSendMessage. canAccessAiChat:',
-      canAccessAiChat,
-      'isProMember:',
-      isProMember,
-      'canUseTrial:',
-      canUseTrial('ai_workout'),
-    )
 
     if (!canAccessAiChat) {
       setShowPaywall(true)
@@ -1160,7 +1203,7 @@ export function WorkoutChat({
         }))
       }
 
-      const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
+      const response = await appFetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1397,7 +1440,7 @@ export function WorkoutChat({
         weightUnit,
       }
 
-      const response = await fetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
+      const response = await appFetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1426,32 +1469,47 @@ export function WorkoutChat({
       const reader = response.body?.getReader()
       if (!reader) {
         const assistantContent = await response.text()
+        
+        // Use timeout to step out of current stack for state updates
+        setTimeout(() => {
+          setGeneratedPlanContent(assistantContent)
+          
+          // Parse workout for structured display
+          const parsed = parseWorkoutForDisplay(assistantContent)
+          setParsedWorkout(parsed)
+
+          // Add the final message
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: assistantMessageId,
+              role: 'assistant',
+              content: assistantContent,
+            },
+          ])
+
+          // Consume trial when workout is generated
+          if (parsed && !isProMember) {
+            consumeTrial('ai_workout')
+          }
+        }, 0)
+      } else {
+        // Stream silently - no placeholder message initially
+        const fullContent = await processStreamingResponse(
+          reader, 
+          null, // No ID, so it won't update messages during stream
+          { silent: true }
+        )
+        
+        // Once complete, add the message
         setMessages((prev) => [
           ...prev,
           {
             id: assistantMessageId,
             role: 'assistant',
-            content:
-              assistantContent ||
-              'I received an empty response. Please try again.',
+            content: fullContent,
           },
         ])
-        setGeneratedPlanContent(assistantContent)
-        // Parse workout for structured display
-        const parsed = parseWorkoutForDisplay(assistantContent)
-        setParsedWorkout(parsed)
-
-        // Consume trial when workout is generated
-        if (parsed && !isProMember) {
-          consumeTrial('ai_workout')
-        }
-      } else {
-        // Create placeholder message for streaming
-        setMessages((prev) => [
-          ...prev,
-          { id: assistantMessageId, role: 'assistant', content: '' },
-        ])
-        await processStreamingResponse(reader, assistantMessageId)
       }
     } catch (error) {
       console.error('Chat error:', error)
@@ -2016,12 +2074,23 @@ export function WorkoutChat({
                             }
 
                             // Regular messages show with coach avatar
+                            // Hide partial JSON blocks while streaming
                             const displayContent = message.content
                               .replace(JSON_BLOCK_REGEX, '')
+                              .replace(/```(?:json|).*/gs, '') // Strip partial code blocks
+                              .replace(/\[\s*\{.*/gs, '')      // Strip partial JSON arrays
+                              .replace(/\{\s*"exercises".*/gs, '') // Strip partial workout objects
+                              .replace(/\{\s*"title".*/gs, '')     // Strip partial workout objects
                               .trim()
+                            
                             const exerciseSuggestions = parseExerciseSuggestions(
                               message.content,
                             )
+
+                            // Don't render empty bubbles (prevents glitch when streaming JSON)
+                            if (!displayContent && exerciseSuggestions.length === 0) {
+                              return null
+                            }
 
                             return (
                               <>
@@ -2645,7 +2714,7 @@ function createStyles(
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.background,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
@@ -2657,7 +2726,7 @@ function createStyles(
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.background,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,

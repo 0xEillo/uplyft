@@ -3,15 +3,15 @@ import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 import { streamText, tool } from 'npm:ai'
-import { openrouter, GEMINI_MODEL } from '../_shared/openrouter.ts'
+import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
-    getExercisePercentile,
-    getExerciseStrengthProgressByName,
-    getMuscleGroupDistribution,
-    getStrengthScoreProgress,
-    getTopExercisesByEstimated1RM,
+  getExercisePercentile,
+  getExerciseStrengthProgressByName,
+  getMuscleGroupDistribution,
+  getStrengthScoreProgress,
+  getTopExercisesByEstimated1RM,
 } from '../_shared/stats.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 import { buildUserContextSummary, userContextToPrompt } from './user-context.ts'
@@ -169,7 +169,9 @@ serve(async (req) => {
     return result.toTextStreamResponse({
       headers: {
         ...corsHeaders,
-        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Type': 'application/octet-stream',
+        'Content-Encoding': 'none',
+        'Cache-Control': 'no-cache',
       },
     })
   } catch (error) {
