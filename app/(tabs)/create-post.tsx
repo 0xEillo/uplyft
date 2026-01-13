@@ -386,12 +386,53 @@ export default function CreatePostScreen() {
     handleAttachWithLibrary,
     handleScanWorkout,
   } = useImageTranscription({
-    onExtractionComplete: (data) => {
+    onStructuredExtractionComplete: (data) => {
+      console.log('[CreatePost] onStructuredExtractionComplete received:', {
+        title: data.title,
+        exercisesCount: data.exercises?.length,
+        firstExercise: data.exercises?.[0]?.name
+      });
       // Set title if extracted
       if (data.title) {
         setWorkoutTitle(data.title)
       }
-      // Combine description and workout data in notes
+
+      // Set description in notes if provided
+      if (data.description) {
+        const desc = data.description
+        setNotes((prev) => (prev ? `${prev}\n\n${desc}` : desc))
+      }
+
+      // Convert parsed exercises to StructuredExerciseDraft format
+      const structuredExercises: StructuredExerciseDraft[] = data.exercises.map((exercise) => ({
+        id: exercise.id,
+        name: exercise.name,
+        sets: exercise.sets.map((set) => ({
+          weight: set.weight,
+          reps: set.reps,
+          isWarmup: false,
+          lastWorkoutWeight: null,
+          lastWorkoutReps: null,
+          targetRepsMin: null,
+          targetRepsMax: null,
+          targetRestSeconds: null,
+        })),
+      }))
+
+      // Set the structured data and enable structured mode
+      console.log('[CreatePost] Setting structured data:', structuredExercises.length, 'exercises');
+      setStructuredData((prev) => [...prev, ...structuredExercises])
+      setIsStructuredMode(true)
+    },
+    onExtractionComplete: (data) => {
+      console.log('[CreatePost] onExtractionComplete (fallback) received:', {
+        title: data.title,
+        workoutLength: data.workout?.length
+      });
+      // Fallback: if structured parsing fails, use the old text-based approach
+      if (data.title) {
+        setWorkoutTitle(data.title)
+      }
       const newNotes = data.description
         ? `${data.description}\n\n${data.workout}`
         : data.workout

@@ -24,6 +24,8 @@ import { WizardIcon } from './WizardIcons'
 export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
 export const EQUIPMENT_PREF_KEY = '@equipment_preference'
 
+import { ExerciseMedia } from './ExerciseMedia'
+
 export type EquipmentType =
   | 'full_gym'
   | 'home_minimal'
@@ -238,30 +240,35 @@ export const EQUIPMENT_OPTIONS: {
   value: EquipmentType
   description: string
   image: any
+  gifUrl?: string
 }[] = [
   {
     label: 'Full Gym',
     value: 'full_gym',
     description: 'All machines & free weights',
     image: EQUIPMENT_IMAGES.full_gym,
+    gifUrl: 'DOoWcnA.gif', // Lever Chest Press (Machine)
   },
   {
     label: 'Dumbbells',
     value: 'dumbbells_only',
     description: 'Adjustable or fixed pairs',
     image: EQUIPMENT_IMAGES.dumbbells_only,
+    gifUrl: 'OeL23VY.gif', // Dumbbell Seated Bicep Curl to Shoulder Press
   },
   {
     label: 'Minimal',
     value: 'home_minimal',
     description: 'Bands, kettlebell, or a bench',
     image: EQUIPMENT_IMAGES.home_minimal,
+    gifUrl: 'ZA8b5hc.gif', // Kettlebell Goblet Squat
   },
   {
     label: 'Bodyweight',
     value: 'bodyweight',
     description: 'No equipment needed',
     image: EQUIPMENT_IMAGES.bodyweight,
+    gifUrl: 'x6KpKpq.gif', // Close-grip Push-up
   },
 ]
 
@@ -697,6 +704,7 @@ export function WorkoutPlanningWizard({
       value: string
       description?: string
       image?: any
+      gifUrl?: string
     }[],
   ) => (
     <View style={styles.gridContainer}>
@@ -717,14 +725,24 @@ export function WorkoutPlanningWizard({
             onPress={() => handleSelectOption('equipment', option.value)}
             activeOpacity={0.8}
           >
-            {/* Background Image */}
-            {option.image && (
-              <Image source={option.image} style={styles.equipmentImage} />
+            {/* Background Image or GIF */}
+            {option.gifUrl ? (
+              <ExerciseMedia
+                key={`${option.gifUrl}-${isSelected}`}
+                gifUrl={option.gifUrl}
+                style={[styles.equipmentImage, { backgroundColor: '#fff' }]}
+                contentFit="contain"
+                autoPlay={isSelected}
+              />
+            ) : (
+              option.image && (
+                <Image source={option.image} style={styles.equipmentImage} />
+              )
             )}
 
             {/* Gradient Overlay */}
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
+              colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)']}
               style={styles.equipmentOverlay}
             />
 

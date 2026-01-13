@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { memo, useMemo, useState } from 'react'
-import { StyleSheet, View, ViewStyle } from 'react-native'
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
 
 // Pre-compute the storage bucket URL once
 const STORAGE_BUCKET_URL =
@@ -11,7 +11,8 @@ interface ExerciseMediaProps {
   gifUrl?: string | null
   mode?: 'thumbnail' | 'full'
   autoPlay?: boolean
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
+  contentFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'
 }
 
 // Memoized component - only re-renders when props change
@@ -20,6 +21,7 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   mode = 'thumbnail',
   autoPlay = true,
   style,
+  contentFit = 'contain',
 }: ExerciseMediaProps) {
   const [hasError, setHasError] = useState(false)
 
@@ -42,7 +44,8 @@ export const ExerciseMedia = memo(function ExerciseMedia({
       <Image
         source={{ uri: fullUrl }}
         style={styles.image}
-        contentFit="contain"
+        contentFit={contentFit}
+        autoplay={autoPlay}
         cachePolicy="memory-disk"
         recyclingKey={gifUrl}
         transition={150}
@@ -61,9 +64,11 @@ const PLACEHOLDER_BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4'
 export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
   gifUrl,
   style,
+  autoPlay = true,
 }: {
   gifUrl?: string | null
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
+  autoPlay?: boolean
 }) {
   const fullUrl = useMemo(() => {
     if (!gifUrl) return null
@@ -84,6 +89,7 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
         source={{ uri: fullUrl }}
         style={styles.image}
         contentFit="contain"
+        autoplay={autoPlay}
         cachePolicy="memory-disk"
         recyclingKey={gifUrl}
         placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}

@@ -1,9 +1,12 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
-import OpenAI from 'https://esm.sh/openai@4.55.3'
+// @ts-ignore: Remote import for Deno edge runtime
+import { z } from 'https://esm.sh/zod@3.25.76'
+import { generateObject } from 'npm:ai'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
+import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB (OpenAI Vision API limit)
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 const ALLOWED_IMAGE_TYPES = [
   'image/png',
   'image/jpeg',
@@ -11,6 +14,96 @@ const ALLOWED_IMAGE_TYPES = [
   'image/webp',
   'image/gif',
 ]
+
+// Schema for structured workout extraction
+const exerciseSetSchema = z.object({
+  weight: z.string().describe('Weight used (empty string if not specified)'),
+  reps: z.string().describe('Reps performed (empty string if not specified, or duration like "30 seconds")'),
+})
+
+const exerciseSchema = z.object({
+  name: z.string().describe('Name of the exercise (e.g., "Bench Press", "Push-ups")'),
+  sets: z.array(exerciseSetSchema).describe('Array of sets performed for this exercise'),
+})
+
+const workoutExtractionSchema = z.object({
+  isWorkoutRelated: z.boolean().describe('Whether the image contains workout-related content'),
+  title: z.string().nullable().describe('Inferred workout title, or null if cannot be determined'),
+  description: z.string().nullable().describe('Any notes or comments found in the image, or null if none'),
+  exercises: z.array(exerciseSchema).describe('Array of individual exercises extracted from the image'),
+})
+
+const EXTRACT_TIMEOUT_MS = 30000
+
+async function extractWithModel(
+  modelName: string,
+  base64Image: string,
+  imageType: string,
+): Promise<z.infer<typeof workoutExtractionSchema>> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    console.error(`[ExtractImage] AI call (${modelName}) timed out after ${EXTRACT_TIMEOUT_MS}ms`)
+    controller.abort()
+  }, EXTRACT_TIMEOUT_MS)
+
+  const startTime = Date.now()
+
+  try {
+    console.log(`[ExtractImage] Trying ${modelName}, timeout: ${EXTRACT_TIMEOUT_MS}ms`)
+
+    const model = openrouter.chat(modelName)
+    
+    const result = await generateObject({
+      model,
+      schema: workoutExtractionSchema,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `You are a workout tracking assistant. Analyze this image and extract workout information.
+
+CRITICAL RULES:
+1. If the image is NOT workout-related (e.g., cat photo, random screenshot), set isWorkoutRelated to false and return empty exercises array.
+2. Each INDIVIDUAL exercise MUST be its own object in the exercises array with a unique name.
+3. DO NOT group exercises under category headers - extract EACH exercise separately.
+4. For exercises that list "X sets" without weight/reps, create that many sets with empty weight and reps strings.
+5. For exercises like "3 sets for 30 seconds", set reps to "30 seconds".
+6. If no weight is specified, leave weight as empty string "".
+7. If no reps are specified, leave reps as empty string "".
+8. DO NOT include category headers like "Chest & Triceps:" as exercise names. Only extract actual exercise names.
+
+Example: If image shows:
+"Chest & Triceps:
+  Push-ups - 3 sets
+  Diamond Push-ups - 3 sets
+  Bench Press - 135x8, 155x6"
+
+The exercises array should contain:
+- Push-ups with 3 sets (each with empty weight and reps)
+- Diamond Push-ups with 3 sets (each with empty weight and reps)
+- Bench Press with 2 sets (135/8 and 155/6)`,
+            },
+            {
+              type: 'image',
+              image: `data:${imageType};base64,${base64Image}`,
+            },
+          ],
+        },
+      ],
+      abortSignal: controller.signal,
+    })
+
+    const elapsed = Date.now() - startTime
+    console.log(`[ExtractImage] ${modelName} succeeded in ${elapsed}ms`)
+    console.log(`[ExtractImage] Response usage: ${JSON.stringify(result.usage ?? 'N/A')}`)
+    
+    return result.object
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
 serve(async (req) => {
   const cors = handleCors(req)
@@ -21,12 +114,6 @@ serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!apiKey) {
-      throw new Error('Missing OPENAI_API_KEY environment variable')
-    }
-
-    const openai = new OpenAI({ apiKey })
     const formData = await req.formData()
     const imageFile = formData.get('image') as File | null
 
@@ -45,9 +132,7 @@ serve(async (req) => {
     if (imageFile.size > MAX_FILE_SIZE) {
       return errorResponse(
         400,
-        `File size exceeds maximum allowed size of ${
-          MAX_FILE_SIZE / 1024 / 1024
-        }MB`,
+        `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
       )
     }
 
@@ -69,116 +154,27 @@ serve(async (req) => {
       binaryString += String.fromCharCode(byteArray[i])
     }
     const base64Image = btoa(binaryString)
-    const dataUrl = `data:${imageFile.type};base64,${base64Image}`
 
-    console.log('Sending to OpenAI Vision API...')
+    console.log('Sending to Gemini via OpenRouter...')
 
-    // Extract text from image using GPT-4 Vision
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-nano',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `You are a workout tracking assistant. Analyze this image and extract workout information.
-
-The image may contain:
-- Handwritten or typed workout notes
-- Exercise names with sets, reps, and weights
-- Body measurements or progress tracking notes
-
-IMPORTANT: Return ONLY valid JSON in this format, no other text:
-{
-  "isWorkoutRelated": boolean,
-  "content": {
-    "title": "string or null - inferred workout title",
-    "description": "string or null - ONLY if there are actual notes/comments in the image. DO NOT CREATE descriptions. Return null if no description exists.",
-    "exercises": "string or null - formatted exercise data (see format below)"
-  }
-}
-
-If the image contains NO workout-related content (e.g., it's a cat photo, random screenshot, etc.), return:
-{
-  "isWorkoutRelated": false,
-  "content": null
-}
-
-**Formatting rules for the 'description' and 'exercises' fields:**
-- For 'description': ONLY include this if the image contains actual notes, comments, or observations written in the image. DO NOT make up descriptions. If there are no notes/comments in the image, set this to null.
-- For 'exercises': Format each exercise clearly:
-  • Put the exercise name on its own line (no bullets, just the name)
-  • Indent the sets/reps/weight data below it (use 2-4 spaces)
-  • Use consistent format like "weight x reps" or "weight x reps x sets"
-  • Separate different exercises with a blank line
-  • Preserve any relevant notes about the exercise inline
-
-Example of good 'exercises' formatting:
-Bench Press
-  135 x 8
-  155 x 6
-  165 x 4
-
-Incline DB Press
-  50 x 10
-  55 x 8 x 3
-
-Extract everything you can about exercises, sets, reps, weights, and any other fitness-related data. Keep the output clean and consistently formatted.`,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: dataUrl,
-              },
-            },
-          ],
-        },
-      ],
-    })
-
-    const messageContent = response.choices[0]?.message?.content
-
-    let combinedText: string | null = null
-
-    if (typeof messageContent === 'string') {
-      combinedText = messageContent
-    } else if (Array.isArray(messageContent)) {
-      const textParts = messageContent
-        .map((part) => {
-          if (typeof part !== 'object' || !part) return null
-
-          if ('text' in part && typeof part.text === 'string') {
-            return part.text
-          }
-
-          if ('output_text' in part && typeof part.output_text === 'string') {
-            return part.output_text
-          }
-
-          return null
-        })
-        .filter((value): value is string => Boolean(value?.trim()))
-
-      if (textParts.length > 0) {
-        combinedText = textParts.join('\n')
+    // Try primary model first
+    let extracted: z.infer<typeof workoutExtractionSchema>
+    
+    try {
+      extracted = await extractWithModel(GEMINI_MODEL, base64Image, imageFile.type)
+    } catch (primaryError) {
+      console.error(`[ExtractImage] ${GEMINI_MODEL} failed:`, primaryError)
+      
+      // Try fallback model
+      console.log(`[ExtractImage] Falling back to ${GEMINI_FALLBACK_MODEL}...`)
+      
+      try {
+        extracted = await extractWithModel(GEMINI_FALLBACK_MODEL, base64Image, imageFile.type)
+      } catch (fallbackError) {
+        console.error(`[ExtractImage] ${GEMINI_FALLBACK_MODEL} also failed:`, fallbackError)
+        throw new Error('Failed to extract workout from image')
       }
     }
-
-    if (!combinedText) {
-      console.error('Vision API returned unexpected content:', messageContent)
-      return errorResponse(500, 'Invalid response from vision API')
-    }
-
-    console.log('Vision API raw response:', combinedText)
-
-    // Parse the JSON response from OpenAI
-    const jsonMatch = combinedText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return errorResponse(500, 'Failed to extract structured data from image')
-    }
-
-    const extracted = JSON.parse(jsonMatch[0])
 
     if (!extracted.isWorkoutRelated) {
       return errorResponse(
@@ -187,21 +183,31 @@ Extract everything you can about exercises, sets, reps, weights, and any other f
       )
     }
 
-    const content = extracted.content ?? null
+    // Create backwards-compatible workout text from structured exercises
+    let workoutText = ''
+    if (extracted.exercises.length > 0) {
+      workoutText = extracted.exercises.map((ex) => {
+        const setsText = ex.sets.map((set, i) => {
+          if (set.weight && set.reps) {
+            return `  ${set.weight} x ${set.reps}`
+          } else if (set.weight) {
+            return `  ${set.weight}`
+          } else if (set.reps) {
+            return `  ${set.reps}`
+          }
+          return `  Set ${i + 1}`
+        }).join('\n')
+        return `${ex.name}\n${setsText}`
+      }).join('\n\n')
+    }
 
-    const workoutText =
-      typeof content?.exercises === 'string'
-        ? content.exercises
-        : typeof content?.description === 'string'
-        ? content.description
-        : ''
+    console.log('Parsed exercises:', extracted.exercises.length, 'exercises')
 
     return jsonResponse({
-      title: typeof content?.title === 'string' ? content.title : null,
-      description:
-        typeof content?.description === 'string' ? content.description : null,
+      title: extracted.title,
+      description: extracted.description,
       workout: workoutText,
-      raw: extracted,
+      exercises: extracted.exercises,
     })
   } catch (error) {
     console.error('Error extracting image:', error)

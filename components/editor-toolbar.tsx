@@ -2,13 +2,14 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Keyboard,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Easing,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -51,6 +52,37 @@ export function EditorToolbar({
 
   // Animation for padding bottom (safe area)
   const paddingBottom = useRef(new Animated.Value(insets.bottom)).current
+
+  // Spinning animation for processing state
+  const spinValue = useRef(new Animated.Value(0)).current
+  const spinAnimation = useRef<Animated.CompositeAnimation | null>(null)
+
+  useEffect(() => {
+    if (isProcessingImage) {
+      spinValue.setValue(0)
+      spinAnimation.current = Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      )
+      spinAnimation.current.start()
+    } else {
+      spinAnimation.current?.stop()
+      spinValue.setValue(0)
+    }
+
+    return () => {
+      spinAnimation.current?.stop()
+    }
+  }, [isProcessingImage, spinValue])
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  })
 
   useEffect(() => {
     const showEvent =
@@ -107,11 +139,17 @@ export function EditorToolbar({
       <View style={styles.toolbar}>
         {/* Scan Workout */}
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, isProcessingImage && styles.activeButton]}
           onPress={onScanWorkout}
           disabled={isDisabled}
         >
-          <Ionicons name="camera-outline" size={24} color={colors.text} />
+          {isProcessingImage ? (
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <Ionicons name="sync" size={24} color={colors.white} />
+            </Animated.View>
+          ) : (
+            <Ionicons name="camera-outline" size={24} color={colors.text} />
+          )}
         </TouchableOpacity>
 
         {/* Microphone */}

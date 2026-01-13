@@ -422,7 +422,7 @@ export function StructuredWorkoutInput({
               
               // Format target text for this set
               let targetText = ''
-              if (set.targetRepsMin !== null && set.targetRepsMax !== null) {
+              if (typeof set.targetRepsMin === 'number' && typeof set.targetRepsMax === 'number') {
                 if (set.targetRepsMin === set.targetRepsMax) {
                   targetText = ` (${set.targetRepsMin})`
                 } else {
