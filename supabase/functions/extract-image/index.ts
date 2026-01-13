@@ -1,10 +1,13 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
-// @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
 import { generateObject } from 'npm:ai'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
-import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
+import {
+  GEMINI_FALLBACK_MODEL,
+  GEMINI_MODEL,
+  openrouter,
+} from '../_shared/openrouter.ts'
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 const ALLOWED_IMAGE_TYPES = [

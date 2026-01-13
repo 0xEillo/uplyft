@@ -2,15 +2,15 @@ import { AnimatedInput } from '@/components/animated-input'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import {
-  EQUIPMENT_PREF_KEY,
-  WORKOUT_PLANNING_PREFS_KEY,
+    EQUIPMENT_PREF_KEY,
+    WORKOUT_PLANNING_PREFS_KEY,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
-  COMMITMENTS,
-  EXPERIENCE_LEVELS,
-  GENDERS,
-  GOALS,
+    COMMITMENTS,
+    EXPERIENCE_LEVELS,
+    GENDERS,
+    GOALS,
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -33,19 +33,19 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Easing,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextStyle,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import ConfettiCannon from 'react-native-confetti-cannon'
@@ -1907,6 +1907,7 @@ export default function OnboardingScreen() {
                       <View style={styles.textContainer}>
                         <Text style={styles.cardTitle}>{coach.name}</Text>
                         <Text style={styles.cardSubtitle}>{coach.title}</Text>
+                        <Text style={styles.cardDescription}>{coach.description}</Text>
                       </View>
                     </View>
                   </HapticButton>
@@ -3617,7 +3618,14 @@ const createStyles = (
     cardSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      fontWeight: '500',
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    cardDescription: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '400',
+      lineHeight: 18,
     },
 
     // Radio Button

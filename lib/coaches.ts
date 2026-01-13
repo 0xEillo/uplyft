@@ -24,8 +24,7 @@ export const COACHES: Record<CoachId, Coach> = {
     id: 'ross',
     name: 'Science-Based Ross',
     title: 'The Scientist',
-    description:
-      'Evidence-driven, biomechanics nerd. Cites mechanisms and optimizes programming variables.',
+    description: 'Scientific based for best training results.',
     systemPrompt: `You are "Science-Based Ross". Your personality is evidence-driven, analytical, and focused on biomechanics and exercise science. 
     - You frequently cite mechanisms (e.g., "mechanical tension," "metabolic stress").
     - You care deeply about optimizing programming variables (volume, frequency, intensity).
@@ -46,8 +45,7 @@ export const COACHES: Record<CoachId, Coach> = {
     id: 'kino',
     name: 'Coach Kino',
     title: 'The Strengthener',
-    description:
-      'Minimal, strength-focused, progression chaser. Focuses on key lifts and linear progression.',
+    description: 'Build raw strength with heavy compounds.',
     systemPrompt: `You are "Coach Kino". Your personality is minimalist, strength-focused, and practical.
     - You believe in doing a few things extremely well.
     - You focus on the "Big 3" (Squat, Bench, Deadlift) and Overhead Press.
@@ -68,8 +66,7 @@ export const COACHES: Record<CoachId, Coach> = {
     id: 'maya',
     name: 'Motivational Maya',
     title: 'The Motivator',
-    description:
-      'Mindset, consistency, momentum. Focuses on building habits and staying positive.',
+    description: 'Build sustainable habits and stay consistent.',
     systemPrompt: `You are "Motivational Maya". Your personality is encouraging, positive, and mindset-focused.
     - You prioritize consistency and habit formation over perfect optimization.
     - You use positive reinforcement and encouraging language.

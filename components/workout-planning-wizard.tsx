@@ -1,4 +1,4 @@
-import { BodyPartSlug } from '@/lib/body-mapping'
+import type { BodyPartSlug } from '@/lib/body-mapping'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
@@ -19,12 +19,12 @@ import {
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { WizardIcon } from './WizardIcons'
+
+import { ExerciseMedia } from './ExerciseMedia'
+import { WizardIcon, type WizardIconName } from './WizardIcons'
 
 export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
 export const EQUIPMENT_PREF_KEY = '@equipment_preference'
-
-import { ExerciseMedia } from './ExerciseMedia'
 
 export type EquipmentType =
   | 'full_gym'
@@ -1098,9 +1098,6 @@ export function WorkoutPlanningWizard({
       EQUIPMENT_OPTIONS.find((o) => o.value === data.equipment)?.label ||
       data.equipment
 
-    const goalOption = GOAL_OPTIONS.find((o) => o.value === data.goal)
-    const goalIcon = goalOption?.icon || 'barbell'
-
     // Format muscles display: convert values to labels
     const musclesLabel =
       data.muscles && data.muscles.trim()
@@ -1307,7 +1304,7 @@ function SummaryRow({
 }: {
   label: string
   value: string
-  icon: string
+  icon: WizardIconName
   colors: WorkoutPlanningWizardProps['colors']
   onEdit: () => void
 }) {
@@ -1318,7 +1315,7 @@ function SummaryRow({
       activeOpacity={0.6}
     >
       <View style={summaryStyles.iconContainer}>
-        <WizardIcon name={icon as any} size={20} color={colors.primary} />
+        <WizardIcon name={icon} size={20} color={colors.primary} />
       </View>
       <View style={summaryStyles.contentContainer}>
         <Text style={[summaryStyles.label, { color: colors.textSecondary }]}>
@@ -1681,3 +1678,4 @@ const createStyles = (
       fontWeight: '600',
     },
   })
+

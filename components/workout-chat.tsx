@@ -1,4 +1,5 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
@@ -468,6 +469,7 @@ export function WorkoutChat({
     setLoadedDraftContext,
   ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
+  const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
@@ -1836,770 +1838,795 @@ export function WorkoutChat({
   const styles = createStyles(colors, insets)
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={keyboardVerticalOffset}
-      onLayout={(e) => logLayout('root', e.nativeEvent.layout)}
-    >
-      {planningState.isActive && planningState.step === 'wizard' ? (
-        <WorkoutPlanningWizard
-          colors={colors}
-          onComplete={handleWizardComplete}
-          onCancel={() =>
-            setPlanningState({
-              isActive: false,
-              step: 'none',
-              data: {},
-              commonMuscles: [],
-            })
-          }
-          initialData={planningState.data}
-          commonMuscles={planningState.commonMuscles}
-        />
-      ) : (
-        <>
-          {/* New Chat Button - Positioned absolutely (hidden in sheet mode) */}
-          {mode === 'fullscreen' && (
-            <TouchableOpacity
-              style={[
-                styles.newChatButton,
-                { top: Math.max(insets.top - 38, 0) },
-              ]}
-              onPress={handleNewChat}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="create-outline"
-                size={28}
-                color={colors.primary}
-              />
-            </TouchableOpacity>
-          )}
-
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesContainer}
-            contentContainerStyle={[
-              styles.messagesContent,
-              {
-                paddingTop:
-                  mode === 'sheet'
-                    ? 16
-                    : messages.length === 0 && !isLoading
-                    ? 16
-                    : 80,
-              },
-            ]}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={
-              Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+    <>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        onLayout={(e) => logLayout('root', e.nativeEvent.layout)}
+      >
+        {planningState.isActive && planningState.step === 'wizard' ? (
+          <WorkoutPlanningWizard
+            colors={colors}
+            onComplete={handleWizardComplete}
+            onCancel={() =>
+              setPlanningState({
+                isActive: false,
+                step: 'none',
+                data: {},
+                commonMuscles: [],
+              })
             }
-            showsVerticalScrollIndicator={false}
-            automaticallyAdjustKeyboardInsets={false}
-            contentInsetAdjustmentBehavior="never"
-            onLayout={(e) => logLayout('scrollView', e.nativeEvent.layout)}
-            onContentSizeChange={(w, h) => {
-              ;(messages.length > 0 || isLoading) && scrollToBottom()
-            }}
-          >
-            {messages.length === 0 && !isLoading ? (
-              <View style={styles.emptyState}>
-                {mode === 'fullscreen' && (
-                  <View style={styles.welcomeSection}>
-                    <View style={styles.coachWelcomeContainer}>
-                      <Image
-                        source={getCoach(coachId).image}
-                        style={styles.coachWelcomeImage}
-                        resizeMode="cover"
-                      />
-                    </View>
-                    <Text style={styles.welcomeText}>
-                      Ask{' '}
-                      {getCoach(coachId).name.split(' ')[1] ||
-                        getCoach(coachId).name}
-                      ...
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View style={styles.chatMessages}>
-                {messages.map((message) => (
-                  <View
-                    key={message.id}
-                    style={[
-                      message.role === 'user'
-                        ? styles.userMessageContainer
-                        : styles.assistantMessageContainer,
-                    ]}
-                  >
-                    {message.role === 'user' ? (
-                      <View style={styles.userMessageBubble}>
-                        <View style={styles.userMessageContent}>
-                          {/* Display images for user messages */}
-                          {message.images && message.images.length > 0 && (
-                            <View style={styles.messageImagesGrid}>
-                              {message.images.map((imageUri, index) => (
-                                <TouchableOpacity
-                                  key={index}
-                                  style={styles.messageImageThumbnail}
-                                  onPress={() =>
-                                    openImageViewer(message.images!, index)
-                                  }
-                                >
-                                  <Image
-                                    source={{ uri: imageUri }}
-                                    style={styles.messageImage}
-                                    resizeMode="cover"
-                                  />
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          )}
-                          <Text style={styles.userMessageText}>
-                            {message.content}
-                          </Text>
-                        </View>
+            initialData={planningState.data}
+            commonMuscles={planningState.commonMuscles}
+          />
+        ) : (
+          <>
+            {/* New Chat Button - Positioned absolutely (hidden in sheet mode) */}
+            {mode === 'fullscreen' && (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.newChatButton,
+                    { top: Math.max(insets.top - 38, 0) },
+                  ]}
+                  onPress={handleNewChat}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={28}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.settingsButton,
+                    { top: Math.max(insets.top - 38, 0) },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    setIsCoachSheetVisible(true)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="settings-sharp"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              </>
+            )}
+
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.messagesContainer}
+              contentContainerStyle={[
+                styles.messagesContent,
+                {
+                  paddingTop:
+                    mode === 'sheet'
+                      ? 16
+                      : messages.length === 0 && !isLoading
+                      ? 16
+                      : 80,
+                },
+              ]}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={
+                Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+              }
+              showsVerticalScrollIndicator={false}
+              automaticallyAdjustKeyboardInsets={false}
+              contentInsetAdjustmentBehavior="never"
+              onLayout={(e) => logLayout('scrollView', e.nativeEvent.layout)}
+              onContentSizeChange={(w, h) => {
+                ;(messages.length > 0 || isLoading) && scrollToBottom()
+              }}
+            >
+              {messages.length === 0 && !isLoading ? (
+                <View style={styles.emptyState}>
+                  {mode === 'fullscreen' && (
+                    <View style={styles.welcomeSection}>
+                      <View style={styles.coachWelcomeContainer}>
+                        <Image
+                          source={getCoach(coachId).image}
+                          style={styles.coachWelcomeImage}
+                          resizeMode="cover"
+                        />
                       </View>
-                    ) : (
-                      <>
-                        {/* Check if this message contains a parsed workout plan */}
-                        {(() => {
-                          const messageParsedWorkout = parseWorkoutForDisplay(
-                            message.content,
-                          )
-
-                          // Workout cards render full-width with coach branding inside the card
-                          if (messageParsedWorkout) {
-                            return (
-                              <View style={styles.workoutCardContainer}>
-                                <WorkoutCard
-                                  workout={messageParsedWorkout}
-                                  coachImage={coach.image}
-                                  onStartWorkout={() => {
-                                    setParsedWorkout(messageParsedWorkout)
-                                    setGeneratedPlanContent(message.content)
-                                    setTimeout(handleStartWorkout, 0)
-                                  }}
-                                  onSaveRoutine={() => {
-                                    setParsedWorkout(messageParsedWorkout)
-                                    setGeneratedPlanContent(message.content)
-                                    setTimeout(handleSaveRoutine, 0)
-                                  }}
-                                />
-                              </View>
-                            )
-                          }
-
-                          // Regular messages show with coach avatar
-                          const displayContent = message.content
-                            .replace(JSON_BLOCK_REGEX, '')
-                            .trim()
-                          const exerciseSuggestions = parseExerciseSuggestions(
-                            message.content,
-                          )
-
-                          return (
-                            <>
-                              {/* Coach Avatar */}
-                              <View style={styles.messageAvatarContainer}>
-                                <Image
-                                  source={coach.image}
-                                  style={styles.messageAvatar}
-                                />
-                              </View>
-                              <View style={styles.assistantMessageContent}>
-                                <View style={styles.assistantMessageBubble}>
-                                  <Markdown
-                                    style={{
-                                      body: {
-                                        fontSize: 16,
-                                        lineHeight: 23,
-                                        color: colors.text,
-                                        margin: 0,
-                                      },
-                                      paragraph: {
-                                        marginTop: 0,
-                                        marginBottom: 8,
-                                      },
-                                      heading1: {
-                                        fontSize: 22,
-                                        fontWeight: '700',
-                                        color: colors.text,
-                                        marginTop: 16,
-                                        marginBottom: 8,
-                                      },
-                                      heading2: {
-                                        fontSize: 20,
-                                        fontWeight: '700',
-                                        color: colors.text,
-                                        marginTop: 14,
-                                        marginBottom: 6,
-                                      },
-                                      heading3: {
-                                        fontSize: 18,
-                                        fontWeight: '600',
-                                        color: colors.text,
-                                        marginTop: 12,
-                                        marginBottom: 6,
-                                      },
-                                      code_inline: {
-                                        backgroundColor: colors.background,
-                                        paddingHorizontal: 4,
-                                        paddingVertical: 2,
-                                        borderRadius: 4,
-                                        fontSize: 15,
-                                        fontFamily:
-                                          Platform.OS === 'ios'
-                                            ? 'Menlo'
-                                            : 'monospace',
-                                        color: colors.text,
-                                      },
-                                      code_block: {
-                                        backgroundColor: colors.background,
-                                        padding: 12,
-                                        borderRadius: 8,
-                                        fontSize: 15,
-                                        fontFamily:
-                                          Platform.OS === 'ios'
-                                            ? 'Menlo'
-                                            : 'monospace',
-                                        color: colors.text,
-                                        marginVertical: 8,
-                                        overflow: 'hidden',
-                                      },
-                                      fence: {
-                                        backgroundColor: colors.background,
-                                        padding: 12,
-                                        borderRadius: 8,
-                                        fontSize: 15,
-                                        fontFamily:
-                                          Platform.OS === 'ios'
-                                            ? 'Menlo'
-                                            : 'monospace',
-                                        color: colors.text,
-                                        marginVertical: 8,
-                                      },
-                                      strong: {
-                                        fontWeight: '600',
-                                        color: colors.text,
-                                      },
-                                      em: {
-                                        fontStyle: 'italic',
-                                      },
-                                      bullet_list: {
-                                        marginTop: 0,
-                                        marginBottom: 12,
-                                      },
-                                      ordered_list: {
-                                        marginTop: 0,
-                                        marginBottom: 12,
-                                      },
-                                      list_item: {
-                                        marginTop: 4,
-                                        marginBottom: 4,
-                                      },
-                                      hr: {
-                                        backgroundColor: colors.border,
-                                        height: 1,
-                                        marginVertical: 16,
-                                      },
-                                      blockquote: {
-                                        borderLeftWidth: 3,
-                                        borderLeftColor: colors.primary,
-                                        paddingLeft: 12,
-                                        marginVertical: 8,
-                                        backgroundColor: colors.background,
-                                        paddingVertical: 8,
-                                        paddingRight: 8,
-                                        borderRadius: 4,
-                                      },
-                                      link: {
-                                        color: colors.primary,
-                                        textDecorationLine: 'underline',
-                                      },
-                                    }}
+                      <Text style={styles.welcomeText}>
+                        Ask{' '}
+                        {getCoach(coachId).name.split(' ')[1] ||
+                          getCoach(coachId).name}
+                        ...
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.chatMessages}>
+                  {messages.map((message) => (
+                    <View
+                      key={message.id}
+                      style={[
+                        message.role === 'user'
+                          ? styles.userMessageContainer
+                          : styles.assistantMessageContainer,
+                      ]}
+                    >
+                      {message.role === 'user' ? (
+                        <View style={styles.userMessageBubble}>
+                          <View style={styles.userMessageContent}>
+                            {/* Display images for user messages */}
+                            {message.images && message.images.length > 0 && (
+                              <View style={styles.messageImagesGrid}>
+                                {message.images.map((imageUri, index) => (
+                                  <TouchableOpacity
+                                    key={index}
+                                    style={styles.messageImageThumbnail}
+                                    onPress={() =>
+                                      openImageViewer(message.images!, index)
+                                    }
                                   >
-                                    {displayContent}
-                                  </Markdown>
+                                    <Image
+                                      source={{ uri: imageUri }}
+                                      style={styles.messageImage}
+                                      resizeMode="cover"
+                                    />
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            )}
+                            <Text style={styles.userMessageText}>
+                              {message.content}
+                            </Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <>
+                          {/* Check if this message contains a parsed workout plan */}
+                          {(() => {
+                            const messageParsedWorkout = parseWorkoutForDisplay(
+                              message.content,
+                            )
+
+                            // Workout cards render full-width with coach branding inside the card
+                            if (messageParsedWorkout) {
+                              return (
+                                <View style={styles.workoutCardContainer}>
+                                  <WorkoutCard
+                                    workout={messageParsedWorkout}
+                                    coachImage={coach.image}
+                                    onStartWorkout={() => {
+                                      setParsedWorkout(messageParsedWorkout)
+                                      setGeneratedPlanContent(message.content)
+                                      setTimeout(handleStartWorkout, 0)
+                                    }}
+                                    onSaveRoutine={() => {
+                                      setParsedWorkout(messageParsedWorkout)
+                                      setGeneratedPlanContent(message.content)
+                                      setTimeout(handleSaveRoutine, 0)
+                                    }}
+                                  />
                                 </View>
+                              )
+                            }
 
-                                {exerciseSuggestions.length > 0 && (
-                                  <View style={styles.exerciseCardsContainer}>
-                                    {exerciseSuggestions.map(
-                                      (suggestion, idx) => {
-                                        const exerciseMatch = findExerciseByName(
-                                          suggestion.name,
-                                        )
-                                        const gifUrl = exerciseMatch?.gifUrl
-                                        const exerciseId = exerciseMatch?.id
-                                        const canNavigate = !!exerciseId
-                                        const isLast =
-                                          idx === exerciseSuggestions.length - 1
-                                        
-                                        const handleNavigateToExercise = () => {
-                                          if (exerciseId) {
-                                            router.push(`/exercise/${exerciseId}`)
+                            // Regular messages show with coach avatar
+                            const displayContent = message.content
+                              .replace(JSON_BLOCK_REGEX, '')
+                              .trim()
+                            const exerciseSuggestions = parseExerciseSuggestions(
+                              message.content,
+                            )
+
+                            return (
+                              <>
+                                {/* Coach Avatar */}
+                                <View style={styles.messageAvatarContainer}>
+                                  <Image
+                                    source={coach.image}
+                                    style={styles.messageAvatar}
+                                  />
+                                </View>
+                                <View style={styles.assistantMessageContent}>
+                                  <View style={styles.assistantMessageBubble}>
+                                    <Markdown
+                                      style={{
+                                        body: {
+                                          fontSize: 16,
+                                          lineHeight: 23,
+                                          color: colors.text,
+                                          margin: 0,
+                                        },
+                                        paragraph: {
+                                          marginTop: 0,
+                                          marginBottom: 8,
+                                        },
+                                        heading1: {
+                                          fontSize: 22,
+                                          fontWeight: '700',
+                                          color: colors.text,
+                                          marginTop: 16,
+                                          marginBottom: 8,
+                                        },
+                                        heading2: {
+                                          fontSize: 20,
+                                          fontWeight: '700',
+                                          color: colors.text,
+                                          marginTop: 14,
+                                          marginBottom: 6,
+                                        },
+                                        heading3: {
+                                          fontSize: 18,
+                                          fontWeight: '600',
+                                          color: colors.text,
+                                          marginTop: 12,
+                                          marginBottom: 6,
+                                        },
+                                        code_inline: {
+                                          backgroundColor: colors.background,
+                                          paddingHorizontal: 4,
+                                          paddingVertical: 2,
+                                          borderRadius: 4,
+                                          fontSize: 15,
+                                          fontFamily:
+                                            Platform.OS === 'ios'
+                                              ? 'Menlo'
+                                              : 'monospace',
+                                          color: colors.text,
+                                        },
+                                        code_block: {
+                                          backgroundColor: colors.background,
+                                          padding: 12,
+                                          borderRadius: 8,
+                                          fontSize: 15,
+                                          fontFamily:
+                                            Platform.OS === 'ios'
+                                              ? 'Menlo'
+                                              : 'monospace',
+                                          color: colors.text,
+                                          marginVertical: 8,
+                                          overflow: 'hidden',
+                                        },
+                                        fence: {
+                                          backgroundColor: colors.background,
+                                          padding: 12,
+                                          borderRadius: 8,
+                                          fontSize: 15,
+                                          fontFamily:
+                                            Platform.OS === 'ios'
+                                              ? 'Menlo'
+                                              : 'monospace',
+                                          color: colors.text,
+                                          marginVertical: 8,
+                                        },
+                                        strong: {
+                                          fontWeight: '600',
+                                          color: colors.text,
+                                        },
+                                        em: {
+                                          fontStyle: 'italic',
+                                        },
+                                        bullet_list: {
+                                          marginTop: 0,
+                                          marginBottom: 12,
+                                        },
+                                        ordered_list: {
+                                          marginTop: 0,
+                                          marginBottom: 12,
+                                        },
+                                        list_item: {
+                                          marginTop: 4,
+                                          marginBottom: 4,
+                                        },
+                                        hr: {
+                                          backgroundColor: colors.border,
+                                          height: 1,
+                                          marginVertical: 16,
+                                        },
+                                        blockquote: {
+                                          borderLeftWidth: 3,
+                                          borderLeftColor: colors.primary,
+                                          paddingLeft: 12,
+                                          marginVertical: 8,
+                                          backgroundColor: colors.background,
+                                          paddingVertical: 8,
+                                          paddingRight: 8,
+                                          borderRadius: 4,
+                                        },
+                                        link: {
+                                          color: colors.primary,
+                                          textDecorationLine: 'underline',
+                                        },
+                                      }}
+                                    >
+                                      {displayContent}
+                                    </Markdown>
+                                  </View>
+
+                                  {exerciseSuggestions.length > 0 && (
+                                    <View style={styles.exerciseCardsContainer}>
+                                      {exerciseSuggestions.map(
+                                        (suggestion, idx) => {
+                                          const exerciseMatch = findExerciseByName(
+                                            suggestion.name,
+                                          )
+                                          const gifUrl = exerciseMatch?.gifUrl
+                                          const exerciseId = exerciseMatch?.id
+                                          const canNavigate = !!exerciseId
+                                          const isLast =
+                                            idx === exerciseSuggestions.length - 1
+                                          
+                                          const handleNavigateToExercise = () => {
+                                            if (exerciseId) {
+                                              router.push(`/exercise/${exerciseId}`)
+                                            }
                                           }
-                                        }
 
-                                        return (
-                                          <View
-                                            key={idx}
-                                            style={styles.suggestionTimelineRow}
-                                          >
+                                          return (
                                             <View
-                                              style={
-                                                styles.suggestionTimelineColumn
-                                              }
+                                              key={idx}
+                                              style={styles.suggestionTimelineRow}
                                             >
                                               <View
                                                 style={
-                                                  styles.suggestionTimelineLineTop
+                                                  styles.suggestionTimelineColumn
                                                 }
-                                              />
-                                              <TouchableOpacity
-                                                style={[
-                                                  styles.suggestionTimelineNode,
-                                                  gifUrl
-                                                    ? styles.suggestionTimelineNodeImage
-                                                    : null,
-                                                ]}
-                                                onPress={handleNavigateToExercise}
-                                                disabled={!canNavigate}
-                                                activeOpacity={canNavigate ? 0.7 : 1}
                                               >
-                                                {gifUrl ? (
-                                                  <ExerciseMediaThumbnail
-                                                    gifUrl={gifUrl}
-                                                    style={
-                                                      styles.suggestionThumbnailImage
-                                                    }
-                                                  />
-                                                ) : (
-                                                  <Ionicons
-                                                    name="barbell-outline"
-                                                    size={18}
-                                                    color={colors.textSecondary}
-                                                  />
-                                                )}
-                                              </TouchableOpacity>
-                                              {!isLast && (
                                                 <View
                                                   style={
-                                                    styles.suggestionTimelineLineBottom
+                                                    styles.suggestionTimelineLineTop
                                                   }
                                                 />
-                                              )}
-                                            </View>
-
-                                            <View
-                                              style={
-                                                styles.suggestionContentColumn
-                                              }
-                                            >
-                                              <View style={styles.exerciseCard}>
-                                                <View
-                                                  style={
-                                                    styles.exerciseCardInfo
-                                                  }
+                                                <TouchableOpacity
+                                                  style={[
+                                                    styles.suggestionTimelineNode,
+                                                    gifUrl
+                                                      ? styles.suggestionTimelineNodeImage
+                                                      : null,
+                                                  ]}
+                                                  onPress={handleNavigateToExercise}
+                                                  disabled={!canNavigate}
+                                                  activeOpacity={canNavigate ? 0.7 : 1}
                                                 >
-                                                  <View style={styles.exerciseCardNameRow}>
-                                                    <Text
+                                                  {gifUrl ? (
+                                                    <ExerciseMediaThumbnail
+                                                      gifUrl={gifUrl}
                                                       style={
-                                                        styles.exerciseCardName
+                                                        styles.suggestionThumbnailImage
                                                       }
-                                                    >
-                                                      {suggestion.name}
-                                                    </Text>
-                                                    {canNavigate && (
-                                                      <TouchableOpacity
-                                                        onPress={handleNavigateToExercise}
-                                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                                        style={styles.exerciseCardInfoButton}
-                                                      >
-                                                        <Ionicons
-                                                          name="information-circle-outline"
-                                                          size={16}
-                                                          color={colors.textTertiary}
-                                                        />
-                                                      </TouchableOpacity>
-                                                    )}
-                                                  </View>
-                                                  <Text
+                                                    />
+                                                  ) : (
+                                                    <Ionicons
+                                                      name="barbell-outline"
+                                                      size={18}
+                                                      color={colors.textSecondary}
+                                                    />
+                                                  )}
+                                                </TouchableOpacity>
+                                                {!isLast && (
+                                                  <View
                                                     style={
-                                                      styles.exerciseCardDetails
+                                                      styles.suggestionTimelineLineBottom
+                                                    }
+                                                  />
+                                                )}
+                                              </View>
+
+                                              <View
+                                                style={
+                                                  styles.suggestionContentColumn
+                                                }
+                                              >
+                                                <View style={styles.exerciseCard}>
+                                                  <View
+                                                    style={
+                                                      styles.exerciseCardInfo
                                                     }
                                                   >
-                                                    {suggestion.sets} sets ×{' '}
-                                                    {suggestion.reps} reps
-                                                  </Text>
-                                                </View>
-                                                <TouchableOpacity
-                                                  style={
-                                                    styles.addExerciseButton
-                                                  }
-                                                  onPress={() =>
-                                                    exerciseToReplace
-                                                      ? handleReplaceExercise(
-                                                          suggestion,
-                                                        )
-                                                      : handleAddExercise(
-                                                          suggestion,
-                                                        )
-                                                  }
-                                                >
-                                                  <Ionicons
-                                                    name={
-                                                      exerciseToReplace
-                                                        ? 'swap-horizontal'
-                                                        : 'add'
+                                                    <View style={styles.exerciseCardNameRow}>
+                                                      <Text
+                                                        style={
+                                                          styles.exerciseCardName
+                                                        }
+                                                      >
+                                                        {suggestion.name}
+                                                      </Text>
+                                                      {canNavigate && (
+                                                        <TouchableOpacity
+                                                          onPress={handleNavigateToExercise}
+                                                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                          style={styles.exerciseCardInfoButton}
+                                                        >
+                                                          <Ionicons
+                                                            name="information-circle-outline"
+                                                            size={16}
+                                                            color={colors.textTertiary}
+                                                          />
+                                                        </TouchableOpacity>
+                                                      )}
+                                                    </View>
+                                                    <Text
+                                                      style={
+                                                        styles.exerciseCardDetails
+                                                      }
+                                                    >
+                                                      {suggestion.sets} sets ×{' '}
+                                                      {suggestion.reps} reps
+                                                    </Text>
+                                                  </View>
+                                                  <TouchableOpacity
+                                                    style={
+                                                      styles.addExerciseButton
                                                     }
-                                                    size={20}
-                                                    color={colors.white}
-                                                  />
-                                                </TouchableOpacity>
+                                                    onPress={() =>
+                                                      exerciseToReplace
+                                                        ? handleReplaceExercise(
+                                                            suggestion,
+                                                          )
+                                                        : handleAddExercise(
+                                                            suggestion,
+                                                          )
+                                                    }
+                                                  >
+                                                    <Ionicons
+                                                      name={
+                                                        exerciseToReplace
+                                                          ? 'swap-horizontal'
+                                                          : 'add'
+                                                      }
+                                                      size={20}
+                                                      color={colors.white}
+                                                    />
+                                                  </TouchableOpacity>
+                                                </View>
                                               </View>
                                             </View>
-                                          </View>
-                                        )
-                                      },
-                                    )}
-                                  </View>
-                                )}
-                              </View>
-                            </>
-                          )
-                        })()}
-                      </>
-                    )}
-                  </View>
-                ))}
+                                          )
+                                        },
+                                      )}
+                                    </View>
+                                  )}
+                                </View>
+                              </>
+                            )
+                          })()}
+                        </>
+                      )}
+                    </View>
+                  ))}
 
-                {/* Welcome hint - shown after welcome message */}
-                {messages.length === 1 &&
-                  messages[0]?.id === 'welcome-message' &&
-                  !isLoading && (
-                    <View style={styles.welcomeHintContainer}>
-                      <View style={styles.welcomeHintRow}>
-                        <Text style={styles.welcomeHintText}>Tap </Text>
-                        <View style={styles.welcomeHintButton}>
-                          <Ionicons
-                            name="flash"
-                            size={13}
-                            color={colors.primary}
-                          />
-                          <Text style={styles.welcomeHintButtonText}>
-                            Generate Workout
+                  {/* Welcome hint - shown after welcome message */}
+                  {messages.length === 1 &&
+                    messages[0]?.id === 'welcome-message' &&
+                    !isLoading && (
+                      <View style={styles.welcomeHintContainer}>
+                        <View style={styles.welcomeHintRow}>
+                          <Text style={styles.welcomeHintText}>Tap </Text>
+                          <View style={styles.welcomeHintButton}>
+                            <Ionicons
+                              name="flash"
+                              size={13}
+                              color={colors.primary}
+                            />
+                            <Text style={styles.welcomeHintButtonText}>
+                              Generate Workout
+                            </Text>
+                          </View>
+                          <Text style={styles.welcomeHintText}>
+                            {' '}
+                            below to get started
                           </Text>
                         </View>
-                        <Text style={styles.welcomeHintText}>
-                          {' '}
-                          below to get started
-                        </Text>
+                      </View>
+                    )}
+
+                  {isLoading && (
+                    <View style={styles.loadingMessageContainer}>
+                      <View style={styles.messageAvatarContainer}>
+                        <Image
+                          source={coach.image}
+                          style={styles.messageAvatar}
+                        />
+                      </View>
+                      <View style={styles.typingIndicator}>
+                        <TypingDot delay={0} colors={colors} />
+                        <TypingDot delay={150} colors={colors} />
+                        <TypingDot delay={300} colors={colors} />
                       </View>
                     </View>
                   )}
+                  {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
+                  {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
+                  {/* REMOVED: Redundant footer buttons. Actions are now handled inline by WorkoutCard */}
+                </View>
+              )}
+            </ScrollView>
 
-                {isLoading && (
-                  <View style={styles.loadingMessageContainer}>
-                    <View style={styles.messageAvatarContainer}>
-                      <Image
-                        source={coach.image}
-                        style={styles.messageAvatar}
-                      />
-                    </View>
-                    <View style={styles.typingIndicator}>
-                      <TypingDot delay={0} colors={colors} />
-                      <TypingDot delay={150} colors={colors} />
-                      <TypingDot delay={300} colors={colors} />
-                    </View>
-                  </View>
-                )}
-                {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
-                {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
-                {/* REMOVED: Redundant footer buttons. Actions are now handled inline by WorkoutCard */}
-              </View>
-            )}
-          </ScrollView>
+            {/* Suggestions Row */}
+            {!generatedPlanContent && !planningState.isActive && (
+              <View style={styles.suggestionsContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.suggestionsContent}
+                  keyboardShouldPersistTaps="handled"
+                  style={{ overflow: 'visible' }}
+                >
+                  {suggestionMode !== 'main' && (
+                    <AnimatedSuggestion
+                      index={0}
+                      isBack
+                      colors={colors}
+                      style={styles.suggestionBackBubble}
+                      onPress={() => setSuggestionMode('main')}
+                    />
+                  )}
 
-          {/* Suggestions Row */}
-          {!generatedPlanContent && !planningState.isActive && (
-            <View style={styles.suggestionsContainer}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.suggestionsContent}
-                keyboardShouldPersistTaps="handled"
-                style={{ overflow: 'visible' }}
-              >
-                {suggestionMode !== 'main' && (
-                  <AnimatedSuggestion
-                    index={0}
-                    isBack
-                    colors={colors}
-                    style={styles.suggestionBackBubble}
-                    onPress={() => setSuggestionMode('main')}
-                  />
-                )}
-
-                {suggestionMode === 'main'
-                  ? activeSuggestions.main.map((item, idx) => (
-                      <AnimatedSuggestion
-                        key={item.id}
-                        index={idx}
-                        text={item.text}
-                        colors={colors}
-                        style={[
-                          styles.suggestionBubble,
-                          (item.id === 'plan_workout' ||
-                            item.id === 'adjust_workout') &&
+                  {suggestionMode === 'main'
+                    ? activeSuggestions.main.map((item, idx) => (
+                        <AnimatedSuggestion
+                          key={item.id}
+                          index={idx}
+                          text={item.text}
+                          colors={colors}
+                          style={[
+                            styles.suggestionBubble,
+                            (item.id === 'plan_workout' ||
+                              item.id === 'adjust_workout') &&
+                              styles.planWorkoutBubble,
+                          ]}
+                          textStyle={[
+                            styles.suggestionText,
+                            (item.id === 'plan_workout' ||
+                              item.id === 'adjust_workout') &&
+                              styles.planWorkoutText,
+                          ]}
+                          icon={
+                            item.id === 'plan_workout' ||
+                            item.id === 'adjust_workout' ? (
+                              <Ionicons
+                                name="flash"
+                                size={14}
+                                color={colors.primary}
+                                style={{ marginRight: 6 }}
+                              />
+                            ) : null
+                          }
+                          onPress={() => handleSuggestionPress(item)}
+                        />
+                      ))
+                    : suggestionMode === 'replace_exercise'
+                    ? currentWorkoutExercises.map((exerciseName, index) => (
+                        <AnimatedSuggestion
+                          key={index}
+                          index={index + 1}
+                          text={exerciseName}
+                          colors={colors}
+                          style={styles.suggestionBubble}
+                          textStyle={styles.suggestionText}
+                          onPress={() => handleSuggestionPress(exerciseName)}
+                        />
+                      ))
+                    : suggestionMode === 'adjust_workout'
+                    ? (
+                        activeSuggestions.adjust_workout || []
+                      ).map((item, index) => (
+                        <AnimatedSuggestion
+                          key={item.id}
+                          index={index + 1}
+                          text={item.text}
+                          colors={colors}
+                          style={[
+                            styles.suggestionBubble,
                             styles.planWorkoutBubble,
-                        ]}
-                        textStyle={[
-                          styles.suggestionText,
-                          (item.id === 'plan_workout' ||
-                            item.id === 'adjust_workout') &&
+                          ]}
+                          textStyle={[
+                            styles.suggestionText,
                             styles.planWorkoutText,
-                        ]}
-                        icon={
-                          item.id === 'plan_workout' ||
-                          item.id === 'adjust_workout' ? (
+                          ]}
+                          icon={
                             <Ionicons
-                              name="flash"
+                              name={item.icon as any}
                               size={14}
                               color={colors.primary}
                               style={{ marginRight: 6 }}
                             />
-                          ) : null
-                        }
-                        onPress={() => handleSuggestionPress(item)}
-                      />
-                    ))
-                  : suggestionMode === 'replace_exercise'
-                  ? currentWorkoutExercises.map((exerciseName, index) => (
-                      <AnimatedSuggestion
-                        key={index}
-                        index={index + 1}
-                        text={exerciseName}
-                        colors={colors}
-                        style={styles.suggestionBubble}
-                        textStyle={styles.suggestionText}
-                        onPress={() => handleSuggestionPress(exerciseName)}
-                      />
-                    ))
-                  : suggestionMode === 'adjust_workout'
-                  ? (
-                      activeSuggestions.adjust_workout || []
-                    ).map((item, index) => (
-                      <AnimatedSuggestion
-                        key={item.id}
-                        index={index + 1}
-                        text={item.text}
-                        colors={colors}
-                        style={[
-                          styles.suggestionBubble,
-                          styles.planWorkoutBubble,
-                        ]}
-                        textStyle={[
-                          styles.suggestionText,
-                          styles.planWorkoutText,
-                        ]}
-                        icon={
-                          <Ionicons
-                            name={item.icon as any}
-                            size={14}
-                            color={colors.primary}
-                            style={{ marginRight: 6 }}
-                          />
-                        }
-                        onPress={() => handleSuggestionPress(item)}
-                      />
-                    ))
-                  : (
-                      activeSuggestions[suggestionMode] || []
-                    ).map((item, index) => (
-                      <AnimatedSuggestion
-                        key={index}
-                        index={index + 1}
-                        text={item as string}
-                        colors={colors}
-                        style={styles.suggestionBubble}
-                        textStyle={styles.suggestionText}
-                        onPress={() => handleSuggestionPress(item)}
-                      />
-                    ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Input Area */}
-          <View
-            style={[
-              styles.inputContainer,
-              {
-                paddingBottom:
-                  mode === 'sheet'
-                    ? Math.max(insets.bottom, 16)
-                    : isKeyboardVisible
-                    ? 0
-                    : 60,
-              },
-            ]}
-            onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
-          >
-            {/* Image Thumbnails Preview */}
-            {selectedImages.length > 0 && (
-              <ScrollView
-                horizontal
-                style={styles.imagePreviewContainer}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.imagePreviewContent}
-              >
-                {selectedImages.map((imageUri, index) => (
-                  <View key={index} style={styles.imageThumbnailContainer}>
-                    <Image
-                      source={{ uri: imageUri }}
-                      style={styles.imageThumbnail}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      style={styles.removeImageButton}
-                      onPress={() => removeImage(index)}
-                    >
-                      <Ionicons name="close" size={14} color={colors.white} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                <View style={styles.imageCountBadge}>
-                  <Text style={styles.imageCountText}>
-                    {selectedImages.length}/{MAX_IMAGES}
-                  </Text>
-                </View>
-              </ScrollView>
+                          }
+                          onPress={() => handleSuggestionPress(item)}
+                        />
+                      ))
+                    : (
+                        activeSuggestions[suggestionMode] || []
+                      ).map((item, index) => (
+                        <AnimatedSuggestion
+                          key={index}
+                          index={index + 1}
+                          text={item as string}
+                          colors={colors}
+                          style={styles.suggestionBubble}
+                          textStyle={styles.suggestionText}
+                          onPress={() => handleSuggestionPress(item)}
+                        />
+                      ))}
+                </ScrollView>
+              </View>
             )}
 
-            {/* Input Row */}
-            <View style={styles.inputWrapper}>
-              {/* Add Image Button - hidden when hideImagePicker is true */}
-              {!hideImagePicker && (
-                <TouchableOpacity
-                  style={styles.addImageButton}
-                  onPress={showImagePickerActionSheet}
-                  disabled={isLoading}
+            {/* Input Area */}
+            <View
+              style={[
+                styles.inputContainer,
+                {
+                  paddingBottom:
+                    mode === 'sheet'
+                      ? Math.max(insets.bottom, 16)
+                      : isKeyboardVisible
+                      ? 0
+                      : 60,
+                },
+              ]}
+              onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
+            >
+              {/* Image Thumbnails Preview */}
+              {selectedImages.length > 0 && (
+                <ScrollView
+                  horizontal
+                  style={styles.imagePreviewContainer}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.imagePreviewContent}
                 >
-                  <Ionicons
-                    name="image-outline"
-                    size={22}
-                    color={isLoading ? colors.textPlaceholder : colors.primary}
-                  />
-                </TouchableOpacity>
+                  {selectedImages.map((imageUri, index) => (
+                    <View key={index} style={styles.imageThumbnailContainer}>
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={styles.imageThumbnail}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => removeImage(index)}
+                      >
+                        <Ionicons name="close" size={14} color={colors.white} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <View style={styles.imageCountBadge}>
+                    <Text style={styles.imageCountText}>
+                      {selectedImages.length}/{MAX_IMAGES}
+                    </Text>
+                  </View>
+                </ScrollView>
               )}
 
-              <View style={styles.textInputContainer}>
-                <TextInput
-                  ref={inputRef}
-                  style={styles.input}
-                  placeholder={
-                    generatedPlanContent
-                      ? 'Make changes to your plan...'
-                      : 'Ask about your workouts...'
-                  }
-                  placeholderTextColor={colors.textPlaceholder}
-                  value={input}
-                  onChangeText={setInput}
-                  multiline
-                  maxLength={500}
-                  returnKeyType="send"
-                  onSubmitEditing={() => handleSendMessage()}
-                  blurOnSubmit={false}
-                  editable={!isLoading}
-                />
-
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    (!input.trim() || isLoading) && styles.sendButtonDisabled,
-                  ]}
-                  onPress={() => handleSendMessage()}
-                  disabled={!input.trim() || isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={colors.textPlaceholder}
+              {/* Input Row */}
+              <View style={styles.inputWrapper}>
+                {/* Add Image Button - hidden when hideImagePicker is true */}
+                {!hideImagePicker && (
+                  <TouchableOpacity
+                    style={styles.addImageButton}
+                    onPress={showImagePickerActionSheet}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name="image-outline"
+                      size={22}
+                      color={isLoading ? colors.textPlaceholder : colors.primary}
                     />
-                  ) : (
-                    <Ionicons name="arrow-up" size={20} color={colors.white} />
-                  )}
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                )}
+
+                <View style={styles.textInputContainer}>
+                  <TextInput
+                    ref={inputRef}
+                    style={styles.input}
+                    placeholder={
+                      generatedPlanContent
+                        ? 'Make changes to your plan...'
+                        : 'Ask about your workouts...'
+                    }
+                    placeholderTextColor={colors.textPlaceholder}
+                    value={input}
+                    onChangeText={setInput}
+                    multiline
+                    maxLength={500}
+                    returnKeyType="send"
+                    onSubmitEditing={() => handleSendMessage()}
+                    blurOnSubmit={false}
+                    editable={!isLoading}
+                  />
+
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (!input.trim() || isLoading) && styles.sendButtonDisabled,
+                    ]}
+                    onPress={() => handleSendMessage()}
+                    disabled={!input.trim() || isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.textPlaceholder}
+                      />
+                    ) : (
+                      <Ionicons name="arrow-up" size={20} color={colors.white} />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* Image Viewer Modal */}
-          <Modal
-            visible={viewerImageIndex !== null}
-            transparent
-            animationType="fade"
-            onRequestClose={closeImageViewer}
-          >
-            <View style={styles.imageViewerContainer}>
-              <TouchableOpacity
-                style={styles.imageViewerCloseButton}
-                onPress={closeImageViewer}
-              >
-                <Ionicons name="close" size={28} color={colors.white} />
-              </TouchableOpacity>
+            {/* Image Viewer Modal */}
+            <Modal
+              visible={viewerImageIndex !== null}
+              transparent
+              animationType="fade"
+              onRequestClose={closeImageViewer}
+            >
+              <View style={styles.imageViewerContainer}>
+                <TouchableOpacity
+                  style={styles.imageViewerCloseButton}
+                  onPress={closeImageViewer}
+                >
+                  <Ionicons name="close" size={28} color={colors.white} />
+                </TouchableOpacity>
 
-              {viewerImages.length > 0 && viewerImageIndex !== null && (
-                <>
-                  <FlatList
-                    data={viewerImages}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    initialScrollIndex={viewerImageIndex}
-                    getItemLayout={(_, index) => ({
-                      length: 400,
-                      offset: 400 * index,
-                      index,
-                    })}
-                    renderItem={({ item }) => (
-                      <View style={styles.imageViewerSlide}>
-                        <Image
-                          source={{ uri: item }}
-                          style={styles.imageViewerImage}
-                          resizeMode="contain"
-                        />
+                {viewerImages.length > 0 && viewerImageIndex !== null && (
+                  <>
+                    <FlatList
+                      data={viewerImages}
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      initialScrollIndex={viewerImageIndex}
+                      getItemLayout={(_, index) => ({
+                        length: 400,
+                        offset: 400 * index,
+                        index,
+                      })}
+                      renderItem={({ item }) => (
+                        <View style={styles.imageViewerSlide}>
+                          <Image
+                            source={{ uri: item }}
+                            style={styles.imageViewerImage}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      )}
+                      keyExtractor={(_, index) => index.toString()}
+                    />
+
+                    {viewerImages.length > 1 && (
+                      <View style={styles.imageViewerCounter}>
+                        <Text style={styles.imageViewerCounterText}>
+                          {viewerImageIndex + 1} of {viewerImages.length}
+                        </Text>
                       </View>
                     )}
-                    keyExtractor={(_, index) => index.toString()}
-                  />
+                  </>
+                )}
+              </View>
+            </Modal>
+          </>
+        )}
 
-                  {viewerImages.length > 1 && (
-                    <View style={styles.imageViewerCounter}>
-                      <Text style={styles.imageViewerCounterText}>
-                        {viewerImageIndex + 1} of {viewerImages.length}
-                      </Text>
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
-          </Modal>
-        </>
-      )}
-
-      {/* Paywall Modal - Rendered outside conditional to appear over wizard */}
-      <Paywall
-        visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        title={`Unlock coaching with ${coachFirstName} for FREE!`}
-        message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
+        {/* Paywall Modal - Rendered outside conditional to appear over wizard */}
+        <Paywall
+          visible={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
+        />
+      </KeyboardAvoidingView>
+      <CoachSelectionSheet
+        visible={isCoachSheetVisible}
+        onClose={() => setIsCoachSheetVisible(false)}
       />
-    </KeyboardAvoidingView>
+    </>
   )
 }
 
@@ -2615,6 +2642,18 @@ function createStyles(
     newChatButton: {
       position: 'absolute',
       left: 16,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.backgroundLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+      padding: 0,
+    },
+    settingsButton: {
+      position: 'absolute',
+      right: 16,
       width: 48,
       height: 48,
       borderRadius: 24,
@@ -3051,6 +3090,23 @@ function createStyles(
     modalBackdrop: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    sheetContainer: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+      width: '100%',
+      minHeight: 500,
+      paddingBottom: insets.bottom + 20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 12,
+    },
+    sheetContent: {
+      flex: 1,
+      width: '100%',
     },
     bottomSheet: {
       backgroundColor: colors.white,

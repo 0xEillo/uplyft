@@ -1,6 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Animated,
   Easing,
@@ -56,6 +56,12 @@ export function EditorToolbar({
   // Spinning animation for processing state
   const spinValue = useRef(new Animated.Value(0)).current
   const spinAnimation = useRef<Animated.CompositeAnimation | null>(null)
+  const spin = useRef(
+    spinValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '360deg'],
+    }),
+  ).current
 
   useEffect(() => {
     if (isProcessingImage) {
@@ -78,11 +84,6 @@ export function EditorToolbar({
       spinAnimation.current?.stop()
     }
   }, [isProcessingImage, spinValue])
-
-  const spin = spinValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  })
 
   useEffect(() => {
     const showEvent =
@@ -121,7 +122,7 @@ export function EditorToolbar({
   const isDisabled = isLoading || isTranscribing || isProcessingImage
   const shouldShowAdd = showAddExercise
 
-  const formatTime = (seconds: number) => {
+  function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`

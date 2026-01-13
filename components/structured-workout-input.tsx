@@ -419,10 +419,12 @@ export function StructuredWorkoutInput({
               const isWarmup = set.isWarmup === true
               if (!isWarmup) workingSetNumber++
               const displayLabel = isWarmup ? 'W' : workingSetNumber
-              
-              // Format target text for this set
+
               let targetText = ''
-              if (typeof set.targetRepsMin === 'number' && typeof set.targetRepsMax === 'number') {
+              if (
+                typeof set.targetRepsMin === 'number' &&
+                typeof set.targetRepsMax === 'number'
+              ) {
                 if (set.targetRepsMin === set.targetRepsMax) {
                   targetText = ` (${set.targetRepsMin})`
                 } else {
@@ -431,7 +433,7 @@ export function StructuredWorkoutInput({
               }
 
               return (
-                  <View key={setIndex} style={styles.setRow}>
+                <View key={setIndex} style={styles.setRow}>
                     <TouchableOpacity
                       style={[styles.setNumberBadge, isWarmup && styles.warmupBadge]}
                       onPress={() => handleToggleWarmup(exerciseIndex, setIndex)}

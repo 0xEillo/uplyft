@@ -18,7 +18,7 @@ import {
   getExerciseSuggestion,
   parseRepRange,
   useExerciseAutocomplete,
-  useShowConvertButton
+  useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -72,7 +72,7 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const formatTimerDisplay = (seconds: number) => {
+function formatTimerDisplay(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
 
   // If under 1 minute, show just seconds
@@ -287,14 +287,17 @@ export default function CreatePostScreen() {
     setLastRoutineWorkout,
   ] = useState<WorkoutSessionWithDetails | null>(null)
 
-
   // =============================================================================
   // TEXT-TO-STRUCTURED CONVERSION STATE
   // =============================================================================
   const [cursorPosition, setCursorPosition] = useState(0)
 
   // Use hook for convert button visibility
-  const showConvertButton = useShowConvertButton(notes, cursorPosition, isNotesFocused)
+  const showConvertButton = useShowConvertButton(
+    notes,
+    cursorPosition,
+    isNotesFocused,
+  )
 
   const previousLineCount = useRef(0)
 
@@ -390,8 +393,8 @@ export default function CreatePostScreen() {
       console.log('[CreatePost] onStructuredExtractionComplete received:', {
         title: data.title,
         exercisesCount: data.exercises?.length,
-        firstExercise: data.exercises?.[0]?.name
-      });
+        firstExercise: data.exercises?.[0]?.name,
+      })
       // Set title if extracted
       if (data.title) {
         setWorkoutTitle(data.title)
@@ -404,31 +407,37 @@ export default function CreatePostScreen() {
       }
 
       // Convert parsed exercises to StructuredExerciseDraft format
-      const structuredExercises: StructuredExerciseDraft[] = data.exercises.map((exercise) => ({
-        id: exercise.id,
-        name: exercise.name,
-        sets: exercise.sets.map((set) => ({
-          weight: set.weight,
-          reps: set.reps,
-          isWarmup: false,
-          lastWorkoutWeight: null,
-          lastWorkoutReps: null,
-          targetRepsMin: null,
-          targetRepsMax: null,
-          targetRestSeconds: null,
-        })),
-      }))
+      const structuredExercises: StructuredExerciseDraft[] = data.exercises.map(
+        (exercise) => ({
+          id: exercise.id,
+          name: exercise.name,
+          sets: exercise.sets.map((set) => ({
+            weight: set.weight,
+            reps: set.reps,
+            isWarmup: false,
+            lastWorkoutWeight: null,
+            lastWorkoutReps: null,
+            targetRepsMin: null,
+            targetRepsMax: null,
+            targetRestSeconds: null,
+          })),
+        }),
+      )
 
       // Set the structured data and enable structured mode
-      console.log('[CreatePost] Setting structured data:', structuredExercises.length, 'exercises');
+      console.log(
+        '[CreatePost] Setting structured data:',
+        structuredExercises.length,
+        'exercises',
+      )
       setStructuredData((prev) => [...prev, ...structuredExercises])
       setIsStructuredMode(true)
     },
     onExtractionComplete: (data) => {
       console.log('[CreatePost] onExtractionComplete (fallback) received:', {
         title: data.title,
-        workoutLength: data.workout?.length
-      });
+        workoutLength: data.workout?.length,
+      })
       // Fallback: if structured parsing fails, use the old text-based approach
       if (data.title) {
         setWorkoutTitle(data.title)
@@ -620,8 +629,12 @@ export default function CreatePostScreen() {
                     )
                     return {
                       ...set,
-                      lastWorkoutWeight: lastSet?.weight ? lastSet.weight.toString() : null,
-                      lastWorkoutReps: lastSet?.reps ? lastSet.reps.toString() : null,
+                      lastWorkoutWeight: lastSet?.weight
+                        ? lastSet.weight.toString()
+                        : null,
+                      lastWorkoutReps: lastSet?.reps
+                        ? lastSet.reps.toString()
+                        : null,
                     }
                   }),
                 }
@@ -648,10 +661,10 @@ export default function CreatePostScreen() {
   // Track animation state to reset on each focus
   const [slideKey, setSlideKey] = useState(0)
   const [shouldExit, setShouldExit] = useState(false)
-  
+
   // Use exercise selection hook for navigation-based exercise search
   const { registerCallback } = useExerciseSelection()
-  
+
   // Use routine selection hook for navigation-based routine selection
   const { registerCallback: registerRoutineCallback } = useRoutineSelection()
 
@@ -963,7 +976,9 @@ export default function CreatePostScreen() {
       refreshFreemiumLimits()
 
       // Complete tutorial step for logging first workout
-      console.log('[CreatePost] Successful workout submission. Completing log_workout tutorial step.')
+      console.log(
+        '[CreatePost] Successful workout submission. Completing log_workout tutorial step.',
+      )
       completeStep('log_workout')
 
       trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
@@ -1169,7 +1184,6 @@ export default function CreatePostScreen() {
   // 7. On routine deletion → if selected, all routine state cleared
   // =============================================================================
 
-
   const handleSelectRoutine = useCallback(
     async (routine: WorkoutRoutineWithDetails) => {
       // Clear any existing routine data first to prevent stale state
@@ -1210,15 +1224,14 @@ export default function CreatePostScreen() {
   const handleOpenRoutineSelector = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     blurInputs()
-    
+
     // Register callback for routine selection
     registerRoutineCallback((routine: WorkoutRoutineWithDetails) => {
       handleSelectRoutine(routine)
     })
-    
+
     // Navigate to the full-screen routine selector
     router.push('/select-routine')
-   
   }, [blurInputs, registerRoutineCallback, handleSelectRoutine])
 
   const handlePost = async () => {
@@ -1475,7 +1488,9 @@ export default function CreatePostScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
       // 1. Create structured workout entry with history data
-      const newExercise = await createExerciseWithHistory(currentSuggestion.name)
+      const newExercise = await createExerciseWithHistory(
+        currentSuggestion.name,
+      )
 
       setStructuredData((prev) => [...prev, newExercise])
       setIsStructuredMode(true)
@@ -1492,7 +1507,10 @@ export default function CreatePostScreen() {
 
       setNotes(newText)
     } catch (error) {
-      console.error('[handleAcceptSuggestion] Error accepting suggestion:', error)
+      console.error(
+        '[handleAcceptSuggestion] Error accepting suggestion:',
+        error,
+      )
     }
   }, [currentSuggestion, notes, cursorPosition, createExerciseWithHistory])
 
@@ -1544,8 +1562,6 @@ export default function CreatePostScreen() {
     [notes, cursorPosition, allExercises, createExerciseWithHistory],
   )
 
-
-
   // Convert text to structured format
   const handleConvertToStructured = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -1594,32 +1610,41 @@ export default function CreatePostScreen() {
     const newNotes = newLines.join('\n')
     setNotes(newNotes)
     // showConvertButton will automatically update via useMemo
-  }, [notes, cursorPosition, parseExerciseFromText, isStructuredMode, createExerciseWithHistory])
+  }, [
+    notes,
+    cursorPosition,
+    parseExerciseFromText,
+    isStructuredMode,
+    createExerciseWithHistory,
+  ])
 
-  const handleMultiSelectExercises = useCallback(async (exercises: Exercise[]) => {
-    // Create new structured exercises with history data (in parallel)
-    const newExercises = await Promise.all(
-      exercises.map((exercise) => createExerciseWithHistory(exercise.name)),
-    )
+  const handleMultiSelectExercises = useCallback(
+    async (exercises: Exercise[]) => {
+      // Create new structured exercises with history data (in parallel)
+      const newExercises = await Promise.all(
+        exercises.map((exercise) => createExerciseWithHistory(exercise.name)),
+      )
 
-    setStructuredData((prev) => [...prev, ...newExercises])
-    setIsStructuredMode(true)
+      setStructuredData((prev) => [...prev, ...newExercises])
+      setIsStructuredMode(true)
 
-    // Scroll to bottom after a short delay to allow render
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true })
-    }, 100)
-  }, [createExerciseWithHistory])
+      // Scroll to bottom after a short delay to allow render
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true })
+      }, 100)
+    },
+    [createExerciseWithHistory],
+  )
 
   const handleChooseExercisePress = useCallback(() => {
     // Register callback for exercise selection
     registerCallback((selectedExercises: Exercise | Exercise[]) => {
-      const exercises = Array.isArray(selectedExercises) 
-        ? selectedExercises 
+      const exercises = Array.isArray(selectedExercises)
+        ? selectedExercises
         : [selectedExercises]
       handleMultiSelectExercises(exercises)
     })
-    
+
     // Navigate to the full-screen exercise selector
     router.push('/select-exercise')
   }, [registerCallback, handleMultiSelectExercises])
@@ -1691,11 +1716,17 @@ export default function CreatePostScreen() {
             return { ...oldExercise.sets[i], targetRepsMin, targetRepsMax }
           }
           // Use history data for new sets
-          return newHistory.sets[i] || createEmptySet(targetRepsMin, targetRepsMax)
+          return (
+            newHistory.sets[i] || createEmptySet(targetRepsMin, targetRepsMax)
+          )
         })
 
         const updated = [...prev]
-        updated[existingIndex] = { id: oldExercise.id, name: newExercise.name, sets }
+        updated[existingIndex] = {
+          id: oldExercise.id,
+          name: newExercise.name,
+          sets,
+        }
         return updated
       })
     },

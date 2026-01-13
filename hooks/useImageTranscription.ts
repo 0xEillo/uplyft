@@ -6,6 +6,7 @@ import { Alert, Linking, Platform } from 'react-native'
 // Lazy import expo-image-manipulator to avoid crashes in Expo Go (requires native module)
 let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   ImageManipulator = require('expo-image-manipulator')
 } catch {
   // Module not available in Expo Go
@@ -34,10 +35,10 @@ interface ExtractedWorkoutData {
   description?: string
   workout: string
   /** New structured exercises array from API */
-  exercises?: Array<{
+  exercises?: {
     name: string
-    sets: Array<{ weight: string; reps: string }>
-  }>
+    sets: { weight: string; reps: string }[]
+  }[]
 }
 
 /**
@@ -73,6 +74,19 @@ interface UseImageTranscriptionOptions {
 
 type ActionType = 'scan' | 'attach' | 'scan-equipment'
 
+export interface UseImageTranscriptionResult {
+  isProcessing: boolean
+  pickImage: () => void
+  showModal: boolean
+  closeModal: () => void
+  handleScanWithCamera: () => void
+  handleScanWithLibrary: () => void
+  handleAttachWithCamera: () => void
+  handleAttachWithLibrary: () => void
+  handleScanEquipment: () => void
+  handleScanWorkout: () => void
+}
+
 /**
  * Custom hook for image selection and text extraction.
  * Handles permissions, image picking, and API calls.
@@ -89,7 +103,7 @@ type ActionType = 'scan' | 'attach' | 'scan-equipment'
  */
 export function useImageTranscription(
   options: UseImageTranscriptionOptions = {},
-) {
+): UseImageTranscriptionResult {
   const {
     onExtractionComplete,
     onStructuredExtractionComplete,
@@ -103,9 +117,9 @@ export function useImageTranscription(
   /**
    * Extract text from image using the Supabase Edge Function
    */
-  const extractTextFromImage = useCallback(async (uri: string): Promise<
-    ExtractedWorkoutData
-  > => {
+  const extractTextFromImage = useCallback(async function extractTextFromImage(
+    uri: string,
+  ): Promise<ExtractedWorkoutData> {
     // Import at call time to avoid issues with module resolution
     const { callSupabaseFunctionWithFormData } = await import(
       '@/lib/supabase-functions-client'
@@ -142,7 +156,8 @@ export function useImageTranscription(
 
     const data = await response.json()
     return data
-  }, [])
+  },
+  [])
 
   /**
    * Parse workout text into structured exercise data.
@@ -152,83 +167,101 @@ export function useImageTranscription(
    *   155 x 6
    *   165 x 4 x 2 (weight x reps x sets)
    */
-  const parseWorkoutText = useCallback((workoutText: string): ParsedExerciseData[] => {
-    if (!workoutText || !workoutText.trim()) {
-      console.log('[useImageTranscription] No workout text to parse');
+  const parseWorkoutText = useCallback(function parseWorkoutText(
+    workoutText: string,
+  ): ParsedExerciseData[] {
+    if (!workoutText.trim()) {
+      console.log('[useImageTranscription] No workout text to parse')
       return []
     }
 
-    console.log('[useImageTranscription] Starting parse of workout text:', workoutText.substring(0, 100) + '...');
+    console.log(
+      '[useImageTranscription] Starting parse of workout text:',
+      workoutText.substring(0, 100) + '...',
+    )
+
+    // Set patterns:
+    // 1) weight x reps x sets: "135 x 8 x 3"
+    // 2) weight x reps: "135 x 8"
+    // 3) sets only: "3 sets" / "3 sets for 30 seconds"
+    // 4) reps only: "10 reps"
+    const setPattern = /^[\s]*(\d+(?:\.\d+)?)\s*(?:lbs?|kg)?\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?/i
+    const setsOnlyPattern = /^[\s]*(\d+)\s*sets?(?:\s*for\s*(.*))?/i
+    const repsOnlyPattern = /^[\s]*(\d+)\s*reps?/i
 
     const lines = workoutText.split('\n')
     const exercises: ParsedExerciseData[] = []
     let currentExercise: ParsedExerciseData | null = null
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const trimmed = line.trim()
-
+      const trimmed = lines[i].trim()
       if (!trimmed) continue
-
-      // Enhanced set patterns:
-      // 1. weight x reps x sets: "135 x 8 x 3"
-      // 2. weight x reps: "135 x 8"
-      // 3. Just sets: "3 sets" or "3x"
-      // 4. Just reps: "10 reps"
-      const setPattern = /^[\s]*(\d+(?:\.\d+)?)\s*(?:lbs?|kg)?\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?/i
-      const setsOnlyPattern = /^[\s]*(\d+)\s*sets?(?:\s*for\s*(.*))?/i
-      const repsOnlyPattern = /^[\s]*(\d+)\s*reps?/i
 
       const setMatch = trimmed.match(setPattern)
       const setsOnlyMatch = trimmed.match(setsOnlyPattern)
       const repsOnlyMatch = trimmed.match(repsOnlyPattern)
-      
-      if (setMatch || setsOnlyMatch || repsOnlyMatch) {
-        // If we don't have an exercise yet, create a generic one
-        if (!currentExercise) {
-          currentExercise = {
-            id: `scanned-${Date.now()}-${i}`,
-            name: 'Exercise',
-            sets: [],
-          }
-        }
 
-        if (setMatch) {
-          const weight = setMatch[1]
-          const reps = setMatch[2]
-          const multiplier = setMatch[3] ? parseInt(setMatch[3], 10) : 1
-          console.log(`[useImageTranscription] Found set: ${weight} x ${reps} (x${multiplier})`);
-          for (let j = 0; j < multiplier; j++) {
-            currentExercise.sets.push({ weight, reps })
-          }
-        } else if (setsOnlyMatch) {
-          const setsCount = parseInt(setsOnlyMatch[1], 10)
-          const notes = setsOnlyMatch[2] || ''
-          console.log(`[useImageTranscription] Found sets only: ${setsCount} sets`);
-          for (let j = 0; j < setsCount; j++) {
-            currentExercise.sets.push({ weight: '', reps: notes.includes('sec') ? notes : '' })
-          }
-        } else if (repsOnlyMatch) {
-          const reps = repsOnlyMatch[1]
-          console.log(`[useImageTranscription] Found reps only: ${reps} reps`);
-          currentExercise.sets.push({ weight: '', reps })
-        }
-      } else {
-        // This line is NOT a set pattern. Treat it as a potential new exercise name.
-        // If the current exercise has sets, save it. 
-        // If it DOESN'T have sets, it was likely just a category header (e.g. "Chest:"), 
-        // so we can just replace it with this more specific name.
+      const isSetLine = Boolean(setMatch || setsOnlyMatch || repsOnlyMatch)
+      if (!isSetLine) {
         if (currentExercise && currentExercise.sets.length > 0) {
           exercises.push(currentExercise)
-          currentExercise = null
         }
 
         currentExercise = {
           id: `scanned-${Date.now()}-${i}`,
-          name: trimmed.replace(/[:]$/, ''), // Remove trailing colon if it's a category
+          name: trimmed.replace(/[:]$/, ''),
           sets: [],
         }
-        console.log(`[useImageTranscription] Potential exercise/category: ${trimmed}`);
+        console.log(
+          `[useImageTranscription] Potential exercise/category: ${trimmed}`,
+        )
+        continue
+      }
+
+      // If we don't have an exercise yet, create a generic one
+      if (!currentExercise) {
+        currentExercise = {
+          id: `scanned-${Date.now()}-${i}`,
+          name: 'Exercise',
+          sets: [],
+        }
+      }
+
+      if (setMatch) {
+        const weight = setMatch[1]
+        const reps = setMatch[2]
+        const multiplier = setMatch[3] ? parseInt(setMatch[3], 10) : 1
+
+        console.log(
+          `[useImageTranscription] Found set: ${weight} x ${reps} (x${multiplier})`,
+        )
+
+        for (let j = 0; j < multiplier; j++) {
+          currentExercise.sets.push({ weight, reps })
+        }
+        continue
+      }
+
+      if (setsOnlyMatch) {
+        const setsCount = parseInt(setsOnlyMatch[1], 10)
+        const notes = setsOnlyMatch[2] || ''
+        console.log(
+          `[useImageTranscription] Found sets only: ${setsCount} sets`,
+        )
+
+        for (let j = 0; j < setsCount; j++) {
+          currentExercise.sets.push({
+            weight: '',
+            reps: notes.includes('sec') ? notes : '',
+          })
+        }
+        continue
+      }
+
+      if (repsOnlyMatch) {
+        const reps = repsOnlyMatch[1]
+        console.log(`[useImageTranscription] Found reps only: ${reps} reps`)
+        currentExercise.sets.push({ weight: '', reps })
       }
     }
 
@@ -236,16 +269,12 @@ export function useImageTranscription(
       exercises.push(currentExercise)
     }
 
-    // Ensure every exercise has at least one set if it was identified as an exercise
-    for (const exercise of exercises) {
-      if (exercise.sets.length === 0) {
-        exercise.sets.push({ weight: '', reps: '' })
-      }
-    }
-
-    console.log(`[useImageTranscription] Parsing complete. Found ${exercises.length} exercises.`);
+    console.log(
+      `[useImageTranscription] Parsing complete. Found ${exercises.length} exercises.`,
+    )
     return exercises
-  }, [])
+  },
+  [])
 
   /**
    * Identify equipment from image using the Chat Edge Function
@@ -261,7 +290,9 @@ export function useImageTranscription(
     // Resize image to reduce payload size and processing time
     // 512px is sufficient for identifying objects like dumbbells/machines
     if (!ImageManipulator) {
-      throw new Error('Equipment scanning is not available in Expo Go. Please use a development build.')
+      throw new Error(
+        'Equipment scanning is not available in Expo Go. Please use a development build.',
+      )
     }
     const manipulated = await ImageManipulator.manipulateAsync(
       uri,
@@ -317,117 +348,132 @@ export function useImageTranscription(
    * Process the selected image based on the chosen action
    */
   const processImage = useCallback(
-    async (uri: string, action: ActionType) => {
-      if (action === 'scan') {
-        // Scan workout - extract text from image
-        setIsProcessing(true)
-        try {
-          const data = await extractTextFromImage(uri)
+    async function processImage(uri: string, action: ActionType) {
+      switch (action) {
+        case 'scan': {
+          // Scan workout - extract text from image
+          setIsProcessing(true)
+          try {
+            const data = await extractTextFromImage(uri)
 
-          console.log('[useImageTranscription] API response:', {
-            hasExercises: !!data.exercises,
-            exercisesCount: data.exercises?.length,
-            workoutLength: data.workout?.length,
-          })
-
-          // Prefer structured exercises from API (new format)
-          let structuredExercises: ParsedExerciseData[] = []
-
-          if (data.exercises && Array.isArray(data.exercises) && data.exercises.length > 0) {
-            // Use exercises directly from API
-            console.log('[useImageTranscription] Using structured exercises from API')
-            structuredExercises = data.exercises.map((ex, index) => ({
-              id: `scanned-${Date.now()}-${index}`,
-              name: ex.name,
-              sets: ex.sets.map(set => ({
-                weight: set.weight || '',
-                reps: set.reps || '',
-              })),
-            }))
-          } else if (data.workout) {
-            // Fall back to parsing workout text (legacy)
-            console.log('[useImageTranscription] Falling back to text parsing')
-            structuredExercises = parseWorkoutText(data.workout)
-          }
-
-          console.log('[useImageTranscription] Structured exercises:', {
-            count: structuredExercises.length,
-            names: structuredExercises.map(e => e.name),
-          })
-
-          // Call structured callback if provided and we have exercises
-          if (onStructuredExtractionComplete && structuredExercises.length > 0) {
-            onStructuredExtractionComplete({
-              title: data.title,
-              description: data.description,
-              exercises: structuredExercises,
+            console.log('[useImageTranscription] API response:', {
+              hasExercises: Boolean(data.exercises),
+              exercisesCount: data.exercises?.length,
+              workoutLength: data.workout?.length,
             })
-          } else if (structuredExercises.length === 0) {
-            // No exercises were found in the image
-            console.log('[useImageTranscription] No exercises found in image')
+
+            // Prefer structured exercises from API (new format)
+            let structuredExercises: ParsedExerciseData[] = []
+
+            if (Array.isArray(data.exercises) && data.exercises.length > 0) {
+              console.log(
+                '[useImageTranscription] Using structured exercises from API',
+              )
+              structuredExercises = data.exercises.map((ex, index) => ({
+                id: `scanned-${Date.now()}-${index}`,
+                name: ex.name,
+                sets: ex.sets.map((set) => ({
+                  weight: set.weight || '',
+                  reps: set.reps || '',
+                })),
+              }))
+            } else if (data.workout) {
+              console.log(
+                '[useImageTranscription] Falling back to text parsing',
+              )
+              structuredExercises = parseWorkoutText(data.workout)
+            }
+
+            console.log('[useImageTranscription] Structured exercises:', {
+              count: structuredExercises.length,
+              names: structuredExercises.map((e) => e.name),
+            })
+
+            if (
+              onStructuredExtractionComplete &&
+              structuredExercises.length > 0
+            ) {
+              onStructuredExtractionComplete({
+                title: data.title,
+                description: data.description,
+                exercises: structuredExercises,
+              })
+            } else if (structuredExercises.length === 0) {
+              console.log('[useImageTranscription] No exercises found in image')
+              Alert.alert(
+                'No Exercises Found',
+                "We couldn't find any exercises in this image. Make sure the image clearly shows exercise names with sets or reps.",
+                [{ text: 'OK' }],
+              )
+            } else {
+              console.log(
+                '[useImageTranscription] Falling back to onExtractionComplete',
+              )
+              onExtractionComplete?.(data)
+            }
+          } catch (error) {
+            const errorObj =
+              error instanceof Error ? error : new Error('Unknown error')
+            onError?.(errorObj)
+
+            let title = 'Could Not Extract Workout'
+            let message =
+              'Unable to extract workout information from the image. Please try again or enter your workout manually.'
+
+            const errorMessage = errorObj.message?.toLowerCase() || ''
+            if (
+              errorMessage.includes('not appear to contain workout') ||
+              errorMessage.includes('not workout-related')
+            ) {
+              title = 'Not a Workout Image'
+              message =
+                "This image doesn't appear to contain workout information. Please select an image with exercise names, sets, or reps."
+            } else if (
+              errorMessage.includes('failed to process') ||
+              errorMessage.includes('timeout')
+            ) {
+              title = 'Processing Failed'
+              message =
+                'We had trouble processing this image. Please try again with a clearer photo.'
+            }
+
+            Alert.alert(title, message, [{ text: 'OK' }])
+          } finally {
+            setIsProcessing(false)
+          }
+          return
+        }
+        case 'scan-equipment': {
+          setIsProcessing(true)
+          try {
+            const name = await identifyEquipmentFromImage(uri)
+            if (name && name.toLowerCase() !== 'unknown') {
+              onEquipmentIdentified?.(name)
+            } else {
+              Alert.alert(
+                'Equipment Not Identified',
+                'Could not identify any gym equipment in the image.',
+              )
+            }
+          } catch (error) {
+            console.error('Error identifying equipment:', error)
+            const errorObj =
+              error instanceof Error ? error : new Error('Unknown error')
+            onError?.(errorObj)
             Alert.alert(
-              'No Exercises Found',
-              'We couldn\'t find any exercises in this image. Make sure the image clearly shows exercise names with sets or reps.',
+              'Error',
+              'Failed to identify equipment. Please try again.',
               [{ text: 'OK' }],
             )
-          } else {
-            // Fall back to the old callback if no structured callback
-            console.log('[useImageTranscription] Falling back to onExtractionComplete')
-            onExtractionComplete?.(data)
+          } finally {
+            setIsProcessing(false)
           }
-        } catch (error) {
-          const errorObj =
-            error instanceof Error ? error : new Error('Unknown error')
-          onError?.(errorObj)
-
-          // Provide user-friendly error messages based on error type
-          let title = 'Could Not Extract Workout'
-          let message = 'Unable to extract workout information from the image. Please try again or enter your workout manually.'
-
-          // Check for specific error messages from the API
-          const errorMessage = errorObj.message?.toLowerCase() || ''
-          if (errorMessage.includes('not appear to contain workout') || 
-              errorMessage.includes('not workout-related')) {
-            title = 'Not a Workout Image'
-            message = 'This image doesn\'t appear to contain workout information. Please select an image with exercise names, sets, or reps.'
-          } else if (errorMessage.includes('failed to process') || 
-                     errorMessage.includes('timeout')) {
-            title = 'Processing Failed'
-            message = 'We had trouble processing this image. Please try again with a clearer photo.'
-          }
-
-          Alert.alert(title, message, [{ text: 'OK' }])
-        } finally {
-          setIsProcessing(false)
+          return
         }
-      } else if (action === 'scan-equipment') {
-        setIsProcessing(true)
-        try {
-          const name = await identifyEquipmentFromImage(uri)
-          if (name && name.toLowerCase() !== 'unknown') {
-            onEquipmentIdentified?.(name)
-          } else {
-            Alert.alert(
-              'Equipment Not Identified',
-              'Could not identify any gym equipment in the image.',
-            )
-          }
-        } catch (error) {
-          console.error('Error identifying equipment:', error)
-          const errorObj =
-            error instanceof Error ? error : new Error('Unknown error')
-          onError?.(errorObj)
-          Alert.alert(
-            'Error',
-            'Failed to identify equipment. Please try again.',
-            [{ text: 'OK' }],
-          )
-        } finally {
-          setIsProcessing(false)
+        default: {
+          // Attach photo - just pass the URI
+          onImageAttached?.(uri)
         }
-      } else {
-        // Attach photo - just pass the URI
-        onImageAttached?.(uri)
       }
     },
     [

@@ -3,6 +3,6 @@
   "imports": {
     "@openrouter/ai-sdk-provider": "npm:@openrouter/ai-sdk-provider",
     "ai": "npm:ai",
-    "zod": "https://esm.sh/zod@3.25.76"
+    "zod": "npm:zod@3.25.76"
   }
 }

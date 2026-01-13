@@ -7,12 +7,19 @@ import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
 const STORAGE_BUCKET_URL =
   'https://nsgezkxrgwtmnshulijs.supabase.co/storage/v1/object/public/exercise-gifs/'
 
+type ExerciseMediaContentFit =
+  | 'contain'
+  | 'cover'
+  | 'fill'
+  | 'none'
+  | 'scale-down'
+
 interface ExerciseMediaProps {
   gifUrl?: string | null
   mode?: 'thumbnail' | 'full'
   autoPlay?: boolean
   style?: StyleProp<ViewStyle>
-  contentFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'
+  contentFit?: ExerciseMediaContentFit
 }
 
 // Memoized component - only re-renders when props change
