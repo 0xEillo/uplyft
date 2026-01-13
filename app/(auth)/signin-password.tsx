@@ -2,19 +2,19 @@ import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -47,7 +47,7 @@ export default function SignInPasswordScreen() {
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium')
     router.back()
   }
 
@@ -108,7 +108,7 @@ export default function SignInPasswordScreen() {
             onPress={handleSignIn}
             disabled={!canProceed || isLoading}
             hapticEnabled={canProceed && !isLoading}
-            hapticStyle="heavy"
+            hapticIntensity="medium"
           >
             {isLoading ? (
               <ActivityIndicator color={colors.buttonText} />

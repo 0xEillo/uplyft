@@ -6,8 +6,8 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
@@ -47,7 +47,7 @@ export default function AnalyticsScreen() {
 
   const handleTitlePress = useCallback(() => {
     // Light haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     // If in stats view, switch back to body tab view
     if (viewMode === 'stats') {

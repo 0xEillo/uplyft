@@ -2,11 +2,11 @@ import { useAuth } from '@/contexts/auth-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic, hapticAsync, hapticSuccess } from '@/lib/haptics'
 import { fuzzySearchExercises, hasExactOrFuzzyMatch } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
-import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -239,7 +239,7 @@ export function ExerciseSearchModal({
   // Effects
   useEffect(() => {
     if (visible) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      haptic('medium')
       translateY.value = 0
     }
   }, [visible, translateY])
@@ -278,7 +278,7 @@ export function ExerciseSearchModal({
 
   const handleInfoPress = useCallback(
     (exerciseId: string) => {
-      Haptics.selectionAsync()
+      haptic('light')
       onClose()
       router.push(`/exercise/${exerciseId}`)
     },
@@ -286,7 +286,7 @@ export function ExerciseSearchModal({
   )
 
   const closeSheet = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     onClose()
   }, [onClose])
 
@@ -332,7 +332,7 @@ export function ExerciseSearchModal({
   const handleSelectExercise = useCallback(
     (exercise: Exercise) => {
       Keyboard.dismiss()
-      Haptics.selectionAsync()
+      haptic('light')
 
       if (multiSelect) {
         setSelectedExerciseIds((prev) => {
@@ -376,10 +376,10 @@ export function ExerciseSearchModal({
 
     try {
       setIsCreating(true)
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      await hapticAsync('medium')
       const newExercise = await database.exercises.getOrCreate(name, user.id)
       addExercise(newExercise)
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      await hapticSuccess()
       handleSelectExercise(newExercise)
     } catch (error) {
       console.error('Error creating exercise:', error)
@@ -391,7 +391,7 @@ export function ExerciseSearchModal({
 
   const toggleMuscleGroup = useCallback((group: string) => {
     Keyboard.dismiss()
-    Haptics.selectionAsync()
+    haptic('light')
     setSelectedMuscleGroups((prev) =>
       prev.includes(group) ? prev.filter((i) => i !== group) : [...prev, group],
     )
@@ -399,7 +399,7 @@ export function ExerciseSearchModal({
 
   const toggleEquipment = useCallback((type: string) => {
     Keyboard.dismiss()
-    Haptics.selectionAsync()
+    haptic('light')
     setSelectedEquipment((prev) =>
       prev.includes(type) ? prev.filter((i) => i !== type) : [...prev, type],
     )

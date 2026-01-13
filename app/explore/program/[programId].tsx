@@ -7,23 +7,23 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -82,7 +82,7 @@ export default function ProgramDetailScreen() {
     try {
       setIsSaving(true)
       await database.explore.saveProgramToUser(program.id, user.id)
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
       Alert.alert('Success', 'Program saved to your workouts!', [
         { text: 'OK', onPress: () => router.back() },
       ])

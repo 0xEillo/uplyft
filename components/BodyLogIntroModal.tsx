@@ -1,14 +1,14 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import {
-  Dimensions,
-  Image,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Image,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -30,12 +30,12 @@ export function BodyLogIntroModal({
   const colors = useThemedColors()
 
   const handleTakePhoto = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     onTakePhoto()
   }
 
   const handleClose = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     onClose()
   }
 

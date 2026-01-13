@@ -1,21 +1,21 @@
 import type { BodyPartSlug } from '@/lib/body-mapping'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useState } from 'react'
 import {
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -401,7 +401,7 @@ export function WorkoutPlanningWizard({
 
   const handleDoneEditing = () => {
     if (!canSaveField()) return
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     // If using custom input, apply it
     if (showCustomInput && customInput.trim()) {
@@ -426,7 +426,7 @@ export function WorkoutPlanningWizard({
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setShowCustomInput(false)
     setCustomInput('')
 
@@ -442,7 +442,7 @@ export function WorkoutPlanningWizard({
     value: string,
     multiSelect = false,
   ) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     if (multiSelect && typeof value === 'string') {
       const current = data[field]
@@ -469,7 +469,7 @@ export function WorkoutPlanningWizard({
   }
 
   const handleConfirm = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     await savePreferences(data)
     onComplete(data)
   }
@@ -785,7 +785,7 @@ export function WorkoutPlanningWizard({
         <TouchableOpacity
           style={styles.customTrigger}
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            haptic('light')
             setShowCustomInput(true)
           }}
         >
@@ -879,7 +879,7 @@ export function WorkoutPlanningWizard({
                   },
                 ]}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  haptic('light')
                   handleSelectOption('muscles', muscle, true)
                 }}
               >
@@ -919,7 +919,7 @@ export function WorkoutPlanningWizard({
                     },
                   ]}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    haptic('light')
                     handleSelectOption('muscles', muscle, true)
                   }}
                 >
@@ -1028,7 +1028,7 @@ export function WorkoutPlanningWizard({
                   },
                 ]}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  haptic('light')
                   const current = data.specifics
                   if (current.includes(tag)) {
                     // Remove tag

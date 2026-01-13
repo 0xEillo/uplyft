@@ -1,7 +1,7 @@
 import { useRatingPrompt } from '@/contexts/rating-prompt-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { hapticAsync } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import React, { useEffect, useRef, useState } from 'react'
 import {
     Animated,
@@ -64,14 +64,14 @@ export function RatingPromptModal() {
 
   const handleRatePress = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      await hapticAsync('medium')
     }
     handleRate()
   }
 
   const handleMaybeLaterPress = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      await hapticAsync('light')
     }
     handleDismiss()
   }

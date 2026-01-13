@@ -3,8 +3,8 @@ import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-    WorkoutPlanningData,
-    WorkoutPlanningWizard,
+  WorkoutPlanningData,
+  WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -15,64 +15,64 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    AiWorkoutConversionResult,
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  AiWorkoutConversionResult,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-    ParsedWorkoutDisplay,
-    parseWorkoutForDisplay,
+  ParsedWorkoutDisplay,
+  parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-    buildWorkoutCreationPrompt,
-    buildWorkoutModificationSuffix,
+  buildWorkoutCreationPrompt,
+  buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
-    loadDraft as loadWorkoutDraft,
-    saveDraft,
+  loadDraft as loadWorkoutDraft,
+  saveDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system/legacy'
-import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleProp,
-    StyleSheet,
-    Text,
-    TextInput,
-    TextStyle,
-    TouchableOpacity,
-    View,
-    ViewStyle,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSpring,
-    withTiming,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -819,7 +819,7 @@ export function WorkoutChat({
 
   // Show native action sheet for image picker
   const showImagePickerActionSheet = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -1002,7 +1002,7 @@ export function WorkoutChat({
   }
 
   const handleAddExercise = (suggestion: ExerciseSuggestion) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    hapticSuccess()
     if (onAddExercise) {
       onAddExercise(suggestion)
     } else {
@@ -1011,7 +1011,7 @@ export function WorkoutChat({
   }
 
   const handleReplaceExercise = (suggestion: ExerciseSuggestion) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    hapticSuccess()
     if (onReplaceExercise && exerciseToReplace) {
       onReplaceExercise(exerciseToReplace, suggestion)
       setExerciseToReplace(null) // Clear after replacement
@@ -1238,7 +1238,7 @@ export function WorkoutChat({
   }
 
   const handleNewChat = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setMessages([])
     setInput('')
     setSelectedImages([])
@@ -1261,7 +1261,7 @@ export function WorkoutChat({
     // 1. Handle object-based menu items (Main, Adjust Workout)
     if (typeof item === 'object') {
       if (item.id === 'plan_workout') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        haptic('light')
         setPlanningState((prev) => ({
           ...prev,
           isActive: true,
@@ -1271,7 +1271,7 @@ export function WorkoutChat({
       }
 
       if (item.id === 'adjust_workout') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        haptic('light')
         setSuggestionMode('adjust_workout')
         return
       }
@@ -1501,7 +1501,7 @@ export function WorkoutChat({
     }
 
     setIsLoading(true)
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     try {
       let workoutData
@@ -1618,7 +1618,7 @@ export function WorkoutChat({
     }
 
     setIsLoading(true)
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     let createdRoutineId: string | null = null
 
@@ -1886,7 +1886,7 @@ export function WorkoutChat({
                     { top: Math.max(insets.top - 38, 0) },
                   ]}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    haptic('light')
                     setIsCoachSheetVisible(true)
                   }}
                   activeOpacity={0.7}

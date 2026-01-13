@@ -6,25 +6,25 @@ import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
-import type { ExploreRoutine, ExploreProgramWithRoutines } from '@/types/database.types'
+import type { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -90,7 +90,7 @@ export default function ExploreScreen() {
       try {
         setSavingRoutineId(routineId)
         await database.explore.saveRoutineToUser(routineId, user.id)
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        hapticSuccess()
         Alert.alert('Success', 'Routine saved to your workouts!')
       } catch (error) {
         console.error('Error saving routine:', error)

@@ -1,7 +1,7 @@
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { memo, useCallback } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
@@ -22,7 +22,7 @@ export const TutorialProgressCard = memo(() => {
   } = useTutorial()
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     router.push('/tutorial')
   }, [router])
 

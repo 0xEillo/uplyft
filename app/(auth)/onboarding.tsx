@@ -2,15 +2,15 @@ import { AnimatedInput } from '@/components/animated-input'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import {
-    EQUIPMENT_PREF_KEY,
-    WORKOUT_PLANNING_PREFS_KEY,
+  EQUIPMENT_PREF_KEY,
+  WORKOUT_PLANNING_PREFS_KEY,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
-    COMMITMENTS,
-    EXPERIENCE_LEVELS,
-    GENDERS,
-    GOALS,
+  COMMITMENTS,
+  EXPERIENCE_LEVELS,
+  GENDERS,
+  GOALS,
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -21,6 +21,7 @@ import { BodyPartSlug } from '@/lib/body-mapping'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { requestTrackingPermission } from '@/lib/facebook-sdk'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { markUserAsRated, requestReview } from '@/lib/rating'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
@@ -28,24 +29,23 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Picker } from '@react-native-picker/picker'
 import { Asset } from 'expo-asset'
-import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextStyle,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import ConfettiCannon from 'react-native-confetti-cannon'
@@ -922,7 +922,7 @@ const CommitmentStepContent = ({
       useNativeDriver: false,
     }).start(({ finished }) => {
       if (finished) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        hapticSuccess()
         setIsCommitted(true)
         setHolding(false)
         // Celebration!
@@ -1342,7 +1342,7 @@ const CommitmentStepContent = ({
                 },
               ]}
               onPress={onNext}
-              hapticStyle="heavy"
+              hapticIntensity="medium"
             >
               <Text style={[styles.nextButtonText, { color: colors.primary }]}>
                 Continue
@@ -1802,7 +1802,7 @@ export default function OnboardingScreen() {
 
   const handleBack = () => {
     // Strong haptic for back navigation
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium')
 
     if (step > 1) {
       setStep(step - 1)
@@ -1884,7 +1884,7 @@ export default function OnboardingScreen() {
                     onPress={() => {
                       setData({ ...data, coach: coach.id })
                     }}
-                    hapticStyle="light"
+                    hapticIntensity="light"
                   >
                     <View style={styles.coachContent}>
                       <View style={styles.coachAvatar}>
@@ -2022,7 +2022,7 @@ export default function OnboardingScreen() {
                         : [...data.goal, goal.value]
                       setData({ ...data, goal: newGoals })
                     }}
-                    hapticStyle="light"
+                    hapticIntensity="light"
                   >
                     <View style={styles.cardContent}>
                       <View style={styles.iconContainer}>
@@ -2099,7 +2099,7 @@ export default function OnboardingScreen() {
                       })
                       setTimeout(() => setStep(step + 1), 400)
                     }}
-                    hapticStyle="light"
+                    hapticIntensity="light"
                   >
                     <View style={styles.cardContent}>
                       <Text style={styles.cardLabel}>{gender.label}</Text>
@@ -2160,7 +2160,7 @@ export default function OnboardingScreen() {
                       }
                       setData({ ...data, commitment: newCommitment })
                     }}
-                    hapticStyle="light"
+                    hapticIntensity="light"
                   >
                     <View style={styles.cardContent}>
                       <Text style={styles.cardLabel}>{commitment.label}</Text>
@@ -2211,7 +2211,7 @@ export default function OnboardingScreen() {
                       setData({ ...data, experience_level: item.value })
                       setTimeout(() => setStep(step + 1), 400)
                     }}
-                    hapticStyle="light"
+                    hapticIntensity="light"
                   >
                     <View style={styles.cardContent}>
                       <Text style={styles.cardLabel}>{item.label}</Text>
@@ -2279,7 +2279,7 @@ export default function OnboardingScreen() {
                           })
                         }
                       }}
-                      hapticStyle="light"
+                      hapticIntensity="light"
                     >
                       <View style={styles.cardContent}>
                         <Text style={styles.cardLabel}>{item.label}</Text>
@@ -2305,7 +2305,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   setData({ ...data, equipment: ['none'] })
                 }}
-                hapticStyle="light"
+                hapticIntensity="light"
               >
                 <View
                   style={[
@@ -3403,7 +3403,7 @@ export default function OnboardingScreen() {
                 onPress={handleNext}
                 disabled={!canProceed()}
                 hapticEnabled={canProceed()}
-                hapticStyle="heavy"
+                hapticIntensity="medium"
               >
                 <Text style={styles.nextButtonText}>
                   {step === 2

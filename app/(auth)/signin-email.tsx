@@ -3,17 +3,17 @@ import { HapticButton } from '@/components/haptic-button'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -41,7 +41,7 @@ export default function SignInEmailScreen() {
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium')
     router.back()
   }
 
@@ -99,7 +99,7 @@ export default function SignInEmailScreen() {
             onPress={handleContinue}
             disabled={!canProceed}
             hapticEnabled={canProceed}
-            hapticStyle="heavy"
+            hapticIntensity="medium"
           >
             <Text style={styles.nextButtonText}>Continue</Text>
           </HapticButton>

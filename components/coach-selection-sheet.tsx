@@ -1,19 +1,19 @@
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -29,7 +29,7 @@ export function CoachSelectionSheet({ visible, onClose }: CoachSelectionSheetPro
   const [isUpdating, setIsUpdating] = React.useState(false)
 
   const handleSelectCoach = async (coachId: CoachId) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     if (profile?.coach === coachId) {
       onClose()
       return
@@ -49,6 +49,64 @@ export function CoachSelectionSheet({ visible, onClose }: CoachSelectionSheetPro
 
   const styles = createStyles(colors, insets)
 
+  const sheetContent = (
+    <View style={styles.sheetContent}>
+      <View style={styles.header}>
+        <View style={styles.handle} />
+        <Text style={styles.title}>Change AI Coach</Text>
+        <Text style={styles.subtitle}>Choose your training personality</Text>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.grid}>
+          {COACH_OPTIONS.map((coach) => {
+            const isSelected = profile?.coach === coach.id
+            return (
+              <TouchableOpacity
+                key={coach.id}
+                style={[
+                  styles.coachCard,
+                  isSelected && styles.coachCardSelected,
+                ]}
+                onPress={() => handleSelectCoach(coach.id)}
+                disabled={isUpdating}
+              >
+                <View style={styles.avatarContainer}>
+                  <Image source={coach.image} style={styles.avatar} />
+                  <View style={styles.emojiBadge}>
+                    {coach.id === 'kino' && <Text style={styles.emojiText}>👊</Text>}
+                    {coach.id === 'maya' && <Text style={styles.emojiText}>👏</Text>}
+                    {coach.id === 'ross' && <Text style={styles.emojiText}>📋</Text>}
+                  </View>
+                </View>
+                <Text style={styles.coachName}>{coach.name}</Text>
+                <Text style={styles.coachTitle}>{coach.title}</Text>
+                <Text style={styles.coachDescription} numberOfLines={3}>
+                  {coach.description}
+                </Text>
+                
+                {isSelected && (
+                  <View style={styles.selectedBadge}>
+                    <Ionicons name="checkmark" size={14} color={colors.white} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </ScrollView>
+
+      {isUpdating && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+    </View>
+  )
+
   return (
     <Modal
       visible={visible}
@@ -62,61 +120,7 @@ export function CoachSelectionSheet({ visible, onClose }: CoachSelectionSheetPro
         onPress={onClose}
       >
         <View style={styles.sheetContainer}>
-          <TouchableOpacity activeOpacity={1} style={styles.sheetContent}>
-            <View style={styles.header}>
-              <View style={styles.handle} />
-              <Text style={styles.title}>Change AI Coach</Text>
-              <Text style={styles.subtitle}>Choose your training personality</Text>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-            >
-              <View style={styles.grid}>
-                {COACH_OPTIONS.map((coach) => {
-                  const isSelected = profile?.coach === coach.id
-                  return (
-                    <TouchableOpacity
-                      key={coach.id}
-                      style={[
-                        styles.coachCard,
-                        isSelected && styles.coachCardSelected,
-                      ]}
-                      onPress={() => handleSelectCoach(coach.id)}
-                      disabled={isUpdating}
-                    >
-                      <View style={styles.avatarContainer}>
-                        <Image source={coach.image} style={styles.avatar} />
-                        <View style={styles.emojiBadge}>
-                          {coach.id === 'kino' && <Text style={styles.emojiText}>👊</Text>}
-                          {coach.id === 'maya' && <Text style={styles.emojiText}>👏</Text>}
-                          {coach.id === 'ross' && <Text style={styles.emojiText}>📋</Text>}
-                        </View>
-                      </View>
-                      <Text style={styles.coachName}>{coach.name}</Text>
-                      <Text style={styles.coachTitle}>{coach.title}</Text>
-                      <Text style={styles.coachDescription} numberOfLines={3}>
-                        {coach.description}
-                      </Text>
-                      
-                      {isSelected && (
-                        <View style={styles.selectedBadge}>
-                          <Ionicons name="checkmark" size={14} color={colors.white} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </ScrollView>
-
-            {isUpdating && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color={colors.primary} />
-              </View>
-            )}
-          </TouchableOpacity>
+          {sheetContent}
         </View>
       </TouchableOpacity>
     </Modal>
@@ -134,7 +138,7 @@ const createStyles = (colors: any, insets: any) =>
       backgroundColor: colors.background,
       borderTopLeftRadius: 32,
       borderTopRightRadius: 32,
-      maxHeight: '80%',
+      maxHeight: '70%',
       width: '100%',
       paddingBottom: insets.bottom + 20,
     },

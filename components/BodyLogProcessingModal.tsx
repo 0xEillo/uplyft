@@ -1,17 +1,17 @@
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Image,
-  Modal,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Dimensions,
+    Image,
+    Modal,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -121,7 +121,7 @@ export function BodyLogProcessingModal({
   useEffect(() => {
     if (isComplete && visible) {
       // Trigger success haptic
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
 
       setShowSuccess(true)
 

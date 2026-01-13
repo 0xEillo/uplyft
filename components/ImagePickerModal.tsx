@@ -1,26 +1,26 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { useEffect } from 'react'
 import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 
 interface ImagePickerModalProps {
@@ -41,13 +41,13 @@ export function ImagePickerModal({
 
   useEffect(() => {
     if (visible) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      haptic('medium')
       translateY.value = 0
     }
   }, [visible, translateY])
 
   const closeSheet = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     onClose()
   }
 
@@ -75,12 +75,12 @@ export function ImagePickerModal({
   }))
 
   const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     onClose()
   }
 
   const handleScan = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     onClose()
     // Launch camera directly after menu closes
     setTimeout(onScanWithCamera, 250)

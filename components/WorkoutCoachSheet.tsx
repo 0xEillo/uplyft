@@ -1,7 +1,7 @@
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { getCoach } from '@/lib/coaches'
-import * as Haptics from 'expo-haptics'
+import { haptic } from '@/lib/haptics'
 import { useEffect, useState } from 'react'
 import {
     Dimensions,
@@ -132,12 +132,12 @@ export function WorkoutCoachSheet({
   useEffect(() => {
     if (visible) {
       translateY.value = 0
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      haptic('medium')
     }
   }, [visible, translateY])
 
   const closeSheet = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     onClose()
   }
 

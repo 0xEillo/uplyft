@@ -15,10 +15,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-  getExerciseSuggestion,
-  parseRepRange,
-  useExerciseAutocomplete,
-  useShowConvertButton,
+    getExerciseSuggestion,
+    parseRepRange,
+    useExerciseAutocomplete,
+    useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -31,44 +31,44 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearDraft as clearWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
+    clearDraft as clearWorkoutDraft,
+    loadPendingWorkout,
+    loadDraft as loadWorkoutDraft,
+    saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-  generateWorkoutMessage,
-  parseCommitment,
+    generateWorkoutMessage,
+    parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-  Exercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    Exercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
-import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
-  Animated,
-  Easing,
-  InteractionManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Easing,
+    InteractionManager,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -674,7 +674,7 @@ export default function CreatePostScreen() {
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
 
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
 
       blurInputs()
 
@@ -889,18 +889,18 @@ export default function CreatePostScreen() {
   }, [])
 
   const handleRemoveAttachedImage = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     imageOpacity.setValue(0)
     setAttachedImageUri(null)
   }
 
   const handleToggleRecording = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     await toggleRecording()
   }, [toggleRecording])
 
   const handleScanWorkoutPress = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     blurInputs()
 
     try {
@@ -1023,7 +1023,7 @@ export default function CreatePostScreen() {
         console.error('Error generating workout message:', error)
       }
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
 
       skipPersistCountRef.current = 1
       suppressDraftToastRef.current = true
@@ -1222,7 +1222,7 @@ export default function CreatePostScreen() {
   )
 
   const handleOpenRoutineSelector = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     blurInputs()
 
     // Register callback for routine selection
@@ -1242,7 +1242,7 @@ export default function CreatePostScreen() {
     isSubmittingRef.current = true
 
     // Immediate haptic feedback for responsive feel
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     // Immediate button animation
     Animated.sequence([
@@ -1485,7 +1485,7 @@ export default function CreatePostScreen() {
     if (!currentSuggestion) return
 
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
 
       // 1. Create structured workout entry with history data
       const newExercise = await createExerciseWithHistory(
@@ -1531,7 +1531,7 @@ export default function CreatePostScreen() {
         if (suggestion) {
           try {
             // Manually call accept suggestion logic with the calculated suggestion
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+            hapticSuccess()
 
             // 1. Create structured workout entry with history data
             const newExercise = await createExerciseWithHistory(suggestion.name)
@@ -1564,7 +1564,7 @@ export default function CreatePostScreen() {
 
   // Convert text to structured format
   const handleConvertToStructured = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     const parsed = parseExerciseFromText(notes, cursorPosition)
     if (!parsed) return
@@ -1765,7 +1765,7 @@ export default function CreatePostScreen() {
       onScanWorkout: handleScanWorkoutPress,
       onMicPress: handleToggleRecording,
       onStopwatchPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        haptic('light')
         blurInputs()
         setShowRestTimer(true)
       },
@@ -1891,7 +1891,7 @@ export default function CreatePostScreen() {
               <TouchableOpacity
                 style={styles.chatButton}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  haptic('light')
                   blurInputs()
                   setShowCoachSheet(true)
                 }}

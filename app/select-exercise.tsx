@@ -8,11 +8,11 @@ import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { BodyPartSlug } from '@/lib/body-mapping'
+import { haptic } from '@/lib/haptics'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
-import * as Haptics from 'expo-haptics'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -383,7 +383,7 @@ export default function SelectExerciseScreen() {
   const handleSelectExercise = useCallback(
     (exercise: Exercise) => {
        if (isMultiSelect) {
-           Haptics.selectionAsync()
+           haptic('light')
            setSelectedIds(prev => {
                const newSet = new Set(prev)
                if (newSet.has(exercise.id)) {
@@ -412,7 +412,7 @@ export default function SelectExerciseScreen() {
 
   const handleCreateExercise = useCallback(() => {
     const name = trimmedQuery
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     if (!isProMember) {
       setShowPaywall(true)
@@ -426,7 +426,7 @@ export default function SelectExerciseScreen() {
   }, [trimmedQuery, router, isProMember])
 
   const handleBack = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setShouldExit(true)
   }, [])
 

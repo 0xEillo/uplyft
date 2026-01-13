@@ -1,17 +1,17 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -35,7 +35,7 @@ export default function SignupEmailScreen() {
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium')
     router.back()
   }
 
@@ -93,7 +93,7 @@ export default function SignupEmailScreen() {
             onPress={handleContinue}
             disabled={!canProceed}
             hapticEnabled={canProceed}
-            hapticStyle="heavy"
+            hapticIntensity="medium"
           >
             <Text style={styles.nextButtonText}>Continue</Text>
           </HapticButton>

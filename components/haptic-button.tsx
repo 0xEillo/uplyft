@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics'
+import { haptic, HapticIntensity } from '@/lib/haptics'
 import { ComponentProps, useRef } from 'react'
 import { Animated, StyleProp, TouchableOpacity, ViewStyle } from 'react-native'
 
@@ -8,7 +8,8 @@ interface HapticButtonProps extends ComponentProps<typeof TouchableOpacity> {
   disabled?: boolean
   children: React.ReactNode
   hapticEnabled?: boolean
-  hapticStyle?: 'selection' | 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'
+  /** Haptic intensity: 'light' for subtle interactions, 'medium' for important actions */
+  hapticIntensity?: HapticIntensity
 }
 
 /**
@@ -21,7 +22,7 @@ export function HapticButton({
   disabled,
   children,
   hapticEnabled = true,
-  hapticStyle = 'heavy',
+  hapticIntensity = 'medium',
   ...props
 }: HapticButtonProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current
@@ -31,26 +32,7 @@ export function HapticButton({
 
     // Trigger haptic feedback
     if (hapticEnabled) {
-      switch (hapticStyle) {
-        case 'selection':
-          Haptics.selectionAsync()
-          break
-        case 'light':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-          break
-        case 'medium':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-          break
-        case 'soft':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
-          break
-        case 'rigid':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)
-          break
-        case 'heavy':
-        default:
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-      }
+      haptic(hapticIntensity)
     }
 
     // Scale down animation

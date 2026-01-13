@@ -1,12 +1,12 @@
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { hapticAsync } from '@/lib/haptics'
 import {
     WorkoutRoutineWithDetails,
     WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
     InputAccessoryView,
@@ -250,7 +250,7 @@ export function StructuredWorkoutInput({
 
   const handleAddSet = useCallback(
     async (exerciseIndex: number) => {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      await hapticAsync('light')
       const newExercises = [...exercises]
       const exercise = newExercises[exerciseIndex]
 
@@ -296,7 +296,7 @@ export function StructuredWorkoutInput({
   )
 
   const handleDeleteSet = async (exerciseIndex: number, setIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    await hapticAsync('light')
     const newExercises = [...exercises]
     const exercise = newExercises[exerciseIndex]
 
@@ -311,7 +311,7 @@ export function StructuredWorkoutInput({
   }
 
   const handleToggleWarmup = async (exerciseIndex: number, setIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    await hapticAsync('light')
     const newExercises = [...exercises]
     const set = newExercises[exerciseIndex].sets[setIndex]
     set.isWarmup = !set.isWarmup
@@ -320,7 +320,7 @@ export function StructuredWorkoutInput({
   }
 
   const handleDeleteExercise = async (exerciseIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    await hapticAsync('light')
     const newExercises = exercises.filter((_, index) => index !== exerciseIndex)
     setExercises(newExercises)
     onDataChange(newExercises)

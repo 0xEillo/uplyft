@@ -1,7 +1,7 @@
 import { TutorialStep, useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { memo, useCallback, useMemo } from 'react'
@@ -64,7 +64,7 @@ const TutorialStepCard = memo(
 
     const handlePress = useCallback(() => {
       if (isClickable) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        haptic('medium')
         onPress(step)
       }
     }, [step, onPress, isClickable])
@@ -239,7 +239,7 @@ export const TutorialChecklist = memo(
     )
 
     const handleDismiss = useCallback(async () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
       await dismissTutorial()
       onDismiss?.()
     }, [dismissTutorial, onDismiss])

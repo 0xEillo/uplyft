@@ -1,26 +1,26 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
-import { useRouter, useLocalSearchParams } from 'expo-router'
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Linking,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Animated, {
-  Layout,
-  ZoomIn,
-} from 'react-native-reanimated'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Linking,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native'
+import Animated, {
+    Layout,
+    ZoomIn,
+} from 'react-native-reanimated'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const GRID_PADDING = 20
@@ -48,7 +48,7 @@ export default function BodyLogCaptureScreen() {
   const continueLabel = `Save (${photoCount}/${MAX_PHOTOS} photo${photoCount !== 1 ? 's' : ''})`
 
   const handleTakePhoto = async (slotIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     try {
       // Check current permission status
@@ -108,7 +108,7 @@ export default function BodyLogCaptureScreen() {
           timestamp: Date.now(),
         }
         setPhotos(newPhotos)
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        hapticSuccess()
       }
     } catch (error) {
       console.error('Error opening camera:', error)
@@ -130,14 +130,14 @@ export default function BodyLogCaptureScreen() {
   }
 
   const handleRemovePhoto = async (slotIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     const newPhotos = [...photos]
     newPhotos[slotIndex] = null
     setPhotos(newPhotos)
   }
 
   const handleRetakePhoto = async (slotIndex: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     await handleTakePhoto(slotIndex)
   }
 
@@ -172,7 +172,7 @@ export default function BodyLogCaptureScreen() {
   const handleContinue = async () => {
     if (!canContinue || !entryId) return
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     setIsSaving(true)
 
     try {
@@ -207,7 +207,7 @@ export default function BodyLogCaptureScreen() {
         await database.bodyLog.addImage(entryId, userId, filePaths[i], i + 1)
       }
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
 
       // Navigate back to detail page
       router.back()
@@ -219,7 +219,7 @@ export default function BodyLogCaptureScreen() {
   }
 
   const handleClose = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     router.back()
   }
 

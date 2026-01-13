@@ -2,20 +2,20 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as Haptics from 'expo-haptics'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    PanResponder,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 
@@ -212,7 +212,7 @@ export function RestTimerOverlay({
   }
 
   const handleStart = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     initialDurationRef.current = selectedDuration
     trackEvent(AnalyticsEvents.REST_TIMER_STARTED, {
       duration_seconds: selectedDuration,
@@ -221,7 +221,7 @@ export function RestTimerOverlay({
   }
 
   const handleStopPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     trackEvent(AnalyticsEvents.REST_TIMER_COMPLETED, {
       duration_seconds: initialDurationRef.current,
       completed: false,
@@ -230,18 +230,18 @@ export function RestTimerOverlay({
   }
 
   const handleAddTimePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     onAddTime(30)
     initialDurationRef.current += 30
   }
 
   const adjustTime = (delta: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setSelectedDuration((prev) => Math.max(15, prev + delta))
   }
 
   const handleReset = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setSelectedDuration(120)
   }
 

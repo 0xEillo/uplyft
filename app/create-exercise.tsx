@@ -5,8 +5,8 @@ import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useExercises } from '@/hooks/useExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
@@ -154,7 +154,7 @@ export default function CreateExerciseScreen() {
 
     try {
       setIsCreating(true)
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
 
       const newExercise = await database.exercises.createWithMetadata(
         exerciseName.trim(),
@@ -166,7 +166,7 @@ export default function CreateExerciseScreen() {
         },
       )
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
 
       // Add to local cache so it appears in search immediately
       addExercise(newExercise)
@@ -190,7 +190,7 @@ export default function CreateExerciseScreen() {
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setShouldExit(true)
   }
 

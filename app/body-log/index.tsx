@@ -9,10 +9,10 @@ import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { getThumbnailUrlsWithPrefetch } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -524,7 +524,7 @@ export default function BodyLogScreen() {
     }
 
     trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     router.push({
       pathname: '/body-log/[entryId]',

@@ -1,7 +1,7 @@
 import { useUnit, type WeightUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { useState } from 'react'
 import {
     KeyboardAvoidingView,
@@ -59,7 +59,7 @@ export function WeightInputModal({
 
   const handleWeightUnitToggle = async (unit: WeightUnit) => {
     if (weightUnit === unit) return
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setWeightUnit(unit)
   }
 
@@ -67,8 +67,7 @@ export function WeightInputModal({
     if (!hasValidWeight || weightKg === null) {
       return
     }
-
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
     setIsSaving(true)
 
     try {
@@ -83,7 +82,7 @@ export function WeightInputModal({
   }
 
   const handleClose = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setWeightInput('')
     onClose()
   }

@@ -4,11 +4,11 @@ import { useAuth } from '@/contexts/auth-context'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
@@ -66,7 +66,7 @@ export default function SelectRoutineScreen() {
 
   const handleSelectRoutine = useCallback(
     (routine: WorkoutRoutineWithDetails) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
       callCallback(routine)
       router.back()
     },
@@ -75,7 +75,7 @@ export default function SelectRoutineScreen() {
 
   const handleViewRoutine = useCallback(
     (routine: WorkoutRoutineWithDetails) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
       router.push({
         pathname: '/routine/[routineId]',
         params: { routineId: routine.id },
@@ -85,12 +85,12 @@ export default function SelectRoutineScreen() {
   )
 
   const handleCreateRoutine = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     router.push('/create-routine')
   }, [router])
 
   const handleBack = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setShouldExit(true)
   }, [])
 

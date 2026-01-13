@@ -1,18 +1,18 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { requestReview } from '@/lib/rating'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -87,9 +87,7 @@ export default function ReviewScreen() {
       if (!hasShownReview) {
         // Haptic feedback when dialog opens
         if (Platform.OS === 'ios' || Platform.OS === 'android') {
-          await Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success,
-          )
+          hapticSuccess()
         }
 
         trackEvent(AnalyticsEvents.REVIEW_PROMPT_ONBOARDING_ACCEPTED, {})
@@ -114,7 +112,7 @@ export default function ReviewScreen() {
 
   const handleContinue = async () => {
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      haptic('medium')
     }
 
     // Only track as dismissed if they didn't see the review dialog

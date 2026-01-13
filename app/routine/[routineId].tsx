@@ -7,25 +7,25 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import {
-  ExploreRoutineWithExercises,
-  WorkoutRoutineWithDetails,
+    ExploreRoutineWithExercises,
+    WorkoutRoutineWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -238,9 +238,7 @@ export default function RoutineDetailScreen() {
           onPress: async () => {
             try {
               await database.workoutRoutines.delete(routine.userRoutineId!)
-              Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Success,
-              )
+              hapticSuccess()
               Alert.alert('Success', 'Routine deleted successfully')
               router.back()
             } catch (error) {
@@ -265,7 +263,7 @@ export default function RoutineDetailScreen() {
         routine.id,
         user.id,
       )
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
       Alert.alert('Success', 'Routine saved to your library!', [
         {
           text: 'View Routine',

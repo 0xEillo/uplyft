@@ -1,28 +1,28 @@
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import Animated, {
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -39,25 +39,25 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  getBMIExplanation,
-  getBMIStatus,
-  getBodyFatExplanation,
-  getBodyFatStatus,
-  getStatusColor,
-  getWeightExplanation,
-  type BMIRange,
-  type BodyFatRange,
-  type Gender,
+    getBMIExplanation,
+    getBMIStatus,
+    getBodyFatExplanation,
+    getBodyFatStatus,
+    getStatusColor,
+    getWeightExplanation,
+    type BMIRange,
+    type BodyFatRange,
+    type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-  type BodyLogEntryWithImages,
-  type BodyLogImage,
+    type BodyLogEntryWithImages,
+    type BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-  getBodyLogImageUrls,
-  prefetchBodyLogImages,
+    getBodyLogImageUrls,
+    prefetchBodyLogImages,
 } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -494,7 +494,7 @@ export default function BodyLogDetailScreen() {
     value: string,
     status: BodyFatRange | BMIRange | null,
   ) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     let explanation = ''
     if (type === 'bodyFat') {
@@ -510,7 +510,7 @@ export default function BodyLogDetailScreen() {
   }
 
   const handleLogWeight = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setWeightModalVisible(true)
   }
 
@@ -587,7 +587,7 @@ export default function BodyLogDetailScreen() {
 
         completeStep('body_log')
 
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        hapticSuccess()
         return
       }
 
@@ -614,7 +614,7 @@ export default function BodyLogDetailScreen() {
         }
       }
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
     } catch (error) {
       console.error('Error saving weight:', error)
       Alert.alert('Error', 'Failed to save weight. Please try again.')
@@ -624,7 +624,7 @@ export default function BodyLogDetailScreen() {
   const handleAddPhotos = async () => {
     if (!user) return
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -797,9 +797,7 @@ export default function BodyLogDetailScreen() {
         }
       }
 
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success,
-      )
+      hapticSuccess()
     } catch (error) {
       console.error('Error uploading photo:', error)
       setImagesLoading(false)
@@ -812,7 +810,7 @@ export default function BodyLogDetailScreen() {
   const handleDeleteImage = async (imageId: string, imageIndex: number) => {
     if (!user || !entryId || entryId === 'new') return
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     Alert.alert(
       'Delete Photo?',
@@ -867,7 +865,7 @@ export default function BodyLogDetailScreen() {
                 if (isEmpty) {
                   // Entry is empty, delete it
                   await database.bodyLog.deleteEntry(entryId)
-                  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        hapticSuccess()
                   // Navigate back to body log list
                   if (navigation.canGoBack()) {
                     router.back()
@@ -896,7 +894,7 @@ export default function BodyLogDetailScreen() {
                   setImageUrls([])
                 }
 
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                hapticSuccess()
               }
             } catch (error) {
               console.error('Error deleting photo:', error)
@@ -919,7 +917,7 @@ export default function BodyLogDetailScreen() {
     const alreadyScanned = entry.body_fat_percentage !== null || entry.bmi !== null
     
     if (alreadyScanned && isProMember) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
       Alert.alert(
         'Body Scan Already Completed',
         'This entry has already been analyzed. To run another body scan, please create a new entry.',
@@ -933,7 +931,7 @@ export default function BodyLogDetailScreen() {
     const hasWeight = entry.weight_kg !== null
 
     if (!hasEnoughPhotos || !hasWeight) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
 
       const missing: string[] = []
       if (!hasEnoughPhotos) {
@@ -952,7 +950,7 @@ export default function BodyLogDetailScreen() {
       return
     }
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium') // Mapping heavy to medium for non-intrusive feel
 
     // Start processing modal for both flows
     setProcessingComplete(false)
@@ -1032,7 +1030,7 @@ export default function BodyLogDetailScreen() {
       }
 
       setProcessingComplete(true)
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      hapticSuccess()
     } catch (error) {
       console.error('Error running body scan:', error)
       setShowProcessingModal(false)
@@ -1068,14 +1066,14 @@ export default function BodyLogDetailScreen() {
     })
 
     // Trigger success haptic even for teaser for tactile feedback
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    hapticSuccess()
     // Show the locked results overlay
     setShowTeaserResults(true)
   }
 
   // Handle unlock button press (opens paywall)
   const handleUnlockResults = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setPaywallVisible(true)
   }
 
@@ -1086,7 +1084,7 @@ export default function BodyLogDetailScreen() {
       return
     }
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    haptic('medium')
 
     const imageCount = entry?.images?.length || 0
     const hasWeight = entry?.weight_kg !== null
@@ -1118,9 +1116,7 @@ export default function BodyLogDetailScreen() {
             await database.bodyLog.deleteEntry(entryId)
 
             // Haptic feedback for success
-            await Haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Success,
-            )
+            hapticSuccess()
 
             // Navigate back to body log listing
             if (navigation.canGoBack()) {

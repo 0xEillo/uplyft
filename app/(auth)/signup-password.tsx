@@ -3,9 +3,9 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
@@ -152,7 +152,7 @@ export default function SignupPasswordScreen() {
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium')
     router.back()
   }
 
@@ -231,7 +231,7 @@ export default function SignupPasswordScreen() {
             onPress={handleSignup}
             disabled={!canProceed || isLoading}
             hapticEnabled={canProceed && !isLoading}
-            hapticStyle="heavy"
+            hapticIntensity="medium"
           >
             {isLoading ? (
               <ActivityIndicator color={colors.buttonText} />

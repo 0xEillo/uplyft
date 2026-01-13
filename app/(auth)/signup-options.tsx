@@ -2,10 +2,10 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
@@ -169,7 +169,7 @@ export default function SignupOptionsScreen() {
   }
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    haptic('medium')
     router.back()
   }
 

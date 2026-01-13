@@ -1,8 +1,8 @@
 import { BaseNavbar } from '@/components/base-navbar'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { Stack, useRouter } from 'expo-router'
 import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -12,7 +12,7 @@ export default function TutorialScreen() {
   const router = useRouter()
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     router.back()
   }
 

@@ -1,4 +1,5 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import {
     generateRandomTintColor,
     getRoutineImageUrl,
@@ -7,7 +8,6 @@ import {
     RoutineImage,
 } from '@/lib/utils/routine-images'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { Image } from 'expo-image'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
@@ -73,17 +73,17 @@ export function RoutineImagePickerSheet({
   }
 
   const handleImageSelect = useCallback((imagePath: string | null) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setCurrentImagePath(imagePath)
   }, [])
 
   const handleColorSelect = useCallback((color: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     setCurrentTintColor(color)
   }, [])
 
   const handleConfirm = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    hapticSuccess()
     onSelect(currentImagePath, currentTintColor)
     onClose()
   }, [currentImagePath, currentTintColor, onSelect, onClose])

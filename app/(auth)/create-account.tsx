@@ -2,18 +2,18 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -25,7 +25,7 @@ export default function CreateAccountScreen() {
   const [isAppleLoading, setIsAppleLoading] = useState(false)
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     router.back()
   }
 
@@ -191,7 +191,7 @@ export default function CreateAccountScreen() {
             <HapticButton
               style={styles.emailButton}
               onPress={handleEmailSignup}
-              hapticStyle="medium"
+              hapticIntensity="medium"
             >
               <Text style={styles.emailButtonText}>Sign up with Email</Text>
             </HapticButton>

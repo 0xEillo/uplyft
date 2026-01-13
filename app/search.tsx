@@ -6,25 +6,25 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
-import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Keyboard,
-  Platform,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Platform,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -163,7 +163,7 @@ export default function SearchScreen() {
 
       try {
         setFollowingInProgress((prev) => new Set(prev).add(targetUser.id))
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        haptic('light')
 
         if (targetUser.isFollowing) {
           await database.follows.unfollow(user.id, targetUser.id)
@@ -193,9 +193,7 @@ export default function SearchScreen() {
               }
             }),
           )
-          await Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success,
-          )
+          hapticSuccess()
           return
         }
 
@@ -213,9 +211,7 @@ export default function SearchScreen() {
           ),
         )
 
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        )
+        hapticSuccess()
       } catch (error) {
         console.error('Error toggling follow:', error)
         Alert.alert(
@@ -237,7 +233,7 @@ export default function SearchScreen() {
 
   const handleInvite = useCallback(async () => {
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      haptic('light')
 
       const appStoreLink =
         'https://apps.apple.com/app/rep-ai-workout-tracker/id6753986473'
@@ -256,9 +252,7 @@ export default function SearchScreen() {
 
       if (result.action === Share.sharedAction) {
         trackEvent(AnalyticsEvents.SEARCH_INVITE_SHARED)
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        )
+        hapticSuccess()
       }
     } catch (error) {
       console.error('Error sharing:', error)
@@ -288,7 +282,7 @@ export default function SearchScreen() {
   )
 
   const handleBack = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    haptic('light')
     Keyboard.dismiss()
     setShouldExit(true)
   }, [])
