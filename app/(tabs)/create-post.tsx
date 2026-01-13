@@ -2224,11 +2224,6 @@ const createStyles = (
     chatButton: {
       padding: 6,
       borderRadius: 8,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.6,
-      shadowRadius: 9,
-      elevation: 6,
     },
     divider: {
       height: 1,

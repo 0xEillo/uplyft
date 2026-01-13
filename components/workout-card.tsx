@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Image, ImageSourcePropType, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
@@ -315,15 +315,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     timelineRow: {
       flexDirection: 'row',
-      minHeight: 64, // Ensure enough height for the connector
+      minHeight: 72, // Ensure enough height for 56px node + padding
     },
     timelineColumn: {
-      width: 48,
+      width: 60,
       alignItems: 'center',
     },
     timelineLineTop: {
       width: 2,
-      height: 12, // Short line from top of row to node
+      height: 8, // Short line from top of row to node
       backgroundColor: colors.border,
       opacity: 0.5,
     },
@@ -334,9 +334,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       opacity: 0.5,
     },
     timelineNode: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
+      width: 56,
+      height: 56,
+      borderRadius: 14,
       backgroundColor: colors.background,
       justifyContent: 'center',
       alignItems: 'center',
@@ -357,16 +357,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       paddingLeft: 12,
       paddingBottom: 16, // Space between items
+      paddingTop: 8, // Align content to start at same level as GIF top + small offset for centering
     },
     exerciseItem: {
+      minHeight: 56, // Same as GIF height
       justifyContent: 'center',
-      paddingTop: 10,
     },
     exerciseHeader: {
-      marginBottom: 4,
+      // Removed margin to let parent handle centering
     },
     exerciseHeaderText: {
-       // flex: 1,
+      // Content naturally flows
     },
     exerciseNameRow: {
       flexDirection: 'row',

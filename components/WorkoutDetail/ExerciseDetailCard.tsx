@@ -160,7 +160,7 @@ export function ExerciseDetailCard({
         <ExerciseMedia
           gifUrl={exercise.gif_url}
           mode="thumbnail"
-          style={{ width: 52, height: 52, borderRadius: 12 }}
+          style={{ width: 56, height: 56, borderRadius: 14 }}
           autoPlay={false}
         />
         <Text style={[styles.exerciseName, { color: colors.primary }]}>

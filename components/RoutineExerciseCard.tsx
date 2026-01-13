@@ -3,7 +3,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
     LayoutAnimation,
     Platform,

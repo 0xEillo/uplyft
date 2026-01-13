@@ -16,15 +16,15 @@ import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Dimensions,
-    Keyboard,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -349,7 +349,7 @@ export default function SelectExerciseScreen() {
   // Scroll to top when search results change
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
-  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment, showOnlyMine])
+  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment, showOnlyMine, filteredExercises.length])
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {
@@ -789,9 +789,9 @@ export default function SelectExerciseScreen() {
         <View style={styles.listContainer}>
           <FlashList<Exercise>
             ref={listRef}
-            key={viewMode}
+            key={`${viewMode}-${hasMuscleFilter}-${hasEquipmentFilter}`}
             data={filteredExercises}
-            extraData={[searchQuery, selectedIds.size, isLoading]}
+            extraData={[searchQuery, selectedIds.size, isLoading, selectedMuscleGroups, selectedEquipment, showOnlyMine]}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             numColumns={viewMode === 'grid' ? 2 : 1}
