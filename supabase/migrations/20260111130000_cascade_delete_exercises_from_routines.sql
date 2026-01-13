@@ -18,3 +18,4 @@ alter table public.workout_routine_exercises
   foreign key (exercise_id) references public.exercises(id) on delete cascade;
 
 
+

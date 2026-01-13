@@ -62,9 +62,12 @@ export function formatWorkoutForDisplay(
     return []
   }
 
-  return workout.workout_exercises
+  // Sort by order_index to preserve the original exercise order from the notepad
+  const sortedExercises = [...workout.workout_exercises]
     .filter((we) => we.exercise !== null)
-    .map((we) => {
+    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+
+  return sortedExercises.map((we) => {
       const exercise = we.exercise!
       const sets = we.sets || []
 

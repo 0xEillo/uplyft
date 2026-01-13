@@ -1,6 +1,8 @@
 {
   "lock": false,
   "imports": {
+    "@openrouter/ai-sdk-provider": "npm:@openrouter/ai-sdk-provider",
+    "ai": "npm:ai",
     "zod": "npm:zod@3.23.8"
   }
 }

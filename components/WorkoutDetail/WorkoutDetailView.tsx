@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import type { Href } from 'expo-router'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo, useState, type ReactElement } from 'react'
+import { useMemo, useState, type ReactElement } from 'react'
 
 import {
     ActivityIndicator,
@@ -466,19 +466,22 @@ export function WorkoutDetailView({
               >
                 Workout
               </Text>
-              {workout?.workout_exercises.map((workoutExercise, index) => {
-                const exercisePR = prInfo.find(
-                  (pr) => pr.exerciseName === workoutExercise.exercise?.name,
-                )
-                return (
-                  <ExerciseDetailCard
-                    key={workoutExercise.id || index}
-                    workoutExercise={workoutExercise}
-                    prInfo={exercisePR}
-                    onExercisePress={onExercisePress}
-                  />
-                )
-              })}
+              {/* Sort exercises by order_index to preserve original order */}
+              {[...(workout?.workout_exercises || [])]
+                .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+                .map((workoutExercise, index) => {
+                  const exercisePR = prInfo.find(
+                    (pr) => pr.exerciseName === workoutExercise.exercise?.name,
+                  )
+                  return (
+                    <ExerciseDetailCard
+                      key={workoutExercise.id || index}
+                      workoutExercise={workoutExercise}
+                      prInfo={exercisePR}
+                      onExercisePress={onExercisePress}
+                    />
+                  )
+                })}
             </View>
           </ScrollView>
         ) : null}

@@ -4,16 +4,19 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 // @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
 // eslint-disable-next-line import/no-unresolved
-import OpenAI from 'https://esm.sh/openai@4.55.3'
-// @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
-// eslint-disable-next-line import/no-unresolved
 import { z } from 'https://esm.sh/zod@3.23.8'
+import { generateObject } from 'npm:ai'
 
 import {
-  buildBodyLogPrompt,
-  parseBodyLogMetrics,
+    buildBodyLogPrompt,
+    parseBodyLogMetrics,
 } from '../_shared/body-log-analysis.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
+import {
+    GEMINI_FALLBACK_MODEL,
+    GEMINI_MODEL,
+    openrouter,
+} from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
@@ -21,43 +24,65 @@ const REQUEST_SCHEMA = z.object({
   entryId: z.string().min(1),
 })
 
-const BODY_LOG_RESPONSE_FORMAT = {
-  type: 'json_schema' as const,
-  json_schema: {
-    name: 'BodyLogAnalysis',
-    schema: {
-      type: 'object',
-      additionalProperties: false,
-      required: [
-        'body_fat_percentage',
-        'bmi',
-        'score_v_taper',
-        'score_chest',
-        'score_shoulders',
-        'score_abs',
-        'score_arms',
-        'score_back',
-        'score_legs',
-        'analysis_summary',
-      ],
-      properties: {
-        body_fat_percentage: { type: ['number', 'null'] },
-        bmi: { type: ['number', 'null'] },
-        score_v_taper: { type: ['number', 'null'] },
-        score_chest: { type: ['number', 'null'] },
-        score_shoulders: { type: ['number', 'null'] },
-        score_abs: { type: ['number', 'null'] },
-        score_arms: { type: ['number', 'null'] },
-        score_back: { type: ['number', 'null'] },
-        score_legs: { type: ['number', 'null'] },
-        analysis_summary: {
-          type: 'string',
-          minLength: 8,
-          maxLength: 400,
+// Timeout for AI analysis
+const ANALYZE_TIMEOUT_MS = 45000
+
+// Schema for body log analysis response
+const bodyLogAnalysisSchema = z.object({
+  body_fat_percentage: z.number().nullable().describe('Estimated body fat percentage'),
+  bmi: z.number().nullable().describe('Estimated BMI'),
+  score_v_taper: z.number().int().min(0).max(100).nullable().describe('V-taper score out of 100'),
+  score_chest: z.number().int().min(0).max(100).nullable().describe('Chest development score out of 100'),
+  score_shoulders: z.number().int().min(0).max(100).nullable().describe('Shoulder development score out of 100'),
+  score_abs: z.number().int().min(0).max(100).nullable().describe('Abs definition score out of 100'),
+  score_arms: z.number().int().min(0).max(100).nullable().describe('Arm development score out of 100'),
+  score_back: z.number().int().min(0).max(100).nullable().describe('Back development score out of 100'),
+  score_legs: z.number().int().min(0).max(100).nullable().describe('Leg development score out of 100'),
+  analysis_summary: z.string().max(400).describe('Brief 1-2 line analysis summary addressing the user directly'),
+})
+
+async function analyzeWithModel(
+  modelName: string,
+  systemPrompt: string,
+  userContent: any[],
+): Promise<z.infer<typeof bodyLogAnalysisSchema>> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    console.error(`[BODY_LOG] AI call (${modelName}) timed out after ${ANALYZE_TIMEOUT_MS}ms`)
+    controller.abort()
+  }, ANALYZE_TIMEOUT_MS)
+
+  const startTime = Date.now()
+
+  try {
+    console.log(`[BODY_LOG] Trying ${modelName}, timeout: ${ANALYZE_TIMEOUT_MS}ms`)
+
+    const model = openrouter.chat(modelName)
+    
+    const result = await generateObject({
+      model,
+      schema: bodyLogAnalysisSchema,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
         },
-      },
-    },
-  },
+        {
+          role: 'user',
+          content: userContent,
+        },
+      ],
+      abortSignal: controller.signal,
+    })
+
+    const elapsed = Date.now() - startTime
+    console.log(`[BODY_LOG] ${modelName} succeeded in ${elapsed}ms`)
+    console.log(`[BODY_LOG] Response usage: ${JSON.stringify(result.usage ?? 'N/A')}`)
+    
+    return result.object
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 serve(async (req: Request) => {
@@ -69,16 +94,6 @@ serve(async (req: Request) => {
   }
 
   try {
-    const apiKey =
-      'Deno' in globalThis
-        ? (globalThis as typeof globalThis & {
-            Deno: { env: { get(key: string): string | undefined } }
-          }).Deno.env.get('OPENAI_API_KEY')
-        : undefined
-    if (!apiKey) {
-      throw new Error('Missing OPENAI_API_KEY environment variable')
-    }
-
     const bearer = req.headers.get('Authorization')
     const accessToken = bearer?.startsWith('Bearer ')
       ? bearer.slice('Bearer '.length).trim()
@@ -140,26 +155,41 @@ serve(async (req: Request) => {
       return errorResponse(404, 'No images found for this entry')
     }
 
-    // Generate signed URLs for all images
-    // We use a longer expiry (5 minutes) to ensure OpenAI has time to process them
-    const signedUrls = await Promise.all(
-      images.map(async (img: any) => {
-        const { data, error } = await serviceClient.storage
-          .from(BODY_LOG_BUCKET)
-          .createSignedUrl(img.file_path, 300)
+    // Download and convert images to base64
+    const imageContents: { base64: string; mimeType: string }[] = []
+    
+    for (const img of images) {
+      const { data: fileData, error: downloadError } = await serviceClient.storage
+        .from(BODY_LOG_BUCKET)
+        .download(img.file_path)
 
-        if (error || !data?.signedUrl) {
-          throw new Error(
-            `Failed to create signed URL for ${img.file_path}: ${
-              error?.message || 'Unknown error'
-            }`,
-          )
-        }
-        return data.signedUrl
-      }),
-    )
+      if (downloadError || !fileData) {
+        console.error(`[BODY_LOG] Failed to download ${img.file_path}:`, downloadError)
+        throw new Error(`Failed to download image: ${img.file_path}`)
+      }
 
-    const openai = new OpenAI({ apiKey })
+      // Convert blob to base64
+      const arrayBuffer = await fileData.arrayBuffer()
+      const byteArray = new Uint8Array(arrayBuffer)
+      let binaryString = ''
+      for (let i = 0; i < byteArray.length; i++) {
+        binaryString += String.fromCharCode(byteArray[i])
+      }
+      const base64 = btoa(binaryString)
+
+      // Determine mime type from file extension
+      const ext = img.file_path.split('.').pop()?.toLowerCase() || 'jpeg'
+      const mimeTypeMap: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+      }
+      const mimeType = mimeTypeMap[ext] || 'image/jpeg'
+
+      imageContents.push({ base64, mimeType })
+    }
 
     // Build the system prompt with user context
     let systemPrompt = buildBodyLogPrompt({
@@ -171,56 +201,51 @@ serve(async (req: Request) => {
     })
 
     // Add multi-image instruction if applicable
-    if (signedUrls.length > 1) {
+    if (imageContents.length > 1) {
       systemPrompt +=
         '\n\nIMPORTANT: You are analyzing MULTIPLE photos of the same person from different angles. Combine information from all photos to provide a SINGLE, more accurate assessment. Use triangulation between photos to improve accuracy of body fat %, BMI, and weight estimates.'
     }
 
-    // Build user message with all images
+    // Build user message with all images (using base64 data URLs)
     const userContent: any[] = [
       {
         type: 'text',
         text:
-          signedUrls.length > 1
+          imageContents.length > 1
             ? 'Analyze these body composition photos from multiple angles and return combined JSON metrics.'
             : 'Analyze this body composition photo and return JSON metrics.',
       },
     ]
 
-    // Add all images to the message
-    for (const url of signedUrls) {
+    // Add all images to the message as data URLs
+    for (const { base64, mimeType } of imageContents) {
       userContent.push({
-        type: 'image_url',
-        image_url: {
-          url: url,
-          detail: 'high',
-        },
+        type: 'image',
+        image: `data:${mimeType};base64,${base64}`,
       })
     }
 
-    // Analyze with GPT-4o Mini Vision
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: userContent,
-        },
-      ],
-      max_completion_tokens: 400,
-      response_format: BODY_LOG_RESPONSE_FORMAT,
-    })
+    // Analyze with Gemini via OpenRouter (with fallback)
+    let analysisResult: z.infer<typeof bodyLogAnalysisSchema>
+    
+    try {
+      analysisResult = await analyzeWithModel(GEMINI_MODEL, systemPrompt, userContent)
+    } catch (primaryError) {
+      console.error(`[BODY_LOG] ${GEMINI_MODEL} failed:`, primaryError)
+      
+      // Try fallback model
+      console.log(`[BODY_LOG] Falling back to ${GEMINI_FALLBACK_MODEL}...`)
+      
+      try {
+        analysisResult = await analyzeWithModel(GEMINI_FALLBACK_MODEL, systemPrompt, userContent)
+      } catch (fallbackError) {
+        console.error(`[BODY_LOG] ${GEMINI_FALLBACK_MODEL} also failed:`, fallbackError)
+        throw new Error('Failed to analyze body log images')
+      }
+    }
 
-    const content = completion.choices[0]?.message?.content
-
-
-    // Parse the metrics from the response
-    const metrics = parseBodyLogMetrics(content)
-
+    // Parse the metrics using the shared parser for consistency
+    const metrics = parseBodyLogMetrics(JSON.stringify(analysisResult))
 
     // Calculate lean mass and fat mass if possible
     const weight =
@@ -249,7 +274,6 @@ serve(async (req: Request) => {
       lean_mass_kg: leanMass,
       fat_mass_kg: fatMass,
     }
-
 
     // Update entry metrics
     const { data: updated, error: updateError } = await supabase
