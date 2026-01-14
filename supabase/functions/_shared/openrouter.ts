@@ -1,4 +1,4 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { createOpenRouter } from 'npm:@openrouter/ai-sdk-provider'
 
 // OpenRouter model identifiers
 export const GEMINI_MODEL = 'google/gemini-3-flash-preview'
