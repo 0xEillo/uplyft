@@ -14,34 +14,32 @@ import {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
-interface SubmitSuccessOverlayProps {
+interface StreakOverlayProps {
   visible: boolean
   onAnimationComplete?: () => void
-  workoutNumber?: number
-  weeklyTarget?: number
   currentStreak?: number
+  previousStreak?: number
 }
 
 /**
- * Premium celebration overlay that appears when submitting a workout.
- * Shows achievement stats with a mini calendar week view.
- * Strava-like minimal design with smooth staggered animations.
+ * Premium streak celebration overlay that appears when the streak increases.
+ * Inspired by the calendar page's streak hero design.
+ * Features a large streak number with flame icon and motivational message.
  */
-function SubmitSuccessOverlayComponent({
+function StreakOverlayComponent({
   visible,
   onAnimationComplete,
-  workoutNumber = 1,
-  weeklyTarget = 2,
   currentStreak = 0,
-}: SubmitSuccessOverlayProps) {
+  previousStreak = 0,
+}: StreakOverlayProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const numberSlideAnim = useRef(new Animated.Value(20)).current
-  const statsSlideAnim = useRef(new Animated.Value(20)).current
-  const weekSlideAnim = useRef(new Animated.Value(20)).current
+  const streakNumberScale = useRef(new Animated.Value(0)).current
+  const flameAnim = useRef(new Animated.Value(0)).current
+  const messageAnim = useRef(new Animated.Value(20)).current
   const latestFadeValue = useRef(0)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -50,67 +48,63 @@ function SubmitSuccessOverlayComponent({
       // Reset animations
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
-      numberSlideAnim.setValue(20)
-      statsSlideAnim.setValue(20)
-      weekSlideAnim.setValue(20)
+      streakNumberScale.setValue(0)
+      flameAnim.setValue(0)
+      messageAnim.setValue(20)
 
-      // Main card fade in + scale up
+      // Main overlay fade in
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 500,
+          duration: 400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scaleAnim, {
           toValue: 1,
-          duration: 500,
+          duration: 400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start()
 
-      // Staggered animations for content
+      // Streak number springs in with bounce
       setTimeout(() => {
-        // Workout number slides up + fades in
-        Animated.timing(numberSlideAnim, {
+        Animated.spring(streakNumberScale, {
+          toValue: 1,
+          tension: 120,
+          friction: 8,
+          useNativeDriver: true,
+        }).start()
+      }, 200)
+
+      // Flame icon appears with spring
+      setTimeout(() => {
+        Animated.spring(flameAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 6,
+          useNativeDriver: true,
+        }).start()
+      }, 350)
+
+      // Message slides up
+      setTimeout(() => {
+        Animated.timing(messageAnim, {
           toValue: 0,
           duration: 400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }).start()
-      }, 150)
-
-      setTimeout(() => {
-        // Stats row slides up + fades in
-        Animated.timing(statsSlideAnim, {
-          toValue: 0,
-          duration: 400,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }).start()
-      }, 300)
-
-      setTimeout(() => {
-        // Week preview slides up + fades in
-        Animated.timing(weekSlideAnim, {
-          toValue: 0,
-          duration: 400,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }).start()
-      }, 450)
-
-      // Wait for workout to post, then auto-close
-      // Don't set a timer - wait for workoutPosted prop to trigger close
+      }, 500)
     } else {
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
-      numberSlideAnim.setValue(20)
-      statsSlideAnim.setValue(20)
-      weekSlideAnim.setValue(20)
+      streakNumberScale.setValue(0)
+      flameAnim.setValue(0)
+      messageAnim.setValue(20)
     }
-  }, [visible, fadeAnim, scaleAnim, numberSlideAnim, statsSlideAnim, weekSlideAnim, onAnimationComplete])
+  }, [visible, fadeAnim, scaleAnim, streakNumberScale, flameAnim, messageAnim])
 
   useEffect(() => {
     const id = fadeAnim.addListener(({ value }) => {
@@ -119,33 +113,27 @@ function SubmitSuccessOverlayComponent({
     const timeoutId = timeoutRef.current
     return () => {
       fadeAnim.removeListener(id)
-      // Clean up timeout on unmount
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
     }
   }, [fadeAnim])
 
-  // Note: Overlay stays open indefinitely until user closes it or parent calls onAnimationComplete
-  // The parent component (_layout.tsx) handles closing when workoutPosted becomes true
-
   const handleClose = () => {
-    // Clear the auto-dismiss timeout if it's still pending
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
     }
 
-    // Trigger fade out animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 500,
+        duration: 400,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.8,
-        duration: 500,
+        duration: 400,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -159,23 +147,17 @@ function SubmitSuccessOverlayComponent({
   }
 
   const styles = createStyles(colors)
-  const goalReached = workoutNumber >= weeklyTarget
 
-  // Generate week days for mini calendar
-  const weekDays = []
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const weekStart = new Date(today)
-  weekStart.setDate(today.getDate() - dayOfWeek)
-
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(weekStart)
-    date.setDate(weekStart.getDate() + i)
-    weekDays.push({
-      day: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][i],
-      date: date.toISOString().split('T')[0],
-      isToday: date.toDateString() === today.toDateString(),
-    })
+  // Generate motivational message based on streak
+  const getStreakMessage = () => {
+    if (currentStreak >= 52) return "Legendary! A full year of consistency! 🏆"
+    if (currentStreak >= 26) return "Half a year strong! Unstoppable! 🔥"
+    if (currentStreak >= 12) return "3 months of fire! You're on a roll! 💪"
+    if (currentStreak >= 8) return "2 months in! Keep crushing it! 🚀"
+    if (currentStreak >= 4) return "A month of momentum! Amazing! ⚡"
+    if (currentStreak >= 3) return "3 weeks and counting! 🎯"
+    if (currentStreak >= 2) return "2 week streak! Building habits! 💫"
+    return "Streak started! Here we go! 🌟"
   }
 
   return (
@@ -185,8 +167,8 @@ function SubmitSuccessOverlayComponent({
         {
           opacity: fadeAnim,
           backgroundColor: isDark
-            ? 'rgba(18, 18, 18, 0.95)'
-            : 'rgba(255, 255, 255, 0.95)',
+            ? 'rgba(18, 18, 18, 0.97)'
+            : 'rgba(255, 255, 255, 0.97)',
         },
       ]}
       pointerEvents="box-none"
@@ -199,7 +181,7 @@ function SubmitSuccessOverlayComponent({
           },
         ]}
       >
-        {/* Header with Close Button (tick icon) */}
+        {/* Close Button */}
         <View style={styles.header}>
           <View style={styles.headerSpacer} />
           <Pressable
@@ -214,137 +196,83 @@ function SubmitSuccessOverlayComponent({
           </Pressable>
         </View>
 
-        {/* Workout Number Section */}
-        <Animated.View
-          style={[
-            styles.numberSection,
-            {
-              opacity: numberSlideAnim.interpolate({
-                inputRange: [0, 20],
-                outputRange: [1, 0],
-              }),
-              transform: [
-                {
-                  translateY: numberSlideAnim,
-                },
-              ],
-            },
-          ]}
-        >
-          <Text style={styles.workoutNumberText}>
-            {workoutNumber}
-            {workoutNumber === 1
-              ? 'st'
-              : workoutNumber === 2
-              ? 'nd'
-              : workoutNumber === 3
-              ? 'rd'
-              : 'th'}
-          </Text>
-          <Text style={styles.workoutLabel}>Workout This Week</Text>
-        </Animated.View>
-
-        {/* Stats Row */}
-        <Animated.View
-          style={[
-            styles.statsRow,
-            {
-              opacity: statsSlideAnim.interpolate({
-                inputRange: [0, 20],
-                outputRange: [1, 0],
-              }),
-              transform: [
-                {
-                  translateY: statsSlideAnim,
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Streak</Text>
-            <Text style={styles.statValue}>
-              {currentStreak > 0 ? `${currentStreak} wk` : '0 wk'}
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Weekly Goal</Text>
-            <View style={styles.goalContainer}>
-              <Text style={styles.statValue}>
-                {workoutNumber}/{weeklyTarget}
-              </Text>
-              {goalReached && (
-                <View style={styles.achievementBadge}>
-                  <Ionicons name="checkmark" size={12} color={colors.primary} />
-                </View>
-              )}
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Week Preview */}
-        <Animated.View
-          style={[
-            styles.weekPreview,
-            {
-              opacity: weekSlideAnim.interpolate({
-                inputRange: [0, 20],
-                outputRange: [1, 0],
-              }),
-              transform: [
-                {
-                  translateY: weekSlideAnim,
-                },
-              ],
-            },
-          ]}
-        >
-          <Text style={styles.weekLabel}>This Week</Text>
-          <View style={styles.weekDays}>
-            {weekDays.map((day, index) => (
-              <View key={index} style={styles.weekDayCell}>
-                <Text style={styles.weekDayLabel}>{day.day}</Text>
-                <View
-                  style={[
-                    styles.weekDayDot,
-                    day.isToday && {
-                      backgroundColor: colors.primary,
-                      borderWidth: 2,
-                      borderColor: colors.primary,
-                    },
-                  ]}
-                />
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-
-        {/* Goal Achievement Message */}
-        {goalReached && (
+        {/* Streak Number + Flame Container */}
+        <View style={styles.streakContainer}>
           <Animated.View
             style={[
-              styles.achievementMessage,
+              styles.streakNumberWrapper,
               {
-                opacity: statsSlideAnim.interpolate({
-                  inputRange: [0, 20],
-                  outputRange: [1, 0],
-                }),
+                transform: [{ scale: streakNumberScale }],
               },
             ]}
           >
-            <Text style={styles.achievementText}>Keep it up! 🔥</Text>
+            <Text style={styles.streakNumber}>{currentStreak}</Text>
+            <Text style={styles.streakUnit}>week{currentStreak !== 1 ? 's' : ''}</Text>
           </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.flameWrapper,
+              {
+                transform: [
+                  {
+                    scale: flameAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 1],
+                    }),
+                  },
+                  {
+                    rotate: flameAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: ['0deg', '-10deg', '0deg'],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Ionicons
+              name="flame"
+              size={80}
+              color="#FF5500"
+              style={styles.flameIcon}
+            />
+          </Animated.View>
+        </View>
+
+        {/* Streak Label */}
+        <Text style={styles.streakLabel}>STREAK!</Text>
+
+        {/* Previous → Current */}
+        {previousStreak > 0 && (
+          <View style={styles.progressRow}>
+            <Text style={styles.progressText}>
+              {previousStreak} → {currentStreak} weeks
+            </Text>
+          </View>
         )}
+
+        {/* Motivational Message */}
+        <Animated.View
+          style={[
+            styles.messageContainer,
+            {
+              opacity: messageAnim.interpolate({
+                inputRange: [0, 20],
+                outputRange: [1, 0],
+              }),
+              transform: [{ translateY: messageAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.messageText}>{getStreakMessage()}</Text>
+        </Animated.View>
       </Animated.View>
     </Animated.View>
   )
 }
 
-// Memoize to prevent re-renders from parent state changes
-export const SubmitSuccessOverlay = memo(SubmitSuccessOverlayComponent)
+export const SubmitSuccessOverlay = memo(StreakOverlayComponent)
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
@@ -361,21 +289,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     card: {
       backgroundColor: colors.feedCardBackground,
       borderRadius: 28,
-      paddingHorizontal: 24,
-      paddingVertical: 28,
+      paddingHorizontal: 32,
+      paddingVertical: 36,
       width: '85%',
       maxWidth: 360,
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.15,
-      shadowRadius: 24,
-      elevation: 12,
+      shadowOffset: { width: 0, height: 16 },
+      shadowOpacity: 0.2,
+      shadowRadius: 32,
+      elevation: 16,
+      alignItems: 'center',
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 20,
+      width: '100%',
+      marginBottom: 16,
     },
     iconCircle: {
       width: 48,
@@ -388,108 +318,70 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 48,
       height: 48,
     },
-    numberSection: {
-      alignItems: 'center',
-      marginBottom: 20,
-      gap: 4,
+    streakContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      marginBottom: 8,
     },
-    workoutNumberText: {
-      fontSize: 48,
+    streakNumberWrapper: {
+      alignItems: 'flex-end',
+    },
+    streakNumber: {
+      fontSize: 96,
+      fontWeight: '800',
+      color: colors.text,
+      lineHeight: 96,
+      letterSpacing: -4,
+      includeFontPadding: false,
+    },
+    streakUnit: {
+      fontSize: 18,
       fontWeight: '700',
-      color: colors.primary,
-      lineHeight: 52,
-    },
-    workoutLabel: {
-      fontSize: 13,
-      fontWeight: '600',
       color: colors.textSecondary,
-      marginTop: 2,
+      marginTop: -8,
+      letterSpacing: -0.5,
     },
-    statsRow: {
+    flameWrapper: {
+      marginLeft: 4,
+      marginTop: 8,
+    },
+    flameIcon: {
+      textShadowColor: 'rgba(255, 85, 0, 0.4)',
+      textShadowOffset: { width: 0, height: 6 },
+      textShadowRadius: 16,
+    },
+    streakLabel: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: '#FF5500',
+      letterSpacing: 3,
+      marginTop: 4,
+      marginBottom: 12,
+    },
+    progressRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingVertical: 16,
-      paddingHorizontal: 12,
+      justifyContent: 'center',
       backgroundColor: colors.backgroundLight,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
       borderRadius: 12,
       marginBottom: 16,
-      gap: 12,
     },
-    statItem: {
-      flex: 1,
-      alignItems: 'center',
-      gap: 4,
-    },
-    statLabel: {
-      fontSize: 11,
-      fontWeight: '500',
+    progressText: {
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
     },
-    statValue: {
-      fontSize: 16,
-      fontWeight: '700',
+    messageContainer: {
+      marginTop: 4,
+    },
+    messageText: {
+      fontSize: 17,
+      fontWeight: '600',
       color: colors.text,
-    },
-    divider: {
-      width: 1,
-      height: 24,
-      backgroundColor: colors.border,
-    },
-    goalContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    achievementBadge: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    weekPreview: {
-      gap: 10,
-    },
-    weekLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    weekDays: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: 6,
-    },
-    weekDayCell: {
-      flex: 1,
-      alignItems: 'center',
-      gap: 6,
-    },
-    weekDayLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    weekDayDot: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: colors.backgroundLight,
-    },
-    achievementMessage: {
-      marginTop: 12,
-      paddingVertical: 8,
-      alignItems: 'center',
-    },
-    achievementText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.primary,
+      textAlign: 'center',
+      lineHeight: 24,
     },
   })

@@ -6,12 +6,15 @@ interface SuccessOverlayData {
   workoutNumber: number
   weeklyTarget: number
   currentStreak?: number
+  previousStreak?: number // Track previous streak to detect milestone
+  streakMilestone?: boolean // True when streak increased (e.g., 2 weeks -> 3 weeks)
   workout?: WorkoutSessionWithDetails
   workoutTitle?: string
 }
 
 interface SuccessOverlayContextType {
   showOverlay: (data: SuccessOverlayData) => void
+  showStreakOverlay: (data: SuccessOverlayData) => void // Only show if streak milestone
   hideOverlay: () => void
   updateWorkoutData: (workout: WorkoutSessionWithDetails) => void
   isVisible: boolean
@@ -50,6 +53,29 @@ export function SuccessOverlayProvider({
     setShowShareScreen(false)
   }
 
+  // Only show overlay if it's a streak milestone (streak increased)
+  const showStreakOverlay = (overlayData: SuccessOverlayData) => {
+    // Check if streak increased (e.g., 2 weeks -> 3 weeks)
+    const previousStreak = overlayData.previousStreak ?? 0
+    const currentStreak = overlayData.currentStreak ?? 0
+    const isStreakMilestone = currentStreak > previousStreak && currentStreak > 0
+
+    if (isStreakMilestone) {
+      setData({ ...overlayData, streakMilestone: true })
+      setIsVisible(true)
+      setOverlayHasShown(true)
+      // Reset workout posted flag and share screen state when showing new overlay
+      setWorkoutPosted(false)
+      setShowShareScreen(false)
+    } else {
+      // No streak milestone - just mark as shown so share screen can proceed
+      setData(overlayData)
+      setOverlayHasShown(true)
+      setWorkoutPosted(false)
+      setShowShareScreen(false)
+    }
+  }
+
   const hideOverlay = () => {
     setIsVisible(false)
     // Mark that the overlay animation has completed
@@ -72,6 +98,7 @@ export function SuccessOverlayProvider({
     <SuccessOverlayContext.Provider
       value={{
         showOverlay,
+        showStreakOverlay,
         hideOverlay,
         updateWorkoutData,
         isVisible,

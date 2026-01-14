@@ -306,7 +306,7 @@ export default function CreatePostScreen() {
   // =============================================================================
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
 
-  const { showOverlay } = useSuccessOverlay()
+  const { showStreakOverlay } = useSuccessOverlay()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
@@ -668,67 +668,6 @@ export default function CreatePostScreen() {
   // Use routine selection hook for navigation-based routine selection
   const { registerCallback: registerRoutineCallback } = useRoutineSelection()
 
-  // Handle screen focus and blur keyboard
-  useFocusEffect(
-    useCallback(() => {
-      setSlideKey((prev) => prev + 1)
-      setShouldExit(false)
-
-      haptic('light')
-
-      blurInputs()
-
-      trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
-        mode: 'text',
-        hasDraft: Boolean(notesRef.current.trim()),
-        hasTitle: Boolean(titleRef.current.trim()),
-      })
-
-      const timeoutId = setTimeout(() => {
-        blurInputs()
-      }, 0)
-
-      const interactionHandle = InteractionManager.runAfterInteractions(() => {
-        blurInputs()
-      })
-
-      const randomExample =
-        EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
-      setExampleWorkout(randomExample)
-
-      const loadWorkoutCount = async () => {
-        try {
-          if (user?.id) {
-            const workouts = await database.workoutSessions.getRecent(
-              user.id,
-              1,
-            )
-            setUserWorkoutCount(workouts.length)
-          }
-        } catch (error) {
-          console.error('Error loading workout count:', error)
-        }
-      }
-      loadWorkoutCount()
-
-      loadRoutinesAndExercises()
-
-      return () => {
-        clearTimeout(timeoutId)
-        if (interactionHandle) {
-          interactionHandle.cancel?.()
-        }
-      }
-    }, [blurInputs, trackEvent, user, loadRoutinesAndExercises]),
-  )
-
-  // Blur inputs when component unmounts
-  useEffect(() => {
-    return () => {
-      blurInputs()
-    }
-  }, [blurInputs])
-
   const hydrateDraft = useCallback(async () => {
     isHydratingRef.current = true
     try {
@@ -793,6 +732,70 @@ export default function CreatePostScreen() {
       isHydratingRef.current = false
     }
   }, [hydrateWorkoutTimer, resetWorkoutTimer, selectedRoutineId])
+
+  // Handle screen focus and blur keyboard
+  useFocusEffect(
+    useCallback(() => {
+      setSlideKey((prev) => prev + 1)
+      setShouldExit(false)
+
+      haptic('light')
+
+      blurInputs()
+
+      // Reload draft when screen is focused (handles case where draft was saved after failure)
+      hydrateDraft()
+
+      trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
+        mode: 'text',
+        hasDraft: Boolean(notesRef.current.trim()),
+        hasTitle: Boolean(titleRef.current.trim()),
+      })
+
+      const timeoutId = setTimeout(() => {
+        blurInputs()
+      }, 0)
+
+      const interactionHandle = InteractionManager.runAfterInteractions(() => {
+        blurInputs()
+      })
+
+      const randomExample =
+        EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
+      setExampleWorkout(randomExample)
+
+      const loadWorkoutCount = async () => {
+        try {
+          if (user?.id) {
+            const workouts = await database.workoutSessions.getRecent(
+              user.id,
+              1,
+            )
+            setUserWorkoutCount(workouts.length)
+          }
+        } catch (error) {
+          console.error('Error loading workout count:', error)
+        }
+      }
+      loadWorkoutCount()
+
+      loadRoutinesAndExercises()
+
+      return () => {
+        clearTimeout(timeoutId)
+        if (interactionHandle) {
+          interactionHandle.cancel?.()
+        }
+      }
+    }, [blurInputs, trackEvent, user, loadRoutinesAndExercises, hydrateDraft]),
+  )
+
+  // Blur inputs when component unmounts
+  useEffect(() => {
+    return () => {
+      blurInputs()
+    }
+  }, [blurInputs])
 
   // Load saved draft on mount or when refresh param changes
   useEffect(() => {
@@ -990,6 +993,7 @@ export default function CreatePostScreen() {
       let workoutNumber = 1
       let weeklyTarget = 2
       let currentStreak = 0
+      let previousStreak = 0
 
       try {
         const profile = await database.profiles.getById(user.id)
@@ -1007,13 +1011,21 @@ export default function CreatePostScreen() {
 
         weeklyTarget = parseCommitment(profile.commitment?.[0] ?? null)
 
-        // Fetch current streak (includeCurrentWeek=true since we're submitting a workout now)
-        const streakResult = await database.stats.calculateStreak(
+        // Get previous streak (before this workout - NOT including current week)
+        const previousStreakResult = await database.stats.calculateStreak(
+          user.id,
+          weeklyTarget,
+          false, // Don't include current week - this is the streak before submission
+        )
+        previousStreak = previousStreakResult.currentStreak ?? 0
+
+        // Get current streak (after this workout - including current week)
+        const currentStreakResult = await database.stats.calculateStreak(
           user.id,
           weeklyTarget,
           true, // Include current week since workout is being submitted
         )
-        currentStreak = streakResult.currentStreak ?? 0
+        currentStreak = currentStreakResult.currentStreak ?? 0
 
         message = generateWorkoutMessage({
           workoutNumber,
@@ -1043,12 +1055,13 @@ export default function CreatePostScreen() {
       setFinalizeDescription('')
       blurInputs()
 
-      // Store title for later use in share screen
-      showOverlay({
+      // Show streak overlay only if the streak increased (e.g., 2 weeks -> 3 weeks)
+      showStreakOverlay({
         message,
         workoutNumber,
         weeklyTarget,
         currentStreak,
+        previousStreak,
         workoutTitle: trimmedTitle || undefined,
       })
       router.replace('/(tabs)')
@@ -1061,7 +1074,7 @@ export default function CreatePostScreen() {
       queueWorkout,
       trackEvent,
       blurInputs,
-      showOverlay,
+      showStreakOverlay,
       refreshFreemiumLimits,
       getWorkoutElapsedSeconds,
       resetWorkoutTimer,
