@@ -15,14 +15,18 @@ import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -36,6 +40,7 @@ export default function ProgramDetailScreen() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { width: windowWidth } = useWindowDimensions()
 
   const [program, setProgram] = useState<ExploreProgramWithRoutines | null>(
     null,
@@ -44,8 +49,27 @@ export default function ProgramDetailScreen() {
   const [isSaving, setIsSaving] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [activeRoutineIndex, setActiveRoutineIndex] = useState(0)
 
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
+  // Carousel dimensions - show peek of next card
+  const CARD_MARGIN = 16
+  const PEEK_WIDTH = 24
+  const CARD_WIDTH = windowWidth - CARD_MARGIN * 2 - PEEK_WIDTH
+  const CARD_SPACING = 12
+
+  const flatListRef = useRef<FlatList<ExploreRoutine>>(null)
+
+  const handleRoutineScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const offsetX = event.nativeEvent.contentOffset.x
+    const index = Math.round(offsetX / (CARD_WIDTH + CARD_SPACING))
+    if (index !== activeRoutineIndex && program?.routines) {
+      setActiveRoutineIndex(Math.min(index, program.routines.length - 1))
+    }
+  }
+
+  const styles = useMemo(() => createStyles(colors, isDark, CARD_WIDTH), [colors, isDark, CARD_WIDTH])
 
   const getRoutineImage = (routine: ExploreRoutine) => {
     // If the database already has a full URL, use it
@@ -91,6 +115,39 @@ export default function ProgramDetailScreen() {
       Alert.alert('Error', 'Failed to save program')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  // Track which routines have been saved
+  const [savedRoutineIds, setSavedRoutineIds] = useState<Set<string>>(new Set())
+  const [savingRoutineId, setSavingRoutineId] = useState<string | null>(null)
+
+  const handleSaveRoutine = async (routineId: string, routineName: string) => {
+    if (!user) return
+    
+    // Check if user is pro member
+    if (!isProMember) {
+      setShowPaywall(true)
+      return
+    }
+
+    // Already saved
+    if (savedRoutineIds.has(routineId)) {
+      Alert.alert('Already Saved', `"${routineName}" is already in your routines.`)
+      return
+    }
+
+    try {
+      setSavingRoutineId(routineId)
+      await database.explore.saveRoutineToUser(routineId, user.id)
+      hapticSuccess()
+      setSavedRoutineIds(prev => new Set(prev).add(routineId))
+      Alert.alert('Saved!', `"${routineName}" has been added to your routines.`)
+    } catch (error) {
+      console.error('Error saving routine:', error)
+      Alert.alert('Error', 'Failed to save routine. Please try again.')
+    } finally {
+      setSavingRoutineId(null)
     }
   }
 
@@ -156,11 +213,7 @@ export default function ProgramDetailScreen() {
               <Text style={styles.headerTitle}>Program</Text>
             </NavbarIsland>
           }
-          rightContent={
-            <TouchableOpacity style={styles.shareButton}>
-              <Ionicons name="share-outline" size={24} color={colors.text} />
-            </TouchableOpacity>
-          }
+          rightContent={<View style={{ width: 44 }} />}
         />
 
         <ScrollView
@@ -248,113 +301,172 @@ export default function ProgramDetailScreen() {
             </View>
           </View>
 
-          {/* Routines List - Show all but with locked exercise details for non-pro */}
+          {/* Routines Carousel - Swipeable horizontal cards */}
           <View style={styles.routinesSection}>
-            <Text style={styles.sectionTitle}>Routines</Text>
-            {program.routines.map((routine) => (
-              <View key={routine.id} style={styles.routineItem}>
-                <View style={styles.routineCardPreview}>
-                  <Image
-                    source={getRoutineImage(routine)}
-                    style={styles.routinePreviewImage}
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                    transition={200}
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.7)']}
-                    style={styles.routinePreviewOverlay}
-                  />
-                  <View style={styles.routinePreviewContent}>
-                    <Text style={styles.routinePreviewName}>
-                      {routine.name}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={styles.routineDescription}>
-                  {routine.description}
-                </Text>
-
-                {/* Exercises List - locked for non-pro */}
-                <View style={styles.exerciseList}>
-                  {routine.exercises?.map((exItem) => (
-                    <View key={exItem.id} style={styles.exerciseRow}>
-                      <View style={styles.exerciseImageContainer}>
-                        {exItem.exercise?.gif_url ? (
-                          <ExerciseMediaThumbnail
-                            gifUrl={exItem.exercise.gif_url}
-                            style={{ width: '100%', height: '100%' }}
-                          />
-                        ) : (
-                          <View style={styles.exercisePlaceholder}>
-                            <Ionicons
-                              name="barbell"
-                              size={20}
-                              color={colors.textSecondary}
-                            />
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.exerciseInfo}>
-                        {!isProMember ? (
-                          // Beautiful expo blur over real text
-                          <View style={styles.lockedExerciseTextContainer}>
-                            <Text style={styles.exerciseName} numberOfLines={1}>
-                              {exItem.exercise?.name || 'Unknown Exercise'}
-                            </Text>
-                            <Text style={styles.exerciseDetails}>
-                              {exItem.sets} sets • {exItem.reps_min}
-                              {exItem.reps_max
-                                ? `-${exItem.reps_max}`
-                                : ''}{' '}
-                              reps
-                            </Text>
-                            <BlurView
-                              intensity={60}
-                              tint={isDark ? 'dark' : 'light'}
-                              style={styles.blurOverlay}
-                            />
-                          </View>
-                        ) : (
-                          // Visible text for pro
-                          <>
-                            <Text style={styles.exerciseName} numberOfLines={1}>
-                              {exItem.exercise?.name || 'Unknown Exercise'}
-                            </Text>
-                            <Text style={styles.exerciseDetails}>
-                              {exItem.sets} sets • {exItem.reps_min}
-                              {exItem.reps_max
-                                ? `-${exItem.reps_max}`
-                                : ''}{' '}
-                              reps
-                            </Text>
-                          </>
-                        )}
-                      </View>
-                      {isProMember && (
-                        <Ionicons
-                          name="chevron-forward"
-                          size={16}
-                          color={colors.textTertiary}
+            <Text style={styles.sectionTitle}>Workouts</Text>
+            
+            <FlatList
+              ref={flatListRef}
+              data={program.routines}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              pagingEnabled={false}
+              snapToInterval={CARD_WIDTH + CARD_SPACING}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              onScroll={handleRoutineScroll}
+              scrollEventThrottle={16}
+              contentContainerStyle={{
+                paddingLeft: CARD_MARGIN,
+                paddingRight: PEEK_WIDTH + CARD_MARGIN,
+              }}
+              renderItem={({ item: routine, index }) => (
+                <View 
+                  style={[
+                    styles.carouselCard,
+                    { marginRight: index === program.routines.length - 1 ? 0 : CARD_SPACING }
+                  ]}
+                >
+                  {/* Hero Image with Day Number Overlay */}
+                  <View style={styles.carouselHeroContainer}>
+                    <Image
+                      source={getRoutineImage(routine)}
+                      style={styles.carouselHeroImage}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={200}
+                    />
+                    {/* Dark tint overlay */}
+                    <View style={styles.carouselHeroTint} />
+                    {/* Bottom gradient for text legibility */}
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.7)']}
+                      style={styles.carouselHeroGradient}
+                    />
+                    {/* Large Day Number Overlay */}
+                    <View style={styles.dayNumberOverlay}>
+                      <Text style={styles.dayNumber}>{index + 1}</Text>
+                    </View>
+                    {/* Bookmark Button - Save individual routine */}
+                    <TouchableOpacity 
+                      style={[
+                        styles.bookmarkButton,
+                        savedRoutineIds.has(routine.id) && styles.bookmarkButtonSaved
+                      ]} 
+                      activeOpacity={0.7}
+                      onPress={() => handleSaveRoutine(routine.id, routine.name)}
+                      disabled={savingRoutineId === routine.id}
+                    >
+                      {savingRoutineId === routine.id ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Ionicons 
+                          name={savedRoutineIds.has(routine.id) ? "bookmark" : "bookmark-outline"} 
+                          size={22} 
+                          color="#FFF" 
                         />
                       )}
-                    </View>
-                  ))}
-                  {(!routine.exercises || routine.exercises.length === 0) && (
-                    <Text
-                      style={{
-                        color: colors.textSecondary,
-                        fontStyle: 'italic',
-                        marginTop: 8,
-                      }}
-                    >
-                      No exercises preview available
-                    </Text>
-                  )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Routine Title */}
+                  <Text style={styles.carouselRoutineTitle}>
+                    Day {index + 1}: {routine.name}
+                  </Text>
+
+                  {/* Exercises List */}
+                  <View style={styles.carouselExerciseList}>
+                    {routine.exercises?.slice(0, 5).map((exItem) => (
+                      <TouchableOpacity 
+                        key={exItem.id} 
+                        style={styles.carouselExerciseRow}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          if (exItem.exercise_id) {
+                            router.push(`/exercise/${exItem.exercise_id}`)
+                          }
+                        }}
+                      >
+                        {/* Exercise GIF */}
+                        <View style={styles.exerciseGifContainer}>
+                          {exItem.exercise?.gif_url ? (
+                            <ExerciseMediaThumbnail
+                              gifUrl={exItem.exercise.gif_url}
+                              style={styles.exerciseGifThumb}
+                            />
+                          ) : (
+                            <View style={styles.exercisePlaceholder}>
+                              <Ionicons
+                                name="barbell"
+                                size={20}
+                                color={colors.textSecondary}
+                              />
+                            </View>
+                          )}
+                        </View>
+                        {/* Exercise name and details */}
+                        <View style={styles.exerciseInfo}>
+                          {!isProMember ? (
+                            <View style={styles.lockedExerciseTextContainer}>
+                              <Text style={styles.carouselExerciseName} numberOfLines={1}>
+                                {exItem.exercise?.name || 'Unknown Exercise'}
+                              </Text>
+                              <Text style={styles.carouselExerciseDetails}>
+                                {exItem.sets} Sets • {exItem.reps_min}
+                                {exItem.reps_max ? `-${exItem.reps_max}` : ''} Reps
+                              </Text>
+                              <BlurView
+                                intensity={60}
+                                tint={isDark ? 'dark' : 'light'}
+                                style={styles.blurOverlay}
+                              />
+                            </View>
+                          ) : (
+                            <>
+                              <Text style={styles.carouselExerciseName} numberOfLines={1}>
+                                {exItem.exercise?.name || 'Unknown Exercise'}
+                              </Text>
+                              <Text style={styles.carouselExerciseDetails}>
+                                {exItem.sets} Sets • {exItem.reps_min}
+                                {exItem.reps_max ? `-${exItem.reps_max}` : ''} Reps
+                              </Text>
+                            </>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                    {routine.exercises && routine.exercises.length > 5 && (
+                      <Text style={styles.moreExercisesText}>
+                        +{routine.exercises.length - 5} more exercises
+                      </Text>
+                    )}
+                    {(!routine.exercises || routine.exercises.length === 0) && (
+                      <Text style={styles.noExercisesText}>
+                        No exercises preview available
+                      </Text>
+                    )}
+                  </View>
                 </View>
+              )}
+            />
+
+            {/* Pagination Dots */}
+            {program.routines.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {program.routines.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === activeRoutineIndex
+                        ? styles.paginationDotActive
+                        : styles.paginationDotInactive,
+                    ]}
+                  />
+                ))}
               </View>
-            ))}
+            )}
           </View>
 
           {/* Bottom padding */}
@@ -376,6 +488,7 @@ export default function ProgramDetailScreen() {
 const createStyles = (
   colors: ReturnType<typeof useThemedColors>,
   isDark: boolean,
+  cardWidth: number,
 ) =>
   StyleSheet.create({
     container: {
@@ -389,10 +502,6 @@ const createStyles = (
     backButton: {
       padding: 8,
       marginLeft: -8,
-    },
-    shareButton: {
-      padding: 8,
-      marginRight: -8,
     },
     headerTitle: {
       fontSize: 20,
@@ -495,14 +604,151 @@ const createStyles = (
       textTransform: 'capitalize',
     },
     routinesSection: {
-      paddingHorizontal: 16,
-    },
-    sectionTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.text,
       marginBottom: 16,
     },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 16,
+      paddingHorizontal: 16,
+    },
+    // Carousel Card Styles
+    carouselCard: {
+      width: cardWidth,
+      backgroundColor: colors.feedCardBackground,
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    carouselHeroContainer: {
+      height: 180,
+      width: '100%',
+      position: 'relative',
+    },
+    carouselHeroImage: {
+      width: '100%',
+      height: '100%',
+    },
+    carouselHeroTint: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.25)',
+    },
+    carouselHeroGradient: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    dayNumberOverlay: {
+      position: 'absolute',
+      bottom: 16,
+      left: 16,
+    },
+    dayNumber: {
+      fontSize: 72,
+      fontWeight: '900',
+      color: 'rgba(255,255,255,0.9)',
+      textShadowColor: 'rgba(0,0,0,0.5)',
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 8,
+      letterSpacing: -2,
+    },
+    bookmarkButton: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    bookmarkButtonSaved: {
+      backgroundColor: colors.primary,
+    },
+    carouselRoutineTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 12,
+      letterSpacing: -0.3,
+    },
+    carouselExerciseList: {
+      paddingHorizontal: 12,
+      paddingBottom: 16,
+      gap: 8,
+    },
+    carouselExerciseRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+      borderRadius: 12,
+      gap: 10,
+    },
+    carouselExerciseName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    carouselExerciseDetails: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    exerciseGifContainer: {
+      width: 52,
+      height: 52,
+      borderRadius: 10,
+      overflow: 'hidden',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    exerciseGifThumb: {
+      width: '100%',
+      height: '100%',
+    },
+    moreExercisesText: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      fontWeight: '500',
+      textAlign: 'center',
+      paddingVertical: 8,
+    },
+    noExercisesText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+      textAlign: 'center',
+      paddingVertical: 16,
+    },
+    // Pagination Dots
+    paginationContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingTop: 16,
+      gap: 8,
+    },
+    paginationDot: {
+      height: 6,
+      borderRadius: 3,
+    },
+    paginationDotActive: {
+      width: 20,
+      backgroundColor: colors.primary,
+    },
+    paginationDotInactive: {
+      width: 6,
+      backgroundColor: colors.textTertiary,
+      opacity: 0.4,
+    },
+    // Legacy styles (kept for potential backwards compatibility)
     routineItem: {
       marginBottom: 32,
     },
@@ -551,10 +797,10 @@ const createStyles = (
       borderColor: colors.border,
     },
     exerciseImageContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.background,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
       overflow: 'hidden',
       justifyContent: 'center',
       alignItems: 'center',
@@ -591,3 +837,4 @@ const createStyles = (
       ...StyleSheet.absoluteFillObject,
     },
   })
+

@@ -1,30 +1,30 @@
 import type {
-  BodyLogEntryWithImages,
-  BodyLogImage,
+    BodyLogEntryWithImages,
+    BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  Exercise,
-  ExploreProgram,
-  ExploreProgramRoutine,
-  ExploreRoutine,
-  ExploreRoutineExercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  Set,
-  WorkoutComment,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineExercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    Exercise,
+    ExploreProgram,
+    ExploreProgramRoutine,
+    ExploreRoutine,
+    ExploreRoutineExercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    Set,
+    WorkoutComment,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineExercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'

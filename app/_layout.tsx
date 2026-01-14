@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -170,6 +170,10 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="user/[userId]"
+            options={{ presentation: 'transparentModal', animation: 'none' }}
+          />
+          <Stack.Screen
+            name="compare/[userId]"
             options={{ presentation: 'transparentModal', animation: 'none' }}
           />
           <Stack.Screen

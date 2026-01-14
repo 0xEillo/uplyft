@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -490,7 +490,11 @@ export default function UserProfileScreen() {
             {/* Cover Photo Section */}
             <View style={styles.coverContainer}>
               {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.coverImage} />
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.coverImage}
+                  blurRadius={1}
+                />
               ) : (
                 <View style={[styles.coverImage, styles.coverPlaceholder]} />
               )}
@@ -500,8 +504,8 @@ export default function UserProfileScreen() {
                   styles.coverGradient,
                   {
                     backgroundColor: isDark
-                      ? 'rgba(0,0,0,0.45)'
-                      : 'rgba(255,255,255,0.55)',
+                      ? 'rgba(0,0,0,0.7)'
+                      : 'rgba(255,255,255,0.65)',
                   },
                 ]}
               />
@@ -509,8 +513,10 @@ export default function UserProfileScreen() {
               <LinearGradient
                 colors={[
                   isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
+                  isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
                   colors.background,
                 ]}
+                locations={[0, 0.6, 1]}
                 style={styles.coverBottomGradient}
               />
             </View>
@@ -593,8 +599,28 @@ export default function UserProfileScreen() {
                 </Text>
               ) : null}
 
-              {/* Follow Button */}
-              {!isOwnProfile && !privacyLocked && (
+              {/* Follow and Compare Buttons */}
+              {!isOwnProfile && !privacyLocked && user && (
+                <View style={styles.actionButtonsContainer}>
+                  <View style={styles.followButtonWrapper}>
+                    {renderFollowButton()}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.compareButton}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/compare/[userId]',
+                        params: { userId },
+                      })
+                    }
+                  >
+                    <Ionicons name="stats-chart" size={18} color={colors.text} />
+                    <Text style={styles.compareButtonText}>Compare</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {/* Follow button for non-logged-in users */}
+              {!isOwnProfile && !privacyLocked && !user && (
                 <View style={styles.followButtonContainer}>
                   {renderFollowButton()}
                 </View>
@@ -876,6 +902,7 @@ const createStyles = (
     profileHeader: {
       backgroundColor: colors.background,
       position: 'relative',
+      minHeight: 280,
     },
     coverContainer: {
       height: 300,
@@ -883,14 +910,14 @@ const createStyles = (
       position: 'absolute',
       top: 0,
       left: 0,
-      overflow: 'hidden',
+      overflow: 'visible',
       backgroundColor: isDark ? '#000' : '#fff',
     },
     coverImage: {
       width: '100%',
       height: '100%',
       resizeMode: 'cover',
-      opacity: 0.85,
+      opacity: isDark ? 0.7 : 0.9,
     },
     coverPlaceholder: {
       backgroundColor: colors.primary + '20',
@@ -907,7 +934,7 @@ const createStyles = (
       left: 0,
       right: 0,
       bottom: 0,
-      height: '25%',
+      height: '35%',
     },
     profileSection: {
       paddingHorizontal: 14,
@@ -1004,6 +1031,31 @@ const createStyles = (
     },
     followButtonContainer: {
       marginTop: 8,
+    },
+    actionButtonsContainer: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 8,
+    },
+    followButtonWrapper: {
+      flex: 1,
+    },
+    compareButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundLight,
+    },
+    compareButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
     },
     workoutsHeader: {
       flexDirection: 'row',

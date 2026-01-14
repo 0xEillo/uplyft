@@ -9,13 +9,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -419,19 +419,19 @@ export default function WorkoutCalendarScreen() {
   const renderStreakHero = () => {
     const streakValue = currentStreak || 0
     const isActive = streakValue > 0
-    
+
     return (
       <View style={styles.streakHeroContainer}>
         <View style={styles.streakTopRow}>
           <View>
             <Text style={styles.streakBigNumber}>{streakValue}</Text>
-            <Text style={styles.streakLabel}>{streakValue === 1 ? 'Week streak!' : 'Weeks streak!'}</Text>
+            <Text style={styles.streakLabel}>Week streak!</Text>
           </View>
-          <Ionicons 
-            name="flame" 
-            size={64} 
+          <Ionicons
+            name="flame"
+            size={64}
             color={isActive ? '#FF5500' : colors.textSecondary + '40'} // Strava-like orange
-             style={styles.streakHeroIcon}
+            style={styles.streakHeroIcon}
           />
         </View>
       </View>

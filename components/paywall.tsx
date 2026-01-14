@@ -7,17 +7,17 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Modal,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Modal,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -114,7 +114,7 @@ export function Paywall({
   }
 
   // Button text - always show "Start Free Trial" since trial is default
-  const buttonText = 'Start 7-day Free Trial'
+  const buttonText = 'Try 7 days free'
 
   const handleReminderToggle = async (value: boolean) => {
     if (value) {
@@ -384,15 +384,11 @@ export function Paywall({
               )}
             </TouchableOpacity>
 
-            {/* Footer text */}
-            <View style={styles.footerContainer}>
-              <Text style={styles.footerGuaranteeText}>
-                {selectedPlanIndex === 1
-                  ? 'Billed annually. '
-                  : 'Billed monthly. '}
-                Cancel anytime.
-              </Text>
+            <View style={styles.noPaymentContainer}>
+              <Ionicons name="checkmark" size={16} color={colors.textSecondary} />
+              <Text style={styles.noPaymentText}>No payment due now</Text>
             </View>
+
           </View>
         </View>
       </View>
@@ -591,11 +587,11 @@ function createStyles(
     mainButton: {
       width: '100%',
       height: 64,
-      backgroundColor: colors.text,
+      backgroundColor: colors.primary,
       borderRadius: 32,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.text,
+      shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -604,18 +600,24 @@ function createStyles(
     mainButtonText: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.background,
+      color: '#FFFFFF',
       letterSpacing: 0.3,
     },
     footerContainer: {
       alignItems: 'center',
-      marginTop: 16,
+      marginTop: 12,
     },
-    footerGuaranteeText: {
-      textAlign: 'center',
-      color: colors.textTertiary,
-      fontSize: 12,
-      fontWeight: '500',
+    noPaymentContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 12,
+      gap: 4,
+    },
+    noPaymentText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
     },
   })
 }
