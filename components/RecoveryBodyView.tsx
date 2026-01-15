@@ -1,30 +1,29 @@
 import {
-  getRecoveryColor,
-  getRecoveryIntensity,
-  getRecoveryLabel,
-  useRecoveryData,
-  type RecoveryStatus,
-  type WorkoutIntensity,
+    getRecoveryColor,
+    getRecoveryIntensity,
+    getRecoveryLabel,
+    useRecoveryData,
+    type RecoveryStatus,
 } from '@/hooks/useRecoveryData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_DATABASE_MUSCLE,
-  type BodyPartSlug,
+    BODY_PART_DISPLAY_NAMES,
+    BODY_PART_TO_DATABASE_MUSCLE,
+    type BodyPartSlug,
 } from '@/lib/body-mapping'
+import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { RecoveryDetailSheet } from './RecoveryDetailSheet'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -40,6 +39,7 @@ const RECOVERY_COLORS = [
 export function RecoveryBodyView() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const {
     profile,
     muscleRecoveryData,
@@ -50,15 +50,6 @@ export function RecoveryBodyView() {
   } = useRecoveryData()
 
   const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
-  const [selectedMuscle, setSelectedMuscle] = useState<{
-    muscleGroup: string
-    displayName: string
-    recoveryStatus: RecoveryStatus
-    hoursSinceLastWorkout: number | null
-    lastWorkedDate: Date | null
-    intensity: WorkoutIntensity | null
-    recoveryTimeHours: number | null
-  } | null>(null)
 
   // Generate body data for highlighting
   const bodyData = useMemo(() => {
@@ -86,7 +77,7 @@ export function RecoveryBodyView() {
     return data
   }, [muscleRecoveryData])
 
-  // Handle body part press
+  // Handle body part press - navigate to native formSheet
   const handleBodyPartPress = useCallback(
     (bodyPart: { slug?: string }, _side?: 'left' | 'right') => {
       if (!bodyPart.slug) return
@@ -101,17 +92,20 @@ export function RecoveryBodyView() {
       const recoveryData = muscleRecoveryData.get(dbMuscleName)
       const displayName = BODY_PART_DISPLAY_NAMES[slug] || slug
 
-      setSelectedMuscle({
-        muscleGroup: dbMuscleName,
-        displayName,
-        recoveryStatus: recoveryData?.recoveryStatus || 'untrained',
-        hoursSinceLastWorkout: recoveryData?.hoursSinceLastWorkout || null,
-        lastWorkedDate: recoveryData?.lastWorkedDate || null,
-        intensity: recoveryData?.intensity || null,
-        recoveryTimeHours: recoveryData?.recoveryTimeHours || null,
+      // Navigate to native formSheet with params
+      router.push({
+        pathname: '/recovery-detail',
+        params: {
+          muscleGroup: displayName,
+          recoveryStatus: recoveryData?.recoveryStatus || 'untrained',
+          hoursSinceLastWorkout: recoveryData?.hoursSinceLastWorkout?.toString() || '',
+          lastWorkedDate: recoveryData?.lastWorkedDate?.toISOString() || '',
+          intensity: recoveryData?.intensity || '',
+          recoveryTimeHours: recoveryData?.recoveryTimeHours?.toString() || '',
+        },
       })
     },
-    [muscleRecoveryData]
+    [muscleRecoveryData, router]
   )
 
   const styles = createStyles(colors)
@@ -264,18 +258,6 @@ export function RecoveryBodyView() {
           </View>
         </ScrollView>
       )}
-
-      {/* Detail Sheet */}
-      <RecoveryDetailSheet
-        isVisible={!!selectedMuscle}
-        onClose={() => setSelectedMuscle(null)}
-        muscleGroup={selectedMuscle?.displayName || ''}
-        recoveryStatus={selectedMuscle?.recoveryStatus || 'untrained'}
-        hoursSinceLastWorkout={selectedMuscle?.hoursSinceLastWorkout || null}
-        lastWorkedDate={selectedMuscle?.lastWorkedDate || null}
-        intensity={selectedMuscle?.intensity || null}
-        recoveryTimeHours={selectedMuscle?.recoveryTimeHours || null}
-      />
     </View>
   )
 }

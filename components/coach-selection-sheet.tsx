@@ -5,15 +5,15 @@ import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -83,7 +83,6 @@ export function CoachSelectionSheet({ visible, onClose }: CoachSelectionSheetPro
                   </View>
                 </View>
                 <Text style={styles.coachName}>{coach.name}</Text>
-                <Text style={styles.coachTitle}>{coach.title}</Text>
                 <Text style={styles.coachDescription} numberOfLines={3}>
                   {coach.description}
                 </Text>
@@ -230,12 +229,6 @@ const createStyles = (colors: any, insets: any) =>
       fontSize: 16,
       fontWeight: '700',
       color: colors.text,
-      textAlign: 'center',
-      marginBottom: 2,
-    },
-    coachTitle: {
-      fontSize: 13,
-      color: colors.textSecondary,
       textAlign: 'center',
       marginBottom: 6,
     },

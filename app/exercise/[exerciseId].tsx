@@ -528,11 +528,11 @@ export default function ExerciseDetailScreen() {
               </View>
 
               {/* Stats Section */}
-              <View style={styles.sectionHeader}>
+              <View style={[styles.sectionHeader, styles.paddedHorizontal]}>
                 <Text style={styles.sectionTitle}>Stats</Text>
               </View>
 
-              <View style={styles.statsGrid}>
+              <View style={[styles.statsGrid, styles.paddedMargin]}>
                 {strengthInfo && (
                   <>
                     <View style={styles.statRow}>
@@ -609,11 +609,11 @@ export default function ExerciseDetailScreen() {
               </View>
 
               {/* All Records Section */}
-              <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+              <View style={[styles.sectionHeader, styles.paddedHorizontal, { marginTop: 24 }]}>
                 <Text style={styles.sectionTitle}>All Records</Text>
               </View>
 
-              <View style={styles.recordsList}>
+              <View style={[styles.recordsList, styles.paddedMargin]}>
                 {recordsList.length === 0 ? (
                   <Text style={styles.emptyText}>No records tracked yet</Text>
                 ) : (
@@ -645,7 +645,7 @@ export default function ExerciseDetailScreen() {
               </View>
             </View>
           ) : activeTab === 'leaderboard' ? (
-            <View style={styles.leaderboardContainer}>
+            <View style={[styles.leaderboardContainer, styles.paddedContainer]}>
                 <Text style={styles.leaderboardSubtitle}>Following (Est. 1RM)</Text>
 
                 <View style={styles.leaderboardList}>
@@ -694,7 +694,7 @@ export default function ExerciseDetailScreen() {
                   </View>
 
                   {/* Muscles Section */}
-                  <View style={styles.sectionContainer}>
+                  <View style={[styles.sectionContainer, styles.paddedHorizontal]}>
                       <Text style={styles.howToTitle}>{exercise?.name}</Text>
                       {exercise?.target_muscles && exercise.target_muscles.length > 0 && (
                           <Text style={styles.musclesText}>
@@ -710,7 +710,7 @@ export default function ExerciseDetailScreen() {
                   
                   {/* Instructions Section */}
                   {exercise?.instructions && exercise.instructions.length > 0 && (
-                  <View style={styles.instructionsContainer}>
+                  <View style={[styles.instructionsContainer, styles.paddedHorizontal]}>
                       {exercise.instructions.map((step, index) => {
                           const cleanStep = step.replace(/^Step:\d+\s*/i, '').trim()
                           return (
@@ -726,7 +726,7 @@ export default function ExerciseDetailScreen() {
                   )}
               </View>
           ) : (
-            <View style={styles.historyContainer}>
+            <View style={[styles.historyContainer, styles.paddedContainer]}>
                 {history.length === 0 ? (
                     <Text style={styles.emptyText}>No history found for this exercise.</Text>
                 ) : (
@@ -872,7 +872,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     contentContainer: {
-      padding: 16,
+      paddingBottom: 16,
     },
     loadingContainer: {
       flex: 1,
@@ -897,6 +897,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.backgroundLight,
       borderRadius: 12,
       paddingHorizontal: 16,
+    },
+    paddedHorizontal: {
+      paddingHorizontal: 16,
+    },
+    paddedMargin: {
+      marginHorizontal: 16,
+    },
+    paddedContainer: {
+        paddingHorizontal: 16,
+        paddingTop: 16
     },
     statRow: {
       flexDirection: 'row',
@@ -986,10 +996,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     mediaContainer: {
         width: '100%',
-        height: 250,
+        aspectRatio: 4 / 3,
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        overflow: 'hidden',
+        // removed borderRadius and overflow for immersive view
     },
     media: {
         width: '100%',

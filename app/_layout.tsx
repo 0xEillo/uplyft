@@ -223,6 +223,27 @@ function RootLayoutNav() {
               gestureEnabled: false,
             }}
           />
+          {/* Native Bottom Sheets - using formSheet for 100% native sheet presentation */}
+          <Stack.Screen
+            name="recovery-detail"
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.5, 0.75],
+              sheetGrabberVisible: true,
+              sheetCornerRadius: 20,
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="muscle-group-detail"
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.65, 1.0],
+              sheetGrabberVisible: true,
+              sheetCornerRadius: 20,
+              headerShown: false,
+            }}
+          />
         </Stack>
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />

@@ -59,7 +59,7 @@ const darkColors = {
   textPlaceholder: '#555555',
 
   // Background colors (layered depth)
-  background: '#141414', // Main background - dark but not black
+  background: '#0D0D0D', // Main background - dark but not black
   backgroundWhite: '#242424', // Card background - slightly elevated
   backgroundLight: '#2C2C2C', // Input backgrounds - more elevated
   inputBackground: '#2C2C2C', // Explicit input background

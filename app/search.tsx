@@ -363,25 +363,23 @@ export default function SearchScreen() {
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : !trimmedQuery ? (
-              <EmptyState
-                icon="search-outline"
-                title="Find athletes"
-                description="Search for friends or other lifters to follow and stay updated on their progress."
-              />
+              <View style={styles.emptyContainer}>
+                <EmptyState
+                  icon="search-outline"
+                  title="Find athletes"
+                  description="Search for friends or other lifters to follow and stay updated on their progress."
+                />
+              </View>
             ) : users.length === 0 ? (
-              <EmptyState
-                icon="person-remove-outline"
-                title="No users found"
-                description={`We couldn't find any athletes matching "${trimmedQuery}".`}
-                buttonText="Invite Friends"
-                onPress={() => {
-                  Share.share({
-                    message:
-                      'Join me on Rep AI! Track your workouts and progress with me.',
-                    url: 'https://rep.ai',
-                  })
-                }}
-              />
+              <View style={styles.emptyContainer}>
+                <EmptyState
+                  icon="person-remove-outline"
+                  title="No users found"
+                  description={`We couldn't find any athletes matching "${trimmedQuery}".`}
+                  buttonText="Invite Friends"
+                  onPress={handleInvite}
+                />
+              </View>
             ) : (
               <ScrollView
                 style={styles.userList}
@@ -639,12 +637,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      paddingBottom: 140,
     },
     emptyContainer: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 32,
       paddingBottom: 140,
     },
     emptyText: {
@@ -658,12 +654,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
       paddingHorizontal: 14,
       paddingVertical: 16,
       paddingBottom: 34,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
       ...Platform.select({
         ios: {
           shadowColor: colors.shadow,

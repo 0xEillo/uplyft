@@ -10,7 +10,7 @@ import { Exercise, Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Dimensions,
@@ -24,6 +24,19 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
+
+// Animation stack management - prevents re-animation when returning from child pages
+let skipNextCompareEntryAnimation = false
+
+const markCompareEntrySkipFlag = () => {
+  skipNextCompareEntryAnimation = true
+}
+
+const consumeCompareEntrySkipFlag = () => {
+  const shouldSkip = skipNextCompareEntryAnimation
+  skipNextCompareEntryAnimation = false
+  return shouldSkip
+}
 
 interface ComparisonStats {
   workoutCount: { me: number; them: number }
@@ -63,10 +76,37 @@ export default function CompareScreen() {
   const [selectedExercise, setSelectedExercise] = useState<ExerciseInCommon | null>(null)
   const [exerciseComparison, setExerciseComparison] = useState<ExerciseComparison | null>(null)
   const [loadingExercise, setLoadingExercise] = useState(false)
+  const shouldSkipNextEntryRef = useRef<boolean>(consumeCompareEntrySkipFlag())
+  const isInitialFocusRef = useRef(true)
   const [shouldExit, setShouldExit] = useState(false)
-  const [shouldAnimateEntry, setShouldAnimateEntry] = useState(true)
+  const [shouldAnimateEntry, setShouldAnimateEntry] = useState(!shouldSkipNextEntryRef.current)
   const [timePeriod, setTimePeriod] = useState<'1M' | '6M' | '1Y' | 'ALL'>('1M')
   const [showTimePicker, setShowTimePicker] = useState(false)
+
+  useFocusEffect(
+    useCallback(() => {
+      if (shouldSkipNextEntryRef.current) {
+        setShouldAnimateEntry(false)
+        shouldSkipNextEntryRef.current = false
+        isInitialFocusRef.current = false
+      } else if (isInitialFocusRef.current) {
+        setShouldAnimateEntry(true)
+        isInitialFocusRef.current = false
+      }
+    }, [shouldSkipNextEntryRef])
+  )
+
+  const markNextFocusAsChildReturn = useCallback(() => {
+    markCompareEntrySkipFlag()
+    shouldSkipNextEntryRef.current = true
+  }, [shouldSkipNextEntryRef])
+
+  useEffect(() => {
+    return () => {
+      shouldSkipNextEntryRef.current = false
+      isInitialFocusRef.current = true
+    }
+  }, [userId])
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
 
@@ -560,6 +600,7 @@ export default function CompareScreen() {
           <TouchableOpacity
             style={styles.exerciseItem}
             onPress={() => {
+              markNextFocusAsChildReturn()
               router.push({
                 pathname: '/exercise/[exerciseId]',
                 params: { exerciseId: selectedExercise.exerciseId },

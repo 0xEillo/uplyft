@@ -7,107 +7,50 @@ export function EmptyFeedState() {
   const colors = useThemedColors()
 
   // Animation values
-  const arrowBounce = useRef(new Animated.Value(0)).current
-  const arrowOpacity = useRef(new Animated.Value(0)).current
-  const textFade = useRef(new Animated.Value(0)).current
-  const iconScale = useRef(new Animated.Value(0)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const translateY = useRef(new Animated.Value(20)).current
 
   useEffect(() => {
-    // Sequence of animations for smooth entry
-    Animated.sequence([
-      // First fade in the icon with scale
-      Animated.parallel([
-        Animated.spring(iconScale, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-        Animated.timing(textFade, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Then show the arrow after a brief delay
-      Animated.delay(300),
-      Animated.timing(arrowOpacity, {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 400,
+        duration: 600,
+        easing: Easing.out(Easing.back(1)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 600,
+        easing: Easing.out(Easing.back(1)),
         useNativeDriver: true,
       }),
     ]).start()
-
-    // Continuous bouncing animation for arrow
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(arrowBounce, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(arrowBounce, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start()
-  }, [arrowBounce, arrowOpacity, textFade, iconScale])
-
-  const arrowTranslateY = arrowBounce.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 12],
-  })
+  }, [])
 
   const styles = createStyles(colors)
 
   return (
     <View style={styles.container}>
-      {/* Icon and text section */}
       <Animated.View
         style={[
           styles.contentContainer,
           {
-            opacity: textFade,
-            transform: [{ scale: iconScale }]
+            opacity: fadeAnim,
+            transform: [{ translateY }]
           }
         ]}
       >
         <View style={styles.iconContainer}>
           <Ionicons
-            name="barbell-outline"
-            size={72}
+            name="barbell"
+            size={40}
             color={colors.primary}
           />
         </View>
-        <Text style={styles.title}>Welcome to Your Feed!</Text>
-        <Text style={styles.subtitle}>
-          Start tracking your fitness journey
-        </Text>
+        <Text style={styles.title}>Your Feed is Empty</Text>
         <Text style={styles.description}>
-          Log your first workout to see it appear here
+          Logged workouts and activity will appear here. Start your journey by tracking your first session.
         </Text>
-      </Animated.View>
-
-      {/* Animated arrow pointing straight down to the center + button */}
-      <Animated.View
-        style={[
-          styles.arrowContainer,
-          {
-            opacity: arrowOpacity,
-            transform: [
-              { translateY: arrowTranslateY },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.arrowWrapper}>
-          <Ionicons name="arrow-down" size={48} color={colors.primary} />
-        </View>
-        <Text style={styles.arrowText}>Tap here to start</Text>
       </Animated.View>
     </View>
   )
@@ -119,64 +62,33 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 32,
-      paddingBottom: 120, // Space above the tab bar
+      paddingHorizontal: 48,
+      paddingBottom: 40,
     },
     contentContainer: {
       alignItems: 'center',
-      marginBottom: 40,
     },
     iconContainer: {
-      width: 128,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: colors.backgroundLight,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.primaryLight,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 24,
-      borderWidth: 2,
-      borderColor: colors.primary,
     },
     title: {
-      fontSize: 26,
+      fontSize: 22,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 8,
+      marginBottom: 12,
       textAlign: 'center',
-    },
-    subtitle: {
-      fontSize: 17,
-      fontWeight: '500',
-      color: colors.textSecondary,
-      marginBottom: 8,
-      textAlign: 'center',
+      letterSpacing: -0.5,
     },
     description: {
       fontSize: 15,
-      color: colors.textLight,
+      color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
-    },
-    arrowContainer: {
-      alignItems: 'center',
-      position: 'absolute',
-      bottom: 50, // Position above the + button (tab bar height ~90 + button elevation ~72)
-      left: 0,
-      right: 0,
-      alignSelf: 'center', // Center horizontally
-    },
-    arrowWrapper: {
-      backgroundColor: colors.backgroundLight,
-      borderRadius: 32,
-      padding: 8,
-      marginBottom: 8,
-      borderWidth: 2,
-      borderColor: colors.primary,
-    },
-    arrowText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.primary,
-      textAlign: 'center',
     },
   })

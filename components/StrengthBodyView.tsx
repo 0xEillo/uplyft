@@ -1,6 +1,5 @@
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
-import { MuscleGroupDetailSheet } from '@/components/MuscleGroupDetailSheet'
 import {
     getLevelColor,
     getLevelIntensity,
@@ -14,6 +13,7 @@ import {
     type BodyPartSlug
 } from '@/lib/body-mapping'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
@@ -48,6 +48,7 @@ const BODY_COLORS = [
 export function StrengthBodyView() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const {
     profile,
     isLoading,
@@ -59,11 +60,6 @@ export function StrengthBodyView() {
 
   const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
-  const [selectedGroup, setSelectedGroup] = useState<{
-    data: MuscleGroupData
-    displayName: string
-    bodyPartSlug: BodyPartSlug
-  } | null>(null)
 
   // Generate body data for highlighting
   const bodyData = useMemo(() => {
@@ -91,7 +87,7 @@ export function StrengthBodyView() {
     return data
   }, [muscleGroups])
 
-  // Handle body part press
+  // Handle body part press - navigate to native formSheet
   const handleBodyPartPress = useCallback(
     (bodyPart: { slug?: string }, _side?: 'left' | 'right') => {
       if (!bodyPart.slug) return
@@ -104,23 +100,28 @@ export function StrengthBodyView() {
       }
 
       const mgData = muscleGroups.find((mg) => mg.name === dbMuscleName)
-      
       const displayName = BODY_PART_DISPLAY_NAMES[slug] || slug
 
-      // If we have data, show it. If not, show an empty state for that specific muscle
-      setSelectedGroup({
-        data: mgData || {
-          name: dbMuscleName,
-          level: 'Beginner',
-          progress: 0,
-          averageScore: 0,
-          exercises: [],
+      // Build group data (with fallback for empty state)
+      const groupData: MuscleGroupData = mgData || {
+        name: dbMuscleName,
+        level: 'Beginner',
+        progress: 0,
+        averageScore: 0,
+        exercises: [],
+      }
+
+      // Navigate to native formSheet with params
+      router.push({
+        pathname: '/muscle-group-detail',
+        params: {
+          groupDisplayName: displayName,
+          bodyPartSlug: slug,
+          groupDataJson: JSON.stringify(groupData),
         },
-        displayName,
-        bodyPartSlug: slug,
       })
     },
-    [muscleGroups],
+    [muscleGroups, router],
   )
 
   const styles = createStyles(colors)
@@ -289,7 +290,7 @@ export function StrengthBodyView() {
         </ScrollView>
       )}
 
-      {/* Sheets */}
+      {/* Lifter Levels Sheet - keeping as modal since it's a full-screen carousel */}
       {overallLevel && (
         <LifterLevelsSheet
           isVisible={showLevelsSheet}
@@ -298,15 +299,6 @@ export function StrengthBodyView() {
           progressToNext={overallLevel.balancedProgress}
         />
       )}
-
-      <MuscleGroupDetailSheet
-        isVisible={!!selectedGroup}
-        onClose={() => setSelectedGroup(null)}
-        groupData={selectedGroup?.data || null}
-        groupDisplayName={selectedGroup?.displayName || ''}
-        bodyPartSlug={selectedGroup?.bodyPartSlug || null}
-        profile={profile}
-      />
     </View>
   )
 }
