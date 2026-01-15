@@ -1,3 +1,4 @@
+import { useTheme } from '@/contexts/theme-context'
 import { TutorialStep, useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic, hapticSuccess } from '@/lib/haptics'
@@ -83,19 +84,19 @@ const TutorialStepCard = memo(
       if (isCurrentStep) {
         return {
           iconBg: colors.primary,
-          cardBg: isDark ? '#1E1E1E' : '#FFFFFF',
+          cardBg: colors.backgroundWhite,
           border: colors.primary + '60',
           textColor: colors.text,
-          connectorColor: isDark ? '#2A2A2A' : '#E5E5E5',
+          connectorColor: colors.border,
         }
       }
       // Incomplete but not "next" step
       return {
-        iconBg: isDark ? '#2A2A2A' : '#E5E5E5',
-        cardBg: isDark ? '#1A1A1A' : '#F8F8F8',
-        border: isDark ? '#252525' : '#EFEFEF',
+        iconBg: colors.backgroundLight,
+        cardBg: isDark ? '#121212' : '#F8F8F8',
+        border: colors.border,
         textColor: colors.textSecondary,
-        connectorColor: isDark ? '#2A2A2A' : '#E5E5E5',
+        connectorColor: colors.border,
       }
     }
 
@@ -186,9 +187,7 @@ const TutorialStepCard = memo(
                   ? '#10B98120'
                   : isCurrentStep
                   ? colors.primary
-                  : isDark
-                  ? '#2A2A2A'
-                  : '#F0F0F0',
+                  : colors.backgroundLight,
               },
             ]}
           >
@@ -213,8 +212,8 @@ TutorialStepCard.displayName = 'TutorialStepCard'
 export const TutorialChecklist = memo(
   ({ onDismiss }: TutorialChecklistProps) => {
     const colors = useThemedColors()
+    const { isDark } = useTheme()
     const router = useRouter()
-    const isDark = colors.background === '#141414'
     const {
       tutorialSteps,
       isTutorialComplete,
@@ -267,7 +266,7 @@ export const TutorialChecklist = memo(
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? '#141414' : '#FAFAFA',
+            backgroundColor: colors.background,
           },
         ]}
       >
@@ -293,9 +292,7 @@ export const TutorialChecklist = memo(
                 {
                   backgroundColor: isTutorialComplete
                     ? '#10B98115'
-                    : isDark
-                    ? '#1E1E1E'
-                    : '#FFFFFF',
+                    : colors.backgroundWhite,
                   borderColor: isTutorialComplete
                     ? '#10B981'
                     : colors.primary,
@@ -322,7 +319,7 @@ export const TutorialChecklist = memo(
         <View
           style={[
             styles.progressBar,
-            { backgroundColor: isDark ? '#2A2A2A' : '#E5E5E5' },
+            { backgroundColor: colors.border },
           ]}
         >
           <Animated.View
