@@ -3,12 +3,12 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
@@ -333,7 +333,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       backgroundColor: colors.feedCardBackground,
       marginTop: 24,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 20,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },

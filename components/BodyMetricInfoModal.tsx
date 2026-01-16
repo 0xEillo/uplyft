@@ -1,18 +1,18 @@
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    PanResponder,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 
 import { useThemedColors } from '@/hooks/useThemedColors'
-import type { BodyFatRange, BMIRange, Gender } from '@/lib/body-log/composition-analysis'
+import type { BMIRange, BodyFatRange, Gender } from '@/lib/body-log/composition-analysis'
 import { getStatusColor } from '@/lib/body-log/composition-analysis'
 
 const SCREEN_HEIGHT = Dimensions.get('window').height
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   recommendationCard: {
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
   },
   recommendationHeader: {
