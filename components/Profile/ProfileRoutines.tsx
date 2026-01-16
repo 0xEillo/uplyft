@@ -6,12 +6,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useWindowDimensions,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native'
 
 interface ProfileRoutinesProps {
@@ -115,7 +115,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
           >
             <Ionicons
               name="albums-outline"
-              size={20}
+              size={22}
               color={colors.textSecondary}
             />
           </View>
@@ -190,9 +190,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -202,20 +202,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   cardValue: {
-    fontSize: 20, // Slightly smaller than dashboard to accommodate 2 lines if needed
+    fontSize: 22,
     fontWeight: '800',
     marginBottom: 2,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   cardSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
     marginTop: 2,
   },

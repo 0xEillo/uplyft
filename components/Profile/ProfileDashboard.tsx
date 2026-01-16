@@ -72,13 +72,13 @@ export const ProfileDashboard = memo(
               >
                 <Ionicons
                   name="school-outline"
-                  size={20}
+                  size={22}
                   color={colors.primary}
                 />
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={16}
+                size={18}
                 color={colors.primary}
                 style={{ opacity: 0.8 }}
               />
@@ -163,7 +163,7 @@ export const ProfileDashboard = memo(
               { backgroundColor: colors.background },
             ]}
           >
-            <Ionicons name={icon} size={20} color={colors.textSecondary} />
+            <Ionicons name={icon} size={22} color={colors.textSecondary} />
           </View>
         </View>
 
@@ -176,8 +176,7 @@ export const ProfileDashboard = memo(
           </Text>
           <Text
             style={[styles.cardValue, { color }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
+            numberOfLines={2}
           >
             {value}
           </Text>
@@ -263,9 +262,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -275,19 +274,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center', // Center vertically in space
   },
   cardLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   cardValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
+    lineHeight: 26,
     marginBottom: 2,
   },
   cardSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
   },
   progressBarBg: {
