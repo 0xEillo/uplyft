@@ -11,9 +11,9 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -41,32 +41,28 @@ export default function AnalyticsScreen() {
     }, [trackEvent]),
   )
 
+  // NOTE: Stats view toggle functions - currently not in use (feature hidden)
+  // Kept for potential future re-enablement
   const toggleViewMode = useCallback(() => {
     setViewMode((current) => (current === 'stats' ? bodyTab : 'stats'))
   }, [bodyTab])
-
-  const handleTitlePress = useCallback(() => {
-    // Light haptic feedback
-    haptic('light')
-
-    // If in stats view, switch back to body tab view
-    if (viewMode === 'stats') {
-      setViewMode(bodyTab)
-      return
-    }
-
-    // Toggle between strength and recovery
-    const newTab = bodyTab === 'strength' ? 'recovery' : 'strength'
-    setBodyTab(newTab)
-    setViewMode(newTab)
-  }, [bodyTab, viewMode])
 
   const getViewIcon = (): keyof typeof Ionicons.glyphMap => {
     return viewMode === 'stats' ? 'body' : 'stats-chart'
   }
 
-  // Show swap icon only when not in stats view
   const showSwapIcon = viewMode !== 'stats'
+  // END: Stats view toggle functions
+
+  const handleTitlePress = useCallback(() => {
+    // Light haptic feedback
+    haptic('light')
+
+    // Toggle between strength and recovery
+    const newTab = bodyTab === 'strength' ? 'recovery' : 'strength'
+    setBodyTab(newTab)
+    setViewMode(newTab)
+  }, [bodyTab])
 
   const styles = createStyles(colors)
 
@@ -75,30 +71,16 @@ export default function AnalyticsScreen() {
       <BaseNavbar
         leftContent={
           <NavbarIsland>
-            <TouchableOpacity
-              style={styles.titleButton}
-              onPress={handleTitlePress}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.headerTitle}>{VIEW_LABELS[viewMode]}</Text>
-              {showSwapIcon && (
-                <Ionicons
-                  name="swap-horizontal"
-                  size={16}
-                  color={colors.textSecondary}
-                  style={styles.swapIcon}
-                />
-              )}
-            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{VIEW_LABELS[viewMode]}</Text>
           </NavbarIsland>
         }
         rightContent={
           <TouchableOpacity
-            onPress={toggleViewMode}
+            onPress={handleTitlePress}
             style={{ padding: 4 }}
           >
             <Ionicons
-              name={getViewIcon()}
+              name="swap-horizontal"
               size={24}
               color={colors.text}
             />
