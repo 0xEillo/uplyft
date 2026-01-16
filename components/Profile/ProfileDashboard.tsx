@@ -215,7 +215,7 @@ export const ProfileDashboard = memo(
 
           {/* Body Log Card */}
           <StatCard
-            title="WEIGHT"
+            title="BODY LOG"
             value={latestWeight ? `${latestWeight.toFixed(1)} kg` : 'Log Weight'}
             icon="body-outline"
             onPress={() => router.push('/body-log')}
