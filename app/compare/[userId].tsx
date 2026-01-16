@@ -779,9 +779,7 @@ export default function CompareScreen() {
 
               {/* Exercises in Common */}
               <View style={styles.exercisesSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Exercises in Common</Text>
-                </View>
+                <Text style={styles.sectionTitle}>Exercises in Common</Text>
                 {renderExerciseList()}
               </View>
             </>
@@ -968,14 +966,9 @@ const createStyles = (
     },
     exercisesSection: {
       paddingHorizontal: 16,
-      paddingTop: 24,
+      paddingTop: 16,
     },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginBottom: 16,
-    },
+
     exerciseList: {
       gap: 1,
       backgroundColor: colors.border,
