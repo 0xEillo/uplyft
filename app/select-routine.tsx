@@ -219,21 +219,13 @@ export default function SelectRoutineScreen() {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : routines.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <EmptyState
-              icon="albums-outline"
-              title="No Routines Yet"
-              description="Create your first routine to quickly start structured workouts"
-            />
-            <TouchableOpacity
-              style={[styles.createButton, { backgroundColor: colors.primary }]}
-              onPress={handleCreateRoutine}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add-circle" size={22} color="#FFF" />
-              <Text style={styles.createButtonText}>Create New Routine</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="albums-outline"
+            title="No Routines Yet"
+            description="Create your first routine to quickly start structured workouts"
+            buttonText="Create New Routine"
+            onPress={handleCreateRoutine}
+          />
         ) : (
           <ScrollView
             style={styles.scrollView}
@@ -286,27 +278,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 32,
-    },
-    createButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      borderRadius: 16,
-      gap: 10,
-      marginTop: 24,
-    },
-    createButtonText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#FFF',
-    },
+
     scrollView: {
       flex: 1,
     },
