@@ -443,7 +443,7 @@ export default function FeedScreen() {
               <NavbarIsland>
                 <TouchableOpacity
                   style={styles.repAiBadge}
-                  onPress={() => router.push('/(tabs)/chat')}
+                  onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.repAiBadgeText}>Home</Text>
