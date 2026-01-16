@@ -2,9 +2,8 @@ import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
-import { ExploreCard } from '@/components/Profile/ExploreCard'
+import { ProfileDashboard } from '@/components/Profile/ProfileDashboard'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
-import { TutorialProgressCard } from '@/components/Tutorial/TutorialProgressCard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -15,9 +14,9 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  calculateTotalVolume,
-  calculateWorkoutStats,
-  formatVolume,
+    calculateTotalVolume,
+    calculateWorkoutStats,
+    formatVolume,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -25,14 +24,14 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Animated,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -665,78 +664,11 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
-              {/* Tutorial Progress Card & Explore */}
-              <View style={[styles.dashboardSection, { gap: 12 }]}>
-                <TutorialProgressCard />
-                <ExploreCard />
-              </View>
-
-              {/* Dashboard Section */}
-              <View style={styles.dashboardSection}>
-                <View style={styles.dashboardCards}>
-                  {/* Routines Card */}
-                  <TouchableOpacity
-                    style={[
-                      styles.dashboardCard,
-                      { backgroundColor: colors.feedCardBackground },
-                    ]}
-                    onPress={() => router.push('/routines')}
-                  >
-                    <View style={styles.cardHeader}>
-                      <Text
-                        style={[
-                          styles.cardLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        Routines
-                      </Text>
-                      <Ionicons
-                        name="albums-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text
-                      style={[styles.cardValue, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {activeRoutineName || 'No Plan'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Body Log Card */}
-                  <TouchableOpacity
-                    style={[
-                      styles.dashboardCard,
-                      { backgroundColor: colors.feedCardBackground },
-                    ]}
-                    onPress={() => router.push('/body-log')}
-                  >
-                    <View style={styles.cardHeader}>
-                      <Text
-                        style={[
-                          styles.cardLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        Body Log
-                      </Text>
-                      <Ionicons
-                        name="body-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text style={[styles.cardValue, { color: colors.text }]}>
-                      {latestWeight ? `${latestWeight.toFixed(1)} kg` : '-- kg'}
-                    </Text>
-                    <View style={styles.plusButton}>
-                      <Ionicons name="add" size={24} color={colors.text} />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              {/* Dashboard Carousel Section */}
+              <ProfileDashboard
+                activeRoutineName={activeRoutineName}
+                latestWeight={latestWeight}
+              />
 
               <WeeklyStatsCard
                 streak={currentStreak}
