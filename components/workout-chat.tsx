@@ -2062,6 +2062,7 @@ export function WorkoutChat({
                                   <WorkoutCard
                                     workout={messageParsedWorkout}
                                     coachImage={coach.image}
+                                    hideInfoButton={mode === 'sheet'}
                                     onStartWorkout={() => {
                                       setParsedWorkout(messageParsedWorkout)
                                       setGeneratedPlanContent(message.content)
@@ -2263,8 +2264,8 @@ export function WorkoutChat({
                                                       : null,
                                                   ]}
                                                   onPress={handleNavigateToExercise}
-                                                  disabled={!canNavigate}
-                                                  activeOpacity={canNavigate ? 0.7 : 1}
+                                                  disabled={!canNavigate || mode === 'sheet'}
+                                                  activeOpacity={canNavigate && mode !== 'sheet' ? 0.7 : 1}
                                                 >
                                                   {gifUrl ? (
                                                     <ExerciseMediaThumbnail
@@ -2309,7 +2310,7 @@ export function WorkoutChat({
                                                       >
                                                         {suggestion.name}
                                                       </Text>
-                                                      {canNavigate && (
+                                                      {canNavigate && mode !== 'sheet' && (
                                                         <TouchableOpacity
                                                           onPress={handleNavigateToExercise}
                                                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

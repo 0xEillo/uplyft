@@ -13,6 +13,7 @@ interface WorkoutCardProps {
   coachImage?: ImageSourcePropType
   onStartWorkout?: () => void
   onSaveRoutine?: () => void
+  hideInfoButton?: boolean
 }
 
 export function WorkoutCard({
@@ -20,6 +21,7 @@ export function WorkoutCard({
   coachImage,
   onStartWorkout,
   onSaveRoutine,
+  hideInfoButton = false,
 }: WorkoutCardProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
@@ -106,8 +108,8 @@ export function WorkoutCard({
                 <TouchableOpacity 
                   style={[styles.timelineNode, exercise.gifUrl ? styles.timelineNodeImage : null]}
                   onPress={handleNavigateToExercise}
-                  disabled={!canNavigate}
-                  activeOpacity={canNavigate ? 0.7 : 1}
+                  disabled={!canNavigate || hideInfoButton}
+                  activeOpacity={canNavigate && !hideInfoButton ? 0.7 : 1}
                 >
                    {exercise.gifUrl ? (
                       <ExerciseMediaThumbnail
@@ -143,7 +145,7 @@ export function WorkoutCard({
                     <View style={styles.exerciseHeaderText}>
                       <View style={styles.exerciseNameRow}>
                         <Text style={styles.exerciseName}>{exercise.name}</Text>
-                        {canNavigate && (
+                        {canNavigate && !hideInfoButton && (
                           <TouchableOpacity 
                             onPress={handleNavigateToExercise}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
