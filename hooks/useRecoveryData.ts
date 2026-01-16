@@ -67,7 +67,7 @@ const RECOVERY_GRADIENT_COLORS = [
   '#F59E0B', // 40% - Amber
   '#949494', // 60% transition
   '#5C5C5C', // 80% transition
-  '#2A2A2A', // 100% - Dark Gray (matches base silhouette)
+  '#1C1C1C', // 100% - Dark Gray (matches base silhouette)
 ]
 
 // We use intensity 1-10 for the gradient steps

@@ -39,8 +39,8 @@ export function BodyHighlighterDual({
   // In dark mode, silhouette must be visible against #000000
   // In dark mode, we need a visible silhouette against the pitch black (#000000) background
   // #2A2A2A is visible enough to define the body without being distracting
-  const bodyBackColor = isDark ? '#2A2A2A' : '#E5E5EA'
-  const bodyBorderColor = isDark ? '#555555' : '#D8D8DC'
+  const bodyBackColor = isDark ? '#1C1C1C' : '#E5E5EA'
+  const bodyBorderColor = isDark ? '#333333' : '#D8D8DC'
 
   // Calculate scale to fit both bodies side by side
   const bodyScale = Math.min((SCREEN_WIDTH - 40) / 380, 1.0)

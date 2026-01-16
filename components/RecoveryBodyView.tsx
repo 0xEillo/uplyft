@@ -1,26 +1,26 @@
 import { BodyHighlighterDual } from '@/components/BodyHighlighterDual'
 import {
-    getRecoveryGradientColors,
-    getRecoveryIntensityFromPercentage,
-    useRecoveryData,
+  getRecoveryGradientColors,
+  getRecoveryIntensityFromPercentage,
+  useRecoveryData,
 } from '@/hooks/useRecoveryData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-    ALL_BODY_PART_SLUGS,
-    BODY_PART_DISPLAY_NAMES,
-    BODY_PART_TO_DATABASE_MUSCLE,
-    type BodyPartSlug,
+  ALL_BODY_PART_SLUGS,
+  BODY_PART_DISPLAY_NAMES,
+  BODY_PART_TO_DATABASE_MUSCLE,
+  type BodyPartSlug,
 } from '@/lib/body-mapping'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -158,7 +158,7 @@ export function RecoveryBodyView() {
             {/* Recovery Gradient Legend */}
             <View style={styles.gradientLegendContainer}>
               <LinearGradient
-                colors={['#EF4444', '#F59E0B', '#2A2A2A']}
+                colors={['#EF4444', '#F59E0B', '#1C1C1C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientBar}
