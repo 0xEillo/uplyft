@@ -24,6 +24,7 @@ const lightColors = {
   backgroundLight: '#efeff4', // Lighter elevation gray
   inputBackground: '#fff',
   feedCardBackground: '#fff',
+  feedCardSeparator: '#FFFFFF', // Whiter separator between feed cards
 
   // Border colors
   border: '#e5e6eb', // Refined neutral border
@@ -64,6 +65,7 @@ const darkColors = {
   backgroundLight: '#2C2C2C', // Input backgrounds - more elevated
   inputBackground: '#2C2C2C', // Explicit input background
   feedCardBackground: '#1c1c1c', // Feed card background - slightly lighter than main background
+  feedCardSeparator: '#1C1C1C', // Lighter gray separator between feed cards
 
   // Border colors (very subtle)
   border: '#333333',

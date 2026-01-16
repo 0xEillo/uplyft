@@ -1,12 +1,13 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { AppColors } from '@/constants/colors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
+import { StatusBar } from 'expo-status-bar'
 import { useMemo, useState } from 'react'
 import {
     ActivityIndicator,
@@ -40,7 +41,7 @@ export function Paywall({
   message = 'Get full access to all premium features',
   allowClose = true,
 }: PaywallProps) {
-  const colors = useThemedColors()
+  const colors = AppColors
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = Dimensions.get('window')
   const styles = createStyles(colors, screenHeight)
@@ -246,6 +247,7 @@ export function Paywall({
         }
       }}
     >
+      <StatusBar style="dark" />
       <View style={styles.container}>
         {/* Hero Image Section */}
         <View style={styles.heroImageContainer}>
@@ -397,7 +399,7 @@ export function Paywall({
 }
 
 function createStyles(
-  colors: ReturnType<typeof useThemedColors>,
+  colors: typeof AppColors,
   screenHeight: number = 800,
 ) {
   const { height } = Dimensions.get('window')
@@ -587,11 +589,11 @@ function createStyles(
     mainButton: {
       width: '100%',
       height: 64,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.text, // Match onboarding button style
       borderRadius: 32,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.primary,
+      shadowColor: colors.text,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -600,7 +602,7 @@ function createStyles(
     mainButtonText: {
       fontSize: 18,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: colors.background, // Match onboarding button text style
       letterSpacing: 0.3,
     },
     footerContainer: {

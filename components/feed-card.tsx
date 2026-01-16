@@ -822,8 +822,6 @@ function createStyles(
       paddingHorizontal: 14,
       paddingTop: 18,
       paddingBottom: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
     },
     header: {
       flexDirection: 'row',

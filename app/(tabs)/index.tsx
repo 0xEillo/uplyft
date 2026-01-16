@@ -509,6 +509,14 @@ export default function FeedScreen() {
         <FlatList
           ref={flatListRef}
           data={workouts}
+          ItemSeparatorComponent={() => (
+            <View
+              style={{
+                height: 10,
+                backgroundColor: colors.feedCardSeparator,
+              }}
+            />
+          )}
           renderItem={renderWorkoutItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
