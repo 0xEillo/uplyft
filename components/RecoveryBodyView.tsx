@@ -1,40 +1,31 @@
+import { BodyHighlighterDual } from '@/components/BodyHighlighterDual'
 import {
-    getRecoveryColor,
-    getRecoveryIntensity,
-    getRecoveryLabel,
+    getRecoveryGradientColors,
+    getRecoveryIntensityFromPercentage,
     useRecoveryData,
-    type RecoveryStatus,
 } from '@/hooks/useRecoveryData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
+    ALL_BODY_PART_SLUGS,
     BODY_PART_DISPLAY_NAMES,
     BODY_PART_TO_DATABASE_MUSCLE,
     type BodyPartSlug,
 } from '@/lib/body-mapping'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
     ActivityIndicator,
-    Dimensions,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     View,
 } from 'react-native'
-import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
-
-// Custom colors for the body highlighter based on recovery status
-// Note: library maps intensity 1 to index 0, intensity 2 to index 1, etc.
-// Indices: 0=Not Recovered (intensity 1), 1=Recovering (intensity 2)
-const RECOVERY_COLORS = [
-  '#EF4444', // Not Recovered (Red) - Intensity 1 maps to colors[0]
-  '#F59E0B', // Recovering (Amber) - Intensity 2 maps to colors[1]
-  '#10B981', // Fully Recovered (Green) - Intensity 3 maps to colors[2] (not used)
-]
+// Get the gradient colors for the body highlighter (10 steps)
+const RECOVERY_COLORS = getRecoveryGradientColors()
 
 export function RecoveryBodyView() {
   const colors = useThemedColors()
@@ -49,9 +40,7 @@ export function RecoveryBodyView() {
     onRefresh,
   } = useRecoveryData()
 
-  const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
-
-  // Generate body data for highlighting
+  // Generate body data for highlighting with gradient-based intensity
   const bodyData = useMemo(() => {
     const data: {
       slug: BodyPartSlug
@@ -59,19 +48,26 @@ export function RecoveryBodyView() {
       side?: 'left' | 'right'
     }[] = []
 
-    // Iterate over all supported body part slugs
-    Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(([slug, dbMuscleName]) => {
-      const recoveryData = muscleRecoveryData.get(dbMuscleName)
-      // Only add muscles that are still recovering (not 'untrained' or 'recovered')
-      if (recoveryData && 
-          recoveryData.recoveryStatus !== 'untrained' && 
-          recoveryData.recoveryStatus !== 'recovered') {
-        const intensity = getRecoveryIntensity(recoveryData.recoveryStatus)
-        data.push({
-          slug: slug as BodyPartSlug,
-          intensity,
-        })
+    // Iterate over ALL supported body part slugs to ensure the whole body is colored
+    ALL_BODY_PART_SLUGS.forEach((slug) => {
+      // Skip non-muscular/non-target parts for a cleaner aesthetic
+      if (['head', 'hands', 'feet', 'hair', 'ankles', 'neck'].includes(slug)) return
+      
+      const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
+      const recoveryData = dbMuscleName ? muscleRecoveryData.get(dbMuscleName) : null
+      
+      // Default to 100% recovered (intensity 6) for all muscles
+      let intensity = 6
+      
+      if (recoveryData && recoveryData.recoveryStatus !== 'untrained') {
+        // Use percentage-based intensity for gradient coloring
+        intensity = getRecoveryIntensityFromPercentage(recoveryData.recoveryPercentage)
       }
+      
+      data.push({
+        slug: slug,
+        intensity,
+      })
     })
 
     return data
@@ -98,6 +94,7 @@ export function RecoveryBodyView() {
         params: {
           muscleGroup: displayName,
           recoveryStatus: recoveryData?.recoveryStatus || 'untrained',
+          recoveryPercentage: recoveryData?.recoveryPercentage?.toString() || '100',
           hoursSinceLastWorkout: recoveryData?.hoursSinceLastWorkout?.toString() || '',
           lastWorkedDate: recoveryData?.lastWorkedDate?.toISOString() || '',
           intensity: recoveryData?.intensity || '',
@@ -113,8 +110,6 @@ export function RecoveryBodyView() {
   // Determine gender for body display
   const bodyGender = profile?.gender === 'female' ? 'female' : 'male'
 
-  // Calculate scale to fit the body nicely
-  const bodyScale = Math.min(SCREEN_WIDTH / 190, 1.35)
 
   // Format days since last workout
   const formatDaysSince = (days: number | null) => {
@@ -148,111 +143,49 @@ export function RecoveryBodyView() {
             />
           }
         >
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {formatDaysSince(recoveryOverview.daysSinceLastWorkout)}
-              </Text>
-              <Text style={styles.statLabel}>DAYS SINCE YOUR{'\n'}LAST WORKOUT</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {recoveryOverview.totalMuscleGroups > 0
-                  ? recoveryOverview.freshMuscleGroups
-                  : '—'}
-              </Text>
-              <Text style={styles.statLabel}>FRESH MUSCLE{'\n'}GROUPS</Text>
-            </View>
-          </View>
+
 
           {/* Body Section */}
           <View style={styles.bodySection}>
-            {/* Swipeable Body Highlighter */}
-            <View style={styles.swipeContainer}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  const contentOffset = e.nativeEvent.contentOffset.x
-                  const viewSize = e.nativeEvent.layoutMeasurement.width
-                  const pageNum = Math.floor(contentOffset / viewSize)
-                  setBodySide(pageNum === 0 ? 'front' : 'back')
-                }}
-              >
-                {/* Front View */}
-                <View style={styles.bodyWrapper}>
-                  <Body
-                    data={bodyData}
-                    gender={bodyGender}
-                    side="front"
-                    scale={bodyScale}
-                    colors={RECOVERY_COLORS}
-                    onBodyPartPress={handleBodyPartPress}
-                    border={colors.border}
-                  />
-                </View>
+            {/* Side-by-Side Body Highlighter */}
+            <BodyHighlighterDual
+              bodyData={bodyData}
+              gender={bodyGender}
+              colors={RECOVERY_COLORS}
+              onBodyPartPress={handleBodyPartPress}
+            />
 
-                {/* Back View */}
-                <View style={styles.bodyWrapper}>
-                  <Body
-                    data={bodyData}
-                    gender={bodyGender}
-                    side="back"
-                    scale={bodyScale}
-                    colors={RECOVERY_COLORS}
-                    onBodyPartPress={handleBodyPartPress}
-                    border={colors.border}
-                  />
-                </View>
-              </ScrollView>
-
-              {/* Page Indicators */}
-              <View style={styles.pageIndicators}>
-                <View style={[styles.dot, bodySide === 'front' && styles.dotActive]} />
-                <View style={[styles.dot, bodySide === 'back' && styles.dotActive]} />
+            {/* Recovery Gradient Legend */}
+            <View style={styles.gradientLegendContainer}>
+              <LinearGradient
+                colors={['#EF4444', '#F59E0B', '#2A2A2A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientBar}
+              />
+              <View style={styles.gradientLabels}>
+                <Text style={styles.gradientLabelText}>Not Recovered</Text>
+                <Text style={styles.gradientLabelText}>Recovering</Text>
+                <Text style={styles.gradientLabelText}>Recovered</Text>
               </View>
             </View>
 
-            {/* Recovery Legend */}
-            <View style={styles.integratedLegend}>
-              <View style={styles.legendGrid}>
-                {(
-                  [
-                    'not_recovered',
-                    'recovering',
-                  ] as RecoveryStatus[]
-                ).map((status) => (
-                  <View key={status} style={styles.legendItemCompact}>
-                    <View
-                      style={[
-                        styles.legendDotSmall,
-                        { backgroundColor: getRecoveryColor(status) },
-                      ]}
-                    />
-                    <Text style={styles.legendTextCompact}>
-                      {getRecoveryLabel(status)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Recovery Info Card */}
-            <View style={styles.infoCard}>
-              <Text style={styles.infoCardTitle}>How Muscle Recovery Works</Text>
-              <View style={styles.infoRow}>
-                <View style={[styles.infoIndicator, { backgroundColor: '#EF4444' }]} />
-                <Text style={styles.infoText}>
-                  <Text style={styles.infoBold}>Not Recovered</Text> — Needs more rest, avoid training
+            {/* Recovery Stats Card */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValue}>
+                  {formatDaysSince(recoveryOverview.daysSinceLastWorkout)}
                 </Text>
+                <Text style={styles.summaryLabel}>DAYS SINCE LAST WORKOUT</Text>
               </View>
-              <View style={styles.infoRow}>
-                <View style={[styles.infoIndicator, { backgroundColor: '#F59E0B' }]} />
-                <Text style={styles.infoText}>
-                  <Text style={styles.infoBold}>Recovering</Text> — Getting there, light training OK
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValue}>
+                  {recoveryOverview.totalMuscleGroups > 0
+                    ? recoveryOverview.freshMuscleGroups
+                    : '—'}
                 </Text>
+                <Text style={styles.summaryLabel}>FRESH MUSCLE GROUPS</Text>
               </View>
             </View>
           </View>
@@ -285,137 +218,72 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
 
-    // Stats Row
-    statsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      paddingHorizontal: 24,
-      paddingVertical: 20,
-    },
-    statItem: {
-      alignItems: 'center',
-    },
-    statValue: {
-      fontSize: 36,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 4,
-    },
-    statLabel: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textAlign: 'center',
-      letterSpacing: 0.5,
-    },
+
 
     // Body Section
     bodySection: {
       flex: 1,
       paddingHorizontal: 14,
+      marginTop: 24,
     },
 
-    // Swipe Section
-    swipeContainer: {
-      height: 500,
-      width: SCREEN_WIDTH - 28,
+    // Gradient Legend
+    gradientLegendContainer: {
+      marginTop: 20,
       alignItems: 'center',
     },
-    bodyWrapper: {
-      width: SCREEN_WIDTH - 28,
-      height: 500,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    pageIndicators: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 10,
-      gap: 8,
-    },
-    dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: colors.textPlaceholder,
-      opacity: 0.3,
-    },
-    dotActive: {
-      backgroundColor: colors.primary,
-      opacity: 1,
-      width: 8,
+    gradientBar: {
+      width: '100%',
       height: 8,
       borderRadius: 4,
     },
-
-    // Legend
-    integratedLegend: {
-      marginTop: 16,
-      paddingHorizontal: 0,
+    gradientLabels: {
       flexDirection: 'row',
-      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+      marginTop: 8,
     },
-    legendGrid: {
-      flex: 1,
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: 16,
-    },
-    legendItemCompact: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    legendDotSmall: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-    },
-    legendTextCompact: {
-      fontSize: 11,
-      color: colors.textSecondary,
+    gradientLabelText: {
+      fontSize: 10,
       fontWeight: '600',
+      color: colors.textSecondary,
     },
 
-    // Info Card
-    infoCard: {
+    // Summary Card
+    summaryCard: {
       marginTop: 24,
       backgroundColor: colors.feedCardBackground,
       borderRadius: 16,
-      padding: 16,
-    },
-    infoCardTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 12,
-    },
-    infoRow: {
+      padding: 20,
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 8,
-      gap: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
     },
-    infoIndicator: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    infoText: {
-      fontSize: 12,
-      color: colors.textSecondary,
+    summaryItem: {
       flex: 1,
+      alignItems: 'center',
     },
-    infoBold: {
-      fontWeight: '700',
+    summaryValue: {
+      fontSize: 28,
+      fontWeight: '800',
       color: colors.text,
+      marginBottom: 4,
     },
-    infoNote: {
-      fontSize: 12,
+    summaryLabel: {
+      fontSize: 10,
+      fontWeight: '700',
       color: colors.textSecondary,
-      fontStyle: 'italic',
-      marginTop: 8,
+      textAlign: 'center',
+      letterSpacing: 0.5,
+    },
+    summaryDivider: {
+      width: 1,
+      height: 40,
+      backgroundColor: colors.border,
+      marginHorizontal: 12,
     },
   })

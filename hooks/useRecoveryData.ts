@@ -14,6 +14,7 @@ export interface MuscleRecoveryData {
   lastWorkedDate: Date | null
   hoursSinceLastWorkout: number | null
   recoveryStatus: RecoveryStatus
+  recoveryPercentage: number // 0-100, where 0 = just worked out, 100 = fully recovered
   intensity: WorkoutIntensity | null
   recoveryTimeHours: number | null // How long this muscle needs to fully recover
 }
@@ -58,10 +59,22 @@ const RECOVERY_STATUS_COLORS: Record<RecoveryStatus, string> = {
   untrained: '#6B7280', // Gray - no data
 }
 
+// Gradient colors for recovery spectrum (11 steps from 0% to 100%)
+// Red (0%) -> Amber (40%) -> Neutral Dark Gray (100%)
+const RECOVERY_GRADIENT_COLORS = [
+  '#EF4444', // 0% - Red
+  '#F97316', // 20% - Orange
+  '#F59E0B', // 40% - Amber
+  '#949494', // 60% transition
+  '#5C5C5C', // 80% transition
+  '#2A2A2A', // 100% - Dark Gray (matches base silhouette)
+]
+
+// We use intensity 1-10 for the gradient steps
 const RECOVERY_STATUS_INTENSITY: Record<RecoveryStatus, number> = {
-  not_recovered: 1,
-  recovering: 2,
-  recovered: 0, // Not shown on chart
+  not_recovered: 1, 
+  recovering: 3,    
+  recovered: 6,    
   untrained: 0,
 }
 
@@ -75,6 +88,7 @@ const RECOVERY_STATUS_LABELS: Record<RecoveryStatus, string> = {
 type RecoverySessionResult = {
   id: string
   created_at: string
+  date: string
   workout_exercises?: {
     exercise?: Pick<Exercise, 'muscle_group' | 'secondary_muscles'>
     sets?: Pick<DbSet, 'weight'>[]
@@ -177,9 +191,64 @@ export function getRecoveryColor(status: RecoveryStatus): string {
 
 /**
  * Get intensity value for body highlighter (1-4 based on recovery status)
+ * @deprecated Use getRecoveryIntensityFromPercentage for gradient-based coloring
  */
 export function getRecoveryIntensity(status: RecoveryStatus): number {
   return RECOVERY_STATUS_INTENSITY[status]
+}
+
+/**
+ * Calculate recovery percentage (0-100) based on hours since workout and recovery time
+ * 0% = just worked out, 100% = fully recovered
+ */
+export function calculateRecoveryPercentage(
+  hoursSinceLastWorkout: number | null,
+  recoveryTimeHours: number | null
+): number {
+  if (hoursSinceLastWorkout === null || recoveryTimeHours === null) {
+    return 100 // Untrained = fully recovered (won't be shown)
+  }
+  
+  const percentage = Math.min(100, (hoursSinceLastWorkout / recoveryTimeHours) * 100)
+  return Math.round(percentage)
+}
+
+/**
+ * Get intensity value for body highlighter based on recovery percentage
+ * Returns 1-6 for gradient steps, or 0 for untrained (not shown)
+ */
+export function getRecoveryIntensityFromPercentage(recoveryPercentage: number): number {
+  if (recoveryPercentage > 100) return 0
+  
+  // Map 0-100% to intensity 1-6
+  if (recoveryPercentage === 100) return 6
+  
+  // 5 steps before 100% (0-19, 20-39, 40-59, 60-79, 80-99)
+  const intensity = Math.floor(recoveryPercentage / 20) + 1
+  return Math.min(6, Math.max(1, intensity))
+}
+
+/**
+ * Get color for recovery based on percentage (0-100)
+ * Uses smooth gradient interpolation
+ */
+export function getRecoveryColorFromPercentage(recoveryPercentage: number): string {
+  if (recoveryPercentage >= 100) {
+    return '#6B8E9F' // Blue-gray for fully recovered
+  }
+  
+  // Clamp to 0-99 range and get the gradient index
+  const clampedPercentage = Math.max(0, Math.min(99, recoveryPercentage))
+  const index = Math.floor(clampedPercentage / 10)
+  return RECOVERY_GRADIENT_COLORS[index]
+}
+
+/**
+ * Get the recovery gradient colors array for the body highlighter
+ * This provides all 11 gradient colors for the Body component
+ */
+export function getRecoveryGradientColors(): string[] {
+  return RECOVERY_GRADIENT_COLORS
 }
 
 /**
@@ -222,17 +291,17 @@ export function useRecoveryData(): UseRecoveryDataResult {
         return
       }
 
-      // Build a map of muscle group -> { date, totalSets, hadWeights }
-      // We track the MOST RECENT workout for each muscle with its intensity
-      const muscleWorkoutData = new Map<
+      // Build a map of muscle group -> [{ date, sets, hadWeights }]
+      // We track ALL workouts for each muscle to aggregate them
+      const muscleWorkoutHistory = new Map<
         string,
-        { date: Date; totalSets: number; hadWeightedSets: boolean }
+        { date: Date; sets: number; hadWeight: boolean }[]
       >()
       let mostRecentWorkout: Date | null = null
 
       const sessions = data as unknown as RecoverySessionResult[] | null | undefined
       sessions?.forEach((session) => {
-        const sessionDate = new Date(session.created_at)
+        const sessionDate = new Date(session.date || session.created_at)
 
         // Track overall last workout
         if (!mostRecentWorkout || sessionDate > mostRecentWorkout) {
@@ -277,17 +346,15 @@ export function useRecoveryData(): UseRecoveryDataResult {
             })
           })
         })
-
-        // Update the main map - only keep the most recent workout per muscle
+        // Update the history map - add this session's data for each muscle
         sessionMuscleData.forEach((sessionGroupData, muscleGroup) => {
-          const existingWorkout = muscleWorkoutData.get(muscleGroup)
-          if (!existingWorkout || sessionDate > existingWorkout.date) {
-            muscleWorkoutData.set(muscleGroup, {
-              date: sessionDate,
-              totalSets: sessionGroupData.sets,
-              hadWeightedSets: sessionGroupData.hadWeight,
-            })
-          }
+          const history = muscleWorkoutHistory.get(muscleGroup) || []
+          history.push({
+            date: sessionDate,
+            sets: sessionGroupData.sets,
+            hadWeight: sessionGroupData.hadWeight,
+          })
+          muscleWorkoutHistory.set(muscleGroup, history)
         })
       })
 
@@ -301,36 +368,56 @@ export function useRecoveryData(): UseRecoveryDataResult {
       const allMuscleGroups = new Set(Object.values(BODY_PART_TO_DATABASE_MUSCLE))
 
       allMuscleGroups.forEach((muscleGroup) => {
-        const workoutData = muscleWorkoutData.get(muscleGroup)
+        const history = muscleWorkoutHistory.get(muscleGroup)
 
-        if (!workoutData) {
+        if (!history || history.length === 0) {
           // No workout data for this muscle
           recoveryMap.set(muscleGroup, {
             muscleGroup,
             lastWorkedDate: null,
             hoursSinceLastWorkout: null,
             recoveryStatus: 'untrained',
+            recoveryPercentage: 100, // Untrained = fully recovered
             intensity: null,
             recoveryTimeHours: null,
           })
           return
         }
 
-        const hoursSinceLastWorkout = (now.getTime() - workoutData.date.getTime()) / (1000 * 60 * 60)
-        const intensity = calculateIntensity(workoutData.totalSets, workoutData.hadWeightedSets)
+        // Find the most recent session's date
+        const sortedHistory = [...history].sort((a, b) => b.date.getTime() - a.date.getTime())
+        const lastSessionDate = sortedHistory[0].date
+        
+        // Aggregate all sets within 24 hours of the last session
+        let totalSets = 0
+        let hadWeightedSets = false
+        const boutThreshold = 24 * 60 * 60 * 1000 // 24 hours in ms
+        
+        history.forEach(workout => {
+          const timeDiff = Math.abs(lastSessionDate.getTime() - workout.date.getTime())
+          if (timeDiff <= boutThreshold) {
+            totalSets += workout.sets
+            if (workout.hadWeight) hadWeightedSets = true
+          }
+        })
+
+        const hoursSinceLastWorkout = (now.getTime() - lastSessionDate.getTime()) / (1000 * 60 * 60)
+        const intensity = calculateIntensity(totalSets, hadWeightedSets)
         const recoveryTimeHours = RECOVERY_TIMES[intensity]
         const recoveryStatus = getRecoveryStatusWithIntensity(hoursSinceLastWorkout, recoveryTimeHours)
+        const recoveryPercentage = calculateRecoveryPercentage(hoursSinceLastWorkout, recoveryTimeHours)
 
         recoveryMap.set(muscleGroup, {
           muscleGroup,
-          lastWorkedDate: workoutData.date,
+          lastWorkedDate: lastSessionDate,
           hoursSinceLastWorkout,
           recoveryStatus,
+          recoveryPercentage,
           intensity,
           recoveryTimeHours,
         })
       })
-
+      
       setMuscleRecoveryData(recoveryMap)
     } catch (error) {
       console.error('Error loading recovery data:', error)

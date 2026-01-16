@@ -30,6 +30,32 @@ export type BodyPartSlug =
   | 'hamstring'
   | 'gluteal'
 
+export const ALL_BODY_PART_SLUGS: BodyPartSlug[] = [
+  'trapezius',
+  'triceps',
+  'forearm',
+  'adductors',
+  'calves',
+  'hair',
+  'neck',
+  'deltoids',
+  'hands',
+  'feet',
+  'head',
+  'ankles',
+  'tibialis',
+  'obliques',
+  'chest',
+  'biceps',
+  'abs',
+  'quadriceps',
+  'knees',
+  'upper-back',
+  'lower-back',
+  'hamstring',
+  'gluteal',
+]
+
 
 // Human-readable names for body parts
 export const BODY_PART_DISPLAY_NAMES: Partial<Record<BodyPartSlug, string>> = {

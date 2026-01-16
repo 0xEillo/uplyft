@@ -153,7 +153,7 @@ export default function MuscleGroupDetailScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <Text style={styles.sectionTitle}>
-                    Exercises & Standards
+                    {groupDisplayName} Strength
                 </Text>
 
                 {allMuscleExercises.length === 0 ? (
@@ -286,8 +286,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             padding: 20,
         },
         sectionTitle: {
-            fontSize: 15,
-            fontWeight: '600',
+            fontSize: 18,
+            fontWeight: '700',
             color: colors.textSecondary,
             marginBottom: 16,
             letterSpacing: -0.2,

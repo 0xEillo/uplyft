@@ -33,6 +33,7 @@ export default function RecoveryDetailScreen() {
         lastWorkedDate: string
         intensity: string
         recoveryTimeHours: string
+        recoveryPercentage: string
     }>()
 
     // Parse params back to their proper types
@@ -48,6 +49,9 @@ export default function RecoveryDetailScreen() {
     const recoveryTimeHours = params.recoveryTimeHours 
         ? parseFloat(params.recoveryTimeHours) 
         : null
+    const recoveryPercentage = params.recoveryPercentage
+        ? parseInt(params.recoveryPercentage)
+        : 100
 
     const formatTimeAgo = (hours: number | null): string => {
         if (hours === null) return 'Never trained'
@@ -156,6 +160,10 @@ export default function RecoveryDetailScreen() {
                             <Text style={styles.infoValue}>{formatIntensity(intensity)}</Text>
                         </View>
                     )}
+                    <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Recovery Progress</Text>
+                        <Text style={[styles.infoValue, { color: statusColor }]}>{recoveryPercentage}%</Text>
+                    </View>
                     {recoveryTimeHours && (
                         <View style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Recovery Needed</Text>

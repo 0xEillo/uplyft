@@ -1,3 +1,4 @@
+import { BodyHighlighterDual } from '@/components/BodyHighlighterDual'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import {
@@ -17,7 +18,6 @@ import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
-    Dimensions,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -25,10 +25,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 // Custom colors for the body highlighter based on strength levels
 // Custom colors for the body highlighter based on strength levels
@@ -58,7 +55,6 @@ export function StrengthBodyView() {
     muscleGroups,
   } = useStrengthData()
 
-  const [bodySide, setBodySide] = useState<'front' | 'back'>('front')
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
 
   // Generate body data for highlighting
@@ -129,10 +125,6 @@ export function StrengthBodyView() {
   // Determine gender for body display
   const bodyGender = profile?.gender === 'female' ? 'female' : 'male'
 
-  // Calculate scale to fit the body nicely
-  // We want to ensure it fits in the swipeContainer height (540)
-  const bodyScale = Math.min(SCREEN_WIDTH / 190, 1.35)
-
   return (
     <View style={styles.container}>
       {isLoading ? (
@@ -161,52 +153,13 @@ export function StrengthBodyView() {
           {/* Body Section */}
           <View style={styles.bodySection}>
 
-            {/* Swipeable Body Highlighter */}
-            <View style={styles.swipeContainer}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  const contentOffset = e.nativeEvent.contentOffset.x;
-                  const viewSize = e.nativeEvent.layoutMeasurement.width;
-                  const pageNum = Math.floor(contentOffset / viewSize);
-                  setBodySide(pageNum === 0 ? 'front' : 'back');
-                }}
-              >
-                {/* Front View */}
-                <View style={styles.bodyWrapper}>
-                  <Body
-                    data={bodyData}
-                    gender={bodyGender}
-                    side="front"
-                    scale={bodyScale}
-                    colors={BODY_COLORS}
-                    onBodyPartPress={handleBodyPartPress}
-                    border={colors.border}
-                  />
-                </View>
-
-                {/* Back View */}
-                <View style={styles.bodyWrapper}>
-                  <Body
-                    data={bodyData}
-                    gender={bodyGender}
-                    side="back"
-                    scale={bodyScale}
-                    colors={BODY_COLORS}
-                    onBodyPartPress={handleBodyPartPress}
-                    border={colors.border}
-                  />
-                </View>
-              </ScrollView>
-
-              {/* Page Indicators */}
-              <View style={styles.pageIndicators}>
-                <View style={[styles.dot, bodySide === 'front' && styles.dotActive]} />
-                <View style={[styles.dot, bodySide === 'back' && styles.dotActive]} />
-              </View>
-            </View>
+            {/* Side-by-Side Body Highlighter */}
+            <BodyHighlighterDual
+              bodyData={bodyData}
+              gender={bodyGender}
+              colors={BODY_COLORS}
+              onBodyPartPress={handleBodyPartPress}
+            />
 
             {/* Integrated Legend Key - Directly under the chart */}
             <View style={styles.integratedLegend}>
@@ -397,40 +350,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       paddingHorizontal: 14,
       marginTop: 24,
-    },
-
-    // Swipe Section
-    swipeContainer: {
-      height: 540,
-      width: SCREEN_WIDTH - 28,
-      alignItems: 'center',
-    },
-    bodyWrapper: {
-      width: SCREEN_WIDTH - 28,
-      height: 540,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    pageIndicators: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 10,
-      gap: 8,
-    },
-    dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: colors.textPlaceholder,
-      opacity: 0.3,
-    },
-    dotActive: {
-      backgroundColor: colors.primary,
-      opacity: 1,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
     },
 
     // Legend

@@ -1589,6 +1589,7 @@ export const database = {
           `
           id,
           created_at,
+          date,
           workout_exercises (
             id,
             exercise:exercises (
@@ -1606,8 +1607,8 @@ export const database = {
         `,
         )
         .eq('user_id', userId)
-        .gte('created_at', fromDate.toISOString())
-        .order('created_at', { ascending: false })
+        .gte('date', fromDate.toISOString())
+        .order('date', { ascending: false })
 
       return { data, error }
     },
