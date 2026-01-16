@@ -36,7 +36,7 @@ function lightenColor(hex: string, percent: number): string {
   )
 }
 
-export type StrengthLevel =
+type StrengthLevel =
   | 'Beginner'
   | 'Novice'
   | 'Intermediate'
@@ -56,6 +56,7 @@ const LEVEL_COLORS: Record<StrengthLevel, string> = {
 interface LevelBadgeProps {
   level: StrengthLevel
   size?: 'small' | 'medium' | 'large' | 'xl' | 'hero'
+  variant?: 'icon' | 'pill'
   style?: ViewStyle
   showTooltipOnPress?: boolean
   iconOnly?: boolean
@@ -64,6 +65,7 @@ interface LevelBadgeProps {
 export function LevelBadge({
   level,
   size = 'medium',
+  variant = 'icon',
   style,
   showTooltipOnPress = false,
   iconOnly = false,
@@ -74,11 +76,11 @@ export function LevelBadge({
   const timeoutRef = useRef<any>(null)
 
   const dimensions = {
-    small: { container: 26, icon: 16, border: 2, fontSize: 10 },
-    medium: { container: 34, icon: 20, border: 2.5, fontSize: 11 },
-    large: { container: 48, icon: 28, border: 3, fontSize: 12 },
-    hero: { container: 80, icon: 48, border: 4, fontSize: 16 },
-    xl: { container: 120, icon: 84, border: 6, fontSize: 24 },
+    small: { container: 26, icon: 16, border: 1, fontSize: 10, paddingH: 8, paddingV: 3 },
+    medium: { container: 34, icon: 20, border: 1.5, fontSize: 11, paddingH: 10, paddingV: 4 },
+    large: { container: 48, icon: 28, border: 2, fontSize: 13, paddingH: 14, paddingV: 6 },
+    hero: { container: 80, icon: 48, border: 3, fontSize: 16, paddingH: 20, paddingV: 8 },
+    xl: { container: 120, icon: 84, border: 4, fontSize: 24, paddingH: 24, paddingV: 12 },
   }
 
   const dim = dimensions[size]
@@ -110,6 +112,36 @@ export function LevelBadge({
       }).start(() => setShowTooltip(false))
     }, 2000)
   }, [showTooltipOnPress, fadeAnim])
+
+  if (variant === 'pill') {
+    return (
+      <View
+        style={[
+          styles.pillContainer,
+          {
+            borderColor: color,
+            borderWidth: dim.border,
+            backgroundColor: color + '15',
+            paddingHorizontal: dim.paddingH,
+            paddingVertical: dim.paddingV,
+          },
+          style,
+        ]}
+      >
+        <Text
+          style={[
+            styles.pillText,
+            {
+              color: color,
+              fontSize: dim.fontSize,
+            },
+          ]}
+        >
+          {level}
+        </Text>
+      </View>
+    )
+  }
 
   const badge = iconOnly ? (
     <Image
@@ -217,9 +249,6 @@ export function LevelBadge({
   )
 }
 
-export function getLevelColor(level: StrengthLevel): string {
-  return LEVEL_COLORS[level]
-}
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -229,6 +258,15 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  pillContainer: {
+    borderRadius: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pillText: {
+    fontWeight: '700',
+    textAlign: 'center',
   },
   tooltip: {
     position: 'absolute',

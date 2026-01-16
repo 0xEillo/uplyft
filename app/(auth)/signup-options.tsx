@@ -318,7 +318,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     googleButton: {
       height: 64,
       backgroundColor: colors.inputBackground,
-      borderWidth: 2,
+      borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 32,
       flexDirection: 'row',

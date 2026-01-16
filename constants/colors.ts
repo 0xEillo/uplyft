@@ -19,15 +19,15 @@ const lightColors = {
   textPlaceholder: '#c7c7cc',
 
   // Background colors
-  background: '#F9F9F9', // Apple Notes-style background color
-  backgroundWhite: '#fff',
-  backgroundLight: '#efeff4', // Lighter elevation gray
-  inputBackground: '#fff',
-  feedCardBackground: '#fff',
-  feedCardSeparator: '#FFFFFF', // Whiter separator between feed cards
+  background: '#ffffff', // Standard social media white
+  backgroundWhite: '#ffffff',
+  backgroundLight: '#F0F0F5', // Slightly lighter accent (between Gray 5 and 6)
+  inputBackground: '#F0F0F5', // Slightly lighter accent
+  feedCardBackground: '#ffffff',
+  feedCardSeparator: '#E1E1E6', // Slightly lighter separator
 
   // Border colors
-  border: '#e5e6eb', // Refined neutral border
+  border: '#E1E1E6', // Slightly lighter border
 
   // Shadow colors
   shadow: '#000',

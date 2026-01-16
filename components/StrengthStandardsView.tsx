@@ -359,8 +359,18 @@ export function StrengthStandardsView() {
                                 </View>
 
                                 {strengthInfo ? (
-                                  <View style={styles.exerciseLevelBadge}>
-                                    <Text style={[styles.exerciseLevelText, { color: getLevelColor(strengthInfo.level) }]}>
+                                  <View
+                                    style={[
+                                      styles.exerciseLevelBadge,
+                                      { backgroundColor: getLevelColor(strengthInfo.level as any) },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.exerciseLevelText,
+                                        { color: '#fff' },
+                                      ]}
+                                    >
                                       {strengthInfo.level}
                                     </Text>
                                   </View>

@@ -5,14 +5,14 @@ import { SlideInView } from '@/components/slide-in-view'
 import { StrengthInfoSheet } from '@/components/StrengthInfoSheet'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
     getStandardsLadder,
     getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel,
+    hasStrengthStandards
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -143,17 +143,6 @@ export default function StrengthStatsScreen() {
     [profile?.gender, profile?.weight_kg],
   )
 
-  const getLevelColor = (level: StrengthLevel): string => {
-    const colors = {
-      Beginner: '#9CA3AF',
-      Novice: '#3B82F6',
-      Intermediate: '#10B981',
-      Advanced: '#8B5CF6',
-      Elite: '#F59E0B',
-      'World Class': '#EF4444',
-    }
-    return colors[level]
-  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -314,9 +303,7 @@ export default function StrengthStatsScreen() {
                         <View
                           style={[
                             styles.levelBadge,
-                            {
-                              backgroundColor: getLevelColor(strengthInfo.level),
-                            },
+                            { backgroundColor: getLevelColor(strengthInfo.level) },
                           ]}
                         >
                           <Text style={styles.levelBadgeText}>

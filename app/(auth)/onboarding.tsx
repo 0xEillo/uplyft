@@ -1906,8 +1906,7 @@ export default function OnboardingScreen() {
 
                       <View style={styles.textContainer}>
                         <Text style={styles.cardTitle}>{coach.name}</Text>
-                        <Text style={styles.cardSubtitle}>{coach.title}</Text>
-                        <Text style={styles.cardDescription}>{coach.description}</Text>
+                        <Text style={styles.cardSubtitle}>{coach.description}</Text>
                       </View>
                     </View>
                   </HapticButton>
@@ -3534,7 +3533,7 @@ const createStyles = (
       shadowRadius: 8,
       elevation: 2,
       borderWidth: 1,
-      borderColor: 'transparent',
+      borderColor: colors.border,
     },
     cardSelected: {
       borderColor: colors.primary,
@@ -3618,7 +3617,8 @@ const createStyles = (
     cardSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      fontWeight: '600',
+      fontWeight: '500',
+      lineHeight: 18,
       marginBottom: 2,
     },
     cardDescription: {
@@ -4047,6 +4047,8 @@ const createStyles = (
       backgroundColor: colors.backgroundWhite,
       borderRadius: 20,
       paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     statRow: {
       flexDirection: 'row',
@@ -4128,6 +4130,8 @@ const createStyles = (
       backgroundColor: colors.backgroundWhite,
       borderRadius: 20,
       padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     feedbackCoachIconContainer: {
       width: 36,
@@ -4434,6 +4438,8 @@ const createStyles = (
       shadowOpacity: 0.05,
       shadowRadius: 10,
       elevation: 3,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     testimonialHeader: {
       flexDirection: 'row',
@@ -4511,6 +4517,8 @@ const createStyles = (
       borderRadius: 28,
       padding: 24,
       marginBottom: 32,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     summaryCardTitle: {
       fontSize: 22,

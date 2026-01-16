@@ -208,16 +208,17 @@ export default function MuscleGroupDetailScreen() {
 
                             <View style={styles.exerciseRight}>
                                 {exercise.strengthInfo && (
-                                    <View style={[
-                                        styles.levelBadgeItem,
-                                        { backgroundColor: getLevelColor(exercise.strengthInfo.level) + '20' }
-                                    ]}>
-                                        <Text style={[
-                                            styles.levelText,
-                                            { color: getLevelColor(exercise.strengthInfo.level) }
-                                        ]}>
-                                            {exercise.strengthInfo.level}
-                                        </Text>
+                                    <View
+                                        style={[
+                                            styles.levelBadgeItem,
+                                            {
+                                                backgroundColor: getLevelColor(
+                                                    exercise.strengthInfo.level as any,
+                                                ),
+                                            },
+                                        ]}
+                                    >
+                                        <Text style={styles.levelText}>{exercise.strengthInfo.level}</Text>
                                     </View>
                                 )}
                                 <Ionicons
@@ -346,6 +347,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             borderRadius: 8,
         },
         levelText: {
+            color: '#FFF',
             fontSize: 12,
             fontWeight: '700',
         },

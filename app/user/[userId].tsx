@@ -840,16 +840,25 @@ export default function UserProfileScreen() {
                 />
               ) : (
                 workouts.map((workout, index) => (
-                  <AsyncPrFeedCard
-                    key={workout.id}
-                    workout={workout}
-                    onDelete={() => {
-                      setWorkouts((prev) =>
-                        prev.filter((w) => w.id !== workout.id),
-                      )
-                    }}
-                    isFirst={index === 0}
-                  />
+                  <View key={workout.id}>
+                    {index > 0 && (
+                      <View
+                        style={{
+                          height: 8,
+                          backgroundColor: colors.feedCardSeparator,
+                        }}
+                      />
+                    )}
+                    <AsyncPrFeedCard
+                      workout={workout}
+                      onDelete={() => {
+                        setWorkouts((prev) =>
+                          prev.filter((w) => w.id !== workout.id),
+                        )
+                      }}
+                      isFirst={index === 0}
+                    />
+                  </View>
                 ))
               )}
             </View>

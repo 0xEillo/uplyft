@@ -2,6 +2,7 @@ import { HapticButton } from '@/components/haptic-button'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS } from '@/lib/coaches'
 import { Asset } from 'expo-asset'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -9,11 +10,11 @@ import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -35,6 +36,8 @@ const ITEM_SPACING = 20
 export default function WelcomeScreen() {
   const [showSignInSheet, setShowSignInSheet] = useState(false)
   const { trackEvent } = useAnalytics()
+  const colors = useThemedColors()
+  const styles = createStyles(colors)
 
   const translateX = useSharedValue(0)
 
@@ -147,98 +150,101 @@ export default function WelcomeScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 50,
-    zIndex: 10,
-  },
-  logoText: {
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: 4,
-    color: '#000',
-  },
-  carouselContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  carouselTrack: {
-    flexDirection: 'row',
-    paddingLeft: 20,
-    alignItems: 'center',
-  },
-  cardContainer: {
-    width: ITEM_WIDTH,
-    height: 280,
-    marginRight: ITEM_SPACING,
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 5,
-    backgroundColor: '#fff',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  actions: {
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  textContainer: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 8,
-    textAlign: 'left',
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#999',
-    fontWeight: '500',
-    textAlign: 'left',
-  },
-  getStartedButton: {
-    height: 56,
-    backgroundColor: '#000',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  getStartedText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  signInRow: {
-    alignItems: 'center',
-  },
-  signInPrompt: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '500',
-  },
-})
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    header: {
+      alignItems: 'center',
+      paddingTop: 50,
+      zIndex: 10,
+    },
+    logoText: {
+      fontSize: 30,
+      fontWeight: '900',
+      letterSpacing: 4,
+      color: '#000',
+    },
+    carouselContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    carouselTrack: {
+      flexDirection: 'row',
+      paddingLeft: 20,
+      alignItems: 'center',
+    },
+    cardContainer: {
+      width: ITEM_WIDTH,
+      height: 280,
+      marginRight: ITEM_SPACING,
+      borderRadius: 24,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 5,
+      backgroundColor: '#fff',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardImage: {
+      width: '100%',
+      height: '100%',
+    },
+    actions: {
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+    },
+    textContainer: {
+      marginBottom: 32,
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: '#000',
+      marginBottom: 8,
+      textAlign: 'left',
+    },
+    subtitle: {
+      fontSize: 18,
+      color: '#999',
+      fontWeight: '500',
+      textAlign: 'left',
+    },
+    getStartedButton: {
+      height: 56,
+      backgroundColor: '#000',
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    getStartedText: {
+      color: '#fff',
+      fontSize: 17,
+      fontWeight: '600',
+    },
+    signInRow: {
+      alignItems: 'center',
+    },
+    signInPrompt: {
+      fontSize: 15,
+      color: '#666',
+      fontWeight: '500',
+    },
+  })

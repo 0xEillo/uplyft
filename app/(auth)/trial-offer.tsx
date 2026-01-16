@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-  useRevenueCatPackages
+    useRevenueCatPackages
 } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -16,17 +16,17 @@ import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import Animated, {
-  FadeInDown
+    FadeInDown
 } from 'react-native-reanimated'
 
 export default function TrialOfferScreen() {
@@ -530,7 +530,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>, screenHeight: 
         backgroundColor: colors.backgroundWhite, 
         borderRadius: 18,
         height: 74, 
-        borderWidth: 2,
+        borderWidth: 1,
         borderColor: colors.border,
         shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },

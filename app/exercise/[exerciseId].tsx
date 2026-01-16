@@ -19,6 +19,7 @@ import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
@@ -301,17 +302,6 @@ export default function ExerciseDetailScreen() {
     )
   }, [profile, exercise, max1RM])
 
-  const getLevelColor = (level: StrengthLevel): string => {
-    const colors = {
-      Beginner: '#9CA3AF',
-      Novice: '#3B82F6',
-      Intermediate: '#10B981',
-      Advanced: '#8B5CF6',
-      Elite: '#F59E0B',
-      'World Class': '#EF4444',
-    }
-    return colors[level]
-  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -537,23 +527,13 @@ export default function ExerciseDetailScreen() {
                   <>
                     <View style={styles.statRow}>
                       <Text style={styles.statLabel}>Level</Text>
-                      <View
-                        style={{
-                          backgroundColor: getLevelColor(strengthInfo.level),
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
-                          borderRadius: 4,
-                        }}
+                      <View 
+                        style={[
+                          styles.levelBadge, 
+                          { backgroundColor: getLevelColor(strengthInfo.level as any) }
+                        ]}
                       >
-                        <Text
-                          style={{
-                            color: '#fff',
-                            fontSize: 12,
-                            fontWeight: '700',
-                          }}
-                        >
-                          {strengthInfo.level}
-                        </Text>
+                        <Text style={styles.levelText}>{strengthInfo.level}</Text>
                       </View>
                     </View>
                     <View style={styles.separator} />
@@ -609,7 +589,7 @@ export default function ExerciseDetailScreen() {
               </View>
 
               {/* All Records Section */}
-              <View style={[styles.sectionHeader, styles.paddedHorizontal, { marginTop: 24 }]}>
+              <View style={[styles.sectionHeader, styles.paddedHorizontal, { marginTop: 8 }]}>
                 <Text style={styles.sectionTitle}>All Records</Text>
               </View>
 
@@ -669,7 +649,12 @@ export default function ExerciseDetailScreen() {
                                         {entry.displayName}
                                     </Text>
                                     {entry.strengthLevel && (
-                                        <View style={[styles.miniLevelBadge, { backgroundColor: getLevelColor(entry.strengthLevel) }]}>
+                                        <View 
+                                            style={[
+                                                styles.miniLevelBadge, 
+                                                { backgroundColor: getLevelColor(entry.strengthLevel as any) }
+                                            ]}
+                                        >
                                             <Text style={styles.miniLevelText}>{entry.strengthLevel}</Text>
                                         </View>
                                     )}
@@ -886,7 +871,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 16,
+      marginBottom: 0, // Using summaryContainer gap instead
     },
     sectionTitle: {
       fontSize: 18,
@@ -1066,7 +1051,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     emptyText: {
         textAlign: 'center',
         color: colors.textSecondary,
-        marginTop: 32
+        paddingVertical: 24,
     },
     historyItem: {
         backgroundColor: colors.backgroundLight,
@@ -1278,5 +1263,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         fontSize: 10,
         fontWeight: '700',
         color: '#FFFFFF'
-    }
+    },
+    levelBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    levelText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+    },
   })

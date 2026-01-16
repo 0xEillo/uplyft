@@ -13,6 +13,7 @@ import {
     BODY_PART_TO_DATABASE_MUSCLE,
     type BodyPartSlug
 } from '@/lib/body-mapping'
+import { type StrengthLevel } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
@@ -164,19 +165,14 @@ export function StrengthBodyView() {
             {/* Integrated Legend Key - Directly under the chart */}
             <View style={styles.integratedLegend}>
               <View style={styles.legendGrid}>
-                {['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class'].map(
+                {(['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class'] as StrengthLevel[]).map(
                   (level) => (
-                    <View key={level} style={styles.legendItemCompact}>
-                      <View
-                        style={[
-                          styles.legendDotSmall,
-                          { backgroundColor: getLevelColor(level as any) },
-                        ]}
-                      />
-                      <Text style={styles.legendTextCompact}>
-                        {level === 'World Class' ? 'World Class' : level}
-                      </Text>
-                    </View>
+                    <LevelBadge 
+                      key={level}
+                      level={level}
+                      variant="pill"
+                      size="small"
+                    />
                   ),
                 )}
               </View>

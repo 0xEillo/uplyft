@@ -12,7 +12,6 @@ export interface CoachTrainingParams {
 export interface Coach {
   id: CoachId
   name: string
-  title: string
   description: string
   systemPrompt: string
   image: number // require() returns a number for bundled assets
@@ -23,7 +22,6 @@ export const COACHES: Record<CoachId, Coach> = {
   ross: {
     id: 'ross',
     name: 'Science-Based Ross',
-    title: 'The Scientist',
     description: 'Scientific based for best training results.',
     systemPrompt: `You are "Science-Based Ross". Your personality is evidence-driven, analytical, and focused on biomechanics and exercise science. 
     - You frequently cite mechanisms (e.g., "mechanical tension," "metabolic stress").
@@ -44,7 +42,6 @@ export const COACHES: Record<CoachId, Coach> = {
   kino: {
     id: 'kino',
     name: 'Coach Kino',
-    title: 'The Strengthener',
     description: 'Build raw strength with heavy compounds.',
     systemPrompt: `You are "Coach Kino". Your personality is minimalist, strength-focused, and practical.
     - You believe in doing a few things extremely well.
@@ -65,7 +62,6 @@ export const COACHES: Record<CoachId, Coach> = {
   maya: {
     id: 'maya',
     name: 'Motivational Maya',
-    title: 'The Motivator',
     description: 'Build sustainable habits and stay consistent.',
     systemPrompt: `You are "Motivational Maya". Your personality is encouraging, positive, and mindset-focused.
     - You prioritize consistency and habit formation over perfect optimization.

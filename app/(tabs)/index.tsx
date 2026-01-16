@@ -512,7 +512,7 @@ export default function FeedScreen() {
           ItemSeparatorComponent={() => (
             <View
               style={{
-                height: 10,
+                height: 8,
                 backgroundColor: colors.feedCardSeparator,
               }}
             />

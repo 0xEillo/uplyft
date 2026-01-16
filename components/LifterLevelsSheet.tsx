@@ -1,4 +1,5 @@
 import { LevelBadge } from '@/components/LevelBadge'
+import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { StrengthLevel } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
@@ -34,14 +35,6 @@ const LEVEL_ORDER: StrengthLevel[] = [
 
 
 
-const LEVEL_COLORS: Record<StrengthLevel, string> = {
-  Beginner: '#9CA3AF',
-  Novice: '#3B82F6',
-  Intermediate: '#10B981',
-  Advanced: '#8B5CF6',
-  Elite: '#F59E0B',
-  'World Class': '#EF4444',
-}
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 

@@ -2,9 +2,9 @@ import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -355,19 +355,20 @@ export function useStrengthData() {
   }
 }
 
-export function getLevelColor(level: StrengthLevel): string {
-  const levelColors = {
-    Beginner: '#9CA3AF',
-    Novice: '#3B82F6',
-    Intermediate: '#10B981',
-    Advanced: '#8B5CF6',
-    Elite: '#F59E0B',
-    'World Class': '#EF4444',
-  }
-  return levelColors[level]
-}
-
 // Get intensity value for body highlighter (1-6 based on level)
 export function getLevelIntensity(level: StrengthLevel): number {
   return LEVEL_SCORES[level]
+}
+
+export const LEVEL_COLORS: Record<StrengthLevel, string> = {
+  Beginner: '#9CA3AF',
+  Novice: '#3B82F6',
+  Intermediate: '#10B981',
+  Advanced: '#8B5CF6',
+  Elite: '#F59E0B',
+  'World Class': '#EF4444',
+}
+
+export function getLevelColor(level: StrengthLevel): string {
+  return LEVEL_COLORS[level]
 }

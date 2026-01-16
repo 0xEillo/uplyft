@@ -81,11 +81,11 @@ export function StrengthInfoSheet({
               {STRENGTH_LEVELS.map((item) => (
                 <View key={item.level} style={styles.levelCard}>
                   <View style={styles.levelHeader}>
-                    <View 
+                    <View
                       style={[
-                        styles.colorIndicator, 
-                        { backgroundColor: getLevelColor(item.level as any) }
-                      ]} 
+                        styles.colorIndicator,
+                        { backgroundColor: getLevelColor(item.level as any) },
+                      ]}
                     />
                     <Text style={styles.levelTitle}>{item.level}</Text>
                   </View>

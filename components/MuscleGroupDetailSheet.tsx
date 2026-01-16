@@ -1,7 +1,7 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
-import { getLevelColor, type MuscleGroupData } from '@/hooks/useStrengthData'
+import { type MuscleGroupData, getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
@@ -200,16 +200,17 @@ export function MuscleGroupDetailSheet({
 
                 <View style={styles.exerciseRight}>
                   {exercise.strengthInfo && (
-                    <View style={[
-                      styles.levelBadgeItem,
-                      { backgroundColor: getLevelColor(exercise.strengthInfo.level) + '20' }
-                    ]}>
-                      <Text style={[
-                        styles.levelText,
-                        { color: getLevelColor(exercise.strengthInfo.level) }
-                      ]}>
-                        {exercise.strengthInfo.level}
-                      </Text>
+                    <View
+                      style={[
+                        styles.levelBadgeItem,
+                        {
+                          backgroundColor: getLevelColor(
+                            exercise.strengthInfo.level as any,
+                          ),
+                        },
+                      ]}
+                    >
+                      <Text style={styles.levelText}>{exercise.strengthInfo.level}</Text>
                     </View>
                   )}
                   <Ionicons

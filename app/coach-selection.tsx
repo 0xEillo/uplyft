@@ -113,7 +113,12 @@ export default function CoachSelectionScreen() {
                         {coach.id === 'ross' && <Text style={styles.emojiText}>📋</Text>}
                     </View>
                   </View>
-                  <Text style={styles.coachName}>{coach.name}</Text>
+                  <View style={styles.coachText}>
+                    <Text style={styles.coachName}>{coach.name}</Text>
+                    <Text style={styles.coachDescription} numberOfLines={2}>
+                      {coach.description}
+                    </Text>
+                  </View>
                 </View>
                 
                 {isSelected && (
@@ -219,5 +224,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
+      marginBottom: 2,
+    },
+    coachText: {
+      flex: 1,
+    },
+    coachDescription: {
+      fontSize: 13,
+      color: colors.textSecondary,
     },
   })

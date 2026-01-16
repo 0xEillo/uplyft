@@ -300,7 +300,7 @@ export default function ProfileScreen() {
                   name="barbell-outline"
                   size={28}
                   color={colors.textSecondary}
-                  style={{ opacity: 0.2 }}
+                  style={{ opacity: 0.5 }}
                 />
               </View>
             )}
@@ -514,6 +514,16 @@ export default function ProfileScreen() {
           ref={flatListRef}
           data={workouts}
           renderItem={renderWorkoutItem}
+          ItemSeparatorComponent={() =>
+            viewMode === 'feed' ? (
+              <View
+                style={{
+                  height: 8,
+                  backgroundColor: colors.feedCardSeparator,
+                }}
+              />
+            ) : null
+          }
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <View style={styles.profileHeader}>
@@ -1054,7 +1064,7 @@ const createStyles = (
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.backgroundLight,
     },
     gridItemGradient: {
       position: 'absolute',
