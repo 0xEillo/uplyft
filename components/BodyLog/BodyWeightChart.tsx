@@ -98,6 +98,10 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
     })
   }
 
+  if (!isLoading && data.length < 2) {
+    return null
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.segmentContainer}>
@@ -127,15 +131,8 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
         })}
       </View>
 
-      {data.length < 2 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>
-            Not enough data for this period
-          </Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.chartWrapper}>
+
+      <View style={styles.chartWrapper}>
             <LineChart
               data={chartData}
               width={CHART_WIDTH}
@@ -251,8 +248,7 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
               </Text>
             </View>
           </View>
-        </>
-      )}
+
     </View>
   )
 }
