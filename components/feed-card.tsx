@@ -1128,7 +1128,7 @@ function createStyles(
       alignItems: 'center',
       paddingVertical: 12,
       paddingHorizontal: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.exerciseRowTint,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },

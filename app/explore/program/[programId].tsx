@@ -685,7 +685,7 @@ const createStyles = (
       alignItems: 'center',
       paddingVertical: 8,
       paddingHorizontal: 8,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+      backgroundColor: colors.exerciseRowTint,
       borderRadius: 12,
       gap: 10,
     },

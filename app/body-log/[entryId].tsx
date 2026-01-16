@@ -1553,12 +1553,14 @@ const createStyles = (colors: Colors) =>
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    borderColor: colors.border,
   },
   headerTitleContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
+    borderColor: colors.border,
   },
   headerDateText: {
     fontSize: 14,
@@ -1661,6 +1663,7 @@ const createStyles = (colors: Colors) =>
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderWidth: 1,
+    borderColor: colors.border,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
@@ -1707,6 +1710,7 @@ const createStyles = (colors: Colors) =>
     height: 240,
     borderRadius: 16,
     borderWidth: 1,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
@@ -1735,6 +1739,8 @@ const createStyles = (colors: Colors) =>
   photoCard: {
     borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   photoImage: {
     width: '100%',
@@ -1794,6 +1800,8 @@ const createStyles = (colors: Colors) =>
   premiumCard: {
     borderRadius: 16,
     padding: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,

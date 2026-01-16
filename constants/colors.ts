@@ -42,6 +42,7 @@ const lightColors = {
   // Specific UI colors
   icon: '#8e8e93',
   link: '#007aff',
+  exerciseRowTint: 'rgba(0,0,0,0.02)', // Subtle tint for exercise rows
 } as const
 
 const darkColors = {
@@ -83,6 +84,7 @@ const darkColors = {
   // Specific UI colors
   icon: '#A8A8A8',
   link: '#0A84FF', // Brighter blue for dark mode
+  exerciseRowTint: 'rgba(255,255,255,0.03)', // Subtle tint for exercise rows
 } as const
 
 export function getColors(isDark: boolean) {

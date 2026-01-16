@@ -331,6 +331,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 24,
       borderRadius: 16,
       padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,

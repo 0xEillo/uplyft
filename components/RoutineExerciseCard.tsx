@@ -5,13 +5,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import { useState } from 'react'
 import {
-    LayoutAnimation,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    View
+  LayoutAnimation,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View
 } from 'react-native'
 
 // Enable LayoutAnimation on Android
@@ -91,7 +91,7 @@ export function RoutineExerciseCard({
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.feedCardBackground }]}>
+    <View style={[styles.card, { backgroundColor: colors.exerciseRowTint }]}>
       {/* Exercise Header - Always visible */}
       <View style={styles.header}>
         {/* Thumbnail + Name - Tappable to navigate to exercise */}
@@ -261,7 +261,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       paddingVertical: 8,
       paddingHorizontal: 8,
-      backgroundColor: 'rgba(0,0,0,0.02)',
+      backgroundColor: colors.exerciseRowTint,
       borderRadius: 8,
     },
     setNumber: {
