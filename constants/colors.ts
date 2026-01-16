@@ -19,7 +19,7 @@ const lightColors = {
   textPlaceholder: '#c7c7cc',
 
   // Background colors
-  background: '#f6f6f8', // The absolute perfect midpoint off-white
+  background: '#F9F9F9', // Apple Notes-style background color
   backgroundWhite: '#fff',
   backgroundLight: '#efeff4', // Lighter elevation gray
   inputBackground: '#fff',

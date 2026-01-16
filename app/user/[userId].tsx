@@ -15,8 +15,8 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { calculateTotalVolume, formatVolume } from '@/lib/utils/workout-stats'
 import {
-  FollowRelationshipStatus,
-  WorkoutSessionWithDetails,
+    FollowRelationshipStatus,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -24,15 +24,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
