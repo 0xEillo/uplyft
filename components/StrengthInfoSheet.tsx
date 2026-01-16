@@ -3,12 +3,12 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -122,10 +122,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       paddingVertical: 24,
     },
     headerTitle: {
-      fontSize: 24,
-      fontWeight: '800',
+      fontSize: 22,
+      fontWeight: '700',
       color: colors.text,
-      letterSpacing: -1,
     },
     closeButton: {
       width: 36,

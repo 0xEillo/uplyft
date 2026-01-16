@@ -261,10 +261,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             flex: 1,
         },
         headerTitle: {
-            fontSize: 24,
-            fontWeight: '800',
+            fontSize: 22,
+            fontWeight: '700',
             color: colors.text,
-            letterSpacing: -1,
         },
         titleRow: {
             flexDirection: 'row',
@@ -286,11 +285,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             padding: 20,
         },
         sectionTitle: {
-            fontSize: 18,
+            fontSize: 22,
             fontWeight: '700',
-            color: colors.textSecondary,
+            color: colors.text,
             marginBottom: 16,
-            letterSpacing: -0.2,
         },
         exerciseCard: {
             flexDirection: 'row',

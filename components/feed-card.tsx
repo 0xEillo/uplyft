@@ -1180,6 +1180,7 @@ function createStyles(
       justifyContent: 'space-around',
       paddingVertical: 16,
       paddingHorizontal: 12,
+      marginTop: 8,
       marginBottom: 16,
       borderRadius: 12,
       backgroundColor: colors.background,
