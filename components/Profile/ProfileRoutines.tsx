@@ -1,5 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -10,6 +11,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    useWindowDimensions,
 } from 'react-native'
 
 interface ProfileRoutinesProps {
@@ -21,14 +23,16 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
   const router = useRouter()
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { width } = useWindowDimensions()
+
+  const CARD_WIDTH = width * 0.42
+  const CARD_HEIGHT = 140
 
   useEffect(() => {
     const loadRoutines = async () => {
       if (!userId) return
       try {
         const data = await database.workoutRoutines.getAll(userId)
-        // Filter out archived routines if needed, though getAll usually handles it or returns all.
-        // Assuming we want to show all active routines.
         const activeRoutines = data.filter((r) => !r.is_archived)
         setRoutines(activeRoutines)
       } catch (error) {
@@ -80,70 +84,70 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
         ? `${estDurationHours}h ${estDurationMinsRemainder}m`
         : `${estDurationMinutes}min`
 
+    const subtext = `${estDurationString} • ${setCount} sets`
+
     return (
       <TouchableOpacity
         style={[
           styles.card,
           {
+            width: CARD_WIDTH,
+            height: CARD_HEIGHT,
             backgroundColor: colors.feedCardBackground,
             borderColor: colors.border,
           },
         ]}
-        onPress={() =>
+        activeOpacity={0.9}
+        onPress={() => {
+          haptic('light')
           router.push({
             pathname: '/routine/[routineId]',
             params: { routineId: item.id },
           })
-        }
+        }}
       >
         <View style={styles.cardHeader}>
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Ionicons
+              name="albums-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </View>
+        </View>
+
+        <View style={styles.cardContent}>
           <Text
-            style={[styles.routineName, { color: colors.text }]}
+            style={[styles.cardLabel, { color: colors.textSecondary }]}
             numberOfLines={1}
+          >
+            ROUTINE
+          </Text>
+          <Text
+            style={[styles.cardValue, { color: colors.text }]}
+            numberOfLines={2}
+            ellipsizeMode="tail"
           >
             {item.name}
           </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={colors.textSecondary}
-          />
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              {estDurationString}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="barbell-outline"
-              size={14}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              {setCount} sets
-            </Text>
-          </View>
+          <Text
+            style={[styles.cardSubtext, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {subtext}
+          </Text>
         </View>
       </TouchableOpacity>
     )
   }
 
-  const styles = createStyles(colors)
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>ROUTINES</Text>
-      </View>
-
       <FlatList
         data={routines}
         renderItem={renderItem}
@@ -151,63 +155,68 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH + 12}
+        snapToAlignment="start"
       />
     </View>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
-  StyleSheet.create({
-    container: {
-      marginBottom: 24,
-    },
-    header: {
-      paddingHorizontal: 14,
-      marginBottom: 12,
-    },
-    title: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    listContent: {
-      paddingHorizontal: 14,
-      gap: 12,
-    },
-    card: {
-      width: 200,
-      padding: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    routineName: {
-      fontSize: 15,
-      fontWeight: '600',
-      flex: 1,
-      marginRight: 8,
-    },
-    statsContainer: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    statItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    statText: {
-      fontSize: 12,
-      fontWeight: '500',
-    },
-  })
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 20,
+  },
+  listContent: {
+    paddingHorizontal: 14,
+    gap: 12,
+    paddingBottom: 4, // Space for shadow
+  },
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    justifyContent: 'space-between',
+    // Subtle shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardContent: {
+    marginTop: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  cardLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  cardValue: {
+    fontSize: 20, // Slightly smaller than dashboard to accommodate 2 lines if needed
+    fontWeight: '800',
+    marginBottom: 2,
+    lineHeight: 24,
+  },
+  cardSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+})

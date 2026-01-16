@@ -207,27 +207,24 @@ export const ProfileDashboard = memo(
 
           {/* Explore Card */}
           <StatCard
-            title="Discover"
-            value="Explore"
-            subtext="Find workouts"
+            title="EXPLORE"
+            value="Programs"
             icon="compass-outline"
             onPress={() => router.push('/explore')}
           />
 
           {/* Body Log Card */}
           <StatCard
-            title="Details"
-            value={latestWeight ? `${latestWeight.toFixed(1)}` : '--'}
-            subtext={latestWeight ? 'kg bodyweight' : 'Log weight'}
+            title="WEIGHT"
+            value={latestWeight ? `${latestWeight.toFixed(1)} kg` : 'Log Weight'}
             icon="body-outline"
             onPress={() => router.push('/body-log')}
           />
 
           {/* Routines Card */}
           <StatCard
-            title="Active Plan"
+            title="ROUTINES"
             value={activeRoutineName || 'No Plan'}
-            subtext={activeRoutineName ? 'Keep it up' : 'Find a routine'}
             icon="albums-outline"
             onPress={() => router.push('/routines')}
           />
