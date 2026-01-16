@@ -1,7 +1,11 @@
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { authorizeUser } from './auth.ts'
 import { ApiError, normalizeError, toErrorResponse } from './errors.ts'
-import { createCorrelationId, logErrorWithCorrelation } from './metrics.ts'
+import {
+    createCorrelationId,
+    logErrorWithCorrelation,
+    logWithCorrelation,
+} from './metrics.ts'
 import { inferWorkoutTitle, parseWorkoutNotes } from './parser.ts'
 import { createWorkoutSession } from './persistence.ts'
 import { NormalizedWorkout, requestSchema } from './schemas.ts'
@@ -80,7 +84,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       type: workoutTitle ?? undefined,
     }
 
-    logErrorWithCorrelation(correlationId, 'Workout finalized', {
+    logWithCorrelation(correlationId, 'Workout finalized', {
       routineId: payload.routineId,
       workoutTitle: finalWorkout.type,
       exerciseCount: finalWorkout.exercises?.length,
