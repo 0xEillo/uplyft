@@ -14,12 +14,10 @@ import { getThumbnailUrlsWithPrefetch } from '@/lib/utils/body-log-storage'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
-import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
-    Dimensions,
     FlatList,
     RefreshControl,
     StyleSheet,
@@ -29,295 +27,100 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const SCREEN_WIDTH = Dimensions.get('window').width
-const IMAGE_SPACING = 4
-const NUM_COLUMNS = 2
-const GRID_PADDING = 20
-const IMAGE_SIZE =
-  (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_SPACING * (NUM_COLUMNS - 1)) /
-  NUM_COLUMNS
-
+const THUMB_SIZE = 72
 const PAGE_SIZE = 40
-
-// Tutorial storage key (must match the one in profile page)
 const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
 
-// Format date like Google Photos
-function formatSectionDate(dateString: string): string {
+function formatDate(dateString: string): string {
   const date = new Date(dateString)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
-  const imageDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  )
+  const entryDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
-  if (imageDate.getTime() === today.getTime()) {
-    return 'Today'
-  } else if (imageDate.getTime() === yesterday.getTime()) {
-    return 'Yesterday'
-  } else {
-    const monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ]
-    const month = monthNames[date.getMonth()]
-    const day = date.getDate()
-    const year = date.getFullYear()
-
-    if (year === now.getFullYear()) {
-      return `${month} ${day}`
-    } else {
-      return `${month} ${day}, ${year}`
-    }
-  }
-}
-
-// Get date key for grouping (YYYY-MM-DD)
-function getDateKey(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toISOString().split('T')[0]
+  if (entryDate.getTime() === today.getTime()) return 'Today'
+  if (entryDate.getTime() === yesterday.getTime()) return 'Yesterday'
+  
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 interface EntryWithSignedUrl extends BodyLogEntryWithImages {
   thumbnailUrl: string | null
 }
 
-interface Section {
-  title: string
-  dateKey: string
-  entries: EntryWithSignedUrl[]
-}
-
-interface BodyLogEntryItemProps {
+interface RowProps {
   entry: EntryWithSignedUrl
   onPress: (entry: EntryWithSignedUrl) => void
 }
 
-const BodyLogEntryItem = memo(
-  ({ entry, onPress }: BodyLogEntryItemProps) => {
+const EntryRow = memo(
+  ({ entry, onPress }: RowProps) => {
     const colors = useThemedColors()
     const { formatWeight } = useUnit()
-    const styles = useMemo(() => createImageItemStyles(colors), [colors])
+    const styles = useMemo(() => createRowStyles(colors), [colors])
 
-    const hasImages = entry.images.length > 0
-    const handlePress = useCallback(() => {
-      onPress(entry)
-    }, [entry, onPress])
-
-    const thumbnailUrl = entry.thumbnailUrl
+    const hasImage = entry.images.length > 0 && entry.thumbnailUrl
+    const hasWeight = entry.weight_kg !== null
     const imageCount = entry.images.length
-    const hasWeight = entry.weight_kg !== null && entry.weight_kg !== undefined
-    const formattedWeight = hasWeight ? formatWeight(entry.weight_kg) : null
-    const isEmpty = !hasImages && !hasWeight
-    const hasBodyScan =
-      entry.body_fat_percentage !== null || entry.bmi !== null
 
     return (
       <TouchableOpacity
-        style={styles.cardContainer}
-        onPress={handlePress}
-        activeOpacity={0.9}
+        style={styles.row}
+        onPress={() => onPress(entry)}
+        activeOpacity={0.7}
       >
-        {/* Background Layer */}
-        {thumbnailUrl ? (
-          <Image
-            source={{ uri: thumbnailUrl }}
-            style={styles.backgroundImage}
-            contentFit="cover"
-            cachePolicy="disk"
-            transition={200}
-            recyclingKey={entry.id}
-          />
-        ) : (
-          <View style={styles.placeholderBackground}>
-            {isEmpty ? (
-              <Ionicons name="add" size={32} color={colors.primary} />
-            ) : (
+        {/* Thumbnail */}
+        <View style={styles.thumbContainer}>
+          {hasImage ? (
+            <Image
+              source={{ uri: entry.thumbnailUrl! }}
+              style={styles.thumb}
+              contentFit="cover"
+              cachePolicy="disk"
+              transition={150}
+              recyclingKey={entry.id}
+            />
+          ) : (
+            <View style={styles.thumbPlaceholder}>
               <Ionicons
-                name="scale-outline"
-                size={32}
+                name={hasWeight ? 'scale-outline' : 'camera-outline'}
+                size={24}
                 color={colors.textTertiary}
-                style={{ opacity: 0.5 }}
               />
-            )}
-          </View>
-        )}
-
-        {/* Gradient Overlay for Images */}
-        {thumbnailUrl && (
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
-            style={styles.gradientOverlay}
-            locations={[0.6, 1]}
-          />
-        )}
-
-        {/* Content Overlay */}
-        <View style={styles.contentOverlay}>
-          {/* Top Row: Badges */}
-          <View style={styles.topRow}>
-            {hasBodyScan && (
-              <View style={thumbnailUrl ? styles.badge : styles.standardBadge}>
-                <Ionicons
-                  name="scan-outline"
-                  size={10}
-                  color={thumbnailUrl ? colors.white : colors.text}
-                  style={{ marginRight: 3 }}
-                />
-                <Text
-                  style={
-                    thumbnailUrl ? styles.badgeText : styles.standardBadgeText
-                  }
-                >
-                  SCAN
-                </Text>
-              </View>
-            )}
-
-            {imageCount > 1 && (
-              <View
-                style={[
-                  thumbnailUrl ? styles.badge : styles.standardBadge,
-                  styles.imageCountBadge,
-                ]}
-              >
-                <Ionicons
-                  name="images"
-                  size={10}
-                  color={thumbnailUrl ? colors.white : colors.text}
-                  style={{ marginRight: 3 }}
-                />
-                <Text
-                  style={
-                    thumbnailUrl ? styles.badgeText : styles.standardBadgeText
-                  }
-                >
-                  {imageCount}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Bottom Row: Weight */}
-          <View style={styles.bottomRow}>
-            {hasWeight && formattedWeight && (
-              <Text
-                style={[
-                  styles.weightText,
-                  !thumbnailUrl && { color: colors.text },
-                ]}
-              >
-                {formattedWeight}
-              </Text>
-            )}
-          </View>
+            </View>
+          )}
+          {imageCount > 1 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{imageCount}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Loading State */}
-        {hasImages && !thumbnailUrl && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
+        {/* Info */}
+        <View style={styles.info}>
+          <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
+          {hasWeight && (
+            <Text style={styles.weight}>{formatWeight(entry.weight_kg)}</Text>
+          )}
+        </View>
+
+        {/* Chevron */}
+        <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
       </TouchableOpacity>
     )
   },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.entry.id === nextProps.entry.id &&
-      prevProps.entry.thumbnailUrl === nextProps.entry.thumbnailUrl &&
-      prevProps.entry.weight_kg === nextProps.entry.weight_kg &&
-      prevProps.entry.body_fat_percentage ===
-        nextProps.entry.body_fat_percentage &&
-      prevProps.entry.bmi === nextProps.entry.bmi
-    )
-  },
+  (prev, next) =>
+    prev.entry.id === next.entry.id &&
+    prev.entry.thumbnailUrl === next.entry.thumbnailUrl &&
+    prev.entry.weight_kg === next.entry.weight_kg,
 )
 
-BodyLogEntryItem.displayName = 'BodyLogEntryItem'
-
-interface SectionItemProps {
-  section: Section
-  onEntryPress: (entry: EntryWithSignedUrl) => void
-}
-
-const SectionItem = memo(
-  ({ section, onEntryPress }: SectionItemProps) => {
-    const colors = useThemedColors()
-
-    return (
-      <View>
-        <View
-          style={[sectionStyles.header, { backgroundColor: colors.background }]}
-        >
-          <Text style={[sectionStyles.headerText, { color: colors.text }]}>
-            {section.title}
-          </Text>
-        </View>
-        <View style={sectionStyles.grid}>
-          {section.entries.map((entry) => (
-            <BodyLogEntryItem
-              key={entry.id}
-              entry={entry}
-              onPress={onEntryPress}
-            />
-          ))}
-        </View>
-      </View>
-    )
-  },
-  (prevProps, nextProps) => {
-    if (prevProps.section.dateKey !== nextProps.section.dateKey) return false
-    if (prevProps.section.entries.length !== nextProps.section.entries.length)
-      return false
-    // Compare entry IDs and thumbnail URLs
-    for (let i = 0; i < prevProps.section.entries.length; i++) {
-      const prev = prevProps.section.entries[i]
-      const next = nextProps.section.entries[i]
-      if (
-        prev.id !== next.id ||
-        prev.thumbnailUrl !== next.thumbnailUrl ||
-        prev.weight_kg !== next.weight_kg
-      ) {
-        return false
-      }
-    }
-    return true
-  },
-)
-
-SectionItem.displayName = 'SectionItem'
-
-const sectionStyles = StyleSheet.create({
-  header: {
-    paddingTop: 24,
-    paddingBottom: 12,
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: IMAGE_SPACING,
-  },
-})
+EntryRow.displayName = 'EntryRow'
 
 export default function BodyLogScreen() {
   const colors = useThemedColors()
@@ -334,63 +137,27 @@ export default function BodyLogScreen() {
   const [hasMore, setHasMore] = useState(true)
   const pageRef = useRef(0)
 
-  // Build sections from entries
-  const sections = useMemo(() => {
-    const grouped = new Map<string, EntryWithSignedUrl[]>()
-
-    entries.forEach((entry) => {
-      const dateKey = getDateKey(entry.created_at)
-      if (!grouped.has(dateKey)) {
-        grouped.set(dateKey, [])
-      }
-      grouped.get(dateKey)!.push(entry)
-    })
-
-    const result: Section[] = Array.from(grouped.entries())
-      .map(([dateKey, sectionEntries]) => ({
-        dateKey,
-        title: formatSectionDate(sectionEntries[0].created_at),
-        entries: sectionEntries,
-      }))
-      .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
-
-    return result
-  }, [entries])
-
-  // Fetch signed URLs for entries
   const fetchThumbnailUrls = useCallback(
-    async (
-      rawEntries: BodyLogEntryWithImages[],
-    ): Promise<EntryWithSignedUrl[]> => {
-      // Collect all first-image file paths
-      const pathIndexMap = new Map<string, number>()
+    async (rawEntries: BodyLogEntryWithImages[]): Promise<EntryWithSignedUrl[]> => {
+      const pathMap = new Map<string, number>()
       const paths: string[] = []
 
-      rawEntries.forEach((entry, index) => {
+      rawEntries.forEach((entry) => {
         if (entry.images.length > 0) {
           const path = entry.images[0].file_path
-          if (!pathIndexMap.has(path)) {
-            pathIndexMap.set(path, paths.length)
+          if (!pathMap.has(path)) {
+            pathMap.set(path, paths.length)
             paths.push(path)
           }
         }
       })
 
-      // Get thumbnail URLs with prefetch
-      let urls: string[] = []
-      if (paths.length > 0) {
-        urls = await getThumbnailUrlsWithPrefetch(paths)
-      }
+      const urls = paths.length > 0 ? await getThumbnailUrlsWithPrefetch(paths) : []
 
-      // Map URLs back to entries
       return rawEntries.map((entry) => {
         if (entry.images.length > 0) {
-          const path = entry.images[0].file_path
-          const pathIndex = pathIndexMap.get(path)
-          return {
-            ...entry,
-            thumbnailUrl: pathIndex !== undefined ? urls[pathIndex] : null,
-          }
+          const idx = pathMap.get(entry.images[0].file_path)
+          return { ...entry, thumbnailUrl: idx !== undefined ? urls[idx] : null }
         }
         return { ...entry, thumbnailUrl: null }
       })
@@ -398,7 +165,6 @@ export default function BodyLogScreen() {
     [],
   )
 
-  // Load initial entries
   const loadEntries = useCallback(
     async (refresh = false) => {
       if (!user) {
@@ -407,32 +173,24 @@ export default function BodyLogScreen() {
         return
       }
 
-      if (refresh) {
-        setIsRefreshing(true)
-        pageRef.current = 0
-      } else {
-        setIsInitialLoading(true)
-      }
+      refresh ? setIsRefreshing(true) : setIsInitialLoading(true)
+      pageRef.current = 0
 
       try {
-        // Mark tutorial as completed
         await AsyncStorage.setItem(HAS_VISITED_BODY_LOG_KEY, 'true')
+        const { entries: raw, hasMore: more } = await database.bodyLog.getEntriesPage(user.id, 0, PAGE_SIZE)
 
-        const { entries: rawEntries, hasMore: more } =
-          await database.bodyLog.getEntriesPage(user.id, 0, PAGE_SIZE)
-
-        if (!rawEntries || rawEntries.length === 0) {
+        if (!raw?.length) {
           setEntries([])
           setHasMore(false)
           return
         }
 
-        const entriesWithUrls = await fetchThumbnailUrls(rawEntries)
-        setEntries(entriesWithUrls)
+        setEntries(await fetchThumbnailUrls(raw))
         setHasMore(more)
         pageRef.current = 1
-      } catch (error) {
-        console.error('Error loading body log entries:', error)
+      } catch (e) {
+        console.error('Error loading entries:', e)
       } finally {
         setIsInitialLoading(false)
         setIsRefreshing(false)
@@ -441,46 +199,30 @@ export default function BodyLogScreen() {
     [user, fetchThumbnailUrls],
   )
 
-  // Load more entries (pagination)
-  const loadMoreEntries = useCallback(async () => {
+  const loadMore = useCallback(async () => {
     if (!user || isLoadingMore || !hasMore) return
-
     setIsLoadingMore(true)
-    try {
-      const { entries: rawEntries, hasMore: more } =
-        await database.bodyLog.getEntriesPage(
-          user.id,
-          pageRef.current,
-          PAGE_SIZE,
-        )
 
-      if (rawEntries.length > 0) {
-        const entriesWithUrls = await fetchThumbnailUrls(rawEntries)
-        setEntries((prev) => [...prev, ...entriesWithUrls])
+    try {
+      const { entries: raw, hasMore: more } = await database.bodyLog.getEntriesPage(
+        user.id,
+        pageRef.current,
+        PAGE_SIZE,
+      )
+      if (raw.length) {
+        const enriched = await fetchThumbnailUrls(raw)
+        setEntries((prev) => [...prev, ...enriched])
         pageRef.current += 1
       }
       setHasMore(more)
-    } catch (error) {
-      console.error('Error loading more entries:', error)
+    } catch (e) {
+      console.error('Error loading more:', e)
     } finally {
       setIsLoadingMore(false)
     }
   }, [user, isLoadingMore, hasMore, fetchThumbnailUrls])
 
-  // Reload data when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadEntries(true)
-    }, [loadEntries]),
-  )
-
-  const handleBackPress = useCallback(() => {
-    setShouldExit(true)
-  }, [])
-
-  const handleExitComplete = useCallback(() => {
-    router.back()
-  }, [router])
+  useFocusEffect(useCallback(() => { loadEntries(true) }, [loadEntries]))
 
   const handleEntryOpen = useCallback(
     (entry: EntryWithSignedUrl) => {
@@ -490,132 +232,80 @@ export default function BodyLogScreen() {
         has_weight: entry.weight_kg !== null,
       })
 
-      const params: {
-        entryId: string
-        createdAt: string
-        [key: string]: string
-      } = {
+      const params: { entryId: string; [key: string]: string } = {
         entryId: entry.id,
         createdAt: entry.created_at,
       }
+      if (entry.weight_kg !== null) params.weightKg = entry.weight_kg.toString()
+      if (entry.body_fat_percentage !== null) params.bodyFatPercentage = entry.body_fat_percentage.toString()
+      if (entry.bmi !== null) params.bmi = entry.bmi.toString()
 
-      if (entry.weight_kg !== null) {
-        params.weightKg = entry.weight_kg.toString()
-      }
-      if (entry.body_fat_percentage !== null) {
-        params.bodyFatPercentage = entry.body_fat_percentage.toString()
-      }
-      if (entry.bmi !== null) {
-        params.bmi = entry.bmi.toString()
-      }
-
-      router.push({
-        pathname: '/body-log/[entryId]',
-        params,
-      })
+      router.push({ pathname: '/body-log/[entryId]', params })
     },
     [router, trackEvent],
   )
 
-  const handleAddNewEntry = useCallback(async () => {
-    if (!user) {
-      alert('You must be logged in to add entries')
-      return
-    }
-
+  const handleAdd = useCallback(() => {
+    if (!user) return alert('You must be logged in')
     trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
     haptic('medium')
-
-    router.push({
-      pathname: '/body-log/[entryId]',
-      params: {
-        entryId: 'new',
-      },
-    })
+    router.push({ pathname: '/body-log/[entryId]', params: { entryId: 'new' } })
   }, [user, router, trackEvent])
 
-  const handleRefresh = useCallback(() => {
-    loadEntries(true)
-  }, [loadEntries])
-
-  const handleEndReached = useCallback(() => {
-    if (!isLoadingMore && hasMore) {
-      loadMoreEntries()
-    }
-  }, [isLoadingMore, hasMore, loadMoreEntries])
-
-  const renderSection = useCallback(
-    ({ item }: { item: Section }) => (
-      <SectionItem section={item} onEntryPress={handleEntryOpen} />
-    ),
-    [handleEntryOpen],
-  )
-
-  const keyExtractor = useCallback((item: Section) => item.dateKey, [])
-
-  const ListFooterComponent = useCallback(() => {
-    if (!isLoadingMore) return null
-    return (
-      <View style={footerStyles.loader}>
-        <ActivityIndicator size="small" color={colors.primary} />
-      </View>
-    )
-  }, [isLoadingMore, colors.primary])
-
-  const dynamicStyles = useMemo(() => createStyles(colors), [colors])
+  const styles = useMemo(() => createStyles(colors), [colors])
 
   return (
     <SlideInView
       style={{ flex: 1, backgroundColor: colors.background }}
       shouldExit={shouldExit}
-      onExitComplete={handleExitComplete}
+      onExitComplete={() => router.back()}
     >
-      <View style={[dynamicStyles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScreenHeader
           title="Body Log"
-          onLeftPress={handleBackPress}
+          onLeftPress={() => setShouldExit(true)}
           leftIcon="arrow-back"
           rightIcon="add"
-          onRightPress={handleAddNewEntry}
+          onRightPress={handleAdd}
         />
 
         {isInitialLoading ? (
-          <View style={dynamicStyles.loadingContainer}>
+          <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : entries.length === 0 ? (
           <EmptyState
             icon="images-outline"
             title="Your body log is empty"
-            description="Track your physical transformation with photos and measurements."
-            buttonText="Add Your First Entry"
-            onPress={handleAddNewEntry}
+            description="Track your transformation with photos and measurements."
+            buttonText="Add First Entry"
+            onPress={handleAdd}
           />
         ) : (
           <FlatList
-            data={sections}
-            renderItem={renderSection}
-            keyExtractor={keyExtractor}
-            contentContainerStyle={dynamicStyles.gridContent}
+            data={entries}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <EntryRow entry={item} onPress={handleEntryOpen} />}
+            contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={5}
-            windowSize={5}
-            initialNumToRender={3}
-            onEndReached={handleEndReached}
+            removeClippedSubviews
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={10}
+            onEndReached={loadMore}
             onEndReachedThreshold={0.5}
-            ListHeaderComponent={
-              user ? (
-                <View>
-                  <BodyWeightChart userId={user.id} />
+            ListHeaderComponent={user ? <BodyWeightChart userId={user.id} /> : null}
+            ListFooterComponent={
+              isLoadingMore ? (
+                <View style={{ padding: 16, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               ) : null
             }
-            ListFooterComponent={ListFooterComponent}
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
-                onRefresh={handleRefresh}
+                onRefresh={() => loadEntries(true)}
                 tintColor={colors.primary}
               />
             }
@@ -626,108 +316,60 @@ export default function BodyLogScreen() {
   )
 }
 
-const footerStyles = StyleSheet.create({
-  loader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-})
-
-const createImageItemStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createRowStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    cardContainer: {
-      width: IMAGE_SIZE,
-      height: IMAGE_SIZE,
-      borderRadius: 16,
-      overflow: 'hidden',
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      gap: 14,
+    },
+    thumbContainer: {
+      position: 'relative',
+    },
+    thumb: {
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: 12,
       backgroundColor: colors.backgroundLight,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
-    backgroundImage: {
-      width: '100%',
-      height: '100%',
+    thumbPlaceholder: {
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: 12,
+      backgroundColor: colors.backgroundLight,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    placeholderBackground: {
+    countBadge: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 8,
+      minWidth: 20,
+      alignItems: 'center',
+    },
+    countText: {
+      color: '#fff',
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    info: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
     },
-    gradientOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 1,
-    },
-    contentOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      padding: 8,
-      justifyContent: 'space-between',
-      zIndex: 2,
-    },
-    topRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    bottomRow: {
-      flexDirection: 'row',
-      justifyContent: 'flex-start',
-      alignItems: 'flex-end',
-    },
-    badge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      borderRadius: 6,
-      backdropFilter: 'blur(4px)',
-    },
-    standardBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    imageCountBadge: {
-      marginLeft: 'auto',
-    },
-    badgeText: {
-      color: '#FFFFFF',
-      fontSize: 10,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-    },
-    standardBadgeText: {
+    date: {
+      fontSize: 16,
+      fontWeight: '600',
       color: colors.text,
-      fontSize: 10,
-      fontWeight: '700',
-      textTransform: 'uppercase',
+      marginBottom: 2,
     },
-    weightText: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: '#FFFFFF',
-      letterSpacing: -0.5,
-      textShadowColor: 'rgba(0, 0, 0, 0.3)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
-    },
-    loadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
-      zIndex: 3,
+    weight: {
+      fontSize: 14,
+      color: colors.textSecondary,
     },
   })
 
@@ -737,36 +379,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    loadingContainer: {
+    center: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
     },
-    emptyStateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
+    list: {
       paddingBottom: 100,
-    },
-    emptyButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 24,
-      paddingVertical: 14,
-      borderRadius: 12,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    emptyButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    gridContent: {
-      paddingHorizontal: GRID_PADDING,
-      paddingVertical: 8,
-      paddingBottom: 120,
     },
   })
