@@ -113,6 +113,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       borderTopRightRadius: 24,
       maxHeight: '85%',
       paddingBottom: insets.bottom + 20,
+      // 1px border masks the white shimmer artifact on iOS during animations
+      borderWidth: 1,
+      borderColor: 'rgba(0, 0, 0, 0.3)',
+      borderBottomWidth: 0,
+      backfaceVisibility: 'hidden',
     },
     header: {
       flexDirection: 'row',

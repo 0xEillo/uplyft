@@ -4,6 +4,7 @@ import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -45,22 +46,22 @@ const BODY_HALF_CONFIG = {
 
 const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
   // Upper body muscles
-  'Chest': { slug: 'chest', side: 'front', bodyHalf: 'upper' },
-  'Shoulders': { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
-  'Triceps': { slug: 'triceps', side: 'back', bodyHalf: 'upper' },
-  'Biceps': { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
-  'Back': { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
-  'Lats': { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
-  'Traps': { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
-  'Abs': { slug: 'abs', side: 'front', bodyHalf: 'upper' },
-  'Core': { slug: 'abs', side: 'front', bodyHalf: 'upper' },
+  Chest: { slug: 'chest', side: 'front', bodyHalf: 'upper' },
+  Shoulders: { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+  Triceps: { slug: 'triceps', side: 'back', bodyHalf: 'upper' },
+  Biceps: { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
+  Back: { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  Lats: { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  Traps: { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
+  Abs: { slug: 'abs', side: 'front', bodyHalf: 'upper' },
+  Core: { slug: 'abs', side: 'front', bodyHalf: 'upper' },
   'Lower Back': { slug: 'lower-back', side: 'back', bodyHalf: 'upper' },
-  'Forearms': { slug: 'forearm', side: 'front', bodyHalf: 'upper' },
+  Forearms: { slug: 'forearm', side: 'front', bodyHalf: 'upper' },
   // Lower body muscles
-  'Glutes': { slug: 'gluteal', side: 'back', bodyHalf: 'lower' },
-  'Quads': { slug: 'quadriceps', side: 'front', bodyHalf: 'lower' },
-  'Hamstrings': { slug: 'hamstring', side: 'back', bodyHalf: 'lower' },
-  'Calves': { slug: 'calves', side: 'back', bodyHalf: 'lower' },
+  Glutes: { slug: 'gluteal', side: 'back', bodyHalf: 'lower' },
+  Quads: { slug: 'quadriceps', side: 'front', bodyHalf: 'lower' },
+  Hamstrings: { slug: 'hamstring', side: 'back', bodyHalf: 'lower' },
+  Calves: { slug: 'calves', side: 'back', bodyHalf: 'lower' },
 }
 
 // Display order for muscle groups - most popular first, similar groups together
@@ -91,7 +92,7 @@ const MUSCLE_GROUP_ORDER = [
 const SCREEN_WIDTH = Dimensions.get('window').width
 const GAP = 12
 const COLUMN_COUNT = 2
-const ITEM_WIDTH = (SCREEN_WIDTH - 32 - GAP) / COLUMN_COUNT
+const ITEM_WIDTH = (SCREEN_WIDTH - 28 - GAP) / COLUMN_COUNT
 
 // Memoized exercise card for grid layout
 const ExerciseGridItem = memo(function ExerciseGridItem({
@@ -109,13 +110,24 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
   onInfo: () => void
   colors: ReturnType<typeof useThemedColors>
 }) {
+  const { isDark } = useTheme()
+
   return (
     <TouchableOpacity
       style={[
         styles.exerciseCard,
-        { backgroundColor: colors.feedCardBackground, borderColor: colors.border },
+        {
+          backgroundColor: isDark
+            ? colors.exerciseRowTint
+            : colors.feedCardBackground,
+          borderColor: colors.border,
+        },
         isCurrentExercise && { borderColor: colors.primary, borderWidth: 2 },
-        isSelected && { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primary + '10' },
+        isSelected && {
+          borderColor: colors.primary,
+          borderWidth: 2,
+          backgroundColor: colors.primary + '10',
+        },
       ]}
       onPress={onSelect}
     >
@@ -133,7 +145,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
           ) : (
             <View style={styles.iconButtonSmall} />
           )}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.infoButton}
             onPress={(e) => {
               e.stopPropagation()
@@ -141,11 +153,15 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="information-circle" size={22} color="rgba(0,0,0,0.6)" />
+            <Ionicons
+              name="information-circle"
+              size={22}
+              color="rgba(0,0,0,0.6)"
+            />
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.cardContent}>
         <Text
           style={[
@@ -158,12 +174,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
           {exercise.name}
         </Text>
         {exercise.muscle_group && (
-          <Text
-            style={[
-              styles.cardSubtitle,
-              { color: colors.textSecondary },
-            ]}
-          >
+          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
             {exercise.muscle_group}
           </Text>
         )}
@@ -187,10 +198,13 @@ const ExerciseListItem = memo(function ExerciseListItem({
   onInfo: () => void
   colors: ReturnType<typeof useThemedColors>
 }) {
+  const { isDark } = useTheme()
+
   return (
     <TouchableOpacity
       style={[
         styles.exerciseListItem,
+        isDark && { backgroundColor: colors.exerciseRowTint },
       ]}
       onPress={onInfo}
     >
@@ -203,7 +217,10 @@ const ExerciseListItem = memo(function ExerciseListItem({
           style={[
             styles.exerciseListItemText,
             { color: colors.text },
-            (isCurrentExercise || isSelected) && { fontWeight: '600', color: colors.primary },
+            (isCurrentExercise || isSelected) && {
+              fontWeight: '600',
+              color: colors.primary,
+            },
           ]}
           numberOfLines={1}
         >
@@ -220,7 +237,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
           </Text>
         )}
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.listItemCheckbox}
         onPress={(e) => {
           e.stopPropagation()
@@ -229,10 +246,14 @@ const ExerciseListItem = memo(function ExerciseListItem({
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         disabled={isCurrentExercise}
       >
-        <Ionicons 
-          name={(isCurrentExercise || isSelected) ? "checkbox" : "square-outline"} 
-          size={24} 
-          color={(isCurrentExercise || isSelected) ? colors.primary : colors.textTertiary} 
+        <Ionicons
+          name={isCurrentExercise || isSelected ? 'checkbox' : 'square-outline'}
+          size={24}
+          color={
+            isCurrentExercise || isSelected
+              ? colors.primary
+              : colors.textTertiary
+          }
         />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -256,10 +277,10 @@ export default function SelectExerciseScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [isFilterVisible, setIsFilterVisible] = useState(false)
-  
+
   // View mode state: 'grid' or 'list'
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  
+
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -290,8 +311,8 @@ export default function SelectExerciseScreen() {
   // Refresh exercises when screen is focused (to pick up new creations)
   useFocusEffect(
     useCallback(() => {
-        loadExercises()
-    }, [loadExercises])
+      loadExercises()
+    }, [loadExercises]),
   )
 
   const trimmedQuery = searchQuery.trim()
@@ -349,7 +370,13 @@ export default function SelectExerciseScreen() {
   // Scroll to top when search results change
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
-  }, [trimmedQuery, selectedMuscleGroups, selectedEquipment, showOnlyMine, filteredExercises.length])
+  }, [
+    trimmedQuery,
+    selectedMuscleGroups,
+    selectedEquipment,
+    showOnlyMine,
+    filteredExercises.length,
+  ])
 
   const emptyStateText = useMemo(() => {
     if (trimmedQuery) {
@@ -382,32 +409,32 @@ export default function SelectExerciseScreen() {
 
   const handleSelectExercise = useCallback(
     (exercise: Exercise) => {
-       if (isMultiSelect) {
-           haptic('light')
-           setSelectedIds(prev => {
-               const newSet = new Set(prev)
-               if (newSet.has(exercise.id)) {
-                   newSet.delete(exercise.id)
-               } else {
-                   newSet.add(exercise.id)
-               }
-               return newSet
-           })
-       } else {
-           // Single select mode (return immediately)
-           callCallback(exercise)
-           router.back()
-       }
+      if (isMultiSelect) {
+        haptic('light')
+        setSelectedIds((prev) => {
+          const newSet = new Set(prev)
+          if (newSet.has(exercise.id)) {
+            newSet.delete(exercise.id)
+          } else {
+            newSet.add(exercise.id)
+          }
+          return newSet
+        })
+      } else {
+        // Single select mode (return immediately)
+        callCallback(exercise)
+        router.back()
+      }
     },
     [callCallback, router, isMultiSelect],
   )
-  
+
   const handleConfirmSelection = useCallback(() => {
-      if (selectedIds.size === 0) return
-      
-      const selectedExercises = exercises.filter(e => selectedIds.has(e.id))
-      callCallback(selectedExercises)
-      router.back()
+    if (selectedIds.size === 0) return
+
+    const selectedExercises = exercises.filter((e) => selectedIds.has(e.id))
+    callCallback(selectedExercises)
+    router.back()
   }, [selectedIds, exercises, callCallback, router])
 
   const handleCreateExercise = useCallback(() => {
@@ -451,46 +478,49 @@ export default function SelectExerciseScreen() {
   }, [])
 
   const toggleSearch = useCallback(() => {
-    setIsSearchVisible(prev => {
-        if (!prev) setTimeout(() => searchInputRef.current?.focus(), 100);
-        return !prev;
+    setIsSearchVisible((prev) => {
+      if (!prev) setTimeout(() => searchInputRef.current?.focus(), 100)
+      return !prev
     })
   }, [])
 
   const toggleFilters = useCallback(() => {
-    setIsFilterVisible(prev => !prev)
+    setIsFilterVisible((prev) => !prev)
   }, [])
 
   const toggleViewMode = useCallback(() => {
-    setViewMode(prev => prev === 'grid' ? 'list' : 'grid')
+    setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
   }, [])
 
-  const handleViewExercise = useCallback((exercise: Exercise) => {
-    router.push({
-      pathname: '/exercise/[exerciseId]',
-      params: { exerciseId: exercise.id },
-    })
-  }, [router])
+  const handleViewExercise = useCallback(
+    (exercise: Exercise) => {
+      router.push({
+        pathname: '/exercise/[exerciseId]',
+        params: { exerciseId: exercise.id },
+      })
+    },
+    [router],
+  )
 
   // FlashList render item
   const renderItem = useCallback(
     ({ item }: { item: Exercise }) => {
       const isCurrentExercise = item.name === currentExerciseName // Should probably rely on ID but name is passed
       const isSelected = selectedIds.has(item.id)
-      
+
       if (viewMode === 'list') {
-          return (
-            <ExerciseListItem
-                exercise={item}
-                isCurrentExercise={isCurrentExercise}
-                isSelected={isSelected}
-                onSelect={() => handleSelectExercise(item)}
-                onInfo={() => handleViewExercise(item)}
-                colors={colors}
-            />
-          )
+        return (
+          <ExerciseListItem
+            exercise={item}
+            isCurrentExercise={isCurrentExercise}
+            isSelected={isSelected}
+            onSelect={() => handleSelectExercise(item)}
+            onInfo={() => handleViewExercise(item)}
+            colors={colors}
+          />
+        )
       }
-      
+
       return (
         <ExerciseGridItem
           exercise={item}
@@ -502,13 +532,66 @@ export default function SelectExerciseScreen() {
         />
       )
     },
-    [currentExerciseName, handleSelectExercise, handleViewExercise, colors, viewMode, selectedIds],
+    [
+      currentExerciseName,
+      handleSelectExercise,
+      handleViewExercise,
+      colors,
+      viewMode,
+      selectedIds,
+    ],
   )
 
   const keyExtractor = useCallback((item: Exercise) => item.id, [])
 
-  // Show recent performed section in list header
-  const shouldShowRecent = recentExercises.length > 0 && !trimmedQuery && !hasFilters
+  // Filter recent exercises with the same criteria as main list
+  const filteredRecentExercises = useMemo(() => {
+    let result = recentExercises
+
+    // Apply fuzzy search filter
+    if (trimmedQuery) {
+      result = fuzzySearchExercises(result, trimmedQuery)
+    }
+
+    // Apply muscle group filter
+    if (hasMuscleFilter) {
+      const selectedSet = new Set(selectedMuscleGroups)
+      result = result.filter(
+        (e) => e.muscle_group && selectedSet.has(e.muscle_group),
+      )
+    }
+
+    // Apply equipment filter
+    if (hasEquipmentFilter) {
+      const selectedSet = new Set(selectedEquipment)
+      result = result.filter((e) => {
+        if (e.equipment && selectedSet.has(e.equipment)) return true
+        if (e.equipments && Array.isArray(e.equipments)) {
+          return e.equipments.some((eq) => selectedSet.has(eq))
+        }
+        return false
+      })
+    }
+
+    // Apply "Yours" filter
+    if (showOnlyMine && user?.id) {
+      result = result.filter((e) => e.created_by === user.id)
+    }
+
+    return result
+  }, [
+    recentExercises,
+    trimmedQuery,
+    hasMuscleFilter,
+    selectedMuscleGroups,
+    hasEquipmentFilter,
+    selectedEquipment,
+    showOnlyMine,
+    user?.id,
+  ])
+
+  // Show recent performed section if there are matching recent exercises
+  const shouldShowRecent = filteredRecentExercises.length > 0
 
   // Create exercise header component (includes Recent Performed and All Exercises header)
   const ListHeader = useMemo(() => {
@@ -516,9 +599,15 @@ export default function SelectExerciseScreen() {
     const recentSection = shouldShowRecent ? (
       <View style={styles.recentSection}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Performed</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Recently Performed
+          </Text>
           <TouchableOpacity onPress={toggleViewMode}>
-            <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
+            <Ionicons
+              name={viewMode === 'list' ? 'grid-outline' : 'list-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -527,7 +616,7 @@ export default function SelectExerciseScreen() {
           style={styles.recentScrollView}
           contentContainerStyle={styles.recentScrollContainer}
         >
-          {recentExercises.map((exercise) => {
+          {filteredRecentExercises.map((exercise) => {
             const isCurrentExercise = exercise.name === currentExerciseName
             const isSelected = selectedIds.has(exercise.id)
             return (
@@ -549,11 +638,17 @@ export default function SelectExerciseScreen() {
     // All Exercises section header
     const allExercisesHeader = (
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>All Exercises</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          All Exercises
+        </Text>
         {/* Only show toggle here if Recent Performed is not visible */}
         {!shouldShowRecent && (
           <TouchableOpacity onPress={toggleViewMode}>
-            <Ionicons name={viewMode === 'list' ? "grid-outline" : "list-outline"} size={20} color={colors.textSecondary} />
+            <Ionicons
+              name={viewMode === 'list' ? 'grid-outline' : 'list-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -565,10 +660,9 @@ export default function SelectExerciseScreen() {
         {allExercisesHeader}
       </View>
     )
-     
   }, [
     shouldShowRecent,
-    recentExercises,
+    filteredRecentExercises,
     currentExerciseName,
     selectedIds,
     handleSelectExercise,
@@ -589,7 +683,6 @@ export default function SelectExerciseScreen() {
         description={emptyStateText}
       />
     )
-     
   }, [isLoading, emptyStateText])
 
   return (
@@ -609,180 +702,215 @@ export default function SelectExerciseScreen() {
           <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
             <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
-          
+
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             Add exercises
           </Text>
-          
+
           <View style={styles.headerRightButtons}>
-             <TouchableOpacity style={styles.headerButton} onPress={toggleSearch}>
-                <Ionicons name="search" size={24} color={isSearchVisible ? colors.primary : colors.text} />
-             </TouchableOpacity>
-             <TouchableOpacity style={styles.headerButton} onPress={toggleFilters}>
-                <Ionicons name="filter" size={24} color={isFilterVisible ? colors.primary : colors.text} />
-             </TouchableOpacity>
-             <TouchableOpacity style={styles.headerButton} onPress={handleCreateExercise}>
-                <Ionicons name="add" size={28} color={colors.text} />
-             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={toggleSearch}
+            >
+              <Ionicons
+                name="search"
+                size={24}
+                color={isSearchVisible ? colors.primary : colors.text}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={toggleFilters}
+            >
+              <Ionicons
+                name="filter"
+                size={24}
+                color={isFilterVisible ? colors.primary : colors.text}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleCreateExercise}
+            >
+              <Ionicons name="add" size={28} color={colors.text} />
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Expandable Search Input */}
         {isSearchVisible && (
-            <View style={styles.searchContainer}>
-                <TextInput
-                    ref={searchInputRef}
-                    style={[
-                        styles.searchInput,
-                        { backgroundColor: colors.backgroundLight, color: colors.text },
-                    ]}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Search exercises..."
-                    placeholderTextColor={colors.textPlaceholder}
-                    autoCapitalize="words"
-                />
-            </View>
+          <View style={styles.searchContainer}>
+            <TextInput
+              ref={searchInputRef}
+              style={[
+                styles.searchInput,
+                { backgroundColor: colors.backgroundLight, color: colors.text },
+              ]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search exercises..."
+              placeholderTextColor={colors.textPlaceholder}
+              autoCapitalize="words"
+            />
+          </View>
         )}
 
         {/* Muscle Filter with Body Diagrams - Always visible */}
         {muscleGroups.length > 0 && (
-            <ScrollView
+          <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.muscleFilterScrollView}
             contentContainerStyle={styles.muscleFilterContainer}
-            >
-            {MUSCLE_GROUP_ORDER
-              .filter((group) => muscleGroups.includes(group) && MUSCLE_TO_BODY_PARTS[group]) // Only show muscles that exist in data and have body mapping
+          >
+            {MUSCLE_GROUP_ORDER.filter(
+              (group) =>
+                muscleGroups.includes(group) && MUSCLE_TO_BODY_PARTS[group],
+            ) // Only show muscles that exist in data and have body mapping
               .map((group) => {
                 const isSelected = selectedMuscleGroups.includes(group)
                 const muscleMapping = MUSCLE_TO_BODY_PARTS[group]
                 const bodyData = [{ slug: muscleMapping.slug, intensity: 1 }]
-                
+
                 return (
-                <TouchableOpacity
+                  <TouchableOpacity
                     key={group}
                     style={[
                       styles.muscleChip,
                       {
-                        borderColor: isSelected ? colors.primary : 'transparent',
-                        backgroundColor: isSelected ? colors.primary + '15' : 'transparent',
+                        borderColor: isSelected
+                          ? colors.primary
+                          : 'transparent',
+                        backgroundColor: isSelected
+                          ? colors.primary + '15'
+                          : 'transparent',
                       },
                     ]}
                     onPress={() => toggleMuscleGroup(group)}
                     activeOpacity={0.7}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                    <View style={styles.muscleBodyContainer} pointerEvents="none">
-                      <View style={[styles.muscleBodyWrapper, {
-                        transform: [
-                          { translateY: BODY_HALF_CONFIG[muscleMapping.bodyHalf].offsetY },
-                        ],
-                      }]}>
+                  >
+                    <View
+                      style={styles.muscleBodyContainer}
+                      pointerEvents="none"
+                    >
+                      <View
+                        style={[
+                          styles.muscleBodyWrapper,
+                          {
+                            transform: [
+                              {
+                                translateY:
+                                  BODY_HALF_CONFIG[muscleMapping.bodyHalf]
+                                    .offsetY,
+                              },
+                            ],
+                          },
+                        ]}
+                      >
                         <Body
                           data={bodyData}
                           gender="male"
                           side={muscleMapping.side}
                           scale={BODY_HALF_CONFIG[muscleMapping.bodyHalf].scale}
-                          colors={[isSelected ? colors.primary : '#EF4444']}
+                          colors={['#EF4444']}
                           border="#D1D5DB"
                         />
                       </View>
                     </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
                 )
-            })}
-            </ScrollView>
+              })}
+          </ScrollView>
         )}
 
         {/* Expandable Equipment Filter */}
         {isFilterVisible && (
-            <View style={styles.filtersWrapper}>
-                {/* Yours Filter */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.filterScrollView}
-                    contentContainerStyle={styles.filterContainer}
+          <View style={styles.filtersWrapper}>
+            {/* Yours Filter */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScrollView}
+              contentContainerStyle={styles.filterContainer}
+            >
+              <Text
+                style={[styles.filterLabel, { color: colors.textSecondary }]}
+              >
+                Exercises:
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.backgroundLight,
+                  },
+                  showOnlyMine && {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primaryLight,
+                  },
+                ]}
+                onPress={() => setShowOnlyMine(!showOnlyMine)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: colors.textSecondary },
+                    showOnlyMine && { color: colors.primary },
+                  ]}
                 >
-                    <Text
-                        style={[styles.filterLabel, { color: colors.textSecondary }]}
-                    >
-                        Exercises:
-                    </Text>
-                    <TouchableOpacity
-                        style={[
-                            styles.filterChip,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.backgroundLight,
-                            },
-                            showOnlyMine && {
-                                borderColor: colors.primary,
-                                backgroundColor: colors.primaryLight,
-                            },
-                        ]}
-                        onPress={() => setShowOnlyMine(!showOnlyMine)}
-                    >
-                        <Text
-                            style={[
-                                styles.filterChipText,
-                                { color: colors.textSecondary },
-                                showOnlyMine && { color: colors.primary },
-                            ]}
-                        >
-                            Yours
-                        </Text>
-                    </TouchableOpacity>
-                </ScrollView>
+                  Yours
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
 
-                {/* Equipment Filter */}
-                {equipmentTypes.length > 0 && (
-                    <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.filterScrollView}
-                    contentContainerStyle={styles.filterContainer}
+            {/* Equipment Filter */}
+            {equipmentTypes.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScrollView}
+                contentContainerStyle={styles.filterContainer}
+              >
+                <Text
+                  style={[styles.filterLabel, { color: colors.textSecondary }]}
+                >
+                  Equipment:
+                </Text>
+                {equipmentTypes.map((type) => {
+                  const isSelected = selectedEquipment.includes(type)
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.filterChip,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.backgroundLight,
+                        },
+                        isSelected && {
+                          borderColor: colors.primary,
+                          backgroundColor: colors.primaryLight,
+                        },
+                      ]}
+                      onPress={() => toggleEquipment(type)}
                     >
-                    <Text
-                        style={[styles.filterLabel, { color: colors.textSecondary }]}
-                    >
-                        Equipment:
-                    </Text>
-                    {equipmentTypes.map((type) => {
-                        const isSelected = selectedEquipment.includes(type)
-                        return (
-                        <TouchableOpacity
-                            key={type}
-                            style={[
-                            styles.filterChip,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.backgroundLight,
-                            },
-                            isSelected && {
-                                borderColor: colors.primary,
-                                backgroundColor: colors.primaryLight,
-                            },
-                            ]}
-                            onPress={() => toggleEquipment(type)}
-                        >
-                            <Text
-                            style={[
-                                styles.filterChipText,
-                                { color: colors.textSecondary },
-                                isSelected && { color: colors.primary },
-                            ]}
-                            >
-                            {type}
-                            </Text>
-                        </TouchableOpacity>
-                        )
-                    })}
-                    </ScrollView>
-                )}
-            </View>
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          { color: colors.textSecondary },
+                          isSelected && { color: colors.primary },
+                        ]}
+                      >
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            )}
+          </View>
         )}
 
         {/* Exercise List/Grid */}
@@ -791,7 +919,14 @@ export default function SelectExerciseScreen() {
             ref={listRef}
             key={`${viewMode}-${hasMuscleFilter}-${hasEquipmentFilter}`}
             data={filteredExercises}
-            extraData={[searchQuery, selectedIds.size, isLoading, selectedMuscleGroups, selectedEquipment, showOnlyMine]}
+            extraData={[
+              searchQuery,
+              selectedIds.size,
+              isLoading,
+              selectedMuscleGroups,
+              selectedEquipment,
+              showOnlyMine,
+            ]}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             numColumns={viewMode === 'grid' ? 2 : 1}
@@ -802,24 +937,29 @@ export default function SelectExerciseScreen() {
             keyboardDismissMode="on-drag"
             contentContainerStyle={{
               paddingBottom: keyboardHeight + 100,
-              paddingHorizontal: 16,
+              paddingHorizontal: 14,
             }}
           />
         </View>
 
         {/* Floating Confirm Button */}
         {selectedIds.size > 0 && (
-            <View style={[styles.floatingButtonContainer, { paddingBottom: insets.bottom + 16 }]}>
-                <TouchableOpacity
-                    style={[styles.floatingButton, { backgroundColor: '#FFFFFF' }]}
-                    onPress={handleConfirmSelection}
-                    activeOpacity={0.9}
-                >
-                    <Text style={styles.floatingButtonText}>
-                        Add {selectedIds.size} exercises
-                    </Text>
-                </TouchableOpacity>
-            </View>
+          <View
+            style={[
+              styles.floatingButtonContainer,
+              { paddingBottom: insets.bottom + 16 },
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.floatingButton, { backgroundColor: '#FFFFFF' }]}
+              onPress={handleConfirmSelection}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.floatingButtonText}>
+                Add {selectedIds.size} exercises
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Paywall Modal */}
@@ -842,7 +982,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 0,
   },
@@ -860,22 +1000,22 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   headerRightButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-      marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 4,
   },
   sectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '600',
   },
   searchContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     marginBottom: 4,
   },
   searchInput: {
@@ -884,14 +1024,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   filtersWrapper: {
-      marginBottom: 8,
+    marginBottom: 8,
   },
   filterScrollView: {
     maxHeight: 36,
     marginBottom: 8,
   },
   filterContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     alignItems: 'center',
   },
   filterLabel: {
@@ -926,75 +1066,75 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImageContainer: {
-      height: ITEM_WIDTH * 1.1, // 4:3 aspect ratio roughly
-      backgroundColor: '#000',
-      position: 'relative',
+    height: ITEM_WIDTH * 1.1, // 4:3 aspect ratio roughly
+    backgroundColor: '#000',
+    position: 'relative',
   },
   cardImage: {
-      width: '100%',
-      height: '100%',
+    width: '100%',
+    height: '100%',
   },
   cardOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      padding: 8,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 8,
   },
   iconButtonSmall: {
-      width: 22,
-      height: 22,
+    width: 22,
+    height: 22,
   },
   infoButton: {
-      // No background - icon stands out on its own
+    // No background - icon stands out on its own
   },
   selectionBadge: {
-      // backgroundColor: '#fff',
-      // borderRadius: 12,
+    // backgroundColor: '#fff',
+    // borderRadius: 12,
   },
   listItemCheckbox: {
-      padding: 4,
-      marginRight: 4,
+    padding: 4,
+    marginRight: 4,
   },
   cardContent: {
-      padding: 12,
+    padding: 12,
   },
   cardTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      marginBottom: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   cardSubtitle: {
-      fontSize: 12,
+    fontSize: 12,
   },
   // List Item Styles
   exerciseListItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 8,
-      marginBottom: 8,
-      borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    marginBottom: 8,
+    borderRadius: 12,
   },
   exerciseListItemThumbnail: {
-      width: 48,
-      height: 48,
-      borderRadius: 6,
-      backgroundColor: '#fff',
-      marginRight: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+    marginRight: 12,
   },
   exerciseListItemContent: {
-      flex: 1,
-      justifyContent: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   exerciseListItemText: {
-      fontSize: 16,
-      fontWeight: '500',
-      marginBottom: 2,
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
   },
   exerciseListItemMuscle: {
-      fontSize: 13,
+    fontSize: 13,
   },
   createExerciseContainer: {
     marginBottom: 16,
@@ -1017,41 +1157,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   floatingButtonContainer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      paddingHorizontal: 16,
-      // backgroundColor: 'transparent',
-      alignItems: 'center',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 14,
+    // backgroundColor: 'transparent',
+    alignItems: 'center',
   },
   floatingButton: {
-      width: '100%',
-      paddingVertical: 17,
-      borderRadius: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.35,
-      shadowRadius: 12,
-      elevation: 8,
+    width: '100%',
+    paddingVertical: 17,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
   floatingButtonText: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: '#000000',
-      letterSpacing: -0.2,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.2,
   },
   // Recent Exercises Section Styles
   recentSection: {
     marginBottom: 0, // Using card's marginBottom
   },
   recentScrollView: {
-    marginHorizontal: -16, // Bleed to edges
+    marginHorizontal: -14, // Bleed to edges
   },
   recentScrollContainer: {
-    paddingHorizontal: 16, // Align first card with content below
+    paddingHorizontal: 14, // Align first card with content below
     paddingBottom: 0,
   },
   // Muscle Filter Body Diagram Styles
@@ -1061,7 +1201,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   muscleFilterContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 4,
     alignItems: 'center',
     gap: 2,

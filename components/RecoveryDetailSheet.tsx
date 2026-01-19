@@ -121,7 +121,7 @@ export function RecoveryDetailSheet({
           exiting={SlideOutDown.duration(200)}
           style={[
             styles.sheetWrapper,
-            { paddingBottom: insets.bottom + 16 },
+            { paddingBottom: insets.bottom + 16, backfaceVisibility: 'hidden' },
           ]}
         >
           {Platform.OS === 'ios' ? (
@@ -284,6 +284,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sheet: {
       borderRadius: 24,
       overflow: 'hidden',
+      // 1px border masks the white shimmer artifact on iOS during animations
+      borderWidth: 1,
+      borderColor: 'rgba(0, 0, 0, 0.3)',
     },
     sheetAndroid: {
       backgroundColor: colors.feedCardBackground,

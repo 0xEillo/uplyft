@@ -2,15 +2,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -24,9 +24,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel
 } from '@/lib/strength-standards'
 import { Exercise, Profile } from '@/types/database.types'
 
@@ -507,7 +507,7 @@ export default function ExerciseDetailScreen() {
             }
           >
           {activeTab === 'records' ? (
-            <View style={styles.summaryContainer}>
+            <View style={styles.tabContent}>
               {/* Media Section */}
               <View style={styles.mediaContainer}>
                   <ExerciseMedia 
@@ -518,11 +518,11 @@ export default function ExerciseDetailScreen() {
               </View>
 
               {/* Stats Section */}
-              <View style={[styles.sectionHeader, styles.paddedHorizontal]}>
+              <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Stats</Text>
               </View>
 
-              <View style={[styles.statsGrid, styles.paddedMargin]}>
+              <View style={styles.statsGrid}>
                 {strengthInfo && (
                   <>
                     <View style={styles.statRow}>
@@ -589,11 +589,11 @@ export default function ExerciseDetailScreen() {
               </View>
 
               {/* All Records Section */}
-              <View style={[styles.sectionHeader, styles.paddedHorizontal, { marginTop: 8 }]}>
+              <View style={[styles.sectionHeader, { marginTop: 8 }]}>
                 <Text style={styles.sectionTitle}>All Records</Text>
               </View>
 
-              <View style={[styles.recordsList, styles.paddedMargin]}>
+              <View style={styles.recordsList}>
                 {recordsList.length === 0 ? (
                   <Text style={styles.emptyText}>No records tracked yet</Text>
                 ) : (
@@ -625,50 +625,55 @@ export default function ExerciseDetailScreen() {
               </View>
             </View>
           ) : activeTab === 'leaderboard' ? (
-            <View style={[styles.leaderboardContainer, styles.paddedContainer]}>
-                <Text style={styles.leaderboardSubtitle}>Following (Est. 1RM)</Text>
+            <View style={styles.tabContent}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Following</Text>
+                </View>
 
                 <View style={styles.leaderboardList}>
-                    {leaderboard.map((entry) => (
-                        <View key={entry.userId} style={styles.leaderboardItem}>
-                            <View style={styles.rankContainer}>
-                                <View style={[styles.rankBadge, entry.rank <= 3 ? styles[`rankBadge${entry.rank}` as keyof typeof styles] : styles.rankBadgeDefault]}>
-                                    <Text style={[styles.rankText, entry.rank <= 3 ? styles.rankTextTop : styles.rankTextDefault]}>{entry.rank}</Text>
-                                </View>
-                            </View>
-                            <View style={styles.userContainer}>
-                                {entry.avatarUrl ? (
-                                    <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} />
-                                ) : (
-                                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                        <Text style={styles.avatarInitial}>{entry.displayName.charAt(0)}</Text>
+                    {leaderboard.map((entry, index) => (
+                        <View key={entry.userId}>
+                            <View style={styles.leaderboardItem}>
+                                <View style={styles.rankContainer}>
+                                    <View style={[styles.rankBadge, entry.rank <= 3 ? styles[`rankBadge${entry.rank}` as keyof typeof styles] : styles.rankBadgeDefault]}>
+                                        <Text style={[styles.rankText, entry.rank <= 3 ? styles.rankTextTop : styles.rankTextDefault]}>{entry.rank}</Text>
                                     </View>
-                                )}
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.userName} numberOfLines={1}>
-                                        {entry.displayName}
-                                    </Text>
-                                    {entry.strengthLevel && (
-                                        <View 
-                                            style={[
-                                                styles.miniLevelBadge, 
-                                                { backgroundColor: getLevelColor(entry.strengthLevel as any) }
-                                            ]}
-                                        >
-                                            <Text style={styles.miniLevelText}>{entry.strengthLevel}</Text>
+                                </View>
+                                <View style={styles.userContainer}>
+                                    {entry.avatarUrl ? (
+                                        <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} />
+                                    ) : (
+                                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                                            <Text style={styles.avatarInitial}>{entry.displayName.charAt(0)}</Text>
                                         </View>
                                     )}
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.userName} numberOfLines={1}>
+                                            {entry.displayName}
+                                        </Text>
+                                        {entry.strengthLevel && (
+                                            <View 
+                                                style={[
+                                                    styles.miniLevelBadge, 
+                                                    { backgroundColor: getLevelColor(entry.strengthLevel as any) }
+                                                ]}
+                                            >
+                                                <Text style={styles.miniLevelText}>{entry.strengthLevel}</Text>
+                                            </View>
+                                        )}
+                                    </View>
                                 </View>
+                                <Text style={styles.leaderboardValue}>
+                                    {formatWeight(entry.max1RM, { maximumFractionDigits: 0 })}
+                                </Text>
                             </View>
-                            <Text style={styles.leaderboardValue}>
-                                {formatWeight(entry.max1RM, { maximumFractionDigits: 0 })}
-                            </Text>
+                            {index < leaderboard.length - 1 && <View style={styles.separator} />}
                         </View>
                     ))}
                 </View>
             </View>
           ) : activeTab === 'how_to' ? (
-              <View style={styles.howToContainer}>
+              <View style={styles.tabContent}>
                   {/* Media Section */}
                   <View style={styles.mediaContainer}>
                       <ExerciseMedia 
@@ -679,8 +684,10 @@ export default function ExerciseDetailScreen() {
                   </View>
 
                   {/* Muscles Section */}
-                  <View style={[styles.sectionContainer, styles.paddedHorizontal]}>
-                      <Text style={styles.howToTitle}>{exercise?.name}</Text>
+                  <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>{exercise?.name}</Text>
+                  </View>
+                  <View style={styles.musclesSection}>
                       {exercise?.target_muscles && exercise.target_muscles.length > 0 && (
                           <Text style={styles.musclesText}>
                               Primary: <Text style={styles.muscleHighlight}>{exercise.target_muscles.join(', ')}</Text>
@@ -695,80 +702,88 @@ export default function ExerciseDetailScreen() {
                   
                   {/* Instructions Section */}
                   {exercise?.instructions && exercise.instructions.length > 0 && (
-                  <View style={[styles.instructionsContainer, styles.paddedHorizontal]}>
-                      {exercise.instructions.map((step, index) => {
-                          const cleanStep = step.replace(/^Step:\d+\s*/i, '').trim()
-                          return (
-                              <View key={index} style={styles.instructionStep}>
-                                  <View style={styles.stepNumberContainer}>
-                                      <Text style={styles.stepNumberText}>{index + 1}</Text>
+                  <>
+                      <View style={[styles.sectionHeader, { marginTop: 8 }]}>
+                          <Text style={styles.sectionTitle}>Instructions</Text>
+                      </View>
+                      <View style={styles.instructionsContainer}>
+                          {exercise.instructions.map((step, index) => {
+                              const cleanStep = step.replace(/^Step:\d+\s*/i, '').trim()
+                              return (
+                                  <View key={index} style={styles.instructionStep}>
+                                      <View style={styles.stepNumberContainer}>
+                                          <Text style={styles.stepNumberText}>{index + 1}</Text>
+                                      </View>
+                                      <Text style={styles.stepText}>{cleanStep}</Text>
                                   </View>
-                                  <Text style={styles.stepText}>{cleanStep}</Text>
-                              </View>
-                          )
-                      })}
-                  </View>
+                              )
+                          })}
+                      </View>
+                  </>
                   )}
               </View>
           ) : (
-            <View style={[styles.historyContainer, styles.paddedContainer]}>
+            <View style={styles.tabContent}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Workout History</Text>
+                </View>
                 {history.length === 0 ? (
                     <Text style={styles.emptyText}>No history found for this exercise.</Text>
                 ) : (
                     history.map((session, index) => (
-                        <View key={index} style={styles.historyItem}>
-                            <View style={styles.historyHeader}>
+                        <View key={index}>
+                            <View style={styles.historyItem}>
                                 <Text style={styles.historyDate}>{formatDateTime(session.date)}</Text>
-                            </View>
-                            <Text style={styles.exerciseNameSmall}>{exercise?.name}</Text>
-                            <View style={styles.setsContainer}>
-                                <View style={styles.setHeader}>
-                                    <Text style={styles.setHeaderText}>SET</Text>
-                                    <Text style={styles.setHeaderText}>WEIGHT & REPS</Text>
-                                </View>
-                                {(() => {
-                                  let workingSetNumber = 0
-                                  return session.sets.map((set, setIndex) => {
-                                    const isWarmup = set.is_warmup === true
-                                    if (!isWarmup) {
-                                      workingSetNumber += 1
-                                    }
-                                    const displayLabel = isWarmup
-                                      ? 'W'
-                                      : String(workingSetNumber)
-
-                                    return (
-                                    <View key={setIndex} style={styles.setRow}>
-                                        <View style={styles.setNumberCell}>
-                                          <View
-                                            style={[
-                                              styles.setNumberBadge,
-                                              isWarmup && styles.warmupBadge,
-                                            ]}
-                                          >
-                                            <Text
-                                              style={[
-                                                styles.setNumberBadgeText,
-                                                isWarmup && styles.warmupText,
-                                              ]}
-                                            >
-                                              {displayLabel}
-                                            </Text>
-                                          </View>
-                                        </View>
-                                        <Text style={styles.setDetails}>
-                                          {set.weight
-                                            ? formatWeight(set.weight, {
-                                                maximumFractionDigits: 1,
-                                              })
-                                            : '-'}{' '}
-                                          x {set.reps || 0} reps
-                                        </Text>
+                                <View style={styles.setsContainer}>
+                                    <View style={styles.setHeader}>
+                                        <Text style={styles.setHeaderText}>SET</Text>
+                                        <Text style={styles.setHeaderText}>WEIGHT & REPS</Text>
                                     </View>
-                                    )
-                                  })
-                                })()}
+                                    {(() => {
+                                      let workingSetNumber = 0
+                                      return session.sets.map((set, setIndex) => {
+                                        const isWarmup = set.is_warmup === true
+                                        if (!isWarmup) {
+                                          workingSetNumber += 1
+                                        }
+                                        const displayLabel = isWarmup
+                                          ? 'W'
+                                          : String(workingSetNumber)
+    
+                                        return (
+                                        <View key={setIndex} style={styles.setRow}>
+                                            <View style={styles.setNumberCell}>
+                                              <View
+                                                style={[
+                                                  styles.setNumberBadge,
+                                                  isWarmup && styles.warmupBadge,
+                                                ]}
+                                              >
+                                                <Text
+                                                  style={[
+                                                    styles.setNumberBadgeText,
+                                                    isWarmup && styles.warmupText,
+                                                  ]}
+                                                >
+                                                  {displayLabel}
+                                                </Text>
+                                              </View>
+                                            </View>
+                                            <Text style={styles.setDetails}>
+                                              {set.weight
+                                                ? formatWeight(set.weight, {
+                                                    maximumFractionDigits: 1,
+                                                  })
+                                                : '-'}{' '}
+                                              x {set.reps || 0} reps
+                                            </Text>
+                                        </View>
+                                        )
+                                      })
+                                    })()}
+                                </View>
                             </View>
+                            {index < history.length - 1 && <View style={styles.historySeparator} />}
                         </View>
                     ))
                 )}
@@ -864,34 +879,28 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    summaryContainer: {
+    tabContent: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
       gap: 16,
     },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 0, // Using summaryContainer gap instead
+      marginBottom: 4,
     },
     sectionTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: colors.text,
+    },
+    musclesSection: {
+      gap: 4,
     },
     statsGrid: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.background,
       borderRadius: 12,
-      paddingHorizontal: 16,
-    },
-    paddedHorizontal: {
-      paddingHorizontal: 16,
-    },
-    paddedMargin: {
-      marginHorizontal: 16,
-    },
-    paddedContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 16
     },
     statRow: {
       flexDirection: 'row',
@@ -914,7 +923,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     infoCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.background,
       borderRadius: 12,
       padding: 16,
       gap: 16,
@@ -942,7 +951,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 20,
     },
     levelCard: {
-        backgroundColor: colors.backgroundLight,
+        backgroundColor: colors.background,
         borderRadius: 12,
         padding: 20,
         alignItems: 'center',
@@ -1006,7 +1015,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: colors.text
     },
     muscleHighlightSecondary: {
-        color: colors.textSecondary
+        color: colors.text
     },
     instructionsContainer: {
         gap: 16
@@ -1046,7 +1055,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         textAlign: 'center'
     },
     historyContainer: {
-        gap: 16
+    },
+    historySeparator: {
+        height: 1,
+        backgroundColor: colors.border,
+        marginVertical: 8,
     },
     emptyText: {
         textAlign: 'center',
@@ -1054,16 +1067,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         paddingVertical: 24,
     },
     historyItem: {
-        backgroundColor: colors.backgroundLight,
+        backgroundColor: colors.background,
         borderRadius: 12,
-        padding: 16,
+        paddingVertical: 16,
         gap: 12
     },
     historyHeader: {
     },
     historyDate: {
         fontSize: 14,
-        color: colors.textSecondary,
+        fontWeight: '600',
+        color: colors.text,
     },
     exerciseNameSmall: {
         fontSize: 16,
@@ -1113,7 +1127,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setNumberBadgeText: {
         fontSize: 10,
         fontWeight: '700',
-        color: colors.textSecondary,
+        color: colors.text,
     },
     warmupText: {
         color: colors.warning,
@@ -1124,7 +1138,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: colors.text
     },
     recordsList: {
-        backgroundColor: colors.backgroundLight,
+        backgroundColor: colors.background,
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingBottom: 8
@@ -1174,7 +1188,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         marginBottom: 8
     },
     leaderboardList: {
-        backgroundColor: colors.backgroundLight,
+        backgroundColor: colors.background,
         borderRadius: 12,
         overflow: 'hidden'
     },
@@ -1230,7 +1244,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: colors.backgroundLight
+        backgroundColor: colors.background
     },
     avatarPlaceholder: {
         justifyContent: 'center',

@@ -12,14 +12,14 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -72,14 +72,24 @@ export default function CompareScreen() {
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [theirProfile, setTheirProfile] = useState<Profile | null>(null)
   const [stats, setStats] = useState<ComparisonStats | null>(null)
-  const [exercisesInCommon, setExercisesInCommon] = useState<ExerciseInCommon[]>([])
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseInCommon | null>(null)
-  const [exerciseComparison, setExerciseComparison] = useState<ExerciseComparison | null>(null)
+  const [exercisesInCommon, setExercisesInCommon] = useState<
+    ExerciseInCommon[]
+  >([])
+  const [
+    selectedExercise,
+    setSelectedExercise,
+  ] = useState<ExerciseInCommon | null>(null)
+  const [
+    exerciseComparison,
+    setExerciseComparison,
+  ] = useState<ExerciseComparison | null>(null)
   const [loadingExercise, setLoadingExercise] = useState(false)
   const shouldSkipNextEntryRef = useRef<boolean>(consumeCompareEntrySkipFlag())
   const isInitialFocusRef = useRef(true)
   const [shouldExit, setShouldExit] = useState(false)
-  const [shouldAnimateEntry, setShouldAnimateEntry] = useState(!shouldSkipNextEntryRef.current)
+  const [shouldAnimateEntry, setShouldAnimateEntry] = useState(
+    !shouldSkipNextEntryRef.current,
+  )
   const [timePeriod, setTimePeriod] = useState<'1M' | '6M' | '1Y' | 'ALL'>('1M')
   const [showTimePicker, setShowTimePicker] = useState(false)
 
@@ -93,7 +103,7 @@ export default function CompareScreen() {
         setShouldAnimateEntry(true)
         isInitialFocusRef.current = false
       }
-    }, [shouldSkipNextEntryRef])
+    }, [shouldSkipNextEntryRef]),
   )
 
   const markNextFocusAsChildReturn = useCallback(() => {
@@ -163,26 +173,31 @@ export default function CompareScreen() {
       const myWorkoutCount = myRecentWorkouts.length
       const theirWorkoutCount = theirRecentWorkouts.length
 
-      const myWorkoutTime = myRecentWorkouts.reduce(
-        (sum, w) => sum + (w.duration || 0),
-        0
+      // Duration is stored in seconds, convert to minutes for display
+      const myWorkoutTime = Math.round(
+        myRecentWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0) / 60,
       )
-      const theirWorkoutTime = theirRecentWorkouts.reduce(
-        (sum, w) => sum + (w.duration || 0),
-        0
+      const theirWorkoutTime = Math.round(
+        theirRecentWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0) / 60,
       )
 
       // Calculate total volume
       const calculateVolume = (workouts: typeof myWorkouts) => {
         return workouts.reduce((total, workout) => {
-          return total + workout.workout_exercises.reduce((exerciseTotal, we) => {
-            return exerciseTotal + we.sets.reduce((setTotal, set) => {
-              if (set.weight && set.reps) {
-                return setTotal + (set.weight * set.reps)
-              }
-              return setTotal
+          return (
+            total +
+            workout.workout_exercises.reduce((exerciseTotal, we) => {
+              return (
+                exerciseTotal +
+                we.sets.reduce((setTotal, set) => {
+                  if (set.weight && set.reps) {
+                    return setTotal + set.weight * set.reps
+                  }
+                  return setTotal
+                }, 0)
+              )
             }, 0)
-          }, 0)
+          )
         }, 0)
       }
 
@@ -214,7 +229,7 @@ export default function CompareScreen() {
       })
 
       const commonExercises: ExerciseInCommon[] = Array.from(
-        theirExerciseMap.values()
+        theirExerciseMap.values(),
       ).map((e) => ({
         exerciseId: e.id,
         exerciseName: e.name,
@@ -243,7 +258,7 @@ export default function CompareScreen() {
         const fetchExerciseStats = async (targetUserId: string) => {
           const workouts = await database.workoutSessions.getRecent(
             targetUserId,
-            1000
+            1000,
           )
 
           let maxWeight = 0
@@ -307,13 +322,13 @@ export default function CompareScreen() {
         setLoadingExercise(false)
       }
     },
-    [user?.id, userId]
+    [user?.id, userId],
   )
 
   useFocusEffect(
     useCallback(() => {
       loadComparisonData()
-    }, [loadComparisonData])
+    }, [loadComparisonData]),
   )
 
   const handleBack = useCallback(() => {
@@ -362,7 +377,7 @@ export default function CompareScreen() {
     myValue: number,
     theirValue: number,
     formatFn: (val: number) => string,
-    unit?: string
+    unit?: string,
   ) => {
     const percentDiff = calculatePercentageDiff(myValue, theirValue)
     const maxValue = Math.max(myValue, theirValue)
@@ -376,7 +391,9 @@ export default function CompareScreen() {
           <Text style={styles.comparisonLabel}>{label}</Text>
           <View style={styles.percentageContainer}>
             {isTiedValue ? (
-              <Text style={[styles.percentageText, { color: colors.textTertiary }]}>
+              <Text
+                style={[styles.percentageText, { color: colors.textTertiary }]}
+              >
                 = 0%
               </Text>
             ) : (
@@ -417,11 +434,7 @@ export default function CompareScreen() {
           </View>
           <View style={styles.barContainer}>
             <View
-              style={[
-                styles.bar,
-                styles.myBar,
-                { width: `${myWidth}%` },
-              ]}
+              style={[styles.bar, styles.myBar, { width: `${myWidth}%` }]}
             />
           </View>
           <Text style={styles.barValue}>
@@ -448,11 +461,7 @@ export default function CompareScreen() {
           </View>
           <View style={styles.barContainer}>
             <View
-              style={[
-                styles.bar,
-                styles.theirBar,
-                { width: `${theirWidth}%` },
-              ]}
+              style={[styles.bar, styles.theirBar, { width: `${theirWidth}%` }]}
             />
           </View>
           <Text style={styles.barValue}>
@@ -468,11 +477,12 @@ export default function CompareScreen() {
     if (exercisesInCommon.length === 0) {
       return (
         <View style={styles.emptyExercises}>
-          <Ionicons name="barbell-outline" size={48} color={colors.textTertiary} />
+          <Ionicons
+            name="barbell-outline"
+            size={48}
+            color={colors.textTertiary}
+          />
           <Text style={styles.emptyText}>No exercises in common yet</Text>
-          <Text style={styles.emptySubtext}>
-            When you both log the same exercises, they'll appear here
-          </Text>
         </View>
       )
     }
@@ -638,21 +648,21 @@ export default function CompareScreen() {
             exerciseComparison.oneRepMax.me,
             exerciseComparison.oneRepMax.them,
             (val) => `${val}`,
-            weightUnit
+            weightUnit,
           )}
           {renderComparisonBar(
             'Heaviest Weight',
             exerciseComparison.heaviestWeight.me,
             exerciseComparison.heaviestWeight.them,
             (val) => `${val}`,
-            weightUnit
+            weightUnit,
           )}
           {renderComparisonBar(
             'Best Set (Volume)',
             exerciseComparison.bestSetVolume.me,
             exerciseComparison.bestSetVolume.them,
             (val) => `${Math.round(val)}`,
-            weightUnit
+            weightUnit,
           )}
         </View>
       </View>
@@ -687,7 +697,11 @@ export default function CompareScreen() {
             <View style={styles.headerRow}>
               <Text style={styles.headerTitle}>Comparison</Text>
               {isUpdating && (
-                <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 4 }} />
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginLeft: 4 }}
+                />
               )}
               <TouchableOpacity
                 style={styles.timePicker}
@@ -748,7 +762,16 @@ export default function CompareScreen() {
               {/* Stats Section */}
               <View style={styles.statsSection}>
                 <Text style={styles.sectionTitle}>
-                  Stats - {timePeriod === 'ALL' ? 'All Time' : `Last ${timePeriod === '1M' ? '1 Month' : timePeriod === '6M' ? '6 Months' : '1 Year'}`}
+                  Stats -{' '}
+                  {timePeriod === 'ALL'
+                    ? 'All Time'
+                    : `Last ${
+                        timePeriod === '1M'
+                          ? '1 Month'
+                          : timePeriod === '6M'
+                          ? '6 Months'
+                          : '1 Year'
+                      }`}
                 </Text>
                 {stats && (
                   <>
@@ -757,21 +780,21 @@ export default function CompareScreen() {
                       stats.workoutCount.me,
                       stats.workoutCount.them,
                       (val) => `${val}`,
-                      ''
+                      '',
                     )}
                     {renderComparisonBar(
                       'Workout Time',
                       stats.workoutTime.me,
                       stats.workoutTime.them,
                       formatTime,
-                      ''
+                      '',
                     )}
                     {renderComparisonBar(
                       'Total Volume',
                       stats.totalVolume.me,
                       stats.totalVolume.them,
                       formatVolume,
-                      weightUnit
+                      weightUnit,
                     )}
                   </>
                 )}
@@ -792,7 +815,7 @@ export default function CompareScreen() {
 
 const createStyles = (
   colors: ReturnType<typeof useThemedColors>,
-  isDark: boolean
+  isDark: boolean,
 ) =>
   StyleSheet.create({
     container: {

@@ -37,11 +37,7 @@ export function getStrengthStandard(
   }
 
   const standards = config[gender]
-
-  // For bodyweight exercises like Pull-ups and Dips, use rep count directly
-  const isBodyweightExercise =
-    config.name === 'Pull-Up' || config.name === 'Dips'
-  const ratio = isBodyweightExercise ? oneRepMax : oneRepMax / bodyweight
+  const ratio = oneRepMax / bodyweight
 
   // Find current level
   let currentLevel = standards[0]

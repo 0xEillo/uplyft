@@ -21,6 +21,7 @@ export interface StrengthStandard {
 export interface ExerciseStandardsConfig {
   id: string
   name: string
+  aliases?: string[]
   gifUrl?: string | null
   male: StrengthStandard[]
   female: StrengthStandard[]
@@ -695,11 +696,11 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Overhead Press
+  // Overhead Press / Shoulder Press
   {
     id: 'baf05047-e528-47da-adf2-9be58d124278',
-    name: 'Military Press (Barbell)',
-    gifUrl: 'CggQhII.gif',
+    name: 'Shoulder Press (Barbell)',
+    gifUrl: 'wdRZISl.gif',
     male: [
       {
         level: 'Beginner',
@@ -772,6 +773,89 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Machine Shoulder Press
+  {
+    id: '25050a20-cd9d-4193-b681-dd7c1af27348',
+    name: 'Shoulder Press (Machine)',
+    gifUrl: 'CggQhII.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.25,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.5,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.2,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.55,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -1030,7 +1114,8 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Weighted Pull-Ups (multiplier represents added weight as fraction of bodyweight)
   {
     id: '8416f9f6-5500-4412-9cbe-e779f0314511',
-    name: 'Weighted Pull Up',
+    name: 'Weighted Pull-Up',
+    aliases: ['Weighted Pull Up', 'Weighted Pull-Ups', 'Weighted Pullups'],
     gifUrl: 'HMzLjXx.gif',
     male: [
       {
@@ -1110,7 +1195,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Weighted Dips (multiplier represents added weight as fraction of bodyweight)
+  // Weighted Dip (multiplier represents added weight as fraction of bodyweight)
   {
     id: 'f18faaa7-0cb5-4d5f-9474-a1f822c4ed84',
     name: 'Weighted Dip',
@@ -1270,6 +1355,89 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 0.55,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Hammer Curl (Dumbbell)
+  {
+    id: '82081200-5fb6-4bf4-9341-d2f4b96ecfb6',
+    name: 'Hammer Curl (Dumbbell)',
+    gifUrl: 'slDvUAU.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.3,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.45,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.6,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.15,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.4,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.5,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -2353,7 +2521,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '595e8458-ceab-4608-955b-ebad4c02210d',
     name: 'Face Pull (Cable)',
-    gifUrl: 'CggQhII.gif',
+    gifUrl: 'G61cXLk.gif',
     male: [
       {
         level: 'Beginner',
@@ -3008,10 +3176,17 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 ]
 
 /**
- * Get list of exercise names that support percentile rankings
+ * Get list of exercise names (including aliases) that support percentile rankings
  */
 export function getLeaderboardExercises(): string[] {
-  return EXERCISES_WITH_STANDARDS.map((config) => config.name)
+  const names: string[] = []
+  EXERCISES_WITH_STANDARDS.forEach((config) => {
+    names.push(config.name)
+    if (config.aliases) {
+      names.push(...config.aliases)
+    }
+  })
+  return names
 }
 
 export type ExerciseGroup = 'Push' | 'Pull' | 'Lower' | 'Other'
@@ -3025,10 +3200,10 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Incline Bench Press (Barbell)': 'Chest',
   'Bench Press (Dumbbell)': 'Chest',
   'Incline Bench Press (Dumbbell)': 'Chest',
-  'Weighted Dip': 'Chest',
 
   // Shoulders
-  'Military Press (Barbell)': 'Shoulders',
+  'Shoulder Press (Barbell)': 'Shoulders',
+  'Shoulder Press (Machine)': 'Shoulders',
   'Seated Shoulder Press (Dumbbell)': 'Shoulders',
   'Seated Lateral Raise (Dumbbell)': 'Shoulders',
   'Face Pull (Cable)': 'Shoulders',
@@ -3036,6 +3211,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Back
   'Bent Over Row (Barbell)': 'Back',
   'Lat Pulldown (Cable)': 'Back',
+  'Weighted Pull-Up': 'Back',
   'Weighted Pull Up': 'Back',
   'Deadlift (Barbell)': 'Back',
   'Bent Over Row (Dumbbell)': 'Back',
@@ -3046,10 +3222,12 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
+  'Hammer Curl (Dumbbell)': 'Biceps',
   'Bicep Curl (Barbell)': 'Biceps',
   'Rope Hammer Curl (Cable)': 'Biceps',
 
   // Triceps
+  'Weighted Dip': 'Triceps',
   'Close Grip Bench Press (Barbell)': 'Triceps',
   'Pushdown (Cable)': 'Triceps',
   'Triceps Extension (Machine)': 'Triceps',
@@ -3091,7 +3269,8 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Incline Bench Press (Barbell)': 'Push',
   'Bench Press (Dumbbell)': 'Push',
   'Incline Bench Press (Dumbbell)': 'Push',
-  'Military Press (Barbell)': 'Push',
+  'Shoulder Press (Barbell)': 'Push',
+  'Shoulder Press (Machine)': 'Push',
   'Seated Shoulder Press (Dumbbell)': 'Push',
   'Weighted Dip': 'Push',
 
@@ -3102,8 +3281,9 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
 
   'Bent Over Row (Barbell)': 'Pull',
   'Lat Pulldown (Cable)': 'Pull',
-  'Weighted Pull Up': 'Pull',
+  'Weighted Pull-Up': 'Pull',
   'Bicep Curl (Dumbbell)': 'Pull',
+  'Hammer Curl (Dumbbell)': 'Pull',
   'Bicep Curl (Barbell)': 'Pull',
   'Bent Over Row (Dumbbell)': 'Pull',
   'Seated Row (Machine)': 'Pull',
@@ -3161,6 +3341,11 @@ export function getExerciseNameMap(): Map<string, ExerciseStandardsConfig> {
 
   for (const config of EXERCISES_WITH_STANDARDS) {
     map.set(config.name, config)
+    if (config.aliases) {
+      for (const alias of config.aliases) {
+        map.set(alias, config)
+      }
+    }
   }
 
   return map

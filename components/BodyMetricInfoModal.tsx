@@ -293,6 +293,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 20,
+    // 1px border masks the white shimmer artifact on iOS during animations
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.3)',
+    borderBottomWidth: 0,
+    backfaceVisibility: 'hidden',
   },
   handleContainer: {
     alignItems: 'center',
