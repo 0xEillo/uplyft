@@ -237,6 +237,10 @@ export interface TrialOfferProperties extends BaseEventProperties {
     | 'step_completed'
     | 'accepted'
     | 'dismissed'
+    | 'skipped'
+  plan_type?: 'monthly' | 'yearly' | string
+  trial_enabled?: boolean
+  price_string?: string
 }
 
 export interface FeedViewedProperties extends BaseEventProperties {
@@ -357,11 +361,19 @@ export interface PaywallProperties extends BaseEventProperties {
 }
 
 export interface SubscriptionProperties extends BaseEventProperties {
-  plan?: string
+  plan_type?: 'monthly' | 'yearly' | string
+  product_id?: string // RevenueCat package identifier (SKU)
   price?: number
+  price_string?: string // Formatted price with currency (e.g., "US$24.99")
   currency?: string
-  trial_duration?: number
-  source?: string
+  trial_enabled?: boolean
+  trial_duration_days?: number
+  reminder_enabled?: boolean
+  source_screen?: 'paywall' | 'trial_offer' | 'onboarding' | string
+  subscription_action?: 'started' | 'completed' | 'cancelled' | 'failed' | 'restored'
+  error_message?: string
+  is_restore?: boolean
+  entitlement_granted?: boolean
 }
 
 export interface ErrorProperties extends BaseEventProperties {

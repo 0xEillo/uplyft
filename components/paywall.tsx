@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
@@ -58,6 +58,16 @@ export function Paywall({
     monthly: monthlyPackage,
     yearly: yearlyPackage,
   } = useRevenueCatPackages(offerings)
+
+  // Track paywall shown when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        source_screen: 'paywall',
+        default_plan: 'yearly',
+      })
+    }
+  }, [visible, trackEvent])
 
   // Plans array matching trial-offer layout
   const plans = useMemo(() => {
@@ -140,9 +150,15 @@ export function Paywall({
 
       trackEvent(AnalyticsEvents.SUBSCRIPTION_STARTED, {
         plan_type: plans[selectedPlanIndex].type,
-        trial_enabled: true, // Trial is always enabled
+        product_id: selectedPackage.identifier,
+        price_string: selectedPackage.product.priceString,
+        price: selectedPackage.product.price,
+        currency: selectedPackage.product.currencyCode,
+        trial_enabled: true,
+        trial_duration_days: 7,
         reminder_enabled: isReminderEnabled,
-        price: selectedPackage.product.priceString,
+        source_screen: 'paywall',
+        subscription_action: 'started',
       })
 
       const updatedCustomerInfo = await purchasePackage(
@@ -158,8 +174,16 @@ export function Paywall({
         // Purchase successful and entitlement verified - close the paywall
         trackEvent(AnalyticsEvents.SUBSCRIPTION_COMPLETED, {
           plan_type: plans[selectedPlanIndex].type,
+          product_id: selectedPackage.identifier,
+          price_string: selectedPackage.product.priceString,
+          price: selectedPackage.product.price,
+          currency: selectedPackage.product.currencyCode,
           trial_enabled: true,
+          trial_duration_days: 7,
           reminder_enabled: isReminderEnabled,
+          source_screen: 'paywall',
+          subscription_action: 'completed',
+          entitlement_granted: true,
         })
         Alert.alert(
           'Success!',
@@ -183,13 +207,21 @@ export function Paywall({
       if (purchaseError?.userCancelled) {
         trackEvent(AnalyticsEvents.SUBSCRIPTION_CANCELLED, {
           plan_type: plans[selectedPlanIndex].type,
+          product_id: selectedPackage?.identifier,
+          price_string: selectedPackage?.product.priceString,
+          source_screen: 'paywall',
+          subscription_action: 'cancelled',
         })
         return
       }
 
       trackEvent(AnalyticsEvents.SUBSCRIPTION_FAILED, {
         plan_type: plans[selectedPlanIndex].type,
-        error: purchaseError?.message || 'Unknown error',
+        product_id: selectedPackage?.identifier,
+        price_string: selectedPackage?.product.priceString,
+        source_screen: 'paywall',
+        subscription_action: 'failed',
+        error_message: purchaseError?.message || 'Unknown error',
       })
 
       Alert.alert(
@@ -206,7 +238,11 @@ export function Paywall({
   const handleRestore = async () => {
     try {
       setIsRestoring(true)
-      trackEvent(AnalyticsEvents.SUBSCRIPTION_RESTORED)
+      trackEvent(AnalyticsEvents.SUBSCRIPTION_RESTORED, {
+        source_screen: 'paywall',
+        subscription_action: 'restored',
+        is_restore: true,
+      })
       const restoredCustomerInfo = await restorePurchases()
 
       // Check if Pro entitlement was restored
