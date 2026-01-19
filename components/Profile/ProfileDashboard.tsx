@@ -1,16 +1,19 @@
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
+import {
+  ProfileCard,
+  useProfileCardDimensions,
+} from '@/components/Profile/ProfileCard'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { memo } from 'react'
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useWindowDimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Animated, { FadeInLeft, Layout } from 'react-native-reanimated'
 
@@ -23,7 +26,6 @@ export const ProfileDashboard = memo(
   ({ activeRoutineName, latestWeight }: ProfileDashboardProps) => {
     const colors = useThemedColors()
     const router = useRouter()
-    const { width } = useWindowDimensions()
     const {
       tutorialSteps,
       completedSteps,
@@ -31,8 +33,7 @@ export const ProfileDashboard = memo(
       isTutorialDismissed,
     } = useTutorial()
 
-    const CARD_WIDTH = width * 0.42 // Slightly less than half width to show peek of next card
-    const CARD_HEIGHT = 140
+    const { cardWidth, cardHeight } = useProfileCardDimensions()
 
     const TutorialCard = () => {
       // Don't show if complete or dismissed
@@ -56,8 +57,8 @@ export const ProfileDashboard = memo(
             style={[
               styles.card,
               {
-                width: CARD_WIDTH,
-                height: CARD_HEIGHT,
+                width: cardWidth,
+                height: cardHeight,
                 backgroundColor: colors.primary + '15', // Subtle primary tint
                 borderColor: colors.primary + '30',
               },
@@ -140,56 +141,17 @@ export const ProfileDashboard = memo(
       color?: string
       tintColor?: string
     }) => (
-      <TouchableOpacity
-        onPress={() => {
-          haptic('light')
-          onPress()
-        }}
-        activeOpacity={0.9}
-        style={[
-          styles.card,
-          {
-            width: CARD_WIDTH,
-            height: CARD_HEIGHT,
-            backgroundColor: tintColor,
-            borderColor: colors.border,
-          },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: colors.background },
-            ]}
-          >
-            <Ionicons name={icon} size={22} color={colors.textSecondary} />
-          </View>
-        </View>
-
-        <View style={styles.cardContent}>
-          <Text
-            style={[styles.cardLabel, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          <Text
-            style={[styles.cardValue, { color }]}
-            numberOfLines={2}
-          >
-            {value}
-          </Text>
-          {subtext && (
-            <Text
-              style={[styles.cardSubtext, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {subtext}
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
+      <ProfileCard
+        label={title}
+        title={value}
+        subtext={subtext}
+        icon={icon}
+        onPress={onPress}
+        width={cardWidth}
+        height={cardHeight}
+        tintColor={tintColor}
+        titleColor={color}
+      />
     )
 
     return (
@@ -199,7 +161,7 @@ export const ProfileDashboard = memo(
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           decelerationRate="fast"
-          snapToInterval={CARD_WIDTH + 12}
+          snapToInterval={cardWidth + 12}
         >
           {/* Tutorial Card (Conditional) */}
           <TutorialCard />
@@ -249,7 +211,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     justifyContent: 'space-between',
-    // Subtle shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -271,24 +232,24 @@ const styles = StyleSheet.create({
   cardContent: {
     marginTop: 8,
     flex: 1,
-    justifyContent: 'center', // Center vertically in space
+    justifyContent: 'center',
   },
   cardLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   cardValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    lineHeight: 26,
-    marginBottom: 2,
+    lineHeight: 24,
   },
   cardSubtext: {
     fontSize: 13,
     fontWeight: '500',
+    marginTop: 2,
   },
   progressBarBg: {
     height: 4,

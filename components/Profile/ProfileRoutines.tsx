@@ -1,32 +1,27 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
-import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
   FlatList,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
-  useWindowDimensions,
 } from 'react-native'
+import {
+  ProfileCard,
+  useProfileCardDimensions,
+} from '@/components/Profile/ProfileCard'
 
 interface ProfileRoutinesProps {
   userId: string
 }
 
 export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
-  const colors = useThemedColors()
   const router = useRouter()
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const { width } = useWindowDimensions()
-
-  const CARD_WIDTH = width * 0.42
-  const CARD_HEIGHT = 140
+  const { cardWidth, cardHeight } = useProfileCardDimensions()
 
   useEffect(() => {
     const loadRoutines = async () => {
@@ -87,17 +82,11 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
     const subtext = `${estDurationString} • ${setCount} sets`
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.card,
-          {
-            width: CARD_WIDTH,
-            height: CARD_HEIGHT,
-            backgroundColor: colors.feedCardBackground,
-            borderColor: colors.border,
-          },
-        ]}
-        activeOpacity={0.9}
+      <ProfileCard
+        label="ROUTINE"
+        title={item.name}
+        subtext={subtext}
+        icon="albums-outline"
         onPress={() => {
           haptic('light')
           router.push({
@@ -105,44 +94,9 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
             params: { routineId: item.id },
           })
         }}
-      >
-        <View style={styles.cardHeader}>
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: colors.background },
-            ]}
-          >
-            <Ionicons
-              name="albums-outline"
-              size={22}
-              color={colors.textSecondary}
-            />
-          </View>
-        </View>
-
-        <View style={styles.cardContent}>
-          <Text
-            style={[styles.cardLabel, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            ROUTINE
-          </Text>
-          <Text
-            style={[styles.cardValue, { color: colors.text }]}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
-            {item.name}
-          </Text>
-          <Text
-            style={[styles.cardSubtext, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {subtext}
-          </Text>
-        </View>
-      </TouchableOpacity>
+        width={cardWidth}
+        height={cardHeight}
+      />
     )
   }
 
@@ -156,7 +110,7 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         decelerationRate="fast"
-        snapToInterval={CARD_WIDTH + 12}
+        snapToInterval={cardWidth + 12}
         snapToAlignment="start"
       />
     </View>
@@ -171,52 +125,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 12,
     paddingBottom: 4, // Space for shadow
-  },
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    justifyContent: 'space-between',
-    // Subtle shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardContent: {
-    marginTop: 8,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  cardLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  cardValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 2,
-    lineHeight: 26,
-  },
-  cardSubtext: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 2,
   },
 })
