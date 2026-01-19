@@ -2923,6 +2923,88 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+  // Lying Leg Curl
+  {
+    id: 'cdd2929b-ccc0-4d9f-bea4-6b47d08dca64',
+    name: 'Lying Leg Curl (Machine)',
+    gifUrl: '17lJ1kr.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.15,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#9CA3AF',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.4,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.15,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.45,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
 ]
 
 /**
@@ -2982,6 +3064,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Hamstrings
   'Romanian Deadlift (Barbell)': 'Hamstrings',
   'Seated Leg Curl (Machine)': 'Hamstrings',
+  'Lying Leg Curl (Machine)': 'Hamstrings',
 
   // Glutes
   'Glute Bridge (Barbell)': 'Glutes',
@@ -3040,6 +3123,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Standing Calf Raise (Machine)': 'Lower',
   'Back Extension (Machine)': 'Lower',
   'Seated Leg Curl (Machine)': 'Lower',
+  'Lying Leg Curl (Machine)': 'Lower',
   'Seated Calf Raise (Machine)': 'Lower',
 }
 
