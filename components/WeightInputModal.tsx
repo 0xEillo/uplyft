@@ -142,14 +142,14 @@ export function WeightInputModal({
               <TextInput
                 style={[
                   styles.input,
-                  weightError && { borderColor: colors.error },
+                  { borderColor: weightError ? colors.error : colors.border },
+                  { backgroundColor: colors.backgroundLight }
                 ]}
                 value={weightInput}
                 onChangeText={handleWeightChange}
                 placeholder={weightUnit === 'kg' ? 'e.g. 72.5' : 'e.g. 160.0'}
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
-                returnKeyType="done"
                 onSubmitEditing={handleSave}
                 autoFocus
               />
@@ -167,10 +167,9 @@ export function WeightInputModal({
               style={[
                 styles.saveButton,
                 {
-                  backgroundColor: hasValidWeight
-                    ? colors.primary
-                    : colors.backgroundLight,
+                  backgroundColor: colors.text,
                 },
+                (!hasValidWeight || isSaving) && { opacity: 0.5 }
               ]}
               onPress={handleSave}
               disabled={!hasValidWeight || isSaving}
@@ -180,11 +179,11 @@ export function WeightInputModal({
                 style={[
                   styles.saveButtonText,
                   {
-                    color: hasValidWeight ? colors.white : colors.textSecondary,
+                    color: colors.background,
                   },
                 ]}
               >
-                {isSaving ? 'Saving...' : 'Save'}
+                {isSaving ? 'Processing...' : 'Save'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -203,18 +202,17 @@ const createStyles = (colors: Colors) =>
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'flex-end',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingBottom: 20,
     },
     modalContainer: {
       width: '100%',
       maxWidth: 400,
       backgroundColor: colors.background,
-      borderRadius: 24,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 24,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
       elevation: 8,
       maxHeight: '80%',
     },
@@ -268,8 +266,6 @@ const createStyles = (colors: Colors) =>
       paddingHorizontal: 20,
       borderRadius: 16,
       borderWidth: 2,
-      borderColor: colors.border,
-      backgroundColor: colors.backgroundLight,
       letterSpacing: -0.5,
       textAlign: 'center',
     },
@@ -278,15 +274,10 @@ const createStyles = (colors: Colors) =>
       color: colors.error,
       textAlign: 'center',
     },
-    previewText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.primary,
-      textAlign: 'center',
-    },
     footer: {
-      padding: 20,
-      paddingTop: 0,
+      paddingHorizontal: 20,
+      paddingTop: 4,
+      paddingBottom: 34,
     },
     saveButton: {
       paddingVertical: 16,

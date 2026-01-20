@@ -579,7 +579,6 @@ export default function ProfileScreen() {
                   {/* Avatar */}
                   <TouchableOpacity
                     onPress={() => router.push('/edit-profile')}
-                    style={styles.avatarWrapper}
                   >
                     {profile?.avatar_url ? (
                       <Image
@@ -844,16 +843,6 @@ const createStyles = (
       alignItems: 'flex-end',
       marginBottom: 16,
     },
-    avatarWrapper: {
-      borderRadius: 50,
-      padding: 3,
-      backgroundColor: colors.background,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 8,
-    },
     avatar: {
       width: 90,
       height: 90,
@@ -1064,7 +1053,7 @@ const createStyles = (
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
     },
     gridItemGradient: {
       position: 'absolute',

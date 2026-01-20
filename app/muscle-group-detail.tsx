@@ -11,6 +11,7 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { useProfile } from '@/contexts/profile-context'
 import { getLevelColor, type MuscleGroupData } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
@@ -34,6 +35,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 export default function MuscleGroupDetailScreen() {
     const router = useRouter()
     const colors = useThemedColors()
+    const { isDark } = useTheme()
     const insets = useSafeAreaInsets()
     const { formatWeight, weightUnit } = useWeightUnits()
     const { profile } = useProfile()
@@ -168,6 +170,7 @@ export default function MuscleGroupDetailScreen() {
                             key={exercise.exerciseId || exercise.exerciseName}
                             style={[
                                 styles.exerciseCard,
+                                isDark && exercise.isDone && { backgroundColor: colors.exerciseRowTint },
                                 !exercise.isDone && styles.untrackedCard,
                                 index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
                             ]}

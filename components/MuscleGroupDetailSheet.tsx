@@ -3,6 +3,7 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
 import { type MuscleGroupData, getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
@@ -43,6 +44,7 @@ export function MuscleGroupDetailSheet({
   profile,
 }: MuscleGroupDetailSheetProps) {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { formatWeight, weightUnit } = useWeightUnits()
@@ -163,6 +165,7 @@ export function MuscleGroupDetailSheet({
                 key={exercise.exerciseId || exercise.exerciseName}
                 style={[
                   styles.exerciseCard,
+                  isDark && exercise.isDone && { backgroundColor: colors.exerciseRowTint },
                   !exercise.isDone && styles.untrackedCard,
                   index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
                 ]}

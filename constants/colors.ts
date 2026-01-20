@@ -65,7 +65,7 @@ const darkColors = {
   backgroundWhite: '#242424', // Card background - slightly elevated
   backgroundLight: '#2C2C2C', // Input backgrounds - more elevated
   inputBackground: '#2C2C2C', // Explicit input background
-  feedCardBackground: '#1c1c1c', // Feed card background - slightly lighter than main background
+  feedCardBackground: '#0a0a0a', // Feed card background - only slightly lighter than exerciseRowTint
   feedCardSeparator: '#1C1C1C', // Lighter gray separator between feed cards
 
   // Border colors (very subtle)

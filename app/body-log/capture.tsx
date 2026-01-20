@@ -189,7 +189,13 @@ export default function BodyLogCaptureScreen() {
       const { supabase } = await import('@/lib/supabase')
       const { data: entryData } = await supabase
         .from('body_log_entries')
-        .select('user_id')
+        .select(`
+          user_id,
+          body_log_images (
+            id,
+            sequence
+          )
+        `)
         .eq('id', entryId)
         .single()
 
@@ -199,12 +205,36 @@ export default function BodyLogCaptureScreen() {
 
       const userId = entryData.user_id
 
+      // Determine available sequence numbers
+      const existingSequences = new Set((entryData.body_log_images || []).map((img: any) => img.sequence))
+      const availableSequences = [1, 2, 3].filter(s => !existingSequences.has(s))
+
+      if (availableSequences.length === 0) {
+        Alert.alert(
+          'Limit Reached',
+          'This entry already has 3 photos. Please delete some first.',
+          [{ text: 'OK' }]
+        )
+        setIsSaving(false)
+        return
+      }
+
+      // Filter and upload only what fits
+      const toUploadUris = photoUris.slice(0, availableSequences.length)
+      if (toUploadUris.length < photoUris.length) {
+        Alert.alert(
+          'Limit Reached',
+          `Only ${toUploadUris.length} more photo(s) can be added to this entry.`,
+          [{ text: 'OK' }]
+        )
+      }
+
       // Upload images to storage
-      const filePaths = await uploadBodyLogImages(photoUris, userId, entryId)
+      const filePaths = await uploadBodyLogImages(toUploadUris, userId, entryId)
 
       // Add images to entry
       for (let i = 0; i < filePaths.length; i++) {
-        await database.bodyLog.addImage(entryId, userId, filePaths[i], i + 1)
+        await database.bodyLog.addImage(entryId, userId, filePaths[i], availableSequences[i])
       }
 
       hapticSuccess()

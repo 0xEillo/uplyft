@@ -7,21 +7,21 @@ import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { useAuth } from '@/contexts/auth-context'
 import {
-    RatingPromptProvider,
-    useRatingPrompt,
+  RatingPromptProvider,
+  useRatingPrompt,
 } from '@/contexts/rating-prompt-context'
 import {
-    RestTimerProvider,
-    useRestTimerContext,
+  RestTimerProvider,
+  useRestTimerContext,
 } from '@/contexts/rest-timer-context'
 import {
-    ScrollToTopProvider,
-    useScrollToTop,
+  ScrollToTopProvider,
+  useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-    SuccessOverlayProvider,
-    useSuccessOverlay,
+  SuccessOverlayProvider,
+  useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -33,19 +33,18 @@ import { BlurView } from 'expo-blur'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-    Platform,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withTiming,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from 'react-native-reanimated'
 
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
@@ -311,11 +310,22 @@ function TabLayoutContent() {
           tabBarButton: HapticTab,
           tabBarShowLabel: false,
           tabBarBackground: () => (
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 80 : 100}
-              tint={isDark ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={StyleSheet.absoluteFill}>
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: isDark ? '#000' : '#fff',
+                    opacity: 0.8,
+                  },
+                ]}
+              />
+              <BlurView
+                intensity={100}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
           ),
           tabBarStyle: {
             backgroundColor: 'transparent',

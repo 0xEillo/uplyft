@@ -891,6 +891,45 @@ export default function CreatePostScreen() {
     router.back()
   }, [])
 
+  const handleDiscardWorkout = useCallback(() => {
+    haptic('medium')
+    blurInputs()
+
+    Alert.alert(
+      'Discard Workout',
+      'Are you sure you want to discard this workout? All progress will be lost.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            skipPersistCountRef.current = 1
+            suppressDraftToastRef.current = true
+            await clearWorkoutDraft()
+            resetWorkoutTimer()
+
+            setNotes('')
+            setWorkoutTitle('')
+            setAttachedImageUri(null)
+            setIsStructuredMode(false)
+            setSelectedRoutine(null)
+            setPendingDraftRoutineId(null)
+            setPendingRoutineSource(null)
+            setStructuredData([])
+            setLastRoutineWorkout(null)
+            setFinalizeDescription('')
+
+            haptic('light')
+          },
+        },
+      ],
+    )
+  }, [blurInputs, resetWorkoutTimer])
+
   const handleRemoveAttachedImage = async () => {
     haptic('light')
     imageOpacity.setValue(0)
@@ -1851,20 +1890,32 @@ export default function CreatePostScreen() {
               <Text style={styles.draftSavedText}>Draft saved</Text>
             </Animated.View>
           )}
-          <TouchableOpacity
-            onPress={handlePost}
-            style={[styles.headerButton, styles.primaryButton]}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={{
-                transform: [{ scale: buttonScaleAnim }],
-              }}
+          <View style={styles.headerRightButtons}>
+            {shouldShowWorkoutTimer && (
+              <TouchableOpacity
+                onPress={handleDiscardWorkout}
+                style={styles.discardButton}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={22} color="#E53935" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={handlePost}
+              style={[styles.headerButton, styles.primaryButton]}
+              disabled={isLoading}
+              activeOpacity={0.8}
             >
-              <Ionicons name="checkmark" size={24} color={colors.white} />
-            </Animated.View>
-          </TouchableOpacity>
+              <Animated.View
+                style={{
+                  transform: [{ scale: buttonScaleAnim }],
+                }}
+              >
+                <Ionicons name="checkmark" size={24} color={colors.white} />
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
         </Pressable>
 
         <KeyboardAvoidingView
@@ -2165,6 +2216,18 @@ const createStyles = (
       borderRadius: 20,
       paddingHorizontal: 16,
       height: 44,
+    },
+    headerRightButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    discardButton: {
+      height: 44,
+      width: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     draftSavedContainer: {
       flexDirection: 'row',

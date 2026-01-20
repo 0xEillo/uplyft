@@ -13,6 +13,7 @@ import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
     AiWorkoutConversionResult,
@@ -476,6 +477,7 @@ export function WorkoutChat({
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
   const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
   const TAB_BAR_HEIGHT = 45
@@ -1897,7 +1899,7 @@ export function WorkoutChat({
     }
   }
 
-  const styles = createStyles(colors, insets)
+  const styles = createStyles(colors, insets, isDark)
 
   return (
     <>
@@ -2707,6 +2709,7 @@ export function WorkoutChat({
 function createStyles(
   colors: ReturnType<typeof useThemedColors>,
   insets: { bottom: number },
+  isDark: boolean,
 ) {
   return StyleSheet.create({
     container: {
@@ -2926,11 +2929,13 @@ function createStyles(
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-end',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
       borderRadius: 24,
       paddingRight: 4,
       paddingLeft: 16,
       paddingVertical: 4,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: isDark ? colors.border : 'transparent',
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -3000,7 +3005,7 @@ function createStyles(
     suggestionBubble: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 18,
@@ -3019,7 +3024,7 @@ function createStyles(
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
@@ -3082,7 +3087,7 @@ function createStyles(
       width: 40,
       height: 40,
       borderRadius: 9999,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.shadow,

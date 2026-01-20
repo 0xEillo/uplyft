@@ -3282,9 +3282,7 @@ export default function OnboardingScreen() {
           <TouchableOpacity activeOpacity={1} style={{ width: '100%' }}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setEditingField(null)}>
-                  <Text style={styles.modalCloseText}>Done</Text>
-                </TouchableOpacity>
+                <View />
               </View>
               {renderPicker()}
             </View>

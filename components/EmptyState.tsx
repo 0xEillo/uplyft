@@ -9,9 +9,17 @@ interface EmptyStateProps {
   description?: string
   buttonText?: string
   onPress?: () => void
+  style?: any
 }
 
-export function EmptyState({ icon, title, description, buttonText, onPress }: EmptyStateProps) {
+export function EmptyState({ 
+  icon, 
+  title, 
+  description, 
+  buttonText, 
+  onPress,
+  style 
+}: EmptyStateProps) {
   const colors = useThemedColors()
   
   // Clean entrance animation
@@ -44,7 +52,8 @@ export function EmptyState({ icon, title, description, buttonText, onPress }: Em
         { 
           opacity: fadeAnim,
           transform: [{ translateY }]
-        }
+        },
+        style
       ]}
     >
       <View style={styles.iconWrapper}>
@@ -57,8 +66,10 @@ export function EmptyState({ icon, title, description, buttonText, onPress }: Em
 
       <Text style={styles.title}>{title}</Text>
       
-      {description && (
+      {description ? (
         <Text style={styles.description}>{description}</Text>
+      ) : (
+        <View style={{ height: 16 }} />
       )}
 
       {buttonText && onPress && (
@@ -83,28 +94,29 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 40,
     },
     iconWrapper: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 90,
+      height: 90,
+      borderRadius: 45,
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 20,
+      marginBottom: 24,
     },
     title: {
-      fontSize: 20,
-      fontWeight: '700',
+      fontSize: 22,
+      fontWeight: '800',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 8,
-      letterSpacing: -0.3,
+      marginBottom: 12,
+      letterSpacing: -0.5,
     },
     description: {
-      fontSize: 15,
+      fontSize: 16,
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 20,
-      marginBottom: 24,
+      lineHeight: 22,
+      marginBottom: 32,
+      paddingHorizontal: 20,
     },
     button: {
       backgroundColor: colors.primary,

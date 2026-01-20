@@ -324,7 +324,9 @@ export async function uploadBodyLogImages(
   entryId: string,
 ): Promise<string[]> {
   try {
-    const uploadPromises = uris.map((uri, index) => {
+    // Defensively limit to 3 images
+    const toUpload = uris.slice(0, 3)
+    const uploadPromises = toUpload.map((uri, index) => {
       return uploadBodyLogImage(uri, userId, entryId, index + 1)
     })
 

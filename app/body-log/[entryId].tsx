@@ -5,24 +5,26 @@ import * as ImagePicker from 'expo-image-picker'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import Animated, {
-    useAnimatedScrollHandler,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -39,25 +41,25 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-    getBMIExplanation,
-    getBMIStatus,
-    getBodyFatExplanation,
-    getBodyFatStatus,
-    getStatusColor,
-    getWeightExplanation,
-    type BMIRange,
-    type BodyFatRange,
-    type Gender,
+  getBMIExplanation,
+  getBMIStatus,
+  getBodyFatExplanation,
+  getBodyFatStatus,
+  getStatusColor,
+  getWeightExplanation,
+  type BMIRange,
+  type BodyFatRange,
+  type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-    type BodyLogEntryWithImages,
-    type BodyLogImage,
+  type BodyLogEntryWithImages,
+  type BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    getBodyLogImageUrls,
-    prefetchBodyLogImages,
+  getBodyLogImageUrls,
+  prefetchBodyLogImages,
 } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -79,6 +81,7 @@ const LinearScale = ({
   max = 50, 
   ranges = [], 
   label, 
+  unit,
   subLabel,
   colorResolver,
   onPress,
@@ -89,6 +92,7 @@ const LinearScale = ({
   max?: number
   ranges?: { label: string, start: number, end: number, color?: string }[]
   label: string
+  unit?: string
   subLabel?: string
   colorResolver?: (val: number) => string
   onPress?: () => void
@@ -116,10 +120,10 @@ const LinearScale = ({
       style={styles.scaleContainer}
     >
       <View style={styles.scaleHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.scaleLabel, { color: colors.textSecondary }]}>{label}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-            <Text style={[styles.scaleValueBig, { color: colors.text }]}>{value}</Text>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.scaleValueBig, { color: colors.text }]}>
+              {value}{unit}
+            </Text>
             {subLabel && (
               <View style={[styles.statusBadge, { backgroundColor: colorResolver ? `${colorResolver(value)}20` : 'transparent' }]}>
                 <Text style={[styles.scaleSubLabel, { color: colorResolver ? colorResolver(value) : colors.textSecondary }]}>
@@ -127,9 +131,8 @@ const LinearScale = ({
                 </Text>
               </View>
             )}
-          </View>
         </View>
-        <View style={[styles.chevronCircle, { backgroundColor: colors.border }]}>
+        <View style={[styles.chevronCircle, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
           <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </View>
       </View>
@@ -176,7 +179,7 @@ const LinearScale = ({
         </View>
 
         {/* Thumb */}
-        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.feedCardBackground, borderColor: colors.border }]}>
+        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.feedCardBackground, borderColor: colors.feedCardBackground }]}>
            <View style={[styles.scaleThumbInner, { backgroundColor: colorResolver ? colorResolver(value) : colors.text }]} />
         </View>
         
@@ -217,7 +220,7 @@ export default function BodyLogDetailScreen() {
   }>()
 
   const colors = useThemedColors()
-  const { formatWeight } = useUnit()
+  const { formatWeight, weightUnit } = useUnit()
   const { user } = useAuth()
   const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
@@ -231,11 +234,15 @@ export default function BodyLogDetailScreen() {
   const [, setImagesLoading] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [userGender, setUserGender] = useState<Gender>('male')
+  const [userHeight, setUserHeight] = useState<number | null>(null)
   const [shouldExit, setShouldExit] = useState(false)
 
   // Modal states
   const [infoModalVisible, setInfoModalVisible] = useState(false)
   const [weightModalVisible, setWeightModalVisible] = useState(false)
+  const [heightModalVisible, setHeightModalVisible] = useState(false)
+  const [heightInput, setHeightInput] = useState('')
+  const [genderModalVisible, setGenderModalVisible] = useState(false)
   const [paywallVisible, setPaywallVisible] = useState(false)
   const [isRunningBodyScan, setIsRunningBodyScan] = useState(false)
   const [showTeaserResults, setShowTeaserResults] = useState(false)
@@ -457,7 +464,7 @@ export default function BodyLogDetailScreen() {
     }
   }, [user, entryId, router])
 
-  // Fetch user profile for gender
+  // Fetch user profile for gender and height
   useEffect(() => {
     if (!user) return
 
@@ -467,13 +474,16 @@ export default function BodyLogDetailScreen() {
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('gender')
+          .select('gender, height_cm')
           .eq('id', user.id)
           .single()
 
-        if (!cancelled && profile?.gender) {
+        if (!cancelled && profile) {
           if (profile.gender === 'male' || profile.gender === 'female') {
             setUserGender(profile.gender)
+          }
+          if (typeof profile.height_cm === 'number') {
+            setUserHeight(profile.height_cm)
           }
         }
       } catch (error) {
@@ -621,8 +631,139 @@ export default function BodyLogDetailScreen() {
     }
   }
 
+  const handleSaveHeight = async (heightCm: number) => {
+    try {
+      if (!user) return
+
+      await supabase
+        .from('profiles')
+        .update({ height_cm: heightCm })
+        .eq('id', user.id)
+
+      setUserHeight(heightCm)
+      setHeightInput('')
+      setHeightModalVisible(false)
+      hapticSuccess()
+    } catch (error) {
+      console.error('Error saving height:', error)
+      Alert.alert('Error', 'Failed to save height. Please try again.')
+    }
+  }
+
+  const handleHeightClose = () => {
+    setHeightInput('')
+    setHeightModalVisible(false)
+  }
+
+  // Height conversion helpers
+  const isMetric = weightUnit === 'kg'
+  const CM_PER_INCH = 2.54
+  const INCHES_PER_FOOT = 12
+
+  const cmToFeetInches = (cm: number): { feet: number; inches: number } => {
+    const totalInches = cm / CM_PER_INCH
+    const feet = Math.floor(totalInches / INCHES_PER_FOOT)
+    const inches = Math.round(totalInches % INCHES_PER_FOOT)
+    return { feet, inches }
+  }
+
+  const feetInchesToCm = (feet: number, inches: number): number => {
+    const totalInches = feet * INCHES_PER_FOOT + inches
+    return totalInches * CM_PER_INCH
+  }
+
+  const formatHeightDisplay = (heightCm: number | null): string => {
+    if (!heightCm) return '—'
+    if (isMetric) {
+      return `${heightCm} cm`
+    } else {
+      const { feet, inches } = cmToFeetInches(heightCm)
+      return `${feet}'${inches}"`
+    }
+  }
+
+  const parseHeightInput = (): number | null => {
+    const normalized = heightInput.replace(',', '.').trim()
+    if (!normalized) return null
+
+    if (isMetric) {
+      // Parse as cm
+      const cm = parseFloat(normalized)
+      if (Number.isNaN(cm) || cm < 100 || cm > 250) return null
+      return Math.round(cm)
+    } else {
+      // Parse as feet'inches" or just feet.inches
+      // Support formats: 5'10", 5'10, 5.10, 5 10, 510
+      let feet = 0
+      let inches = 0
+      
+      // Try feet'inches" format first
+      const feetInchesMatch = normalized.match(/^(\d+)\s*['']\s*(\d+)\s*[""]?$/)
+      if (feetInchesMatch) {
+        feet = parseInt(feetInchesMatch[1], 10)
+        inches = parseInt(feetInchesMatch[2], 10)
+      } else {
+        // Try decimal format (5.10 = 5 feet 10 inches)
+        const decimalMatch = normalized.match(/^(\d+)[.\s](\d{1,2})$/)
+        if (decimalMatch) {
+          feet = parseInt(decimalMatch[1], 10)
+          inches = parseInt(decimalMatch[2], 10)
+        } else {
+          // Try just a number (assume feet if small, cm if large)
+          const num = parseFloat(normalized)
+          if (Number.isNaN(num)) return null
+          if (num > 10) {
+            // Assume it's total inches
+            feet = Math.floor(num / 12)
+            inches = Math.round(num % 12)
+          } else {
+            // Assume it's just feet
+            feet = Math.floor(num)
+            inches = 0
+          }
+        }
+      }
+      
+      if (feet < 3 || feet > 8 || inches < 0 || inches > 11) return null
+      return Math.round(feetInchesToCm(feet, inches))
+    }
+  }
+
+  const heightCmFromInput = parseHeightInput()
+  const hasValidHeight = heightCmFromInput !== null
+
+
+  const handleSaveGender = async (gender: Gender) => {
+    try {
+      if (!user) return
+
+      await supabase
+        .from('profiles')
+        .update({ gender })
+        .eq('id', user.id)
+
+      setUserGender(gender)
+      setGenderModalVisible(false)
+      hapticSuccess()
+    } catch (error) {
+      console.error('Error saving gender:', error)
+      Alert.alert('Error', 'Failed to save sex. Please try again.')
+    }
+  }
+
   const handleAddPhotos = async () => {
     if (!user) return
+
+    // Limit to 3 images per entry
+    const currentCount = entry?.images.length ?? 0
+    if (currentCount >= 3) {
+      Alert.alert(
+        'Limit Reached',
+        'You can only have up to 3 photos per entry. Please delete an existing photo if you want to add a new one.',
+        [{ text: 'OK' }]
+      )
+      return
+    }
 
     haptic('light')
 
@@ -704,16 +845,19 @@ export default function BodyLogDetailScreen() {
         return
       }
 
-      // Launch photo library
+      // Launch photo library with multi-select enabled
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         aspect: [3, 4],
         quality: 0.8,
         base64: false,
+        allowsMultipleSelection: true,
       })
 
       if (!result.canceled && result.assets.length > 0) {
-        await handleImageSelected(result.assets[0].uri)
+        // Upload all selected images
+        const imageUris = result.assets.map(asset => asset.uri)
+        await handleImagesSelected(imageUris)
       }
     } catch (error) {
       console.error('Error accessing photo library:', error)
@@ -724,10 +868,40 @@ export default function BodyLogDetailScreen() {
     }
   }
 
+  // Handle single image selected (from camera)
   const handleImageSelected = async (photoUri: string) => {
-    if (!user) return
+    await handleImagesSelected([photoUri])
+  }
+
+  // Handle multiple images selected (from library)
+  const handleImagesSelected = async (photoUris: string[]) => {
+    if (!user || photoUris.length === 0) return
 
     try {
+      // Check limits before starting
+      const currentCount = entry?.images.length ?? 0
+      const remainingSlots = 3 - currentCount
+
+      if (remainingSlots <= 0) {
+        Alert.alert(
+          'Limit Reached',
+          'You can only have up to 3 photos per entry. Please delete an existing photo first.',
+          [{ text: 'OK' }]
+        )
+        return
+      }
+
+      // Filter to only what we can accept
+      const toUpload = photoUris.slice(0, remainingSlots)
+      
+      if (toUpload.length < photoUris.length) {
+        Alert.alert(
+          'Limit Reached',
+          `Only the first ${remainingSlots} photo(s) will be uploaded as each entry is limited to 3 photos.`,
+          [{ text: 'OK' }]
+        )
+      }
+
       setIsUploadingImage(true)
 
       let actualEntryId = entryId
@@ -745,18 +919,22 @@ export default function BodyLogDetailScreen() {
         return
       }
 
-      const imagePosition = (entry?.images.length ?? 0) + 1
-
-      // Import and use uploadBodyLogImage directly with the correct sequence
+      // Import uploadBodyLogImage once for all uploads
       const { uploadBodyLogImage } = await import('@/lib/utils/body-log-storage')
-      const filePath = await uploadBodyLogImage(photoUri, user.id, actualEntryId, imagePosition)
 
-      await database.bodyLog.addImage(
-        actualEntryId,
-        user.id,
-        filePath,
-        imagePosition,
-      )
+      // Upload each image sequentially
+      let currentPosition = (entry?.images.length ?? 0) + 1
+      for (const photoUri of toUpload) {
+        const filePath = await uploadBodyLogImage(photoUri, user.id, actualEntryId, currentPosition)
+
+        await database.bodyLog.addImage(
+          actualEntryId,
+          user.id,
+          filePath,
+          currentPosition,
+        )
+        currentPosition++
+      }
 
       // Refresh entry data with images
       const { data: updatedEntry } = await supabase
@@ -799,9 +977,9 @@ export default function BodyLogDetailScreen() {
 
       hapticSuccess()
     } catch (error) {
-      console.error('Error uploading photo:', error)
+      console.error('Error uploading photo(s):', error)
       setImagesLoading(false)
-      Alert.alert('Error', 'Failed to upload photo. Please try again.')
+      Alert.alert('Error', 'Failed to upload photo(s). Please try again.')
     } finally {
       setIsUploadingImage(false)
     }
@@ -927,7 +1105,7 @@ export default function BodyLogDetailScreen() {
     }
 
     // Check requirements
-    const hasEnoughPhotos = entry.images.length >= 2
+    const hasEnoughPhotos = entry.images.length >= 1
     const hasWeight = entry.weight_kg !== null
 
     if (!hasEnoughPhotos || !hasWeight) {
@@ -935,8 +1113,7 @@ export default function BodyLogDetailScreen() {
 
       const missing: string[] = []
       if (!hasEnoughPhotos) {
-        const photosNeeded = 2 - entry.images.length
-        missing.push(`${photosNeeded} more photo${photosNeeded > 1 ? 's' : ''} from different angles`)
+        missing.push('at least 1 photo')
       }
       if (!hasWeight) {
         missing.push('weight')
@@ -944,7 +1121,7 @@ export default function BodyLogDetailScreen() {
 
       Alert.alert(
         'Body Scan Requirements',
-        `To run a body scan, you need:\n\n• At least 2 photos from different angles (front, side, or back)\n• Your current weight\n\n${missing.length > 0 ? `Missing: ${missing.join(' and ')}` : ''}`,
+        `To run a body scan, you need:\n\n• At least 1 photo (multiple angles recommended for accuracy)\n• Your current weight\n\n${missing.length > 0 ? `Missing: ${missing.join(' and ')}` : ''}`,
         [{ text: 'OK' }]
       )
       return
@@ -1204,7 +1381,7 @@ export default function BodyLogDetailScreen() {
            <View style={styles.photoSection}>
               {imageUrls.length === 0 ? (
                 <TouchableOpacity
-                  style={[styles.emptyPhotoState, { backgroundColor: colors.feedCardBackground, borderColor: colors.border }]}
+                  style={[styles.emptyPhotoState, { backgroundColor: colors.feedCardBackground, borderColor: colors.border, marginHorizontal: 20 }]}
                   onPress={isUploadingImage ? undefined : handleAddPhotos}
                 >
                   {isUploadingImage ? (
@@ -1215,120 +1392,184 @@ export default function BodyLogDetailScreen() {
                         <Ionicons name="camera" size={32} color={colors.primary} />
                       </View>
                       <Text style={[styles.emptyPhotoText, { color: colors.text }]}>Add Progress Photos</Text>
-                      <Text style={[styles.emptyPhotoSubtext, { color: colors.textSecondary }]}>Visually track your transformation</Text>
                     </>
                   )}
                 </TouchableOpacity>
               ) : (
-                <View style={styles.photoGrid}>
-                  {imageUrls.slice(0, 2).map((url, idx) => (
+                <FlatList
+                  horizontal
+                  data={imageUrls}
+                  keyExtractor={(item, index) => `${index}-${item}`}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+                  renderItem={({ item, index }) => (
                     <TouchableOpacity
-                      key={idx}
-                      style={[styles.photoCard, { flex: 1, height: 280 }]}
+                      style={[
+                        styles.photoCard, 
+                        { 
+                          width: (Dimensions.get('window').width - 40 - 12) / 2, 
+                          height: 280 
+                        }
+                      ]}
                       onPress={() => {
-                        setCurrentImageIndex(idx)
+                        setCurrentImageIndex(index)
                         setImageModalVisible(true)
                       }}
                     >
-                      <Image source={{ uri: url }} style={styles.photoImage} contentFit="cover" />
-                      {idx === 1 && imageUrls.length > 2 && (
-                        <View style={styles.morePhotosOverlay}>
-                          <Text style={styles.morePhotosText}>+{imageUrls.length - 2}</Text>
-                        </View>
-                      )}
+                      <Image source={{ uri: item }} style={styles.photoImage} contentFit="cover" />
                     </TouchableOpacity>
-                  ))}
-                  {imageUrls.length < 2 && (
-                     <TouchableOpacity
-                       style={[styles.addPhotoSmall, { flex: 1, height: 280, backgroundColor: colors.feedCardBackground, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border }]}
-                       onPress={handleAddPhotos}
-                     >
-                        {isUploadingImage ? (
-                          <ActivityIndicator color={colors.primary} />
-                        ) : (
-                          <>
-                            <Ionicons name="add" size={28} color={colors.primary} />
-                            <Text style={[styles.addPhotoSmallText, { color: colors.textSecondary }]}>Add Photo</Text>
-                          </>
-                        )}
-                     </TouchableOpacity>
                   )}
-                </View>
+                  ListFooterComponent={
+                    imageUrls.length < 3 ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.addPhotoSmall,
+                          {
+                            width: (Dimensions.get('window').width - 40 - 12) / 2,
+                            height: 280,
+                            backgroundColor: colors.feedCardBackground,
+                            borderWidth: 1,
+                            borderColor: colors.border
+                          }
+                        ]}
+                        onPress={handleAddPhotos}
+                      >
+                         {isUploadingImage ? (
+                           <ActivityIndicator color={colors.primary} />
+                         ) : (
+                           <>
+                             <Ionicons name="add" size={28} color={colors.primary} />
+                             <Text style={[styles.addPhotoSmallText, { color: colors.textSecondary }]}>Add Photo</Text>
+                           </>
+                         )}
+                      </TouchableOpacity>
+                    ) : null
+                  }
+                />
               )}
            </View>
 
+            {/* User Info Section - Editable */}
+            <View style={styles.userInfoRow}>
+              <TouchableOpacity 
+                style={styles.userInfoItem}
+                onPress={handleLogWeight}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="scale-outline" size={18} color={colors.textSecondary} />
+                <Text style={[styles.userInfoValue, { color: colors.text }]}>
+                  {metrics.weight_kg ? formatWeight(metrics.weight_kg) : '—'}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+              </TouchableOpacity>
+
+              <View style={[styles.userInfoDivider, { backgroundColor: colors.border }]} />
+
+              <TouchableOpacity 
+                style={styles.userInfoItem}
+                onPress={() => setHeightModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="resize-outline" size={18} color={colors.textSecondary} />
+                <Text style={[styles.userInfoValue, { color: colors.text }]}>
+                  {formatHeightDisplay(userHeight)}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+              </TouchableOpacity>
+
+              <View style={[styles.userInfoDivider, { backgroundColor: colors.border }]} />
+
+              <TouchableOpacity 
+                style={styles.userInfoItem}
+                onPress={() => setGenderModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
+                <Text style={[styles.userInfoValue, { color: colors.text }]}>
+                  {userGender === 'male' ? 'Male' : 'Female'}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+              </TouchableOpacity>
+            </View>
+
             {/* Analysis Results Section */}
             <View style={[styles.sectionContainer, { marginBottom: 100 }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Detailed Analysis</Text>
-              </View>
 
               <View style={styles.resultsWrapper}>
                 <View style={[styles.metricCardStack, showTeaserResults && styles.blurredContent]}>
-                  {/* Body Fat Card */}
-                  <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
-                    <LinearScale
-                      label="Body Fat %"
-                      value={metrics.body_fat_percentage ?? 0}
-                      min={5}
-                      max={40}
-                      subLabel={getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender)?.label}
-                      ranges={userGender === 'male' ? [
-                         { label: 'Low', start: 5, end: 7, color: '#F59E0B' },
-                         { label: 'Ath.', start: 7, end: 12, color: '#10B981' },
-                         { label: 'Fit.', start: 12, end: 15, color: '#3B82F6' },
-                         { label: 'Avg.', start: 15, end: 20, color: '#F59E0B' },
-                         { label: 'Obs.', start: 20, end: 40, color: '#EF4444' },
-                      ] : [
-                        { label: 'Low', start: 12, end: 15, color: '#F59E0B' },
-                        { label: 'Ath.', start: 15, end: 22, color: '#10B981' },
-                        { label: 'Fit.', start: 22, end: 25, color: '#3B82F6' },
-                        { label: 'Avg.', start: 25, end: 30, color: '#F59E0B' },
-                        { label: 'Obs.', start: 30, end: 45, color: '#EF4444' },
-                      ]}
-                      colorResolver={(val) => getStatusColor(getBodyFatStatus(val, userGender)?.color || 'moderate').primary}
-                      onPress={() => handleInfoPress('bodyFat', (metrics.body_fat_percentage ?? 0).toString(), getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender))}
-                      styles={styles}
-                    />
+                  
+                  {/* Body Fat Section */}
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>Body Fat</Text>
+                    <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                      <LinearScale
+                        label=""
+                        unit="%"
+                        value={metrics.body_fat_percentage ?? 0}
+                        min={5}
+                        max={40}
+                        subLabel={getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender)?.label}
+                        ranges={userGender === 'male' ? [
+                           { label: 'Low', start: 5, end: 7, color: '#F59E0B' },
+                           { label: 'Ath.', start: 7, end: 12, color: '#10B981' },
+                           { label: 'Fit.', start: 12, end: 15, color: '#3B82F6' },
+                           { label: 'Avg.', start: 15, end: 20, color: '#F59E0B' },
+                           { label: 'Obs.', start: 20, end: 40, color: '#EF4444' },
+                        ] : [
+                          { label: 'Low', start: 12, end: 15, color: '#F59E0B' },
+                          { label: 'Ath.', start: 15, end: 22, color: '#10B981' },
+                          { label: 'Fit.', start: 22, end: 25, color: '#3B82F6' },
+                          { label: 'Avg.', start: 25, end: 30, color: '#F59E0B' },
+                          { label: 'Obs.', start: 30, end: 45, color: '#EF4444' },
+                        ]}
+                        colorResolver={(val) => getStatusColor(getBodyFatStatus(val, userGender)?.color || 'moderate').primary}
+                        onPress={() => handleInfoPress('bodyFat', (metrics.body_fat_percentage ?? 0).toString(), getBodyFatStatus(metrics.body_fat_percentage ?? 0, userGender))}
+                        styles={styles}
+                      />
+                    </View>
                   </View>
 
-                  {/* BMI Card */}
-                  <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
-                    <LinearScale
-                      label="BMI"
-                      value={metrics.bmi ?? 0}
-                      min={15}
-                      max={45}
-                      subLabel={getBMIStatus(metrics.bmi ?? 0, userGender)?.label}
-                       ranges={[
-                         { label: 'U.', start: 15, end: 18.5, color: '#3B82F6' },
-                         { label: 'N.', start: 18.5, end: 25, color: '#10B981' },
-                         { label: 'O.', start: 25, end: 30, color: '#F59E0B' },
-                         { label: 'H.', start: 30, end: 45, color: '#EF4444' },
-                      ]}
-                      colorResolver={(val) => getStatusColor(getBMIStatus(val, userGender)?.color || 'moderate').primary}
-                      onPress={() => handleInfoPress('bmi', (metrics.bmi ?? 0).toString(), getBMIStatus(metrics.bmi ?? 0, userGender))}
-                      styles={styles}
-                    />
+                  {/* BMI Section */}
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>BMI</Text>
+                    <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                      <LinearScale
+                        label=""
+                        value={metrics.bmi ?? 0}
+                        min={15}
+                        max={45}
+                        subLabel={getBMIStatus(metrics.bmi ?? 0, userGender)?.label}
+                         ranges={[
+                           { label: 'U.', start: 15, end: 18.5, color: '#3B82F6' },
+                           { label: 'N.', start: 18.5, end: 25, color: '#10B981' },
+                           { label: 'O.', start: 25, end: 30, color: '#F59E0B' },
+                           { label: 'H.', start: 30, end: 45, color: '#EF4444' },
+                        ]}
+                        colorResolver={(val) => getStatusColor(getBMIStatus(val, userGender)?.color || 'moderate').primary}
+                        onPress={() => handleInfoPress('bmi', (metrics.bmi ?? 0).toString(), getBMIStatus(metrics.bmi ?? 0, userGender))}
+                        styles={styles}
+                      />
+                    </View>
                   </View>
 
-                  {/* Physique Scores Card */}
-                  <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
-                    <Text style={[styles.physiqueCardSubTitle, { color: colors.textSecondary }]}>Physique Breakdown</Text>
-                    <View style={styles.scoreGridModern}>
-                       {[
-                          { label: 'Chest', score: metrics.score_chest },
-                          { label: 'Shoulders', score: metrics.score_shoulders },
-                          { label: 'Abs', score: metrics.score_abs },
-                          { label: 'Arms', score: metrics.score_arms },
-                          { label: 'Back', score: metrics.score_back },
-                          { label: 'Legs', score: metrics.score_legs },
-                       ].map((item, i) => {
-                         const intensity = getScoreIntensity(item.score)
-                         const color = ['#333', '#EF4444', '#F59E0B', '#10B981', '#3B82F6'][intensity]
-                         return (
-                             <View key={i} style={styles.modernScoreItem}>
-                              <View style={styles.modernScoreHeader}>
+                  {/* Physique Section */}
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>Physique</Text>
+                    <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                      <View style={styles.scoreGridModern}>
+                         {[
+                            { label: 'Chest', score: metrics.score_chest },
+                            { label: 'Shoulders', score: metrics.score_shoulders },
+                            { label: 'Abs', score: metrics.score_abs },
+                            { label: 'Arms', score: metrics.score_arms },
+                            { label: 'Back', score: metrics.score_back },
+                            { label: 'Legs', score: metrics.score_legs },
+                         ].map((item, i) => {
+                           const intensity = getScoreIntensity(item.score)
+                           const color = ['#333', '#EF4444', '#F59E0B', '#10B981', '#3B82F6'][intensity]
+                           return (
+                               <View key={i} style={styles.modernScoreItem}>
+                                <View style={styles.modernScoreHeader}>
                                 <Text style={[styles.modernScoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                               </View>
                               <Text style={[styles.modernScoreValue, { color: colors.text }]}>{item.score ?? '--'}</Text>
@@ -1341,6 +1582,7 @@ export default function BodyLogDetailScreen() {
                     </View>
                   </View>
                 </View>
+              </View>
 
                 {showTeaserResults && (
                   <LockedResultsOverlay onUnlock={handleUnlockResults} />
@@ -1351,46 +1593,33 @@ export default function BodyLogDetailScreen() {
 
          </Animated.ScrollView>
 
-        {/* Dynamic Action Dock */}
-        <Animated.View style={[styles.actionDockContainer, { bottom: insets.bottom + 20 }, dockAnimatedStyle]}>
-           <View style={[styles.actionDock, { backgroundColor: colors.feedCardBackground, borderColor: colors.border, shadowColor: colors.shadow }]}>
-              {/* Add Progress Photos */}
-              <TouchableOpacity style={styles.dockAction} onPress={handleAddPhotos}>
-                 <Ionicons name="camera" size={22} color={colors.primary} />
-                 <Text style={[styles.dockLabel, { color: colors.text }]}>Photo</Text>
-              </TouchableOpacity>
-
-              <View style={[styles.dockDivider, { backgroundColor: colors.border }]} />
-
-              {/* Log Weight */}
-              <TouchableOpacity style={styles.dockAction} onPress={handleLogWeight}>
-                 <View style={styles.dockWeightValue}>
-                    <Text style={[styles.dockWeightText, { color: colors.text }]}>
-                       {metrics.weight_kg ? formatWeight(metrics.weight_kg) : '--'}
-                    </Text>
-                    <Text style={[styles.dockWeightLabel, { color: colors.textSecondary }]}>Weight</Text>
-                 </View>
-              </TouchableOpacity>
-
-              <View style={[styles.dockDivider, { backgroundColor: colors.border }]} />
-
-              {/* Run Scan / Analyze */}
-              <TouchableOpacity 
-                style={styles.dockAction} 
-                onPress={handleRunBodyScan}
-                disabled={isRunningBodyScan}
-              >
-                 {isRunningBodyScan ? (
-                   <ActivityIndicator color={colors.primary} size="small" />
-                 ) : (
-                   <>
-                    <Ionicons name="scan" size={22} color={colors.primary} />
-                    <Text style={[styles.dockLabel, { color: colors.text }]}>Analyze</Text>
-                   </>
-                 )}
-              </TouchableOpacity>
-           </View>
-        </Animated.View>
+         {/* Dynamic Action Dock */}
+        {metrics.body_fat_percentage === null && (
+          <Animated.View style={[styles.actionDockContainer, { bottom: insets.bottom + 20 }]}>
+             <TouchableOpacity 
+               style={[
+                 styles.bodyScanButton, 
+                 { 
+                   backgroundColor: colors.text,
+                   shadowColor: colors.text,
+                 },
+                 isRunningBodyScan && styles.bodyScanButtonDisabled
+               ]}
+               onPress={handleRunBodyScan}
+               disabled={isRunningBodyScan}
+               activeOpacity={0.8}
+             >
+               {isRunningBodyScan ? (
+                 <ActivityIndicator color={colors.background} size="small" />
+               ) : (
+                 <>
+                   <Ionicons name="scan" size={22} color={colors.background} />
+                   <Text style={[styles.bodyScanButtonText, { color: colors.background }]}>Body Scan</Text>
+                 </>
+               )}
+             </TouchableOpacity>
+          </Animated.View>
+        )}
 
 
 
@@ -1401,6 +1630,173 @@ export default function BodyLogDetailScreen() {
             onSave={handleSaveWeight}
             initialValue={entry?.weight_kg}
         />
+
+        {/* Height Input Modal */}
+        <Modal
+          visible={heightModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleHeightClose}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+            style={styles.modalOverlay}
+          >
+            <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Update Height</Text>
+                <TouchableOpacity onPress={handleHeightClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalContent}>
+                {/* Current unit indicator */}
+                <View style={styles.unitIndicator}>
+                  <Text style={[styles.unitIndicatorText, { color: colors.textSecondary }]}>
+                    {isMetric ? 'Enter height in centimeters' : 'Enter height as feet\'inches" (e.g. 5\'10")'}
+                  </Text>
+                </View>
+
+                {/* Height Input */}
+                <TextInput
+                  style={[
+                    styles.heightTextInput,
+                    { 
+                      color: colors.text,
+                      borderColor: heightInput && !hasValidHeight ? colors.error : colors.border,
+                      backgroundColor: colors.backgroundLight,
+                    }
+                  ]}
+                  value={heightInput}
+                  onChangeText={setHeightInput}
+                  placeholder={isMetric ? 'e.g. 175' : "e.g. 5'10\""}
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType={isMetric ? 'decimal-pad' : 'default'}
+                  onSubmitEditing={() => {
+                    if (hasValidHeight && heightCmFromInput) {
+                      handleSaveHeight(heightCmFromInput)
+                    }
+                  }}
+                  autoFocus
+                />
+
+                {heightInput && !hasValidHeight && (
+                  <Text style={[styles.heightErrorText, { color: colors.error }]}>
+                    {isMetric 
+                      ? 'Enter a valid height (100-250 cm)' 
+                      : 'Enter a valid height (3\'0" - 8\'0")'}
+                  </Text>
+                )}
+
+                {/* Preview conversion */}
+                {hasValidHeight && heightCmFromInput && (
+                  <Text style={[styles.heightPreviewText, { color: colors.primary }]}>
+                    {isMetric 
+                      ? `${(() => { const { feet, inches } = cmToFeetInches(heightCmFromInput); return `${feet}'${inches}"`; })()}` 
+                      : `${heightCmFromInput} cm`}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalSaveButton,
+                    {
+                      backgroundColor: colors.text,
+                    },
+                    !hasValidHeight && { opacity: 0.5 }
+                  ]}
+                  onPress={() => {
+                    if (hasValidHeight && heightCmFromInput) {
+                      handleSaveHeight(heightCmFromInput)
+                    }
+                  }}
+                  disabled={!hasValidHeight}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.modalSaveButtonText,
+                      { color: colors.background },
+                    ]}
+                  >
+                    Save
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Gender Selection Modal */}
+        <Modal
+          visible={genderModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setGenderModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Update Sex</Text>
+                <TouchableOpacity onPress={() => setGenderModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalContent}>
+                <View style={styles.genderOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderOption,
+                      { 
+                        backgroundColor: userGender === 'male' ? colors.primary : colors.backgroundLight,
+                        borderColor: userGender === 'male' ? colors.primary : colors.border,
+                      }
+                    ]}
+                    onPress={() => handleSaveGender('male')}
+                  >
+                    <Ionicons 
+                      name="male" 
+                      size={24} 
+                      color={userGender === 'male' ? colors.white : colors.text} 
+                    />
+                    <Text style={[
+                      styles.genderOptionText,
+                      { color: userGender === 'male' ? colors.white : colors.text }
+                    ]}>
+                      Male
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderOption,
+                      { 
+                        backgroundColor: userGender === 'female' ? colors.primary : colors.backgroundLight,
+                        borderColor: userGender === 'female' ? colors.primary : colors.border,
+                      }
+                    ]}
+                    onPress={() => handleSaveGender('female')}
+                  >
+                    <Ionicons 
+                      name="female" 
+                      size={24} 
+                      color={userGender === 'female' ? colors.white : colors.text} 
+                    />
+                    <Text style={[
+                      styles.genderOptionText,
+                      { color: userGender === 'female' ? colors.white : colors.text }
+                    ]}>
+                      Female
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {selectedMetric && (
             <BodyMetricInfoModal
             visible={infoModalVisible}
@@ -1701,9 +2097,32 @@ const createStyles = (colors: Colors) =>
     textTransform: 'uppercase',
   },
 
+  // Body Scan Button (replaces multi-button dock)
+  bodyScanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 64,
+    width: '100%',
+    borderRadius: 32,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  bodyScanButtonDisabled: {
+    opacity: 0.5,
+    shadowOpacity: 0,
+  },
+  bodyScanButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+
   // Photos Section
   photoSection: {
-    paddingHorizontal: 20,
     marginBottom: 24,
   },
   emptyPhotoState: {
@@ -1768,6 +2187,156 @@ const createStyles = (colors: Colors) =>
     fontWeight: '600',
   },
 
+  // User Info Row
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: colors.feedCardBackground,
+    borderRadius: 12,
+  },
+  userInfoItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  userInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  userInfoDivider: {
+    width: 1,
+    height: 20,
+    opacity: 0.4,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 400,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  modalContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 34, // Extra padding for home indicator safe area
+  },
+  heightOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  heightOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  heightOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 24,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  genderOptionText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // Height Input Modal Styles
+  unitIndicator: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  unitIndicatorText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  heightTextInput: {
+    fontSize: 32,
+    fontWeight: '700',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  heightErrorText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  heightPreviewText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 34, // Extra padding for home indicator safe area
+  },
+  modalSaveButton: {
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalSaveButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+
   // General Spacing
   sectionContainer: {
     paddingHorizontal: 20,
@@ -1794,6 +2363,7 @@ const createStyles = (colors: Colors) =>
     fontSize: 20,
     fontWeight: '700',
     letterSpacing: -0.5,
+    paddingLeft: 2, // Prevent first character cutoff
   },
 
   // Premium Cards
@@ -1828,9 +2398,8 @@ const createStyles = (colors: Colors) =>
     width: '48%',
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    backgroundColor: colors.feedCardBackground === '#1c1c1c' ? colors.background : colors.backgroundLight,
-    borderColor: colors.border,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
   modernScoreHeader: {
     flexDirection: 'row',
@@ -1862,29 +2431,31 @@ const createStyles = (colors: Colors) =>
   scaleHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 0,
+    paddingBottom: 4,
   },
   scaleLabel: {
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
     opacity: 0.6,
+    display: 'none', // Hide label if it renders
   },
   scaleValueBig: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -1,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 10, // Reduced padding
+    paddingVertical: 6,
     borderRadius: 8,
     marginLeft: 12,
     alignSelf: 'center',
   },
   scaleSubLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   chevronCircle: {
@@ -1893,17 +2464,18 @@ const createStyles = (colors: Colors) =>
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    // Background handled inline
   },
   scaleTrackContainer: {
-    height: 40,
+    height: 28, // Thinner container
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 12,
+    marginBottom: 12,
   },
   scaleTrack: {
     width: '100%',
-    height: 8,
-    borderRadius: 4,
+    height: 6, // Thinner track
+    borderRadius: 3,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -1911,20 +2483,20 @@ const createStyles = (colors: Colors) =>
     position: 'absolute',
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 12, // Circle
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: -12,
+    marginLeft: -12, // Center on percent
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
-    borderWidth: 2,
+    borderWidth: 4, // create ring effect
   },
   scaleThumbInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   scaleMarkers: {
     position: 'absolute',

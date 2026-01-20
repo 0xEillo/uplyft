@@ -15,15 +15,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import React, { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -54,7 +54,7 @@ export default function RoutinesScreen() {
 
       // Preload routine images for faster display
       const imageUrls = activeRoutines
-        .map((r) => r.image_path ? getRoutineImageUrl(r.image_path) : null)
+        .map((r) => (r.image_path ? getRoutineImageUrl(r.image_path) : null))
         .filter((url): url is string => url !== null)
       if (imageUrls.length > 0) {
         Image.prefetch(imageUrls)
@@ -74,7 +74,7 @@ export default function RoutinesScreen() {
         source: 'routines_screen',
       })
       loadData()
-    }, [loadData, trackEvent])
+    }, [loadData, trackEvent]),
   )
 
   const handleBack = useCallback(() => {
@@ -130,7 +130,11 @@ export default function RoutinesScreen() {
           {imageSource ? (
             <>
               <Image
-                source={typeof imageSource === 'string' ? { uri: imageSource } : imageSource}
+                source={
+                  typeof imageSource === 'string'
+                    ? { uri: imageSource }
+                    : imageSource
+                }
                 style={styles.routineImage}
                 contentFit="cover"
                 cachePolicy="memory-disk"
@@ -226,7 +230,10 @@ export default function RoutinesScreen() {
         />
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            routines.length === 0 && !isLoading && { flexGrow: 1 },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -243,6 +250,15 @@ export default function RoutinesScreen() {
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
+          ) : routines.length === 0 ? (
+            <EmptyState
+              icon="barbell-outline"
+              title="No routines found"
+              description="Create a routine to quickly start your favorite workouts."
+              buttonText="Create Your First Routine"
+              onPress={handleCreateRoutine}
+              style={{ marginTop: -insets.top - 60 }} // Offset for header and section spacing
+            />
           ) : (
             <>
               {/* My Routines Section */}
@@ -261,15 +277,6 @@ export default function RoutinesScreen() {
                     {renderRoutineItem({ item: routine, index })}
                   </View>
                 ))}
-                {routines.length === 0 && (
-                  <EmptyState
-                    icon="albums-outline"
-                    title="No routines yet"
-                    description="Save your favorite workouts as routines to reuse them later and save time."
-                    buttonText="Create Your First Routine"
-                    onPress={handleCreateRoutine}
-                  />
-                )}
               </View>
             </>
           )}

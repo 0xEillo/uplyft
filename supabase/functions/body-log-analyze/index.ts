@@ -4,7 +4,7 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 // @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
 // eslint-disable-next-line import/no-unresolved
-import { z } from 'https://esm.sh/zod@3.23.8'
+import { z } from 'https://esm.sh/zod@3.25.76'
 import { generateObject } from 'npm:ai'
 
 import {
