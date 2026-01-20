@@ -488,13 +488,13 @@ export default function ProfileScreen() {
             >
               <View style={styles.iconWrapper}>
                 <Animated.View style={{ opacity: whiteOpacity }}>
-                  <Ionicons name="settings" size={24} color={startColor} />
+                  <Ionicons name="settings-sharp" size={24} color={startColor} />
                 </Animated.View>
                 <Animated.View
                   style={{ opacity: themedOpacity, position: 'absolute' }}
                 >
                   <Ionicons
-                    name="settings-outline"
+                    name="settings-sharp"
                     size={24}
                     color={colors.textPrimary}
                   />
