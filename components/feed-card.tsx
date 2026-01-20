@@ -1126,7 +1126,7 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: 8,
       paddingHorizontal: 12,
       backgroundColor: colors.rowTint,
       borderBottomWidth: 1,
