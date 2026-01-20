@@ -1149,13 +1149,13 @@ function createStyles(
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '500',
       color: colors.text,
       flex: 1,
     },
     setsText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '400',
       color: colors.textSecondary,
     },
