@@ -10,6 +10,8 @@ interface AnimatedFeedCardProps {
   isNew?: boolean
   isDeleting?: boolean
   isFirst?: boolean
+  /** Whether a pending workout is actively being processed (vs just queued) */
+  isProcessingPending?: boolean
 }
 
 /**
@@ -24,6 +26,7 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
   isNew = false,
   isDeleting = false,
   isFirst = false,
+  isProcessingPending = false,
 }: AnimatedFeedCardProps) {
   const slideAnim = useRef(new Animated.Value(isNew ? -100 : 0)).current
   const opacityAnim = useRef(new Animated.Value(isNew ? 0 : 1)).current
@@ -100,6 +103,7 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
         workout={workout}
         onDelete={onDelete}
         isFirst={isFirst}
+        isProcessingPending={isProcessingPending}
       />
     </Animated.View>
   )

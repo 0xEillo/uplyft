@@ -30,6 +30,8 @@ interface AsyncPrFeedCardProps {
   workout: WorkoutSessionWithDetails
   onDelete: () => void
   isFirst?: boolean
+  /** Whether a pending workout is actively being processed (vs just queued) */
+  isProcessingPending?: boolean
 }
 
 /**
@@ -40,6 +42,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   workout,
   onDelete,
   isFirst = false,
+  isProcessingPending = false,
 }: AsyncPrFeedCardProps) {
   const { user, isAnonymous } = useAuth()
   const router = useRouter()
@@ -281,6 +284,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       onRoutinePress={handleRoutinePress}
       prInfo={prInfo}
       isPending={isPending}
+      isProcessingPending={isProcessingPending}
       likeCount={likeCount}
       commentCount={commentCount}
       isLiked={isLiked}

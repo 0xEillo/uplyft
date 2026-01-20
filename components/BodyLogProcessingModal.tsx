@@ -1,19 +1,17 @@
-import { useProfile } from '@/contexts/profile-context'
-import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { getCoach } from '@/lib/coaches'
 import { hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Dimensions,
+  Easing,
+  Modal,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -26,40 +24,12 @@ interface BodyLogProcessingModalProps {
   onComplete?: () => void
 }
 
-const DEFAULT_SCANNING_MESSAGES = [
-  'Analyzing body composition...',
-  'Detecting body fat percentage...',
-  'Measuring muscle mass...',
-  'Computing BMI...',
-  'Processing results...',
+const SCANNING_MESSAGES = [
+  'Analyzing composition',
+  'Processing metrics',
+  'Calculating results',
+  'Finalizing',
 ]
-
-const COACH_MESSAGES: Record<string, string[]> = {
-  ross: [
-    'Ross is analyzing your mechanical tension markers...',
-    'Calculating muscle-to-fat ratio models...',
-    'Ross is cross-referencing your physique data...',
-    'Evidence-based metrics incoming...',
-    'Finalizing scientific analysis...',
-  ],
-  kino: [
-    'Coach Kino is sizing up your gains...',
-    'Identifying your true strength potential...',
-    'Scanning for elite physique progress...',
-    'Calculating your power-to-weight ratio...',
-    'No-nonsense results almost ready...',
-  ],
-  maya: [
-    'Maya is celebrating your consistency...',
-    'Visualizing your amazing transformation...',
-    'Finding the progress you\'ve earned...',
-    'Your results are going to inspire!',
-    'Wrapping up your progress report...',
-  ],
-}
-
-const SCANNING_LINE_HEIGHT = 4
-const SCANNING_DURATION = 3000
 
 export function BodyLogProcessingModal({
   visible,
@@ -69,363 +39,342 @@ export function BodyLogProcessingModal({
   onComplete,
 }: BodyLogProcessingModalProps) {
   const colors = useThemedColors()
-  const { isDark } = useTheme()
-  const { coachId } = useProfile()
-  const coach = getCoach(coachId)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  const scanningMessages = COACH_MESSAGES[coachId] || DEFAULT_SCANNING_MESSAGES
-
   // Animated values
-  const scanLinePosition = useRef(new Animated.Value(0)).current
-  const messageOpacity = useRef(new Animated.Value(1)).current
-  const successScale = useRef(new Animated.Value(0)).current
-  const successOpacity = useRef(new Animated.Value(0)).current
-  const checkmarkScale = useRef(new Animated.Value(0)).current
-  const coachScale = useRef(new Animated.Value(0.9)).current
-  const coachOpacity = useRef(new Animated.Value(0)).current
+  const ringRotation = useRef(new Animated.Value(0)).current
+  const pulseScale = useRef(new Animated.Value(1)).current
+  const pulseOpacity = useRef(new Animated.Value(0.6)).current
+  const imageScale = useRef(new Animated.Value(0.95)).current
   const contentOpacity = useRef(new Animated.Value(0)).current
+  const successScale = useRef(new Animated.Value(0.8)).current
+  const successOpacity = useRef(new Animated.Value(0)).current
+  const checkScale = useRef(new Animated.Value(0)).current
+  const processingOpacity = useRef(new Animated.Value(1)).current
+  const dotOpacity1 = useRef(new Animated.Value(0.3)).current
+  const dotOpacity2 = useRef(new Animated.Value(0.3)).current
+  const dotOpacity3 = useRef(new Animated.Value(0.3)).current
 
-  // Start scanning animation
+  // Ring rotation animation
   useEffect(() => {
     if (visible && !isComplete) {
-      // Reset animations
-      scanLinePosition.setValue(0)
-      messageOpacity.setValue(1)
-      successScale.setValue(0)
+      ringRotation.setValue(0)
+      
+      Animated.loop(
+        Animated.timing(ringRotation, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start()
+    }
+  }, [visible, isComplete, ringRotation])
+
+  // Pulse animation
+  useEffect(() => {
+    if (visible && !isComplete) {
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(pulseScale, {
+              toValue: 1.15,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseOpacity, {
+              toValue: 0,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(pulseScale, {
+              toValue: 1,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseOpacity, {
+              toValue: 0.6,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      )
+      pulseAnimation.start()
+      return () => pulseAnimation.stop()
+    }
+  }, [visible, isComplete, pulseScale, pulseOpacity])
+
+  // Dot animation
+  useEffect(() => {
+    if (visible && !isComplete) {
+      const animateDots = () => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(dotOpacity1, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.timing(dotOpacity2, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.timing(dotOpacity3, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.delay(200),
+            Animated.parallel([
+              Animated.timing(dotOpacity1, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+              Animated.timing(dotOpacity2, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+              Animated.timing(dotOpacity3, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+            ]),
+          ])
+        ).start()
+      }
+      animateDots()
+    }
+  }, [visible, isComplete, dotOpacity1, dotOpacity2, dotOpacity3])
+
+  // Initial entrance animation
+  useEffect(() => {
+    if (visible && !isComplete) {
+      // Reset all values
+      imageScale.setValue(0.95)
+      contentOpacity.setValue(0)
+      successScale.setValue(0.8)
       successOpacity.setValue(0)
-      checkmarkScale.setValue(0)
+      checkScale.setValue(0)
+      processingOpacity.setValue(1)
       setShowSuccess(false)
       setCurrentMessageIndex(0)
 
       Animated.parallel([
-        Animated.spring(coachScale, {
+        Animated.spring(imageScale, {
           toValue: 1,
-          tension: 20,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-        Animated.timing(coachOpacity, {
-          toValue: 0.8,
-          duration: 800,
+          tension: 40,
+          friction: 8,
           useNativeDriver: true,
         }),
         Animated.timing(contentOpacity, {
           toValue: 1,
-          duration: 600,
+          duration: 500,
           useNativeDriver: true,
         }),
       ]).start()
-
-      // Start continuous scanning animation
-      Animated.loop(
-        Animated.timing(scanLinePosition, {
-          toValue: 1,
-          duration: SCANNING_DURATION,
-          useNativeDriver: true,
-        }),
-      ).start()
     }
-  }, [
-    visible,
-    isComplete,
-    scanLinePosition,
-    messageOpacity,
-    successScale,
-    successOpacity,
-    checkmarkScale,
-  ])
+  }, [visible, isComplete, imageScale, contentOpacity, successScale, successOpacity, checkScale, processingOpacity])
 
-  // Cycle through messages (stop at last message, don't loop)
+  // Cycle messages
   useEffect(() => {
     if (visible && !isComplete) {
       const interval = setInterval(() => {
-        setCurrentMessageIndex((prev) => {
-          // Stop at the last message, don't loop back
-          if (prev >= scanningMessages.length - 1) {
-            return prev
-          }
-
-          // Fade out
-          Animated.timing(messageOpacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            // Fade in with next message
-            Animated.timing(messageOpacity, {
-              toValue: 1,
-              duration: 300,
-              useNativeDriver: true,
-            }).start()
-          })
-
-          return prev + 1
-        })
-      }, 2000)
-
+        setCurrentMessageIndex((prev) => 
+          prev >= SCANNING_MESSAGES.length - 1 ? prev : prev + 1
+        )
+      }, 2500)
       return () => clearInterval(interval)
     }
-  }, [visible, isComplete, messageOpacity, scanningMessages])
+  }, [visible, isComplete])
 
-  // Handle completion animation
+  // Completion animation
   useEffect(() => {
     if (isComplete && visible) {
-      // Trigger success haptic
       hapticSuccess()
-
-      setShowSuccess(true)
-
-      // Success animation sequence
-      Animated.parallel([
-        // Scale up the success container
-        Animated.spring(successScale, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-        // Fade in the success container
-        Animated.timing(successOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        // Coach "excitement" animation
-        Animated.sequence([
-            Animated.spring(coachScale, {
-                toValue: 1.05,
-                tension: 40,
-                friction: 3,
-                useNativeDriver: true,
-            }),
-            Animated.spring(coachScale, {
-                toValue: 1,
-                tension: 40,
-                friction: 5,
-                useNativeDriver: true,
-            })
-        ])
-      ]).start(() => {
-        // After success container appears, animate checkmark
-        Animated.sequence([
-          Animated.spring(checkmarkScale, {
-            toValue: 1.2,
-            tension: 100,
-            friction: 5,
+      
+      // Fade out processing state
+      Animated.timing(processingOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowSuccess(true)
+        
+        // Animate success state in
+        Animated.parallel([
+          Animated.spring(successScale, {
+            toValue: 1,
+            tension: 60,
+            friction: 8,
             useNativeDriver: true,
           }),
-          Animated.spring(checkmarkScale, {
+          Animated.timing(successOpacity, {
             toValue: 1,
-            tension: 100,
-            friction: 7,
+            duration: 400,
             useNativeDriver: true,
           }),
         ]).start(() => {
-          // Wait 1200ms then call onComplete
-          setTimeout(() => {
-            onComplete?.()
-          }, 1200)
+          // Checkmark bounce
+          Animated.sequence([
+            Animated.spring(checkScale, {
+              toValue: 1.15,
+              tension: 200,
+              friction: 6,
+              useNativeDriver: true,
+            }),
+            Animated.spring(checkScale, {
+              toValue: 1,
+              tension: 200,
+              friction: 8,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setTimeout(() => onComplete?.(), 1000)
+          })
         })
       })
     }
-  }, [
-    isComplete,
-    visible,
-    successScale,
-    successOpacity,
-    checkmarkScale,
-    onComplete,
-  ])
+  }, [isComplete, visible, processingOpacity, successScale, successOpacity, checkScale, onComplete])
 
-  const scanLineTranslateY = scanLinePosition.interpolate({
+  const ringRotationInterpolate = ringRotation.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT * -0.2, SCREEN_HEIGHT * 0.2],
+    outputRange: ['0deg', '360deg'],
   })
 
   if (!visible) return null
 
-  const dynamicStyles = createDynamicStyles(colors, isDark)
+  const styles = createStyles(colors)
+  const IMAGE_SIZE = SCREEN_WIDTH * 0.55
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-    >
-      <View style={dynamicStyles.container}>
-        {/* Coach background */}
-        <Animated.View 
-            style={[
-                dynamicStyles.coachContainer,
-                {
-                    opacity: coachOpacity,
-                    transform: [{ scale: coachScale }]
-                }
-            ]}
-        >
-            <Image 
-                source={coach.image}
-                style={dynamicStyles.coachImage}
-                contentFit="cover"
-            />
-            <LinearGradient 
-                colors={['transparent', 'rgba(0,0,0,0.8)', '#000000']}
-                style={dynamicStyles.coachGradient}
-            />
-        </Animated.View>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+      <View style={styles.container}>
+        {/* Subtle background gradient */}
+        <LinearGradient
+          colors={['#0a0a0a', '#111111', '#0a0a0a']}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
 
-        {/* Content */}
-        <Animated.View style={[dynamicStyles.content, { opacity: contentOpacity }]}>
-          {/* Scanning Header */}
+        {/* Ambient glow behind image */}
+        <View style={[styles.ambientGlow, { width: IMAGE_SIZE * 1.5, height: IMAGE_SIZE * 1.5 }]}>
+          <LinearGradient
+            colors={[`${colors.brandPrimary}15`, 'transparent']}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0.5, y: 0.5 }}
+            end={{ x: 0.5, y: 0 }}
+          />
+        </View>
+
+        <Animated.View style={[styles.content, { opacity: contentOpacity }]}>
+          {/* Processing State */}
           {!showSuccess && (
-            <View style={dynamicStyles.header}>
-                <Text style={dynamicStyles.coachAnalysisText}>
-                    {coach.name.split(' ')[0]}'s Analysis
-                </Text>
-            </View>
-          )}
-
-          {/* User's Photo with Scanning Effect */}
-          {!showSuccess && (
-            <View style={dynamicStyles.imageContainer}>
-              {imageUri ? (
-                <Image
-                  source={{ uri: imageUri }}
-                  style={dynamicStyles.previewImage}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={[dynamicStyles.previewImage, { backgroundColor: colors.surfaceSubtle, justifyContent: 'center', alignItems: 'center' }]}>
-                    <Ionicons name="person" size={48} color={colors.textSecondary} opacity={0.3} />
-                </View>
-              )}
-
-              {/* Scanning lines */}
-              <Animated.View
-                style={[
-                  dynamicStyles.scanLineContainer,
-                  {
-                    transform: [{ translateY: scanLineTranslateY }],
-                  },
-                ]}
-              >
-                <LinearGradient
-                  colors={[
-                    `${colors.brandPrimary}00`,
-                    `${colors.brandPrimary}CC`,
-                    `${colors.brandPrimary}00`,
+            <Animated.View style={[styles.processingContent, { opacity: processingOpacity }]}>
+              {/* Image container with ring */}
+              <View style={[styles.imageWrapper, { width: IMAGE_SIZE, height: IMAGE_SIZE * 1.33 }]}>
+                {/* Pulse effect */}
+                <Animated.View
+                  style={[
+                    styles.pulseRing,
+                    {
+                      width: IMAGE_SIZE + 40,
+                      height: IMAGE_SIZE * 1.33 + 40,
+                      borderRadius: 20,
+                      opacity: pulseOpacity,
+                      transform: [{ scale: pulseScale }],
+                    },
                   ]}
-                  style={dynamicStyles.scanLine}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
                 />
-              </Animated.View>
 
-              {/* Border glow */}
-              <View style={dynamicStyles.borderGlow} />
-              
-              {/* Corner Accents */}
-              <View style={[dynamicStyles.corner, dynamicStyles.topLeft]} />
-              <View style={[dynamicStyles.corner, dynamicStyles.topRight]} />
-              <View style={[dynamicStyles.corner, dynamicStyles.bottomLeft]} />
-              <View style={[dynamicStyles.corner, dynamicStyles.bottomRight]} />
-            </View>
-          )}
+                {/* Rotating gradient ring */}
+                <Animated.View
+                  style={[
+                    styles.rotatingRing,
+                    {
+                      width: IMAGE_SIZE + 8,
+                      height: IMAGE_SIZE * 1.33 + 8,
+                      borderRadius: 16,
+                      transform: [{ rotate: ringRotationInterpolate }],
+                    },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={[colors.brandPrimary, 'transparent', 'transparent', colors.brandPrimary]}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                </Animated.View>
 
-          {/* Status message */}
-          {!showSuccess && (
-            <Animated.View
-              style={[
-                dynamicStyles.messageContainer,
-                {
-                  opacity: messageOpacity,
-                },
-              ]}
-            >
-              <View style={dynamicStyles.messageContent}>
-                <View style={dynamicStyles.scanningIndicator}>
-                  <View
-                    style={[dynamicStyles.dot, dynamicStyles.dotAnimated]}
+                {/* Image */}
+                <Animated.View
+                  style={[
+                    styles.imageContainer,
+                    {
+                      width: IMAGE_SIZE,
+                      height: IMAGE_SIZE * 1.33,
+                      transform: [{ scale: imageScale }],
+                    },
+                  ]}
+                >
+                  {imageUri ? (
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.image}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={[styles.image, styles.imagePlaceholder]}>
+                      <Ionicons name="person" size={48} color="rgba(255,255,255,0.2)" />
+                    </View>
+                  )}
+                  
+                  {/* Subtle overlay for depth */}
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.3)']}
+                    style={styles.imageOverlay}
                   />
-                  <View
-                    style={[
-                      dynamicStyles.dot,
-                      dynamicStyles.dotAnimated,
-                      dynamicStyles.dotDelay1,
-                    ]}
-                  />
-                  <View
-                    style={[
-                      dynamicStyles.dot,
-                      dynamicStyles.dotAnimated,
-                      dynamicStyles.dotDelay2,
-                    ]}
-                  />
+                </Animated.View>
+              </View>
+
+              {/* Status indicator */}
+              <View style={styles.statusContainer}>
+                <View style={styles.dotContainer}>
+                  <Animated.View style={[styles.dot, { opacity: dotOpacity1, backgroundColor: colors.brandPrimary }]} />
+                  <Animated.View style={[styles.dot, { opacity: dotOpacity2, backgroundColor: colors.brandPrimary }]} />
+                  <Animated.View style={[styles.dot, { opacity: dotOpacity3, backgroundColor: colors.brandPrimary }]} />
                 </View>
-                <Text style={dynamicStyles.messageText}>
-                  {scanningMessages[currentMessageIndex]}
+                <Text style={styles.statusText}>
+                  {SCANNING_MESSAGES[currentMessageIndex]}
                 </Text>
               </View>
             </Animated.View>
           )}
 
-          {/* Completion state */}
+          {/* Success State */}
           {showSuccess && (
             <Animated.View
               style={[
-                dynamicStyles.successContainer,
+                styles.successContent,
                 {
                   opacity: successOpacity,
                   transform: [{ scale: successScale }],
                 },
               ]}
             >
-              <View style={dynamicStyles.successTop}>
-                <Text style={dynamicStyles.successTitle}>
-                    {hasNoStats ? 'Analysis Incomplete' : 'Analysis Complete'}
-                </Text>
-                <Text style={dynamicStyles.successSubtitle}>
-                    {hasNoStats 
-                        ? `${coach.name.split(' ')[0]} couldn't see you clearly. Please ensure your photos are well-lit and show your full physique.`
-                        : `${coach.name.split(' ')[0]} has reviewed your physique and updated your stats.`
-                    }
-                </Text>
-              </View>
-
+              {/* Check icon */}
               <Animated.View
                 style={[
-                  dynamicStyles.checkmarkContainer,
+                  styles.checkContainer,
                   {
-                    transform: [{ scale: checkmarkScale }],
+                    transform: [{ scale: checkScale }],
+                    backgroundColor: hasNoStats ? 'transparent' : colors.brandPrimary,
                   },
                 ]}
               >
                 {hasNoStats ? (
-                  <View style={dynamicStyles.infoCircle}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={80}
-                      color={colors.statusError}
-                    />
-                  </View>
+                  <Ionicons name="alert-circle" size={72} color={colors.statusError} />
                 ) : (
-                  <View
-                    style={[
-                      dynamicStyles.checkmarkCircle,
-                      { backgroundColor: colors.brandPrimary },
-                    ]}
-                  >
-                    <Ionicons
-                      name="checkmark"
-                      size={64}
-                      color={colors.bg}
-                    />
-                  </View>
+                  <Ionicons name="checkmark" size={48} color="#fff" />
                 )}
               </Animated.View>
+
+              {/* Text */}
+              <Text style={styles.successTitle}>
+                {hasNoStats ? 'Unable to Analyze' : 'Analysis Complete'}
+              </Text>
+              <Text style={styles.successSubtitle}>
+                {hasNoStats
+                  ? 'Please ensure your photos are well-lit and show your full physique.'
+                  : 'Your body metrics have been updated.'}
+              </Text>
             </Animated.View>
           )}
         </Animated.View>
@@ -436,205 +385,100 @@ export function BodyLogProcessingModal({
 
 type Colors = ReturnType<typeof useThemedColors>
 
-const createDynamicStyles = (colors: Colors, isDark: boolean) =>
+const createStyles = (colors: Colors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#000000',
+      backgroundColor: '#000',
     },
-    coachContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: SCREEN_HEIGHT * 0.65,
-    },
-    coachImage: {
-        width: '100%',
-        height: '100%',
-    },
-    coachGradient: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '60%',
+    ambientGlow: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: [{ translateX: -SCREEN_WIDTH * 0.4 }, { translateY: -SCREEN_WIDTH * 0.5 }],
+      borderRadius: 999,
     },
     content: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 30,
-      paddingTop: SCREEN_HEIGHT * 0.1,
     },
-    header: {
-        marginBottom: 40,
-        alignItems: 'center',
+    processingContent: {
+      alignItems: 'center',
     },
-    coachAnalysisText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: colors.brandPrimary,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-    },
-    imageContainer: {
-      width: SCREEN_WIDTH * 0.65,
-      aspectRatio: 3 / 4,
-      borderRadius: 12,
-      overflow: 'hidden',
-      position: 'relative',
-      backgroundColor: '#000',
-      shadowColor: colors.brandPrimary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.3,
-      shadowRadius: 20,
-      elevation: 12,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
-    },
-    previewImage: {
-      width: '100%',
-      height: '100%',
-      opacity: 0.8,
-    },
-    scanLineContainer: {
-      position: 'absolute',
-      width: '100%',
-      height: '100%',
+    imageWrapper: {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    scanLine: {
-      width: '120%',
-      height: SCANNING_LINE_HEIGHT,
+    pulseRing: {
       position: 'absolute',
-    },
-    borderGlow: {
-      ...StyleSheet.absoluteFillObject,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      borderColor: colors.brandPrimary,
+    },
+    rotatingRing: {
+      position: 'absolute',
+      overflow: 'hidden',
+    },
+    imageContainer: {
       borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: '#1a1a1a',
     },
-    corner: {
-        position: 'absolute',
-        width: 20,
-        height: 20,
-        borderColor: colors.brandPrimary,
-        borderWidth: 2,
+    image: {
+      width: '100%',
+      height: '100%',
     },
-    topLeft: {
-        top: 0,
-        left: 0,
-        borderRightWidth: 0,
-        borderBottomWidth: 0,
+    imagePlaceholder: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#1a1a1a',
     },
-    topRight: {
-        top: 0,
-        right: 0,
-        borderLeftWidth: 0,
-        borderBottomWidth: 0,
+    imageOverlay: {
+      ...StyleSheet.absoluteFillObject,
     },
-    bottomLeft: {
-        bottom: 0,
-        left: 0,
-        borderRightWidth: 0,
-        borderTopWidth: 0,
-    },
-    bottomRight: {
-        bottom: 0,
-        right: 0,
-        borderLeftWidth: 0,
-        borderTopWidth: 0,
-    },
-    messageContainer: {
-      marginTop: 60,
-      backgroundColor: 'rgba(255,255,255,0.05)',
-      paddingHorizontal: 24,
-      paddingVertical: 16,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
-    },
-    messageContent: {
-      flexDirection: 'row',
+    statusContainer: {
+      marginTop: 48,
       alignItems: 'center',
       gap: 16,
     },
-    scanningIndicator: {
+    dotContainer: {
       flexDirection: 'row',
-      gap: 6,
+      gap: 8,
     },
     dot: {
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: colors.brandPrimary,
     },
-    dotAnimated: {
-      opacity: 0.3,
-    },
-    dotDelay1: {
-      opacity: 0.6,
-    },
-    dotDelay2: {
-      opacity: 1,
-    },
-    messageText: {
+    statusText: {
       fontSize: 15,
-      fontWeight: '600',
-      color: '#fff',
-      letterSpacing: -0.2,
+      fontWeight: '500',
+      color: 'rgba(255,255,255,0.6)',
+      letterSpacing: 0.5,
     },
-    successContainer: {
+    successContent: {
       alignItems: 'center',
-      justifyContent: 'center',
-      width: '100%',
+      paddingHorizontal: 40,
     },
-    successTop: {
-        alignItems: 'center',
-        marginBottom: 40,
+    checkContainer: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 32,
     },
     successTitle: {
-      fontSize: 32,
-      fontWeight: '800',
-      color: '#fff',
-      letterSpacing: -1,
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    successSubtitle: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
-        textAlign: 'center',
-        lineHeight: 24,
-        paddingHorizontal: 20,
-    },
-    checkmarkContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    checkmarkCircle: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: colors.brandPrimary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 20,
-      elevation: 12,
-    },
-    infoCircle: {
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    successText: {
-      fontSize: 22,
+      fontSize: 28,
       fontWeight: '700',
       color: '#fff',
-      letterSpacing: -0.3,
+      letterSpacing: -0.5,
+      marginBottom: 12,
+    },
+    successSubtitle: {
+      fontSize: 16,
+      color: 'rgba(255,255,255,0.5)',
+      textAlign: 'center',
+      lineHeight: 24,
     },
   })
-

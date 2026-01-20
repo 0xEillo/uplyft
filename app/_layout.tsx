@@ -275,6 +275,8 @@ export default function RootLayout() {
       apiKey={posthogApiKey || ''}
       options={{
         host: posthogHost,
+        // Reduce flush frequency to minimize offline errors
+        flushInterval: 30000,
       }}
       autocapture={{
         captureScreens: true,

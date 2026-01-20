@@ -106,6 +106,7 @@ export default function FeedScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [currentStreak, setCurrentStreak] = useState(0)
+  const [isOffline, setIsOffline] = useState(false)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
 
   const loadStreak = useCallback(async () => {
@@ -113,8 +114,8 @@ export default function FeedScreen() {
     try {
       const { currentStreak } = await database.stats.calculateStreak(user.id)
       setCurrentStreak(currentStreak)
-    } catch (error) {
-      console.error('Error loading streak:', error)
+    } catch {
+      // Silently fail - streak is not critical and may fail offline
     }
   }, [user])
 
@@ -189,9 +190,32 @@ export default function FeedScreen() {
           setOffset(data.length)
           setHasMore(hasMoreWorkouts)
           setIsInitialLoad(false)
+          setIsOffline(false) // Clear offline state on successful load
         }
       } catch (error) {
         console.error('Error loading workouts:', error)
+        // Detect network errors
+        const isNetworkError =
+          error instanceof Error &&
+          (error.message.includes('Network request failed') ||
+            error.message.includes('network') ||
+            error.message.includes('fetch') ||
+            error.message.includes('Failed to fetch'))
+        setIsOffline(isNetworkError)
+
+        // Even when offline, show placeholder if it exists (from AsyncStorage)
+        if (isNetworkError) {
+          try {
+            const placeholder = await loadPlaceholderWorkout()
+            if (placeholder) {
+              setWorkouts([
+                (placeholder as unknown) as WorkoutSessionWithDetails,
+              ])
+            }
+          } catch {
+            // Placeholder load failed, that's fine
+          }
+        }
       } finally {
         setIsLoading(false)
         setIsLoadingMore(false)
@@ -211,10 +235,13 @@ export default function FeedScreen() {
       setOffset(0)
       setHasMore(true)
       await loadWorkouts(false, false)
+
+      // Also retry any pending workout (manual retry via pull-to-refresh)
+      handlePendingPost()
     } finally {
       setIsRefreshing(false)
     }
-  }, [user, isRefreshing, loadWorkouts, trackEvent])
+  }, [user, isRefreshing, loadWorkouts, trackEvent, handlePendingPost])
 
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return
@@ -222,7 +249,12 @@ export default function FeedScreen() {
     try {
       const result = await processPendingWorkout()
 
-      if (result.status === 'none' || result.status === 'skipped') {
+      if (
+        result.status === 'none' ||
+        result.status === 'skipped' ||
+        result.status === 'offline'
+      ) {
+        // 'offline' - pending workout kept for retry, placeholder stays showing "Queued"
         return
       }
 
@@ -400,6 +432,9 @@ export default function FeedScreen() {
         isNew={workout.id === newWorkoutId}
         isDeleting={workout.id === deletingWorkoutId}
         isFirst={index === 0}
+        isProcessingPending={
+          (workout as WorkoutWithPending).isPending && isProcessingPending
+        }
         onDelete={() => {
           // If already marked for deletion, actually remove from state
           if (workout.id === deletingWorkoutId) {
@@ -535,13 +570,23 @@ export default function FeedScreen() {
           }
           ListEmptyComponent={
             (isTutorialDismissed || isTutorialLoading) && !isLoading ? (
-              <EmptyState
-                icon="barbell-outline"
-                title="Your feed is empty"
-                description="Follow friends or log your first workout to see activity here."
-                buttonText="Log Your First Workout"
-                onPress={() => router.push('/(tabs)/create-post')}
-              />
+              isOffline ? (
+                <EmptyState
+                  icon="cloud-offline-outline"
+                  title="You're offline"
+                  description="Your feed will load when you're back online. You can still log workouts and they'll sync automatically."
+                  buttonText="Log a Workout"
+                  onPress={() => router.push('/(tabs)/create-post')}
+                />
+              ) : (
+                <EmptyState
+                  icon="barbell-outline"
+                  title="Your feed is empty"
+                  description="Follow friends or log your first workout to see activity here."
+                  buttonText="Log Your First Workout"
+                  onPress={() => router.push('/(tabs)/create-post')}
+                />
+              )
             ) : null
           }
           ListFooterComponent={renderFooter}

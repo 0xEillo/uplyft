@@ -431,7 +431,7 @@ export default function NotificationsScreen() {
                         </View>
                       )}
                       <Text style={styles.notificationTime}>
-                        {formatTimeAgo(notification.updated_at)}
+                        {formatTimeAgo(notification.created_at)}
                       </Text>
                     </View>
 

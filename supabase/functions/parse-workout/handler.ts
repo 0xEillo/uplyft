@@ -48,6 +48,14 @@ export async function handleRequest(req: Request): Promise<Response> {
       structuredSummary,
     )
 
+    // Log offline metadata if present
+    if (payload.performedAt) {
+      logWithCorrelation(correlationId, 'Offline metadata received', {
+        performedAt: payload.performedAt,
+        timezoneOffsetMinutes: payload.timezoneOffsetMinutes ?? null,
+      })
+    }
+
     if (payload.createWorkout && !payload.userId) {
       throw new ApiError(
         400,
@@ -142,6 +150,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         payload.imageUrl,
         payload.routineId,
         payload.durationSeconds,
+        payload.performedAt, // client timestamp for offline support
         correlationId,
       )
 

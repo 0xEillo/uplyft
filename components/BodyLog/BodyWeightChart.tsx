@@ -53,15 +53,9 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
 
   const styles = createStyles(colors)
 
+  // Don't show anything while loading initially - prevents flash when user has no weight data
   if (isLoading && data.length === 0) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.bg }]}>
-        <View style={styles.segmentContainer}>
-          {/* Skeleton or just empty container to prevent layout shift */}
-        </View>
-        <ActivityIndicator size="small" color={colors.brandPrimary} />
-      </View>
-    )
+    return null
   }
 
   // Transform data for chart

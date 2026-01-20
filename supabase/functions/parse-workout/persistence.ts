@@ -17,6 +17,7 @@ export async function createWorkoutSession(
   imageUrl: string | null | undefined,
   routineId: string | null | undefined,
   durationSeconds: number | null | undefined,
+  performedAt: string | null | undefined,
   correlationId: string,
 ): Promise<CreatedWorkoutResult> {
   logWithCorrelation(correlationId, 'Creating workout session', {
@@ -24,6 +25,7 @@ export async function createWorkoutSession(
     routineId,
     workoutType: workout.type,
     durationSeconds,
+    performedAt: performedAt ?? 'now',
   })
 
   const { data: session, error: sessionError } = await supabase
@@ -36,6 +38,8 @@ export async function createWorkoutSession(
       image_url: imageUrl ?? null,
       routine_id: routineId ?? null,
       duration: typeof durationSeconds === 'number' ? durationSeconds : null,
+      // Use client-provided timestamp for offline support, fallback to server time
+      date: performedAt ?? new Date().toISOString(),
     })
     .select()
     .single()

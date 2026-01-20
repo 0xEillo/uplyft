@@ -55,6 +55,7 @@ export class SubmitWorkoutError extends Error {
 export type PendingProcessStatus =
   | { status: 'none' }
   | { status: 'skipped' }
+  | { status: 'offline' } // Network error - pending workout kept for retry
   | {
       status: 'success'
       placeholder: PlaceholderWorkout | null
@@ -73,6 +74,18 @@ export function useSubmitWorkout() {
   const [isProcessingPending, setIsProcessingPending] = useState(false)
   const isProcessingRef = useRef(false)
   const posthog = usePostHog()
+
+  // Safe PostHog capture that won't throw on network errors
+  const safeCapture = useCallback(
+    (event: string, properties?: Parameters<typeof posthog.capture>[1]) => {
+      try {
+        posthog?.capture(event, properties)
+      } catch {
+        // Silently fail - analytics should never block core functionality
+      }
+    },
+    [posthog],
+  )
 
   const buildStructuredStats = useCallback(
     (structuredData?: StructuredExerciseDraft[]) => {
@@ -165,7 +178,7 @@ export function useSubmitWorkout() {
         try {
           imageUrl = await uploadWorkoutImage(imageUri, user.id)
         } catch (error) {
-          posthog?.capture('Workout Image Upload Failed', {
+          safeCapture('Workout Image Upload Failed', {
             userId: user.id,
             notesLength: trimmedNotes.length,
             titleLength: trimmedTitle.length,
@@ -184,6 +197,11 @@ export function useSubmitWorkout() {
       // Generate idempotency key to prevent duplicate submissions
       const idempotencyKey = Crypto.randomUUID()
 
+      // Capture local timestamp and timezone for offline support
+      const now = new Date()
+      const performedAt = now.toISOString()
+      const timezoneOffsetMinutes = now.getTimezoneOffset()
+
       const pending: PendingWorkout = {
         notes: trimmedNotes,
         title: trimmedTitle,
@@ -201,20 +219,32 @@ export function useSubmitWorkout() {
             : undefined,
         isStructuredMode:
           typeof isStructuredMode === 'boolean' ? isStructuredMode : undefined,
+        performedAt,
+        timezoneOffsetMinutes,
       }
 
-      // Fetch user's profile for the placeholder
-      const profile = await database.profiles.getById(user.id)
+      // Fetch user's profile for the placeholder (non-critical, may fail offline)
+      let profileData: {
+        display_name: string
+        avatar_url: string | null
+      } | null = null
+      try {
+        const profile = await database.profiles.getById(user.id)
+        if (profile) {
+          profileData = {
+            display_name: profile.display_name,
+            avatar_url: profile.avatar_url,
+          }
+        }
+      } catch {
+        // Profile fetch failed (likely offline) - placeholder will work without it
+      }
+
       const placeholder = createPlaceholderWorkout(
         trimmedTitle,
         imageUrl,
         user.id,
-        profile
-          ? {
-              display_name: profile.display_name,
-              avatar_url: profile.avatar_url,
-            }
-          : null,
+        profileData,
       )
 
       await Promise.all([
@@ -222,7 +252,7 @@ export function useSubmitWorkout() {
         savePlaceholderWorkout(placeholder),
       ])
 
-      posthog?.capture('Workout Submit Queued', {
+      safeCapture('Workout Submit Queued', {
         userId: user.id,
         notesLength: trimmedNotes.length,
         titleLength: trimmedTitle.length,
@@ -232,11 +262,13 @@ export function useSubmitWorkout() {
         routineId: routineId ?? null,
         durationSeconds:
           typeof durationSeconds === 'number' ? durationSeconds : null,
+        performedAt,
+        timezoneOffsetMinutes,
       })
 
       return { pending, placeholder }
     },
-    [user, weightUnit, posthog, buildStructuredStats, toErrorPayload],
+    [user, weightUnit, safeCapture, buildStructuredStats, toErrorPayload],
   )
 
   const processPendingWorkout = useCallback(async (): Promise<
@@ -255,6 +287,20 @@ export function useSubmitWorkout() {
     setIsProcessingPending(true)
 
     const placeholder = await loadPlaceholderWorkout()
+
+    // Track retry attempt
+    safeCapture('Workout Pending Processing', {
+      userId: pending.userId,
+      notesLength: pending.notes.length,
+      titleLength: pending.title.length,
+      hasImage: Boolean(pending.imageUrl),
+      ...buildStructuredStats(pending.structuredData),
+      isStructuredMode: Boolean(pending.isStructuredMode),
+      routineId: pending.routineId ?? null,
+      durationSeconds: pending.durationSeconds ?? null,
+      performedAt: pending.performedAt ?? null,
+      timezoneOffsetMinutes: pending.timezoneOffsetMinutes ?? null,
+    })
 
     try {
       const {
@@ -280,6 +326,8 @@ export function useSubmitWorkout() {
           description: pending.description,
           structuredData: pending.structuredData,
           isStructuredMode: pending.isStructuredMode,
+          performedAt: pending.performedAt,
+          timezoneOffsetMinutes: pending.timezoneOffsetMinutes,
         },
         accessToken,
       )
@@ -290,7 +338,7 @@ export function useSubmitWorkout() {
 
       await clearPendingArtifacts()
 
-      posthog?.capture('Workout Pending Processed', {
+      safeCapture('Workout Pending Processed', {
         userId: pending.userId,
         notesLength: pending.notes.length,
         titleLength: pending.title.length,
@@ -320,7 +368,31 @@ export function useSubmitWorkout() {
         response,
       }
     } catch (error) {
-      // Save back to draft so the user doesn't lose data
+      // Check if this is a network error (offline)
+      const isNetworkError =
+        (isApiError(error) && error.code === 'NETWORK') ||
+        (error instanceof Error &&
+          (error.message.includes('Network request failed') ||
+            error.message.includes('network') ||
+            error.message.includes('fetch')))
+
+      if (isNetworkError) {
+        // Network error - keep pending workout for retry, don't clear anything
+        safeCapture('Workout Pending Offline', {
+          userId: pending.userId,
+          notesLength: pending.notes.length,
+          titleLength: pending.title.length,
+          hasImage: Boolean(pending.imageUrl),
+          ...buildStructuredStats(pending.structuredData),
+          isStructuredMode: Boolean(pending.isStructuredMode),
+          routineId: pending.routineId ?? null,
+          durationSeconds: pending.durationSeconds ?? null,
+        })
+
+        return { status: 'offline' }
+      }
+
+      // Non-network error - save back to draft so the user doesn't lose data
       await saveDraft({
         notes: pending.notes,
         title: pending.title,
@@ -330,7 +402,7 @@ export function useSubmitWorkout() {
       })
       await clearPendingArtifacts()
 
-      posthog?.capture('Workout Pending Failed', {
+      safeCapture('Workout Pending Failed', {
         userId: pending.userId,
         notesLength: pending.notes.length,
         titleLength: pending.title.length,
@@ -351,7 +423,7 @@ export function useSubmitWorkout() {
       isProcessingRef.current = false
       setIsProcessingPending(false)
     }
-  }, [posthog, buildStructuredStats, toErrorPayload])
+  }, [safeCapture, buildStructuredStats, toErrorPayload])
 
   return {
     submitWorkout,

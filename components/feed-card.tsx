@@ -121,6 +121,7 @@ export interface FeedCardProps {
   onCardPress?: () => void // Navigate to workout detail
   prInfo?: ExercisePRInfo[]
   isPending?: boolean // Flag to show skeleton while workout is being parsed
+  isProcessingPending?: boolean // Flag to indicate actively processing vs just queued
   isFirst?: boolean // Hide top border for first card
   // Social stats
   likeCount?: number
@@ -155,6 +156,7 @@ export const FeedCard = memo(function FeedCard({
   onCardPress,
   prInfo = [],
   isPending = false,
+  isProcessingPending = false,
   isFirst = false,
   likeCount = 0,
   commentCount = 0,
@@ -218,9 +220,9 @@ export const FeedCard = memo(function FeedCard({
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
-  // Shimmer animation for skeleton rows
+  // Shimmer animation for skeleton rows (only when actively processing)
   useEffect(() => {
-    if (isPending) {
+    if (isPending && isProcessingPending) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(shimmerAnim, {
@@ -236,13 +238,13 @@ export const FeedCard = memo(function FeedCard({
         ]),
       ).start()
     } else {
-      shimmerAnim.setValue(0)
+      shimmerAnim.setValue(0.5) // Static opacity when queued
     }
-  }, [isPending, shimmerAnim])
+  }, [isPending, isProcessingPending, shimmerAnim])
 
-  // Pulse animation for analyzing badge
+  // Pulse animation for analyzing badge (only when actively processing)
   useEffect(() => {
-    if (isPending) {
+    if (isPending && isProcessingPending) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -260,11 +262,11 @@ export const FeedCard = memo(function FeedCard({
     } else {
       pulseAnim.setValue(0)
     }
-  }, [isPending, pulseAnim])
+  }, [isPending, isProcessingPending, pulseAnim])
 
-  // Animated dots for "Analyzing..." text
+  // Animated dots for "Analyzing..." text (only when actively processing)
   useEffect(() => {
-    if (!isPending) {
+    if (!isPending || !isProcessingPending) {
       setAnalyzingDots('')
       return
     }
@@ -278,7 +280,7 @@ export const FeedCard = memo(function FeedCard({
     }, 500)
 
     return () => clearInterval(interval)
-  }, [isPending])
+  }, [isPending, isProcessingPending])
 
   // Load workout count for the week
   useEffect(() => {
@@ -496,7 +498,9 @@ export const FeedCard = memo(function FeedCard({
         {isPending && (
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Parsing your workout and identifying exercises...
+              {isProcessingPending
+                ? 'Parsing your workout and identifying exercises...'
+                : 'Waiting for internet connection to upload your workout.'}
             </Text>
           </View>
         )}
@@ -505,6 +509,7 @@ export const FeedCard = memo(function FeedCard({
 
     [
       isPending,
+      isProcessingPending,
       onCardPress,
       stats,
       shimmerOpacity,
@@ -570,9 +575,16 @@ export const FeedCard = memo(function FeedCard({
         </TouchableOpacity>
         {isPending && (
           <Animated.View
-            style={[styles.analyzingBadge, { opacity: pulseOpacity }]}
+            style={[
+              styles.analyzingBadge,
+              isProcessingPending
+                ? { opacity: pulseOpacity }
+                : styles.queuedBadge,
+            ]}
           >
-            <Text style={styles.analyzingText}>Analyzing{analyzingDots}</Text>
+            <Text style={styles.analyzingText}>
+              {isProcessingPending ? `Analyzing${analyzingDots}` : 'Queued'}
+            </Text>
           </Animated.View>
         )}
       </View>
@@ -1116,6 +1128,10 @@ function createStyles(
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 12,
+    },
+    queuedBadge: {
+      backgroundColor: colors.surfaceSubtle,
+      opacity: 1,
     },
     analyzingText: {
       fontSize: 12,

@@ -479,7 +479,8 @@ export function WorkoutChat({
   const themedColors = useThemedColors()
   const colors = useMemo(() => ({
     ...themedColors,
-    background: mode === 'sheet' ? themedColors.sheetBackground : themedColors.background
+    background: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.background,
+    bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg
   } as any), [themedColors, mode])
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()

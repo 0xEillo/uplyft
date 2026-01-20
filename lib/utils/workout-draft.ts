@@ -48,6 +48,10 @@ export interface PendingWorkout {
   description?: string
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
+  /** ISO timestamp when the workout was logged locally (for offline support) */
+  performedAt: string
+  /** Local timezone offset in minutes (e.g., -300 for EST) */
+  timezoneOffsetMinutes: number
 }
 
 export interface PlaceholderWorkout {

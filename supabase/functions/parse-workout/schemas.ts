@@ -49,6 +49,10 @@ export const requestSchema = z.object({
   durationSeconds: z.number().int().min(0).optional(),
   structuredData: z.array(structuredExerciseSchema).optional(),
   isStructuredMode: z.boolean().optional(),
+  /** ISO timestamp when the workout was logged locally (for offline support) */
+  performedAt: z.string().optional(),
+  /** Local timezone offset in minutes (e.g., -300 for EST) */
+  timezoneOffsetMinutes: z.number().int().optional(),
 })
 
 export type WorkoutRequest = z.infer<typeof requestSchema>

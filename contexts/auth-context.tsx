@@ -45,12 +45,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAnonymous = user?.is_anonymous === true
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setIsLoading(false)
-    })
+    // Get initial session (works offline - Supabase caches session locally)
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setIsLoading(false)
+      })
+      .catch((error) => {
+        // Session retrieval failed (rare - usually works offline from cache)
+        console.error('[Auth] Failed to get session:', error)
+        setIsLoading(false)
+      })
 
     // Listen for auth changes
     const {
