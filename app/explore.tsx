@@ -274,7 +274,7 @@ export default function ExploreScreen() {
                 setRefreshing(true)
                 loadData()
               }}
-              tintColor={colors.primary}
+              tintColor={colors.brandPrimary}
             />
           }
         >
@@ -282,7 +282,7 @@ export default function ExploreScreen() {
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : (
             <>
@@ -340,7 +340,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollContent: {
       paddingBottom: 100,
@@ -364,7 +364,7 @@ const createStyles = (
     sectionTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     programsList: {
       paddingHorizontal: 20,
@@ -434,7 +434,7 @@ const createStyles = (
       height: 240,
       borderRadius: 16,
       overflow: 'hidden',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     routineImage: {
       width: '100%',

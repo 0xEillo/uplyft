@@ -118,15 +118,15 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         styles.exerciseCard,
         {
           backgroundColor: isDark
-            ? colors.exerciseRowTint
-            : colors.feedCardBackground,
+            ? colors.rowTint
+            : colors.surfaceCard,
           borderColor: colors.border,
         },
-        isCurrentExercise && { borderColor: colors.primary, borderWidth: 2 },
+        isCurrentExercise && { borderColor: colors.brandPrimary, borderWidth: 2 },
         isSelected && {
-          borderColor: colors.primary,
+          borderColor: colors.brandPrimary,
           borderWidth: 2,
-          backgroundColor: colors.primary + '10',
+          backgroundColor: colors.brandPrimary + '10',
         },
       ]}
       onPress={onSelect}
@@ -140,7 +140,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         <View style={styles.cardOverlay}>
           {isSelected ? (
             <View style={styles.selectionBadge}>
-              <Ionicons name="checkbox" size={20} color={colors.primary} />
+              <Ionicons name="checkbox" size={20} color={colors.brandPrimary} />
             </View>
           ) : (
             <View style={styles.iconButtonSmall} />
@@ -166,8 +166,8 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         <Text
           style={[
             styles.cardTitle,
-            { color: colors.text },
-            (isCurrentExercise || isSelected) && { color: colors.primary },
+            { color: colors.textPrimary },
+            (isCurrentExercise || isSelected) && { color: colors.brandPrimary },
           ]}
           numberOfLines={1}
         >
@@ -204,7 +204,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
     <TouchableOpacity
       style={[
         styles.exerciseListItem,
-        isDark && { backgroundColor: colors.exerciseRowTint },
+        isDark && { backgroundColor: colors.rowTint },
       ]}
       onPress={onInfo}
     >
@@ -216,10 +216,10 @@ const ExerciseListItem = memo(function ExerciseListItem({
         <Text
           style={[
             styles.exerciseListItemText,
-            { color: colors.text },
+            { color: colors.textPrimary },
             (isCurrentExercise || isSelected) && {
               fontWeight: '600',
-              color: colors.primary,
+              color: colors.brandPrimary,
             },
           ]}
           numberOfLines={1}
@@ -251,7 +251,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
           size={24}
           color={
             isCurrentExercise || isSelected
-              ? colors.primary
+              ? colors.brandPrimary
               : colors.textTertiary
           }
         />
@@ -599,7 +599,7 @@ export default function SelectExerciseScreen() {
     const recentSection = shouldShowRecent ? (
       <View style={styles.recentSection}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             Recently Performed
           </Text>
           <TouchableOpacity onPress={toggleViewMode}>
@@ -638,7 +638,7 @@ export default function SelectExerciseScreen() {
     // All Exercises section header
     const allExercisesHeader = (
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
           All Exercises
         </Text>
         {/* Only show toggle here if Recent Performed is not visible */}
@@ -694,16 +694,16 @@ export default function SelectExerciseScreen() {
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.background, paddingTop: insets.top },
+          { backgroundColor: colors.bg, paddingTop: insets.top },
         ]}
       >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-            <Ionicons name="close" size={28} color={colors.text} />
+            <Ionicons name="close" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
 
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Add exercises
           </Text>
 
@@ -715,7 +715,7 @@ export default function SelectExerciseScreen() {
               <Ionicons
                 name="search"
                 size={24}
-                color={isSearchVisible ? colors.primary : colors.text}
+                color={isSearchVisible ? colors.brandPrimary : colors.textPrimary}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -725,14 +725,14 @@ export default function SelectExerciseScreen() {
               <Ionicons
                 name="filter"
                 size={24}
-                color={isFilterVisible ? colors.primary : colors.text}
+                color={isFilterVisible ? colors.brandPrimary : colors.textPrimary}
               />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerButton}
               onPress={handleCreateExercise}
             >
-              <Ionicons name="add" size={28} color={colors.text} />
+              <Ionicons name="add" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -744,7 +744,7 @@ export default function SelectExerciseScreen() {
               ref={searchInputRef}
               style={[
                 styles.searchInput,
-                { backgroundColor: colors.backgroundLight, color: colors.text },
+                { backgroundColor: colors.surfaceSubtle, color: colors.textPrimary },
               ]}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -779,10 +779,10 @@ export default function SelectExerciseScreen() {
                       styles.muscleChip,
                       {
                         borderColor: isSelected
-                          ? colors.primary
+                          ? colors.brandPrimary
                           : 'transparent',
                         backgroundColor: isSelected
-                          ? colors.primary + '15'
+                          ? colors.brandPrimary + '15'
                           : 'transparent',
                       },
                     ]}
@@ -844,11 +844,11 @@ export default function SelectExerciseScreen() {
                   styles.filterChip,
                   {
                     borderColor: colors.border,
-                    backgroundColor: colors.backgroundLight,
+                    backgroundColor: colors.surfaceSubtle,
                   },
                   showOnlyMine && {
-                    borderColor: colors.primary,
-                    backgroundColor: colors.primaryLight,
+                    borderColor: colors.brandPrimary,
+                    backgroundColor: colors.brandPrimarySoft,
                   },
                 ]}
                 onPress={() => setShowOnlyMine(!showOnlyMine)}
@@ -857,7 +857,7 @@ export default function SelectExerciseScreen() {
                   style={[
                     styles.filterChipText,
                     { color: colors.textSecondary },
-                    showOnlyMine && { color: colors.primary },
+                    showOnlyMine && { color: colors.brandPrimary },
                   ]}
                 >
                   Yours
@@ -887,11 +887,11 @@ export default function SelectExerciseScreen() {
                         styles.filterChip,
                         {
                           borderColor: colors.border,
-                          backgroundColor: colors.backgroundLight,
+                          backgroundColor: colors.surfaceSubtle,
                         },
                         isSelected && {
-                          borderColor: colors.primary,
-                          backgroundColor: colors.primaryLight,
+                          borderColor: colors.brandPrimary,
+                          backgroundColor: colors.brandPrimarySoft,
                         },
                       ]}
                       onPress={() => toggleEquipment(type)}
@@ -900,7 +900,7 @@ export default function SelectExerciseScreen() {
                         style={[
                           styles.filterChipText,
                           { color: colors.textSecondary },
-                          isSelected && { color: colors.primary },
+                          isSelected && { color: colors.brandPrimary },
                         ]}
                       >
                         {type}

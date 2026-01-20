@@ -89,7 +89,7 @@ export function CoachSelectionSheet({ visible, onClose }: CoachSelectionSheetPro
                 
                 {isSelected && (
                   <View style={styles.selectedBadge}>
-                    <Ionicons name="checkmark" size={14} color={colors.white} />
+                    <Ionicons name="checkmark" size={14} color={colors.surface} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -100,7 +100,7 @@ export function CoachSelectionSheet({ visible, onClose }: CoachSelectionSheetPro
 
       {isUpdating && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       )}
     </View>
@@ -134,7 +134,7 @@ const createStyles = (colors: any, insets: any) =>
       justifyContent: 'flex-end',
     },
     sheetContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 32,
       borderTopRightRadius: 32,
       maxHeight: '70%',
@@ -159,7 +159,7 @@ const createStyles = (colors: any, insets: any) =>
     title: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     subtitle: {
@@ -178,7 +178,7 @@ const createStyles = (colors: any, insets: any) =>
     },
     coachCard: {
       width: '48%',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 24,
       padding: 16,
       alignItems: 'center',
@@ -191,8 +191,8 @@ const createStyles = (colors: any, insets: any) =>
       elevation: 2,
     },
     coachCardSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.background,
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.bg,
     },
     avatarContainer: {
       position: 'relative',
@@ -208,14 +208,14 @@ const createStyles = (colors: any, insets: any) =>
       position: 'absolute',
       bottom: 0,
       right: 0,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       width: 24,
       height: 24,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 2,
-      borderColor: colors.backgroundWhite,
+      borderColor: colors.surface,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -228,7 +228,7 @@ const createStyles = (colors: any, insets: any) =>
     coachName: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 6,
     },
@@ -242,7 +242,7 @@ const createStyles = (colors: any, insets: any) =>
       position: 'absolute',
       top: 12,
       right: 12,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       width: 24,
       height: 24,
       borderRadius: 12,

@@ -314,7 +314,7 @@ export default function SearchScreen() {
                 activeOpacity={0.6}
                 hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               >
-                <Ionicons name="chevron-back" size={24} color={colors.text} />
+                <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -360,7 +360,7 @@ export default function SearchScreen() {
             {/* Results */}
             {isLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color={colors.brandPrimary} />
               </View>
             ) : !trimmedQuery ? (
               <View style={styles.emptyContainer}>
@@ -470,7 +470,7 @@ export default function SearchScreen() {
                           {isBusy ? (
                             <ActivityIndicator
                               size="small"
-                              color={colors.primary}
+                              color={colors.brandPrimary}
                             />
                           ) : (
                             <Text style={textStyles}>{buttonLabel}</Text>
@@ -494,7 +494,7 @@ export default function SearchScreen() {
             <Ionicons
               name="share-outline"
               size={20}
-              color={colors.white}
+              color={colors.surface}
               style={styles.inviteIcon}
             />
             <Text style={styles.inviteButtonText}>Invite</Text>
@@ -509,7 +509,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     backButton: {
       zIndex: 1,
@@ -517,7 +517,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     contentWrapper: {
@@ -529,7 +529,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       margin: 14,
       marginBottom: 12,
       paddingHorizontal: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
       minHeight: 48,
     },
@@ -539,7 +539,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     searchInput: {
       flex: 1,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
       paddingVertical: Platform.OS === 'ios' ? 12 : 0,
       minHeight: 40,
       lineHeight: 20,
@@ -552,7 +552,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     resultsHeader: {
       paddingHorizontal: 14,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     resultsCount: {
       fontSize: 13,
@@ -581,14 +581,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarText: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     userInfo: {
       flex: 1,
@@ -596,7 +596,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     displayName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     userTag: {
@@ -607,25 +607,25 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
       paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       minWidth: 90,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
     },
     followingButton: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderColor: colors.border,
     },
     pendingButton: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderColor: colors.border,
     },
     followButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     followingButtonText: {
       color: colors.textSecondary,
@@ -654,7 +654,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       paddingHorizontal: 14,
       paddingVertical: 16,
       paddingBottom: 34,
@@ -672,7 +672,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     inviteText: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 12,
     },
@@ -680,7 +680,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingVertical: 14,
       borderRadius: 28,
     },
@@ -690,6 +690,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     inviteButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
   })

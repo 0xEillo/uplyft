@@ -138,7 +138,7 @@ export function MuscleGroupDetailSheet({
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -165,7 +165,7 @@ export function MuscleGroupDetailSheet({
                 key={exercise.exerciseId || exercise.exerciseName}
                 style={[
                   styles.exerciseCard,
-                  isDark && exercise.isDone && { backgroundColor: colors.exerciseRowTint },
+                  isDark && exercise.isDone && { backgroundColor: colors.rowTint },
                   !exercise.isDone && styles.untrackedCard,
                   index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
                 ]}
@@ -242,7 +242,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       overflow: 'hidden',
@@ -251,7 +251,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       padding: 20,
       paddingTop: 16,
       borderBottomWidth: 1,
@@ -263,7 +263,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     titleRow: {
       flexDirection: 'row',
@@ -287,7 +287,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     scrollView: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollContent: {
       padding: 20,
@@ -295,14 +295,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sectionTitle: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 16,
     },
     exerciseCard: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 16,
       marginBottom: 12,
@@ -335,7 +335,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
       letterSpacing: -0.4,
     },
@@ -358,7 +358,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
     },
     untrackedCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     thumbnailContainer: {
       position: 'relative',
@@ -376,7 +376,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,
-      borderColor: colors.background,
+      borderColor: colors.bg,
     },
     untrackedText: {
       color: colors.textSecondary,

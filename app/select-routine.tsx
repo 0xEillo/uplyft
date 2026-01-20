@@ -151,7 +151,7 @@ export default function SelectRoutineScreen() {
             <Text
               style={[
                 styles.routineTitle,
-                !imageSource && { color: colors.text },
+                !imageSource && { color: colors.textPrimary },
               ]}
               numberOfLines={2}
             >
@@ -195,28 +195,28 @@ export default function SelectRoutineScreen() {
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.background, paddingTop: insets.top },
+          { backgroundColor: colors.bg, paddingTop: insets.top },
         ]}
       >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-            <Ionicons name="close" size={28} color={colors.text} />
+            <Ionicons name="close" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
           
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Select Routine
           </Text>
           
           <TouchableOpacity style={styles.headerButton} onPress={handleCreateRoutine}>
-            <Ionicons name="add" size={28} color={colors.text} />
+            <Ionicons name="add" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
         {/* Content */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : routines.length === 0 ? (
           <EmptyState
@@ -297,7 +297,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 160,
       borderRadius: 16,
       overflow: 'hidden',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     routineImage: {
       width: '100%',

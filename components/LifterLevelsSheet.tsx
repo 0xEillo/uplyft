@@ -196,7 +196,7 @@ export function LifterLevelsSheet({
                           <Ionicons
                             name="checkmark-circle"
                             size={24}
-                            color={colors.success}
+                            color={colors.statusSuccess}
                           />
                           <Text style={styles.completedText}>ACHIEVED</Text>
                         </View>
@@ -382,7 +382,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       letterSpacing: 1,
     },
     completedText: {
-      color: colors.success,
+      color: colors.statusSuccess,
       fontSize: 14,
       fontWeight: '700',
     },

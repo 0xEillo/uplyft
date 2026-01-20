@@ -59,7 +59,7 @@ export const WeeklyStatsCard = ({
             activeOpacity={0.7}
           >
             {showStreakLabel && <Text style={styles.statLabel}>Streak</Text>}
-            <Ionicons name="flame" size={16} color={colors.primary} />
+            <Ionicons name="flame" size={16} color={colors.brandPrimary} />
             <Text style={styles.statValue}>
               {streak} <Text style={styles.statUnit}>weeks</Text>
             </Text>
@@ -73,7 +73,7 @@ export const WeeklyStatsCard = ({
             activeOpacity={0.7}
           >
             {showVolumeLabel && <Text style={styles.statLabel}>Volume</Text>}
-            <Ionicons name="barbell" size={16} color={colors.primary} />
+            <Ionicons name="barbell" size={16} color={colors.brandPrimary} />
             <Text style={styles.statValue}>
               {volumeDisplay}
               <Text style={styles.statUnit}>k</Text>
@@ -137,7 +137,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 16,
     },
     card: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 12,
       padding: 16,
       shadowColor: '#000',
@@ -148,8 +148,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       shadowOpacity: 0.05,
       shadowRadius: 8,
       elevation: 2,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     statsRow: {
       flexDirection: 'row',
@@ -177,7 +175,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statValue: {
       fontSize: 15,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statUnit: {
       fontSize: 13,
@@ -199,7 +197,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textTertiary,
     },
     dayLabelToday: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '600',
     },
     dayIndicatorContainer: {
@@ -212,14 +210,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     activeDateText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     todayRing: {
       width: 36,
@@ -233,11 +231,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     todayDateText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     dateText: {
       fontSize: 14,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

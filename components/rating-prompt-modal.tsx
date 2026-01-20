@@ -126,7 +126,7 @@ export function RatingPromptModal() {
                     key={star}
                     name="star"
                     size={24}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                     style={styles.star}
                   />
                 ))}
@@ -183,7 +183,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 24,
     },
     modalContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderRadius: 20,
       padding: 24,
       width: '100%',
@@ -208,14 +208,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     headline: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 12,
     },
@@ -237,7 +237,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginHorizontal: 2,
     },
     primaryButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 12,
       paddingVertical: 16,
       paddingHorizontal: 24,

@@ -190,7 +190,7 @@ export function RoutineSelectorSheet({
             <Text
               style={[
                 styles.routineTitle,
-                !imageSource && { color: colors.text },
+                !imageSource && { color: colors.textPrimary },
               ]}
               numberOfLines={2}
             >
@@ -322,7 +322,7 @@ export function RoutineSelectorSheet({
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={[colors.primary, colors.primary + 'DD']}
+                colors={[colors.brandPrimary, colors.brandPrimary + 'DD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.createRoutineGradient}
@@ -349,7 +349,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
     modalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
       minHeight: SCREEN_HEIGHT * 0.92,
@@ -379,7 +379,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     modalTitle: {
       fontSize: 26,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
     },
     modalSubtitle: {
@@ -406,7 +406,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 160,
       borderRadius: 16,
       overflow: 'hidden',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     routineImage: {
       width: '100%',
@@ -456,7 +456,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: '#000',
@@ -475,7 +475,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 80,
       height: 80,
       borderRadius: 40,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 16,
@@ -483,7 +483,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     emptyTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 8,
     },
     emptyMessage: {

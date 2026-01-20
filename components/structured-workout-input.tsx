@@ -408,7 +408,7 @@ export function StructuredWorkoutInput({
               onPress={() => handleDeleteExercise(exerciseIndex)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-circle" size={20} color={colors.error} />
+              <Ionicons name="close-circle" size={20} color={colors.statusError} />
             </TouchableOpacity>
           </View>
 
@@ -467,8 +467,8 @@ export function StructuredWorkoutInput({
                         focusNextInput(exerciseIndex, setIndex, 'weight')
                       }
                       returnKeyType="next"
-                      cursorColor={colors.primary}
-                      selectionColor={colors.primary}
+                      cursorColor={colors.brandPrimary}
+                      selectionColor={colors.brandPrimary}
                       onFocus={() =>
                         handleFocus(exerciseIndex, setIndex, 'weight')
                       }
@@ -500,8 +500,8 @@ export function StructuredWorkoutInput({
                         focusNextInput(exerciseIndex, setIndex, 'reps')
                       }
                       returnKeyType="next"
-                      cursorColor={colors.primary}
-                      selectionColor={colors.primary}
+                      cursorColor={colors.brandPrimary}
+                      selectionColor={colors.brandPrimary}
                       onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
                       onBlur={handleBlur}
                       inputAccessoryViewID={inputAccessoryViewID}
@@ -542,7 +542,7 @@ export function StructuredWorkoutInput({
             <Ionicons
               name="add-circle-outline"
               size={18}
-              color={colors.primary}
+              color={colors.brandPrimary}
             />
             <Text style={styles.addSetText}>Add set</Text>
           </TouchableOpacity>
@@ -570,7 +570,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 24,
     },
     deleteExerciseButton: {
@@ -601,7 +601,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginRight: 8,
     },
     warmupBadge: {
-      backgroundColor: `${colors.warning}25`,
+      backgroundColor: `${colors.statusWarning}25`,
     },
     setNumberText: {
       fontSize: 12,
@@ -609,11 +609,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     warmupText: {
-      color: colors.warning,
+      color: colors.statusWarning,
     },
     setText: {
       fontSize: 17,
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 24,
     },
     inlineInput: {
@@ -622,7 +622,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingTop: 0,
       paddingBottom: 0,
       fontSize: 17,
-      color: colors.text,
+      color: colors.textPrimary,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       textAlign: 'center',
@@ -649,13 +649,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     addSetText: {
       fontSize: 15,
-      color: colors.primary,
+      color: colors.brandPrimary,
       marginLeft: 4,
       fontWeight: '500',
     },
     // Accessory View Styles
     accessoryContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },
@@ -666,12 +666,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     nextButton: {
       paddingHorizontal: 12,
       paddingVertical: 6,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 16,
     },
     nextButtonText: {

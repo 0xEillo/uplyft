@@ -119,7 +119,7 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons name="calendar" size={24} color={colors.primary} />
+            <Ionicons name="calendar" size={24} color={colors.brandPrimary} />
           </View>
           <View>
             <Text style={styles.title}>Workout Calendar</Text>
@@ -140,7 +140,7 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
         <>
@@ -228,11 +228,11 @@ export const WorkoutCalendarCard = memo(function WorkoutCalendarCard({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       paddingVertical: 20,
       paddingHorizontal: 20,
       borderBottomWidth: 2,
-      borderBottomColor: colors.background,
+      borderBottomColor: colors.bg,
     },
     headerContainer: {
       flexDirection: 'row',
@@ -254,14 +254,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 48,
       height: 48,
       borderRadius: 12,
-      backgroundColor: `${colors.primary}15`,
+      backgroundColor: `${colors.brandPrimary}15`,
       alignItems: 'center',
       justifyContent: 'center',
     },
     title: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     subtitle: {
       fontSize: 13,
@@ -286,10 +286,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     streakValue: {
       fontSize: 15,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     calendarContainer: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 12,
     },
@@ -326,22 +326,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     dayNumberWorkout: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
     },
     dayText: {
       fontSize: 14,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     dayTextOther: {
       color: colors.textPlaceholder,
     },
     dayTextWorkout: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '600',
     },
     dayTextToday: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '700',
     },
     emptyState: {

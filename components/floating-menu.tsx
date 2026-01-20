@@ -69,14 +69,14 @@ export function FloatingMenu({
     >
       <TouchableOpacity style={styles.menuItem} onPress={onSpeechPress}>
         <View style={styles.iconCircle}>
-          <Ionicons name="mic" size={24} color={colors.primary} />
+          <Ionicons name="mic" size={24} color={colors.brandPrimary} />
         </View>
         <Text style={styles.menuText}>Speech</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.menuItem} onPress={onNotesPress}>
         <View style={styles.iconCircle}>
-          <Ionicons name="create-outline" size={24} color={colors.primary} />
+          <Ionicons name="create-outline" size={24} color={colors.brandPrimary} />
         </View>
         <Text style={styles.menuText}>Notes</Text>
       </TouchableOpacity>
@@ -90,7 +90,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       bottom: 100,
       alignSelf: 'center',
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       paddingVertical: 8,
       paddingHorizontal: 12,
@@ -114,7 +114,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 6,
@@ -122,6 +122,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     menuText: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

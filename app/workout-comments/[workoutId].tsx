@@ -217,7 +217,7 @@ export default function WorkoutCommentsScreen() {
               onPress={() => router.back()}
               style={styles.backButton}
             >
-                  <Ionicons name="chevron-back" size={24} color={colors.text} />
+                  <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
               </NavbarIsland>
             }
@@ -227,7 +227,7 @@ export default function WorkoutCommentsScreen() {
           {/* Comments List */}
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : (
             <FlatList
@@ -271,13 +271,13 @@ export default function WorkoutCommentsScreen() {
               disabled={!commentText.trim() || isPosting}
             >
               {isPosting ? (
-                <ActivityIndicator size="small" color={colors.white} />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Ionicons
                   name="arrow-up"
                   size={20}
                   color={
-                    commentText.trim() ? colors.white : colors.textPlaceholder
+                    commentText.trim() ? colors.surface : colors.textPlaceholder
                   }
                 />
               )}
@@ -293,11 +293,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     keyboardAvoid: {
       flex: 1,
@@ -308,7 +308,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     loadingContainer: {
@@ -333,14 +333,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 20,
     },
     avatarPlaceholder: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     commentContent: {
       flex: 1,
@@ -354,7 +354,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     commentAuthor: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     commentTime: {
       fontSize: 12,
@@ -362,7 +362,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     commentText: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 20,
     },
     emptyState: {
@@ -383,31 +383,31 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'flex-end',
       paddingHorizontal: 16,
       paddingTop: 8,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopWidth: 1,
       borderTopColor: colors.border,
       gap: 12,
     },
     input: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 20,
       paddingHorizontal: 16,
       paddingVertical: 10,
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       maxHeight: 100,
     },
     sendButton: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 2,
     },
     sendButtonDisabled: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
   })

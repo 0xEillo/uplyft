@@ -64,7 +64,7 @@ export function StrengthInfoSheet({
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Strength Levels</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -108,7 +108,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       justifyContent: 'flex-end',
     },
     sheetContent: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       maxHeight: '85%',
@@ -129,13 +129,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
     headerTitle: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     closeButton: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -156,7 +156,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       gap: 16,
     },
     levelCard: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 16,
       borderWidth: 1,
@@ -181,7 +181,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
     levelTitle: {
       fontSize: 17,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.4,
     },
     levelDescription: {

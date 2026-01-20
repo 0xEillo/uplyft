@@ -145,7 +145,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
           <Ionicons
             name="reorder-three"
             size={22}
-            color={isDragging ? colors.primary : colors.textSecondary}
+            color={isDragging ? colors.brandPrimary : colors.textSecondary}
           />
         </View>
 
@@ -174,7 +174,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
                 }}
                 style={styles.deleteExerciseButton}
               >
-                <Ionicons name="trash-outline" size={18} color={colors.error} />
+                <Ionicons name="trash-outline" size={18} color={colors.statusError} />
               </TouchableOpacity>
               <Ionicons
                 name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -197,7 +197,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
             style={styles.dragArrow}
             activeOpacity={0.5}
           >
-            <Ionicons name="chevron-up" size={24} color={colors.text} />
+            <Ionicons name="chevron-up" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -208,7 +208,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
             style={styles.dragArrow}
             activeOpacity={0.5}
           >
-            <Ionicons name="chevron-down" size={24} color={colors.text} />
+            <Ionicons name="chevron-down" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -219,7 +219,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
             style={styles.dragDone}
             activeOpacity={0.5}
           >
-            <Ionicons name="checkmark" size={20} color={colors.text} />
+            <Ionicons name="checkmark" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       )}
@@ -292,7 +292,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
                 onPress={() => onRemoveSet(index, setIndex)}
                 style={styles.deleteSetButton}
               >
-                <Ionicons name="close-circle" size={20} color={colors.error} />
+                <Ionicons name="close-circle" size={20} color={colors.statusError} />
               </TouchableOpacity>
             </View>
           ))}
@@ -305,7 +305,7 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
             <Ionicons
               name="add-circle-outline"
               size={20}
-              color={colors.primary}
+              color={colors.brandPrimary}
             />
             <Text style={styles.addSetText}>Add Set</Text>
           </TouchableOpacity>
@@ -1029,7 +1029,7 @@ export default function CreateRoutineScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </View>
     )
@@ -1058,7 +1058,7 @@ export default function CreateRoutineScreen() {
           rightContent={
             <TouchableOpacity onPress={handleSave} disabled={isSaving}>
               {isSaving ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.brandPrimary} />
               ) : (
                 <Text style={styles.saveText}>Save</Text>
               )}
@@ -1197,7 +1197,7 @@ export default function CreateRoutineScreen() {
                 <Ionicons
                   name="add-circle-outline"
                   size={24}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                 />
                 <Text style={styles.addExerciseText}>Add Exercise</Text>
               </TouchableOpacity>
@@ -1320,7 +1320,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     flex: {
       flex: 1,
@@ -1329,13 +1329,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
       textAlign: 'center',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     cancelText: {
       fontSize: 16,
@@ -1344,12 +1344,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     saveText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       textAlign: 'right',
     },
     content: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     section: {
       padding: 16,
@@ -1361,13 +1361,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 8,
     },
     input: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: Platform.OS === 'ios' ? 12 : 10,
       fontSize: 16,
       lineHeight: 20,
-      color: colors.text,
+      color: colors.textPrimary,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1387,7 +1387,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlignVertical: 'top',
     },
     exerciseCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       marginBottom: 12,
       borderWidth: 1,
@@ -1437,7 +1437,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
       flexShrink: 1,
     },
@@ -1454,7 +1454,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       top: 16,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       paddingVertical: 4,
       paddingHorizontal: 6,
       borderRadius: 20,
@@ -1524,16 +1524,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 40,
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     setInput: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
       padding: 10,
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       borderWidth: 1,
       borderColor: colors.border,
@@ -1543,7 +1543,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       width: 100,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,
@@ -1553,7 +1553,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     restInputText: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '500',
     },
     restInputTextPlaceholder: {
@@ -1566,7 +1566,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'flex-end',
     },
     pickerModalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       paddingBottom: Platform.OS === 'ios' ? 34 : 20,
@@ -1590,12 +1590,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     pickerModalTitle: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     pickerModalConfirmText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       textAlign: 'right',
     },
     pickerContainer: {
@@ -1633,7 +1633,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     pickerItem: {
       fontSize: 22,
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '500',
     },
     deleteSetButton: {
@@ -1651,7 +1651,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     addSetText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     sectionHeaderRow: {
       flexDirection: 'row',
@@ -1675,7 +1675,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     addExerciseText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     emptyState: {
       alignItems: 'center',
@@ -1686,7 +1686,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     emptyTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: 16,
       marginBottom: 8,
     },

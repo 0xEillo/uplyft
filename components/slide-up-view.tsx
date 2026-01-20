@@ -134,7 +134,7 @@ export function SlideUpView({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- fadeFrom is stable initial value
   }, [shouldExit, slideAnim, opacityAnim, duration, fade, onExitComplete])
 
-  const bgColor = backgroundColor || colors.background
+  const bgColor = backgroundColor || colors.bg
 
   if (!enabled) {
     return <Animated.View style={[{ backgroundColor: bgColor }, style]}>{children}</Animated.View>

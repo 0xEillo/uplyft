@@ -202,7 +202,7 @@ export default function NotificationsScreen() {
                 accessibilityRole="button"
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -266,7 +266,7 @@ export default function NotificationsScreen() {
                 let iconName = getNotificationIcon(notification.type)
                 let iconColor = getNotificationIconColor(
                   notification.read,
-                  colors.primary,
+                  colors.brandPrimary,
                   colors.textSecondary,
                 )
 
@@ -281,7 +281,7 @@ export default function NotificationsScreen() {
                   )
                   if (decision === 'approve') {
                     iconName = 'checkmark-circle'
-                    iconColor = colors.primary
+                    iconColor = colors.brandPrimary
                   } else if (decision === 'decline') {
                     iconName = 'close-circle'
                     iconColor = colors.textSecondary
@@ -314,10 +314,10 @@ export default function NotificationsScreen() {
                           style={[
                             styles.avatar,
                             styles.avatarPlaceholder,
-                            { backgroundColor: colors.primary }
+                            { backgroundColor: colors.brandPrimary }
                           ]}
                         >
-                          <Ionicons name="time" size={18} color={colors.white} />
+                          <Ionicons name="time" size={18} color={colors.surface} />
                         </View>
                       ) : (
                         // User notifications - show actor avatars
@@ -391,7 +391,7 @@ export default function NotificationsScreen() {
                             {isResponding ? (
                               <ActivityIndicator
                                 size="small"
-                                color={colors.error}
+                                color={colors.statusError}
                               />
                             ) : (
                               <Text
@@ -420,7 +420,7 @@ export default function NotificationsScreen() {
                             {isResponding ? (
                               <ActivityIndicator
                                 size="small"
-                                color={colors.white}
+                                color={colors.surface}
                               />
                             ) : (
                               <Text style={styles.followRequestButtonText}>
@@ -477,7 +477,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     backButton: {
       zIndex: 1,
@@ -485,7 +485,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     markAllButton: {
@@ -493,12 +493,12 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     },
     markAllReadText: {
       fontSize: 14,
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '600',
     },
     content: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     contentContainer: {
       flexGrow: 1,
@@ -511,12 +511,12 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       alignItems: 'flex-start',
       paddingHorizontal: 14,
       paddingVertical: 16,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     notificationItemUnread: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     avatarsContainer: {
       flexDirection: 'row',
@@ -525,7 +525,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     },
     avatarWrapper: {
       borderWidth: 2,
-      borderColor: colors.white,
+      borderColor: colors.surface,
       borderRadius: 16,
     },
     avatar: {
@@ -534,14 +534,14 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       borderRadius: 16,
     },
     avatarPlaceholder: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarText: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     notificationContent: {
       flex: 1,
@@ -560,11 +560,11 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       color: colors.textSecondary,
     },
     notificationTitleUnread: {
-      color: colors.text,
+      color: colors.textPrimary,
     },
     notificationBody: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 20,
       marginBottom: 8,
     },
@@ -584,18 +584,18 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     followRequestButtonText: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     approveButton: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
+      borderColor: colors.brandPrimary,
     },
     declineButton: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderColor: colors.border,
     },
     declineButtonText: {
-      color: colors.error,
+      color: colors.statusError,
     },
     notificationTime: {
       fontSize: 12,
@@ -605,7 +605,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       marginLeft: 8,
       marginTop: 6,
     },
@@ -617,11 +617,11 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       paddingBottom: 100,
     },
     emptyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 24,
       paddingVertical: 14,
       borderRadius: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,

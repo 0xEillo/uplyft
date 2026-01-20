@@ -65,7 +65,7 @@ const ExerciseRow = memo(function ExerciseRow({
     <View
       style={[
         styles.row,
-        isSelected && { backgroundColor: colors.primary + '08' },
+        isSelected && { backgroundColor: colors.brandPrimary + '08' },
       ]}
     >
       <TouchableOpacity style={styles.rowContentContainer} onPress={onSelect}>
@@ -78,7 +78,7 @@ const ExerciseRow = memo(function ExerciseRow({
             <Text
               style={[
                 styles.rowTitle,
-                { color: isSelected ? colors.primary : colors.text },
+                { color: isSelected ? colors.brandPrimary : colors.textPrimary },
                 isSelected && styles.rowTitleSelected,
               ]}
               numberOfLines={1}
@@ -115,7 +115,7 @@ const ExerciseRow = memo(function ExerciseRow({
           <Ionicons
             name="checkmark-circle"
             size={24}
-            color={colors.primary}
+            color={colors.brandPrimary}
             style={styles.checkIcon}
           />
         )}
@@ -448,17 +448,17 @@ export function ExerciseSearchModal({
           <TouchableOpacity
             style={[
               styles.createRow,
-              { backgroundColor: colors.primary + '10' },
+              { backgroundColor: colors.brandPrimary + '10' },
             ]}
             onPress={handleCreateExercise}
           >
             <View
-              style={[styles.createIcon, { backgroundColor: colors.primary }]}
+              style={[styles.createIcon, { backgroundColor: colors.brandPrimary }]}
             >
-              <Ionicons name="add" size={24} color={colors.white} />
+              <Ionicons name="add" size={24} color={colors.surface} />
             </View>
             <View>
-              <Text style={[styles.createRowText, { color: colors.text }]}>
+              <Text style={[styles.createRowText, { color: colors.textPrimary }]}>
                 Create &quot;{trimmedQuery}&quot;
               </Text>
               <Text
@@ -480,7 +480,7 @@ export function ExerciseSearchModal({
                 styles.sectionHeader,
                 {
                   color: colors.textSecondary,
-                  backgroundColor: colors.backgroundLight,
+                  backgroundColor: colors.surfaceSubtle,
                 },
               ]}
             >
@@ -507,7 +507,7 @@ export function ExerciseSearchModal({
                 styles.sectionHeader,
                 {
                   color: colors.textSecondary,
-                  backgroundColor: colors.backgroundLight,
+                  backgroundColor: colors.surfaceSubtle,
                 },
               ]}
             >
@@ -541,16 +541,16 @@ export function ExerciseSearchModal({
           <TouchableOpacity
             style={[
               styles.createButton,
-              { backgroundColor: colors.primary + '15' },
+              { backgroundColor: colors.brandPrimary + '15' },
             ]}
             onPress={handleCreateExercise}
             disabled={isCreating}
           >
             {isCreating ? (
-              <ActivityIndicator color={colors.primary} />
+              <ActivityIndicator color={colors.brandPrimary} />
             ) : (
               <Text
-                style={[styles.createButtonText, { color: colors.primary }]}
+                style={[styles.createButtonText, { color: colors.brandPrimary }]}
               >
                 Create &quot;{trimmedQuery}&quot;
               </Text>
@@ -588,7 +588,7 @@ export function ExerciseSearchModal({
           <Animated.View
             style={[
               styles.bottomSheet,
-              { backgroundColor: colors.white },
+              { backgroundColor: colors.surface },
               animatedStyle,
               { paddingBottom: Math.max(insets.bottom, keyboardHeight) },
             ]}
@@ -599,7 +599,7 @@ export function ExerciseSearchModal({
 
             <View style={styles.header}>
               <View style={styles.headerLeftSpacer} />
-              <Text style={[styles.title, { color: colors.text }]}>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>
                 Select Exercise
               </Text>
               <View style={styles.headerRight}>
@@ -608,7 +608,7 @@ export function ExerciseSearchModal({
                     <Text
                       style={[
                         styles.classesDoneText,
-                        { color: colors.primary },
+                        { color: colors.brandPrimary },
                       ]}
                     >
                       Done ({selectedExerciseIds.size})
@@ -621,7 +621,7 @@ export function ExerciseSearchModal({
             <View
               style={[
                 styles.searchContainer,
-                { backgroundColor: colors.backgroundLight },
+                { backgroundColor: colors.surfaceSubtle },
               ]}
             >
               <Ionicons
@@ -631,7 +631,7 @@ export function ExerciseSearchModal({
                 style={styles.searchIcon}
               />
               <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
+                style={[styles.searchInput, { color: colors.textPrimary }]}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Search exercises..."
@@ -661,10 +661,10 @@ export function ExerciseSearchModal({
                       key={group}
                       style={[
                         styles.chip,
-                        { backgroundColor: colors.backgroundLight },
+                        { backgroundColor: colors.surfaceSubtle },
                         isSelected && {
-                          backgroundColor: colors.primary + '15',
-                          borderColor: colors.primary,
+                          backgroundColor: colors.brandPrimary + '15',
+                          borderColor: colors.brandPrimary,
                         },
                       ]}
                       onPress={() => toggleMuscleGroup(group)}
@@ -674,7 +674,7 @@ export function ExerciseSearchModal({
                           styles.chipText,
                           {
                             color: isSelected
-                              ? colors.primary
+                              ? colors.brandPrimary
                               : colors.textSecondary,
                           },
                         ]}
@@ -704,10 +704,10 @@ export function ExerciseSearchModal({
                       key={type}
                       style={[
                         styles.chip,
-                        { backgroundColor: colors.backgroundLight },
+                        { backgroundColor: colors.surfaceSubtle },
                         isSelected && {
-                          backgroundColor: colors.primary + '15',
-                          borderColor: colors.primary,
+                          backgroundColor: colors.brandPrimary + '15',
+                          borderColor: colors.brandPrimary,
                         },
                       ]}
                       onPress={() => toggleEquipment(type)}
@@ -717,7 +717,7 @@ export function ExerciseSearchModal({
                           styles.chipText,
                           {
                             color: isSelected
-                              ? colors.primary
+                              ? colors.brandPrimary
                               : colors.textSecondary,
                           },
                         ]}
@@ -734,7 +734,7 @@ export function ExerciseSearchModal({
             <View style={styles.listContainer}>
               {isLoading && exercises.length === 0 ? (
                 <View style={styles.centerContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
+                  <ActivityIndicator size="large" color={colors.brandPrimary} />
                 </View>
               ) : filteredExercises.length === 0 &&
                 !(!trimmedQuery && !hasFilters && recentExercises.length > 0) ? (

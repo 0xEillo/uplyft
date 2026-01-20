@@ -16,7 +16,7 @@ export const createAuthStyles = (colors: {
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     keyboardView: {
       flex: 1,
@@ -42,7 +42,7 @@ export const createAuthStyles = (colors: {
     title: {
       fontSize: 42,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     subtitle: {
       fontSize: 16,
@@ -61,12 +61,12 @@ export const createAuthStyles = (colors: {
       paddingHorizontal: 16,
       fontSize: 16,
       marginBottom: 16,
-      backgroundColor: colors.inputBackground,
-      color: colors.text,
+      backgroundColor: colors.surfaceInput,
+      color: colors.textPrimary,
     },
     button: {
       height: 54,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 27,
       justifyContent: 'center',
       alignItems: 'center',
@@ -76,7 +76,7 @@ export const createAuthStyles = (colors: {
       opacity: 0.6,
     },
     buttonText: {
-      color: colors.buttonText,
+      color: colors.onPrimary,
       fontSize: 17,
       fontWeight: '600',
     },
@@ -91,7 +91,7 @@ export const createAuthStyles = (colors: {
     },
     link: {
       fontSize: 15,
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '600',
     },
     separator: {
@@ -112,7 +112,7 @@ export const createAuthStyles = (colors: {
     },
     googleButton: {
       height: 54,
-      backgroundColor: colors.inputBackground,
+      backgroundColor: colors.surfaceInput,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 27,
@@ -122,7 +122,7 @@ export const createAuthStyles = (colors: {
       gap: 12,
     },
     googleButtonText: {
-      color: colors.text,
+      color: colors.textPrimary,
       fontSize: 17,
       fontWeight: '600',
     },

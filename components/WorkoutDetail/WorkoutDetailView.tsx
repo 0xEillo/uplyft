@@ -171,19 +171,19 @@ export function WorkoutDetailView({
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.background, paddingTop: insets.top },
+          { backgroundColor: colors.bg, paddingTop: insets.top },
         ]}
       >
         <BaseNavbar
           leftContent={
             <NavbarIsland>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
           centerContent={
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
               Workout Detail
             </Text>
           }
@@ -195,7 +195,7 @@ export function WorkoutDetailView({
               <Ionicons
                 name="ellipsis-horizontal"
                 size={24}
-                color={colors.text}
+                color={colors.textPrimary}
               />
             </TouchableOpacity>
           }
@@ -207,7 +207,7 @@ export function WorkoutDetailView({
             style={[
               styles.menuDropdown,
               {
-                backgroundColor: colors.backgroundWhite,
+                backgroundColor: colors.surface,
                 borderColor: colors.border,
                 top: insets.top + 50,
               },
@@ -221,8 +221,8 @@ export function WorkoutDetailView({
                   onEdit()
                 }}
               >
-                <Ionicons name="create-outline" size={20} color={colors.text} />
-                <Text style={[styles.menuItemText, { color: colors.text }]}>
+                <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
                   Edit
                 </Text>
               </TouchableOpacity>
@@ -235,16 +235,16 @@ export function WorkoutDetailView({
                   onCreateRoutine()
                 }}
               >
-                <Ionicons name="albums-outline" size={20} color={colors.text} />
-                <Text style={[styles.menuItemText, { color: colors.text }]}>
+                <Ionicons name="albums-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
                   Save as Routine
                 </Text>
               </TouchableOpacity>
             )}
             {onDelete && (
               <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={20} color={colors.error} />
-                <Text style={[styles.menuItemText, { color: colors.error }]}>
+                <Ionicons name="trash-outline" size={20} color={colors.statusError} />
+                <Text style={[styles.menuItemText, { color: colors.statusError }]}>
                   Delete
                 </Text>
               </TouchableOpacity>
@@ -258,7 +258,7 @@ export function WorkoutDetailView({
               style={[
                 styles.topCard,
                 {
-                  backgroundColor: colors.background,
+                  backgroundColor: colors.bg,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -268,7 +268,7 @@ export function WorkoutDetailView({
                 <View
                   style={[
                     styles.skeletonAvatar,
-                    { backgroundColor: colors.backgroundLight },
+                    { backgroundColor: colors.surfaceSubtle },
                   ]}
                 />
                 <View style={styles.userDetails}>
@@ -276,14 +276,14 @@ export function WorkoutDetailView({
                     style={[
                       styles.skeletonText,
                       styles.skeletonName,
-                      { backgroundColor: colors.backgroundLight },
+                      { backgroundColor: colors.surfaceSubtle },
                     ]}
                   />
                   <View
                     style={[
                       styles.skeletonText,
                       styles.skeletonTime,
-                      { backgroundColor: colors.backgroundLight },
+                      { backgroundColor: colors.surfaceSubtle },
                     ]}
                   />
                 </View>
@@ -294,21 +294,21 @@ export function WorkoutDetailView({
                   style={[
                     styles.skeletonText,
                     styles.skeletonTitle,
-                    { backgroundColor: colors.backgroundLight },
+                    { backgroundColor: colors.surfaceSubtle },
                   ]}
                 />
                 <View
                   style={[
                     styles.skeletonText,
                     styles.skeletonNotes,
-                    { backgroundColor: colors.backgroundLight },
+                    { backgroundColor: colors.surfaceSubtle },
                   ]}
                 />
               </View>
 
               {/* Loading indicator */}
               <View style={styles.loadingIndicator}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color={colors.brandPrimary} />
               </View>
             </View>
           </ScrollView>
@@ -319,7 +319,7 @@ export function WorkoutDetailView({
               style={[
                 styles.topCard,
                 {
-                  backgroundColor: colors.background,
+                  backgroundColor: colors.bg,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -339,20 +339,20 @@ export function WorkoutDetailView({
                     style={[
                       styles.avatar,
                       {
-                        backgroundColor: colors.primary,
+                        backgroundColor: colors.brandPrimary,
                         justifyContent: 'center',
                         alignItems: 'center',
                       },
                     ]}
                   >
-                    <Text style={[styles.avatarText, { color: colors.white }]}>
+                    <Text style={[styles.avatarText, { color: colors.surface }]}>
                       {profile?.display_name?.[0]?.toUpperCase() || 'U'}
                     </Text>
                   </View>
                 )}
                 <View style={styles.userDetails}>
                   <View style={styles.userNameRow}>
-                    <Text style={[styles.userName, { color: colors.text }]}>
+                    <Text style={[styles.userName, { color: colors.textPrimary }]}>
                       {profile?.display_name || 'User'}
                     </Text>
                   </View>
@@ -366,7 +366,7 @@ export function WorkoutDetailView({
 
               {/* Workout title */}
               <View style={styles.titleSection}>
-                <Text style={[styles.workoutTitle, { color: colors.text }]}>
+                <Text style={[styles.workoutTitle, { color: colors.textPrimary }]}>
                   {workoutTitle}
                 </Text>
                 {workout.notes && (
@@ -401,7 +401,7 @@ export function WorkoutDetailView({
                   <Ionicons
                     name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
                     size={20}
-                    color={isLiked ? colors.primary : colors.icon}
+                    color={isLiked ? colors.brandPrimary : colors.iconDefault}
                   />
                   {likeCount > 0 && (
                     <Text
@@ -423,7 +423,7 @@ export function WorkoutDetailView({
                   <Ionicons
                     name="chatbubble-outline"
                     size={20}
-                    color={colors.icon}
+                    color={colors.iconDefault}
                   />
                   {commentCount > 0 && (
                     <Text
@@ -445,7 +445,7 @@ export function WorkoutDetailView({
                   <Ionicons
                     name="share-outline"
                     size={20}
-                    color={colors.icon}
+                    color={colors.iconDefault}
                   />
                 </TouchableOpacity>
               </View>
@@ -458,7 +458,7 @@ export function WorkoutDetailView({
             <View
               style={[
                 styles.exercisesSection,
-                { backgroundColor: colors.background },
+                { backgroundColor: colors.bg },
               ]}
             >
               <Text

@@ -1,13 +1,15 @@
+import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { getCoach } from '@/lib/coaches'
 import { hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useRef, useState } from 'react'
 import {
     Animated,
     Dimensions,
-    Image,
     Modal,
     StyleSheet,
     Text,
@@ -24,13 +26,37 @@ interface BodyLogProcessingModalProps {
   onComplete?: () => void
 }
 
-const SCANNING_MESSAGES = [
+const DEFAULT_SCANNING_MESSAGES = [
   'Analyzing body composition...',
   'Detecting body fat percentage...',
   'Measuring muscle mass...',
   'Computing BMI...',
   'Processing results...',
 ]
+
+const COACH_MESSAGES: Record<string, string[]> = {
+  ross: [
+    'Ross is analyzing your mechanical tension markers...',
+    'Calculating muscle-to-fat ratio models...',
+    'Ross is cross-referencing your physique data...',
+    'Evidence-based metrics incoming...',
+    'Finalizing scientific analysis...',
+  ],
+  kino: [
+    'Coach Kino is sizing up your gains...',
+    'Identifying your true strength potential...',
+    'Scanning for elite physique progress...',
+    'Calculating your power-to-weight ratio...',
+    'No-nonsense results almost ready...',
+  ],
+  maya: [
+    'Maya is celebrating your consistency...',
+    'Visualizing your amazing transformation...',
+    'Finding the progress you\'ve earned...',
+    'Your results are going to inspire!',
+    'Wrapping up your progress report...',
+  ],
+}
 
 const SCANNING_LINE_HEIGHT = 4
 const SCANNING_DURATION = 3000
@@ -44,8 +70,12 @@ export function BodyLogProcessingModal({
 }: BodyLogProcessingModalProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const { coachId } = useProfile()
+  const coach = getCoach(coachId)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccess, setShowSuccess] = useState(false)
+
+  const scanningMessages = COACH_MESSAGES[coachId] || DEFAULT_SCANNING_MESSAGES
 
   // Animated values
   const scanLinePosition = useRef(new Animated.Value(0)).current
@@ -53,6 +83,9 @@ export function BodyLogProcessingModal({
   const successScale = useRef(new Animated.Value(0)).current
   const successOpacity = useRef(new Animated.Value(0)).current
   const checkmarkScale = useRef(new Animated.Value(0)).current
+  const coachScale = useRef(new Animated.Value(0.9)).current
+  const coachOpacity = useRef(new Animated.Value(0)).current
+  const contentOpacity = useRef(new Animated.Value(0)).current
 
   // Start scanning animation
   useEffect(() => {
@@ -65,6 +98,25 @@ export function BodyLogProcessingModal({
       checkmarkScale.setValue(0)
       setShowSuccess(false)
       setCurrentMessageIndex(0)
+
+      Animated.parallel([
+        Animated.spring(coachScale, {
+          toValue: 1,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coachOpacity, {
+          toValue: 0.8,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start()
 
       // Start continuous scanning animation
       Animated.loop(
@@ -91,7 +143,7 @@ export function BodyLogProcessingModal({
       const interval = setInterval(() => {
         setCurrentMessageIndex((prev) => {
           // Stop at the last message, don't loop back
-          if (prev >= SCANNING_MESSAGES.length - 1) {
+          if (prev >= scanningMessages.length - 1) {
             return prev
           }
 
@@ -115,7 +167,7 @@ export function BodyLogProcessingModal({
 
       return () => clearInterval(interval)
     }
-  }, [visible, isComplete, messageOpacity])
+  }, [visible, isComplete, messageOpacity, scanningMessages])
 
   // Handle completion animation
   useEffect(() => {
@@ -140,6 +192,21 @@ export function BodyLogProcessingModal({
           duration: 300,
           useNativeDriver: true,
         }),
+        // Coach "excitement" animation
+        Animated.sequence([
+            Animated.spring(coachScale, {
+                toValue: 1.05,
+                tension: 40,
+                friction: 3,
+                useNativeDriver: true,
+            }),
+            Animated.spring(coachScale, {
+                toValue: 1,
+                tension: 40,
+                friction: 5,
+                useNativeDriver: true,
+            })
+        ])
       ]).start(() => {
         // After success container appears, animate checkmark
         Animated.sequence([
@@ -156,10 +223,10 @@ export function BodyLogProcessingModal({
             useNativeDriver: true,
           }),
         ]).start(() => {
-          // Wait 800ms then call onComplete
+          // Wait 1200ms then call onComplete
           setTimeout(() => {
             onComplete?.()
-          }, 800)
+          }, 1200)
         })
       })
     }
@@ -174,7 +241,7 @@ export function BodyLogProcessingModal({
 
   const scanLineTranslateY = scanLinePosition.interpolate({
     inputRange: [0, 1],
-    outputRange: [-SCREEN_HEIGHT * 0.6, SCREEN_HEIGHT * 0.6],
+    outputRange: [SCREEN_HEIGHT * -0.2, SCREEN_HEIGHT * 0.2],
   })
 
   if (!visible) return null
@@ -189,28 +256,52 @@ export function BodyLogProcessingModal({
       statusBarTranslucent
     >
       <View style={dynamicStyles.container}>
-        {/* Background with image preview */}
-        {imageUri && (
-          <Image
-            source={{ uri: imageUri }}
-            style={dynamicStyles.backgroundImage}
-            blurRadius={20}
-          />
-        )}
-
-        {/* Dark overlay */}
-        <View style={dynamicStyles.overlay} />
+        {/* Coach background */}
+        <Animated.View 
+            style={[
+                dynamicStyles.coachContainer,
+                {
+                    opacity: coachOpacity,
+                    transform: [{ scale: coachScale }]
+                }
+            ]}
+        >
+            <Image 
+                source={coach.image}
+                style={dynamicStyles.coachImage}
+                contentFit="cover"
+            />
+            <LinearGradient 
+                colors={['transparent', 'rgba(0,0,0,0.8)', '#000000']}
+                style={dynamicStyles.coachGradient}
+            />
+        </Animated.View>
 
         {/* Content */}
-        <View style={dynamicStyles.content}>
-          {/* Image preview with scanning effect */}
-          {imageUri && !showSuccess && (
+        <Animated.View style={[dynamicStyles.content, { opacity: contentOpacity }]}>
+          {/* Scanning Header */}
+          {!showSuccess && (
+            <View style={dynamicStyles.header}>
+                <Text style={dynamicStyles.coachAnalysisText}>
+                    {coach.name.split(' ')[0]}'s Analysis
+                </Text>
+            </View>
+          )}
+
+          {/* User's Photo with Scanning Effect */}
+          {!showSuccess && (
             <View style={dynamicStyles.imageContainer}>
-              <Image
-                source={{ uri: imageUri }}
-                style={dynamicStyles.previewImage}
-                resizeMode="cover"
-              />
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={dynamicStyles.previewImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={[dynamicStyles.previewImage, { backgroundColor: colors.surfaceSubtle, justifyContent: 'center', alignItems: 'center' }]}>
+                    <Ionicons name="person" size={48} color={colors.textSecondary} opacity={0.3} />
+                </View>
+              )}
 
               {/* Scanning lines */}
               <Animated.View
@@ -223,43 +314,24 @@ export function BodyLogProcessingModal({
               >
                 <LinearGradient
                   colors={[
-                    `${colors.primary}00`,
-                    `${colors.primary}CC`,
-                    `${colors.primary}00`,
+                    `${colors.brandPrimary}00`,
+                    `${colors.brandPrimary}CC`,
+                    `${colors.brandPrimary}00`,
                   ]}
                   style={dynamicStyles.scanLine}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                 />
-                <LinearGradient
-                  colors={[
-                    `${colors.primary}00`,
-                    `${colors.primary}99`,
-                    `${colors.primary}00`,
-                  ]}
-                  style={[
-                    dynamicStyles.scanLine,
-                    dynamicStyles.scanLineSecondary,
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                />
               </Animated.View>
-
-              {/* Glow effect overlay */}
-              <View style={dynamicStyles.glowOverlay}>
-                <LinearGradient
-                  colors={[
-                    `${colors.primary}1A`,
-                    `${colors.primary}0D`,
-                    `${colors.primary}00`,
-                  ]}
-                  style={dynamicStyles.glowGradient}
-                />
-              </View>
 
               {/* Border glow */}
               <View style={dynamicStyles.borderGlow} />
+              
+              {/* Corner Accents */}
+              <View style={[dynamicStyles.corner, dynamicStyles.topLeft]} />
+              <View style={[dynamicStyles.corner, dynamicStyles.topRight]} />
+              <View style={[dynamicStyles.corner, dynamicStyles.bottomLeft]} />
+              <View style={[dynamicStyles.corner, dynamicStyles.bottomRight]} />
             </View>
           )}
 
@@ -294,7 +366,7 @@ export function BodyLogProcessingModal({
                   />
                 </View>
                 <Text style={dynamicStyles.messageText}>
-                  {SCANNING_MESSAGES[currentMessageIndex]}
+                  {scanningMessages[currentMessageIndex]}
                 </Text>
               </View>
             </Animated.View>
@@ -311,6 +383,18 @@ export function BodyLogProcessingModal({
                 },
               ]}
             >
+              <View style={dynamicStyles.successTop}>
+                <Text style={dynamicStyles.successTitle}>
+                    {hasNoStats ? 'Analysis Incomplete' : 'Analysis Complete'}
+                </Text>
+                <Text style={dynamicStyles.successSubtitle}>
+                    {hasNoStats 
+                        ? `${coach.name.split(' ')[0]} couldn't see you clearly. Please ensure your photos are well-lit and show your full physique.`
+                        : `${coach.name.split(' ')[0]} has reviewed your physique and updated your stats.`
+                    }
+                </Text>
+              </View>
+
               <Animated.View
                 style={[
                   dynamicStyles.checkmarkContainer,
@@ -322,34 +406,29 @@ export function BodyLogProcessingModal({
                 {hasNoStats ? (
                   <View style={dynamicStyles.infoCircle}>
                     <Ionicons
-                      name="information-circle"
+                      name="alert-circle"
                       size={80}
-                      color={colors.primary}
+                      color={colors.statusError}
                     />
                   </View>
                 ) : (
                   <View
                     style={[
                       dynamicStyles.checkmarkCircle,
-                      { backgroundColor: colors.success },
+                      { backgroundColor: colors.brandPrimary },
                     ]}
                   >
                     <Ionicons
                       name="checkmark"
                       size={64}
-                      color={colors.buttonText}
+                      color={colors.bg}
                     />
                   </View>
                 )}
               </Animated.View>
-              <Text style={dynamicStyles.successText}>
-                {hasNoStats
-                  ? 'Unable to determine your stats'
-                  : 'Analysis Complete!'}
-              </Text>
             </Animated.View>
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   )
@@ -362,42 +441,62 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
     container: {
       flex: 1,
       backgroundColor: '#000000',
-      justifyContent: 'center',
-      alignItems: 'center',
     },
-    backgroundImage: {
-      position: 'absolute',
-      width: SCREEN_WIDTH,
-      height: SCREEN_HEIGHT,
-      opacity: 0.12,
+    coachContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: SCREEN_HEIGHT * 0.65,
     },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: '#000000',
+    coachImage: {
+        width: '100%',
+        height: '100%',
+    },
+    coachGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '60%',
     },
     content: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: 30,
+      paddingTop: SCREEN_HEIGHT * 0.1,
+    },
+    header: {
+        marginBottom: 40,
+        alignItems: 'center',
+    },
+    coachAnalysisText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: colors.brandPrimary,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
     },
     imageContainer: {
-      width: SCREEN_WIDTH * 0.78,
+      width: SCREEN_WIDTH * 0.65,
       aspectRatio: 3 / 4,
-      borderRadius: 28,
+      borderRadius: 12,
       overflow: 'hidden',
       position: 'relative',
       backgroundColor: '#000',
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.4,
-      shadowRadius: 24,
+      shadowOpacity: 0.3,
+      shadowRadius: 20,
       elevation: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.1)',
     },
     previewImage: {
       width: '100%',
       height: '100%',
-      opacity: 0.65,
+      opacity: 0.8,
     },
     scanLineContainer: {
       position: 'absolute',
@@ -407,47 +506,70 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
       alignItems: 'center',
     },
     scanLine: {
-      width: '100%',
+      width: '120%',
       height: SCANNING_LINE_HEIGHT,
       position: 'absolute',
     },
-    scanLineSecondary: {
-      marginTop: 48,
-      opacity: 0.6,
-    },
-    glowOverlay: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    glowGradient: {
-      flex: 1,
-    },
     borderGlow: {
       ...StyleSheet.absoluteFillObject,
-      borderWidth: 2,
-      borderColor: `${colors.primary}4D`,
-      borderRadius: 28,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 24,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderRadius: 12,
+    },
+    corner: {
+        position: 'absolute',
+        width: 20,
+        height: 20,
+        borderColor: colors.brandPrimary,
+        borderWidth: 2,
+    },
+    topLeft: {
+        top: 0,
+        left: 0,
+        borderRightWidth: 0,
+        borderBottomWidth: 0,
+    },
+    topRight: {
+        top: 0,
+        right: 0,
+        borderLeftWidth: 0,
+        borderBottomWidth: 0,
+    },
+    bottomLeft: {
+        bottom: 0,
+        left: 0,
+        borderRightWidth: 0,
+        borderTopWidth: 0,
+    },
+    bottomRight: {
+        bottom: 0,
+        right: 0,
+        borderLeftWidth: 0,
+        borderTopWidth: 0,
     },
     messageContainer: {
-      marginTop: 56,
+      marginTop: 60,
+      backgroundColor: 'rgba(255,255,255,0.05)',
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.1)',
     },
     messageContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 14,
+      gap: 16,
     },
     scanningIndicator: {
       flexDirection: 'row',
-      gap: 7,
+      gap: 6,
     },
     dot: {
-      width: 9,
-      height: 9,
-      borderRadius: 4.5,
-      backgroundColor: colors.primary,
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.brandPrimary,
     },
     dotAnimated: {
       opacity: 0.3,
@@ -459,29 +581,49 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
       opacity: 1,
     },
     messageText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: '#fff',
       letterSpacing: -0.2,
-      textAlign: 'center',
     },
     successContainer: {
       alignItems: 'center',
-      gap: 28,
+      justifyContent: 'center',
+      width: '100%',
+    },
+    successTop: {
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    successTitle: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: '#fff',
+      letterSpacing: -1,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    successSubtitle: {
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.6)',
+        textAlign: 'center',
+        lineHeight: 24,
+        paddingHorizontal: 20,
     },
     checkmarkContainer: {
       alignItems: 'center',
       justifyContent: 'center',
     },
     checkmarkCircle: {
-      width: 128,
-      height: 128,
-      borderRadius: 64,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
       alignItems: 'center',
       justifyContent: 'center',
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.7,
-      shadowRadius: 32,
+      shadowOpacity: 0.5,
+      shadowRadius: 20,
       elevation: 12,
     },
     infoCircle: {
@@ -495,3 +637,4 @@ const createDynamicStyles = (colors: Colors, isDark: boolean) =>
       letterSpacing: -0.3,
     },
   })
+

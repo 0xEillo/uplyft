@@ -54,7 +54,7 @@ export function WorkoutCard({
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{workout.title}</Text>
         <View style={styles.durationBadge}>
-          <Ionicons name="time-outline" size={14} color={colors.primary} />
+          <Ionicons name="time-outline" size={14} color={colors.brandPrimary} />
           <Text style={styles.durationText}>{workout.duration}</Text>
         </View>
       </View>
@@ -226,7 +226,7 @@ export function WorkoutCard({
           {onStartWorkout && (
              <TouchableOpacity style={styles.primaryButton} onPress={onStartWorkout} activeOpacity={0.8}>
                <Text style={styles.primaryButtonText}>Start Workout</Text>
-               <Ionicons name="arrow-forward" size={18} color={colors.white} />
+               <Ionicons name="arrow-forward" size={18} color={colors.surface} />
              </TouchableOpacity>
           )}
            {onSaveRoutine && (
@@ -243,7 +243,7 @@ export function WorkoutCard({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.backgroundWhite, // Distinct card background
+      backgroundColor: colors.surface, // Distinct card background
       borderRadius: 24,
       padding: 20,
       marginVertical: 8,
@@ -265,7 +265,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     coachLabel: {
       fontSize: 13,
@@ -281,7 +281,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     cardTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
       marginRight: 12,
       lineHeight: 26,
@@ -289,7 +289,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     durationBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: `${colors.primary}15`,
+      backgroundColor: `${colors.brandPrimary}15`,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 12,
@@ -298,7 +298,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     durationText: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     description: {
       fontSize: 14,
@@ -339,7 +339,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 56,
       height: 56,
       borderRadius: 14,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
@@ -382,7 +382,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
       flex: 1,
     },
@@ -398,7 +398,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     setsDetailContainer: {
       marginTop: 8,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderRadius: 12,
       padding: 12,
     },
@@ -417,7 +417,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
        alignItems: 'center',
     },
     warmupBadge: {
-       backgroundColor: `${colors.warning}30`,
+       backgroundColor: `${colors.statusWarning}30`,
     },
     setText: {
        fontSize: 10,
@@ -425,7 +425,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
        color: colors.textSecondary,
     },
     warmupText: {
-       color: colors.warning,
+       color: colors.statusWarning,
     },
     setDetailText: {
        fontSize: 14,
@@ -447,21 +447,21 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 12,
     },
     primaryButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       height: 50,
       borderRadius: 25,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 4,
     },
     primaryButtonText: {
-      color: colors.white,
+      color: colors.surface,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -474,7 +474,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: colors.border,
     },
     secondaryButtonText: {
-      color: colors.text,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: '600',
     },

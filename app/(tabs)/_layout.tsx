@@ -153,10 +153,10 @@ function TikTokPlusButton() {
 
   // Timer takes priority over draft state for button color
   const buttonColor = isRestTimerActive
-    ? colors.error
+    ? colors.statusError
     : hasDraft
-    ? colors.error
-    : colors.primary
+    ? colors.statusError
+    : colors.brandPrimary
   const styles = createButtonStyles(colors, buttonColor)
 
   return (
@@ -170,7 +170,7 @@ function TikTokPlusButton() {
       <View style={styles.centerLayer}>
         {isRestTimerActive ? (
           <View style={styles.timerContent}>
-            <Ionicons name="timer-outline" size={14} color={colors.white} />
+            <Ionicons name="timer-outline" size={14} color={colors.surface} />
             <View style={styles.timerTextContainer}>
               <Text style={styles.timerText}>
                 {formatTimerCompact(remainingSeconds)}
@@ -181,7 +181,7 @@ function TikTokPlusButton() {
           <Ionicons
             name={hasDraft ? 'document-text' : 'add'}
             size={22}
-            color={colors.white}
+            color={colors.surface}
           />
         )}
       </View>
@@ -304,7 +304,7 @@ function TabLayoutContent() {
       <Tabs
         backBehavior="history"
         screenOptions={{
-          tabBarActiveTintColor: colors.primary,
+          tabBarActiveTintColor: colors.brandPrimary,
           headerShown: false,
           tabBarHideOnKeyboard: false,
           tabBarButton: HapticTab,
@@ -439,7 +439,7 @@ function TabLayoutContent() {
                 />
                 {hasUnreadChat && (
                   <PulsingBadge
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                     borderColor={isDark ? '#000' : '#fff'}
                   />
                 )}
@@ -585,7 +585,7 @@ const createButtonStyles = (
       alignItems: 'center',
     },
     timerText: {
-      color: colors.white,
+      color: colors.surface,
       fontSize: 12,
       fontWeight: '700',
       fontVariant: ['tabular-nums'],

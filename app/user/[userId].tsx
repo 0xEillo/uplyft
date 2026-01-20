@@ -15,8 +15,8 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { calculateTotalVolume, formatVolume } from '@/lib/utils/workout-stats'
 import {
-    FollowRelationshipStatus,
-    WorkoutSessionWithDetails,
+  FollowRelationshipStatus,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -24,15 +24,15 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Dimensions,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -396,7 +396,7 @@ export default function UserProfileScreen() {
         disabled={relationshipBusy || isPending}
       >
         {relationshipBusy && !isFollowing ? (
-          <ActivityIndicator size="small" color={colors.primary} />
+          <ActivityIndicator size="small" color={colors.brandPrimary} />
         ) : (
           <Text style={textStyles}>{label}</Text>
         )}
@@ -406,7 +406,7 @@ export default function UserProfileScreen() {
 
   const navbarBgColor = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: ['transparent', colors.background],
+    outputRange: ['transparent', colors.bg],
     extrapolate: 'clamp',
   })
 
@@ -422,7 +422,26 @@ export default function UserProfileScreen() {
     extrapolate: 'clamp',
   })
 
-  const startColor = isDark ? '#F5F5F5' : colors.text
+  const startColor = isDark ? '#F5F5F5' : colors.textPrimary
+
+  // Animation interpolations for the cover photo
+  const coverTranslateY = scrollY.interpolate({
+    inputRange: [-400, 0, 400],
+    outputRange: [-400, 0, 200], // Pin to top on pull-down, parallax on scroll-up
+    extrapolateRight: 'clamp',
+  })
+
+  const coverScale = scrollY.interpolate({
+    inputRange: [-400, 0],
+    outputRange: [1.3, 1],
+    extrapolate: 'clamp',
+  })
+
+  const coverOpacity = scrollY.interpolate({
+    inputRange: [0, 300],
+    outputRange: [1, 0.7],
+    extrapolate: 'clamp',
+  })
 
   return (
     <SlideInView
@@ -464,7 +483,7 @@ export default function UserProfileScreen() {
                       <Ionicons
                         name="arrow-back"
                         size={24}
-                        color={colors.text}
+                        color={colors.textPrimary}
                       />
                     </Animated.View>
                   </View>
@@ -488,9 +507,20 @@ export default function UserProfileScreen() {
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             {/* Cover Photo Section */}
-            <View style={styles.coverContainer}>
+            <Animated.View 
+              style={[
+                styles.coverContainer,
+                {
+                  transform: [
+                    { translateY: coverTranslateY },
+                    { scale: coverScale }
+                  ],
+                  opacity: coverOpacity
+                }
+              ]}
+            >
               {avatarUrl ? (
-                <Image
+                <Animated.Image
                   source={{ uri: avatarUrl }}
                   style={styles.coverImage}
                   blurRadius={1}
@@ -514,12 +544,12 @@ export default function UserProfileScreen() {
                 colors={[
                   isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
                   isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
-                  colors.background,
+                  colors.bg,
                 ]}
                 locations={[0, 0.6, 1]}
                 style={styles.coverBottomGradient}
               />
-            </View>
+            </Animated.View>
 
             {/* Profile Section with Avatar and Info */}
             <View style={styles.profileSection}>
@@ -531,7 +561,7 @@ export default function UserProfileScreen() {
                     <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                   ) : (
                     <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={36} color={colors.white} />
+                      <Ionicons name="person" size={36} color={colors.surface} />
                     </View>
                   )}
                 </View>
@@ -614,7 +644,7 @@ export default function UserProfileScreen() {
                       })
                     }
                   >
-                    <Ionicons name="stats-chart" size={18} color={colors.text} />
+                    <Ionicons name="stats-chart" size={18} color={colors.textPrimary} />
                     <Text style={styles.compareButtonText}>Compare</Text>
                   </TouchableOpacity>
                 </View>
@@ -664,7 +694,7 @@ export default function UserProfileScreen() {
                       size={20}
                       color={
                         viewMode === 'feed'
-                          ? colors.white
+                          ? colors.surface
                           : colors.textSecondary
                       }
                     />
@@ -681,7 +711,7 @@ export default function UserProfileScreen() {
                       size={18}
                       color={
                         viewMode === 'grid'
-                          ? colors.white
+                          ? colors.surface
                           : colors.textSecondary
                       }
                     />
@@ -695,7 +725,7 @@ export default function UserProfileScreen() {
               <Ionicons
                 name="lock-closed-outline"
                 size={48}
-                color={colors.primary}
+                color={colors.brandPrimary}
                 style={styles.lockedIcon}
               />
               <Text style={styles.lockedTitle}>This athlete is private</Text>
@@ -708,7 +738,7 @@ export default function UserProfileScreen() {
             <View style={styles.gridContent}>
               {isLoading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
+                  <ActivityIndicator size="large" color={colors.brandPrimary} />
                 </View>
               ) : workouts.length === 0 ? (
                 <EmptyState
@@ -755,7 +785,7 @@ export default function UserProfileScreen() {
                         <Text
                           style={[
                             styles.gridItemTitle,
-                            !workout.image_url && { color: colors.text },
+                            !workout.image_url && { color: colors.textPrimary },
                           ]}
                           numberOfLines={1}
                         >
@@ -830,7 +860,7 @@ export default function UserProfileScreen() {
             <View style={styles.logContent}>
               {isLoading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
+                  <ActivityIndicator size="large" color={colors.brandPrimary} />
                 </View>
               ) : workouts.length === 0 ? (
                 <EmptyState
@@ -845,7 +875,7 @@ export default function UserProfileScreen() {
                       <View
                         style={{
                           height: 8,
-                          backgroundColor: colors.feedCardSeparator,
+                          backgroundColor: colors.separator,
                         }}
                       />
                     )}
@@ -876,7 +906,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     navbarContainer: {
       position: 'absolute',
@@ -909,12 +939,12 @@ const createStyles = (
       fontWeight: '600',
     },
     profileHeader: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       position: 'relative',
       minHeight: 280,
     },
     coverContainer: {
-      height: 300,
+      height: 240,
       width: '100%',
       position: 'absolute',
       top: 0,
@@ -929,7 +959,7 @@ const createStyles = (
       opacity: isDark ? 0.7 : 0.9,
     },
     coverPlaceholder: {
-      backgroundColor: colors.primary + '20',
+      backgroundColor: colors.brandPrimary + '20',
     },
     coverGradient: {
       position: 'absolute',
@@ -958,7 +988,7 @@ const createStyles = (
     avatarWrapper: {
       borderRadius: 50,
       padding: 3,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
@@ -971,7 +1001,7 @@ const createStyles = (
       borderRadius: 45,
     },
     avatarPlaceholder: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -993,7 +1023,7 @@ const createStyles = (
     displayName: {
       fontSize: 26,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 0,
       flexShrink: 1,
     },
@@ -1025,7 +1055,7 @@ const createStyles = (
     statNumber: {
       fontSize: 15,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statLabel: {
       fontSize: 14,
@@ -1059,12 +1089,12 @@ const createStyles = (
       borderRadius: 6,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     compareButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     workoutsHeader: {
       flexDirection: 'row',
@@ -1073,7 +1103,7 @@ const createStyles = (
       paddingHorizontal: 14,
       paddingTop: 16,
       paddingBottom: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     workoutsTitle: {
       fontSize: 15,
@@ -1082,19 +1112,19 @@ const createStyles = (
     },
     followActionButton: {
       width: '100%',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
       borderRadius: 6,
       paddingVertical: 10,
       alignItems: 'center',
     },
     followActionButtonFollowing: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderColor: colors.border,
     },
     followActionButtonPending: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderColor: colors.border,
     },
     followActionButtonText: {
@@ -1103,7 +1133,7 @@ const createStyles = (
       color: '#fff',
     },
     followActionButtonTextFollowing: {
-      color: colors.text,
+      color: colors.textPrimary,
     },
     followActionButtonTextPending: {
       color: colors.textSecondary,
@@ -1112,7 +1142,7 @@ const createStyles = (
       margin: 20,
       padding: 32,
       borderRadius: 16,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: 'center',
@@ -1128,7 +1158,7 @@ const createStyles = (
     lockedTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 8,
     },
@@ -1153,7 +1183,7 @@ const createStyles = (
     },
     viewToggle: {
       flexDirection: 'row',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 8,
       padding: 2,
       gap: 2,
@@ -1166,7 +1196,7 @@ const createStyles = (
       alignItems: 'center',
     },
     toggleButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     gridContent: {
       paddingHorizontal: 1,
@@ -1179,7 +1209,7 @@ const createStyles = (
       width: (width - 8) / 3,
       aspectRatio: 1,
       margin: 1,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       overflow: 'hidden',
     },
     gridItemImage: {
@@ -1191,7 +1221,7 @@ const createStyles = (
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     gridItemGradient: {
       position: 'absolute',

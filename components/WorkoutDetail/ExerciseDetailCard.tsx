@@ -93,8 +93,8 @@ export function ExerciseDetailCard({
         key={set.id}
         style={[
           styles.setRow,
-          index % 2 === 0 && { backgroundColor: colors.backgroundLight },
-          setHasPr && { backgroundColor: colors.primaryLight },
+          index % 2 === 0 && { backgroundColor: colors.surfaceSubtle },
+          setHasPr && { backgroundColor: colors.brandPrimarySoft },
         ]}
       >
         <View style={[styles.setCell, styles.setCol, styles.centerCell]}>
@@ -103,7 +103,7 @@ export function ExerciseDetailCard({
               styles.setBadge,
               {
                 backgroundColor: isWarmup
-                  ? `${colors.warning}25`
+                  ? `${colors.statusWarning}25`
                   : colors.border,
               },
             ]}
@@ -111,7 +111,7 @@ export function ExerciseDetailCard({
             <Text
               style={[
                 styles.setBadgeText,
-                { color: isWarmup ? colors.warning : colors.textSecondary },
+                { color: isWarmup ? colors.statusWarning : colors.textSecondary },
               ]}
             >
               {setLabel}
@@ -120,7 +120,7 @@ export function ExerciseDetailCard({
         </View>
 
         <View style={[styles.setCell, styles.weightCol]}>
-          <Text style={[styles.setDetail, { color: colors.text }]}>
+          <Text style={[styles.setDetail, { color: colors.textPrimary }]}>
             {weightRepsText}
           </Text>
         </View>
@@ -133,7 +133,7 @@ export function ExerciseDetailCard({
                 onPress={() => setTooltipVisible(true)}
                 style={[
                   styles.prBadgeSmall,
-                  { backgroundColor: colors.primary },
+                  { backgroundColor: colors.brandPrimary },
                   !prInfo.hasCurrentPR && {
                     backgroundColor: colors.textTertiary,
                   },
@@ -163,7 +163,7 @@ export function ExerciseDetailCard({
           style={{ width: 56, height: 56, borderRadius: 14 }}
           autoPlay={false}
         />
-        <Text style={[styles.exerciseName, { color: colors.primary }]}>
+        <Text style={[styles.exerciseName, { color: colors.brandPrimary }]}>
           {exercise.name}
         </Text>
       </TouchableOpacity>

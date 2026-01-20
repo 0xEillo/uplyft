@@ -168,7 +168,7 @@ export default function SignupPasswordScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.placeholder} />
         </View>
@@ -234,7 +234,7 @@ export default function SignupPasswordScreen() {
             hapticIntensity="medium"
           >
             {isLoading ? (
-              <ActivityIndicator color={colors.buttonText} />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
               <Text style={styles.signUpButtonText}>Sign Up</Text>
             )}
@@ -249,7 +249,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     wrapper: {
       flex: 1,
@@ -289,7 +289,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     stepTitle: {
       fontSize: 28,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'left',
       marginBottom: 8,
     },
@@ -301,7 +301,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     emailText: {
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     buttonsWrapper: {
       flex: 1,
@@ -319,7 +319,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     footer: {
@@ -329,7 +329,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     signUpButton: {
       height: 56,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
@@ -338,7 +338,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       opacity: 0.4,
     },
     signUpButtonText: {
-      color: colors.buttonText,
+      color: colors.onPrimary,
       fontSize: 18,
       fontWeight: '700',
     },

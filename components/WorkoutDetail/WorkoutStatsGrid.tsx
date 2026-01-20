@@ -46,36 +46,36 @@ export function WorkoutStatsGrid({
     <View style={styles.container}>
       <View style={styles.statItem}>
         <View style={styles.labelContainer}>
-          <Ionicons name="time-outline" size={14} color={colors.success} />
+          <Ionicons name="time-outline" size={14} color={colors.statusSuccess} />
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             Duration
           </Text>
         </View>
-        <Text style={[styles.value, { color: colors.text }]}>
+        <Text style={[styles.value, { color: colors.textPrimary }]}>
           {durationDisplay}
         </Text>
       </View>
 
       <View style={[styles.statItem, styles.statItemCenter]}>
         <View style={styles.labelContainer}>
-          <Ionicons name="barbell-outline" size={14} color={colors.info} />
+          <Ionicons name="barbell-outline" size={14} color={colors.statusInfo} />
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             Volume
           </Text>
         </View>
-        <Text style={[styles.value, { color: colors.text }]}>
+        <Text style={[styles.value, { color: colors.textPrimary }]}>
           {volumeFormatted.value.toLocaleString()} {volumeFormatted.unit}
         </Text>
       </View>
 
       <View style={[styles.statItem, styles.statItemRight]}>
         <View style={styles.labelContainer}>
-          <Ionicons name="trophy-outline" size={14} color={colors.primary} />
+          <Ionicons name="trophy-outline" size={14} color={colors.brandPrimary} />
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             Records
           </Text>
         </View>
-        <Text style={[styles.value, { color: colors.text }]}>
+        <Text style={[styles.value, { color: colors.textPrimary }]}>
           {prCount ?? stats.prCount}
         </Text>
       </View>

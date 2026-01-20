@@ -67,7 +67,7 @@ const RECOVERY_GRADIENT_COLORS = [
   '#F59E0B', // 40% - Amber
   '#949494', // 60% transition
   '#5C5C5C', // 80% transition
-  '#1C1C1C', // 100% - Dark Gray (matches base silhouette)
+  '#546073', // 100% - Blue-tinted light gray
 ]
 
 // We use intensity 1-10 for the gradient steps
@@ -234,7 +234,7 @@ export function getRecoveryIntensityFromPercentage(recoveryPercentage: number): 
  */
 export function getRecoveryColorFromPercentage(recoveryPercentage: number): string {
   if (recoveryPercentage >= 100) {
-    return '#6B8E9F' // Blue-gray for fully recovered
+    return '#546073' // Blue-tinted light gray for fully recovered
   }
   
   // Clamp to 0-99 range and get the gradient index

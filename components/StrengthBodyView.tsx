@@ -130,7 +130,7 @@ export function StrengthBodyView() {
     <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
           <Text style={styles.loadingText}>Loading strength data...</Text>
         </View>
       ) : (
@@ -145,8 +145,8 @@ export function StrengthBodyView() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[colors.brandPrimary]}
+              tintColor={colors.brandPrimary}
             />
           }
         >
@@ -227,7 +227,7 @@ export function StrengthBodyView() {
                 {/* Weak Point Warning */}
                 {overallLevel.weakestGroup && (
                   <View style={styles.weakPointContainer}>
-                    <Ionicons name="warning" size={14} color={colors.warning} />
+                    <Ionicons name="warning" size={14} color={colors.statusWarning} />
                     <Text style={styles.weakPointText}>
                       Focus on {overallLevel.weakestGroup}
                     </Text>
@@ -256,7 +256,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollView: {
       flex: 1,
@@ -278,7 +278,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Level Card
     levelCard: {
       marginTop: 24,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 20,
       shadowColor: '#000',
@@ -304,7 +304,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     levelCardValue: {
       fontSize: 28,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
       marginBottom: 4,
     },
@@ -338,7 +338,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     weakPointText: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.warning,
+      color: colors.statusWarning,
     },
 
     // Body Section

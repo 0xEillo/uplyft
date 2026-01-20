@@ -204,7 +204,7 @@ export default function FollowersScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Followers</Text>
           <View style={styles.headerPlaceholder} />
@@ -229,7 +229,7 @@ export default function FollowersScreen() {
 
       {isLoading && !isRefreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
         <FlatList
@@ -261,18 +261,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     statusBarBackground: {
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       zIndex: 0,
     },
     header: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       paddingBottom: 12,
@@ -291,7 +291,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     headerPlaceholder: {
       width: 24,
@@ -299,7 +299,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       marginHorizontal: 14,
       paddingHorizontal: 12,
       height: 40,
@@ -311,7 +311,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     searchInput: {
       flex: 1,
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       height: '100%',
     },
     loadingContainer: {
@@ -327,11 +327,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 60,
     },
     emptyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 24,
       paddingVertical: 14,
       borderRadius: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,

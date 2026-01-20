@@ -316,7 +316,7 @@ export default function RoutineDetailScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.brandPrimary} />
       </View>
     )
   }
@@ -334,19 +334,19 @@ export default function RoutineDetailScreen() {
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.background, paddingTop: insets.top },
+          { backgroundColor: colors.bg, paddingTop: insets.top },
         ]}
       >
         <BaseNavbar
           leftContent={
             <NavbarIsland>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
           centerContent={
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
               Routine
             </Text>
           }
@@ -360,7 +360,7 @@ export default function RoutineDetailScreen() {
                   <Ionicons
                     name="trash-outline"
                     size={24}
-                    color={colors.error}
+                    color={colors.statusError}
                   />
                 </TouchableOpacity>
               </NavbarIsland>
@@ -408,7 +408,7 @@ export default function RoutineDetailScreen() {
 
           {/* Routine Info */}
           <View style={styles.infoSection}>
-            <Text style={[styles.routineName, { color: colors.text }]}>
+            <Text style={[styles.routineName, { color: colors.textPrimary }]}>
               {routine.name}
             </Text>
             <Text
@@ -436,7 +436,7 @@ export default function RoutineDetailScreen() {
             {/* Stats Row */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.text }]}>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {estDurationString}
                 </Text>
                 <Text
@@ -449,7 +449,7 @@ export default function RoutineDetailScreen() {
                 style={[styles.statDivider, { backgroundColor: colors.border }]}
               />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.text }]}>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {exerciseCount}
                 </Text>
                 <Text
@@ -462,7 +462,7 @@ export default function RoutineDetailScreen() {
                 style={[styles.statDivider, { backgroundColor: colors.border }]}
               />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.text }]}>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {setCount}
                 </Text>
                 <Text
@@ -478,7 +478,7 @@ export default function RoutineDetailScreen() {
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: colors.primary },
+                  { backgroundColor: colors.brandPrimary },
                 ]}
                 onPress={handleStartRoutine}
               >
@@ -488,7 +488,7 @@ export default function RoutineDetailScreen() {
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: colors.primary },
+                  { backgroundColor: colors.brandPrimary },
                 ]}
                 onPress={() => setShowPaywall(true)}
               >
@@ -504,7 +504,7 @@ export default function RoutineDetailScreen() {
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: colors.primary },
+                  { backgroundColor: colors.brandPrimary },
                   isSaving && { opacity: 0.7 },
                 ]}
                 onPress={handleSaveRoutine}
@@ -530,7 +530,7 @@ export default function RoutineDetailScreen() {
               {routine.isOwner && (
                 <TouchableOpacity onPress={handleEditRoutine}>
                   <Text
-                    style={[styles.editButtonText, { color: colors.primary }]}
+                    style={[styles.editButtonText, { color: colors.brandPrimary }]}
                   >
                     Edit Routine
                   </Text>
@@ -607,7 +607,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingContainer: {
       justifyContent: 'center',
@@ -698,7 +698,7 @@ const createStyles = (
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,

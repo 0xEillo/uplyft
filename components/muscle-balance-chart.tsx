@@ -92,7 +92,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons name="body" size={24} color={colors.primary} />
+            <Ionicons name="body" size={24} color={colors.brandPrimary} />
           </View>
           <View>
             <Text style={styles.title}>Muscle Balance</Text>
@@ -137,7 +137,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
       <View style={styles.chartContainer}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : distributionData.length === 0 ? (
           <View style={styles.emptyState}>
@@ -154,7 +154,7 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
           <View style={styles.barsContainer}>
             {distributionData.map((item, index) => {
               const color =
-                MUSCLE_GROUP_COLORS[item.muscleGroup] || colors.primary
+                MUSCLE_GROUP_COLORS[item.muscleGroup] || colors.brandPrimary
 
               return (
                 <View key={index} style={styles.barRow}>
@@ -200,11 +200,11 @@ export const MuscleBalanceChart = memo(function MuscleBalanceChart({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       paddingVertical: 20,
       paddingHorizontal: 20,
       borderBottomWidth: 2,
-      borderBottomColor: colors.background,
+      borderBottomColor: colors.bg,
     },
     headerContainer: {
       flexDirection: 'row',
@@ -226,7 +226,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 2,
@@ -235,7 +235,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     subtitle: {
@@ -252,11 +252,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 10,
       paddingHorizontal: 16,
       borderRadius: 9999,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
     },
     timeRangeButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     timeRangeButtonText: {
       fontSize: 14,
@@ -264,10 +264,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     timeRangeButtonTextActive: {
-      color: colors.white,
+      color: colors.surface,
     },
     chartContainer: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 16,
       borderRadius: 12,
       minHeight: 200,
@@ -308,16 +308,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     muscleGroupName: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     percentageText: {
       fontSize: 15,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     barBackground: {
       height: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 9999,
       overflow: 'hidden',
     },

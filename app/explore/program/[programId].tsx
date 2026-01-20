@@ -154,7 +154,7 @@ export default function ProgramDetailScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.brandPrimary} />
       </View>
     )
   }
@@ -199,13 +199,13 @@ export default function ProgramDetailScreen() {
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.background, paddingTop: insets.top },
+          { backgroundColor: colors.bg, paddingTop: insets.top },
         ]}
       >
         <BaseNavbar
           leftContent={
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           }
           centerContent={
@@ -493,7 +493,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingContainer: {
       justifyContent: 'center',
@@ -506,7 +506,7 @@ const createStyles = (
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     scrollContent: {
       // styles
@@ -557,14 +557,14 @@ const createStyles = (
     },
     saveButton: {
       flexDirection: 'row',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       marginHorizontal: 16,
       height: 56,
       borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 24,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,
@@ -582,7 +582,7 @@ const createStyles = (
     },
     description: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 24,
       marginBottom: 24,
     },
@@ -599,7 +599,7 @@ const createStyles = (
     },
     statLabel: {
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '500',
       textTransform: 'capitalize',
     },
@@ -616,7 +616,7 @@ const createStyles = (
     // Carousel Card Styles
     carouselCard: {
       width: cardWidth,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 20,
       overflow: 'hidden',
       borderWidth: 1,
@@ -664,12 +664,12 @@ const createStyles = (
       alignItems: 'center',
     },
     bookmarkButtonSaved: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     carouselRoutineTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 12,
@@ -685,14 +685,14 @@ const createStyles = (
       alignItems: 'center',
       paddingVertical: 8,
       paddingHorizontal: 8,
-      backgroundColor: colors.exerciseRowTint,
+      backgroundColor: colors.rowTint,
       borderRadius: 12,
       gap: 10,
     },
     carouselExerciseName: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     carouselExerciseDetails: {
@@ -741,7 +741,7 @@ const createStyles = (
     },
     paginationDotActive: {
       width: 20,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     paginationDotInactive: {
       width: 6,
@@ -790,7 +790,7 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       padding: 10,
       borderRadius: 16,
       borderWidth: 1,
@@ -812,7 +812,7 @@ const createStyles = (
       height: '100%',
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     exerciseInfo: {
       flex: 1,
@@ -820,7 +820,7 @@ const createStyles = (
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       marginBottom: 2,
     },
     exerciseDetails: {

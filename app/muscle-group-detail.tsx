@@ -8,10 +8,11 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
+import { SlideUpView } from '@/components/slide-up-view'
 import { useProfile } from '@/contexts/profile-context'
+import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor, type MuscleGroupData } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
@@ -21,7 +22,7 @@ import {
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
     ScrollView,
     StyleSheet,
@@ -39,6 +40,7 @@ export default function MuscleGroupDetailScreen() {
     const insets = useSafeAreaInsets()
     const { formatWeight, weightUnit } = useWeightUnits()
     const { profile } = useProfile()
+    const [shouldExit, setShouldExit] = useState(false)
     
     const params = useLocalSearchParams<{
         groupDisplayName: string
@@ -109,6 +111,7 @@ export default function MuscleGroupDetailScreen() {
     }, [bodyPartSlug, filteredExercises, profile?.gender, profile?.weight_kg])
 
     const navigateToExercise = (exerciseId: string) => {
+        setShouldExit(true)
         router.back()
         // Small delay to allow sheet to close before navigation
         setTimeout(() => {
@@ -121,141 +124,176 @@ export default function MuscleGroupDetailScreen() {
 
     const styles = createStyles(colors)
 
-    if (!groupData) {
-        return (
-            <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-                <EmptyState
-                    icon="body-outline"
-                    title="No data available"
-                    description="Could not load muscle group information."
-                />
-            </View>
-        )
-    }
+    const closeSheet = () => setShouldExit(true)
+    const handleExitComplete = () => router.back()
 
     return (
-        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <View style={styles.titleRow}>
-                        <Text style={styles.headerTitle}>{groupDisplayName}</Text>
-                        <LevelBadge level={groupData.level} size="small" showTooltipOnPress={false} />
-                    </View>
-                    <Text style={styles.progressText}>
-                        {Math.round(groupData.progress)}% to next level
-                    </Text>
-                </View>
-            </View>
-
-            {/* Exercise List */}
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+        <View style={styles.backdrop}>
+            <TouchableOpacity
+                style={styles.backdropPress}
+                activeOpacity={1}
+                onPress={closeSheet}
+            />
+            <SlideUpView
+                style={styles.sheetWrapper}
+                backgroundColor="transparent"
+                shouldExit={shouldExit}
+                onExitComplete={handleExitComplete}
+                duration={260}
+                tension={50}
+                friction={8}
             >
-                <Text style={styles.sectionTitle}>
-                    {groupDisplayName} Strength
-                </Text>
-
-                {allMuscleExercises.length === 0 ? (
-                    <EmptyState
-                        icon="body-outline"
-                        title="No exercises available"
-                        description={`We don't have any tracked exercises for ${groupDisplayName} yet.`}
-                    />
-                ) : (
-                    allMuscleExercises.map((exercise, index) => (
-                        <TouchableOpacity
-                            key={exercise.exerciseId || exercise.exerciseName}
-                            style={[
-                                styles.exerciseCard,
-                                isDark && exercise.isDone && { backgroundColor: colors.exerciseRowTint },
-                                !exercise.isDone && styles.untrackedCard,
-                                index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
-                            ]}
-                            onPress={() => exercise.exerciseId && navigateToExercise(exercise.exerciseId)}
-                            activeOpacity={0.7}
-                            disabled={!exercise.exerciseId}
-                        >
-                            <View style={styles.exerciseLeft}>
-                                <View style={styles.thumbnailContainer}>
-                                    <ExerciseMediaThumbnail
-                                        gifUrl={exercise.gifUrl}
-                                        style={StyleSheet.flatten([
-                                            styles.exerciseThumbnail, 
-                                            !exercise.isDone && styles.untrackedThumbnail
-                                        ]) as ViewStyle}
-                                    />
-                                    {!exercise.isDone && (
-                                        <View style={styles.lockOverlay}>
-                                            <Ionicons name="lock-closed" size={14} color="#FFF" />
-                                        </View>
-                                    )}
-                                </View>
-                                <View style={styles.exerciseInfo}>
-                                    <Text style={[styles.exerciseName, !exercise.isDone && styles.untrackedText]}>
-                                        {exercise.exerciseName}
-                                    </Text>
-                                    {exercise.isDone ? (
-                                        <Text style={styles.exerciseWeight}>
-                                            Est. 1RM: {formatWeight(exercise.max1RM, {
-                                                maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                                            })}
-                                        </Text>
-                                    ) : (
-                                        <Text style={styles.exerciseStatus}>Not yet tracked</Text>
-                                    )}
-                                </View>
-                            </View>
-
-                            <View style={styles.exerciseRight}>
-                                {exercise.strengthInfo && (
-                                    <View
-                                        style={[
-                                            styles.levelBadgeItem,
-                                            {
-                                                backgroundColor: getLevelColor(
-                                                    exercise.strengthInfo.level as any,
-                                                ),
-                                            },
-                                        ]}
-                                    >
-                                        <Text style={styles.levelText}>{exercise.strengthInfo.level}</Text>
+                <View style={[styles.sheetContainer, { paddingBottom: insets.bottom }]}>
+                    {!groupData ? (
+                        <EmptyState
+                            icon="body-outline"
+                            title="No data available"
+                            description="Could not load muscle group information."
+                        />
+                    ) : (
+                        <>
+                            {/* Header */}
+                            <View style={styles.header}>
+                                <View style={styles.headerLeft}>
+                                    <View style={styles.titleRow}>
+                                        <Text style={styles.headerTitle}>{groupDisplayName}</Text>
+                                        <LevelBadge level={groupData.level} size="small" showTooltipOnPress={false} />
                                     </View>
-                                )}
-                                <Ionicons
-                                    name="chevron-forward"
-                                    size={18}
-                                    color={colors.textTertiary}
-                                />
+                                    <Text style={styles.progressText}>
+                                        {Math.round(groupData.progress)}% to next level
+                                    </Text>
+                                </View>
                             </View>
-                        </TouchableOpacity>
-                    ))
-                )}
 
-                <View style={styles.infoFooter}>
-                    <Ionicons name="shield-checkmark" size={14} color={colors.textTertiary} />
-                    <Text style={styles.infoFooterText}>
-                        Levels based on global strength standards
-                    </Text>
+                            {/* Exercise List */}
+                            <ScrollView
+                                style={styles.scrollView}
+                                contentContainerStyle={styles.scrollContent}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                <Text style={styles.sectionTitle}>
+                                    {groupDisplayName} Strength
+                                </Text>
+
+                                {allMuscleExercises.length === 0 ? (
+                                    <EmptyState
+                                        icon="body-outline"
+                                        title="No exercises available"
+                                        description={`We don't have any tracked exercises for ${groupDisplayName} yet.`}
+                                    />
+                                ) : (
+                                    allMuscleExercises.map((exercise, index) => (
+                                        <TouchableOpacity
+                                            key={exercise.exerciseId || exercise.exerciseName}
+                                            style={[
+                                                styles.exerciseCard,
+                                                isDark && exercise.isDone && { backgroundColor: colors.rowTint },
+                                                !exercise.isDone && styles.untrackedCard,
+                                                index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
+                                            ]}
+                                            onPress={() => exercise.exerciseId && navigateToExercise(exercise.exerciseId)}
+                                            activeOpacity={0.7}
+                                            disabled={!exercise.exerciseId}
+                                        >
+                                            <View style={styles.exerciseLeft}>
+                                                <View style={styles.thumbnailContainer}>
+                                                    <ExerciseMediaThumbnail
+                                                        gifUrl={exercise.gifUrl}
+                                                        style={StyleSheet.flatten([
+                                                            styles.exerciseThumbnail, 
+                                                            !exercise.isDone && styles.untrackedThumbnail
+                                                        ]) as ViewStyle}
+                                                    />
+                                                    {!exercise.isDone && (
+                                                        <View style={styles.lockOverlay}>
+                                                            <Ionicons name="lock-closed" size={14} color="#FFF" />
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                <View style={styles.exerciseInfo}>
+                                                    <Text style={[styles.exerciseName, !exercise.isDone && styles.untrackedText]}>
+                                                        {exercise.exerciseName}
+                                                    </Text>
+                                                    {exercise.isDone ? (
+                                                        <Text style={styles.exerciseWeight}>
+                                                            Est. 1RM: {formatWeight(exercise.max1RM, {
+                                                                maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                                                            })}
+                                                        </Text>
+                                                    ) : (
+                                                        <Text style={styles.exerciseStatus}>Not yet tracked</Text>
+                                                    )}
+                                                </View>
+                                            </View>
+
+                                            <View style={styles.exerciseRight}>
+                                                {exercise.strengthInfo && (
+                                                    <View
+                                                        style={[
+                                                            styles.levelBadgeItem,
+                                                            {
+                                                                backgroundColor: getLevelColor(
+                                                                    exercise.strengthInfo.level as any,
+                                                                ),
+                                                            },
+                                                        ]}
+                                                    >
+                                                        <Text style={styles.levelText}>{exercise.strengthInfo.level}</Text>
+                                                    </View>
+                                                )}
+                                                <Ionicons
+                                                    name="chevron-forward"
+                                                    size={18}
+                                                    color={colors.textTertiary}
+                                                />
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))
+                                )}
+
+                                <View style={styles.infoFooter}>
+                                    <Ionicons name="shield-checkmark" size={14} color={colors.textTertiary} />
+                                    <Text style={styles.infoFooterText}>
+                                        Levels based on global strength standards
+                                    </Text>
+                                </View>
+                            </ScrollView>
+                        </>
+                    )}
                 </View>
-            </ScrollView>
+            </SlideUpView>
         </View>
     )
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     StyleSheet.create({
-        container: {
+        backdrop: {
             flex: 1,
-            backgroundColor: colors.background,
+            backgroundColor: 'transparent',
+        },
+        backdropPress: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0,0,0,0.25)',
+        },
+        sheetWrapper: {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+        },
+        sheetContainer: {
+            flex: 1,
+            backgroundColor: colors.surfaceSheet,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            overflow: 'hidden',
         },
         header: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
-            backgroundColor: colors.background,
+            backgroundColor: colors.surfaceSheet,
             padding: 20,
             paddingTop: 16,
             borderBottomWidth: 1,
@@ -267,7 +305,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         headerTitle: {
             fontSize: 22,
             fontWeight: '700',
-            color: colors.text,
+            color: colors.textPrimary,
         },
         titleRow: {
             flexDirection: 'row',
@@ -283,7 +321,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         },
         scrollView: {
             flex: 1,
-            backgroundColor: colors.background,
+            backgroundColor: colors.surfaceSheet,
         },
         scrollContent: {
             padding: 20,
@@ -291,14 +329,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         sectionTitle: {
             fontSize: 22,
             fontWeight: '700',
-            color: colors.text,
+            color: colors.textPrimary,
             marginBottom: 16,
         },
         exerciseCard: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: colors.feedCardBackground,
+            backgroundColor: colors.surfaceCard,
             borderRadius: 16,
             padding: 16,
             marginBottom: 12,
@@ -331,7 +369,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         exerciseName: {
             fontSize: 16,
             fontWeight: '700',
-            color: colors.text,
+            color: colors.textPrimary,
             marginBottom: 2,
             letterSpacing: -0.4,
         },
@@ -355,7 +393,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             fontWeight: '700',
         },
         untrackedCard: {
-            backgroundColor: colors.background,
+            backgroundColor: colors.bg,
         },
         thumbnailContainer: {
             position: 'relative',
@@ -372,7 +410,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,
-            borderColor: colors.background,
+            borderColor: colors.bg,
         },
         untrackedText: {
             color: colors.textSecondary,

@@ -1854,7 +1854,7 @@ export default function CreatePostScreen() {
       <SlideUpView
         key={slideKey}
         style={{ flex: 1 }}
-        backgroundColor={colors.background}
+        backgroundColor={colors.bg}
         fade={true}
         fadeFrom={0}
         duration={200}
@@ -1869,7 +1869,7 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="chevron-down" size={24} color={colors.text} />
+            <Ionicons name="chevron-down" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.headerCenter}>
@@ -1885,7 +1885,7 @@ export default function CreatePostScreen() {
               <Ionicons
                 name="checkmark-circle"
                 size={16}
-                color={colors.primary}
+                color={colors.brandPrimary}
               />
               <Text style={styles.draftSavedText}>Draft saved</Text>
             </Animated.View>
@@ -1912,7 +1912,7 @@ export default function CreatePostScreen() {
                   transform: [{ scale: buttonScaleAnim }],
                 }}
               >
-                <Ionicons name="checkmark" size={24} color={colors.white} />
+                <Ionicons name="checkmark" size={24} color={colors.surface} />
               </Animated.View>
             </TouchableOpacity>
           </View>
@@ -1949,8 +1949,8 @@ export default function CreatePostScreen() {
                 editable={!isRecording && !isTranscribing}
                 maxLength={50}
                 autoFocus={false}
-                cursorColor={colors.primary}
-                selectionColor={colors.primary}
+                cursorColor={colors.brandPrimary}
+                selectionColor={colors.brandPrimary}
               />
               <TouchableOpacity
                 style={styles.chatButton}
@@ -1965,7 +1965,7 @@ export default function CreatePostScreen() {
                 <Ionicons
                   name="chatbubble-ellipses-outline"
                   size={28}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                 />
               </TouchableOpacity>
             </View>
@@ -1998,7 +1998,7 @@ export default function CreatePostScreen() {
                 ref={notesInputRef}
                 style={[
                   styles.notesInput,
-                  { color: colors.text },
+                  { color: colors.textPrimary },
                   isStructuredMode &&
                     (structuredData.length > 0 || selectedRoutine) &&
                     styles.notesInputWithStructured,
@@ -2018,8 +2018,8 @@ export default function CreatePostScreen() {
                 textAlignVertical="top"
                 editable={!isRecording && !isTranscribing}
                 autoFocus={false}
-                cursorColor={colors.primary}
-                selectionColor={colors.primary}
+                cursorColor={colors.brandPrimary}
+                selectionColor={colors.brandPrimary}
                 onSelectionChange={handleNotesSelectionChange}
                 onFocus={() => {
                   setIsNotesFocused(true)
@@ -2176,7 +2176,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     keyboardView: {
       flex: 1,
@@ -2208,11 +2208,11 @@ const createStyles = (
     headerTimerText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       fontVariant: ['tabular-nums'],
     },
     primaryButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 20,
       paddingHorizontal: 16,
       height: 44,
@@ -2235,13 +2235,13 @@ const createStyles = (
       gap: 6,
       paddingHorizontal: 12,
       paddingVertical: 6,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 16,
     },
     draftSavedText: {
       fontSize: 13,
       fontWeight: '500',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     loaderContainer: {
       width: 28,
@@ -2289,7 +2289,7 @@ const createStyles = (
       flex: 1,
       fontSize: 30,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: Platform.OS === 'ios' ? 36 : 34,
       paddingVertical: Platform.OS === 'ios' ? 6 : 4,
     },
@@ -2332,7 +2332,7 @@ const createStyles = (
       paddingBottom: 20,
       fontSize: 17,
       lineHeight: 24,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     notesInputWithStructured: {
       paddingTop: 8,
@@ -2361,7 +2361,7 @@ const createStyles = (
       marginBottom: 8,
     },
     exampleCard: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 16,
       borderWidth: 1,
@@ -2398,7 +2398,7 @@ const createStyles = (
       aspectRatio: 16 / 9,
       borderRadius: 12,
       overflow: 'hidden',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -2410,7 +2410,7 @@ const createStyles = (
       ...StyleSheet.absoluteFillObject,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     removeImageButton: {
       position: 'absolute',
@@ -2436,7 +2436,7 @@ const createStyles = (
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       paddingBottom: insets.bottom,

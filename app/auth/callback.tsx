@@ -36,7 +36,7 @@ export default function AuthCallback() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={colors.primary} />
+      <ActivityIndicator size="large" color={colors.brandPrimary} />
       <Text style={styles.text}>Signing you in...</Text>
     </View>
   )
@@ -48,11 +48,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     text: {
       marginTop: 16,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

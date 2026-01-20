@@ -18,7 +18,7 @@ export default function TutorialScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       edges={['top']}
     >
       <Stack.Screen
@@ -35,7 +35,7 @@ export default function TutorialScreen() {
             style={styles.backButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-back" size={28} color={colors.text} />
+            <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
         }
       />

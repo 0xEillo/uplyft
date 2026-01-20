@@ -118,8 +118,8 @@ export function WeightInputModal({
                   style={[
                     styles.unitButton,
                     weightUnit === unit && {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.primary,
+                      backgroundColor: colors.brandPrimary,
+                      borderColor: colors.brandPrimary,
                     },
                   ]}
                   onPress={() => handleWeightUnitToggle(unit)}
@@ -128,7 +128,7 @@ export function WeightInputModal({
                   <Text
                     style={[
                       styles.unitButtonText,
-                      weightUnit === unit && { color: colors.white },
+                      weightUnit === unit && { color: colors.surface },
                     ]}
                   >
                     {unit.toUpperCase()}
@@ -142,8 +142,8 @@ export function WeightInputModal({
               <TextInput
                 style={[
                   styles.input,
-                  { borderColor: weightError ? colors.error : colors.border },
-                  { backgroundColor: colors.backgroundLight }
+                  { borderColor: weightError ? colors.statusError : colors.border },
+                  { backgroundColor: colors.surfaceSubtle }
                 ]}
                 value={weightInput}
                 onChangeText={handleWeightChange}
@@ -167,7 +167,7 @@ export function WeightInputModal({
               style={[
                 styles.saveButton,
                 {
-                  backgroundColor: colors.text,
+                  backgroundColor: colors.textPrimary,
                 },
                 (!hasValidWeight || isSaving) && { opacity: 0.5 }
               ]}
@@ -179,7 +179,7 @@ export function WeightInputModal({
                 style={[
                   styles.saveButtonText,
                   {
-                    color: colors.background,
+                    color: colors.bg,
                   },
                 ]}
               >
@@ -206,7 +206,7 @@ const createStyles = (colors: Colors) =>
     modalContainer: {
       width: '100%',
       maxWidth: 400,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       shadowColor: '#000',
@@ -226,7 +226,7 @@ const createStyles = (colors: Colors) =>
     title: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
     },
     content: {
@@ -245,7 +245,7 @@ const createStyles = (colors: Colors) =>
       borderRadius: 12,
       borderWidth: 2,
       borderColor: colors.border,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       minWidth: 80,
       alignItems: 'center',
     },
@@ -261,7 +261,7 @@ const createStyles = (colors: Colors) =>
     input: {
       fontSize: 32,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       paddingVertical: 16,
       paddingHorizontal: 20,
       borderRadius: 16,
@@ -271,7 +271,7 @@ const createStyles = (colors: Colors) =>
     },
     errorText: {
       fontSize: 13,
-      color: colors.error,
+      color: colors.statusError,
       textAlign: 'center',
     },
     footer: {

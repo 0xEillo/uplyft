@@ -23,19 +23,19 @@ export const ExploreCard = memo(() => {
         style={[
           styles.container,
           {
-            backgroundColor: colors.feedCardBackground,
+            backgroundColor: colors.surfaceCard,
             borderColor: colors.border,
           },
         ]}
       >
         {/* Left: Icon Container */}
         <View style={styles.iconContainer}>
-          <Ionicons name="compass-outline" size={24} color={colors.primary} />
+          <Ionicons name="compass-outline" size={24} color={colors.brandPrimary} />
         </View>
 
         {/* Middle: Content */}
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
             Explore
           </Text>
         </View>
@@ -45,7 +45,7 @@ export const ExploreCard = memo(() => {
           style={[
             styles.arrowContainer,
             {
-              backgroundColor: colors.background,
+              backgroundColor: colors.bg,
             },
           ]}
         >

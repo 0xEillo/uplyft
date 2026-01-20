@@ -13,10 +13,12 @@ import {
     type WorkoutIntensity,
 } from '@/hooks/useRecoveryData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { SlideUpView } from '@/components/slide-up-view'
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router'
-import React from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import React, { useState } from 'react'
 import {
+    TouchableOpacity,
     StyleSheet,
     Text,
     View,
@@ -26,6 +28,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 export default function RecoveryDetailScreen() {
     const colors = useThemedColors()
     const insets = useSafeAreaInsets()
+    const router = useRouter()
+    const [shouldExit, setShouldExit] = useState(false)
     const params = useLocalSearchParams<{
         muscleGroup: string
         recoveryStatus: RecoveryStatus
@@ -127,65 +131,98 @@ export default function RecoveryDetailScreen() {
     const styles = createStyles(colors)
 
     return (
-        <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.title}>{muscleGroup}</Text>
-            </View>
-
-            {/* Status Badge */}
-            <View style={styles.statusSection}>
-                <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-                    <Ionicons name={icon} size={20} color={statusColor} />
-                    <Text style={[styles.statusText, { color: statusColor }]}>
-                        {getRecoveryLabel(recoveryStatus)}
-                    </Text>
-                </View>
-            </View>
-
-            {/* Last Worked Info */}
-            {recoveryStatus !== 'untrained' && (
-                <View style={styles.infoSection}>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Last Trained</Text>
-                        <Text style={styles.infoValue}>{timeAgo}</Text>
+        <View style={styles.backdrop}>
+            <TouchableOpacity
+                style={styles.backdropPress}
+                activeOpacity={1}
+                onPress={() => setShouldExit(true)}
+            />
+            <SlideUpView
+                style={styles.sheetWrapper}
+                backgroundColor="transparent"
+                shouldExit={shouldExit}
+                onExitComplete={() => router.back()}
+                duration={260}
+                tension={50}
+                friction={8}
+            >
+                <View style={[styles.sheetContainer, { paddingBottom: insets.bottom + 16 }]}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <Text style={styles.title}>{muscleGroup}</Text>
                     </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Date</Text>
-                        <Text style={styles.infoValue}>{lastDate}</Text>
+
+                    {/* Status Badge */}
+                    <View style={styles.statusSection}>
+                        <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                            <Ionicons name={icon} size={20} color={statusColor} />
+                            <Text style={[styles.statusText, { color: statusColor }]}>
+                                {getRecoveryLabel(recoveryStatus)}
+                            </Text>
+                        </View>
                     </View>
-                    {intensity && (
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Workout Intensity</Text>
-                            <Text style={styles.infoValue}>{formatIntensity(intensity)}</Text>
+
+                    {/* Last Worked Info */}
+                    {recoveryStatus !== 'untrained' && (
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Last Trained</Text>
+                                <Text style={styles.infoValue}>{timeAgo}</Text>
+                            </View>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Date</Text>
+                                <Text style={styles.infoValue}>{lastDate}</Text>
+                            </View>
+                            {intensity && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoLabel}>Workout Intensity</Text>
+                                    <Text style={styles.infoValue}>{formatIntensity(intensity)}</Text>
+                                </View>
+                            )}
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Recovery Progress</Text>
+                                <Text style={[styles.infoValue, { color: statusColor }]}>{recoveryPercentage}%</Text>
+                            </View>
+                            {recoveryTimeHours && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoLabel}>Recovery Needed</Text>
+                                    <Text style={styles.infoValue}>{formatRecoveryTime(recoveryTimeHours)}</Text>
+                                </View>
+                            )}
                         </View>
                     )}
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Recovery Progress</Text>
-                        <Text style={[styles.infoValue, { color: statusColor }]}>{recoveryPercentage}%</Text>
-                    </View>
-                    {recoveryTimeHours && (
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Recovery Needed</Text>
-                            <Text style={styles.infoValue}>{formatRecoveryTime(recoveryTimeHours)}</Text>
-                        </View>
-                    )}
-                </View>
-            )}
 
-            {/* Message */}
-            <View style={styles.messageSection}>
-                <Text style={styles.message}>{message}</Text>
-            </View>
+                    {/* Message */}
+                    <View style={styles.messageSection}>
+                        <Text style={styles.message}>{message}</Text>
+                    </View>
+                </View>
+            </SlideUpView>
         </View>
     )
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     StyleSheet.create({
-        container: {
+        backdrop: {
             flex: 1,
-            backgroundColor: colors.background,
+            backgroundColor: 'transparent',
+        },
+        backdropPress: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0,0,0,0.25)',
+        },
+        sheetWrapper: {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+        },
+        sheetContainer: {
+            backgroundColor: colors.surfaceSheet,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            overflow: 'hidden',
             padding: 20,
             paddingTop: 16,
         },
@@ -195,7 +232,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         title: {
             fontSize: 22,
             fontWeight: '700',
-            color: colors.text,
+            color: colors.textPrimary,
         },
         statusSection: {
             alignItems: 'flex-start',
@@ -214,7 +251,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             fontWeight: '700',
         },
         infoSection: {
-            backgroundColor: colors.backgroundLight,
+            backgroundColor: colors.surfaceSubtle,
             borderRadius: 12,
             padding: 16,
             gap: 12,
@@ -232,10 +269,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         infoValue: {
             fontSize: 14,
             fontWeight: '600',
-            color: colors.text,
+            color: colors.textPrimary,
         },
         messageSection: {
-            backgroundColor: colors.backgroundLight,
+            backgroundColor: colors.surfaceSubtle,
             borderRadius: 12,
             padding: 16,
         },

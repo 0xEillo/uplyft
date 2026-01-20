@@ -122,10 +122,10 @@ export function ImagePickerModal({
                 <View
                   style={[
                     styles.optionIcon,
-                    { backgroundColor: colors.primary },
+                    { backgroundColor: colors.brandPrimary },
                   ]}
                 >
-                  <Ionicons name="scan" size={28} color={colors.white} />
+                  <Ionicons name="scan" size={28} color={colors.surface} />
                 </View>
                 <View style={styles.optionTextContainer}>
                   <Text style={styles.optionLabel}>Scan Workout</Text>
@@ -153,7 +153,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     bottomSheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       paddingBottom: 34,
@@ -183,7 +183,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sheetTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: 0.3,
     },
     optionsContainer: {
@@ -194,7 +194,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     optionButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       padding: 18,
       borderRadius: 16,
       borderWidth: 1,
@@ -220,7 +220,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     optionLabel: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: 0.1,
     },
     optionDescription: {

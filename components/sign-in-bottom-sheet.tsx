@@ -148,10 +148,10 @@ export function SignInBottomSheet({
               hapticEnabled={!isGoogleLoading}
             >
               {isGoogleLoading ? (
-                <ActivityIndicator color={colors.text} />
+                <ActivityIndicator color={colors.textPrimary} />
               ) : (
                 <>
-                  <Ionicons name="logo-google" size={20} color={colors.text} />
+                  <Ionicons name="logo-google" size={20} color={colors.textPrimary} />
                   <Text style={styles.googleButtonText}>
                     Sign in with Google
                   </Text>
@@ -160,7 +160,7 @@ export function SignInBottomSheet({
             </HapticButton>
 
             <HapticButton style={styles.emailButton} onPress={handleEmailSignIn}>
-              <Ionicons name="mail-outline" size={20} color={colors.buttonText} />
+              <Ionicons name="mail-outline" size={20} color={colors.onPrimary} />
               <Text style={styles.emailButtonText}>Sign in with Email</Text>
             </HapticButton>
           </View>
@@ -184,7 +184,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     sheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       paddingHorizontal: 24,
@@ -202,7 +202,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 24,
       textAlign: 'center',
     },
@@ -225,7 +225,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     googleButton: {
       height: 56,
-      backgroundColor: colors.inputBackground,
+      backgroundColor: colors.surfaceInput,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 28,
@@ -235,13 +235,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 12,
     },
     googleButtonText: {
-      color: colors.text,
+      color: colors.textPrimary,
       fontSize: 17,
       fontWeight: '600',
     },
     emailButton: {
       height: 56,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
@@ -249,7 +249,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 12,
     },
     emailButtonText: {
-      color: colors.buttonText,
+      color: colors.onPrimary,
       fontSize: 17,
       fontWeight: '700',
     },

@@ -416,7 +416,7 @@ export default function TrialOfferScreen() {
             onPress={handleSkipTrial}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
-            <Ionicons name="close" size={24} color={colors.text} />
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -425,7 +425,7 @@ export default function TrialOfferScreen() {
             disabled={isRestoring || isPurchasing}
           >
             {isRestoring ? (
-              <ActivityIndicator size="small" color={colors.text} />
+              <ActivityIndicator size="small" color={colors.textPrimary} />
             ) : (
               <Text style={styles.restoreButtonText}>Restore</Text>
             )}
@@ -508,8 +508,8 @@ export default function TrialOfferScreen() {
               <Switch
                 value={isTrialEnabled}
                 onValueChange={setIsTrialEnabled}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.backgroundWhite}
+                trackColor={{ false: colors.border, true: colors.brandPrimary }}
+                thumbColor={colors.surface}
                 ios_backgroundColor={colors.border}
               />
             </View>
@@ -523,7 +523,7 @@ export default function TrialOfferScreen() {
             activeOpacity={0.8}
           >
             {isPurchasing ? (
-              <ActivityIndicator color={colors.background} />
+              <ActivityIndicator color={colors.bg} />
             ) : (
               <Text style={styles.mainButtonText}>{buttonText}</Text>
             )}
@@ -553,12 +553,12 @@ function createStyles(
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
     },
     heroImageContainer: {
       width: '100%',
       height: height * 0.4,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       position: 'relative',
     },
     heroImage: {
@@ -580,7 +580,7 @@ function createStyles(
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: colors.shadow,
@@ -589,7 +589,7 @@ function createStyles(
       shadowOffset: { width: 0, height: 4 },
     },
     restoreButton: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 22,
@@ -597,11 +597,11 @@ function createStyles(
     restoreButtonText: {
       fontSize: 15,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     whiteSection: {
       flex: 1,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
     },
     heroSection: {
       alignItems: 'center',
@@ -613,7 +613,7 @@ function createStyles(
     heroTitle: {
       fontSize: 32,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       lineHeight: 38,
       letterSpacing: -0.5,
@@ -631,7 +631,7 @@ function createStyles(
     },
     planCard: {
       width: '100%',
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 18,
       height: 74,
       borderWidth: 1,
@@ -645,8 +645,8 @@ function createStyles(
     },
     planCardSelected: {
       height: 82,
-      borderColor: colors.primary,
-      backgroundColor: colors.backgroundWhite,
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.surface,
     },
     cardInner: {
       flex: 1,
@@ -671,10 +671,10 @@ function createStyles(
       paddingVertical: 6,
       borderRadius: 16,
       zIndex: 10,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     cardBadgeText: {
-      color: colors.backgroundWhite,
+      color: colors.surface,
       fontSize: 12,
       fontWeight: '700',
     },
@@ -685,7 +685,7 @@ function createStyles(
       marginBottom: 4,
     },
     planLabelSelected: {
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '700',
     },
     planPrice: {
@@ -694,7 +694,7 @@ function createStyles(
       color: colors.textSecondary,
     },
     planPriceSelected: {
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '700',
     },
     planSubtitle: {
@@ -706,7 +706,7 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 20,
       paddingHorizontal: 20,
       height: 56,
@@ -722,7 +722,7 @@ function createStyles(
     trialToggleText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
     },
     switchContainer: {
@@ -732,11 +732,11 @@ function createStyles(
     mainButton: {
       width: '100%',
       height: 64,
-      backgroundColor: colors.text,
+      backgroundColor: colors.textPrimary,
       borderRadius: 32,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.text,
+      shadowColor: colors.textPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -745,7 +745,7 @@ function createStyles(
     mainButtonText: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.background,
+      color: colors.bg,
       letterSpacing: 0.3,
     },
     footerContainer: {

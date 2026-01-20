@@ -353,7 +353,7 @@ export const FeedCard = memo(function FeedCard({
                 <Ionicons
                   name="time-outline"
                   size={14}
-                  color={colors.success}
+                  color={colors.statusSuccess}
                 />
                 <Text style={styles.statLabel}>Duration</Text>
               </View>
@@ -366,7 +366,7 @@ export const FeedCard = memo(function FeedCard({
                 <Ionicons
                   name="barbell-outline"
                   size={14}
-                  color={colors.info}
+                  color={colors.statusInfo}
                 />
                 <Text style={styles.statLabel}>Volume</Text>
               </View>
@@ -379,7 +379,7 @@ export const FeedCard = memo(function FeedCard({
                 <Ionicons
                   name="trophy-outline"
                   size={14}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                 />
                 <Text style={styles.statLabel}>Records</Text>
               </View>
@@ -484,7 +484,7 @@ export const FeedCard = memo(function FeedCard({
                   <Ionicons
                     name="chevron-forward"
                     size={16}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                 </TouchableOpacity>
               )}
@@ -512,9 +512,9 @@ export const FeedCard = memo(function FeedCard({
       displayedExercises,
       hasMoreExercises,
       weightUnit,
-      colors.primary,
-      colors.info,
-      colors.success,
+      colors.brandPrimary,
+      colors.statusInfo,
+      colors.statusSuccess,
       isDark,
       exercises.length,
       styles,
@@ -646,7 +646,7 @@ export const FeedCard = memo(function FeedCard({
                 />
                 {imageLoading && (
                   <View style={styles.imageLoadingOverlay}>
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color={colors.brandPrimary} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -677,7 +677,7 @@ export const FeedCard = memo(function FeedCard({
                 style={[
                   styles.paginationDot,
                   index === activeSlide
-                    ? { backgroundColor: colors.primary, width: 20 }
+                    ? { backgroundColor: colors.brandPrimary, width: 20 }
                     : { backgroundColor: colors.textSecondary, opacity: 0.3 },
                 ]}
               />
@@ -700,7 +700,7 @@ export const FeedCard = memo(function FeedCard({
             <Ionicons
               name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
               size={20}
-              color={isLiked ? colors.primary : colors.textSecondary}
+              color={isLiked ? colors.brandPrimary : colors.textSecondary}
             />
             {likeCount > 0 && (
               <Text style={styles.socialActionCount}>{likeCount}</Text>
@@ -775,7 +775,7 @@ export const FeedCard = memo(function FeedCard({
               />
               {fullscreenImageLoading && (
                 <View style={styles.fullscreenLoadingOverlay}>
-                  <ActivityIndicator size="large" color={colors.white} />
+                  <ActivityIndicator size="large" color={colors.surface} />
                 </View>
               )}
             </View>
@@ -818,7 +818,7 @@ function createStyles(
 ) {
   return StyleSheet.create({
     card: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       paddingHorizontal: 14,
       paddingTop: 18,
       paddingBottom: 0,
@@ -843,12 +843,12 @@ function createStyles(
       width: 41,
       height: 41,
       borderRadius: 21,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarText: {
-      color: colors.white,
+      color: colors.surface,
       fontSize: 18,
       fontWeight: '600',
     },
@@ -860,7 +860,7 @@ function createStyles(
     userName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     timeAgo: {
       fontSize: 13,
@@ -879,7 +879,7 @@ function createStyles(
     routineLink: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     titleContainer: {
       // Container for clickable title/description area
@@ -890,12 +890,12 @@ function createStyles(
     workoutTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 8,
     },
     workoutDescription: {
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: 4,
       marginBottom: 12,
       lineHeight: 22,
@@ -904,14 +904,14 @@ function createStyles(
       marginBottom: 12,
       borderRadius: 12,
       overflow: 'hidden',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       position: 'relative',
     },
     tableHeader: {
       flexDirection: 'row',
       paddingVertical: 8,
       paddingHorizontal: 4,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
     },
     tableHeaderText: {
@@ -931,16 +931,16 @@ function createStyles(
       paddingHorizontal: 4,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     tableRowWithPR: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
     },
     lastRow: {
       borderBottomWidth: 0,
     },
     prBadge: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderRadius: 9999,
@@ -952,11 +952,11 @@ function createStyles(
     prBadgeText: {
       fontSize: 10,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
       letterSpacing: 0.5,
     },
     prBadgeSmall: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 4,
       paddingVertical: 1,
       borderRadius: 9999,
@@ -972,12 +972,12 @@ function createStyles(
     prBadgeTextSmall: {
       fontSize: 9,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
       letterSpacing: 0.5,
     },
     tableCell: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     exerciseCol: {
       flex: 3,
@@ -1015,7 +1015,7 @@ function createStyles(
     },
     exerciseName: {
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     exerciseNameText: {
       flex: 1,
@@ -1027,7 +1027,7 @@ function createStyles(
       gap: 4,
     },
     setDetailsContainer: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderBottomWidth: 1,
@@ -1036,7 +1036,7 @@ function createStyles(
     fullExerciseName: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       paddingHorizontal: 16,
       paddingTop: 4,
       paddingBottom: 8,
@@ -1049,7 +1049,7 @@ function createStyles(
       paddingHorizontal: 16,
     },
     setDetailRowWithPR: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     setDetailLabel: {
       fontSize: 13,
@@ -1059,13 +1059,13 @@ function createStyles(
     },
     setDetailReps: {
       fontSize: 13,
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
       textAlign: 'center',
     },
     setDetailWeight: {
       fontSize: 13,
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
       textAlign: 'right',
     },
@@ -1077,7 +1077,7 @@ function createStyles(
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       maxHeight: 380,
     },
     workoutImage: {
@@ -1088,7 +1088,7 @@ function createStyles(
       ...StyleSheet.absoluteFillObject,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     imageModalOverlay: {
       flex: 1,
@@ -1112,7 +1112,7 @@ function createStyles(
       alignItems: 'center',
     },
     analyzingBadge: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 12,
@@ -1120,7 +1120,7 @@ function createStyles(
     analyzingText: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     exerciseRow: {
       flexDirection: 'row',
@@ -1128,7 +1128,7 @@ function createStyles(
       alignItems: 'center',
       paddingVertical: 12,
       paddingHorizontal: 12,
-      backgroundColor: colors.exerciseRowTint,
+      backgroundColor: colors.rowTint,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -1151,7 +1151,7 @@ function createStyles(
     exerciseNameSimple: {
       fontSize: 14,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
     },
     setsText: {
@@ -1165,14 +1165,14 @@ function createStyles(
       justifyContent: 'center',
       gap: 6,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
     seeMoreText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       letterSpacing: -0.2,
     },
     statsContainer: {
@@ -1183,7 +1183,7 @@ function createStyles(
       marginTop: 8,
       marginBottom: 16,
       borderRadius: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1206,7 +1206,7 @@ function createStyles(
     statValue: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     skeletonBar: {
       height: 14,

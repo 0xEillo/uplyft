@@ -429,10 +429,10 @@ export default function FeedScreen() {
     if (!isLoadingMore) return null
     return (
       <View style={styles.loadingMoreContainer}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.brandPrimary} />
       </View>
     )
-  }, [isLoadingMore, colors.primary, styles.loadingMoreContainer])
+  }, [isLoadingMore, colors.brandPrimary, styles.loadingMoreContainer])
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -466,7 +466,7 @@ export default function FeedScreen() {
                 <Ionicons 
                   name="flame" 
                   size={24} 
-                  color={colors.primary} 
+                  color={colors.brandPrimary} 
                   style={{ marginTop: 2 }} // Moved down by 2px (1px requested, but 2 looks better usually)
                 />
                 <View style={[styles.streakBadge, { bottom: -3 }]}> 
@@ -482,7 +482,7 @@ export default function FeedScreen() {
               onPress={() => router.push('/search')}
               style={styles.iconButton}
             >
-              <Ionicons name="search-outline" size={24} color={colors.text} />
+              <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/notifications')}
@@ -493,7 +493,7 @@ export default function FeedScreen() {
                   unreadCount > 0 ? 'notifications' : 'notifications-outline'
                 }
                 size={24}
-                color={colors.text}
+                color={colors.textPrimary}
               />
               <NotificationBadge count={unreadCount} />
             </TouchableOpacity>
@@ -503,7 +503,7 @@ export default function FeedScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
         <FlatList
@@ -513,7 +513,7 @@ export default function FeedScreen() {
             <View
               style={{
                 height: 8,
-                backgroundColor: colors.feedCardSeparator,
+                backgroundColor: colors.separator,
               }}
             />
           )}
@@ -561,7 +561,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     headerTitleContainer: {
       flexDirection: 'row',
@@ -577,19 +577,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       bottom: -4,
       right: -6,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderRadius: 8,
       paddingHorizontal: 2,
       borderWidth: 1,
-      borderColor: colors.background,
+      borderColor: colors.bg,
     },
     streakBadgeText: {
       fontSize: 10,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     proBadge: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 8,
@@ -597,7 +597,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     proBadgeText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.buttonText,
+      color: colors.onPrimary,
     },
     repAiBadge: {
       paddingHorizontal: 0,
@@ -607,7 +607,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     repAiBadgeText: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     headerActions: {
       flexDirection: 'row',
@@ -644,11 +644,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 100,
     },
     emptyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 24,
       paddingVertical: 14,
       borderRadius: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,

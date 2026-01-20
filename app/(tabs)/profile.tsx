@@ -14,9 +14,9 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    calculateTotalVolume,
-    calculateWorkoutStats,
-    formatVolume,
+  calculateTotalVolume,
+  calculateWorkoutStats,
+  formatVolume,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,14 +24,14 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Animated,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -308,7 +308,7 @@ export default function ProfileScreen() {
               <Text
                 style={[
                   styles.gridItemTitle,
-                  !workout.image_url && { color: colors.text },
+                  !workout.image_url && { color: colors.textPrimary },
                 ]}
                 numberOfLines={1}
               >
@@ -384,10 +384,10 @@ export default function ProfileScreen() {
     if (!isLoadingMore) return null
     return (
       <View style={styles.loadingMoreContainer}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.brandPrimary} />
       </View>
     )
-  }, [isLoadingMore, colors.primary, styles])
+  }, [isLoadingMore, colors.brandPrimary, styles])
 
   const renderEmptyState = useCallback(() => {
     if (isLoading) return null
@@ -405,7 +405,7 @@ export default function ProfileScreen() {
 
   const navbarBgColor = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: ['transparent', colors.background],
+    outputRange: ['transparent', colors.bg],
     extrapolate: 'clamp',
   })
 
@@ -422,7 +422,7 @@ export default function ProfileScreen() {
   })
 
   // Theme-aware starting color for navbar elements over the image
-  const startColor = isDark ? '#F5F5F5' : colors.text
+  const startColor = isDark ? '#F5F5F5' : colors.textPrimary
 
   // Animation interpolations for the cover photo
   const coverTranslateY = scrollY.interpolate({
@@ -471,7 +471,7 @@ export default function ProfileScreen() {
                 style={[
                   styles.headerTitle,
                   {
-                    color: colors.text,
+                    color: colors.textPrimary,
                     opacity: themedOpacity,
                     position: 'absolute',
                   },
@@ -496,7 +496,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="settings-outline"
                     size={24}
-                    color={colors.text}
+                    color={colors.textPrimary}
                   />
                 </Animated.View>
               </View>
@@ -507,7 +507,7 @@ export default function ProfileScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
         <FlatList
@@ -519,7 +519,7 @@ export default function ProfileScreen() {
               <View
                 style={{
                   height: 8,
-                  backgroundColor: colors.feedCardSeparator,
+                  backgroundColor: colors.separator,
                 }}
               />
             ) : null
@@ -565,7 +565,7 @@ export default function ProfileScreen() {
                   colors={[
                     isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
                     isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
-                    colors.background,
+                    colors.bg,
                   ]}
                   locations={[0, 0.6, 1]}
                   style={styles.coverBottomGradient}
@@ -590,7 +590,7 @@ export default function ProfileScreen() {
                         <Ionicons
                           name="person"
                           size={42}
-                          color={colors.white}
+                          color={colors.surface}
                         />
                       </View>
                     )}
@@ -704,7 +704,7 @@ export default function ProfileScreen() {
                       size={20}
                       color={
                         viewMode === 'feed'
-                          ? colors.white
+                          ? colors.surface
                           : colors.textSecondary
                       }
                     />
@@ -721,7 +721,7 @@ export default function ProfileScreen() {
                       size={18}
                       color={
                         viewMode === 'grid'
-                          ? colors.white
+                          ? colors.surface
                           : colors.textSecondary
                       }
                     />
@@ -759,7 +759,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     navbarContainer: {
       position: 'absolute',
@@ -797,12 +797,12 @@ const createStyles = (
       paddingBottom: 90,
     },
     profileHeader: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       position: 'relative',
       minHeight: 280,
     },
     coverContainer: {
-      height: 300, // Reduced height as requested
+      height: 240, // Reduced height as requested
       width: '100%',
       position: 'absolute',
       top: 0,
@@ -817,7 +817,7 @@ const createStyles = (
       opacity: isDark ? 0.7 : 0.9,
     },
     coverPlaceholder: {
-      backgroundColor: colors.primary + '20',
+      backgroundColor: colors.brandPrimary + '20',
     },
     coverGradient: {
       position: 'absolute',
@@ -849,7 +849,7 @@ const createStyles = (
       borderRadius: 45,
     },
     avatarPlaceholder: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -871,7 +871,7 @@ const createStyles = (
     displayName: {
       fontSize: 26,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 0,
       flexShrink: 1,
     },
@@ -903,7 +903,7 @@ const createStyles = (
     statNumber: {
       fontSize: 15,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statLabel: {
       fontSize: 14,
@@ -968,7 +968,7 @@ const createStyles = (
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -979,7 +979,7 @@ const createStyles = (
       paddingHorizontal: 14,
       paddingTop: 12,
       paddingBottom: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     workoutsTitle: {
       fontSize: 15,
@@ -988,7 +988,7 @@ const createStyles = (
     },
     divider: {
       height: 4,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingMoreContainer: {
       paddingVertical: 20,
@@ -1001,11 +1001,11 @@ const createStyles = (
       justifyContent: 'center',
     },
     emptyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 24,
       paddingVertical: 14,
       borderRadius: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -1018,7 +1018,7 @@ const createStyles = (
     },
     viewToggle: {
       flexDirection: 'row',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 8,
       padding: 2,
       gap: 2,
@@ -1031,7 +1031,7 @@ const createStyles = (
       alignItems: 'center',
     },
     toggleButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     gridContent: {
       paddingHorizontal: 1, // Space for grid gaps
@@ -1041,7 +1041,7 @@ const createStyles = (
       maxWidth: '33.33%',
       aspectRatio: 1,
       margin: 1,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       overflow: 'hidden',
     },
     gridItemImage: {
@@ -1053,7 +1053,7 @@ const createStyles = (
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
+      backgroundColor: colors.surfaceCard,
     },
     gridItemGradient: {
       position: 'absolute',

@@ -281,7 +281,7 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons name="trending-up" size={24} color={colors.primary} />
+            <Ionicons name="trending-up" size={24} color={colors.brandPrimary} />
           </View>
           <View>
             <Text style={styles.title}>Volume Over Time</Text>
@@ -330,7 +330,7 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
       <View style={styles.chartContainer}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : chartData.length === 0 ? (
           <View style={styles.emptyState}>
@@ -358,15 +358,15 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
                 spacing={optimalSpacing}
                 initialSpacing={20}
                 endSpacing={10}
-                color={colors.primary}
+                color={colors.brandPrimary}
                 thickness={3}
-                startFillColor={colors.primaryLight}
-                endFillColor={colors.white}
+                startFillColor={colors.brandPrimarySoft}
+                endFillColor={colors.surface}
                 startOpacity={0.4}
                 endOpacity={0.1}
                 areaChart
                 hideDataPoints={false}
-                dataPointsColor={colors.primary}
+                dataPointsColor={colors.brandPrimary}
                 dataPointsRadius={4}
                 textColor1={colors.textSecondary}
                 textShiftY={-8}
@@ -512,12 +512,12 @@ export const VolumeProgressChart = memo(function VolumeProgressChart({
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       paddingVertical: 20,
       paddingHorizontal: 20,
       borderRadius: 16,
       borderBottomWidth: 2,
-      borderBottomColor: colors.background,
+      borderBottomColor: colors.bg,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
@@ -545,7 +545,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 2,
@@ -554,7 +554,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     subtitle: {
@@ -568,7 +568,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 12,
       borderRadius: 9999,
       alignItems: 'center',
@@ -582,17 +582,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statValue: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     statPositive: {
-      color: colors.success,
+      color: colors.statusSuccess,
     },
     statNegative: {
-      color: colors.error,
+      color: colors.statusError,
     },
     chartContainer: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 16,
       borderRadius: 12,
       minHeight: 280,
@@ -664,7 +664,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     infoModalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       maxHeight: SCREEN_HEIGHT * 0.75,
@@ -695,7 +695,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     infoModalTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
     },
     infoModalBody: {
@@ -708,7 +708,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     infoSectionTitle: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: 16,
       marginBottom: 8,
     },
@@ -720,6 +720,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     infoSectionBold: {
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

@@ -49,7 +49,7 @@ export default function CoachSelectionScreen() {
           leftContent={
             <NavbarIsland>
               <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -58,7 +58,7 @@ export default function CoachSelectionScreen() {
           }
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </SafeAreaView>
     )
@@ -70,7 +70,7 @@ export default function CoachSelectionScreen() {
         leftContent={
           <NavbarIsland>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </NavbarIsland>
         }
@@ -122,7 +122,7 @@ export default function CoachSelectionScreen() {
                 </View>
                 
                 {isSelected && (
-                  <Ionicons name="checkmark" size={20} color={colors.success} />
+                  <Ionicons name="checkmark" size={20} color={colors.statusSuccess} />
                 )}
               </TouchableOpacity>
             )
@@ -137,7 +137,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingContainer: {
       flex: 1,
@@ -153,7 +153,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     content: {
@@ -165,12 +165,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sectionTitle: {
       fontSize: 16,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 12,
       marginLeft: 4,
     },
     card: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       overflow: 'hidden',
     },
@@ -179,7 +179,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: 16,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
     },
     coachRowBorder: {
       borderBottomWidth: 1,
@@ -203,14 +203,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       bottom: -2,
       right: -2,
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 10,
       width: 20,
       height: 20,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1.5,
-      borderColor: colors.backgroundWhite,
+      borderColor: colors.surface,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
@@ -223,7 +223,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     coachName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     coachText: {

@@ -123,7 +123,7 @@ export function RecoveryBodyView() {
     <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
           <Text style={styles.loadingText}>Loading recovery data...</Text>
         </View>
       ) : (
@@ -138,8 +138,8 @@ export function RecoveryBodyView() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[colors.brandPrimary]}
+              tintColor={colors.brandPrimary}
             />
           }
         >
@@ -158,7 +158,7 @@ export function RecoveryBodyView() {
             {/* Recovery Gradient Legend */}
             <View style={styles.gradientLegendContainer}>
               <LinearGradient
-                colors={['#EF4444', '#F59E0B', '#1C1C1C']}
+                colors={['#EF4444', '#F59E0B', '#546073']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientBar}
@@ -199,7 +199,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollView: {
       flex: 1,
@@ -252,7 +252,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Summary Card
     summaryCard: {
       marginTop: 24,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 20,
       flexDirection: 'row',
@@ -270,7 +270,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     summaryValue: {
       fontSize: 28,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     summaryLabel: {

@@ -5,26 +5,26 @@ import * as ImagePicker from 'expo-image-picker'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import Animated, {
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -41,25 +41,25 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  getBMIExplanation,
-  getBMIStatus,
-  getBodyFatExplanation,
-  getBodyFatStatus,
-  getStatusColor,
-  getWeightExplanation,
-  type BMIRange,
-  type BodyFatRange,
-  type Gender,
+    getBMIExplanation,
+    getBMIStatus,
+    getBodyFatExplanation,
+    getBodyFatStatus,
+    getStatusColor,
+    getWeightExplanation,
+    type BMIRange,
+    type BodyFatRange,
+    type Gender,
 } from '@/lib/body-log/composition-analysis'
 import {
-  type BodyLogEntryWithImages,
-  type BodyLogImage,
+    type BodyLogEntryWithImages,
+    type BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-  getBodyLogImageUrls,
-  prefetchBodyLogImages,
+    getBodyLogImageUrls,
+    prefetchBodyLogImages,
 } from '@/lib/utils/body-log-storage'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -121,7 +121,7 @@ const LinearScale = ({
     >
       <View style={styles.scaleHeader}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[styles.scaleValueBig, { color: colors.text }]}>
+            <Text style={[styles.scaleValueBig, { color: colors.textPrimary }]}>
               {value}{unit}
             </Text>
             {subLabel && (
@@ -151,7 +151,7 @@ const LinearScale = ({
                     left: `${left}%`, 
                     width: `${width}%`, 
                     height: '100%', 
-                    backgroundColor: range.color || colors.primary,
+                    backgroundColor: range.color || colors.brandPrimary,
                     opacity: 0.35,
                     borderRadius: 2,
                   }} 
@@ -179,8 +179,8 @@ const LinearScale = ({
         </View>
 
         {/* Thumb */}
-        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.feedCardBackground, borderColor: colors.feedCardBackground }]}>
-           <View style={[styles.scaleThumbInner, { backgroundColor: colorResolver ? colorResolver(value) : colors.text }]} />
+        <View style={[styles.scaleThumb, { left: `${percent}%`, backgroundColor: colors.surfaceCard, borderColor: colors.surfaceCard }]}>
+           <View style={[styles.scaleThumbInner, { backgroundColor: colorResolver ? colorResolver(value) : colors.textPrimary }]} />
         </View>
         
         {/* Markers */}
@@ -1316,10 +1316,10 @@ export default function BodyLogDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </View>
     )
@@ -1327,7 +1327,7 @@ export default function BodyLogDetailScreen() {
 
   if (!entry) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loadingContainer}>
           <Text style={[styles.errorText, { color: colors.textSecondary }]}>
@@ -1350,11 +1350,11 @@ export default function BodyLogDetailScreen() {
 
   return (
     <SlideInView
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
         <Stack.Screen options={{ headerShown: false }} />
         
         <ScreenHeader
@@ -1381,17 +1381,17 @@ export default function BodyLogDetailScreen() {
            <View style={styles.photoSection}>
               {imageUrls.length === 0 ? (
                 <TouchableOpacity
-                  style={[styles.emptyPhotoState, { backgroundColor: colors.feedCardBackground, borderColor: colors.border, marginHorizontal: 20 }]}
+                  style={[styles.emptyPhotoState, { backgroundColor: colors.surfaceCard, borderColor: colors.border, marginHorizontal: 20 }]}
                   onPress={isUploadingImage ? undefined : handleAddPhotos}
                 >
                   {isUploadingImage ? (
-                    <ActivityIndicator color={colors.primary} />
+                    <ActivityIndicator color={colors.brandPrimary} />
                   ) : (
                     <>
-                      <View style={[styles.cameraIconContainer, { backgroundColor: colors.background }]}>
-                        <Ionicons name="camera" size={32} color={colors.primary} />
+                      <View style={[styles.cameraIconContainer, { backgroundColor: colors.bg }]}>
+                        <Ionicons name="camera" size={32} color={colors.brandPrimary} />
                       </View>
-                      <Text style={[styles.emptyPhotoText, { color: colors.text }]}>Add Progress Photos</Text>
+                      <Text style={[styles.emptyPhotoText, { color: colors.textPrimary }]}>Add Progress Photos</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1427,7 +1427,7 @@ export default function BodyLogDetailScreen() {
                           {
                             width: (Dimensions.get('window').width - 40 - 12) / 2,
                             height: 280,
-                            backgroundColor: colors.feedCardBackground,
+                            backgroundColor: colors.surfaceCard,
                             borderWidth: 1,
                             borderColor: colors.border
                           }
@@ -1435,10 +1435,10 @@ export default function BodyLogDetailScreen() {
                         onPress={handleAddPhotos}
                       >
                          {isUploadingImage ? (
-                           <ActivityIndicator color={colors.primary} />
+                           <ActivityIndicator color={colors.brandPrimary} />
                          ) : (
                            <>
-                             <Ionicons name="add" size={28} color={colors.primary} />
+                             <Ionicons name="add" size={28} color={colors.brandPrimary} />
                              <Text style={[styles.addPhotoSmallText, { color: colors.textSecondary }]}>Add Photo</Text>
                            </>
                          )}
@@ -1457,7 +1457,7 @@ export default function BodyLogDetailScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="scale-outline" size={18} color={colors.textSecondary} />
-                <Text style={[styles.userInfoValue, { color: colors.text }]}>
+                <Text style={[styles.userInfoValue, { color: colors.textPrimary }]}>
                   {metrics.weight_kg ? formatWeight(metrics.weight_kg) : '—'}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
@@ -1471,7 +1471,7 @@ export default function BodyLogDetailScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="resize-outline" size={18} color={colors.textSecondary} />
-                <Text style={[styles.userInfoValue, { color: colors.text }]}>
+                <Text style={[styles.userInfoValue, { color: colors.textPrimary }]}>
                   {formatHeightDisplay(userHeight)}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
@@ -1485,7 +1485,7 @@ export default function BodyLogDetailScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
-                <Text style={[styles.userInfoValue, { color: colors.text }]}>
+                <Text style={[styles.userInfoValue, { color: colors.textPrimary }]}>
                   {userGender === 'male' ? 'Male' : 'Female'}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
@@ -1500,8 +1500,8 @@ export default function BodyLogDetailScreen() {
                   
                   {/* Body Fat Section */}
                   <View>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>Body Fat</Text>
-                    <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 8 }]}>Body Fat</Text>
+                    <View style={[styles.premiumCard, { backgroundColor: colors.surfaceCard }]}>
                       <LinearScale
                         label=""
                         unit="%"
@@ -1531,8 +1531,8 @@ export default function BodyLogDetailScreen() {
 
                   {/* BMI Section */}
                   <View>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>BMI</Text>
-                    <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 8 }]}>BMI</Text>
+                    <View style={[styles.premiumCard, { backgroundColor: colors.surfaceCard }]}>
                       <LinearScale
                         label=""
                         value={metrics.bmi ?? 0}
@@ -1554,8 +1554,8 @@ export default function BodyLogDetailScreen() {
 
                   {/* Physique Section */}
                   <View>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>Physique</Text>
-                    <View style={[styles.premiumCard, { backgroundColor: colors.feedCardBackground }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 8 }]}>Physique</Text>
+                    <View style={[styles.premiumCard, { backgroundColor: colors.surfaceCard, paddingVertical: 18, paddingHorizontal: 20 }]}>
                       <View style={styles.scoreGridModern}>
                          {[
                             { label: 'Chest', score: metrics.score_chest },
@@ -1572,7 +1572,7 @@ export default function BodyLogDetailScreen() {
                                 <View style={styles.modernScoreHeader}>
                                 <Text style={[styles.modernScoreLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                               </View>
-                              <Text style={[styles.modernScoreValue, { color: colors.text }]}>{item.score ?? '--'}</Text>
+                              <Text style={[styles.modernScoreValue, { color: colors.textPrimary }]}>{item.score ?? '--'}</Text>
                               <View style={[styles.modernProgressBarBg, { backgroundColor: colors.border }]}>
                                  <View style={{ height: '100%', width: `${item.score ?? 0}%`, backgroundColor: color, borderRadius: 2 }} />
                               </View>
@@ -1600,8 +1600,8 @@ export default function BodyLogDetailScreen() {
                style={[
                  styles.bodyScanButton, 
                  { 
-                   backgroundColor: colors.text,
-                   shadowColor: colors.text,
+                   backgroundColor: colors.textPrimary,
+                   shadowColor: colors.textPrimary,
                  },
                  isRunningBodyScan && styles.bodyScanButtonDisabled
                ]}
@@ -1610,11 +1610,11 @@ export default function BodyLogDetailScreen() {
                activeOpacity={0.8}
              >
                {isRunningBodyScan ? (
-                 <ActivityIndicator color={colors.background} size="small" />
+                 <ActivityIndicator color={colors.bg} size="small" />
                ) : (
                  <>
-                   <Ionicons name="scan" size={22} color={colors.background} />
-                   <Text style={[styles.bodyScanButtonText, { color: colors.background }]}>Body Scan</Text>
+                   <Ionicons name="scan" size={22} color={colors.bg} />
+                   <Text style={[styles.bodyScanButtonText, { color: colors.bg }]}>Body Scan</Text>
                  </>
                )}
              </TouchableOpacity>
@@ -1643,9 +1643,9 @@ export default function BodyLogDetailScreen() {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             style={styles.modalOverlay}
           >
-            <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Update Height</Text>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Update Height</Text>
                 <TouchableOpacity onPress={handleHeightClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -1663,9 +1663,9 @@ export default function BodyLogDetailScreen() {
                   style={[
                     styles.heightTextInput,
                     { 
-                      color: colors.text,
-                      borderColor: heightInput && !hasValidHeight ? colors.error : colors.border,
-                      backgroundColor: colors.backgroundLight,
+                      color: colors.textPrimary,
+                      borderColor: heightInput && !hasValidHeight ? colors.statusError : colors.border,
+                      backgroundColor: colors.surfaceSubtle,
                     }
                   ]}
                   value={heightInput}
@@ -1682,7 +1682,7 @@ export default function BodyLogDetailScreen() {
                 />
 
                 {heightInput && !hasValidHeight && (
-                  <Text style={[styles.heightErrorText, { color: colors.error }]}>
+                  <Text style={[styles.heightErrorText, { color: colors.statusError }]}>
                     {isMetric 
                       ? 'Enter a valid height (100-250 cm)' 
                       : 'Enter a valid height (3\'0" - 8\'0")'}
@@ -1691,7 +1691,7 @@ export default function BodyLogDetailScreen() {
 
                 {/* Preview conversion */}
                 {hasValidHeight && heightCmFromInput && (
-                  <Text style={[styles.heightPreviewText, { color: colors.primary }]}>
+                  <Text style={[styles.heightPreviewText, { color: colors.brandPrimary }]}>
                     {isMetric 
                       ? `${(() => { const { feet, inches } = cmToFeetInches(heightCmFromInput); return `${feet}'${inches}"`; })()}` 
                       : `${heightCmFromInput} cm`}
@@ -1704,7 +1704,7 @@ export default function BodyLogDetailScreen() {
                   style={[
                     styles.modalSaveButton,
                     {
-                      backgroundColor: colors.text,
+                      backgroundColor: colors.textPrimary,
                     },
                     !hasValidHeight && { opacity: 0.5 }
                   ]}
@@ -1719,7 +1719,7 @@ export default function BodyLogDetailScreen() {
                   <Text
                     style={[
                       styles.modalSaveButtonText,
-                      { color: colors.background },
+                      { color: colors.bg },
                     ]}
                   >
                     Save
@@ -1738,9 +1738,9 @@ export default function BodyLogDetailScreen() {
           onRequestClose={() => setGenderModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Update Sex</Text>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Update Sex</Text>
                 <TouchableOpacity onPress={() => setGenderModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -1751,8 +1751,8 @@ export default function BodyLogDetailScreen() {
                     style={[
                       styles.genderOption,
                       { 
-                        backgroundColor: userGender === 'male' ? colors.primary : colors.backgroundLight,
-                        borderColor: userGender === 'male' ? colors.primary : colors.border,
+                        backgroundColor: userGender === 'male' ? colors.brandPrimary : colors.surfaceSubtle,
+                        borderColor: userGender === 'male' ? colors.brandPrimary : colors.border,
                       }
                     ]}
                     onPress={() => handleSaveGender('male')}
@@ -1760,11 +1760,11 @@ export default function BodyLogDetailScreen() {
                     <Ionicons 
                       name="male" 
                       size={24} 
-                      color={userGender === 'male' ? colors.white : colors.text} 
+                      color={userGender === 'male' ? colors.surface : colors.textPrimary} 
                     />
                     <Text style={[
                       styles.genderOptionText,
-                      { color: userGender === 'male' ? colors.white : colors.text }
+                      { color: userGender === 'male' ? colors.surface : colors.textPrimary }
                     ]}>
                       Male
                     </Text>
@@ -1773,8 +1773,8 @@ export default function BodyLogDetailScreen() {
                     style={[
                       styles.genderOption,
                       { 
-                        backgroundColor: userGender === 'female' ? colors.primary : colors.backgroundLight,
-                        borderColor: userGender === 'female' ? colors.primary : colors.border,
+                        backgroundColor: userGender === 'female' ? colors.brandPrimary : colors.surfaceSubtle,
+                        borderColor: userGender === 'female' ? colors.brandPrimary : colors.border,
                       }
                     ]}
                     onPress={() => handleSaveGender('female')}
@@ -1782,11 +1782,11 @@ export default function BodyLogDetailScreen() {
                     <Ionicons 
                       name="female" 
                       size={24} 
-                      color={userGender === 'female' ? colors.white : colors.text} 
+                      color={userGender === 'female' ? colors.surface : colors.textPrimary} 
                     />
                     <Text style={[
                       styles.genderOptionText,
-                      { color: userGender === 'female' ? colors.white : colors.text }
+                      { color: userGender === 'female' ? colors.surface : colors.textPrimary }
                     ]}>
                       Female
                     </Text>
@@ -1857,7 +1857,7 @@ export default function BodyLogDetailScreen() {
                     }
                     }}
                 >
-                    <Ionicons name="trash-outline" size={24} color={colors.white} />
+                    <Ionicons name="trash-outline" size={24} color={colors.surface} />
                 </TouchableOpacity>
                 </View>
 
@@ -1880,7 +1880,7 @@ export default function BodyLogDetailScreen() {
                     />
                     {fullscreenImageLoading && (
                         <View style={styles.fullscreenLoadingOverlay}>
-                        <ActivityIndicator size="large" color={colors.white} />
+                        <ActivityIndicator size="large" color={colors.surface} />
                         </View>
                     )}
                     </Pressable>
@@ -2128,7 +2128,7 @@ const createStyles = (colors: Colors) =>
   emptyPhotoState: {
     height: 240,
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
@@ -2158,7 +2158,7 @@ const createStyles = (colors: Colors) =>
   photoCard: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: colors.border,
   },
   photoImage: {
@@ -2196,7 +2196,7 @@ const createStyles = (colors: Colors) =>
     marginBottom: 24,
     paddingVertical: 12,
     paddingHorizontal: 8,
-    backgroundColor: colors.feedCardBackground,
+    backgroundColor: colors.surfaceCard,
     borderRadius: 12,
   },
   userInfoItem: {
@@ -2370,7 +2370,7 @@ const createStyles = (colors: Colors) =>
   premiumCard: {
     borderRadius: 16,
     padding: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -2392,14 +2392,14 @@ const createStyles = (colors: Colors) =>
   scoreGridModern: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    marginHorizontal: -10,
+    marginTop: -8,
   },
   modernScoreItem: {
-    width: '48%',
-    borderRadius: 16,
-    padding: 16,
+    width: '50%',
+    paddingHorizontal: 10,
+    paddingVertical: 12,
     backgroundColor: 'transparent',
-    borderWidth: 0,
   },
   modernScoreHeader: {
     flexDirection: 'row',
@@ -2408,19 +2408,19 @@ const createStyles = (colors: Colors) =>
     marginBottom: 4,
   },
   modernScoreLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
   modernScoreValue: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '700',
     letterSpacing: -0.5,
   },
   modernProgressBarBg: {
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 6,
     width: '100%',
   },
 

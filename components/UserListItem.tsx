@@ -90,7 +90,7 @@ export function UserListItem({
         {isLoading ? (
           <ActivityIndicator
             size="small"
-            color={isFollowing ? colors.text : colors.white}
+            color={isFollowing ? colors.textPrimary : colors.surface}
           />
         ) : (
           <Text style={textStyle}>{label}</Text>
@@ -130,17 +130,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 48,
       borderRadius: 24,
       marginRight: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     avatarPlaceholder: {
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     avatarInitial: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     info: {
       flex: 1,
@@ -150,7 +150,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     name: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     tag: {
@@ -161,7 +161,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       minWidth: 90,
       height: 34,
       borderRadius: 17,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 12,
@@ -172,17 +172,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: colors.border,
     },
     actionButtonPending: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderWidth: 1,
       borderColor: colors.border,
     },
     actionButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     actionButtonTextFollowing: {
-      color: colors.text,
+      color: colors.textPrimary,
     },
     actionButtonTextPending: {
       color: colors.textSecondary,

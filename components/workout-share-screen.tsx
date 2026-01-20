@@ -223,7 +223,7 @@ export function WorkoutShareScreen({
           style={[
             styles.modalContent,
             {
-              backgroundColor: colors.background,
+              backgroundColor: colors.bg,
               transform: [{ translateY: slideAnim }],
             },
           ]}
@@ -336,7 +336,7 @@ export function WorkoutShareScreen({
                   styles.pageIndicator,
                   {
                     backgroundColor:
-                      currentPage === index ? colors.primary : colors.border,
+                      currentPage === index ? colors.brandPrimary : colors.border,
                   },
                 ]}
               />
@@ -388,7 +388,7 @@ export function WorkoutShareScreen({
               style={[
                 styles.shareButton,
                 styles.shareButtonFull,
-                { backgroundColor: colors.primary },
+                { backgroundColor: colors.brandPrimary },
               ]}
               onPress={handleShareGeneral}
               activeOpacity={0.8}

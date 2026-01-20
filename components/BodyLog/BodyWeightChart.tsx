@@ -55,11 +55,11 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
 
   if (isLoading && data.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
         <View style={styles.segmentContainer}>
           {/* Skeleton or just empty container to prevent layout shift */}
         </View>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.brandPrimary} />
       </View>
     )
   }
@@ -140,10 +140,10 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
               spacing={Math.max(40, CHART_WIDTH / (chartData.length || 1))}
               initialSpacing={20}
               endSpacing={20}
-              color={colors.primary}
+              color={colors.brandPrimary}
               thickness={3}
-              startFillColor={colors.primaryLight}
-              endFillColor={colors.background}
+              startFillColor={colors.brandPrimarySoft}
+              endFillColor={colors.bg}
               startOpacity={0.4}
               endOpacity={0.0}
               areaChart
@@ -163,7 +163,7 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
                 pointerStripHeight: 160,
                 pointerStripColor: colors.border,
                 pointerStripWidth: 2,
-                pointerColor: colors.primary,
+                pointerColor: colors.brandPrimary,
                 radius: 6,
                 pointerLabelWidth: 100,
                 pointerLabelHeight: 90,
@@ -188,7 +188,7 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
                           paddingHorizontal: 14,
                           paddingVertical: 6,
                           borderRadius: 16,
-                          backgroundColor: colors.feedCardBackground,
+                          backgroundColor: colors.surfaceCard,
                           shadowColor: '#000',
                           shadowOffset: { width: 0, height: 2 },
                           shadowOpacity: 0.1,
@@ -200,7 +200,7 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
                           style={{
                             fontWeight: 'bold',
                             textAlign: 'center',
-                            color: colors.text,
+                            color: colors.textPrimary,
                             fontSize: 14,
                           }}
                         >
@@ -257,11 +257,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       paddingVertical: 16,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     segmentContainer: {
       flexDirection: 'row',
-      backgroundColor: colors.backgroundLight, // Light gray background
+      backgroundColor: colors.surfaceSubtle, // Light gray background
       borderRadius: 8,
       padding: 2,
       marginBottom: 16,
@@ -273,7 +273,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 6,
     },
     segmentButtonActive: {
-      backgroundColor: colors.feedCardBackground, // White (or card bg) for active
+      backgroundColor: colors.surfaceCard, // White (or card bg) for active
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
@@ -286,7 +286,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     segmentTextActive: {
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '600',
     },
     header: {
@@ -299,7 +299,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     stats: {
       flexDirection: 'row',
@@ -309,7 +309,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     currentWeight: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     chartWrapper: {
       alignItems: 'center',
@@ -327,7 +327,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statsCard: {
       flexDirection: 'row',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       marginTop: 24,
       borderRadius: 16,
       padding: 20,
@@ -344,7 +344,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
     },
     statBadge: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 12,
@@ -353,12 +353,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statBadgeText: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statValue: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statDate: {
       fontSize: 14,

@@ -139,7 +139,7 @@ export function BodyMetricInfoModal({
           style={[
             styles.contentContainer,
             {
-              backgroundColor: colors.background,
+              backgroundColor: colors.bg,
               transform: [{ translateY: slideAnim }],
             },
           ]}
@@ -156,7 +156,7 @@ export function BodyMetricInfoModal({
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.text }]}>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>
                 {getMetricTitle()}
               </Text>
             </View>
@@ -166,7 +166,7 @@ export function BodyMetricInfoModal({
               style={[
                 styles.valueCard,
                 {
-                  backgroundColor: colors.backgroundLight,
+                  backgroundColor: colors.surfaceSubtle,
                   borderColor: colors.border,
                 },
               ]}
@@ -176,7 +176,7 @@ export function BodyMetricInfoModal({
               >
                 Your Current Value
               </Text>
-              <Text style={[styles.valueText, { color: colors.text }]}>
+              <Text style={[styles.valueText, { color: colors.textPrimary }]}>
                 {currentValue}
               </Text>
             </View>
@@ -205,7 +205,7 @@ export function BodyMetricInfoModal({
             {/* Explanation */}
             <View style={styles.section}>
               <Text
-                style={[styles.sectionTitle, { color: colors.text }]}
+                style={[styles.sectionTitle, { color: colors.textPrimary }]}
               >
                 What This Means
               </Text>
@@ -220,7 +220,7 @@ export function BodyMetricInfoModal({
             {status && (
               <View style={styles.section}>
                 <Text
-                  style={[styles.sectionTitle, { color: colors.text }]}
+                  style={[styles.sectionTitle, { color: colors.textPrimary }]}
                 >
                   Your Status
                 </Text>
@@ -238,8 +238,8 @@ export function BodyMetricInfoModal({
                 style={[
                   styles.recommendationCard,
                   {
-                    backgroundColor: colors.primary + '12',
-                    borderColor: colors.primary + '30',
+                    backgroundColor: colors.brandPrimary + '12',
+                    borderColor: colors.brandPrimary + '30',
                   },
                 ]}
               >
@@ -247,12 +247,12 @@ export function BodyMetricInfoModal({
                   <Ionicons
                     name="bulb-outline"
                     size={18}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                   <Text
                     style={[
                       styles.recommendationTitle,
-                      { color: colors.primary },
+                      { color: colors.brandPrimary },
                     ]}
                   >
                     Recommendation
@@ -261,7 +261,7 @@ export function BodyMetricInfoModal({
                 <Text
                   style={[
                     styles.recommendationText,
-                    { color: colors.text },
+                    { color: colors.textPrimary },
                   ]}
                 >
                   {status.recommendation}

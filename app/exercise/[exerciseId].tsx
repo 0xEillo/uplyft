@@ -386,7 +386,7 @@ export default function ExerciseDetailScreen() {
             onPress={handleBack}
             style={styles.headerBackButton}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {exercise?.name || 'Exercise Details'}
@@ -491,7 +491,7 @@ export default function ExerciseDetailScreen() {
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : (
           <ScrollView
@@ -501,8 +501,8 @@ export default function ExerciseDetailScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={[colors.primary]}
-                tintColor={colors.primary}
+                colors={[colors.brandPrimary]}
+                tintColor={colors.brandPrimary}
               />
             }
           >
@@ -810,7 +810,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     innerContainer: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: 'row',
@@ -818,7 +818,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     headerBackButton: {
       padding: 4,
@@ -827,7 +827,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
       textAlign: 'center',
     },
@@ -842,7 +842,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     tabsBorder: {
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     tabs: {
       flexGrow: 0,
@@ -858,7 +858,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderBottomColor: 'transparent',
     },
     activeTab: {
-      borderBottomColor: colors.primary,
+      borderBottomColor: colors.brandPrimary,
     },
     tabText: {
       fontSize: 16,
@@ -866,7 +866,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     activeTabText: {
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     scrollView: {
       flex: 1,
@@ -893,13 +893,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sectionTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     musclesSection: {
       gap: 4,
     },
     statsGrid: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderRadius: 12,
     },
     statRow: {
@@ -913,17 +913,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statLabel: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statValue: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     infoCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderRadius: 12,
       padding: 16,
       gap: 16,
@@ -933,25 +933,25 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 40,
       borderRadius: 20,
       borderWidth: 2,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     infoStep: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     infoContent: {
       flex: 1,
     },
     infoText: {
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 20,
     },
     levelCard: {
-        backgroundColor: colors.background,
+        backgroundColor: colors.bg,
         borderRadius: 12,
         padding: 20,
         alignItems: 'center',
@@ -970,7 +970,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     levelDescription: {
         fontSize: 14,
-        color: colors.text,
+        color: colors.textPrimary,
         textAlign: 'center',
         marginBottom: 8
     },
@@ -1004,7 +1004,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     howToTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: colors.textPrimary,
         marginBottom: 4
     },
     musclesText: {
@@ -1012,10 +1012,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: colors.textSecondary
     },
     muscleHighlight: {
-        color: colors.text
+        color: colors.textPrimary
     },
     muscleHighlightSecondary: {
-        color: colors.text
+        color: colors.textPrimary
     },
     instructionsContainer: {
         gap: 16
@@ -1029,7 +1029,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: colors.primary + '15',
+        backgroundColor: colors.brandPrimary + '15',
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: -2, // Align with text cap height
@@ -1037,12 +1037,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     stepNumberText: {
         fontSize: 14,
         fontWeight: '700',
-        color: colors.primary,
+        color: colors.brandPrimary,
     },
     stepText: {
         flex: 1,
         fontSize: 16,
-        color: colors.text,
+        color: colors.textPrimary,
         lineHeight: 24,
     },
     progressBarFill: {
@@ -1067,7 +1067,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         paddingVertical: 24,
     },
     historyItem: {
-        backgroundColor: colors.background,
+        backgroundColor: colors.bg,
         borderRadius: 12,
         paddingVertical: 16,
         gap: 12
@@ -1077,12 +1077,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     historyDate: {
         fontSize: 14,
         fontWeight: '600',
-        color: colors.text,
+        color: colors.textPrimary,
     },
     exerciseNameSmall: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text
+        color: colors.textPrimary
     },
     setsContainer: {
         gap: 8
@@ -1122,23 +1122,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         justifyContent: 'center'
     },
     warmupBadge: {
-        backgroundColor: `${colors.warning}25`,
+        backgroundColor: `${colors.statusWarning}25`,
     },
     setNumberBadgeText: {
         fontSize: 10,
         fontWeight: '700',
-        color: colors.text,
+        color: colors.textPrimary,
     },
     warmupText: {
-        color: colors.warning,
+        color: colors.statusWarning,
     },
     setDetails: {
         fontSize: 14,
         fontWeight: '600',
-        color: colors.text
+        color: colors.textPrimary
     },
     recordsList: {
-        backgroundColor: colors.background,
+        backgroundColor: colors.bg,
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingBottom: 8
@@ -1158,7 +1158,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     recordWeight: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.3,
     },
     recordReps: {
@@ -1188,7 +1188,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         marginBottom: 8
     },
     leaderboardList: {
-        backgroundColor: colors.background,
+        backgroundColor: colors.bg,
         borderRadius: 12,
         overflow: 'hidden'
     },
@@ -1232,7 +1232,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: '#FFFFFF'
     },
     rankTextDefault: {
-        color: colors.text
+        color: colors.textPrimary
     },
     userContainer: {
         flex: 1,
@@ -1244,12 +1244,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: colors.background
+        backgroundColor: colors.bg
     },
     avatarPlaceholder: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: colors.primary
+        backgroundColor: colors.brandPrimary
     },
     avatarInitial: {
         fontSize: 14,
@@ -1259,12 +1259,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     userName: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text
+        color: colors.textPrimary
     },
     leaderboardValue: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text
+        color: colors.textPrimary
     },
     miniLevelBadge: {
         alignSelf: 'flex-start',

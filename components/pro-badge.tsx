@@ -27,13 +27,13 @@ export function ProBadge({ onPress, size = 'medium' }: ProBadgeProps) {
     )
   }
 
-  return <Text style={[styles.badge, sizeStyle, { backgroundColor: colors.primary, paddingHorizontal: 12 }]}>{BadgeContent}</Text>
+  return <Text style={[styles.badge, sizeStyle, { backgroundColor: colors.brandPrimary, paddingHorizontal: 12 }]}>{BadgeContent}</Text>
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     badge: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 8,
       justifyContent: 'center',
       alignItems: 'center',
@@ -53,16 +53,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     textSmall: {
       fontSize: 10,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     textMedium: {
       fontSize: 12,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     textLarge: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
   })

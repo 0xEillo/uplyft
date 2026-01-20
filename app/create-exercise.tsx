@@ -366,7 +366,7 @@ export default function CreateExerciseScreen() {
                         <Ionicons
                           name="checkmark"
                           size={20}
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       )}
                     </TouchableOpacity>
@@ -406,7 +406,7 @@ export default function CreateExerciseScreen() {
                         <Ionicons
                           name="checkmark"
                           size={20}
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       )}
                     </TouchableOpacity>
@@ -446,7 +446,7 @@ export default function CreateExerciseScreen() {
                         <Ionicons
                           name="checkmark"
                           size={20}
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       )}
                     </TouchableOpacity>
@@ -466,7 +466,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
 
 
@@ -494,17 +494,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       letterSpacing: 0.5,
     },
     input: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 14,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
       borderWidth: 1,
       borderColor: colors.border,
     },
     selectButton: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 14,
@@ -516,7 +516,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     selectButtonText: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     selectButtonPlaceholder: {
       color: colors.textPlaceholder,
@@ -532,13 +532,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingVertical: 16,
       paddingHorizontal: 24,
       borderRadius: 12,
       marginTop: 40,
       marginBottom: 32,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -563,7 +563,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 20,
     },
     modalContent: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       width: '100%',
       maxHeight: '70%',
@@ -572,7 +572,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     modalTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       padding: 20,
       paddingBottom: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -592,6 +592,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     modalOptionText: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

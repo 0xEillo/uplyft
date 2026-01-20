@@ -146,10 +146,10 @@ export function EditorToolbar({
         >
           {isProcessingImage ? (
             <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <Ionicons name="sync" size={24} color={colors.white} />
+              <Ionicons name="sync" size={24} color={colors.surface} />
             </Animated.View>
           ) : (
-            <Ionicons name="camera-outline" size={24} color={colors.text} />
+            <Ionicons name="camera-outline" size={24} color={colors.textPrimary} />
           )}
         </TouchableOpacity>
 
@@ -162,7 +162,7 @@ export function EditorToolbar({
           <Ionicons
             name={isRecording ? 'stop' : 'mic-outline'}
             size={24}
-            color={isRecording ? colors.white : colors.text}
+            color={isRecording ? colors.surface : colors.textPrimary}
           />
         </TouchableOpacity>
 
@@ -177,7 +177,7 @@ export function EditorToolbar({
               {formatTime(restTimerRemaining)}
             </Text>
           ) : (
-            <Ionicons name="stopwatch-outline" size={24} color={colors.text} />
+            <Ionicons name="stopwatch-outline" size={24} color={colors.textPrimary} />
           )}
         </TouchableOpacity>
 
@@ -187,7 +187,7 @@ export function EditorToolbar({
           onPress={onRoutinePress}
           disabled={isDisabled}
         >
-          <Ionicons name="albums-outline" size={24} color={colors.text} />
+          <Ionicons name="albums-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
         {/* Search / Add Exercise (Merged) */}
@@ -199,7 +199,7 @@ export function EditorToolbar({
           <Ionicons
             name={shouldShowAdd ? 'add-circle-outline' : 'search-outline'}
             size={24}
-            color={colors.text}
+            color={colors.textPrimary}
           />
         </TouchableOpacity>
       </View>
@@ -213,7 +213,7 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.background, // Match background to blend in
+      backgroundColor: colors.bg, // Match background to blend in
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       zIndex: 1000,
@@ -234,15 +234,15 @@ const createStyles = (
       borderRadius: 20,
     },
     activeButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     activeTimerButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       width: 'auto',
       paddingHorizontal: 12,
     },
     timerText: {
-      color: colors.white,
+      color: colors.surface,
       fontWeight: '600',
       fontSize: 14,
       fontVariant: ['tabular-nums'],

@@ -31,7 +31,7 @@ export function LockedResultsOverlay({
     <View style={styles.container}>
       {/* Real Blur Effect */}
       <BlurView
-        tint={colors.background === '#f6f6f8' ? 'light' : 'dark'}
+        tint={colors.bg === '#f6f6f8' ? 'light' : 'dark'}
         intensity={Platform.OS === 'ios' ? 60 : 80}
         style={StyleSheet.absoluteFill}
       />
@@ -40,7 +40,7 @@ export function LockedResultsOverlay({
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <LinearGradient
-            colors={[colors.primary, colors.primary + 'DD']}
+            colors={[colors.brandPrimary, colors.brandPrimary + 'DD']}
             style={styles.iconGradient}
           >
             <Ionicons name="lock-closed" size={28} color="#FFF" />
@@ -56,7 +56,7 @@ export function LockedResultsOverlay({
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={[colors.primary, colors.primary + 'DD']}
+            colors={[colors.brandPrimary, colors.brandPrimary + 'DD']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.unlockButton}
@@ -88,7 +88,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       borderRadius: 36,
       overflow: 'hidden',
       marginBottom: 20,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.3,
       shadowRadius: 12,
@@ -102,7 +102,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     title: {
       fontSize: 22,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 10,
       letterSpacing: -0.5,
@@ -118,7 +118,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     unlockButtonWrapper: {
       width: '100%',
       maxWidth: 240,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.25,
       shadowRadius: 15,

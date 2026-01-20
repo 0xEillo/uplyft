@@ -457,13 +457,13 @@ export default function WorkoutCalendarScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitleText}>Workout Calendar</Text>
           </View>
           <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color={colors.text} />
+            <Ionicons name="share-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -524,7 +524,7 @@ export default function WorkoutCalendarScreen() {
         {/* Content */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : (
           <ScrollView
@@ -557,11 +557,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     safeAreaContainer: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: 'row',
@@ -569,7 +569,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     backButton: {
       minWidth: 44,
@@ -586,7 +586,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitleText: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     shareButton: {
@@ -610,7 +610,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     streakBigNumber: {
       fontSize: 72,
       fontWeight: '800', // Extra bold
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 72,
       letterSpacing: -2,
       includeFontPadding: false,
@@ -618,7 +618,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     streakLabel: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: -2,
       letterSpacing: -0.5,
     },
@@ -635,11 +635,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     viewModeSelector: {
       flexDirection: 'row',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
       padding: 2,
     },
@@ -649,7 +649,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 6,
     },
     viewModeButtonActive: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     viewModeText: {
       fontSize: 14,
@@ -657,17 +657,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     viewModeTextActive: {
-      color: colors.text,
+      color: colors.textPrimary,
     },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollView: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     content: {
       padding: 16,
@@ -676,7 +676,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     monthTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 20,
     },
     weekRow: {
@@ -712,26 +712,26 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     dayNumberWorkout: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     dayTextLarge: {
       fontSize: 16,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     dayTextWorkout: {
       color: '#FFFFFF',
       fontWeight: '700',
     },
     dayTextToday: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '700',
     },
     // Year view styles
     yearTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 20,
     },
     yearGrid: {
@@ -747,7 +747,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     miniMonthName: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 8,
     },
     miniGrid: {
@@ -762,11 +762,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     miniDayBox: {
       width: '100%',
       height: '100%',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 2,
     },
     miniDayWorkout: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     // Multi-year view styles (GitHub-style contribution graph)
     multiYearMonthRow: {
@@ -789,16 +789,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     multiYearDay: {
       // width, height, borderRadius are set dynamically inline
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     multiYearDayEmpty: {
       backgroundColor: 'transparent',
     },
     multiYearDayWorkout: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     multiYearDayToday: {
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
     },
   })

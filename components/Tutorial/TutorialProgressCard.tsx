@@ -43,7 +43,7 @@ export const TutorialProgressCard = memo(() => {
         style={[
           styles.container,
           {
-            backgroundColor: colors.backgroundWhite,
+            backgroundColor: colors.surface,
             borderColor: isTutorialComplete ? '#10B98130' : colors.border,
           },
         ]}
@@ -55,8 +55,8 @@ export const TutorialProgressCard = memo(() => {
             {
               backgroundColor: isTutorialComplete
                 ? '#10B98115'
-                : colors.backgroundWhite,
-              borderColor: isTutorialComplete ? '#10B981' : colors.primary,
+                : colors.surface,
+              borderColor: isTutorialComplete ? '#10B981' : colors.brandPrimary,
             },
           ]}
         >
@@ -64,7 +64,7 @@ export const TutorialProgressCard = memo(() => {
             style={[
               styles.progressText,
               {
-                color: isTutorialComplete ? '#10B981' : colors.primary,
+                color: isTutorialComplete ? '#10B981' : colors.brandPrimary,
               },
             ]}
           >
@@ -76,7 +76,7 @@ export const TutorialProgressCard = memo(() => {
 
         {/* Middle: Content */}
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
             {isTutorialComplete ? 'Tutorial Complete!' : 'Getting Started'}
           </Text>
           <Text
@@ -98,7 +98,7 @@ export const TutorialProgressCard = memo(() => {
             {
               backgroundColor: isTutorialComplete
                 ? '#10B98115'
-                : colors.backgroundLight,
+                : colors.surfaceSubtle,
             },
           ]}
         >

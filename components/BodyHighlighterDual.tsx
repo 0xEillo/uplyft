@@ -50,7 +50,7 @@ export function BodyHighlighterDual({
   
   // We augment the colors array with the background color at the end
   // to allow mapping "hidden" parts to it.
-  const augmentedColors = [...highlightColors, colors.background]
+  const augmentedColors = [...highlightColors, colors.bg]
   const hiddenIntensity = augmentedColors.length
 
   // Generate the augmented body data that includes hidden parts

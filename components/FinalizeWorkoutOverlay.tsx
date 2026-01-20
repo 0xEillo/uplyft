@@ -58,11 +58,11 @@ export function FinalizeWorkoutOverlay({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerSpacer} />
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Log Workout
           </Text>
           <TouchableOpacity
@@ -87,7 +87,7 @@ export function FinalizeWorkoutOverlay({
             style={[
               styles.card,
               {
-                backgroundColor: colors.backgroundLight,
+                backgroundColor: colors.surfaceSubtle,
                 borderColor: colors.border,
               },
             ]}
@@ -100,7 +100,7 @@ export function FinalizeWorkoutOverlay({
                   style={[
                     styles.mediaButton,
                     {
-                      backgroundColor: colors.backgroundWhite,
+                      backgroundColor: colors.surface,
                       borderColor: colors.border,
                       borderWidth: 1,
                     },
@@ -111,7 +111,7 @@ export function FinalizeWorkoutOverlay({
                   <Ionicons
                     name="images-outline"
                     size={24}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                   <Text
                     style={[
@@ -129,7 +129,7 @@ export function FinalizeWorkoutOverlay({
                     style={[
                       styles.menuContainer,
                       {
-                        backgroundColor: colors.backgroundWhite,
+                        backgroundColor: colors.surface,
                         borderColor: colors.border,
                       },
                     ]}
@@ -141,13 +141,13 @@ export function FinalizeWorkoutOverlay({
                         onAttachWithCamera()
                       }}
                     >
-                      <Text style={[styles.menuText, { color: colors.text }]}>
+                      <Text style={[styles.menuText, { color: colors.textPrimary }]}>
                         Take a photo
                       </Text>
                       <Ionicons
                         name="camera-outline"
                         size={20}
-                        color={colors.primary}
+                        color={colors.brandPrimary}
                       />
                     </TouchableOpacity>
                     <View
@@ -163,13 +163,13 @@ export function FinalizeWorkoutOverlay({
                         onAttachWithLibrary()
                       }}
                     >
-                      <Text style={[styles.menuText, { color: colors.text }]}>
+                      <Text style={[styles.menuText, { color: colors.textPrimary }]}>
                         Choose from Library...
                       </Text>
                       <Ionicons
                         name="grid-outline"
                         size={20}
-                        color={colors.primary}
+                        color={colors.brandPrimary}
                       />
                     </TouchableOpacity>
                   </View>
@@ -191,7 +191,7 @@ export function FinalizeWorkoutOverlay({
                     <Ionicons
                       name="close-circle"
                       size={24}
-                      color={colors.white}
+                      color={colors.surface}
                     />
                   </TouchableOpacity>
                 </View>
@@ -200,7 +200,7 @@ export function FinalizeWorkoutOverlay({
 
             {/* Description Input */}
             <TextInput
-              style={[styles.input, { color: colors.text }]}
+              style={[styles.input, { color: colors.textPrimary }]}
               placeholder="Say something about your workout (optional)"
               placeholderTextColor={colors.textTertiary}
               multiline
@@ -214,7 +214,7 @@ export function FinalizeWorkoutOverlay({
           {/* Finish Button */}
           <View style={styles.footer}>
             <TouchableOpacity
-              style={[styles.finishButton, { backgroundColor: colors.primary }]}
+              style={[styles.finishButton, { backgroundColor: colors.brandPrimary }]}
               onPress={onFinish}
               disabled={isLoading}
             >

@@ -289,7 +289,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: 'rgba(0, 0, 0, 0.3)',
     },
     sheetAndroid: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     content: {
       padding: 20,
@@ -314,7 +314,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     closeButton: {
       padding: 4,
@@ -336,7 +336,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
     },
     infoSection: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 16,
       gap: 12,
@@ -354,10 +354,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     infoValue: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     messageSection: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 16,
     },

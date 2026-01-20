@@ -193,13 +193,13 @@ export default function EditProfileScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </SafeAreaView>
     )
@@ -210,12 +210,12 @@ export default function EditProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={24} color={colors.text} />
+          <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <TouchableOpacity onPress={handleSave} disabled={isSaving}>
           {isSaving ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.brandPrimary} />
           ) : (
             <Text style={styles.saveButton}>Save</Text>
           )}
@@ -251,9 +251,9 @@ export default function EditProfileScreen() {
                 disabled={isUploadingImage}
               >
                 {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={colors.white} />
+                  <ActivityIndicator size="small" color={colors.surface} />
                 ) : (
-                  <Ionicons name="camera" size={20} color={colors.white} />
+                  <Ionicons name="camera" size={20} color={colors.surface} />
                 )}
               </TouchableOpacity>
             </View>
@@ -500,7 +500,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: 'row',
@@ -508,12 +508,12 @@ const createStyles = (
       alignItems: 'center',
       paddingHorizontal: 14,
       paddingVertical: 16,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     placeholder: {
       width: 60,
@@ -521,7 +521,7 @@ const createStyles = (
     saveButton: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     loadingContainer: {
       flex: 1,
@@ -553,7 +553,7 @@ const createStyles = (
       width: 100,
       height: 100,
       borderRadius: 50,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -564,11 +564,11 @@ const createStyles = (
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 3,
-      borderColor: colors.background,
+      borderColor: colors.bg,
     },
     section: {
       marginTop: 24,
@@ -577,7 +577,7 @@ const createStyles = (
     label: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 12,
     },
     description: {
@@ -587,11 +587,11 @@ const createStyles = (
       lineHeight: 20,
     },
     input: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -604,20 +604,20 @@ const createStyles = (
       borderRadius: 24,
       borderWidth: 2,
       borderColor: colors.border,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     genderOptionSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.brandPrimary,
     },
     genderOptionText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     genderOptionTextSelected: {
-      color: colors.white,
+      color: colors.surface,
     },
     goalOptions: {
       gap: 8,
@@ -628,27 +628,27 @@ const createStyles = (
       borderRadius: 24,
       borderWidth: 2,
       borderColor: colors.border,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     goalOptionSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.brandPrimary,
     },
     goalOptionText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     goalOptionTextSelected: {
-      color: colors.white,
+      color: colors.surface,
     },
     bioInput: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       borderWidth: 1,
       borderColor: colors.border,
       minHeight: 120,

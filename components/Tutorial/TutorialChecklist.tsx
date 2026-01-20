@@ -83,16 +83,16 @@ const TutorialStepCard = memo(
       }
       if (isCurrentStep) {
         return {
-          iconBg: colors.primary,
-          cardBg: colors.backgroundWhite,
-          border: colors.primary + '60',
-          textColor: colors.text,
+          iconBg: colors.brandPrimary,
+          cardBg: colors.surface,
+          border: colors.brandPrimary + '40',
+          textColor: colors.textPrimary,
           connectorColor: colors.border,
         }
       }
       // Incomplete but not "next" step
       return {
-        iconBg: colors.backgroundLight,
+        iconBg: colors.surfaceSubtle,
         cardBg: isDark ? '#121212' : '#F8F8F8',
         border: colors.border,
         textColor: colors.textSecondary,
@@ -163,7 +163,7 @@ const TutorialStepCard = memo(
                 {step.title}
               </Text>
               {isCurrentStep && !isCompleted && (
-                <View style={[styles.currentBadge, { backgroundColor: colors.primary }]}>
+                <View style={[styles.currentBadge, { backgroundColor: colors.brandPrimary }]}>
                   <Text style={styles.currentBadgeText}>NEXT</Text>
                 </View>
               )}
@@ -186,8 +186,8 @@ const TutorialStepCard = memo(
                 backgroundColor: isCompleted
                   ? '#10B98120'
                   : isCurrentStep
-                  ? colors.primary
-                  : colors.backgroundLight,
+                  ? colors.brandPrimary
+                  : colors.surfaceSubtle,
               },
             ]}
           >
@@ -266,7 +266,7 @@ export const TutorialChecklist = memo(
         style={[
           styles.container,
           {
-            backgroundColor: colors.background,
+            backgroundColor: colors.bg,
           },
         ]}
       >
@@ -276,7 +276,7 @@ export const TutorialChecklist = memo(
           style={styles.header}
         >
           <View style={styles.headerContent}>
-            <Text style={[styles.greeting, { color: colors.text }]}>
+            <Text style={[styles.greeting, { color: colors.textPrimary }]}>
               {greeting}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -292,10 +292,10 @@ export const TutorialChecklist = memo(
                 {
                   backgroundColor: isTutorialComplete
                     ? '#10B98115'
-                    : colors.backgroundWhite,
+                    : colors.surface,
                   borderColor: isTutorialComplete
                     ? '#10B981'
-                    : colors.primary,
+                    : colors.brandPrimary,
                 },
               ]}
             >
@@ -303,7 +303,7 @@ export const TutorialChecklist = memo(
                 style={[
                   styles.progressNumber,
                   {
-                    color: isTutorialComplete ? '#10B981' : colors.primary,
+                    color: isTutorialComplete ? '#10B981' : colors.brandPrimary,
                   },
                 ]}
               >
@@ -327,7 +327,7 @@ export const TutorialChecklist = memo(
               styles.progressBarFill,
               {
                 width: `${progressPercent}%`,
-                backgroundColor: isTutorialComplete ? '#10B981' : colors.primary,
+                backgroundColor: isTutorialComplete ? '#10B981' : colors.brandPrimary,
               },
             ]}
           />
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderRadius: 14,
-    borderWidth: 1.5,
+    borderWidth: 1,
     zIndex: 1,
   },
   currentStepCard: {

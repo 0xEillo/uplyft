@@ -155,7 +155,7 @@ export function PrTooltip({
                         <Ionicons
                           name="trending-up"
                           size={12}
-                          color={colors.success}
+                          color={colors.statusSuccess}
                         />
                         <Text style={styles.beatText}>
                           Beat: {pr.previousReps} {previousRepsLabel}
@@ -186,7 +186,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       minWidth: 280,
     },
     tooltip: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       shadowColor: colors.shadow,
@@ -213,7 +213,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     exerciseTitle: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       flex: 1,
     },
     prList: {
@@ -222,19 +222,19 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     prItem: {
       paddingVertical: 8,
       paddingHorizontal: 12,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       borderRadius: 8,
       borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
+      borderLeftColor: colors.brandPrimary,
     },
     prItemHistorical: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderLeftColor: colors.textPlaceholder,
     },
     prText: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: 2,
     },
     prTextHistorical: {
@@ -249,7 +249,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     prLabel: {
       fontSize: 11,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
@@ -268,7 +268,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     beatText: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.success,
+      color: colors.statusSuccess,
     },
   })
 }

@@ -37,7 +37,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       alignItems: 'center',
       paddingHorizontal: 6,
       borderWidth: 2,
-      borderColor: colors.background,
+      borderColor: colors.bg,
     },
     badgeText: {
       color: '#FFFFFF',

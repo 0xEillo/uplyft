@@ -184,7 +184,7 @@ export function RoutineImagePickerSheet({
 
             {isLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color={colors.brandPrimary} />
               </View>
             ) : (
               <View style={styles.imagesGrid}>
@@ -207,7 +207,7 @@ export function RoutineImagePickerSheet({
                       size={32}
                       color={currentTintColor}
                     />
-                    <Text style={[styles.noImageText, { color: colors.text }]}>
+                    <Text style={[styles.noImageText, { color: colors.textPrimary }]}>
                       Gradient
                     </Text>
                   </View>
@@ -249,7 +249,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: 'row',
@@ -267,7 +267,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     cancelText: {
       fontSize: 17,
@@ -276,7 +276,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     doneText: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       textAlign: 'right',
     },
     scrollView: {
@@ -314,7 +314,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     sectionTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 8,
     },
     sectionSubtitle: {
@@ -336,7 +336,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: 'transparent',
     },
     colorOptionSelected: {
-      borderColor: colors.text,
+      borderColor: colors.textPrimary,
     },
     loadingContainer: {
       height: 200,
@@ -357,7 +357,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: 'transparent',
     },
     imageOptionSelected: {
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
     },
     imageThumb: {
       width: '100%',

@@ -256,7 +256,7 @@ export default function BodyLogScreen() {
 
   return (
     <SlideInView
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       shouldExit={shouldExit}
       onExitComplete={() => router.back()}
     >
@@ -271,7 +271,7 @@ export default function BodyLogScreen() {
 
         {isInitialLoading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : entries.length === 0 ? (
           <EmptyState
@@ -298,7 +298,7 @@ export default function BodyLogScreen() {
             ListFooterComponent={
               isLoadingMore ? (
                 <View style={{ padding: 16, alignItems: 'center' }}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={colors.brandPrimary} />
                 </View>
               ) : null
             }
@@ -306,7 +306,7 @@ export default function BodyLogScreen() {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={() => loadEntries(true)}
-                tintColor={colors.primary}
+                tintColor={colors.brandPrimary}
               />
             }
           />
@@ -332,13 +332,13 @@ const createRowStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: THUMB_SIZE,
       height: THUMB_SIZE,
       borderRadius: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     thumbPlaceholder: {
       width: THUMB_SIZE,
       height: THUMB_SIZE,
       borderRadius: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -364,7 +364,7 @@ const createRowStyles = (colors: ReturnType<typeof useThemedColors>) =>
     date: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     weight: {
@@ -377,7 +377,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     center: {
       flex: 1,

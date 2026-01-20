@@ -187,12 +187,12 @@ function StreakOverlayComponent({
           <Pressable
             style={[
               styles.iconCircle,
-              { backgroundColor: `${colors.primary}15` },
+              { backgroundColor: `${colors.brandPrimary}15` },
             ]}
             onPress={handleClose}
             hitSlop={8}
           >
-            <Ionicons name="checkmark" size={24} color={colors.primary} />
+            <Ionicons name="checkmark" size={24} color={colors.brandPrimary} />
           </Pressable>
         </View>
 
@@ -287,7 +287,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 9999,
     },
     card: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 28,
       paddingHorizontal: 32,
       paddingVertical: 36,
@@ -330,7 +330,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     streakNumber: {
       fontSize: 96,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: 96,
       letterSpacing: -4,
       includeFontPadding: false,
@@ -363,7 +363,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 12,
@@ -380,7 +380,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     messageText: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       lineHeight: 24,
     },

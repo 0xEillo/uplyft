@@ -3,30 +3,30 @@ import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-    WorkoutPlanningData,
-    WorkoutPlanningWizard,
+  WorkoutPlanningData,
+  WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    AiWorkoutConversionResult,
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  AiWorkoutConversionResult,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-    ParsedWorkoutDisplay,
-    parseWorkoutForDisplay,
+  ParsedWorkoutDisplay,
+  parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-    buildWorkoutCreationPrompt,
-    buildWorkoutModificationSuffix,
+  buildWorkoutCreationPrompt,
+  buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -36,8 +36,8 @@ import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
-    loadDraft as loadWorkoutDraft,
-    saveDraft,
+  loadDraft as loadWorkoutDraft,
+  saveDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -47,34 +47,34 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleProp,
-    StyleSheet,
-    Text,
-    TextInput,
-    TextStyle,
-    TouchableOpacity,
-    View,
-    ViewStyle,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSpring,
-    withTiming,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -476,7 +476,11 @@ export function WorkoutChat({
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
   const { trackEvent } = useAnalytics()
-  const colors = useThemedColors()
+  const themedColors = useThemedColors()
+  const colors = useMemo(() => ({
+    ...themedColors,
+    background: mode === 'sheet' ? themedColors.sheetBackground : themedColors.background
+  } as any), [themedColors, mode])
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
@@ -1899,12 +1903,12 @@ export function WorkoutChat({
     }
   }
 
-  const styles = createStyles(colors, insets, isDark)
+  const styles = createStyles(colors, insets, isDark, mode)
 
   return (
     <>
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={[styles.container, { backgroundColor: colors.bg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={keyboardVerticalOffset}
         onLayout={(e) => logLayout('root', e.nativeEvent.layout)}
@@ -1940,7 +1944,7 @@ export function WorkoutChat({
                   <Ionicons
                     name="create-outline"
                     size={28}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                 </TouchableOpacity>
 
@@ -1958,7 +1962,7 @@ export function WorkoutChat({
                   <Ionicons
                     name="settings-sharp"
                     size={24}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                 </TouchableOpacity>
               </>
@@ -2115,7 +2119,7 @@ export function WorkoutChat({
                                         body: {
                                           fontSize: 16,
                                           lineHeight: 23,
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                           margin: 0,
                                         },
                                         paragraph: {
@@ -2125,26 +2129,26 @@ export function WorkoutChat({
                                         heading1: {
                                           fontSize: 22,
                                           fontWeight: '700',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                           marginTop: 16,
                                           marginBottom: 8,
                                         },
                                         heading2: {
                                           fontSize: 20,
                                           fontWeight: '700',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                           marginTop: 14,
                                           marginBottom: 6,
                                         },
                                         heading3: {
                                           fontSize: 18,
                                           fontWeight: '600',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                           marginTop: 12,
                                           marginBottom: 6,
                                         },
                                         code_inline: {
-                                          backgroundColor: colors.background,
+                                          backgroundColor: colors.bg,
                                           paddingHorizontal: 4,
                                           paddingVertical: 2,
                                           borderRadius: 4,
@@ -2153,10 +2157,10 @@ export function WorkoutChat({
                                             Platform.OS === 'ios'
                                               ? 'Menlo'
                                               : 'monospace',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                         },
                                         code_block: {
-                                          backgroundColor: colors.background,
+                                          backgroundColor: colors.bg,
                                           padding: 12,
                                           borderRadius: 8,
                                           fontSize: 15,
@@ -2164,12 +2168,12 @@ export function WorkoutChat({
                                             Platform.OS === 'ios'
                                               ? 'Menlo'
                                               : 'monospace',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                           marginVertical: 8,
                                           overflow: 'hidden',
                                         },
                                         fence: {
-                                          backgroundColor: colors.background,
+                                          backgroundColor: colors.bg,
                                           padding: 12,
                                           borderRadius: 8,
                                           fontSize: 15,
@@ -2177,12 +2181,12 @@ export function WorkoutChat({
                                             Platform.OS === 'ios'
                                               ? 'Menlo'
                                               : 'monospace',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                           marginVertical: 8,
                                         },
                                         strong: {
                                           fontWeight: '600',
-                                          color: colors.text,
+                                          color: colors.textPrimary,
                                         },
                                         em: {
                                           fontStyle: 'italic',
@@ -2206,16 +2210,16 @@ export function WorkoutChat({
                                         },
                                         blockquote: {
                                           borderLeftWidth: 3,
-                                          borderLeftColor: colors.primary,
+                                          borderLeftColor: colors.brandPrimary,
                                           paddingLeft: 12,
                                           marginVertical: 8,
-                                          backgroundColor: colors.background,
+                                          backgroundColor: colors.bg,
                                           paddingVertical: 8,
                                           paddingRight: 8,
                                           borderRadius: 4,
                                         },
                                         link: {
-                                          color: colors.primary,
+                                          color: colors.brandPrimary,
                                           textDecorationLine: 'underline',
                                         },
                                       }}
@@ -2356,7 +2360,7 @@ export function WorkoutChat({
                                                           : 'add'
                                                       }
                                                       size={20}
-                                                      color={colors.white}
+                                                      color={colors.surface}
                                                     />
                                                   </TouchableOpacity>
                                                 </View>
@@ -2387,7 +2391,7 @@ export function WorkoutChat({
                             <Ionicons
                               name="flash"
                               size={13}
-                              color={colors.primary}
+                              color={colors.brandPrimary}
                             />
                             <Text style={styles.welcomeHintButtonText}>
                               Generate Workout
@@ -2455,6 +2459,11 @@ export function WorkoutChat({
                             (item.id === 'plan_workout' ||
                               item.id === 'adjust_workout') &&
                               styles.planWorkoutBubble,
+                            (item.id === 'tell_me_about' ||
+                              item.id === 'how_to') && {
+                              borderWidth: 0,
+                              borderColor: 'transparent',
+                            },
                           ]}
                           textStyle={[
                             styles.suggestionText,
@@ -2468,7 +2477,7 @@ export function WorkoutChat({
                               <Ionicons
                                 name="flash"
                                 size={14}
-                                color={colors.primary}
+                                color={colors.brandPrimary}
                                 style={{ marginRight: 6 }}
                               />
                             ) : null
@@ -2509,7 +2518,7 @@ export function WorkoutChat({
                             <Ionicons
                               name={item.icon as any}
                               size={14}
-                              color={colors.primary}
+                              color={colors.brandPrimary}
                               style={{ marginRight: 6 }}
                             />
                           }
@@ -2567,7 +2576,7 @@ export function WorkoutChat({
                         style={styles.removeImageButton}
                         onPress={() => removeImage(index)}
                       >
-                        <Ionicons name="close" size={14} color={colors.white} />
+                        <Ionicons name="close" size={14} color={colors.surface} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -2591,7 +2600,7 @@ export function WorkoutChat({
                     <Ionicons
                       name="image-outline"
                       size={22}
-                      color={isLoading ? colors.textPlaceholder : colors.primary}
+                      color={isLoading ? colors.textPlaceholder : colors.brandPrimary}
                     />
                   </TouchableOpacity>
                 )}
@@ -2630,7 +2639,7 @@ export function WorkoutChat({
                         color={colors.textPlaceholder}
                       />
                     ) : (
-                      <Ionicons name="arrow-up" size={20} color={colors.white} />
+                      <Ionicons name="arrow-up" size={20} color={colors.surface} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -2649,7 +2658,7 @@ export function WorkoutChat({
                   style={styles.imageViewerCloseButton}
                   onPress={closeImageViewer}
                 >
-                  <Ionicons name="close" size={28} color={colors.white} />
+                  <Ionicons name="close" size={28} color={colors.surface} />
                 </TouchableOpacity>
 
                 {viewerImages.length > 0 && viewerImageIndex !== null && (
@@ -2710,11 +2719,12 @@ function createStyles(
   colors: ReturnType<typeof useThemedColors>,
   insets: { bottom: number },
   isDark: boolean,
+  mode: 'fullscreen' | 'sheet',
 ) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     newChatButton: {
       position: 'absolute',
@@ -2722,7 +2732,7 @@ function createStyles(
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
@@ -2734,7 +2744,7 @@ function createStyles(
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
@@ -2752,7 +2762,7 @@ function createStyles(
       flex: 1,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -2765,18 +2775,18 @@ function createStyles(
       elevation: 4,
     },
     secondaryActionButton: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
       shadowOpacity: 0.05,
     },
     actionButtonText: {
-      color: colors.white,
+      color: colors.surface,
       fontSize: 15,
       fontWeight: '600',
     },
     secondaryActionButtonText: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontSize: 15,
       fontWeight: '600',
     },
@@ -2801,7 +2811,7 @@ function createStyles(
     welcomeText: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginTop: 16,
       opacity: 0.8,
@@ -2818,8 +2828,6 @@ function createStyles(
       width: 120,
       height: 120,
       borderRadius: 60,
-      borderWidth: 4,
-      borderColor: colors.background,
     },
     chatMessages: {
       paddingBottom: 20,
@@ -2846,13 +2854,13 @@ function createStyles(
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     userMessageBubble: {
       maxWidth: '80%',
     },
     userMessageContent: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       padding: 12,
       paddingHorizontal: 14,
       borderRadius: 18,
@@ -2861,7 +2869,7 @@ function createStyles(
     userMessageText: {
       fontSize: 16,
       lineHeight: 22,
-      color: colors.white,
+      color: colors.surface,
     },
     assistantMessageContent: {
       flex: 1,
@@ -2873,7 +2881,7 @@ function createStyles(
       width: '100%',
     },
     assistantMessageBubble: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 12,
       paddingHorizontal: 14,
       borderRadius: 18,
@@ -2897,19 +2905,19 @@ function createStyles(
     welcomeHintButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: `${colors.primary}12`,
+      backgroundColor: `${colors.brandPrimary}12`,
       paddingHorizontal: 10,
       paddingVertical: 6,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
       gap: 5,
       marginHorizontal: 2,
     },
     welcomeHintButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     welcomeHintArrow: {
       marginTop: 8,
@@ -2929,13 +2937,17 @@ function createStyles(
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-end',
-      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
+      backgroundColor: isDark
+        ? mode === 'sheet'
+          ? colors.surfaceSubtle
+          : colors.surfaceCard
+        : colors.surfaceSubtle,
       borderRadius: 24,
       paddingRight: 4,
       paddingLeft: 16,
       paddingVertical: 4,
-      borderWidth: isDark ? 1 : 0,
-      borderColor: isDark ? colors.border : 'transparent',
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#FAFAFA',
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -2949,7 +2961,7 @@ function createStyles(
       marginRight: 8,
       fontSize: 17,
       lineHeight: 22,
-      color: colors.text,
+      color: colors.textPrimary,
       maxHeight: 100,
       textAlignVertical: 'center',
     },
@@ -2957,7 +2969,7 @@ function createStyles(
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 2,
@@ -2976,7 +2988,7 @@ function createStyles(
     typingIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       paddingHorizontal: 16,
       paddingVertical: 12,
       borderRadius: 18,
@@ -2993,7 +3005,7 @@ function createStyles(
       paddingTop: 20, // Increased to allow for bounce overshoot
       marginTop: -8, // Compensate for extra padding to keep layout consistent
       paddingBottom: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       overflow: 'visible',
       zIndex: 10,
     },
@@ -3005,7 +3017,7 @@ function createStyles(
     suggestionBubble: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
+      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : colors.surfaceSubtle,
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 18,
@@ -3013,18 +3025,18 @@ function createStyles(
       borderColor: colors.border,
     },
     planWorkoutBubble: {
-      borderColor: colors.primary,
-      backgroundColor: `${colors.primary}08`,
+      borderColor: colors.brandPrimary,
+      backgroundColor: `${colors.brandPrimary}08`,
     },
     planWorkoutText: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontWeight: '600',
     },
     suggestionBackBubble: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
+      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
@@ -3032,7 +3044,7 @@ function createStyles(
     },
     suggestionText: {
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       fontWeight: '500',
     },
     // Image preview in input area
@@ -3061,7 +3073,7 @@ function createStyles(
       width: 20,
       height: 20,
       borderRadius: 10,
-      backgroundColor: colors.error || '#FF3B30',
+      backgroundColor: colors.statusError || '#FF3B30',
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: '#000',
@@ -3073,7 +3085,7 @@ function createStyles(
     imageCountBadge: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
@@ -3087,9 +3099,11 @@ function createStyles(
       width: 40,
       height: 40,
       borderRadius: 9999,
-      backgroundColor: isDark ? colors.feedCardBackground : colors.backgroundLight,
+      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#FAFAFA',
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -3171,7 +3185,7 @@ function createStyles(
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     sheetContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 32,
       borderTopRightRadius: 32,
       width: '100%',
@@ -3188,7 +3202,7 @@ function createStyles(
       width: '100%',
     },
     bottomSheet: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       paddingBottom: 32,
@@ -3213,7 +3227,7 @@ function createStyles(
     bottomSheetTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 16,
       textAlign: 'center',
     },
@@ -3221,7 +3235,7 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       padding: 16,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       marginBottom: 8,
     },
@@ -3229,7 +3243,7 @@ function createStyles(
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 12,
@@ -3237,7 +3251,7 @@ function createStyles(
     bottomSheetOptionText: {
       fontSize: 16,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     // Image viewer modal
     imageViewerContainer: {
@@ -3278,7 +3292,7 @@ function createStyles(
       borderRadius: 16,
     },
     imageViewerCounterText: {
-      color: colors.white,
+      color: colors.surface,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -3290,7 +3304,7 @@ function createStyles(
     exerciseCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 12,
       borderWidth: 1,
@@ -3310,7 +3324,7 @@ function createStyles(
     exerciseCardName: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
       flex: 1,
     },
@@ -3322,7 +3336,7 @@ function createStyles(
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -3351,7 +3365,7 @@ function createStyles(
       width: 44,
       height: 44,
       borderRadius: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,

@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider as NavigationThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -44,8 +44,8 @@ const CustomLightTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: getColors(false).background,
-    card: getColors(false).backgroundWhite,
+    background: getColors(false).bg,
+    card: getColors(false).surface,
   },
 }
 
@@ -53,8 +53,8 @@ const CustomDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: getColors(true).background,
-    card: getColors(true).backgroundWhite,
+    background: getColors(true).bg,
+    card: getColors(true).surface,
   },
 }
 
@@ -227,20 +227,18 @@ function RootLayoutNav() {
           <Stack.Screen
             name="recovery-detail"
             options={{
-              presentation: 'formSheet',
-              sheetAllowedDetents: [0.5, 0.75],
-              sheetGrabberVisible: true,
-              sheetCornerRadius: 20,
+              presentation: 'transparentModal',
+              animation: 'none',
+              contentStyle: { backgroundColor: 'transparent' },
               headerShown: false,
             }}
           />
           <Stack.Screen
             name="muscle-group-detail"
             options={{
-              presentation: 'formSheet',
-              sheetAllowedDetents: [0.65, 1.0],
-              sheetGrabberVisible: true,
-              sheetCornerRadius: 20,
+              presentation: 'transparentModal',
+              animation: 'none',
+              contentStyle: { backgroundColor: 'transparent' },
               headerShown: false,
             }}
           />
@@ -257,9 +255,7 @@ function ThemedRootView({ children }: { children: React.ReactNode }) {
   const colors = getColors(isDark)
 
   return (
-    <GestureHandlerRootView
-      style={{ flex: 1, backgroundColor: colors.background }}
-    >
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       {children}
     </GestureHandlerRootView>
   )

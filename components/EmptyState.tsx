@@ -60,7 +60,7 @@ export function EmptyState({
         <Ionicons
           name={icon}
           size={42}
-          color={colors.primary}
+          color={colors.brandPrimary}
         />
       </View>
 
@@ -97,7 +97,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 90,
       height: 90,
       borderRadius: 45,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 24,
@@ -105,7 +105,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 22,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 12,
       letterSpacing: -0.5,
@@ -119,11 +119,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
     },
     button: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingVertical: 12,
       paddingHorizontal: 24,
       borderRadius: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,

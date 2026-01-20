@@ -165,7 +165,7 @@ export default function RoutinesScreen() {
             <Text
               style={[
                 styles.routineTitle,
-                !imageSource && { color: colors.text },
+                !imageSource && { color: colors.textPrimary },
               ]}
               numberOfLines={2}
             >
@@ -242,13 +242,13 @@ export default function RoutinesScreen() {
                 setRefreshing(true)
                 loadData()
               }}
-              tintColor={colors.primary}
+              tintColor={colors.brandPrimary}
             />
           }
         >
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : routines.length === 0 ? (
             <EmptyState
@@ -293,7 +293,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollContent: {
       paddingBottom: 100,
@@ -315,7 +315,7 @@ const createStyles = (
     sectionTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     routineCount: {
       fontSize: 14,
@@ -337,7 +337,7 @@ const createStyles = (
       height: 200,
       borderRadius: 16,
       overflow: 'hidden',
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
     },
     routineImage: {
       width: '100%',

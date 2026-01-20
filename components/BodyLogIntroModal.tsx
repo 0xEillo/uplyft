@@ -132,7 +132,7 @@ export function BodyLogIntroModal({
               accessibilityLabel="Take photo"
               accessibilityRole="button"
             >
-              <Ionicons name="camera" size={24} color={colors.white} />
+              <Ionicons name="camera" size={24} color={colors.surface} />
               <Text style={dynamicStyles.buttonText}>Take Photo</Text>
             </TouchableOpacity>
           </View>
@@ -200,10 +200,10 @@ const createDynamicStyles = (colors: Colors) =>
       width: SCREEN_WIDTH * 0.47,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: `${colors.primary}12`,
+      backgroundColor: `${colors.brandPrimary}12`,
       borderRadius: 20,
       borderWidth: 1.5,
-      borderColor: `${colors.primary}20`,
+      borderColor: `${colors.brandPrimary}20`,
       overflow: 'hidden',
     },
     singleImageWrapper: {
@@ -212,10 +212,10 @@ const createDynamicStyles = (colors: Colors) =>
       width: '100%',
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: `${colors.primary}12`,
+      backgroundColor: `${colors.brandPrimary}12`,
       borderRadius: 24,
       borderWidth: 2,
-      borderColor: `${colors.primary}25`,
+      borderColor: `${colors.brandPrimary}25`,
       overflow: 'hidden',
     },
     exampleImage: {
@@ -259,18 +259,18 @@ const createDynamicStyles = (colors: Colors) =>
     },
     boldText: {
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     takePhotoButton: {
       flexDirection: 'row',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingVertical: 15,
       paddingHorizontal: 32,
       borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
       gap: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.35,
       shadowRadius: 16,
@@ -279,7 +279,7 @@ const createDynamicStyles = (colors: Colors) =>
     buttonText: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
       letterSpacing: -0.3,
     },
   })

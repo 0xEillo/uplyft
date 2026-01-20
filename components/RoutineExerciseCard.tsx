@@ -91,7 +91,7 @@ export function RoutineExerciseCard({
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.exerciseRowTint }]}>
+    <View style={[styles.card, { backgroundColor: colors.rowTint }]}>
       {/* Exercise Header - Always visible */}
       <View style={styles.header}>
         {/* Thumbnail + Name - Tappable to navigate to exercise */}
@@ -108,7 +108,7 @@ export function RoutineExerciseCard({
                 style={{ width: '100%', height: '100%' }}
               />
             ) : (
-              <View style={[styles.placeholder, { backgroundColor: colors.background }]}>
+              <View style={[styles.placeholder, { backgroundColor: colors.bg }]}>
                 <Ionicons name="barbell" size={20} color={colors.textSecondary} />
               </View>
             )}
@@ -117,7 +117,7 @@ export function RoutineExerciseCard({
             {/* Always render the text, but overlay with BlurView if locked */}
             <View style={locked && styles.lockedTextContainer}>
               <Text
-                style={[styles.name, { color: colors.primary }]}
+                style={[styles.name, { color: colors.brandPrimary }]}
                 numberOfLines={1}
               >
                 {exercise.name}
@@ -179,13 +179,13 @@ export function RoutineExerciseCard({
           </View>
           {exercise.sets.map((set) => (
             <View key={set.id} style={styles.setRow}>
-              <Text style={[styles.setNumber, { color: colors.warning }]}>
+              <Text style={[styles.setNumber, { color: colors.statusWarning }]}>
                 {set.setNumber}
               </Text>
-              <Text style={[styles.setValue, { color: colors.text }]}>
+              <Text style={[styles.setValue, { color: colors.textPrimary }]}>
                 {formatReps(set.repsMin, set.repsMax)}
               </Text>
-              <Text style={[styles.setValue, { color: colors.text }]}>
+              <Text style={[styles.setValue, { color: colors.textPrimary }]}>
                 {formatRestTime(set.restSeconds)}
               </Text>
             </View>
@@ -261,7 +261,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       paddingVertical: 8,
       paddingHorizontal: 8,
-      backgroundColor: colors.exerciseRowTint,
+      backgroundColor: colors.rowTint,
       borderRadius: 8,
     },
     setNumber: {

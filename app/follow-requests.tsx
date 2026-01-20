@@ -179,7 +179,7 @@ export default function FollowRequestsScreen() {
               disabled={isBusy}
             >
               {isBusy ? (
-                <ActivityIndicator size="small" color={colors.error} />
+                <ActivityIndicator size="small" color={colors.statusError} />
               ) : (
                 <Text
                   style={[styles.requestButtonText, styles.declineButtonText]}
@@ -194,7 +194,7 @@ export default function FollowRequestsScreen() {
               disabled={isBusy}
             >
               {isBusy ? (
-                <ActivityIndicator size="small" color={colors.white} />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text style={styles.requestButtonText}>Approve</Text>
               )}
@@ -244,7 +244,7 @@ export default function FollowRequestsScreen() {
             disabled={isBusy}
           >
             {isBusy ? (
-              <ActivityIndicator size="small" color={colors.error} />
+              <ActivityIndicator size="small" color={colors.statusError} />
             ) : (
               <Text
                 style={[styles.requestButtonText, styles.declineButtonText]}
@@ -265,7 +265,7 @@ export default function FollowRequestsScreen() {
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Follow Requests</Text>
         <View style={styles.headerPlaceholder} />
@@ -273,7 +273,7 @@ export default function FollowRequestsScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
         <ScrollView
@@ -304,7 +304,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: 'row',
@@ -312,7 +312,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       paddingHorizontal: 14,
       paddingVertical: 16,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -322,7 +322,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     headerPlaceholder: {
       width: 24,
@@ -357,12 +357,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 24,
     },
     avatarPlaceholder: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarInitial: {
-      color: colors.primary,
+      color: colors.brandPrimary,
       fontSize: 20,
       fontWeight: '700',
     },
@@ -372,7 +372,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     requestName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     requestTag: {
       fontSize: 13,
@@ -400,18 +400,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     requestButtonText: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     approveButton: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
+      borderColor: colors.brandPrimary,
     },
     declineButton: {
       backgroundColor: 'transparent',
       borderColor: colors.border,
     },
     declineButtonText: {
-      color: colors.error,
+      color: colors.statusError,
     },
     emptyState: {
       alignItems: 'center',
@@ -422,7 +422,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     emptyTitle: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     emptyMessage: {
       fontSize: 14,

@@ -551,8 +551,8 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={[colors.primary]}
-          tintColor={colors.primary}
+          colors={[colors.brandPrimary]}
+          tintColor={colors.brandPrimary}
         />
       }
     >
@@ -630,7 +630,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
           onPress={() => setShowExercisePicker(true)}
         >
           <View style={styles.exerciseSelectorLeft}>
-            <Ionicons name="barbell-outline" size={20} color={colors.primary} />
+            <Ionicons name="barbell-outline" size={20} color={colors.brandPrimary} />
             <Text style={styles.exerciseSelectorText}>
               {selectedExercise?.name || 'All Exercises'}
             </Text>
@@ -676,7 +676,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
         <View style={styles.chartContainer}>
           {isLoadingStrength ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : strengthChartData.length === 0 ? (
             <EmptyState
@@ -701,15 +701,15 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                   spacing={strengthOptimalSpacing}
                   initialSpacing={20}
                   endSpacing={10}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                   thickness={3}
-                  startFillColor={colors.primaryLight}
-                  endFillColor={colors.white}
+                  startFillColor={colors.brandPrimarySoft}
+                  endFillColor={colors.surface}
                   startOpacity={0.4}
                   endOpacity={0.1}
                   areaChart
                   hideDataPoints={false}
-                  dataPointsColor={colors.primary}
+                  dataPointsColor={colors.brandPrimary}
                   dataPointsRadius={4}
                   textColor1={colors.textSecondary}
                   textShiftY={-8}
@@ -778,7 +778,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
         <View style={styles.muscleChartContainer}>
           {isLoadingMuscle ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : distributionData.length === 0 ? (
             <EmptyState
@@ -792,7 +792,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
             <View style={styles.barsContainer}>
               {distributionData.map((item, index) => {
                 const color =
-                  MUSCLE_GROUP_COLORS[item.muscleGroup] || colors.primary
+                  MUSCLE_GROUP_COLORS[item.muscleGroup] || colors.brandPrimary
 
                 return (
                   <View key={index} style={styles.barRow}>
@@ -879,7 +879,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
         <View style={styles.chartContainer}>
           {isLoadingVolume ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : volumeChartData.length === 0 ? (
             <EmptyState
@@ -904,15 +904,15 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                   spacing={volumeOptimalSpacing}
                   initialSpacing={20}
                   endSpacing={10}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                   thickness={3}
-                  startFillColor={colors.primaryLight}
-                  endFillColor={colors.white}
+                  startFillColor={colors.brandPrimarySoft}
+                  endFillColor={colors.surface}
                   startOpacity={0.4}
                   endOpacity={0.1}
                   areaChart
                   hideDataPoints={false}
-                  dataPointsColor={colors.primary}
+                  dataPointsColor={colors.brandPrimary}
                   dataPointsRadius={4}
                   textColor1={colors.textSecondary}
                   textShiftY={-8}
@@ -1029,7 +1029,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                   All Exercises
                 </Text>
                 {!selectedExercise && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  <Ionicons name="checkmark" size={20} color={colors.brandPrimary} />
                 )}
               </TouchableOpacity>
 
@@ -1060,7 +1060,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                     <Ionicons
                       name="checkmark"
                       size={20}
-                      color={colors.primary}
+                      color={colors.brandPrimary}
                     />
                   )}
                 </TouchableOpacity>
@@ -1111,13 +1111,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     contentContainer: {
       paddingBottom: 100,
     },
     timeRangeHeader: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       paddingTop: 16,
       paddingBottom: 4,
       paddingHorizontal: 14,
@@ -1143,7 +1143,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 32,
     },
     infoModalContent: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderRadius: 16,
       padding: 24,
       width: '100%',
@@ -1152,7 +1152,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     infoModalTitle: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 12,
     },
     infoModalDescription: {
@@ -1162,7 +1162,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 20,
     },
     infoModalButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: 'center',
@@ -1170,10 +1170,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     infoModalButtonText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
     },
     card: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
       paddingVertical: 16,
       paddingHorizontal: 14,
       borderRadius: 16,
@@ -1189,7 +1189,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 14,
       borderRadius: 9999,
       marginBottom: 12,
@@ -1202,7 +1202,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseSelectorText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     timeRangeContainer: {
       flexDirection: 'row',
@@ -1214,11 +1214,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 10,
       paddingHorizontal: 12,
       borderRadius: 9999,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
     },
     timeRangeButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     timeRangeText: {
       fontSize: 13,
@@ -1226,7 +1226,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     timeRangeTextActive: {
-      color: colors.white,
+      color: colors.surface,
     },
     timeRangeButtonRestricted: {
       opacity: 0.6,
@@ -1250,7 +1250,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 12,
       borderRadius: 12,
       alignItems: 'center',
@@ -1264,17 +1264,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statValue: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     statPositive: {
-      color: colors.success,
+      color: colors.statusSuccess,
     },
     statNegative: {
-      color: colors.error,
+      color: colors.statusError,
     },
     chartContainer: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 16,
       borderRadius: 12,
       minHeight: 260,
@@ -1282,7 +1282,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     muscleChartContainer: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       padding: 16,
       borderRadius: 12,
       minHeight: 200,
@@ -1345,12 +1345,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     muscleGroupName: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     percentageText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     barBackground: {
       height: 8,
@@ -1375,7 +1375,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       maxHeight: SCREEN_HEIGHT * 0.75,
@@ -1406,17 +1406,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     modalTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
     },
     searchInput: {
       margin: 16,
       marginBottom: 8,
       padding: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 9999,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     exerciseList: {
       paddingHorizontal: 16,
@@ -1430,14 +1430,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 4,
     },
     exerciseItemSelected: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
     },
     exerciseItemText: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     exerciseItemTextSelected: {
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
   })

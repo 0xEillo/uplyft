@@ -111,14 +111,14 @@ export default function CreateAccountScreen() {
         <View style={styles.wrapper}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
           <View style={styles.centeredContent}>
             <Ionicons
               name="checkmark-circle"
               size={64}
-              color={colors.primary}
+              color={colors.brandPrimary}
             />
             <Text style={styles.alreadyLinkedTitle}>
               Account Already Linked
@@ -136,7 +136,7 @@ export default function CreateAccountScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color={colors.text} />
+          <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -254,7 +254,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     wrapper: {
       flex: 1,
@@ -303,7 +303,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 28,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       lineHeight: 34,
     },
@@ -383,7 +383,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     alreadyLinkedTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     alreadyLinkedSubtitle: {

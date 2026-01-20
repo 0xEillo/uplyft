@@ -175,7 +175,7 @@ export default function StrengthStatsScreen() {
             onPress={handleBack}
             style={styles.headerBackButton}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Strength Progress</Text>
           <View style={styles.headerRightSpacer} />
@@ -188,7 +188,7 @@ export default function StrengthStatsScreen() {
               onPress={() => setShowInfoSheet(true)}
               style={styles.supportedLink}
             >
-              <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
+              <Ionicons name="information-circle-outline" size={16} color={colors.brandPrimary} />
               <Text style={styles.supportedLinkText}>About Strength Levels</Text>
             </TouchableOpacity>
           </View>
@@ -226,7 +226,7 @@ export default function StrengthStatsScreen() {
         {/* Tab Content */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
             <Text style={styles.loadingText}>Loading your strength data...</Text>
           </View>
         ) : (
@@ -237,8 +237,8 @@ export default function StrengthStatsScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={[colors.primary]}
-                tintColor={colors.primary}
+                colors={[colors.brandPrimary]}
+                tintColor={colors.brandPrimary}
               />
             }
           >
@@ -279,7 +279,7 @@ export default function StrengthStatsScreen() {
                         <Ionicons
                           name="barbell"
                           size={20}
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       </View>
                       <View style={styles.exerciseHeaderText}>
@@ -370,7 +370,7 @@ export default function StrengthStatsScreen() {
                                     <Ionicons
                                       name="checkmark"
                                       size={12}
-                                      color={colors.white}
+                                      color={colors.surface}
                                     />
                                   )}
                                 </View>
@@ -434,7 +434,7 @@ export default function StrengthStatsScreen() {
                         <Ionicons
                           name="barbell"
                           size={20}
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       </View>
                       <View style={styles.exerciseHeaderText}>
@@ -528,7 +528,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     header: {
       flexDirection: 'row',
@@ -536,7 +536,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -547,18 +547,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     headerRightSpacer: {
       width: 32,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     tabs: {
       flexDirection: 'row',
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -570,7 +570,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderBottomColor: 'transparent',
     },
     activeTab: {
-      borderBottomColor: colors.primary,
+      borderBottomColor: colors.brandPrimary,
     },
     tabText: {
       fontSize: 16,
@@ -578,7 +578,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     activeTabText: {
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     topInfoBar: {
       flexDirection: 'row',
@@ -586,7 +586,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 4,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     supportedLink: {
       flexDirection: 'row',
@@ -596,7 +596,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     supportedLinkText: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     scrollView: {
       flex: 1,
@@ -609,7 +609,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingText: {
       marginTop: 16,
@@ -617,7 +617,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     summaryCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       padding: 20,
       marginBottom: 16,
@@ -636,7 +636,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -646,7 +646,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     summaryTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     summarySubtitle: {
@@ -659,7 +659,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
       marginTop: 16,
       padding: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
     },
     infoText: {
@@ -674,11 +674,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     emptyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 24,
       paddingVertical: 14,
       borderRadius: 12,
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -690,7 +690,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
     },
     exerciseCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       marginBottom: 8,
       shadowColor: colors.shadow,
@@ -717,7 +717,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 44,
       height: 44,
       borderRadius: 12,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -727,7 +727,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 17,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
       letterSpacing: -0.3,
     },
@@ -782,7 +782,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     levelRowCurrent: {
       backgroundColor: 'transparent',
-      borderBottomColor: colors.primary,
+      borderBottomColor: colors.brandPrimary,
       borderBottomWidth: 2,
       paddingBottom: -1,
     },
@@ -802,8 +802,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: colors.border,
     },
     levelDotPassed: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.brandPrimary,
     },
     levelRowText: {
       flex: 1,
@@ -811,12 +811,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     levelRowTitle: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 3,
     },
     levelRowTitleCurrent: {
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     levelRowDescription: {
       fontSize: 12,
@@ -830,13 +830,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     levelRowWeight: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.3,
     },
     levelRowWeightCurrent: {
       fontSize: 17,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     strengthLevelContainer: {
       gap: 16,
@@ -844,7 +844,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     strengthLevelInfo: {
       alignItems: 'center',
       padding: 16,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
     },
     currentLevelLabel: {
@@ -867,7 +867,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     progressBarBackground: {
       height: 8,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 4,
       overflow: 'hidden',
     },
@@ -885,13 +885,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
     },
     nextLevelLabel: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     nextLevelTarget: {
       fontSize: 13,
@@ -921,7 +921,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     recordWeight: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.3,
     },
     recordReps: {

@@ -82,7 +82,7 @@ export default function AnalyticsScreen() {
             <Ionicons
               name="swap-horizontal"
               size={24}
-              color={colors.text}
+              color={colors.textPrimary}
             />
           </TouchableOpacity>
         }
@@ -104,7 +104,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     titleButton: {
       flexDirection: 'row',
@@ -114,7 +114,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     swapIcon: {
       marginTop: 1,

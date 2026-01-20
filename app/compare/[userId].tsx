@@ -401,12 +401,12 @@ export default function CompareScreen() {
                 <Ionicons
                   name={percentDiff >= 0 ? 'arrow-up' : 'arrow-down'}
                   size={14}
-                  color={percentDiff >= 0 ? colors.success : colors.error}
+                  color={percentDiff >= 0 ? colors.statusSuccess : colors.statusError}
                 />
                 <Text
                   style={[
                     styles.percentageText,
-                    { color: percentDiff >= 0 ? colors.success : colors.error },
+                    { color: percentDiff >= 0 ? colors.statusSuccess : colors.statusError },
                   ]}
                 >
                   {Math.abs(percentDiff)}%
@@ -673,7 +673,7 @@ export default function CompareScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </View>
     )
@@ -690,7 +690,7 @@ export default function CompareScreen() {
         <BaseNavbar
           leftContent={
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           }
           centerContent={
@@ -699,7 +699,7 @@ export default function CompareScreen() {
               {isUpdating && (
                 <ActivityIndicator
                   size="small"
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                   style={{ marginLeft: 4 }}
                 />
               )}
@@ -711,7 +711,7 @@ export default function CompareScreen() {
                 <Ionicons
                   name={showTimePicker ? 'chevron-up' : 'chevron-down'}
                   size={16}
-                  color={colors.text}
+                  color={colors.textPrimary}
                 />
               </TouchableOpacity>
             </View>
@@ -753,7 +753,7 @@ export default function CompareScreen() {
         >
           {loadingExercise ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : selectedExercise && exerciseComparison ? (
             renderExerciseComparison()
@@ -820,7 +820,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingContainer: {
       flex: 1,
@@ -835,7 +835,7 @@ const createStyles = (
     headerTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     headerRow: {
       flexDirection: 'row',
@@ -854,14 +854,14 @@ const createStyles = (
     timePickerText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     timePickerDropdown: {
       position: 'absolute',
       top: 56,
       left: 0,
       right: 0,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 8,
       marginHorizontal: 16,
@@ -884,7 +884,7 @@ const createStyles = (
       alignItems: 'center',
     },
     timePickerOptionActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     timePickerOptionText: {
       fontSize: 13,
@@ -892,7 +892,7 @@ const createStyles = (
       color: colors.textSecondary,
     },
     timePickerOptionTextActive: {
-      color: colors.white,
+      color: colors.surface,
     },
     scrollView: {
       flex: 1,
@@ -928,7 +928,7 @@ const createStyles = (
     comparisonLabel: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     percentageContainer: {
       flexDirection: 'row',
@@ -954,14 +954,14 @@ const createStyles = (
       borderRadius: 12,
     },
     avatarPlaceholder: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarInitial: {
       fontSize: 11,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     barContainer: {
       flex: 1,
@@ -975,7 +975,7 @@ const createStyles = (
       borderRadius: 4,
     },
     myBar: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     theirBar: {
       backgroundColor: colors.textSecondary,
@@ -983,7 +983,7 @@ const createStyles = (
     barValue: {
       fontSize: 14,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
       minWidth: 70,
       textAlign: 'right',
     },
@@ -1003,7 +1003,7 @@ const createStyles = (
       alignItems: 'center',
       paddingVertical: 12,
       paddingHorizontal: 12,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       gap: 12,
     },
     exerciseGif: {
@@ -1022,7 +1022,7 @@ const createStyles = (
     exerciseName: {
       fontSize: 16,
       fontWeight: '500',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     exerciseMuscle: {
@@ -1037,7 +1037,7 @@ const createStyles = (
     emptyText: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: 16,
       textAlign: 'center',
     },
@@ -1075,7 +1075,7 @@ const createStyles = (
       alignItems: 'center',
     },
     vsAvatarWinner: {
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
     },
     largeAvatar: {
       width: 80,
@@ -1085,17 +1085,17 @@ const createStyles = (
     largeAvatarInitial: {
       fontSize: 28,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     vsName: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 6,
     },
     strongerBadge: {
-      backgroundColor: colors.success,
+      backgroundColor: colors.statusSuccess,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 10,
@@ -1103,7 +1103,7 @@ const createStyles = (
     strongerText: {
       fontSize: 11,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     tiedBadge: {
       backgroundColor: colors.textTertiary,
@@ -1114,13 +1114,13 @@ const createStyles = (
     tiedText: {
       fontSize: 11,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     vsCircle: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
       marginHorizontal: 8,
@@ -1129,7 +1129,7 @@ const createStyles = (
     vsText: {
       fontSize: 12,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     selectedExercise: {
       marginBottom: 24,

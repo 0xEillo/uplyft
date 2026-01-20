@@ -51,8 +51,7 @@ export const ProfileDashboard = memo(
         style={[
           styles.button,
           {
-            backgroundColor: colors.feedCardBackground,
-            borderColor: colors.border,
+            backgroundColor: colors.surfaceCard,
             width: isFullWidth ? '100%' : '48.5%',
           },
         ]}
@@ -60,7 +59,7 @@ export const ProfileDashboard = memo(
         <View style={styles.buttonIconContainer}>
           <Ionicons name={icon} size={24} color={color || colors.textSecondary} />
         </View>
-        <Text style={[styles.buttonTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.buttonTitle, { color: colors.textPrimary }]}>{title}</Text>
       </TouchableOpacity>
     )
 
@@ -78,8 +77,9 @@ export const ProfileDashboard = memo(
           style={[
             styles.button,
             {
-              backgroundColor: colors.primary + '10',
-              borderColor: colors.primary + '30',
+              backgroundColor: colors.brandPrimary + '10',
+              borderColor: colors.brandPrimary + '66',
+              borderWidth: 1,
               width: '100%',
               marginBottom: 10,
               justifyContent: 'space-between',
@@ -87,14 +87,14 @@ export const ProfileDashboard = memo(
           ]}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={[styles.buttonIconContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="school" size={24} color={colors.primary} />
+            <View style={[styles.buttonIconContainer, { backgroundColor: colors.brandPrimary + '20' }]}>
+              <Ionicons name="school" size={24} color={colors.brandPrimary} />
             </View>
-            <Text style={[styles.buttonTitle, { color: colors.primary }]}>Tutorial</Text>
+            <Text style={[styles.buttonTitle, { color: colors.brandPrimary }]}>Tutorial</Text>
           </View>
           
-          <View style={[styles.stepsBadge, { backgroundColor: colors.primary + '15' }]}>
-            <Text style={[styles.stepsText, { color: colors.primary }]}>{completedCount}/{totalSteps} steps</Text>
+          <View style={[styles.stepsBadge, { backgroundColor: colors.brandPrimary + '15' }]}>
+            <Text style={[styles.stepsText, { color: colors.brandPrimary }]}>{completedCount}/{totalSteps} steps</Text>
           </View>
         </TouchableOpacity>
       )
@@ -137,11 +137,19 @@ const styles = StyleSheet.create({
   button: {
     height: 64,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 0,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   buttonIconContainer: {
     width: 36,

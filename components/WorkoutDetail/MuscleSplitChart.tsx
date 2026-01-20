@@ -36,7 +36,7 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
       style={[
         styles.container,
         {
-          backgroundColor: colors.background,
+          backgroundColor: colors.bg,
           borderBottomColor: colors.border,
         },
       ]}
@@ -47,13 +47,13 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
 
       <View style={styles.chartContainer}>
         {muscleSplit.map((item, index) => {
-          const barColor = MUSCLE_COLORS[item.muscleGroup] || colors.primary
+          const barColor = MUSCLE_COLORS[item.muscleGroup] || colors.brandPrimary
           const percentage = Math.round(item.percentage)
 
           return (
             <View key={index} style={styles.barRow}>
               <View style={styles.labelContainer}>
-                <Text style={[styles.muscleLabel, { color: colors.text }]}>
+                <Text style={[styles.muscleLabel, { color: colors.textPrimary }]}>
                   {item.muscleGroup}
                 </Text>
               </View>
@@ -61,7 +61,7 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
               <View
                 style={[
                   styles.barContainer,
-                  { backgroundColor: colors.backgroundLight },
+                  { backgroundColor: colors.surfaceSubtle },
                 ]}
               >
                 <View

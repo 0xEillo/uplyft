@@ -508,9 +508,9 @@ export function WorkoutPlanningWizard({
               styles.gridCard,
               {
                 backgroundColor: isSelected
-                  ? `${colors.primary}15`
-                  : colors.backgroundLight,
-                borderColor: isSelected ? colors.primary : colors.border,
+                  ? `${colors.brandPrimary}15`
+                  : colors.surfaceSubtle,
+                borderColor: isSelected ? colors.brandPrimary : colors.border,
                 borderWidth: isSelected ? 2 : 1,
               },
             ]}
@@ -523,15 +523,15 @@ export function WorkoutPlanningWizard({
                 style={[
                   styles.gridCheckbox,
                   {
-                    borderColor: isSelected ? colors.primary : colors.border,
+                    borderColor: isSelected ? colors.brandPrimary : colors.border,
                     backgroundColor: isSelected
-                      ? colors.primary
+                      ? colors.brandPrimary
                       : 'transparent',
                   },
                 ]}
               >
                 {isSelected && (
-                  <Ionicons name="checkmark" size={12} color={colors.white} />
+                  <Ionicons name="checkmark" size={12} color={colors.surface} />
                 )}
               </View>
             ) : (
@@ -540,7 +540,7 @@ export function WorkoutPlanningWizard({
                   <Ionicons
                     name="checkmark-circle"
                     size={22}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                 </View>
               )
@@ -553,7 +553,7 @@ export function WorkoutPlanningWizard({
                   styles.gridIconContainer,
                   {
                     backgroundColor: isSelected
-                      ? `${colors.primary}20`
+                      ? `${colors.brandPrimary}20`
                       : `${colors.textSecondary}10`,
                   },
                 ]}
@@ -561,7 +561,7 @@ export function WorkoutPlanningWizard({
                 <Ionicons
                   name={option.icon as any}
                   size={24}
-                  color={isSelected ? colors.primary : colors.textSecondary}
+                  color={isSelected ? colors.brandPrimary : colors.textSecondary}
                 />
               </View>
             )}
@@ -571,7 +571,7 @@ export function WorkoutPlanningWizard({
               <Text
                 style={[
                   styles.gridCardTitle,
-                  { color: isSelected ? colors.primary : colors.text },
+                  { color: isSelected ? colors.brandPrimary : colors.textPrimary },
                 ]}
                 numberOfLines={1}
               >
@@ -627,9 +627,9 @@ export function WorkoutPlanningWizard({
               styles.muscleCard,
               {
                 backgroundColor: isSelected
-                  ? `${colors.primary}15`
-                  : colors.backgroundLight,
-                borderColor: isSelected ? colors.primary : colors.border,
+                  ? `${colors.brandPrimary}15`
+                  : colors.surfaceSubtle,
+                borderColor: isSelected ? colors.brandPrimary : colors.border,
                 borderWidth: isSelected ? 2 : 1,
               },
             ]}
@@ -641,13 +641,13 @@ export function WorkoutPlanningWizard({
               style={[
                 styles.gridCheckbox,
                 {
-                  borderColor: isSelected ? colors.primary : colors.border,
-                  backgroundColor: isSelected ? colors.primary : 'transparent',
+                  borderColor: isSelected ? colors.brandPrimary : colors.border,
+                  backgroundColor: isSelected ? colors.brandPrimary : 'transparent',
                 },
               ]}
             >
               {isSelected && (
-                <Ionicons name="checkmark" size={12} color={colors.white} />
+                <Ionicons name="checkmark" size={12} color={colors.surface} />
               )}
             </View>
 
@@ -672,7 +672,7 @@ export function WorkoutPlanningWizard({
                     gender="male"
                     side={primaryMapping.side}
                     scale={BODY_HALF_CONFIG[primaryMapping.bodyHalf].scale}
-                    colors={[isSelected ? colors.primary : '#EF4444']}
+                    colors={[isSelected ? colors.brandPrimary : '#EF4444']}
                     border="#D1D5DB"
                   />
                 </View>
@@ -684,7 +684,7 @@ export function WorkoutPlanningWizard({
               <Text
                 style={[
                   styles.gridCardTitle,
-                  { color: isSelected ? colors.primary : colors.text },
+                  { color: isSelected ? colors.brandPrimary : colors.textPrimary },
                 ]}
                 numberOfLines={1}
               >
@@ -718,7 +718,7 @@ export function WorkoutPlanningWizard({
               styles.gridCard,
               styles.equipmentCard,
               {
-                borderColor: isSelected ? colors.primary : colors.border,
+                borderColor: isSelected ? colors.brandPrimary : colors.border,
                 borderWidth: isSelected ? 2 : 1,
               },
             ]}
@@ -752,7 +752,7 @@ export function WorkoutPlanningWizard({
                 style={[
                   styles.gridSelectedIndicator,
                   {
-                    backgroundColor: colors.primary,
+                    backgroundColor: colors.brandPrimary,
                     width: 24,
                     height: 24,
                     borderRadius: 12,
@@ -763,7 +763,7 @@ export function WorkoutPlanningWizard({
                   },
                 ]}
               >
-                <Ionicons name="checkmark" size={16} color={colors.white} />
+                <Ionicons name="checkmark" size={16} color={colors.surface} />
               </View>
             )}
 
@@ -789,8 +789,8 @@ export function WorkoutPlanningWizard({
             setShowCustomInput(true)
           }}
         >
-          <Ionicons name="add" size={16} color={colors.primary} />
-          <Text style={[styles.customTriggerText, { color: colors.primary }]}>
+          <Ionicons name="add" size={16} color={colors.brandPrimary} />
+          <Text style={[styles.customTriggerText, { color: colors.brandPrimary }]}>
             Custom
           </Text>
         </TouchableOpacity>
@@ -801,11 +801,11 @@ export function WorkoutPlanningWizard({
       <View
         style={[
           styles.customInputContainer,
-          { backgroundColor: colors.backgroundLight },
+          { backgroundColor: colors.surfaceSubtle },
         ]}
       >
         <TextInput
-          style={[styles.customInput, { color: colors.text }]}
+          style={[styles.customInput, { color: colors.textPrimary }]}
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
           value={customInput}
@@ -818,7 +818,7 @@ export function WorkoutPlanningWizard({
           style={styles.customInputSubmit}
           onPress={handleDoneEditing} // Re-use next handler to add custom input
         >
-          <Ionicons name="checkmark-circle" size={28} color={colors.primary} />
+          <Ionicons name="checkmark-circle" size={28} color={colors.brandPrimary} />
         </TouchableOpacity>
       </View>
     )
@@ -831,7 +831,7 @@ export function WorkoutPlanningWizard({
       contentContainerStyle={styles.scrollContentContainer}
     >
       <View style={styles.headerContainer}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>
+        <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
           Primary Goal
         </Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
@@ -850,7 +850,7 @@ export function WorkoutPlanningWizard({
       contentContainerStyle={styles.scrollContentContainer}
     >
       <View style={styles.headerContainer}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>
+        <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
           Target Muscles
         </Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
@@ -871,8 +871,8 @@ export function WorkoutPlanningWizard({
                 style={[
                   styles.tag,
                   {
-                    backgroundColor: colors.primary,
-                    borderColor: colors.primary,
+                    backgroundColor: colors.brandPrimary,
+                    borderColor: colors.brandPrimary,
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 4,
@@ -883,10 +883,10 @@ export function WorkoutPlanningWizard({
                   handleSelectOption('muscles', muscle, true)
                 }}
               >
-                <Text style={[styles.tagText, { color: colors.white }]}>
+                <Text style={[styles.tagText, { color: colors.surface }]}>
                   {muscle}
                 </Text>
-                <Ionicons name="close-circle" size={16} color={colors.white} />
+                <Ionicons name="close-circle" size={16} color={colors.surface} />
               </TouchableOpacity>
             ))}
         </View>
@@ -913,9 +913,9 @@ export function WorkoutPlanningWizard({
                     styles.tag,
                     {
                       backgroundColor: isSelected
-                        ? colors.primary
-                        : colors.backgroundLight,
-                      borderColor: isSelected ? colors.primary : colors.border,
+                        ? colors.brandPrimary
+                        : colors.surfaceSubtle,
+                      borderColor: isSelected ? colors.brandPrimary : colors.border,
                     },
                   ]}
                   onPress={() => {
@@ -927,7 +927,7 @@ export function WorkoutPlanningWizard({
                     style={[
                       styles.tagText,
                       {
-                        color: isSelected ? colors.white : colors.text,
+                        color: isSelected ? colors.surface : colors.textPrimary,
                       },
                     ]}
                   >
@@ -951,7 +951,7 @@ export function WorkoutPlanningWizard({
       contentContainerStyle={styles.scrollContentContainer}
     >
       <View style={styles.headerContainer}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>Duration</Text>
+        <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Duration</Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
           How much time do you have?
         </Text>
@@ -968,7 +968,7 @@ export function WorkoutPlanningWizard({
       contentContainerStyle={styles.scrollContentContainer}
     >
       <View style={styles.headerContainer}>
-        <Text style={[styles.stepTitle, { color: colors.text }]}>
+        <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
           Equipment
         </Text>
         <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
@@ -979,11 +979,11 @@ export function WorkoutPlanningWizard({
         <View
           style={[
             styles.savedBadge,
-            { backgroundColor: `${colors.primary}15` },
+            { backgroundColor: `${colors.brandPrimary}15` },
           ]}
         >
-          <Ionicons name="save-outline" size={14} color={colors.primary} />
-          <Text style={[styles.savedBadgeText, { color: colors.primary }]}>
+          <Ionicons name="save-outline" size={14} color={colors.brandPrimary} />
+          <Text style={[styles.savedBadgeText, { color: colors.brandPrimary }]}>
             Saved:{' '}
             {EQUIPMENT_OPTIONS.find((o) => o.value === savedEquipment)?.label}
           </Text>
@@ -1002,7 +1002,7 @@ export function WorkoutPlanningWizard({
           contentContainerStyle={styles.scrollContentContainer}
         >
           <View style={styles.headerContainer}>
-            <Text style={[styles.stepTitle, { color: colors.text }]}>
+            <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
               Specifics
             </Text>
             <Text
@@ -1020,10 +1020,10 @@ export function WorkoutPlanningWizard({
                   styles.tag,
                   {
                     backgroundColor: data.specifics.includes(tag)
-                      ? colors.primary
-                      : colors.backgroundLight,
+                      ? colors.brandPrimary
+                      : colors.surfaceSubtle,
                     borderColor: data.specifics.includes(tag)
-                      ? colors.primary
+                      ? colors.brandPrimary
                       : colors.border,
                   },
                 ]}
@@ -1057,8 +1057,8 @@ export function WorkoutPlanningWizard({
                     styles.tagText,
                     {
                       color: data.specifics.includes(tag)
-                        ? colors.white
-                        : colors.text,
+                        ? colors.surface
+                        : colors.textPrimary,
                     },
                   ]}
                 >
@@ -1071,11 +1071,11 @@ export function WorkoutPlanningWizard({
           <View
             style={[
               styles.specificsInputContainer,
-              { backgroundColor: colors.backgroundLight },
+              { backgroundColor: colors.surfaceSubtle },
             ]}
           >
             <TextInput
-              style={[styles.specificsInput, { color: colors.text }]}
+              style={[styles.specificsInput, { color: colors.textPrimary }]}
               placeholder="e.g., I have a bad shoulder, include some cardio..."
               placeholderTextColor={colors.textSecondary}
               value={data.specifics}
@@ -1119,7 +1119,7 @@ export function WorkoutPlanningWizard({
         contentContainerStyle={styles.scrollContentContainer}
       >
         <View style={styles.headerContainer}>
-          <Text style={[styles.stepTitle, { color: colors.text }]}>
+          <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>
             Workout Plan
           </Text>
         </View>
@@ -1127,7 +1127,7 @@ export function WorkoutPlanningWizard({
         <View
           style={[
             styles.summaryCard,
-            { backgroundColor: colors.backgroundLight },
+            { backgroundColor: colors.surfaceSubtle },
           ]}
         >
           <SummaryRow
@@ -1196,7 +1196,7 @@ export function WorkoutPlanningWizard({
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
@@ -1229,18 +1229,18 @@ export function WorkoutPlanningWizard({
               style={[
                 styles.navButton,
                 styles.confirmButton,
-                { backgroundColor: colors.primary },
+                { backgroundColor: colors.brandPrimary },
               ]}
               onPress={handleConfirm}
               activeOpacity={0.6}
             >
-              <Text style={[styles.navButtonText, { color: colors.white }]}>
+              <Text style={[styles.navButtonText, { color: colors.surface }]}>
                 Generate Workout
               </Text>
               <Ionicons
                 name="flash"
                 size={16}
-                color={colors.white}
+                color={colors.surface}
                 style={{ marginLeft: 4 }}
               />
             </TouchableOpacity>
@@ -1256,7 +1256,7 @@ export function WorkoutPlanningWizard({
               onPress={handleBack}
               activeOpacity={0.6}
             >
-              <Ionicons name="chevron-back" size={18} color={colors.text} />
+              <Ionicons name="chevron-back" size={18} color={colors.textPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1265,8 +1265,8 @@ export function WorkoutPlanningWizard({
                 styles.nextButton,
                 {
                   backgroundColor: canSaveField()
-                    ? colors.primary
-                    : colors.backgroundLight,
+                    ? colors.brandPrimary
+                    : colors.surfaceSubtle,
                   opacity: canSaveField() ? 1 : 0.5,
                 },
               ]}
@@ -1277,7 +1277,7 @@ export function WorkoutPlanningWizard({
               <Text
                 style={[
                   styles.navButtonText,
-                  { color: canSaveField() ? colors.white : colors.textSecondary },
+                  { color: canSaveField() ? colors.surface : colors.textSecondary },
                 ]}
               >
                 Done
@@ -1285,7 +1285,7 @@ export function WorkoutPlanningWizard({
               <Ionicons
                 name="checkmark"
                 size={16}
-                color={canSaveField() ? colors.white : colors.textSecondary}
+                color={canSaveField() ? colors.surface : colors.textSecondary}
               />
             </TouchableOpacity>
           </>
@@ -1315,14 +1315,14 @@ function SummaryRow({
       activeOpacity={0.6}
     >
       <View style={summaryStyles.iconContainer}>
-        <WizardIcon name={icon} size={20} color={colors.primary} />
+        <WizardIcon name={icon} size={20} color={colors.brandPrimary} />
       </View>
       <View style={summaryStyles.contentContainer}>
         <Text style={[summaryStyles.label, { color: colors.textSecondary }]}>
           {label}
         </Text>
         <Text
-          style={[summaryStyles.value, { color: colors.text }]}
+          style={[summaryStyles.value, { color: colors.textPrimary }]}
           numberOfLines={2}
         >
           {value}
@@ -1653,7 +1653,7 @@ const createStyles = (
       gap: 10,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     navButton: {
       flexDirection: 'row',

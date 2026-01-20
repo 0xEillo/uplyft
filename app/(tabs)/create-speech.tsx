@@ -208,7 +208,7 @@ export default function CreateSpeechScreen() {
       <View style={styles.content}>
         {isProcessing ? (
           <View style={styles.processingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
             <Text style={styles.processingText}>Processing workout...</Text>
           </View>
         ) : (
@@ -219,7 +219,7 @@ export default function CreateSpeechScreen() {
                 size={120}
                 color={
                   recorderState.isRecording
-                    ? colors.primary
+                    ? colors.brandPrimary
                     : colors.textPlaceholder
                 }
               />
@@ -248,7 +248,7 @@ export default function CreateSpeechScreen() {
               <Ionicons
                 name={recorderState.isRecording ? 'stop' : 'mic'}
                 size={32}
-                color={colors.white}
+                color={colors.surface}
               />
             </TouchableOpacity>
           </>
@@ -269,7 +269,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     content: {
       flex: 1,
@@ -284,7 +284,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     recordingText: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       marginTop: 24,
     },
     instructions: {
@@ -300,10 +300,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 80,
       height: 80,
       borderRadius: 40,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: {
         width: 0,
         height: 4,
@@ -313,7 +313,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       elevation: 8,
     },
     recordButtonActive: {
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.brandPrimaryDark,
     },
     processingContainer: {
       alignItems: 'center',

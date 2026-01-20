@@ -104,7 +104,7 @@ export function SupportedExercisesSheet({
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Supported Exercises</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -120,7 +120,7 @@ export function SupportedExercisesSheet({
           >
             {isLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.brandPrimary} />
               </View>
             ) : (
               groupedExercises.map(([group, exList]) => (
@@ -135,7 +135,7 @@ export function SupportedExercisesSheet({
                           : 'arrow-back-outline'
                       }
                       size={18}
-                      color={colors.primary}
+                      color={colors.brandPrimary}
                     />
                     <Text style={styles.groupTitle}>{group}</Text>
                   </View>
@@ -177,7 +177,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       justifyContent: 'flex-end',
     },
     sheetContent: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       maxHeight: '85%',
@@ -195,14 +195,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
     headerTitle: {
       fontSize: 20,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
     },
     closeButton: {
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -240,7 +240,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       letterSpacing: 1,
     },
     exerciseList: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       overflow: 'hidden',
       borderWidth: 1,
@@ -261,6 +261,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

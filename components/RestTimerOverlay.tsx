@@ -323,8 +323,8 @@ export function RestTimerOverlay({
                     size={240}
                     strokeWidth={12}
                     progress={progress}
-                    color={colors.primary}
-                    backgroundColor={colors.backgroundLight}
+                    color={colors.brandPrimary}
+                    backgroundColor={colors.surfaceSubtle}
                   />
                   <View style={styles.timerTextContainer}>
                     <Text style={styles.activeTimerText}>
@@ -368,7 +368,7 @@ export function RestTimerOverlay({
                       <Ionicons
                         name="remove"
                         size={24}
-                        color={isDark ? '#FFFFFF' : colors.text}
+                        color={isDark ? '#FFFFFF' : colors.textPrimary}
                       />
                     </TouchableOpacity>
 
@@ -379,7 +379,7 @@ export function RestTimerOverlay({
                       <Ionicons
                         name="add"
                         size={24}
-                        color={isDark ? '#FFFFFF' : colors.text}
+                        color={isDark ? '#FFFFFF' : colors.textPrimary}
                       />
                     </TouchableOpacity>
                   </View>
@@ -412,7 +412,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
     modalContent: {
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surfaceSheet,
       borderTopLeftRadius: 32,
       borderTopRightRadius: 32,
       paddingBottom: 40,
@@ -449,7 +449,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     resetText: {
       fontSize: 17,
@@ -463,7 +463,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -485,7 +485,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     activeTimerText: {
       fontSize: 56,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       fontVariant: ['tabular-nums'],
       letterSpacing: -1,
     },
@@ -508,15 +508,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     stopButton: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     stopButtonText: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.error, // iOS Red
+      color: colors.statusError, // iOS Red
     },
     addButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     addButtonText: {
       fontSize: 18,
@@ -527,7 +527,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 24,
     },
     adjusterCard: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 20,
       padding: 20,
       flexDirection: 'row',
@@ -541,13 +541,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     selectedTimeText: {
       fontSize: 34,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       fontVariant: ['tabular-nums'],
       letterSpacing: 0.5,
     },
     timeContextLabel: {
       fontSize: 15,
-      color: colors.text,
+      color: colors.textPrimary,
       marginTop: 4,
       fontWeight: '500',
     },
@@ -559,14 +559,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: colors.border,
     },
     startButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       height: 56,
       borderRadius: 28,
       alignItems: 'center',

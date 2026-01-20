@@ -55,7 +55,7 @@ export function ProfileCard({
         {
           width,
           height,
-          backgroundColor: tintColor ?? colors.feedCardBackground,
+          backgroundColor: tintColor ?? colors.surfaceCard,
           borderColor: colors.border,
         },
       ]}
@@ -64,7 +64,7 @@ export function ProfileCard({
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: colors.background },
+            { backgroundColor: colors.bg },
           ]}
         >
           <Ionicons name={icon} size={22} color={colors.textSecondary} />
@@ -82,7 +82,7 @@ export function ProfileCard({
           <Text
             style={[
               styles.cardTitle,
-              { color: titleColor ?? colors.text },
+              { color: titleColor ?? colors.textPrimary },
             ]}
             numberOfLines={2}
             ellipsizeMode="tail"

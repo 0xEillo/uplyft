@@ -140,7 +140,7 @@ export default function ReviewScreen() {
         fadeOut
         explosionSpeed={350}
         fallSpeed={3000}
-        colors={[colors.primary, '#FFD700', '#FFA500', '#FF6B35', '#4ECDC4']}
+        colors={[colors.brandPrimary, '#FFD700', '#FFA500', '#FF6B35', '#4ECDC4']}
       />
 
       <View style={styles.wrapper}>
@@ -157,7 +157,7 @@ export default function ReviewScreen() {
             ]}
           >
             <View style={styles.iconWrapper}>
-              <Ionicons name="trophy" size={64} color={colors.primary} />
+              <Ionicons name="trophy" size={64} color={colors.brandPrimary} />
             </View>
           </Animated.View>
 
@@ -210,7 +210,7 @@ export default function ReviewScreen() {
                 key={star}
                 name="star"
                 size={32}
-                color={colors.primary}
+                color={colors.brandPrimary}
                 style={styles.star}
               />
             ))}
@@ -238,7 +238,7 @@ export default function ReviewScreen() {
             <Ionicons
               name="arrow-forward"
               size={18}
-              color={colors.buttonText}
+              color={colors.onPrimary}
               style={styles.buttonIcon}
             />
           </Pressable>
@@ -255,7 +255,7 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     wrapper: {
       flex: 1,
@@ -276,14 +276,14 @@ const createStyles = (
       width: 120,
       height: 120,
       borderRadius: 60,
-      backgroundColor: colors.primary + '15',
+      backgroundColor: colors.brandPrimary + '15',
       justifyContent: 'center',
       alignItems: 'center',
     },
     headline: {
       fontSize: 32,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 16,
       lineHeight: 38,
@@ -296,7 +296,7 @@ const createStyles = (
       paddingHorizontal: 8,
     },
     reviewCard: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       paddingHorizontal: 24,
@@ -331,7 +331,7 @@ const createStyles = (
     reviewMessage: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 12,
       lineHeight: 30,
@@ -345,7 +345,7 @@ const createStyles = (
     },
     continueButton: {
       height: 56,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 28,
       flexDirection: 'row',
       justifyContent: 'center',
@@ -359,7 +359,7 @@ const createStyles = (
     continueButtonText: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.buttonText,
+      color: colors.onPrimary,
     },
     buttonIcon: {
       marginLeft: 4,

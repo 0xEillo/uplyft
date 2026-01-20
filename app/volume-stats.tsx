@@ -129,7 +129,7 @@ export default function VolumeStatsScreen() {
             onPress={handleBack}
             style={styles.headerBackButton}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Training Volume</Text>
           <View style={styles.headerRightSpacer} />
@@ -160,7 +160,7 @@ export default function VolumeStatsScreen() {
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
             <Text style={styles.loadingText}>
               Loading your training data...
             </Text>
@@ -178,7 +178,7 @@ export default function VolumeStatsScreen() {
                   <Ionicons
                     name="stats-chart"
                     size={20}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                 </View>
                 <Text style={styles.cardTitle}>Workout Summary</Text>
@@ -208,7 +208,7 @@ export default function VolumeStatsScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.cardIconContainer}>
-                  <Ionicons name="bar-chart" size={20} color={colors.primary} />
+                  <Ionicons name="bar-chart" size={20} color={colors.brandPrimary} />
                 </View>
                 <Text style={styles.cardTitle}>Total Sets by Muscle Group</Text>
               </View>
@@ -276,7 +276,7 @@ export default function VolumeStatsScreen() {
                                     height: barHeight,
                                     backgroundColor:
                                       MUSCLE_GROUP_COLORS[mg.name] ||
-                                      colors.primary,
+                                      colors.brandPrimary,
                                   },
                                 ]}
                               />
@@ -302,7 +302,7 @@ export default function VolumeStatsScreen() {
                       <Ionicons
                         name="trending-up"
                         size={20}
-                        color={colors.primary}
+                        color={colors.brandPrimary}
                       />
                     </View>
                     <Text style={styles.cardTitle}>Volume Over Time</Text>
@@ -339,7 +339,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     header: {
       flexDirection: 'row',
@@ -347,7 +347,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       paddingHorizontal: 14,
       paddingVertical: 12,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -358,7 +358,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     headerRightSpacer: {
       width: 32,
@@ -368,7 +368,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -377,11 +377,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 8,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
     },
     timeRangeButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     timeRangeText: {
       fontSize: 14,
@@ -389,11 +389,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     timeRangeTextActive: {
-      color: colors.white,
+      color: colors.surface,
     },
     scrollView: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     contentContainer: {
       padding: 14,
@@ -402,7 +402,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     loadingText: {
       marginTop: 16,
@@ -410,7 +410,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     card: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       padding: 20,
       marginBottom: 16,
@@ -430,14 +430,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
     },
     cardTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statsGrid: {
       flexDirection: 'row',
@@ -445,7 +445,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statBox: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 16,
       alignItems: 'center',
@@ -453,7 +453,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statValue: {
       fontSize: 28,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     statLabel: {
@@ -495,7 +495,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setCount: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     muscleGroupName: {

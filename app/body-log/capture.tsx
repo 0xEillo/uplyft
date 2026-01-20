@@ -318,7 +318,7 @@ export default function BodyLogCaptureScreen() {
                           <Ionicons
                             name="checkmark"
                             size={24}
-                            color={colors.white}
+                            color={colors.surface}
                           />
                         </View>
                       </Animated.View>
@@ -329,7 +329,7 @@ export default function BodyLogCaptureScreen() {
                         <View style={dynamicStyles.loadingContainer}>
                           <ActivityIndicator
                             size="large"
-                            color={colors.primary}
+                            color={colors.brandPrimary}
                           />
                         </View>
                       ) : (
@@ -338,14 +338,14 @@ export default function BodyLogCaptureScreen() {
                             style={[
                               dynamicStyles.emptySlot,
                               {
-                                backgroundColor: `${colors.primary}15`,
+                                backgroundColor: `${colors.brandPrimary}15`,
                               },
                             ]}
                           >
                             <Ionicons
                               name="camera"
                               size={40}
-                              color={colors.primary}
+                              color={colors.brandPrimary}
                             />
                           </View>
                           <Text style={dynamicStyles.slotLabel}>
@@ -369,7 +369,7 @@ export default function BodyLogCaptureScreen() {
                   style={[
                     dynamicStyles.progressDot,
                     photos[index] !== null && {
-                      backgroundColor: colors.primary,
+                      backgroundColor: colors.brandPrimary,
                     },
                   ]}
                 />
@@ -387,11 +387,11 @@ export default function BodyLogCaptureScreen() {
             <Ionicons
               name="bulb-outline"
               size={16}
-              color={colors.primary}
+              color={colors.brandPrimary}
             />
             <Text style={[
               dynamicStyles.infoText,
-              { color: colors.primary }
+              { color: colors.brandPrimary }
             ]}>
               Take at least one photo. More photos = better body scan analysis.
             </Text>
@@ -405,7 +405,7 @@ export default function BodyLogCaptureScreen() {
               dynamicStyles.continueButton,
               {
                 backgroundColor: canContinue
-                  ? colors.primary
+                  ? colors.brandPrimary
                   : colors.textSecondary + '40',
               },
             ]}
@@ -497,7 +497,7 @@ const createDynamicStyles = (colors: Colors) =>
       overflow: 'hidden',
       backgroundColor: 'rgba(0, 0, 0, 0.4)',
       borderWidth: 2,
-      borderColor: `${colors.primary}30`,
+      borderColor: `${colors.brandPrimary}30`,
       justifyContent: 'center',
       alignItems: 'center',
       position: 'relative',
@@ -531,10 +531,10 @@ const createDynamicStyles = (colors: Colors) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.success,
+      backgroundColor: colors.statusSuccess,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.success,
+      shadowColor: colors.statusSuccess,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.5,
       shadowRadius: 8,
@@ -579,7 +579,7 @@ const createDynamicStyles = (colors: Colors) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 12,
-      backgroundColor: `${colors.primary}15`,
+      backgroundColor: `${colors.brandPrimary}15`,
       gap: 8,
     },
     infoText: {
@@ -616,8 +616,8 @@ const createDynamicStyles = (colors: Colors) =>
       backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
     unitButtonActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
+      borderColor: colors.brandPrimary,
     },
     unitButtonText: {
       fontSize: 12,
@@ -626,7 +626,7 @@ const createDynamicStyles = (colors: Colors) =>
       letterSpacing: 0.6,
     },
     unitButtonTextActive: {
-      color: colors.buttonText,
+      color: colors.onPrimary,
     },
     weightInputRow: {
       flexDirection: 'row',
@@ -649,7 +649,7 @@ const createDynamicStyles = (colors: Colors) =>
       letterSpacing: -0.3,
     },
     weightInputError: {
-      borderColor: colors.error,
+      borderColor: colors.statusError,
     },
     weightHelperRow: {
       flexDirection: 'row',
@@ -663,12 +663,12 @@ const createDynamicStyles = (colors: Colors) =>
       marginRight: 8,
     },
     weightHelperTextError: {
-      color: colors.error,
+      color: colors.statusError,
     },
     weightPreview: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     buttonSection: {
       paddingHorizontal: GRID_PADDING,
@@ -681,7 +681,7 @@ const createDynamicStyles = (colors: Colors) =>
       borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.primary,
+      shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.35,
       shadowRadius: 16,
@@ -690,7 +690,7 @@ const createDynamicStyles = (colors: Colors) =>
     continueButtonText: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.surface,
       letterSpacing: -0.3,
     },
     buttonHint: {

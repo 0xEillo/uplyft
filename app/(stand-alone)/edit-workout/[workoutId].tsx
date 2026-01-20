@@ -648,7 +648,7 @@ export default function EditWorkoutScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </View>
     )
@@ -672,7 +672,7 @@ export default function EditWorkoutScreen() {
                 onPress={() => handleExit()}
                 style={styles.headerButton}
               >
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -684,7 +684,7 @@ export default function EditWorkoutScreen() {
               disabled={isSaving}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.brandPrimary} />
               ) : (
                 <Text style={styles.saveText}>Save</Text>
               )}
@@ -723,7 +723,7 @@ export default function EditWorkoutScreen() {
                   <Ionicons
                     name="calendar-outline"
                     size={20}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                   <Text style={styles.dateButtonText}>
                     {editedDate
@@ -770,7 +770,7 @@ export default function EditWorkoutScreen() {
                       display="spinner"
                       onChange={handleDateChange}
                       maximumDate={new Date()}
-                      textColor={colors.text}
+                      textColor={colors.textPrimary}
                     />
                   </View>
                 </View>
@@ -886,7 +886,7 @@ export default function EditWorkoutScreen() {
                       <View style={styles.imageLoadingOverlay}>
                         <ActivityIndicator
                           size="small"
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       </View>
                     )}
@@ -900,14 +900,14 @@ export default function EditWorkoutScreen() {
                       {isUploadingImage ? (
                         <ActivityIndicator
                           size="small"
-                          color={colors.primary}
+                          color={colors.brandPrimary}
                         />
                       ) : (
                         <>
                           <Ionicons
                             name="camera-outline"
                             size={18}
-                            color={colors.primary}
+                            color={colors.brandPrimary}
                           />
                           <Text style={styles.changeButtonText}>
                             Change Photo
@@ -923,7 +923,7 @@ export default function EditWorkoutScreen() {
                       <Ionicons
                         name="trash-outline"
                         size={18}
-                        color={colors.error}
+                        color={colors.statusError}
                       />
                       <Text style={styles.deleteButtonText}>Delete</Text>
                     </TouchableOpacity>
@@ -936,13 +936,13 @@ export default function EditWorkoutScreen() {
                   disabled={isUploadingImage}
                 >
                   {isUploadingImage ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color={colors.brandPrimary} />
                   ) : (
                     <>
                       <Ionicons
                         name="camera-outline"
                         size={24}
-                        color={colors.primary}
+                        color={colors.brandPrimary}
                       />
                       <Text style={styles.addPhotoText}>Add Photo</Text>
                     </>
@@ -987,7 +987,7 @@ export default function EditWorkoutScreen() {
                             <Ionicons
                               name="create-outline"
                               size={18}
-                              color={colors.primary}
+                              color={colors.brandPrimary}
                             />
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -1000,7 +1000,7 @@ export default function EditWorkoutScreen() {
                             <Ionicons
                               name="trash-outline"
                               size={18}
-                              color={colors.error}
+                              color={colors.statusError}
                             />
                           </TouchableOpacity>
                           <Ionicons
@@ -1098,7 +1098,7 @@ export default function EditWorkoutScreen() {
                                       <Ionicons
                                         name="close-circle"
                                         size={20}
-                                        color={colors.error}
+                                        color={colors.statusError}
                                       />
                                     </TouchableOpacity>
                                   </View>
@@ -1115,7 +1115,7 @@ export default function EditWorkoutScreen() {
                             <Ionicons
                               name="add-circle-outline"
                               size={20}
-                              color={colors.primary}
+                              color={colors.brandPrimary}
                             />
                             <Text style={styles.addSetText}>Add Set</Text>
                           </TouchableOpacity>
@@ -1133,7 +1133,7 @@ export default function EditWorkoutScreen() {
                 <Ionicons
                   name="add-circle-outline"
                   size={22}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                 />
                 <Text style={styles.addExerciseText}>Add Exercise</Text>
               </TouchableOpacity>
@@ -1149,7 +1149,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     keyboardView: {
       flex: 1,
@@ -1158,7 +1158,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     headerButton: {
       zIndex: 1,
@@ -1166,7 +1166,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     cancelText: {
@@ -1176,12 +1176,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     saveText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
       textAlign: 'right',
     },
     content: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     section: {
       padding: 16,
@@ -1195,11 +1195,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 8,
     },
     input: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1208,7 +1208,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlignVertical: 'top',
     },
     dateButton: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       borderWidth: 1,
@@ -1224,7 +1224,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     dateButtonText: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     datePickerModalOverlay: {
       flex: 1,
@@ -1232,7 +1232,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'flex-end',
     },
     datePickerModalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       paddingBottom: 20,
@@ -1248,7 +1248,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     datePickerTitle: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     datePickerCancelText: {
       fontSize: 17,
@@ -1257,10 +1257,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     datePickerDoneText: {
       fontSize: 17,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     imageContainer: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
@@ -1269,7 +1269,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     imageWrapper: {
       width: '100%',
       aspectRatio: 16 / 9,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     workoutImage: {
       width: '100%',
@@ -1279,7 +1279,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       ...StyleSheet.absoluteFillObject,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     imageButtons: {
       flexDirection: 'row',
@@ -1297,27 +1297,27 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 8,
     },
     changeButton: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.brandPrimary,
     },
     changeButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     deleteButton: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderWidth: 1,
-      borderColor: colors.error,
+      borderColor: colors.statusError,
     },
     deleteButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.error,
+      color: colors.statusError,
     },
     addPhotoButton: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
@@ -1330,10 +1330,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     addPhotoText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     exerciseCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       marginBottom: 12,
       borderWidth: 1,
@@ -1357,7 +1357,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 4,
     },
     setCount: {
@@ -1398,7 +1398,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 40,
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     setNumberCell: {
@@ -1415,7 +1415,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     warmupBadge: {
-      backgroundColor: `${colors.warning}25`,
+      backgroundColor: `${colors.statusWarning}25`,
     },
     setNumberBadgeText: {
       fontSize: 12,
@@ -1423,15 +1423,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     warmupText: {
-      color: colors.warning,
+      color: colors.statusWarning,
     },
     setInput: {
       flex: 1,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
       padding: 10,
       fontSize: 14,
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       borderWidth: 1,
       borderColor: colors.border,
@@ -1451,7 +1451,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     addSetText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     addExerciseButton: {
       flexDirection: 'row',
@@ -1464,18 +1464,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderWidth: 1,
       borderColor: colors.border,
       borderStyle: 'dashed',
-      backgroundColor: colors.backgroundWhite,
+      backgroundColor: colors.surface,
     },
     addExerciseText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     durationContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       borderWidth: 1,
@@ -1488,13 +1488,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 4,
     },
     durationInput: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 8,
       paddingVertical: 12,
       paddingHorizontal: 14,
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
       minWidth: 52,
       borderWidth: 1,

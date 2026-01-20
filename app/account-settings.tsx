@@ -419,14 +419,14 @@ export default function SettingsScreen() {
                 onPress={handleGoBack}
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
           centerContent={<Text style={styles.headerTitle}>Settings</Text>}
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       </SafeAreaView>
     )
@@ -438,7 +438,7 @@ export default function SettingsScreen() {
         leftContent={
           <NavbarIsland>
             <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </NavbarIsland>
         }
@@ -462,7 +462,7 @@ export default function SettingsScreen() {
                 <Ionicons
                   name="cloud-upload"
                   size={24}
-                  color={colors.primary}
+                  color={colors.brandPrimary}
                 />
               </View>
               <View style={styles.guestBannerText}>
@@ -474,7 +474,7 @@ export default function SettingsScreen() {
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.primary}
+                color={colors.brandPrimary}
               />
             </View>
           </TouchableOpacity>
@@ -514,7 +514,7 @@ export default function SettingsScreen() {
                     <Ionicons
                       name="add-circle"
                       size={18}
-                      color={colors.primary}
+                      color={colors.brandPrimary}
                     />
                   </TouchableOpacity>
                 ) : (
@@ -580,10 +580,10 @@ export default function SettingsScreen() {
               <Ionicons
                 name="refresh-outline"
                 size={20}
-                color={colors.primary}
+                color={colors.brandPrimary}
               />
               {isRestoring ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.brandPrimary} />
               ) : (
                 <Text style={styles.subscriptionButtonText}>
                   Restore Purchases
@@ -602,7 +602,7 @@ export default function SettingsScreen() {
                   <Ionicons
                     name="settings-outline"
                     size={20}
-                    color={colors.primary}
+                    color={colors.brandPrimary}
                   />
                   <Text style={styles.subscriptionButtonText}>
                     Manage Subscription
@@ -738,8 +738,8 @@ export default function SettingsScreen() {
                 value={profile?.is_private ?? false}
                 onValueChange={handleTogglePrivacy}
                 disabled={!profile || isPrivacyUpdating}
-                trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
-                thumbColor={profile?.is_private ? colors.primary : '#F3F4F6'}
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={profile?.is_private ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
           </View>
@@ -780,7 +780,7 @@ export default function SettingsScreen() {
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.textLight}
+                color={colors.textMuted}
               />
             </View>
           </TouchableOpacity>
@@ -810,7 +810,7 @@ export default function SettingsScreen() {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={colors.textLight}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -834,7 +834,7 @@ export default function SettingsScreen() {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={colors.textLight}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
 
@@ -853,7 +853,7 @@ export default function SettingsScreen() {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={colors.textLight}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -874,7 +874,7 @@ export default function SettingsScreen() {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={colors.textLight}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -888,7 +888,7 @@ export default function SettingsScreen() {
             onPress={handleDeleteAccount}
           >
             <View style={styles.actionButtonContent}>
-              <Ionicons name="trash-outline" size={22} color={colors.error} />
+              <Ionicons name="trash-outline" size={22} color={colors.statusError} />
               <Text style={styles.dangerButtonText}>Delete Account</Text>
             </View>
           </TouchableOpacity>
@@ -902,12 +902,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'center',
     },
     backButton: {
@@ -935,7 +935,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 12,
     },
     profileCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 20,
       borderWidth: 1,
@@ -957,13 +957,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 100,
       height: 100,
       borderRadius: 50,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     avatarPlaceholder: {
       width: 100,
       height: 100,
       borderRadius: 50,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -974,11 +974,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 3,
-      borderColor: colors.white,
+      borderColor: colors.surface,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
@@ -1015,14 +1015,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     detailValue: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       textAlign: 'right',
     },
     editButton: {
       padding: 4,
     },
     actionButton: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 18,
       flexDirection: 'row',
@@ -1047,7 +1047,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     actionButtonTextNeutral: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     actionButtonSubtext: {
       fontSize: 13,
@@ -1064,12 +1064,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 14,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     pendingBadgeText: {
-      color: colors.white,
+      color: colors.surface,
       fontSize: 12,
       fontWeight: '700',
     },
@@ -1079,7 +1079,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 2,
     },
     dangerButton: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 18,
       flexDirection: 'row',
@@ -1096,7 +1096,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     dangerButtonText: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.error,
+      color: colors.statusError,
     },
     modalOverlay: {
       flex: 1,
@@ -1106,7 +1106,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 20,
     },
     modalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       padding: 24,
       width: '100%',
@@ -1126,17 +1126,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     modalTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     modalCloseButton: {
       padding: 4,
     },
     modalInput: {
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       padding: 16,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 24,
       borderWidth: 1,
       borderColor: colors.border,
@@ -1149,20 +1149,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
       justifyContent: 'center',
     },
     modalCancelText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     modalSaveButton: {
       flex: 1,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1172,10 +1172,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     modalSaveText: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.white,
+      color: colors.surface,
     },
     preferenceCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       borderWidth: 1,
@@ -1193,7 +1193,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     unitToggleContainer: {
       flexDirection: 'row',
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 20,
       padding: 4,
       borderWidth: 1,
@@ -1206,7 +1206,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 16,
     },
     unitButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     unitButtonText: {
       fontSize: 14,
@@ -1214,7 +1214,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     unitButtonTextActive: {
-      color: colors.white,
+      color: colors.surface,
     },
     preferenceLeft: {
       flex: 1,
@@ -1222,7 +1222,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     preferenceTitle: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     preferenceDescription: {
@@ -1235,7 +1235,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginVertical: 16,
     },
     subscriptionCard: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       borderWidth: 1,
@@ -1257,7 +1257,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     subscriptionLabel: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     subscriptionValue: {
       fontSize: 15,
@@ -1268,7 +1268,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 16,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
     },
     subscriptionStatusText: {
       fontSize: 14,
@@ -1276,7 +1276,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     subscriptionStatusTextActive: {
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     subscriptionButton: {
       flexDirection: 'row',
@@ -1287,7 +1287,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     subscriptionButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
     subscriptionDivider: {
       height: 1,
@@ -1297,10 +1297,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     guestBanner: {
       marginHorizontal: 14,
       marginTop: 16,
-      backgroundColor: colors.primary + '12',
+      backgroundColor: colors.brandPrimary + '12',
       borderRadius: 16,
       borderWidth: 2,
-      borderColor: colors.primary + '30',
+      borderColor: colors.brandPrimary + '30',
       overflow: 'hidden',
     },
     guestBannerContent: {
@@ -1313,7 +1313,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.primary + '20',
+      backgroundColor: colors.brandPrimary + '20',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -1323,7 +1323,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     guestBannerTitle: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     guestBannerSubtitle: {
@@ -1339,6 +1339,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     linkAccountText: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
   })

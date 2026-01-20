@@ -44,7 +44,7 @@ export function ScreenHeader({
         style={styles.headerButton}
         disabled={leftDisabled}
       >
-        {leftIcon && <Ionicons name={leftIcon} size={24} color={colors.text} />}
+        {leftIcon && <Ionicons name={leftIcon} size={24} color={colors.textPrimary} />}
       </TouchableOpacity>
 
       {centerComponent ? (
@@ -66,13 +66,13 @@ export function ScreenHeader({
         >
           {rightLoading ? (
             <ActivityIndicator
-              color={rightStyle === 'primary' ? colors.white : colors.text}
+              color={rightStyle === 'primary' ? colors.surface : colors.textPrimary}
             />
           ) : rightIcon ? (
             <Ionicons
               name={rightIcon}
               size={24}
-              color={rightStyle === 'primary' ? colors.white : colors.text}
+              color={rightStyle === 'primary' ? colors.surface : colors.textPrimary}
             />
           ) : null}
         </TouchableOpacity>
@@ -97,13 +97,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       minWidth: 44,
     },
     primaryButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       borderRadius: 20,
       paddingHorizontal: 16,
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
   })

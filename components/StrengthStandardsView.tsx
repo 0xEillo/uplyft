@@ -153,7 +153,7 @@ export function StrengthStandardsView() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
           <Text style={styles.loadingText}>Loading strength data...</Text>
         </View>
       ) : (
@@ -168,8 +168,8 @@ export function StrengthStandardsView() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[colors.brandPrimary]}
+              tintColor={colors.brandPrimary}
             />
           }
         >
@@ -183,7 +183,7 @@ export function StrengthStandardsView() {
                     <Ionicons
                       name="warning"
                       size={14}
-                      color={colors.warning}
+                      color={colors.statusWarning}
                       style={{ marginRight: 4 }}
                     />
                     <Text style={styles.weakPointText}>
@@ -294,7 +294,7 @@ export function StrengthStandardsView() {
                           <Ionicons 
                             name={group.name === 'Lower' ? 'body-outline' : 'barbell-outline'} 
                             size={24} 
-                            color={colors.primary} 
+                            color={colors.brandPrimary} 
                           />
                         </View>
                         <View>
@@ -412,7 +412,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     scrollView: {
       flex: 1,
@@ -451,7 +451,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     weakPointContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.warning + '15',
+      backgroundColor: colors.statusWarning + '15',
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 12,
@@ -459,10 +459,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     weakPointText: {
       fontSize: 11,
       fontWeight: '600',
-      color: colors.warning,
+      color: colors.statusWarning,
     },
     heroCard: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 12,
       padding: 24,
       shadowColor: '#000',
@@ -492,7 +492,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     heroLevelValue: {
       fontSize: 32,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.textPrimary,
       letterSpacing: -0.5,
       marginBottom: 8,
     },
@@ -553,7 +553,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 80,
       height: 80,
       borderRadius: 40,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 16,
@@ -561,7 +561,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     emptyTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 8,
     },
     emptySubtitle: {
@@ -572,7 +572,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 20,
     },
     emptyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: 12,
@@ -589,7 +589,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
     },
     muscleGroupCard: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 12,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
@@ -613,7 +613,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 12,
@@ -621,7 +621,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     muscleGroupName: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     muscleGroupLevel: {
@@ -646,7 +646,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     muscleGroupContent: {
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      backgroundColor: colors.background + '50', // Slightly darker/different for contrast
+      backgroundColor: colors.bg + '50', // Slightly darker/different for contrast
     },
     exerciseItem: {
       borderBottomWidth: 1,
@@ -668,7 +668,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
     exerciseWeight: {
@@ -680,7 +680,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 8,
-      backgroundColor: colors.background,
+      backgroundColor: colors.bg,
     },
     exerciseLevelText: {
       fontSize: 12,

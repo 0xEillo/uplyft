@@ -120,7 +120,7 @@ export function SlideInView({
     }
   }, [shouldExit, slideAnim, opacityAnim, duration, fade, onExitComplete])
 
-  const bgColor = backgroundColor || colors.background
+  const bgColor = backgroundColor || colors.bg
 
   // Shadow style to create separation from the underlying screen
   const shadowStyle = {

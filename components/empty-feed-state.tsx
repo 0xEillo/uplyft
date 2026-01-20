@@ -44,7 +44,7 @@ export function EmptyFeedState() {
           <Ionicons
             name="barbell"
             size={40}
-            color={colors.primary}
+            color={colors.brandPrimary}
           />
         </View>
         <Text style={styles.title}>Your Feed is Empty</Text>
@@ -72,7 +72,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 80,
       height: 80,
       borderRadius: 40,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 24,
@@ -80,7 +80,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
       marginBottom: 12,
       textAlign: 'center',
       letterSpacing: -0.5,

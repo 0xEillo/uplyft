@@ -116,7 +116,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
       {/* Header */}
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Ionicons name="barbell" size={24} color={colors.primary} />
+          <Ionicons name="barbell" size={24} color={colors.brandPrimary} />
           <Text style={styles.title}>Exercise Progress</Text>
         </View>
       </View>
@@ -129,7 +129,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
         onPress={() => setShowExercisePicker(true)}
       >
         <View style={styles.exerciseSelectorLeft}>
-          <Ionicons name="barbell-outline" size={20} color={colors.primary} />
+          <Ionicons name="barbell-outline" size={20} color={colors.brandPrimary} />
           <Text style={styles.exerciseSelectorText}>
             {selectedExercise?.name || 'Select Exercise'}
           </Text>
@@ -220,7 +220,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
       <View style={styles.chartContainer}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : chartData.length === 0 ? (
           <View style={styles.emptyState}>
@@ -245,15 +245,15 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
               spacing={Math.max(40, 340 / chartData.length)}
               initialSpacing={20}
               endSpacing={20}
-              color={colors.primary}
+              color={colors.brandPrimary}
               thickness={3}
-              startFillColor={colors.primaryLight}
-              endFillColor={colors.white}
+              startFillColor={colors.brandPrimarySoft}
+              endFillColor={colors.surface}
               startOpacity={0.4}
               endOpacity={0.1}
               areaChart
               hideDataPoints={false}
-              dataPointsColor={colors.primary}
+              dataPointsColor={colors.brandPrimary}
               dataPointsRadius={4}
               textColor1={colors.textSecondary}
               textShiftY={-8}
@@ -286,7 +286,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Exercise</Text>
               <TouchableOpacity onPress={() => setShowExercisePicker(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -326,7 +326,7 @@ export function ExerciseProgressChart({ userId }: ExerciseProgressChartProps) {
                     <Ionicons
                       name="checkmark"
                       size={20}
-                      color={colors.primary}
+                      color={colors.brandPrimary}
                     />
                   )}
                 </TouchableOpacity>
@@ -359,7 +359,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     title: {
       fontSize: 20,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     subtitle: {
       fontSize: 13,
@@ -371,7 +371,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       padding: 16,
       borderRadius: 9999,
       marginBottom: 16,
@@ -389,7 +389,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseSelectorText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     timeRangeContainer: {
       flexDirection: 'row',
@@ -401,11 +401,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 10,
       paddingHorizontal: 16,
       borderRadius: 9999,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
     },
     timeRangeButtonActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.brandPrimary,
     },
     timeRangeButtonText: {
       fontSize: 14,
@@ -413,7 +413,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     timeRangeButtonTextActive: {
-      color: colors.white,
+      color: colors.surface,
     },
     statsContainer: {
       flexDirection: 'row',
@@ -426,7 +426,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       padding: 12,
       borderRadius: 9999,
       shadowColor: colors.shadow,
@@ -443,7 +443,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     statValue: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     statPercentage: {
       fontSize: 11,
@@ -451,13 +451,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 2,
     },
     statPositive: {
-      color: colors.success,
+      color: colors.statusSuccess,
     },
     statNegative: {
-      color: colors.error,
+      color: colors.statusError,
     },
     chartContainer: {
-      backgroundColor: colors.feedCardBackground,
+      backgroundColor: colors.surfaceCard,
       padding: 16,
       borderRadius: 12,
       shadowColor: colors.shadow,
@@ -500,7 +500,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'flex-end',
     },
     modalContent: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       maxHeight: '80%',
@@ -517,16 +517,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     modalTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: colors.text,
+      color: colors.textPrimary,
     },
     searchInput: {
       margin: 16,
       marginBottom: 8,
       padding: 12,
-      backgroundColor: colors.backgroundLight,
+      backgroundColor: colors.surfaceSubtle,
       borderRadius: 9999,
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     exerciseList: {
       paddingHorizontal: 16,
@@ -540,14 +540,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 4,
     },
     exerciseItemSelected: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.brandPrimarySoft,
     },
     exerciseItemText: {
       fontSize: 16,
-      color: colors.text,
+      color: colors.textPrimary,
     },
     exerciseItemTextSelected: {
       fontWeight: '600',
-      color: colors.primary,
+      color: colors.brandPrimary,
     },
   })
