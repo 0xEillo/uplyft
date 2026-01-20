@@ -2,13 +2,18 @@ import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { authorizeUser } from './auth.ts'
 import { ApiError, normalizeError, toErrorResponse } from './errors.ts'
 import {
-    createCorrelationId,
-    logErrorWithCorrelation,
-    logWithCorrelation,
+  createCorrelationId,
+  logErrorWithCorrelation,
+  logWithCorrelation,
 } from './metrics.ts'
 import { inferWorkoutTitle, parseWorkoutNotes } from './parser.ts'
 import { createWorkoutSession } from './persistence.ts'
-import { NormalizedWorkout, requestSchema } from './schemas.ts'
+import {
+  NormalizedWorkout,
+  ParsedWorkout,
+  WorkoutRequest,
+  requestSchema,
+} from './schemas.ts'
 import { normalizeWorkout } from './transform.ts'
 
 export async function handleRequest(req: Request): Promise<Response> {
@@ -36,6 +41,13 @@ export async function handleRequest(req: Request): Promise<Response> {
       `[ParseWorkout][${correlationId}] Schema validated, userId: ${payload.userId}, createWorkout: ${payload.createWorkout}`,
     )
 
+    const structuredSummary = summarizeStructuredPayload(payload)
+    logWithCorrelation(
+      correlationId,
+      'Structured payload summary',
+      structuredSummary,
+    )
+
     if (payload.createWorkout && !payload.userId) {
       throw new ApiError(
         400,
@@ -44,13 +56,31 @@ export async function handleRequest(req: Request): Promise<Response> {
       )
     }
 
-    console.log(`[ParseWorkout][${correlationId}] Calling AI parser...`)
-    const parsedWorkout = await parseWorkoutNotes(payload, correlationId)
-    console.log(
-      `[ParseWorkout][${correlationId}] AI parsing complete, exercises: ${
-        parsedWorkout.exercises?.length ?? 0
-      }`,
-    )
+    const structuredParsed = buildStructuredParsedWorkout(payload)
+
+    let parsedWorkout: ParsedWorkout
+
+    if (structuredParsed) {
+      parsedWorkout = structuredParsed
+      console.log(
+        `[ParseWorkout][${correlationId}] Using structured payload, exercises: ${
+          parsedWorkout.exercises?.length ?? 0
+        }`,
+      )
+    } else {
+      if (structuredSummary.hasStructuredPayload) {
+        console.log(
+          `[ParseWorkout][${correlationId}] Structured payload present but no usable sets; falling back to AI`,
+        )
+      }
+      console.log(`[ParseWorkout][${correlationId}] Calling AI parser...`)
+      parsedWorkout = await parseWorkoutNotes(payload, correlationId)
+      console.log(
+        `[ParseWorkout][${correlationId}] AI parsing complete, exercises: ${
+          parsedWorkout.exercises?.length ?? 0
+        }`,
+      )
+    }
 
     if (!parsedWorkout.isWorkoutRelated) {
       throw new ApiError(
@@ -172,4 +202,92 @@ function inferError(error: unknown): ApiError | undefined {
   }
 
   return undefined
+}
+
+function buildStructuredParsedWorkout(
+  payload: WorkoutRequest,
+): ParsedWorkout | null {
+  const exercisesInput = Array.isArray(payload.structuredData)
+    ? payload.structuredData
+    : []
+
+  if (exercisesInput.length === 0) {
+    return null
+  }
+
+  const exercises = exercisesInput
+    .map((exercise, exerciseIndex) => {
+      const name = String(exercise.name ?? '').trim()
+      if (!name) return null
+
+      const setsInput = Array.isArray(exercise.sets) ? exercise.sets : []
+      const sets = setsInput
+        .filter((set) => {
+          const weight =
+            typeof set.weight === 'string' ? set.weight.trim() : set.weight
+          const reps = typeof set.reps === 'string' ? set.reps.trim() : set.reps
+          return Boolean(weight) || Boolean(reps)
+        })
+        .map((set, setIndex) => ({
+          set_number: setIndex + 1,
+          reps: set.reps ?? null,
+          weight: set.weight ?? null,
+          rpe: null,
+          notes: null,
+          is_warmup: set.isWarmup === true,
+        }))
+
+      if (sets.length === 0) return null
+
+      return {
+        name,
+        order_index: exerciseIndex,
+        notes: null,
+        sets,
+      }
+    })
+    .filter(
+      (exercise): exercise is NonNullable<typeof exercise> => exercise !== null,
+    )
+
+  if (exercises.length === 0) {
+    return null
+  }
+
+  return {
+    isWorkoutRelated: true,
+    notes: null,
+    type: null,
+    exercises,
+  }
+}
+
+function summarizeStructuredPayload(payload: WorkoutRequest) {
+  const exercisesInput = Array.isArray(payload.structuredData)
+    ? payload.structuredData
+    : []
+
+  let setsCount = 0
+  let setsWithDataCount = 0
+
+  exercisesInput.forEach((exercise) => {
+    const sets = Array.isArray(exercise.sets) ? exercise.sets : []
+    sets.forEach((set) => {
+      setsCount += 1
+      const weight =
+        typeof set.weight === 'string' ? set.weight.trim() : set.weight
+      const reps = typeof set.reps === 'string' ? set.reps.trim() : set.reps
+      if (weight || reps) {
+        setsWithDataCount += 1
+      }
+    })
+  })
+
+  return {
+    isStructuredMode: payload.isStructuredMode ?? false,
+    hasStructuredPayload: exercisesInput.length > 0,
+    structuredExercisesCount: exercisesInput.length,
+    structuredSetsCount: setsCount,
+    structuredSetsWithDataCount: setsWithDataCount,
+  }
 }

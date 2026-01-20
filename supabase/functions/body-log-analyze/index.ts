@@ -5,18 +5,12 @@ import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 // @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
 // eslint-disable-next-line import/no-unresolved
 import { z } from 'https://esm.sh/zod@3.25.76'
-import { generateObject } from 'npm:ai'
-
 import {
-    buildBodyLogPrompt,
-    parseBodyLogMetrics,
+  buildBodyLogPrompt,
+  parseBodyLogMetrics,
 } from '../_shared/body-log-analysis.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
-import {
-    GEMINI_FALLBACK_MODEL,
-    GEMINI_MODEL,
-    openrouter,
-} from '../_shared/openrouter.ts'
+import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL } from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
@@ -27,59 +21,83 @@ const REQUEST_SCHEMA = z.object({
 // Timeout for AI analysis
 const ANALYZE_TIMEOUT_MS = 45000
 
-// Schema for body log analysis response
-const bodyLogAnalysisSchema = z.object({
-  body_fat_percentage: z.number().nullable().describe('Estimated body fat percentage'),
-  bmi: z.number().nullable().describe('Estimated BMI'),
-  score_v_taper: z.number().int().min(0).max(100).nullable().describe('V-taper score out of 100'),
-  score_chest: z.number().int().min(0).max(100).nullable().describe('Chest development score out of 100'),
-  score_shoulders: z.number().int().min(0).max(100).nullable().describe('Shoulder development score out of 100'),
-  score_abs: z.number().int().min(0).max(100).nullable().describe('Abs definition score out of 100'),
-  score_arms: z.number().int().min(0).max(100).nullable().describe('Arm development score out of 100'),
-  score_back: z.number().int().min(0).max(100).nullable().describe('Back development score out of 100'),
-  score_legs: z.number().int().min(0).max(100).nullable().describe('Leg development score out of 100'),
-  analysis_summary: z.string().max(400).describe('Brief 1-2 line analysis summary addressing the user directly'),
-})
-
 async function analyzeWithModel(
   modelName: string,
   systemPrompt: string,
   userContent: any[],
-): Promise<z.infer<typeof bodyLogAnalysisSchema>> {
+): Promise<{ content: string; usage?: unknown }> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
-    console.error(`[BODY_LOG] AI call (${modelName}) timed out after ${ANALYZE_TIMEOUT_MS}ms`)
+    console.error(
+      `[BODY_LOG] AI call (${modelName}) timed out after ${ANALYZE_TIMEOUT_MS}ms`,
+    )
     controller.abort()
   }, ANALYZE_TIMEOUT_MS)
 
   const startTime = Date.now()
 
   try {
-    console.log(`[BODY_LOG] Trying ${modelName}, timeout: ${ANALYZE_TIMEOUT_MS}ms`)
+    console.log(
+      `[BODY_LOG] Trying ${modelName}, timeout: ${ANALYZE_TIMEOUT_MS}ms`,
+    )
 
-    const model = openrouter.chat(modelName)
-    
-    const result = await generateObject({
-      model,
-      schema: bodyLogAnalysisSchema,
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
+    // @ts-ignore: Deno env is available in Supabase Edge Functions
+    const apiKey = Deno.env.get('OPENROUTER_API_KEY')
+    if (!apiKey) {
+      throw new Error('Missing OPENROUTER_API_KEY')
+    }
+
+    const response = await fetch(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://uplyft.app',
+          'X-Title': 'Uplyft Body Log Analysis',
         },
-        {
-          role: 'user',
-          content: userContent,
-        },
-      ],
-      abortSignal: controller.signal,
-    })
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt,
+            },
+            {
+              role: 'user',
+              content: userContent,
+            },
+          ],
+          temperature: 0.2,
+        }),
+        signal: controller.signal,
+      },
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `OpenRouter error (${response.status}): ${
+          errorText || response.statusText
+        }`,
+      )
+    }
+
+    const data = await response.json()
+    const content = data?.choices?.[0]?.message?.content
+
+    if (typeof content !== 'string' || !content.trim()) {
+      throw new Error('OpenRouter returned empty response')
+    }
 
     const elapsed = Date.now() - startTime
     console.log(`[BODY_LOG] ${modelName} succeeded in ${elapsed}ms`)
-    console.log(`[BODY_LOG] Response usage: ${JSON.stringify(result.usage ?? 'N/A')}`)
-    
-    return result.object
+    console.log(
+      `[BODY_LOG] Response usage: ${JSON.stringify(data?.usage ?? 'N/A')}`,
+    )
+
+    return { content, usage: data?.usage }
   } finally {
     clearTimeout(timeoutId)
   }
@@ -155,40 +173,27 @@ serve(async (req: Request) => {
       return errorResponse(404, 'No images found for this entry')
     }
 
-    // Download and convert images to base64
-    const imageContents: { base64: string; mimeType: string }[] = []
-    
+    // Create signed URLs instead of base64 to avoid memory spikes
+    const imageUrls: string[] = []
+    const signedUrlTTLSeconds = 60 * 30
+
     for (const img of images) {
-      const { data: fileData, error: downloadError } = await serviceClient.storage
+      const {
+        data: signed,
+        error: signedError,
+      } = await serviceClient.storage
         .from(BODY_LOG_BUCKET)
-        .download(img.file_path)
+        .createSignedUrl(img.file_path, signedUrlTTLSeconds)
 
-      if (downloadError || !fileData) {
-        console.error(`[BODY_LOG] Failed to download ${img.file_path}:`, downloadError)
-        throw new Error(`Failed to download image: ${img.file_path}`)
+      if (signedError || !signed?.signedUrl) {
+        console.error(
+          `[BODY_LOG] Failed to sign ${img.file_path}:`,
+          signedError,
+        )
+        throw new Error(`Failed to sign image: ${img.file_path}`)
       }
 
-      // Convert blob to base64
-      const arrayBuffer = await fileData.arrayBuffer()
-      const byteArray = new Uint8Array(arrayBuffer)
-      let binaryString = ''
-      for (let i = 0; i < byteArray.length; i++) {
-        binaryString += String.fromCharCode(byteArray[i])
-      }
-      const base64 = btoa(binaryString)
-
-      // Determine mime type from file extension
-      const ext = img.file_path.split('.').pop()?.toLowerCase() || 'jpeg'
-      const mimeTypeMap: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-      }
-      const mimeType = mimeTypeMap[ext] || 'image/jpeg'
-
-      imageContents.push({ base64, mimeType })
+      imageUrls.push(signed.signedUrl)
     }
 
     // Build the system prompt with user context
@@ -201,51 +206,64 @@ serve(async (req: Request) => {
     })
 
     // Add multi-image instruction if applicable
-    if (imageContents.length > 1) {
+    if (imageUrls.length > 1) {
       systemPrompt +=
         '\n\nIMPORTANT: You are analyzing MULTIPLE photos of the same person from different angles. Combine information from all photos to provide a SINGLE, more accurate assessment. Use triangulation between photos to improve accuracy of body fat %, BMI, and weight estimates.'
     }
 
-    // Build user message with all images (using base64 data URLs)
+    // Build user message with all images (using signed URLs)
     const userContent: any[] = [
       {
         type: 'text',
         text:
-          imageContents.length > 1
+          imageUrls.length > 1
             ? 'Analyze these body composition photos from multiple angles and return combined JSON metrics.'
             : 'Analyze this body composition photo and return JSON metrics.',
       },
     ]
 
-    // Add all images to the message as data URLs
-    for (const { base64, mimeType } of imageContents) {
+    // Add all images to the message as signed URLs
+    for (const url of imageUrls) {
       userContent.push({
-        type: 'image',
-        image: `data:${mimeType};base64,${base64}`,
+        type: 'image_url',
+        image_url: { url },
       })
     }
 
     // Analyze with Gemini via OpenRouter (with fallback)
-    let analysisResult: z.infer<typeof bodyLogAnalysisSchema>
-    
+    let analysisContent: string
+
     try {
-      analysisResult = await analyzeWithModel(GEMINI_MODEL, systemPrompt, userContent)
+      const analysis = await analyzeWithModel(
+        GEMINI_MODEL,
+        systemPrompt,
+        userContent,
+      )
+      analysisContent = analysis.content
     } catch (primaryError) {
       console.error(`[BODY_LOG] ${GEMINI_MODEL} failed:`, primaryError)
-      
+
       // Try fallback model
       console.log(`[BODY_LOG] Falling back to ${GEMINI_FALLBACK_MODEL}...`)
-      
+
       try {
-        analysisResult = await analyzeWithModel(GEMINI_FALLBACK_MODEL, systemPrompt, userContent)
+        const analysis = await analyzeWithModel(
+          GEMINI_FALLBACK_MODEL,
+          systemPrompt,
+          userContent,
+        )
+        analysisContent = analysis.content
       } catch (fallbackError) {
-        console.error(`[BODY_LOG] ${GEMINI_FALLBACK_MODEL} also failed:`, fallbackError)
+        console.error(
+          `[BODY_LOG] ${GEMINI_FALLBACK_MODEL} also failed:`,
+          fallbackError,
+        )
         throw new Error('Failed to analyze body log images')
       }
     }
 
     // Parse the metrics using the shared parser for consistency
-    const metrics = parseBodyLogMetrics(JSON.stringify(analysisResult))
+    const metrics = parseBodyLogMetrics(analysisContent)
 
     // Calculate lean mass and fat mass if possible
     const weight =
@@ -291,7 +309,7 @@ serve(async (req: Request) => {
     }
 
     return jsonResponse({ metrics: updated })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error analyzing body log image:', error)
 
     if (error instanceof z.ZodError) {

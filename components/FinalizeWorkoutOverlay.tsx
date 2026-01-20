@@ -58,7 +58,7 @@ export function FinalizeWorkoutOverlay({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={[styles.container, { backgroundColor: colors.surfaceSheet }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerSpacer} />

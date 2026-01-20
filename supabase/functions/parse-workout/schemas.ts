@@ -25,6 +25,18 @@ export const workoutSchema = z.object({
     .describe('List of exercises performed in order'),
 })
 
+const structuredSetSchema = z.object({
+  weight: z.union([z.string(), z.number(), z.null()]).optional(),
+  reps: z.union([z.string(), z.number(), z.null()]).optional(),
+  isWarmup: z.boolean().optional(),
+})
+
+const structuredExerciseSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  sets: z.array(structuredSetSchema).optional(),
+})
+
 export const requestSchema = z.object({
   notes: z.string(),
   weightUnit: z.enum(['kg', 'lb']).optional().default('kg'),
@@ -35,6 +47,8 @@ export const requestSchema = z.object({
   imageUrl: z.string().nullable().optional(),
   routineId: z.string().nullable().optional(),
   durationSeconds: z.number().int().min(0).optional(),
+  structuredData: z.array(structuredExerciseSchema).optional(),
+  isStructuredMode: z.boolean().optional(),
 })
 
 export type WorkoutRequest = z.infer<typeof requestSchema>

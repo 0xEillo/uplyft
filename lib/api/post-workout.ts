@@ -16,6 +16,8 @@ export interface WorkoutRequest {
   idempotencyKey?: string
   routineId?: string | null
   durationSeconds?: number
+  structuredData?: unknown[]
+  isStructuredMode?: boolean
 }
 
 export interface ParsedSet {

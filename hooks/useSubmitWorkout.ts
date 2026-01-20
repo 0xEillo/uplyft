@@ -1,26 +1,27 @@
 import * as Crypto from 'expo-crypto'
+import { usePostHog } from 'posthog-react-native'
 import { useCallback, useRef, useState } from 'react'
 
 import { useAuth } from '@/contexts/auth-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { isApiError } from '@/lib/api/errors'
 import { postWorkout, WorkoutResponse } from '@/lib/api/post-workout'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { preferredToKg, type WeightUnit } from '@/contexts/unit-context'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
+import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearPendingArtifacts,
-    createPlaceholderWorkout,
-    loadPendingWorkout,
-    loadPlaceholderWorkout,
-    PendingWorkout,
-    PlaceholderWorkout,
-    saveDraft,
-    savePendingWorkout,
-    savePlaceholderWorkout,
+  clearPendingArtifacts,
+  createPlaceholderWorkout,
+  loadPendingWorkout,
+  loadPlaceholderWorkout,
+  PendingWorkout,
+  PlaceholderWorkout,
+  saveDraft,
+  savePendingWorkout,
+  savePlaceholderWorkout,
 } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 
 interface SubmitWorkoutArgs {
   notes: string
@@ -71,6 +72,71 @@ export function useSubmitWorkout() {
   const { weightUnit } = useWeightUnits()
   const [isProcessingPending, setIsProcessingPending] = useState(false)
   const isProcessingRef = useRef(false)
+  const posthog = usePostHog()
+
+  const buildStructuredStats = useCallback(
+    (structuredData?: StructuredExerciseDraft[]) => {
+      const exercises = Array.isArray(structuredData) ? structuredData : []
+      let sets = 0
+      let setsWithData = 0
+
+      exercises.forEach((exercise) => {
+        ;(exercise.sets ?? []).forEach((set) => {
+          sets += 1
+          if (set.weight?.trim() || set.reps?.trim()) {
+            setsWithData += 1
+          }
+        })
+      })
+
+      return {
+        structuredExercisesCount: exercises.length,
+        structuredSetsCount: sets,
+        structuredSetsWithDataCount: setsWithData,
+      }
+    },
+    [],
+  )
+
+  const toErrorPayload = useCallback((error: unknown) => {
+    if (isApiError(error)) {
+      return {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        correlationId: error.correlationId ?? null,
+        httpStatus: error.httpStatus ?? null,
+      }
+    }
+
+    if (error instanceof SubmitWorkoutError) {
+      return {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        correlationId: null,
+        httpStatus: null,
+      }
+    }
+
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+        code: null,
+        correlationId: null,
+        httpStatus: null,
+      }
+    }
+
+    return {
+      name: 'UnknownError',
+      message: String(error),
+      code: null,
+      correlationId: null,
+      httpStatus: null,
+    }
+  }, [])
 
   const submitWorkout = useCallback(
     async ({
@@ -99,6 +165,18 @@ export function useSubmitWorkout() {
         try {
           imageUrl = await uploadWorkoutImage(imageUri, user.id)
         } catch (error) {
+          posthog?.capture('Workout Image Upload Failed', {
+            userId: user.id,
+            notesLength: trimmedNotes.length,
+            titleLength: trimmedTitle.length,
+            hasImage: true,
+            ...buildStructuredStats(structuredData),
+            isStructuredMode: Boolean(isStructuredMode),
+            routineId: routineId ?? null,
+            durationSeconds:
+              typeof durationSeconds === 'number' ? durationSeconds : null,
+            error: toErrorPayload(error),
+          })
           throw new SubmitWorkoutError('IMAGE_UPLOAD', error)
         }
       }
@@ -114,7 +192,8 @@ export function useSubmitWorkout() {
         userId: user.id,
         idempotencyKey,
         routineId: routineId || null,
-        durationSeconds: typeof durationSeconds === 'number' ? durationSeconds : null,
+        durationSeconds:
+          typeof durationSeconds === 'number' ? durationSeconds : null,
         description,
         structuredData:
           Array.isArray(structuredData) && structuredData.length > 0
@@ -143,9 +222,21 @@ export function useSubmitWorkout() {
         savePlaceholderWorkout(placeholder),
       ])
 
+      posthog?.capture('Workout Submit Queued', {
+        userId: user.id,
+        notesLength: trimmedNotes.length,
+        titleLength: trimmedTitle.length,
+        hasImage: Boolean(imageUrl),
+        ...buildStructuredStats(structuredData),
+        isStructuredMode: Boolean(isStructuredMode),
+        routineId: routineId ?? null,
+        durationSeconds:
+          typeof durationSeconds === 'number' ? durationSeconds : null,
+      })
+
       return { pending, placeholder }
     },
-    [user, weightUnit],
+    [user, weightUnit, posthog, buildStructuredStats, toErrorPayload],
   )
 
   const processPendingWorkout = useCallback(async (): Promise<
@@ -175,170 +266,6 @@ export function useSubmitWorkout() {
       }
 
       const accessToken = session?.access_token
-      const hasStructuredPayload =
-        Array.isArray(pending.structuredData) && pending.structuredData.length > 0
-
-      if (hasStructuredPayload) {
-        const parseNumeric = (value: string | null | undefined): number | null => {
-          if (typeof value !== 'string') return null
-          const trimmed = value.trim()
-          if (!trimmed) return null
-          const parsed = Number.parseFloat(trimmed)
-          return Number.isFinite(parsed) ? parsed : null
-        }
-
-        const parseReps = (value: string | null | undefined): number | null => {
-          const parsed = parseNumeric(value)
-          if (parsed === null) return null
-          const reps = Math.round(parsed)
-          return reps > 0 ? reps : null
-        }
-
-        const toKg = (value: number | null, unit: WeightUnit): number | null => {
-          if (value === null) return null
-          return preferredToKg(value, unit)
-        }
-
-        const normalizedExercises = (pending.structuredData ?? [])
-          .map((exercise, exerciseIndex) => {
-            const name = exercise.name?.trim() ?? ''
-            const unit = pending.weightUnit
-
-            const sets = (exercise.sets ?? [])
-              .map((set) => {
-                const reps = parseReps(set.reps)
-                const weightInput = parseNumeric(set.weight)
-                const weightKg = toKg(weightInput, unit)
-                const isWarmup = set.isWarmup === true
-
-                if (reps === null && weightKg === null) {
-                  return null
-                }
-
-                return {
-                  reps,
-                  weightKg,
-                  isWarmup,
-                }
-              })
-              .filter((s): s is NonNullable<typeof s> => s !== null)
-              .map((set, setIndex) => ({
-                set_number: setIndex + 1,
-                reps: set.reps,
-                weight: set.weightKg,
-                is_warmup: set.isWarmup,
-              }))
-
-            return {
-              name,
-              order_index: exerciseIndex,
-              sets,
-            }
-          })
-          .filter((exercise) => exercise.name.length > 0 && exercise.sets.length > 0)
-
-        if (normalizedExercises.length === 0) {
-          throw new Error('No structured sets to save')
-        }
-
-        // 1) Create workout session
-        const { data: createdSession, error: sessionError } = await supabase
-          .from('workout_sessions')
-          .insert({
-            user_id: pending.userId,
-            raw_text: pending.notes,
-            notes: pending.description ?? null,
-            type: pending.title,
-            image_url: pending.imageUrl ?? null,
-            routine_id: pending.routineId ?? null,
-            duration:
-              typeof pending.durationSeconds === 'number'
-                ? pending.durationSeconds
-                : null,
-          })
-          .select()
-          .single()
-
-        if (sessionError) throw sessionError
-
-        // 2) Resolve exercises + insert workout_exercises
-        const exerciseMap = new Map<string, { id: string }>()
-        for (const ex of normalizedExercises) {
-          const resolved = await database.exercises.getOrCreate(ex.name, pending.userId)
-          exerciseMap.set(ex.name.toLowerCase(), { id: resolved.id })
-        }
-
-        const workoutExercisesToInsert = normalizedExercises.map((ex) => {
-          const resolved = exerciseMap.get(ex.name.toLowerCase())
-          if (!resolved) {
-            throw new Error(`Exercise not found: ${ex.name}`)
-          }
-          return {
-            session_id: createdSession.id,
-            exercise_id: resolved.id,
-            order_index: ex.order_index,
-            notes: null,
-          }
-        })
-
-        const { data: workoutExercises, error: workoutExerciseError } = await supabase
-          .from('workout_exercises')
-          .insert(workoutExercisesToInsert)
-          .select()
-
-        if (workoutExerciseError) throw workoutExerciseError
-
-        // 3) Insert sets (with warmup flag)
-        const allSetsToInsert = normalizedExercises.flatMap((ex, index) => {
-          const workoutExercise = workoutExercises?.[index]
-          if (!workoutExercise) return []
-
-          return ex.sets.map((set) => ({
-            workout_exercise_id: workoutExercise.id,
-            set_number: set.set_number,
-            reps: set.reps ?? null,
-            weight: set.weight ?? null,
-            rpe: null,
-            notes: null,
-            is_warmup: set.is_warmup,
-          }))
-        })
-
-        if (allSetsToInsert.length > 0) {
-          const { error: setsError } = await supabase
-            .from('sets')
-            .insert(allSetsToInsert)
-          if (setsError) throw setsError
-        }
-
-        // 4) Fetch full hydrated session (like parse-workout does)
-        const { data: hydratedWorkout, error: fetchError } = await supabase
-          .from('workout_sessions')
-          .select(
-            `
-            *,
-            routine:workout_routines (id, name),
-            workout_exercises (
-              *,
-              exercise:exercises (*),
-              sets (*)
-            )
-          `,
-          )
-          .eq('id', createdSession.id)
-          .single()
-
-        if (fetchError) throw fetchError
-
-        await clearPendingArtifacts()
-
-        return {
-          status: 'success',
-          placeholder,
-          workout: hydratedWorkout as WorkoutSessionWithDetails,
-        }
-      }
-
       const response = await postWorkout(
         {
           notes: pending.notes,
@@ -351,6 +278,8 @@ export function useSubmitWorkout() {
           routineId: pending.routineId,
           durationSeconds: pending.durationSeconds ?? undefined,
           description: pending.description,
+          structuredData: pending.structuredData,
+          isStructuredMode: pending.isStructuredMode,
         },
         accessToken,
       )
@@ -360,6 +289,26 @@ export function useSubmitWorkout() {
       }
 
       await clearPendingArtifacts()
+
+      posthog?.capture('Workout Pending Processed', {
+        userId: pending.userId,
+        notesLength: pending.notes.length,
+        titleLength: pending.title.length,
+        hasImage: Boolean(pending.imageUrl),
+        ...buildStructuredStats(pending.structuredData),
+        isStructuredMode: Boolean(pending.isStructuredMode),
+        routineId: pending.routineId ?? null,
+        durationSeconds: pending.durationSeconds ?? null,
+        correlationId: response.correlationId ?? null,
+        metrics: response._metrics
+          ? {
+              totalExercises: response._metrics.totalExercises,
+              matchedExercises: response._metrics.matchedExercises,
+              createdExercises: response._metrics.createdExercises,
+              totalSets: response._metrics.totalSets,
+            }
+          : null,
+      })
 
       // Do NOT clear draft here. The component that queued the workout is responsible for clearing its own draft.
       // Clearing here causes race conditions where a *new* draft (created after the pending one was queued) gets deleted.
@@ -381,6 +330,18 @@ export function useSubmitWorkout() {
       })
       await clearPendingArtifacts()
 
+      posthog?.capture('Workout Pending Failed', {
+        userId: pending.userId,
+        notesLength: pending.notes.length,
+        titleLength: pending.title.length,
+        hasImage: Boolean(pending.imageUrl),
+        ...buildStructuredStats(pending.structuredData),
+        isStructuredMode: Boolean(pending.isStructuredMode),
+        routineId: pending.routineId ?? null,
+        durationSeconds: pending.durationSeconds ?? null,
+        error: toErrorPayload(error),
+      })
+
       return {
         status: 'error',
         placeholder,
@@ -390,7 +351,7 @@ export function useSubmitWorkout() {
       isProcessingRef.current = false
       setIsProcessingPending(false)
     }
-  }, [])
+  }, [posthog, buildStructuredStats, toErrorPayload])
 
   return {
     submitWorkout,
