@@ -77,7 +77,7 @@ export const ProfileDashboard = memo(
           style={[
             styles.button,
             {
-              backgroundColor: colors.brandPrimary + '10',
+              backgroundColor: colors.surfaceCard,
               borderColor: colors.brandPrimary + '66',
               borderWidth: 1,
               width: '100%',
@@ -87,10 +87,10 @@ export const ProfileDashboard = memo(
           ]}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={[styles.buttonIconContainer, { backgroundColor: colors.brandPrimary + '20' }]}>
-              <Ionicons name="school" size={24} color={colors.brandPrimary} />
+            <View style={styles.buttonIconContainer}>
+              <Ionicons name="school" size={24} color={colors.textSecondary} />
             </View>
-            <Text style={[styles.buttonTitle, { color: colors.brandPrimary }]}>Tutorial</Text>
+            <Text style={[styles.buttonTitle, { color: colors.textPrimary }]}>Tutorial</Text>
           </View>
           
           <View style={[styles.stepsBadge, { backgroundColor: colors.brandPrimary + '15' }]}>
