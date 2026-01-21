@@ -17,7 +17,6 @@ import {
 interface FinalizeWorkoutOverlayProps {
   visible: boolean
   onClose: () => void // Called when modal is dismissed (swipe down)
-  onSkip: () => void // Called when "Skip" is pressed
   onFinish: () => void
   onAttachWithCamera: () => void
   onAttachWithLibrary: () => void
@@ -31,7 +30,6 @@ interface FinalizeWorkoutOverlayProps {
 export function FinalizeWorkoutOverlay({
   visible,
   onClose,
-  onSkip,
   onFinish,
   onAttachWithCamera,
   onAttachWithLibrary,
@@ -61,21 +59,9 @@ export function FinalizeWorkoutOverlay({
       <View style={[styles.container, { backgroundColor: colors.surfaceSheet }]}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerSpacer} />
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Log Workout
           </Text>
-          <TouchableOpacity
-            onPress={onSkip}
-            style={styles.headerButton}
-            disabled={isLoading}
-          >
-            <Text
-              style={[styles.headerButtonText, { color: colors.textTertiary }]}
-            >
-              Skip
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <KeyboardAvoidingView
@@ -240,25 +226,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
-  },
-  headerSpacer: {
-    width: 60, // Balance the "Skip" button width
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-  },
-  headerButton: {
-    minWidth: 60,
-    alignItems: 'flex-end',
-    paddingVertical: 8,
-  },
-  headerButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
   },
   content: {
     flex: 1,

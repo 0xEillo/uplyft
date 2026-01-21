@@ -69,6 +69,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -2092,6 +2093,13 @@ export default function CreatePostScreen() {
           )}
         </KeyboardAvoidingView>
 
+        {isLoading && (
+          <View style={styles.submissionOverlay} pointerEvents="auto">
+            <ActivityIndicator size="large" color={colors.surface} />
+            <Text style={styles.submissionOverlayText}>Saving workout...</Text>
+          </View>
+        )}
+
         {/* Example Workout - shown when user has no workouts and inputs are empty */}
         {!notes.trim() && !workoutTitle.trim() && userWorkoutCount === 0 && (
           <View style={styles.exampleContainer}>
@@ -2122,14 +2130,6 @@ export default function CreatePostScreen() {
             setShowFinalizeOverlay(false)
             isSubmittingRef.current = false
             setIsLoading(false)
-          }}
-          onSkip={() => {
-            // "Skip" pressed - submit without caption
-            // Set submitting state FIRST to prevent race conditions
-            isSubmittingRef.current = true
-            setIsLoading(true)
-            setShowFinalizeOverlay(false)
-            submitWorkout()
           }}
           onFinish={() => {
             // "Finish" pressed - submit with caption
@@ -2442,5 +2442,18 @@ const createStyles = (
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       paddingBottom: insets.bottom,
+    },
+    submissionOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+      zIndex: 50,
+    },
+    submissionOverlayText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.surface,
     },
   })
