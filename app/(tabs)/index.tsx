@@ -562,14 +562,19 @@ export default function FeedScreen() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListHeaderComponent={
+            // Don't show tutorial when offline - show offline empty state instead
             !isTutorialDismissed &&
             !isTutorialLoading &&
+            !isOffline &&
             workouts.length === 0 ? (
               <TutorialChecklist />
             ) : null
           }
           ListEmptyComponent={
-            (isTutorialDismissed || isTutorialLoading) && !isLoading ? (
+            // Show empty state when:
+            // 1. Tutorial is dismissed/loading OR we're offline, AND
+            // 2. Feed is not loading
+            (isTutorialDismissed || isTutorialLoading || isOffline) && !isLoading ? (
               isOffline ? (
                 <EmptyState
                   icon="cloud-offline-outline"

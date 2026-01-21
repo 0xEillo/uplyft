@@ -73,6 +73,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   // Track the previous user ID to detect user changes
   const previousUserIdRef = useRef<string | null>(null)
   
+  // Track if we've already checked existing data for this user (prevent re-running on errors/offline)
+  const hasCheckedExistingDataRef = useRef<string | null>(null)
+  
   // User-scoped storage keys to ensure each user has their own tutorial progress
   const storageKeys = useMemo(() => {
     const userId = user?.id
@@ -175,10 +178,17 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   }, [user?.id, storageKeys.trial])
 
   // Auto-complete steps for existing users based on database state
+  // This only runs once per user session to avoid repeated DB calls when offline
   useEffect(() => {
     if (!user || isLoading) return
+    
+    // Skip if we've already checked for this user
+    if (hasCheckedExistingDataRef.current === user.id) return
 
     const checkExistingData = async () => {
+      // Mark as checked immediately to prevent re-runs on error/offline
+      hasCheckedExistingDataRef.current = user.id
+      
       try {
         const stepsToComplete: TutorialStepId[] = []
 
@@ -214,7 +224,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
 
     checkExistingData()
-  }, [user, isLoading, completedSteps.size, saveStepProgress]) // Use size to avoid infinite loop if we update
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- hasCheckedExistingDataRef prevents re-runs, completedSteps not needed in deps
+  }, [user, isLoading, saveStepProgress])
 
   // Complete a tutorial step (synchronous - storage saves in background)
   const completeStep = useCallback(
