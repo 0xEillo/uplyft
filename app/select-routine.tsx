@@ -23,6 +23,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -43,26 +44,34 @@ export default function SelectRoutineScreen() {
   
   const styles = useMemo(() => createStyles(colors), [colors])
 
+  const loadRoutines = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const data = await database.workoutRoutines.getAll(user.id)
+      setRoutines(data)
+    } catch (error) {
+      console.error('Error loading routines:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [user])
+
   // Load routines
   useEffect(() => {
-    const loadRoutines = async () => {
-      if (!user) {
-        setIsLoading(false)
-        return
-      }
-      
-      try {
-        const data = await database.workoutRoutines.getAll(user.id)
-        setRoutines(data)
-      } catch (error) {
-        console.error('Error loading routines:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    
     loadRoutines()
-  }, [user])
+  }, [loadRoutines])
+
+  // Refresh routines when returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      loadRoutines()
+    }, [loadRoutines]),
+  )
 
   const handleSelectRoutine = useCallback(
     (routine: WorkoutRoutineWithDetails) => {

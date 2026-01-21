@@ -92,6 +92,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 40,
+      paddingBottom: 80, // Optical centering - shifts content upward
     },
     iconWrapper: {
       width: 90,

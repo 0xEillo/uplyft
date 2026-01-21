@@ -236,6 +236,7 @@ export default function FollowersScreen() {
           data={filteredFollowers}
           renderItem={renderItem}
           keyExtractor={(item) => item.follower.id}
+          contentContainerStyle={{ flexGrow: 1 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -268,13 +269,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.bg,
       zIndex: 0,
     },
     header: {
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      backgroundColor: colors.bg,
       paddingBottom: 12,
     },
     headerTop: {

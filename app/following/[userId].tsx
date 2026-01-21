@@ -236,6 +236,7 @@ export default function FollowingScreen() {
           data={filteredFollowing}
           renderItem={renderItem}
           keyExtractor={(item) => item.followee.id}
+          contentContainerStyle={{ flexGrow: 1 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -246,7 +247,6 @@ export default function FollowingScreen() {
             <EmptyState
               icon="person-add-outline"
               title="Not following anyone"
-              description="Follow other lifters to see their workouts in your feed and stay motivated."
               buttonText="Discover People"
               onPress={() => router.push('/search')}
             />
@@ -268,13 +268,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.bg,
       zIndex: 0,
     },
     header: {
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      backgroundColor: colors.bg,
       paddingBottom: 12,
     },
     headerTop: {

@@ -1,17 +1,18 @@
+import {
+    ProfileCard,
+    useProfileCardDimensions,
+} from '@/components/Profile/ProfileCard'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  FlatList,
-  StyleSheet,
-  View,
+    FlatList,
+    StyleSheet,
+    View,
 } from 'react-native'
-import {
-  ProfileCard,
-  useProfileCardDimensions,
-} from '@/components/Profile/ProfileCard'
 
 interface ProfileRoutinesProps {
   userId: string
@@ -45,48 +46,13 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
   }
 
   const renderItem = ({ item }: { item: WorkoutRoutineWithDetails }) => {
-    const exerciseCount = item.workout_routine_exercises?.length || 0
-    const setCount =
-      item.workout_routine_exercises?.reduce(
-        (sum, ex) => sum + (ex.sets?.length || 0),
-        0,
-      ) || 0
-
-    // Estimate duration
-    const DEFAULT_REST_SECONDS = 90
-    const SET_EXECUTION_SECONDS = 45
-    const EXERCISE_TRANSITION_SECONDS = 30
-
-    const totalRestSeconds =
-      item.workout_routine_exercises?.reduce((sum, ex) => {
-        return (
-          sum +
-          (ex.sets?.reduce((setSum, set) => {
-            return setSum + (set.rest_seconds ?? DEFAULT_REST_SECONDS)
-          }, 0) || 0)
-        )
-      }, 0) || 0
-
-    const totalSetExecutionSeconds = setCount * SET_EXECUTION_SECONDS
-    const totalTransitionSeconds = exerciseCount * EXERCISE_TRANSITION_SECONDS
-    const estDurationSeconds =
-      totalSetExecutionSeconds + totalRestSeconds + totalTransitionSeconds
-    const estDurationMinutes = Math.ceil(estDurationSeconds / 60)
-    const estDurationHours = Math.floor(estDurationMinutes / 60)
-    const estDurationMinsRemainder = estDurationMinutes % 60
-    const estDurationString =
-      estDurationHours > 0
-        ? `${estDurationHours}h ${estDurationMinsRemainder}m`
-        : `${estDurationMinutes}min`
-
-    const subtext = `${estDurationString} • ${setCount} sets`
+    const imageUri = getRoutineImageUrl(item.image_path)
 
     return (
       <ProfileCard
-        label="ROUTINE"
         title={item.name}
-        subtext={subtext}
-        icon="albums-outline"
+        imageUri={imageUri}
+        tintColor={item.tint_color}
         onPress={() => {
           haptic('light')
           router.push({
