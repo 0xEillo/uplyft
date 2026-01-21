@@ -47,10 +47,21 @@ export function ProfileRoutines({ userId }: ProfileRoutinesProps) {
 
   const renderItem = ({ item }: { item: WorkoutRoutineWithDetails }) => {
     const imageUri = getRoutineImageUrl(item.image_path)
+    
+    // Calculate exercise and set counts for the subtext
+    const exerciseCount = item.workout_routine_exercises?.length || 0
+    const setCount =
+      item.workout_routine_exercises?.reduce(
+        (sum, ex) => sum + (ex.sets?.length || 0),
+        0,
+      ) || 0
+
+    const subtext = `${exerciseCount} exercises • ${setCount} sets`
 
     return (
       <ProfileCard
         title={item.name}
+        subtext={subtext}
         imageUri={imageUri}
         tintColor={item.tint_color}
         onPress={() => {
