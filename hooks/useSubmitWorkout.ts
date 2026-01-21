@@ -11,15 +11,15 @@ import { supabase } from '@/lib/supabase'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearPendingArtifacts,
-  createPlaceholderWorkout,
-  loadPendingWorkout,
-  loadPlaceholderWorkout,
-  PendingWorkout,
-  PlaceholderWorkout,
-  saveDraft,
-  savePendingWorkout,
-  savePlaceholderWorkout,
+    clearPendingArtifacts,
+    createPlaceholderWorkout,
+    loadPendingWorkout,
+    loadPlaceholderWorkout,
+    PendingWorkout,
+    PlaceholderWorkout,
+    saveDraft,
+    savePendingWorkout,
+    savePlaceholderWorkout,
 } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
@@ -360,6 +360,7 @@ export function useSubmitWorkout() {
 
       // Do NOT clear draft here. The component that queued the workout is responsible for clearing its own draft.
       // Clearing here causes race conditions where a *new* draft (created after the pending one was queued) gets deleted.
+
 
       return {
         status: 'success',

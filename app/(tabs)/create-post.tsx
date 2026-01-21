@@ -1873,23 +1873,25 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.headerCenter}>
-            {shouldShowWorkoutTimer && (
+            {shouldShowWorkoutTimer && !showDraftSaved && (
               <Text style={styles.headerTimerText}>{headerTimerDisplay}</Text>
             )}
+            {showDraftSaved && (
+              <Animated.View
+                style={[
+                  styles.draftSavedContainer,
+                  { opacity: fadeAnim, position: 'absolute' },
+                ]}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.brandPrimary}
+                />
+                <Text style={styles.draftSavedText}>Draft saved</Text>
+              </Animated.View>
+            )}
           </View>
-
-          {showDraftSaved && (
-            <Animated.View
-              style={[styles.draftSavedContainer, { opacity: fadeAnim }]}
-            >
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={colors.brandPrimary}
-              />
-              <Text style={styles.draftSavedText}>Draft saved</Text>
-            </Animated.View>
-          )}
           <View style={styles.headerRightButtons}>
             {shouldShowWorkoutTimer && (
               <TouchableOpacity

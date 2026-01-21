@@ -913,7 +913,7 @@ function createStyles(
       lineHeight: 22,
     },
     exercisesContainer: {
-      marginBottom: 12,
+      marginBottom: 0,
       borderRadius: 12,
       overflow: 'hidden',
       backgroundColor: colors.bg,
@@ -1180,7 +1180,7 @@ function createStyles(
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      paddingVertical: 12,
+      paddingVertical: 8,
       backgroundColor: colors.bg,
       borderTopWidth: 1,
       borderTopColor: colors.border,

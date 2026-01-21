@@ -3,17 +3,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    LayoutAnimation,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  LayoutAnimation,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -225,24 +225,6 @@ export default function FeedScreen() {
     [user, isInitialLoad, offset],
   )
 
-  const handleRefresh = useCallback(async () => {
-    if (!user || isRefreshing) return
-
-    trackEvent(AnalyticsEvents.FEED_REFRESHED)
-    setIsRefreshing(true)
-    try {
-      // Reset pagination and reload from scratch
-      setOffset(0)
-      setHasMore(true)
-      await loadWorkouts(false, false)
-
-      // Also retry any pending workout (manual retry via pull-to-refresh)
-      handlePendingPost()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [user, isRefreshing, loadWorkouts, trackEvent, handlePendingPost])
-
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return
 
@@ -260,6 +242,10 @@ export default function FeedScreen() {
 
       if (result.status === 'success') {
         let { workout } = result
+
+        // IMPORTANT: Immediately remove placeholder from state to prevent
+        // briefly showing "Queued" before the feed reloads
+        setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
 
         // Ensure workout has profile attached for share screen
         if (!workout.profile && user) {
@@ -360,6 +346,24 @@ export default function FeedScreen() {
     updateWorkoutData,
   ])
 
+  const handleRefresh = useCallback(async () => {
+    if (!user || isRefreshing) return
+
+    trackEvent(AnalyticsEvents.FEED_REFRESHED)
+    setIsRefreshing(true)
+    try {
+      // Reset pagination and reload from scratch
+      setOffset(0)
+      setHasMore(true)
+      await loadWorkouts(false, false)
+
+      // Also retry any pending workout (manual retry via pull-to-refresh)
+      handlePendingPost()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [user, isRefreshing, loadWorkouts, trackEvent, handlePendingPost])
+
   const handleLoadMore = useCallback(() => {
     if (!isLoadingMore && hasMore && !isLoading) {
       loadWorkouts(false, true)
@@ -457,7 +461,7 @@ export default function FeedScreen() {
         }}
       />
     ),
-    [newWorkoutId, deletingWorkoutId, trackEvent],
+    [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending],
   )
 
   const renderFooter = useCallback(() => {

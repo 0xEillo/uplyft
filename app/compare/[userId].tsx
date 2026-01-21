@@ -401,12 +401,19 @@ export default function CompareScreen() {
                 <Ionicons
                   name={percentDiff >= 0 ? 'arrow-up' : 'arrow-down'}
                   size={14}
-                  color={percentDiff >= 0 ? colors.statusSuccess : colors.statusError}
+                  color={
+                    percentDiff >= 0 ? colors.statusSuccess : colors.statusError
+                  }
                 />
                 <Text
                   style={[
                     styles.percentageText,
-                    { color: percentDiff >= 0 ? colors.statusSuccess : colors.statusError },
+                    {
+                      color:
+                        percentDiff >= 0
+                          ? colors.statusSuccess
+                          : colors.statusError,
+                    },
                   ]}
                 >
                   {Math.abs(percentDiff)}%
@@ -690,7 +697,11 @@ export default function CompareScreen() {
         <BaseNavbar
           leftContent={
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={colors.textPrimary}
+              />
             </TouchableOpacity>
           }
           centerContent={
@@ -1037,7 +1048,7 @@ const createStyles = (
     emptyText: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.textPrimary,
+      color: colors.textTertiary,
       marginTop: 16,
       textAlign: 'center',
     },
