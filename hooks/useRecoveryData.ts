@@ -59,16 +59,18 @@ const RECOVERY_STATUS_COLORS: Record<RecoveryStatus, string> = {
   untrained: '#6B7280', // Gray - no data
 }
 
-// Gradient colors for recovery spectrum (11 steps from 0% to 100%)
-// Red (0%) -> Amber (40%) -> Neutral Dark Gray (100%)
+// Gradient colors for recovery spectrum
+// Red (0%) -> Light Orange (80%) for recovering muscles
+// Dark charcoal (100%) for fully recovered (matches strength chart body baseline)
 const RECOVERY_GRADIENT_COLORS = [
-  '#EF4444', // 0% - Red
-  '#F97316', // 20% - Orange
-  '#F59E0B', // 40% - Amber
-  '#949494', // 60% transition
-  '#5C5C5C', // 80% transition
-  '#546073', // 100% - Blue-tinted light gray
+  '#991B1B', // 0-20% - Very Strong Red
+  '#DC2626', // 20-40% - Red
+  '#F97316', // 40-60% - Orange
+  '#FB923C', // 60-80% - Light Orange
+  '#FDBA74', // 80-99% - Very Light Orange
+  '#374151', // 100% - Dark Charcoal (recovered, matches strength body baseline)
 ]
+
 
 // We use intensity 1-10 for the gradient steps
 const RECOVERY_STATUS_INTENSITY: Record<RecoveryStatus, number> = {
@@ -234,12 +236,11 @@ export function getRecoveryIntensityFromPercentage(recoveryPercentage: number): 
  */
 export function getRecoveryColorFromPercentage(recoveryPercentage: number): string {
   if (recoveryPercentage >= 100) {
-    return '#546073' // Blue-tinted light gray for fully recovered
+    return RECOVERY_GRADIENT_COLORS[RECOVERY_GRADIENT_COLORS.length - 1] // 100% - Blue-tinted light gray
   }
-  
-  // Clamp to 0-99 range and get the gradient index
-  const clampedPercentage = Math.max(0, Math.min(99, recoveryPercentage))
-  const index = Math.floor(clampedPercentage / 10)
+
+  // 6 colors map to 0-20, 20-40, 40-60, 60-80, 80-100
+  const index = Math.floor(Math.max(0, Math.min(99, recoveryPercentage)) / 20)
   return RECOVERY_GRADIENT_COLORS[index]
 }
 

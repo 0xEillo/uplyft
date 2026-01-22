@@ -1,36 +1,54 @@
 import { BodyHighlighterDual } from '@/components/BodyHighlighterDual'
+import { useTheme } from '@/contexts/theme-context'
 import {
-  getRecoveryGradientColors,
-  getRecoveryIntensityFromPercentage,
-  useRecoveryData,
+    getRecoveryColorFromPercentage,
+    getRecoveryGradientColors,
+    getRecoveryIntensityFromPercentage,
+    useRecoveryData
 } from '@/hooks/useRecoveryData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+
 import {
-  ALL_BODY_PART_SLUGS,
-  BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_DATABASE_MUSCLE,
-  type BodyPartSlug,
+    ALL_BODY_PART_SLUGS,
+    BODY_PART_DISPLAY_NAMES,
+    BODY_PART_TO_DATABASE_MUSCLE,
+    type BodyPartSlug,
 } from '@/lib/body-mapping'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-// Get the gradient colors for the body highlighter (10 steps)
-const RECOVERY_COLORS = getRecoveryGradientColors()
+
+// Get the base gradient colors for the body highlighter
+const BASE_RECOVERY_COLORS = getRecoveryGradientColors()
+const READY_GREEN = '#10B981' // Green for Ready to Train chips
 
 export function RecoveryBodyView() {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  
+  // Match the exact body baseline color from BodyHighlighterDual
+  const bodyBaseColor = isDark ? '#1C1C1C' : '#E5E5EA'
+  
+  // Create theme-aware recovery colors - replace the last color (100% recovered) with body baseline
+  const recoveryColors = useMemo(() => {
+    const colors = [...BASE_RECOVERY_COLORS]
+    colors[colors.length - 1] = bodyBaseColor
+    return colors
+  }, [bodyBaseColor])
+  
   const {
     profile,
     muscleRecoveryData,
@@ -40,7 +58,9 @@ export function RecoveryBodyView() {
     onRefresh,
   } = useRecoveryData()
 
+
   // Generate body data for highlighting with gradient-based intensity
+  // Only include muscles that are RECOVERING - recovered muscles stay as SVG default (like Strength page)
   const bodyData = useMemo(() => {
     const data: {
       slug: BodyPartSlug
@@ -48,7 +68,7 @@ export function RecoveryBodyView() {
       side?: 'left' | 'right'
     }[] = []
 
-    // Iterate over ALL supported body part slugs to ensure the whole body is colored
+    // Iterate over supported body part slugs
     ALL_BODY_PART_SLUGS.forEach((slug) => {
       // Skip non-muscular/non-target parts for a cleaner aesthetic
       if (['head', 'hands', 'feet', 'hair', 'ankles', 'neck'].includes(slug)) return
@@ -56,22 +76,20 @@ export function RecoveryBodyView() {
       const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
       const recoveryData = dbMuscleName ? muscleRecoveryData.get(dbMuscleName) : null
       
-      // Default to 100% recovered (intensity 6) for all muscles
-      let intensity = 6
-      
-      if (recoveryData && recoveryData.recoveryStatus !== 'untrained') {
-        // Use percentage-based intensity for gradient coloring
-        intensity = getRecoveryIntensityFromPercentage(recoveryData.recoveryPercentage)
+      // Only add muscles that are still recovering (not at 100%)
+      // Recovered/untrained muscles are left out so they use the SVG's natural base color
+      if (recoveryData && recoveryData.recoveryStatus !== 'untrained' && recoveryData.recoveryPercentage < 100) {
+        const intensity = getRecoveryIntensityFromPercentage(recoveryData.recoveryPercentage)
+        data.push({
+          slug: slug,
+          intensity,
+        })
       }
-      
-      data.push({
-        slug: slug,
-        intensity,
-      })
     })
 
     return data
   }, [muscleRecoveryData])
+
 
   // Handle body part press - navigate to native formSheet
   const handleBodyPartPress = useCallback(
@@ -151,14 +169,16 @@ export function RecoveryBodyView() {
             <BodyHighlighterDual
               bodyData={bodyData}
               gender={bodyGender}
-              colors={RECOVERY_COLORS}
+              colors={recoveryColors}
+
               onBodyPartPress={handleBodyPartPress}
             />
 
             {/* Recovery Gradient Legend */}
             <View style={styles.gradientLegendContainer}>
               <LinearGradient
-                colors={['#EF4444', '#F59E0B', '#546073']}
+                colors={['#991B1B', '#DC2626', '#F97316', '#FB923C', '#FDBA74']}
+                locations={[0, 0.25, 0.5, 0.75, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientBar}
@@ -166,28 +186,91 @@ export function RecoveryBodyView() {
               <View style={styles.gradientLabels}>
                 <Text style={styles.gradientLabelText}>Not Recovered</Text>
                 <Text style={styles.gradientLabelText}>Recovering</Text>
-                <Text style={styles.gradientLabelText}>Recovered</Text>
               </View>
             </View>
 
-            {/* Recovery Stats Card */}
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>
-                  {formatDaysSince(recoveryOverview.daysSinceLastWorkout)}
-                </Text>
-                <Text style={styles.summaryLabel}>DAYS SINCE LAST WORKOUT</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>
-                  {recoveryOverview.totalMuscleGroups > 0
-                    ? recoveryOverview.freshMuscleGroups
-                    : '—'}
-                </Text>
-                <Text style={styles.summaryLabel}>FRESH MUSCLE GROUPS</Text>
-              </View>
-            </View>
+          {/* Recovery Zone Card */}
+          <View style={styles.levelCard}>
+            {/* Still Recovering Section */}
+            {Array.from(muscleRecoveryData.values()).filter(m => m.recoveryPercentage < 100).length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>Still Recovering</Text>
+                <View style={styles.chipsContainer}>
+                  {Array.from(muscleRecoveryData.values())
+                    .filter(m => m.recoveryPercentage < 100)
+                    .sort((a, b) => a.recoveryPercentage - b.recoveryPercentage)
+                    .map((m) => {
+                      const recoveryColor = getRecoveryColorFromPercentage(m.recoveryPercentage)
+                      const hoursLeft = Math.max(
+                        0,
+                        (m.recoveryTimeHours || 0) - (m.hoursSinceLastWorkout || 0),
+                      )
+                      const days = Math.floor(hoursLeft / 24)
+                      const hours = Math.ceil(hoursLeft % 24)
+                      const timeLeftStr = days > 0 ? ` • ${days}d ${hours}h` : ` • ${hours}h`
+
+                      return (
+                        <TouchableOpacity
+                          key={m.muscleGroup}
+                          style={[
+                            styles.unifiedChip,
+                            {
+                              borderColor: recoveryColor,
+                              backgroundColor: recoveryColor + '12',
+                            },
+                          ]}
+                          onPress={() => {
+                            const entries = Object.entries(BODY_PART_TO_DATABASE_MUSCLE)
+                            const entry = entries.find(
+                              ([_, val]) => val === m.muscleGroup,
+                            )
+                            if (entry) handleBodyPartPress({ slug: entry[0] })
+                          }}
+                        >
+                          <Text style={[styles.unifiedChipText, { color: recoveryColor }]}>
+                            {m.muscleGroup}{timeLeftStr}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                </View>
+              </>
+            )}
+
+            {/* Ready to Train Section */}
+            {Array.from(muscleRecoveryData.values()).filter(m => m.recoveryPercentage >= 100).length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { marginTop: 12 }]}>Ready to Train</Text>
+                <View style={styles.chipsContainer}>
+                  {Array.from(muscleRecoveryData.values())
+                    .filter(m => m.recoveryPercentage >= 100)
+                    .map((m) => (
+                      <TouchableOpacity
+                        key={m.muscleGroup}
+                        style={[
+                          styles.unifiedChip,
+                          {
+                            borderColor: READY_GREEN,
+                            backgroundColor: READY_GREEN + '15',
+                          },
+                        ]}
+                        onPress={() => {
+                          const entries = Object.entries(BODY_PART_TO_DATABASE_MUSCLE)
+                          const entry = entries.find(
+                            ([_, val]) => val === m.muscleGroup,
+                          )
+                          if (entry) handleBodyPartPress({ slug: entry[0] })
+                        }}
+                      >
+                        <Text style={[styles.unifiedChipText, { color: READY_GREEN }]}>
+                          {m.muscleGroup}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              </>
+            )}
+          </View>
           </View>
         </ScrollView>
       )}
@@ -229,7 +312,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
 
     // Gradient Legend
     gradientLegendContainer: {
-      marginTop: 20,
+      marginTop: 8,
       alignItems: 'center',
     },
     gradientBar: {
@@ -249,41 +332,80 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
 
-    // Summary Card
-    summaryCard: {
-      marginTop: 24,
+    // Level Card (matches strength section)
+    levelCard: {
+      marginTop: 16,
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 20,
-      flexDirection: 'row',
-      alignItems: 'center',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08,
       shadowRadius: 12,
       elevation: 4,
     },
-    summaryItem: {
-      flex: 1,
+    levelCardContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       alignItems: 'center',
     },
-    summaryValue: {
+    levelCardLeft: {
+      flex: 1,
+    },
+    levelCardLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    levelCardValue: {
       fontSize: 28,
       fontWeight: '800',
       color: colors.textPrimary,
+      letterSpacing: -0.5,
       marginBottom: 4,
     },
-    summaryLabel: {
-      fontSize: 10,
-      fontWeight: '700',
+    levelCardProgress: {
+      fontSize: 13,
+      fontWeight: '500',
       color: colors.textSecondary,
-      textAlign: 'center',
-      letterSpacing: 0.5,
     },
-    summaryDivider: {
-      width: 1,
-      height: 40,
+    statusBadgeWrapper: {
+      marginLeft: 16,
+    },
+    progressBarContainer: {
+      marginTop: 16,
+    },
+    progressBarBackground: {
+      height: 6,
       backgroundColor: colors.border,
-      marginHorizontal: 12,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+      letterSpacing: 0.2,
+    },
+    chipsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    unifiedChip: {
+      borderWidth: 1,
+      borderRadius: 100,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    unifiedChipText: {
+      fontSize: 11,
+      fontWeight: '600',
     },
   })

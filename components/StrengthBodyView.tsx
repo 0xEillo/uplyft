@@ -277,7 +277,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
 
     // Level Card
     levelCard: {
-      marginTop: 24,
+      marginTop: 16,
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 20,
@@ -350,7 +350,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
 
     // Legend
     integratedLegend: {
-      marginTop: 16,
+      marginTop: 8,
       paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
