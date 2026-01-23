@@ -517,7 +517,7 @@ function TabLayoutContent() {
         visible={showGlobalPaywall}
         onClose={() => {}} // No-op, cannot close
         allowClose={false}
-        title="Unlock your full potential"
+        title={'Unlock your full potential'}
         message="Start your free trial to access Uplyft"
       />
     </>

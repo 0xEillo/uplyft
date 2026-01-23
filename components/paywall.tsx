@@ -10,15 +10,15 @@ import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -37,13 +37,13 @@ type PaywallProps = {
 export function Paywall({
   visible,
   onClose,
-  title = 'Unlock Your Full Potential',
+  title = 'Unlock your full potential',
   message = 'Get full access to all premium features',
   allowClose = true,
 }: PaywallProps) {
   const colors = AppColors
   const insets = useSafeAreaInsets()
-  const { height: screenHeight } = Dimensions.get('window')
+  const { height: screenHeight } = useWindowDimensions()
   const styles = createStyles(colors, screenHeight)
 
   const { trackEvent } = useAnalytics()
@@ -286,7 +286,7 @@ export function Paywall({
       <StatusBar style="dark" />
       <View style={styles.container}>
         {/* Hero Image Section */}
-        <View style={styles.heroImageContainer}>
+        <View style={[styles.heroImageContainer, { height: screenHeight * 0.38 }]}>
           <Image
             source={getHeroImage()}
             style={styles.heroImage}
@@ -331,10 +331,50 @@ export function Paywall({
             >
               {title}
             </Animated.Text>
+
+            {/* Review Section */}
+            <Animated.View 
+              entering={FadeInDown.delay(400)}
+              style={styles.reviewContainer}
+            >
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Ionicons key={s} name="star" size={12} color="#FF9500" />
+                ))}
+              </View>
+              <Text style={styles.reviewText}>
+               "Rep AI is the best workout tracker I have tried and the only one I actually stick to."
+              </Text>
+              <View style={styles.authorContainer}>
+                <Text style={styles.reviewAuthor}>Ollie J.</Text>
+                <Ionicons name="checkmark-circle" size={12} color={colors.textTertiary} style={{ marginLeft: 4 }} />
+              </View>
+            </Animated.View>
           </View>
 
-          {/* Content Body */}
-          <View style={styles.bodyContent}>
+          {/* Flex Spacer - pushes bottom content down */}
+          <View style={styles.flexSpacer} />
+
+          {/* Bottom Section - All grouped together */}
+          <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            {/* Reminder Toggle */}
+            <View style={styles.trialToggleContainer}>
+              <View style={styles.reminderTextContainer}>
+                <Text style={styles.trialToggleText}>
+                  Remind me before my trial ends
+                </Text>
+              </View>
+              <View style={styles.switchContainer}>
+                <Switch
+                  value={isReminderEnabled}
+                  onValueChange={handleReminderToggle}
+                  trackColor={{ false: colors.border, true: colors.textPrimary }}
+                  thumbColor={colors.surface}
+                  ios_backgroundColor={colors.border}
+                />
+              </View>
+            </View>
+
             {/* Plan Selection Cards */}
             <View style={styles.plansContainer}>
               {plans.map((plan, index) => {
@@ -391,24 +431,7 @@ export function Paywall({
               })}
             </View>
 
-            {/* Reminder Toggle - Trial is always included */}
-            <View style={styles.trialToggleContainer}>
-              <View style={styles.reminderTextContainer}>
-                <Text style={styles.trialToggleText}>
-                  Remind me before my trial ends
-                </Text>
-              </View>
-              <View style={styles.switchContainer}>
-                <Switch
-                  value={isReminderEnabled}
-                  onValueChange={handleReminderToggle}
-                  trackColor={{ false: colors.border, true: colors.brandPrimary }}
-                  thumbColor={colors.surface}
-                  ios_backgroundColor={colors.border}
-                />
-              </View>
-            </View>
-
+            {/* CTA Button */}
             <TouchableOpacity
               style={styles.mainButton}
               onPress={handleSubscribe}
@@ -426,7 +449,6 @@ export function Paywall({
               <Ionicons name="checkmark" size={16} color={colors.textSecondary} />
               <Text style={styles.noPaymentText}>No payment due now</Text>
             </View>
-
           </View>
         </View>
       </View>
@@ -434,12 +456,7 @@ export function Paywall({
   )
 }
 
-function createStyles(
-  colors: typeof AppColors,
-  screenHeight: number = 800,
-) {
-  const { height } = Dimensions.get('window')
-
+function createStyles(colors: typeof AppColors, screenHeight: number) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -447,7 +464,7 @@ function createStyles(
     },
     heroImageContainer: {
       width: '100%',
-      height: height * 0.4,
+      height: 320,
       backgroundColor: colors.surface,
       position: 'relative',
     },
@@ -497,7 +514,7 @@ function createStyles(
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 24,
-      paddingTop: 24,
+      paddingTop: 28,
       paddingBottom: 24,
     },
     heroTitle: {
@@ -505,25 +522,76 @@ function createStyles(
       fontWeight: '700',
       color: colors.textPrimary,
       textAlign: 'center',
-      lineHeight: 38,
+      lineHeight: 40,
       letterSpacing: -0.5,
+      marginBottom: 8,
     },
-    bodyContent: {
-      paddingHorizontal: 20,
-      paddingBottom: 34,
+    reviewContainer: {
+      alignItems: 'center',
+      marginTop: 16,
+      paddingHorizontal: 8,
+    },
+    starsContainer: {
+      flexDirection: 'row',
+      gap: 4,
+      marginBottom: 12,
+    },
+    reviewText: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginHorizontal: 10,
+    },
+    reviewAuthor: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    authorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    verifiedText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginLeft: 2,
+    },
+    reviewDots: {
+      flexDirection: 'row',
+      gap: 6,
+      marginTop: 16,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.border,
+      opacity: 0.3,
+    },
+    dotActive: {
+      backgroundColor: colors.textPrimary,
+      opacity: 1,
+    },
+    flexSpacer: {
       flex: 1,
+      minHeight: 16,
+    },
+    bottomSection: {
+      paddingHorizontal: 20,
     },
     plansContainer: {
       flexDirection: 'column',
       justifyContent: 'center',
-      marginBottom: 24,
+      marginBottom: 16,
       gap: 12,
     },
     planCard: {
       width: '100%',
       backgroundColor: colors.surface,
-      borderRadius: 18,
-      height: 74,
+      borderRadius: 16,
+      height: 68,
       borderWidth: 2,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -534,8 +602,8 @@ function createStyles(
       position: 'relative',
     },
     planCardSelected: {
-      height: 82,
-      borderColor: colors.brandPrimary,
+      height: 76,
+      borderColor: colors.textPrimary,
       backgroundColor: colors.surface,
     },
     cardInner: {
@@ -543,7 +611,7 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: 18,
     },
     planInfoLeft: {
       flex: 1,
@@ -555,31 +623,31 @@ function createStyles(
     },
     cardBadge: {
       position: 'absolute',
-      top: -12,
-      right: 20,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
+      top: -11,
+      right: 18,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 14,
       zIndex: 10,
-      backgroundColor: colors.brandPrimary,
+      backgroundColor: colors.textPrimary,
     },
     cardBadgeText: {
       color: colors.surface,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '700',
     },
     planLabel: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textSecondary,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     planLabelSelected: {
       color: colors.textPrimary,
       fontWeight: '700',
     },
     planPrice: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textSecondary,
     },
@@ -588,7 +656,7 @@ function createStyles(
       fontWeight: '700',
     },
     planSubtitle: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '500',
       color: colors.textTertiary,
     },
@@ -597,10 +665,10 @@ function createStyles(
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
-      borderRadius: 20,
-      paddingHorizontal: 20,
-      height: 56,
-      marginBottom: 20,
+      borderRadius: 18,
+      paddingHorizontal: 18,
+      height: 52,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -610,7 +678,7 @@ function createStyles(
       elevation: 2,
     },
     trialToggleText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.textPrimary,
     },
@@ -624,9 +692,9 @@ function createStyles(
     },
     mainButton: {
       width: '100%',
-      height: 64,
-      backgroundColor: colors.textPrimary, // Match onboarding button style
-      borderRadius: 32,
+      height: 56,
+      backgroundColor: colors.textPrimary,
+      borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.textPrimary,
@@ -636,14 +704,10 @@ function createStyles(
       elevation: 4,
     },
     mainButtonText: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '700',
-      color: colors.bg, // Match onboarding button text style
+      color: colors.bg,
       letterSpacing: 0.3,
-    },
-    footerContainer: {
-      alignItems: 'center',
-      marginTop: 12,
     },
     noPaymentContainer: {
       flexDirection: 'row',
@@ -653,7 +717,7 @@ function createStyles(
       gap: 4,
     },
     noPaymentText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '600',
       color: colors.textSecondary,
     },

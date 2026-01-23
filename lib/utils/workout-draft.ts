@@ -79,6 +79,8 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
     draft.selectedRoutineId.trim().length > 0
 
   // Consider structured template rows as content, even if sets are still empty
+  // This is CRITICAL: exercises added manually (not from a routine) must be preserved
+  // even before the user fills in weight/reps data
   const hasStructuredSkeleton =
     Array.isArray(draft.structuredData) && draft.structuredData.length > 0
 
@@ -90,12 +92,16 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
     ) ??
       false)
 
-  // Explicit check: only count as "draft" if there's actual data input or a routine selected
-  // Merely being in "structured mode" with an empty list isn't a draft.
+  // Count as "draft" if there's:
+  // - Text input (notes or title)
+  // - A routine selected
+  // - Exercises in the structured data (even with empty sets - user has actively added them)
+  // Note: hasStructuredSkeleton ensures we preserve exercises added manually before user
+  // fills in any weight/reps. This prevents data loss on page refresh or app backgrounding.
   return (
     notesLength > 0 ||
     titleLength > 0 ||
-    hasStructuredContent ||
+    hasStructuredSkeleton ||
     hasRoutineSelection
   )
 }
