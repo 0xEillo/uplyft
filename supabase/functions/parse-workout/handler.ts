@@ -65,17 +65,45 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const structuredParsed = buildStructuredParsedWorkout(payload)
+    const hasNotes = Boolean(payload.notes?.trim())
 
     let parsedWorkout: ParsedWorkout
 
-    if (structuredParsed) {
+    if (structuredParsed && hasNotes) {
+      // CASE 3: Both structured data AND notes present
+      // Parse notes with AI and merge exercises from both sources
+      console.log(
+        `[ParseWorkout][${correlationId}] Both structured (${structuredParsed.exercises?.length ?? 0} exercises) and notes present, merging...`,
+      )
+
+      let notesParsed: ParsedWorkout | null = null
+      try {
+        notesParsed = await parseWorkoutNotes(payload, correlationId)
+        console.log(
+          `[ParseWorkout][${correlationId}] AI parsed ${notesParsed.exercises?.length ?? 0} exercises from notes`,
+        )
+      } catch (error) {
+        // If AI parsing fails, log it but continue with just structured data
+        console.warn(
+          `[ParseWorkout][${correlationId}] AI parsing failed, using structured only:`,
+          error instanceof Error ? error.message : String(error),
+        )
+      }
+
+      parsedWorkout = mergeWorkouts(structuredParsed, notesParsed, correlationId)
+      console.log(
+        `[ParseWorkout][${correlationId}] Merged result: ${parsedWorkout.exercises?.length ?? 0} exercises`,
+      )
+    } else if (structuredParsed) {
+      // CASE 2: Structured data only (no notes)
       parsedWorkout = structuredParsed
       console.log(
-        `[ParseWorkout][${correlationId}] Using structured payload, exercises: ${
+        `[ParseWorkout][${correlationId}] Using structured payload only, exercises: ${
           parsedWorkout.exercises?.length ?? 0
         }`,
       )
     } else {
+      // CASE 1: Notes only (no structured data, or structured with no usable sets)
       if (structuredSummary.hasStructuredPayload) {
         console.log(
           `[ParseWorkout][${correlationId}] Structured payload present but no usable sets; falling back to AI`,
@@ -300,3 +328,62 @@ function summarizeStructuredPayload(payload: WorkoutRequest) {
     structuredSetsWithDataCount: setsWithDataCount,
   }
 }
+
+/**
+ * Normalize exercise name for comparison (lowercase, trim, remove extra whitespace)
+ */
+function normalizeExerciseName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, ' ')
+}
+
+/**
+ * Merge structured workout data with AI-parsed workout from notes.
+ * - Structured exercises take priority (they have explicit user input)
+ * - Additional exercises from notes are appended if they don't duplicate structured ones
+ * - Notes/type from AI parsing are preserved if not null
+ */
+function mergeWorkouts(
+  structured: ParsedWorkout,
+  notesParsed: ParsedWorkout | null,
+  correlationId: string,
+): ParsedWorkout {
+  if (!notesParsed || !notesParsed.exercises?.length) {
+    // No exercises from notes, just use structured
+    return structured
+  }
+
+  // Create a set of normalized names from structured exercises for deduplication
+  const structuredNames = new Set(
+    (structured.exercises ?? []).map((ex) => normalizeExerciseName(ex.name)),
+  )
+
+  // Find exercises from notes that aren't already in structured data
+  const additionalExercises = (notesParsed.exercises ?? []).filter(
+    (ex) => !structuredNames.has(normalizeExerciseName(ex.name)),
+  )
+
+  if (additionalExercises.length > 0) {
+    console.log(
+      `[ParseWorkout][${correlationId}] Adding ${additionalExercises.length} unique exercise(s) from notes: ${additionalExercises.map((e) => e.name).join(', ')}`,
+    )
+  } else {
+    console.log(
+      `[ParseWorkout][${correlationId}] No additional unique exercises from notes (all ${notesParsed.exercises.length} were duplicates of structured)`,
+    )
+  }
+
+  // Reindex the additional exercises to follow the structured ones
+  const structuredCount = structured.exercises?.length ?? 0
+  const reindexedAdditional = additionalExercises.map((ex, idx) => ({
+    ...ex,
+    order_index: structuredCount + idx,
+  }))
+
+  return {
+    isWorkoutRelated: true,
+    notes: notesParsed.notes ?? structured.notes ?? null,
+    type: notesParsed.type ?? structured.type ?? null,
+    exercises: [...(structured.exercises ?? []), ...reindexedAdditional],
+  }
+}
+
