@@ -14,9 +14,9 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  calculateTotalVolume,
-  calculateWorkoutStats,
-  formatVolume,
+    calculateTotalVolume,
+    calculateWorkoutStats,
+    formatVolume,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,25 +24,18 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Animated,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-// Helper function to determine badge size based on text fontSize
-const getBadgeSizeFromFontSize = (
-  fontSize: number,
-): 'small' | 'medium' | 'large' | 'xl' => {
-  if (fontSize >= 20) return 'large'
-  if (fontSize >= 15) return 'medium'
-  return 'small'
-}
+
 
 export default function ProfileScreen() {
   const { user } = useAuth()
@@ -608,11 +601,8 @@ export default function ProfileScreen() {
                         {userLevel && (
                           <LevelBadge
                             level={userLevel}
-                            size={getBadgeSizeFromFontSize(
-                              styles.displayName.fontSize,
-                            )}
+                            size="medium"
                             style={styles.levelBadge}
-                            iconOnly={true}
                           />
                         )}
                       </View>
