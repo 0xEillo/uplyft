@@ -38,14 +38,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
 
-// Helper function to determine badge size based on text fontSize
-const getBadgeSizeFromFontSize = (
-  fontSize: number,
-): 'small' | 'medium' | 'large' | 'xl' => {
-  if (fontSize >= 20) return 'large'
-  if (fontSize >= 15) return 'medium'
-  return 'small'
-}
+
 
 let skipNextProfileEntryAnimation = false
 
