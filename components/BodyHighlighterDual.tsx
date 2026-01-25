@@ -48,15 +48,38 @@ export function BodyHighlighterDual({
   // Slugs to hide (make them match the background)
   const HIDDEN_SLUGS: BodyPartSlug[] = ['hands', 'feet', 'ankles']
   
+  // All displayable body part slugs that should show as "unranked" when no data exists
+  // This ensures the head, hair, and other parts get the dark "no rank" color
+  const ALL_DISPLAYABLE_SLUGS: BodyPartSlug[] = [
+    'trapezius', 'triceps', 'forearm', 'adductors', 'calves', 'hair', 'neck',
+    'deltoids', 'head', 'tibialis', 'obliques', 'chest', 'biceps', 'abs',
+    'quadriceps', 'knees', 'upper-back', 'lower-back', 'hamstring', 'gluteal'
+  ]
+  
   // We augment the colors array with the background color at the end
   // to allow mapping "hidden" parts to it.
   const augmentedColors = [...highlightColors, colors.bg]
   const hiddenIntensity = augmentedColors.length
+  
+  // Intensity 1 maps to colors[0] (the dark "no rank" color)
+  // Logic: colors[intensity - 1] -> colors[1 - 1] -> colors[0]
+  const unrankedIntensity = 1
 
-  // Generate the augmented body data that includes hidden parts
+  // Generate the augmented body data that includes hidden parts and unranked defaults
   const augmentedBodyData = useMemo(() => {
     // Start with the provided data, but filter out any manual overrides for hidden slugs
     const filteredBase = bodyData.filter(d => !HIDDEN_SLUGS.includes(d.slug))
+    
+    // Create a set of slugs that already have data
+    const dataSlugSet = new Set(filteredBase.map(d => d.slug))
+    
+    // Add unranked parts (displayable slugs without data) with intensity 1 (no rank color)
+    const unrankedParts = ALL_DISPLAYABLE_SLUGS
+      .filter(slug => !dataSlugSet.has(slug))
+      .map(slug => ({
+        slug,
+        intensity: unrankedIntensity
+      }))
     
     // Add the hidden slugs with the intensity pointing to the background color
     const hiddenParts = HIDDEN_SLUGS.map(slug => ({
@@ -64,8 +87,8 @@ export function BodyHighlighterDual({
       intensity: hiddenIntensity
     }))
     
-    return [...filteredBase, ...hiddenParts]
-  }, [bodyData, hiddenIntensity])
+    return [...filteredBase, ...unrankedParts, ...hiddenParts]
+  }, [bodyData, hiddenIntensity, unrankedIntensity])
 
   return (
     <View style={styles.bodiesContainer}>

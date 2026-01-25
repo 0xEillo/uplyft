@@ -3,19 +3,19 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
 import {
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    InputAccessoryView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  InputAccessoryView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 
 interface SetData {
@@ -52,6 +52,11 @@ interface StructuredWorkoutInputProps {
     exerciseName: string,
     setNumber: number,
   ) => Promise<{ weight: string | null; reps: string | null } | null>
+  /**
+   * Callback when an exercise name is pressed.
+   * Parent can use this to navigate to exercise details if it exists in the database.
+   */
+  onExerciseNamePress?: (exerciseName: string) => void
 }
 
 export function StructuredWorkoutInput({
@@ -64,6 +69,7 @@ export function StructuredWorkoutInput({
   onInputBlur,
   editorToolbarProps,
   onFetchSetHistory,
+  onExerciseNamePress,
 }: StructuredWorkoutInputProps) {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
@@ -402,7 +408,14 @@ export function StructuredWorkoutInput({
         <View key={exercise.id} style={styles.exerciseBlock}>
           {/* Exercise Name with delete button */}
           <View style={styles.exerciseHeader}>
-            <Text style={styles.exerciseName}>{exercise.name}</Text>
+            <TouchableOpacity
+              onPress={() => onExerciseNamePress?.(exercise.name)}
+              disabled={!onExerciseNamePress}
+              activeOpacity={onExerciseNamePress ? 0.6 : 1}
+              style={styles.exerciseNameButton}
+            >
+              <Text style={styles.exerciseName}>{exercise.name}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteExerciseButton}
               onPress={() => handleDeleteExercise(exerciseIndex)}
@@ -566,8 +579,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       marginBottom: 4,
     },
-    exerciseName: {
+    exerciseNameButton: {
       flex: 1,
+    },
+    exerciseName: {
       fontSize: 17,
       fontWeight: '600',
       color: colors.textPrimary,

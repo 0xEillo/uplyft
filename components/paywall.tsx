@@ -286,7 +286,7 @@ export function Paywall({
       <StatusBar style="dark" />
       <View style={styles.container}>
         {/* Hero Image Section */}
-        <View style={[styles.heroImageContainer, { height: screenHeight * 0.38 }]}>
+        <View style={styles.heroImageContainer}>
           <Image
             source={getHeroImage()}
             style={styles.heroImage}
@@ -346,7 +346,7 @@ export function Paywall({
                "Rep AI is the best workout tracker I have tried and the only one I actually stick to."
               </Text>
               <View style={styles.authorContainer}>
-                <Text style={styles.reviewAuthor}>Ollie J.</Text>
+                <Text style={styles.reviewAuthor}>Matt J.</Text>
                 <Ionicons name="checkmark-circle" size={12} color={colors.textTertiary} style={{ marginLeft: 4 }} />
               </View>
             </Animated.View>
@@ -457,6 +457,43 @@ export function Paywall({
 }
 
 function createStyles(colors: typeof AppColors, screenHeight: number) {
+  // Responsive scaling based on screen height
+  // Small: iPhone SE, iPhone 12/13/14 mini (~667-740px)
+  // Medium: iPhone 12/13/14/15 standard (~844-852px)
+  // Large: iPhone Pro Max, Plus models (~926px+)
+  const isSmallScreen = screenHeight < 750
+  const isMediumScreen = screenHeight >= 750 && screenHeight < 900
+  const isLargeScreen = screenHeight >= 900
+
+  // Dynamic hero image height - balanced for all screens
+  // This gives a good proportion while leaving room for bottom content
+  const heroImageHeight = isSmallScreen 
+    ? screenHeight * 0.34 
+    : isMediumScreen 
+      ? screenHeight * 0.40 
+      : screenHeight * 0.42
+
+  // Dynamic spacing
+  const heroSectionPaddingTop = isSmallScreen ? 12 : isMediumScreen ? 16 : 24
+  const heroSectionPaddingBottom = isSmallScreen ? 8 : isMediumScreen ? 12 : 20
+  const reviewMarginTop = isSmallScreen ? 6 : isMediumScreen ? 10 : 14
+
+  // Dynamic font sizes
+  const heroTitleSize = isSmallScreen ? 24 : isMediumScreen ? 26 : 30
+  const heroTitleLineHeight = isSmallScreen ? 30 : isMediumScreen ? 32 : 38
+  const reviewTextSize = isSmallScreen ? 13 : isMediumScreen ? 13 : 15
+  const reviewTextLineHeight = isSmallScreen ? 18 : isMediumScreen ? 19 : 22
+
+  // Dynamic card heights
+  const planCardHeight = isSmallScreen ? 52 : isMediumScreen ? 56 : 64
+  const planCardSelectedHeight = isSmallScreen ? 58 : isMediumScreen ? 62 : 72
+  const toggleHeight = isSmallScreen ? 42 : isMediumScreen ? 46 : 50
+  const mainButtonHeight = isSmallScreen ? 46 : isMediumScreen ? 50 : 54
+
+  // Dynamic gaps
+  const planGap = isSmallScreen ? 6 : isMediumScreen ? 8 : 10
+  const bottomMargin = isSmallScreen ? 8 : isMediumScreen ? 10 : 14
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -464,7 +501,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
     },
     heroImageContainer: {
       width: '100%',
-      height: 320,
+      height: heroImageHeight,
       backgroundColor: colors.surface,
       position: 'relative',
     },
@@ -484,9 +521,9 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       zIndex: 10,
     },
     headerIconButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: isSmallScreen ? 38 : 44,
+      height: isSmallScreen ? 38 : 44,
+      borderRadius: isSmallScreen ? 19 : 22,
       backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
@@ -497,12 +534,12 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
     },
     restoreButton: {
       backgroundColor: colors.surfaceSubtle,
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 22,
+      paddingHorizontal: isSmallScreen ? 14 : 20,
+      paddingVertical: isSmallScreen ? 8 : 10,
+      borderRadius: isSmallScreen ? 18 : 22,
     },
     restoreButtonText: {
-      fontSize: 15,
+      fontSize: isSmallScreen ? 13 : 15,
       fontWeight: '700',
       color: colors.textPrimary,
     },
@@ -513,45 +550,45 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
     heroSection: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 24,
-      paddingTop: 28,
-      paddingBottom: 24,
+      paddingHorizontal: isSmallScreen ? 16 : 24,
+      paddingTop: heroSectionPaddingTop,
+      paddingBottom: heroSectionPaddingBottom,
     },
     heroTitle: {
-      fontSize: 32,
+      fontSize: heroTitleSize,
       fontWeight: '700',
       color: colors.textPrimary,
       textAlign: 'center',
-      lineHeight: 40,
+      lineHeight: heroTitleLineHeight,
       letterSpacing: -0.5,
-      marginBottom: 8,
+      marginBottom: isSmallScreen ? 4 : 8,
     },
     reviewContainer: {
       alignItems: 'center',
-      marginTop: 16,
-      paddingHorizontal: 8,
+      marginTop: reviewMarginTop,
+      paddingHorizontal: isSmallScreen ? 4 : 8,
     },
     starsContainer: {
       flexDirection: 'row',
-      gap: 4,
-      marginBottom: 12,
+      gap: isSmallScreen ? 3 : 4,
+      marginBottom: isSmallScreen ? 8 : 12,
     },
     reviewText: {
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: reviewTextSize,
+      lineHeight: reviewTextLineHeight,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginHorizontal: 10,
+      marginHorizontal: isSmallScreen ? 4 : 10,
     },
     reviewAuthor: {
-      fontSize: 13,
+      fontSize: isSmallScreen ? 12 : 13,
       fontWeight: '600',
       color: colors.textSecondary,
     },
     authorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 8,
+      marginTop: isSmallScreen ? 6 : 8,
     },
     verifiedText: {
       fontSize: 12,
@@ -576,22 +613,22 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
     },
     flexSpacer: {
       flex: 1,
-      minHeight: 16,
+      minHeight: isSmallScreen ? 8 : 16,
     },
     bottomSection: {
-      paddingHorizontal: 20,
+      paddingHorizontal: isSmallScreen ? 16 : 20,
     },
     plansContainer: {
       flexDirection: 'column',
       justifyContent: 'center',
-      marginBottom: 16,
-      gap: 12,
+      marginBottom: bottomMargin,
+      gap: planGap,
     },
     planCard: {
       width: '100%',
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      height: 68,
+      borderRadius: isSmallScreen ? 12 : 16,
+      height: planCardHeight,
       borderWidth: 2,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -602,7 +639,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       position: 'relative',
     },
     planCardSelected: {
-      height: 76,
+      height: planCardSelectedHeight,
       borderColor: colors.textPrimary,
       backgroundColor: colors.surface,
     },
@@ -611,7 +648,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 18,
+      paddingHorizontal: isSmallScreen ? 14 : 18,
     },
     planInfoLeft: {
       flex: 1,
@@ -623,21 +660,21 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
     },
     cardBadge: {
       position: 'absolute',
-      top: -11,
-      right: 18,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 14,
+      top: isSmallScreen ? -9 : -11,
+      right: isSmallScreen ? 12 : 18,
+      paddingHorizontal: isSmallScreen ? 8 : 10,
+      paddingVertical: isSmallScreen ? 4 : 5,
+      borderRadius: isSmallScreen ? 10 : 14,
       zIndex: 10,
       backgroundColor: colors.textPrimary,
     },
     cardBadgeText: {
       color: colors.surface,
-      fontSize: 11,
+      fontSize: isSmallScreen ? 10 : 11,
       fontWeight: '700',
     },
     planLabel: {
-      fontSize: 17,
+      fontSize: isSmallScreen ? 15 : 17,
       fontWeight: '600',
       color: colors.textSecondary,
       marginBottom: 2,
@@ -647,7 +684,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       fontWeight: '700',
     },
     planPrice: {
-      fontSize: 17,
+      fontSize: isSmallScreen ? 15 : 17,
       fontWeight: '600',
       color: colors.textSecondary,
     },
@@ -656,7 +693,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       fontWeight: '700',
     },
     planSubtitle: {
-      fontSize: 13,
+      fontSize: isSmallScreen ? 11 : 13,
       fontWeight: '500',
       color: colors.textTertiary,
     },
@@ -665,10 +702,10 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
-      borderRadius: 18,
-      paddingHorizontal: 18,
-      height: 52,
-      marginBottom: 16,
+      borderRadius: isSmallScreen ? 14 : 18,
+      paddingHorizontal: isSmallScreen ? 14 : 18,
+      height: toggleHeight,
+      marginBottom: bottomMargin,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -678,13 +715,13 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       elevation: 2,
     },
     trialToggleText: {
-      fontSize: 14,
+      fontSize: isSmallScreen ? 13 : 14,
       fontWeight: '600',
       color: colors.textPrimary,
     },
     reminderTextContainer: {
       flex: 1,
-      paddingRight: 12,
+      paddingRight: isSmallScreen ? 8 : 12,
     },
     switchContainer: {
       justifyContent: 'center',
@@ -692,9 +729,9 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
     },
     mainButton: {
       width: '100%',
-      height: 56,
+      height: mainButtonHeight,
       backgroundColor: colors.textPrimary,
-      borderRadius: 28,
+      borderRadius: mainButtonHeight / 2,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.textPrimary,
@@ -704,7 +741,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       elevation: 4,
     },
     mainButtonText: {
-      fontSize: 17,
+      fontSize: isSmallScreen ? 15 : 17,
       fontWeight: '700',
       color: colors.bg,
       letterSpacing: 0.3,
@@ -713,11 +750,11 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 12,
+      marginTop: isSmallScreen ? 8 : 12,
       gap: 4,
     },
     noPaymentText: {
-      fontSize: 13,
+      fontSize: isSmallScreen ? 12 : 13,
       fontWeight: '600',
       color: colors.textSecondary,
     },

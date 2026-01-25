@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
     Animated,
     Image,
+    StyleProp,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-    ViewStyle,
+    ViewStyle
 } from 'react-native'
 import Svg, {
     Circle,
@@ -45,19 +46,19 @@ type StrengthLevel =
   | 'World Class'
 
 const LEVEL_COLORS: Record<StrengthLevel, string> = {
-  Beginner: '#9CA3AF',
-  Novice: '#3B82F6',
-  Intermediate: '#10B981',
-  Advanced: '#8B5CF6',
-  Elite: '#F59E0B',
-  'World Class': '#EF4444',
+  Beginner: '#9CA3AF',    // Gray
+  Novice: '#3B82F6',      // Blue
+  Intermediate: '#10B981', // Green
+  Advanced: '#8B5CF6',    // Purple
+  Elite: '#F59E0B',       // Orange
+  'World Class': '#EF4444', // Red
 }
 
 interface LevelBadgeProps {
   level: StrengthLevel
   size?: 'small' | 'medium' | 'large' | 'xl' | 'hero'
   variant?: 'icon' | 'pill'
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
   showTooltipOnPress?: boolean
   iconOnly?: boolean
 }

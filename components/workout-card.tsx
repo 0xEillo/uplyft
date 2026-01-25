@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Image, ImageSourcePropType, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { ParsedWorkoutDisplay, getExerciseIcon } from '@/lib/ai/workoutParsing'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
@@ -23,8 +24,9 @@ export function WorkoutCard({
   onSaveRoutine,
   hideInfoButton = false,
 }: WorkoutCardProps) {
+  const { isDark } = useTheme()
   const colors = useThemedColors()
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, isDark)
   const [isWorkoutExpanded, setIsWorkoutExpanded] = useState(false)
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [expandedExerciseIndices, setExpandedExerciseIndices] = useState<
@@ -240,25 +242,27 @@ export function WorkoutCard({
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolean) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.surface, // Distinct card background
-      borderRadius: 24,
-      padding: 20,
+      backgroundColor: isDark ? '#1C1C1E' : colors.surface,
+      borderRadius: 20,
+      overflow: 'hidden',
       marginVertical: 8,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 12,
-      elevation: 3,
-      borderWidth: 1,
+      shadowOpacity: isDark ? 0.2 : 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+      borderWidth: isDark ? 0 : 1,
       borderColor: colors.border,
     },
     coachRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 12,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      marginBottom: 0,
       gap: 10,
     },
     coachAvatar: {
@@ -269,27 +273,29 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     coachLabel: {
       fontSize: 13,
-      color: colors.textSecondary,
+      color: isDark ? '#A0A0A0' : colors.textSecondary,
       fontWeight: '500',
     },
     cardHeader: {
+      paddingHorizontal: 20,
+      paddingTop: 12, 
+      paddingBottom: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: 8,
     },
     cardTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: isDark ? '#FFFFFF' : colors.textPrimary,
       flex: 1,
       marginRight: 12,
-      lineHeight: 26,
+      lineHeight: 28,
     },
     durationBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: `${colors.brandPrimary}15`,
+      backgroundColor: isDark ? 'rgba(255, 107, 53, 0.15)' : `${colors.brandPrimary}15`,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 12,
@@ -301,75 +307,77 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.brandPrimary,
     },
     description: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
-      marginBottom: 4,
+      fontSize: 15,
+      color: isDark ? '#A0A0A0' : colors.textSecondary,
+      lineHeight: 22,
+      paddingHorizontal: 20,
+      marginBottom: 20,
     },
     descriptionMoreText: {
       fontSize: 13,
       color: colors.textTertiary,
-      marginBottom: 16,
-      marginTop: 2,
+      paddingHorizontal: 20,
+      marginBottom: 20,
+      marginTop: -16,
     },
     exerciseList: {
-      marginBottom: 20,
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+      gap: 8,
     },
     timelineRow: {
       flexDirection: 'row',
-      minHeight: 72, // Ensure enough height for 56px node + padding
+      alignItems: 'center',
+      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle, 
+      borderRadius: 16,
+      padding: 12,
+      minHeight: 72,
     },
     timelineColumn: {
-      width: 60,
+      width: 52,
       alignItems: 'center',
+      marginRight: 12,
     },
     timelineLineTop: {
-      width: 2,
-      height: 8, // Short line from top of row to node
-      backgroundColor: colors.border,
-      opacity: 0.5,
+      display: 'none',
     },
     timelineLineBottom: {
-      width: 2,
-      flex: 1, // Extend to bottom
-      backgroundColor: colors.border,
-      opacity: 0.5,
+       display: 'none',
     },
     timelineNode: {
-      width: 56,
-      height: 56,
-      borderRadius: 14,
-      backgroundColor: colors.bg,
+      width: 52,
+      height: 52,
+      borderRadius: 12,
+      backgroundColor: isDark ? '#3A3A3C' : colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 1,
+      borderWidth: isDark ? 0 : 1,
       borderColor: colors.border,
-      zIndex: 2, // Sit on top of line
+      zIndex: 2,
     },
     timelineNodeImage: {
        padding: 0,
        overflow: 'hidden',
        borderWidth: 0,
+       backgroundColor: isDark ? '#000' : 'transparent',
     },
     thumbnailImage: {
       width: '100%',
       height: '100%',
+      opacity: isDark ? 0.9 : 1,
     },
     contentColumn: {
       flex: 1,
-      paddingLeft: 12,
-      paddingBottom: 16, // Space between items
-      paddingTop: 8, // Align content to start at same level as GIF top + small offset for centering
+      paddingTop: 0,
+      paddingLeft: 0,
+      paddingBottom: 0,
     },
     exerciseItem: {
-      minHeight: 56, // Same as GIF height
       justifyContent: 'center',
     },
     exerciseHeader: {
-      // Removed margin to let parent handle centering
     },
     exerciseHeaderText: {
-      // Content naturally flows
     },
     exerciseNameRow: {
       flexDirection: 'row',
@@ -382,7 +390,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.textPrimary,
+      color: isDark ? '#FFFFFF' : colors.textPrimary,
       marginBottom: 4,
       flex: 1,
     },
@@ -393,13 +401,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     setSummaryText: {
       fontSize: 13,
-      color: colors.textSecondary,
+      color: isDark ? '#A0A0A0' : colors.textSecondary,
       fontWeight: '500',
     },
     setsDetailContainer: {
-      marginTop: 8,
-      backgroundColor: colors.bg,
-      borderRadius: 12,
+      marginTop: 12,
+      backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+      borderRadius: 8,
       padding: 12,
     },
     setRow: {
@@ -412,7 +420,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
        width: 20,
        height: 20,
        borderRadius: 10,
-       backgroundColor: colors.border,
+       backgroundColor: isDark ? '#48484A' : colors.border,
        justifyContent: 'center',
        alignItems: 'center',
     },
@@ -422,28 +430,31 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setText: {
        fontSize: 10,
        fontWeight: '700',
-       color: colors.textSecondary,
+       color: isDark ? '#EBEBF5' : colors.textSecondary,
     },
     warmupText: {
        color: colors.statusWarning,
     },
     setDetailText: {
        fontSize: 14,
-       color: colors.textSecondary,
+       color: isDark ? '#D1D1D6' : colors.textSecondary,
     },
     expandFooter: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 8,
+      paddingVertical: 12,
+      marginTop: 4,
       gap: 6,
     },
     expandText: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: isDark ? '#A0A0A0' : colors.textSecondary,
       fontWeight: '500',
     },
     actionsContainer: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
       gap: 12,
     },
     primaryButton: {
@@ -461,7 +472,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       elevation: 4,
     },
     primaryButtonText: {
-      color: colors.surface,
+      color: '#FFFFFF',
       fontSize: 16,
       fontWeight: '600',
     },
@@ -471,10 +482,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: isDark ? '#3A3A3C' : colors.border,
     },
     secondaryButtonText: {
-      color: colors.textPrimary,
+      color: isDark ? '#FFFFFF' : colors.textPrimary,
       fontSize: 14,
       fontWeight: '600',
     },

@@ -151,18 +151,15 @@ export default function MuscleGroupDetailScreen() {
                             description="Could not load muscle group information."
                         />
                     ) : (
-                        <>
+                        <View style={styles.contentContainer}>
                             {/* Header */}
                             <View style={styles.header}>
-                                <View style={styles.headerLeft}>
-                                    <View style={styles.titleRow}>
-                                        <Text style={styles.headerTitle}>{groupDisplayName}</Text>
-                                        <LevelBadge level={groupData.level} size="small" showTooltipOnPress={false} />
-                                    </View>
-                                    <Text style={styles.progressText}>
-                                        {Math.round(groupData.progress)}% to next level
-                                    </Text>
-                                </View>
+                                <Text style={styles.title}>{groupDisplayName}</Text>
+                                <LevelBadge 
+                                    level={groupData.level} 
+                                    size="medium" 
+                                    variant="pill"
+                                />
                             </View>
 
                             {/* Exercise List */}
@@ -171,10 +168,6 @@ export default function MuscleGroupDetailScreen() {
                                 contentContainerStyle={styles.scrollContent}
                                 showsVerticalScrollIndicator={false}
                             >
-                                <Text style={styles.sectionTitle}>
-                                    {groupDisplayName} Strength
-                                </Text>
-
                                 {allMuscleExercises.length === 0 ? (
                                     <EmptyState
                                         icon="body-outline"
@@ -258,7 +251,7 @@ export default function MuscleGroupDetailScreen() {
                                     </Text>
                                 </View>
                             </ScrollView>
-                        </>
+                        </View>
                     )}
                 </View>
             </SlideUpView>
@@ -289,48 +282,28 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             borderTopRightRadius: 20,
             overflow: 'hidden',
         },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            backgroundColor: colors.surfaceSheet,
+        contentContainer: {
+            flex: 1,
             padding: 20,
             paddingTop: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
         },
-        headerLeft: {
-            flex: 1,
-        },
-        headerTitle: {
-            fontSize: 22,
-            fontWeight: '700',
-            color: colors.textPrimary,
-        },
-        titleRow: {
+        header: {
+            marginBottom: 20,
             flexDirection: 'row',
             alignItems: 'center',
+            justifyContent: 'flex-start',
             gap: 12,
-            marginBottom: 6,
         },
-        progressText: {
-            fontSize: 13,
-            color: colors.textSecondary,
-            fontWeight: '600',
-            letterSpacing: -0.2,
+        title: {
+            fontSize: 24,
+            fontWeight: '700',
+            color: colors.textPrimary,
         },
         scrollView: {
             flex: 1,
-            backgroundColor: colors.surfaceSheet,
         },
         scrollContent: {
-            padding: 20,
-        },
-        sectionTitle: {
-            fontSize: 22,
-            fontWeight: '700',
-            color: colors.textPrimary,
-            marginBottom: 16,
+            paddingBottom: 20,
         },
         exerciseCard: {
             flexDirection: 'row',
@@ -338,15 +311,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             alignItems: 'center',
             backgroundColor: colors.surfaceCard,
             borderRadius: 16,
-            padding: 16,
-            marginBottom: 12,
+            padding: 12,
+            marginBottom: 8,
             borderWidth: 1,
             borderColor: colors.border,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
+            shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
+            shadowRadius: 4,
+            elevation: 1,
         },
         lastExerciseCard: {
             marginBottom: 0,
@@ -358,8 +331,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             gap: 12,
         },
         exerciseThumbnail: {
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             borderRadius: 8,
             backgroundColor: '#f0f0f0',
         },
@@ -367,14 +340,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             flex: 1,
         },
         exerciseName: {
-            fontSize: 16,
-            fontWeight: '700',
+            fontSize: 15,
+            fontWeight: '600',
             color: colors.textPrimary,
             marginBottom: 2,
-            letterSpacing: -0.4,
+            letterSpacing: -0.2,
         },
         exerciseWeight: {
-            fontSize: 13,
+            fontSize: 12,
             color: colors.textSecondary,
         },
         exerciseRight: {
@@ -383,30 +356,36 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             gap: 8,
         },
         levelBadgeItem: {
-            paddingHorizontal: 10,
-            paddingVertical: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
             borderRadius: 8,
         },
         levelText: {
             color: '#FFF',
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: '700',
         },
         untrackedCard: {
             backgroundColor: colors.bg,
+            opacity: 0.8,
+            borderStyle: 'dashed',
+            elevation: 0,
+            shadowOpacity: 0,
         },
         thumbnailContainer: {
             position: 'relative',
         },
-        untrackedThumbnail: {},
+        untrackedThumbnail: {
+            opacity: 0.7,
+        },
         lockOverlay: {
             position: 'absolute',
             right: -4,
             bottom: -4,
             backgroundColor: colors.textTertiary,
             borderRadius: 10,
-            width: 20,
-            height: 20,
+            width: 18,
+            height: 18,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,
@@ -425,11 +404,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            marginTop: 32,
-            opacity: 0.8,
+            marginTop: 24,
+            opacity: 0.6,
         },
         infoFooterText: {
-            fontSize: 12,
+            fontSize: 11,
             color: colors.textTertiary,
             fontWeight: '500',
         },

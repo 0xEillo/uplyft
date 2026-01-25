@@ -3,8 +3,8 @@ import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  WorkoutPlanningData,
-  WorkoutPlanningWizard,
+    WorkoutPlanningData,
+    WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -16,17 +16,17 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  AiWorkoutConversionResult,
-  convertAiPlanToRoutine,
-  convertAiPlanToWorkout,
+    AiWorkoutConversionResult,
+    convertAiPlanToRoutine,
+    convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-  ParsedWorkoutDisplay,
-  parseWorkoutForDisplay,
+    ParsedWorkoutDisplay,
+    parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-  buildWorkoutCreationPrompt,
-  buildWorkoutModificationSuffix,
+    buildWorkoutCreationPrompt,
+    buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -36,8 +36,8 @@ import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
-  loadDraft as loadWorkoutDraft,
-  saveDraft,
+    loadDraft as loadWorkoutDraft,
+    saveDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -47,34 +47,34 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleProp,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleProp,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -479,7 +479,6 @@ export function WorkoutChat({
   const themedColors = useThemedColors()
   const colors = useMemo(() => ({
     ...themedColors,
-    background: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.background,
     bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg
   } as any), [themedColors, mode])
   const { isDark } = useTheme()
@@ -1931,42 +1930,25 @@ export function WorkoutChat({
           />
         ) : (
           <>
-            {/* New Chat Button - Positioned absolutely (hidden in sheet mode) */}
+            {/* Top Left Menu Button - Toggles between Settings (if empty) and Clear (if messages) */}
             {mode === 'fullscreen' && (
-              <>
-                <TouchableOpacity
-                  style={[
-                    styles.newChatButton,
-                    { top: Math.max(insets.top - 38, 0) },
-                  ]}
-                  onPress={handleNewChat}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="create-outline"
-                    size={28}
-                    color={colors.brandPrimary}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.settingsButton,
-                    { top: Math.max(insets.top - 38, 0) },
-                  ]}
-                  onPress={() => {
-                    haptic('light')
-                    setIsCoachSheetVisible(true)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="settings-sharp"
-                    size={24}
-                    color={colors.brandPrimary}
-                  />
-                </TouchableOpacity>
-              </>
+              <TouchableOpacity
+                style={[
+                  styles.newChatButton,
+                  { top: Math.max(insets.top - 38, 0) },
+                ]}
+                onPress={messages.length > 0 ? handleNewChat : () => {
+                  haptic('light')
+                  setIsCoachSheetVisible(true)
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={messages.length > 0 ? "trash-outline" : "settings-sharp"}
+                  size={messages.length > 0 ? 24 : 24}
+                  color={colors.brandPrimary}
+                />
+              </TouchableOpacity>
             )}
 
             <ScrollView
@@ -2739,18 +2721,6 @@ function createStyles(
       zIndex: 10,
       padding: 0,
     },
-    settingsButton: {
-      position: 'absolute',
-      right: 16,
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.bg,
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 10,
-      padding: 0,
-    },
     actionButtonsContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -2873,7 +2843,7 @@ function createStyles(
       color: colors.surface,
     },
     assistantMessageContent: {
-      flex: 1,
+      alignItems: 'flex-start',
       maxWidth: '85%',
       paddingVertical: 0,
     },
@@ -2882,7 +2852,7 @@ function createStyles(
       width: '100%',
     },
     assistantMessageBubble: {
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
       padding: 12,
       paddingHorizontal: 14,
       borderRadius: 18,
@@ -2989,7 +2959,7 @@ function createStyles(
     typingIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
       paddingHorizontal: 16,
       paddingVertical: 12,
       borderRadius: 18,

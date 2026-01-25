@@ -41,7 +41,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -79,7 +79,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.3,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -124,7 +124,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -162,7 +162,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -207,7 +207,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -245,7 +245,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -290,7 +290,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.25,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -328,7 +328,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -373,7 +373,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.75,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -411,7 +411,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -456,7 +456,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.6,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -494,7 +494,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.4,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -539,7 +539,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 1.0,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -577,7 +577,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -622,7 +622,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.75,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -660,7 +660,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -705,7 +705,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.35,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -743,7 +743,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -788,7 +788,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.25,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -826,7 +826,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -871,7 +871,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -909,7 +909,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -954,7 +954,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -992,7 +992,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.25,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1037,7 +1037,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1075,7 +1075,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.3,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1121,7 +1121,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.0,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1159,7 +1159,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.0,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1204,7 +1204,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.0,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1242,7 +1242,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.0,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1287,7 +1287,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1325,7 +1325,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.05,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1370,7 +1370,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1408,7 +1408,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.05,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1453,7 +1453,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1491,7 +1491,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1536,7 +1536,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 1.0,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1574,7 +1574,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1619,7 +1619,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1657,7 +1657,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1702,7 +1702,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1740,7 +1740,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1785,7 +1785,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1823,7 +1823,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1868,7 +1868,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1906,7 +1906,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.3,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1951,7 +1951,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -1989,7 +1989,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.3,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2034,7 +2034,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.25,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2072,7 +2072,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2116,7 +2116,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.5,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2154,7 +2154,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.3,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2198,7 +2198,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.6,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2236,7 +2236,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.4,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2280,7 +2280,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.05,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2318,7 +2318,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.02,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2362,7 +2362,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.05,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2400,7 +2400,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.02,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2444,7 +2444,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.25,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2482,7 +2482,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2526,7 +2526,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2564,7 +2564,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2608,7 +2608,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.05,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2646,7 +2646,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.02,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2690,7 +2690,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2728,7 +2728,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2772,7 +2772,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2810,7 +2810,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.08,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2854,7 +2854,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2892,7 +2892,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.1,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2936,7 +2936,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.3,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -2974,7 +2974,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -3018,7 +3018,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.15,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -3056,7 +3056,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.08,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -3100,7 +3100,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.25,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {
@@ -3138,7 +3138,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'Beginner',
         multiplier: 0.2,
-        color: '#9CA3AF',
+        color: '#64748B',
         description: 'Just starting out',
       },
       {

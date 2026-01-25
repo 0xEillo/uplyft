@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'
-import { View, StyleSheet, Animated, Image } from 'react-native'
+import { Animated, Image, StyleSheet, View } from 'react-native'
 
 export function LoadingScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current
@@ -16,7 +16,7 @@ export function LoadingScreen() {
     >
       <View style={styles.logoContainer}>
         <Image
-          source={require('@/llm/repai-logo-white.png')}
+          source={require('@/assets/images/logo-transparent.png')}
           style={styles.logo}
           resizeMode="contain"
         />

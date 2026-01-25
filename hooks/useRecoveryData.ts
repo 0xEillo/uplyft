@@ -215,19 +215,19 @@ export function calculateRecoveryPercentage(
   return Math.round(percentage)
 }
 
-/**
- * Get intensity value for body highlighter based on recovery percentage
- * Returns 1-6 for gradient steps, or 0 for untrained (not shown)
- */
+// Get intensity value for body highlighter based on recovery percentage
+// Returns 2-7 for gradient steps (1 is reserved for unranked/base), or 0 for untrained
 export function getRecoveryIntensityFromPercentage(recoveryPercentage: number): number {
   if (recoveryPercentage > 100) return 0
   
-  // Map 0-100% to intensity 1-6
-  if (recoveryPercentage === 100) return 6
+  // Map 0-100% to intensity 2-7 (shifted by 1 to reserve intensity 1 for unranked)
+  if (recoveryPercentage === 100) return 7 // Was 6, now 7
   
   // 5 steps before 100% (0-19, 20-39, 40-59, 60-79, 80-99)
-  const intensity = Math.floor(recoveryPercentage / 20) + 1
-  return Math.min(6, Math.max(1, intensity))
+  // Original: floor/20 => 0-4. Add 1 => 1-5.
+  // New: Add 2 => 2-6.
+  const intensity = Math.floor(recoveryPercentage / 20) + 2
+  return Math.min(7, Math.max(2, intensity))
 }
 
 /**

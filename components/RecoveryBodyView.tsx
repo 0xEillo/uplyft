@@ -40,13 +40,17 @@ export function RecoveryBodyView() {
   const router = useRouter()
   
   // Match the exact body baseline color from BodyHighlighterDual
-  const bodyBaseColor = isDark ? '#1C1C1C' : '#E5E5EA'
+  // Unified with StrengthBodyView:
+  // Dark: #2A2A2A
+  // Light: #4A4A4A
+  const bodyBaseColor = isDark ? '#2A2A2A' : '#4A4A4A'
   
-  // Create theme-aware recovery colors - replace the last color (100% recovered) with body baseline
+  // Create theme-aware recovery colors
+  // Index 0: Base Body Color (for Unranked/Intensity 1)
+  // Index 1-6: Recovery Gradient Colors (for Intensity 2-7)
   const recoveryColors = useMemo(() => {
-    const colors = [...BASE_RECOVERY_COLORS]
-    colors[colors.length - 1] = bodyBaseColor
-    return colors
+    // We keep the last color (recovered) as is from the gradient
+    return [bodyBaseColor, ...BASE_RECOVERY_COLORS]
   }, [bodyBaseColor])
   
   const {

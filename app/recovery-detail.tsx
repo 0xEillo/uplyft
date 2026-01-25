@@ -6,6 +6,7 @@
  * but with native iOS sheet presentation (UISheetPresentationController).
  */
 
+import { SlideUpView } from '@/components/slide-up-view'
 import {
     getRecoveryColor,
     getRecoveryLabel,
@@ -13,14 +14,13 @@ import {
     type WorkoutIntensity,
 } from '@/hooks/useRecoveryData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { SlideUpView } from '@/components/slide-up-view'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import {
-    TouchableOpacity,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -150,39 +150,48 @@ export default function RecoveryDetailScreen() {
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.title}>{muscleGroup}</Text>
-                    </View>
-
-                    {/* Status Badge */}
-                    <View style={styles.statusSection}>
                         <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-                            <Ionicons name={icon} size={20} color={statusColor} />
+                            <Ionicons name={icon} size={16} color={statusColor} />
                             <Text style={[styles.statusText, { color: statusColor }]}>
                                 {getRecoveryLabel(recoveryStatus)}
                             </Text>
                         </View>
                     </View>
 
-                    {/* Last Worked Info */}
+                    {/* Message */}
+                    <Text style={styles.message}>{message}</Text>
+
+                    {/* Stats List */}
                     {recoveryStatus !== 'untrained' && (
-                        <View style={styles.infoSection}>
+                        <View style={styles.statsContainer}>
                             <View style={styles.infoRow}>
                                 <Text style={styles.infoLabel}>Last Trained</Text>
                                 <Text style={styles.infoValue}>{timeAgo}</Text>
                             </View>
+                            <View style={styles.divider} />
+                            
                             <View style={styles.infoRow}>
                                 <Text style={styles.infoLabel}>Date</Text>
                                 <Text style={styles.infoValue}>{lastDate}</Text>
                             </View>
+                            <View style={styles.divider} />
+
                             {intensity && (
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Workout Intensity</Text>
-                                    <Text style={styles.infoValue}>{formatIntensity(intensity)}</Text>
-                                </View>
+                                <>
+                                    <View style={styles.infoRow}>
+                                        <Text style={styles.infoLabel}>Workout Intensity</Text>
+                                        <Text style={styles.infoValue}>{formatIntensity(intensity)}</Text>
+                                    </View>
+                                    <View style={styles.divider} />
+                                </>
                             )}
+
                             <View style={styles.infoRow}>
                                 <Text style={styles.infoLabel}>Recovery Progress</Text>
                                 <Text style={[styles.infoValue, { color: statusColor }]}>{recoveryPercentage}%</Text>
                             </View>
+                            <View style={styles.divider} />
+
                             {recoveryTimeHours && (
                                 <View style={styles.infoRow}>
                                     <Text style={styles.infoLabel}>Recovery Needed</Text>
@@ -191,11 +200,6 @@ export default function RecoveryDetailScreen() {
                             )}
                         </View>
                     )}
-
-                    {/* Message */}
-                    <View style={styles.messageSection}>
-                        <Text style={styles.message}>{message}</Text>
-                    </View>
                 </View>
             </SlideUpView>
         </View>
@@ -227,40 +231,43 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             paddingTop: 16,
         },
         header: {
-            marginBottom: 16,
+            marginBottom: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            gap: 12,
         },
         title: {
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: '700',
             color: colors.textPrimary,
-        },
-        statusSection: {
-            alignItems: 'flex-start',
-            marginBottom: 20,
         },
         statusBadge: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 8,
-            paddingHorizontal: 14,
-            paddingVertical: 8,
-            borderRadius: 20,
+            gap: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 100,
         },
         statusText: {
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: '700',
         },
-        infoSection: {
-            backgroundColor: colors.surfaceSubtle,
-            borderRadius: 12,
-            padding: 16,
+        message: {
+            fontSize: 15,
+            color: colors.textSecondary,
+            lineHeight: 22,
+        },
+        statsContainer: {
+            marginTop: 24,
             gap: 12,
-            marginBottom: 16,
         },
         infoRow: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
+            paddingVertical: 4,
         },
         infoLabel: {
             fontSize: 14,
@@ -271,14 +278,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
             fontWeight: '600',
             color: colors.textPrimary,
         },
-        messageSection: {
-            backgroundColor: colors.surfaceSubtle,
-            borderRadius: 12,
-            padding: 16,
-        },
-        message: {
-            fontSize: 14,
-            color: colors.textSecondary,
-            lineHeight: 20,
+        divider: {
+            height: 1,
+            backgroundColor: colors.border,
+            opacity: 0.5,
         },
     })

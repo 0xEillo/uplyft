@@ -355,18 +355,29 @@ export function useStrengthData() {
   }
 }
 
-// Get intensity value for body highlighter (1-6 based on level)
+// Get intensity value for body highlighter (2-7 based on level, 1 reserved for "no rank")
+// KEY MAPPING ARCHITECTURE:
+// The react-native-body-highlighter library uses `colors[intensity - 1]` to pick a color.
+// Our BODY_COLORS array is structured as:
+// Index 0: Unranked (Dark)
+// Index 1: Beginner (Gray)
+// Index 2: Novice (Blue)
+// ...
+// Therefore, we must map levels to intensities as follows:
+// Unranked -> Intensity 1 (for Index 0)
+// Beginner -> Intensity 2 (for Index 1)
+// ...
 export function getLevelIntensity(level: StrengthLevel): number {
-  return LEVEL_SCORES[level]
+  return LEVEL_SCORES[level] + 1
 }
 
 export const LEVEL_COLORS: Record<StrengthLevel, string> = {
-  Beginner: '#9CA3AF',
-  Novice: '#3B82F6',
-  Intermediate: '#10B981',
-  Advanced: '#8B5CF6',
-  Elite: '#F59E0B',
-  'World Class': '#EF4444',
+  Beginner: '#9CA3AF',    // Gray - matches BODY_COLORS index 2
+  Novice: '#3B82F6',      // Blue - matches BODY_COLORS index 3
+  Intermediate: '#10B981', // Green - matches BODY_COLORS index 4
+  Advanced: '#8B5CF6',    // Purple - matches BODY_COLORS index 5
+  Elite: '#F59E0B',       // Orange - matches BODY_COLORS index 6
+  'World Class': '#EF4444', // Red - matches BODY_COLORS index 7
 }
 
 export function getLevelColor(level: StrengthLevel): string {

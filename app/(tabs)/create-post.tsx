@@ -15,10 +15,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-    getExerciseSuggestion,
-    parseRepRange,
-    useExerciseAutocomplete,
-    useShowConvertButton,
+  getExerciseSuggestion,
+  parseRepRange,
+  useExerciseAutocomplete,
+  useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -35,19 +35,19 @@ import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
+  clearDraft as clearWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -55,21 +55,21 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Alert,
-    Animated,
-    Easing,
-    InteractionManager,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
   ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  InteractionManager,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -281,6 +281,23 @@ export default function CreatePostScreen() {
       restTimer.start(seconds)
     },
     [restTimer],
+  )
+
+  // Navigate to exercise page if exercise exists in the database
+  const handleExerciseNamePress = useCallback(
+    (exerciseName: string) => {
+      // Case-insensitive exact match
+      const normalizedName = exerciseName.toLowerCase().trim()
+      const matchedExercise = allExercises.find(
+        (e) => e.name.toLowerCase().trim() === normalizedName,
+      )
+
+      if (matchedExercise) {
+        router.push(`/exercise/${matchedExercise.id}`)
+      }
+      // If no match found, do nothing
+    },
+    [allExercises],
   )
 
   const [
@@ -1680,11 +1697,6 @@ export default function CreatePostScreen() {
 
       setStructuredData((prev) => [...prev, ...newExercises])
       setIsStructuredMode(true)
-
-      // Scroll to bottom after a short delay to allow render
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
     },
     [createExerciseWithHistory],
   )
@@ -1717,10 +1729,6 @@ export default function CreatePostScreen() {
 
       setStructuredData((prev) => [...prev, newExercise])
       setIsStructuredMode(true)
-
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
     },
     [createExerciseWithHistory],
   )
@@ -1849,6 +1857,19 @@ export default function CreatePostScreen() {
       restTimer.remainingSeconds,
     ],
   )
+
+  // Ensure structured input focus state is reset when keyboard is dismissed
+  useEffect(() => {
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const subscription = Keyboard.addListener(hideEvent, () => {
+      setIsStructuredInputFocused(false)
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [])
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -1991,6 +2012,7 @@ export default function CreatePostScreen() {
                   onInputBlur={() => setIsStructuredInputFocused(false)}
                   editorToolbarProps={editorToolbarProps}
                   onFetchSetHistory={fetchSetHistory}
+                  onExerciseNamePress={handleExerciseNamePress}
                 />
               </View>
             )}
@@ -2088,7 +2110,7 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          {!isStructuredInputFocused && (
+          {(!isStructuredInputFocused || Platform.OS !== 'ios') && (
             <EditorToolbar {...editorToolbarProps} />
           )}
         </KeyboardAvoidingView>

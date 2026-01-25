@@ -2,44 +2,33 @@ import { BodyHighlighterDual } from '@/components/BodyHighlighterDual'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import {
-    getLevelColor,
-    getLevelIntensity,
-    useStrengthData,
-    type MuscleGroupData
+  getLevelColor,
+  getLevelIntensity,
+  useStrengthData,
+  type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-    BODY_PART_DISPLAY_NAMES,
-    BODY_PART_TO_DATABASE_MUSCLE,
-    type BodyPartSlug
+  BODY_PART_DISPLAY_NAMES,
+  BODY_PART_TO_DATABASE_MUSCLE,
+  type BodyPartSlug
 } from '@/lib/body-mapping'
 import { type StrengthLevel } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-// Custom colors for the body highlighter based on strength levels
-// Custom colors for the body highlighter based on strength levels
-// Indices: 0=Beginner, 1=Novice, 2=Intermediate, 3=Advanced, 4=Elite, 5=World Class
-// Note: library maps intensity 1 to index 0, intensity 2 to index 1, etc.
-const BODY_COLORS = [
-  '#9CA3AF', // Beginner (Intensity 1)
-  '#3B82F6', // Novice (Intensity 2)
-  '#10B981', // Intermediate (Intensity 3)
-  '#8B5CF6', // Advanced (Intensity 4)
-  '#F59E0B', // Elite (Intensity 5)
-  '#EF4444', // World Class (Intensity 6)
-]
+import { useTheme } from '@/contexts/theme-context'
 
 
 
@@ -47,6 +36,7 @@ export function StrengthBodyView() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const { isDark } = useTheme()
   const {
     profile,
     isLoading,
@@ -57,6 +47,28 @@ export function StrengthBodyView() {
   } = useStrengthData()
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
+
+  // Custom colors for the body highlighter based on strength levels
+  // ARCHITECTURE NOTE:
+  // The body highlighter library uses 1-based intensity to index the colors array.
+  // Formula: Color Index = Intensity - 1
+  // Index 0: Intensity 1 -> Unranked (Base Color)
+  const bodyColors = useMemo(() => {
+    // Unranked/Base color:
+    // Dark Mode: #2A2A2A (Dark Gray)
+    // Light Mode: #4A4A4A (Dark Gray - requested by user to be darker)
+    const baseColor = isDark ? '#2A2A2A' : '#4A4A4A'
+
+    return [
+      baseColor, // Index 0 - Unranked (Intensity 1)
+      '#9CA3AF', // Index 1 - Beginner (Intensity 2)
+      '#3B82F6', // Index 2 - Novice (Intensity 3)
+      '#10B981', // Index 3 - Intermediate (Intensity 4)
+      '#8B5CF6', // Index 4 - Advanced (Intensity 5)
+      '#F59E0B', // Index 5 - Elite (Intensity 6)
+      '#EF4444', // Index 6 - World Class (Intensity 7)
+    ]
+  }, [isDark])
 
   // Generate body data for highlighting
   const bodyData = useMemo(() => {
@@ -108,6 +120,7 @@ export function StrengthBodyView() {
         exercises: [],
       }
 
+      
       // Navigate to native formSheet with params
       router.push({
         pathname: '/muscle-group-detail',
@@ -158,7 +171,7 @@ export function StrengthBodyView() {
             <BodyHighlighterDual
               bodyData={bodyData}
               gender={bodyGender}
-              colors={BODY_COLORS}
+              colors={bodyColors}
               onBodyPartPress={handleBodyPartPress}
             />
 

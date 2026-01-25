@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
+import { LevelBadge } from '@/components/LevelBadge'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -24,6 +25,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
+  getStandardsLadder,
   getStrengthStandard,
   hasStrengthStandards,
   type StrengthLevel
@@ -57,7 +59,7 @@ interface LeaderboardEntry {
   strengthLevel: StrengthLevel | null
 }
 
-type TabType = 'records' | 'history' | 'leaderboard' | 'how_to'
+type TabType = 'level' | 'records' | 'history' | 'leaderboard' | 'how_to'
 
 export default function ExerciseDetailScreen() {
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
@@ -94,6 +96,9 @@ export default function ExerciseDetailScreen() {
 
   // Check if current user owns this exercise
   const isOwner = exercise?.created_by === user?.id && user?.id
+
+  // Check if this exercise has strength standards (for rank tracking)
+  const exerciseHasRankTracking = exercise?.name ? hasStrengthStandards(exercise.name) : false
 
   const loadData = useCallback(async () => {
     if (!user?.id || !exerciseId) return
@@ -416,6 +421,24 @@ export default function ExerciseDetailScreen() {
             style={styles.tabs}
             contentContainerStyle={styles.tabsContent}
           >
+            {exerciseHasRankTracking && (
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'level' && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab('level')}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'level' && styles.activeTabText,
+                  ]}
+                >
+                  Level
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[
                 styles.tab,
@@ -506,7 +529,164 @@ export default function ExerciseDetailScreen() {
               />
             }
           >
-          {activeTab === 'records' ? (
+          {activeTab === 'level' ? (
+            <View style={styles.tabContent}>
+              {/* Check if exercise has strength standards */}
+              {exercise && profile?.gender && profile?.weight_kg && hasStrengthStandards(exercise.name) ? (
+                (() => {
+                  const ladder = getStandardsLadder(exercise.name, profile.gender as 'male' | 'female')
+                  if (!ladder) return null
+
+                  const currentInfo = strengthInfo
+                  const currentLevelIndex = currentInfo 
+                    ? ladder.findIndex(s => s.level === currentInfo.level)
+                    : -1
+
+                  return (
+                    <>
+                      {/* Current Level Hero Card */}
+                      {currentInfo && (
+                        <View style={[styles.levelHeroCard, { borderColor: currentInfo.standard.color }]}>
+                          <View style={styles.levelHeroGlow}>
+                            <LevelBadge level={currentInfo.level} size="hero" />
+                            <View style={styles.levelHeroContent}>
+                              <Text style={styles.levelHeroLabel}>CURRENT RANK</Text>
+                              <Text style={[styles.levelHeroTitle, { color: currentInfo.standard.color }]}>
+                                {currentInfo.level}
+                              </Text>
+                              <Text style={styles.levelHeroSubtitle}>{currentInfo.standard.description}</Text>
+                            </View>
+                          </View>
+                          
+                          {/* Progress to next level */}
+                          {currentInfo.nextLevel && (
+                            <View style={styles.levelProgressSection}>
+                              <View style={styles.levelProgressHeader}>
+                                <Text style={styles.levelProgressLabel}>
+                                  Progress to {currentInfo.nextLevel.level}
+                                </Text>
+                                <Text style={[styles.levelProgressPercent, { color: currentInfo.nextLevel.color }]}>
+                                  {Math.round(currentInfo.progress)}%
+                                </Text>
+                              </View>
+                              <View style={styles.levelProgressBar}>
+                                <View 
+                                  style={[
+                                    styles.levelProgressFill, 
+                                    { 
+                                      width: `${currentInfo.progress}%`,
+                                      backgroundColor: currentInfo.nextLevel.color 
+                                    }
+                                  ]} 
+                                />
+                              </View>
+                              <Text style={styles.levelProgressTarget}>
+                                Target: {formatWeight(
+                                  Math.ceil(profile.weight_kg * currentInfo.nextLevel.multiplier),
+                                  { maximumFractionDigits: 0 }
+                                )} 1RM
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+
+                      {/* Levels Ladder */}
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>All Ranks</Text>
+                      </View>
+
+                      <View style={styles.levelsLadder}>
+                        {[...ladder].reverse().map((standard, idx) => {
+                          const actualIndex = ladder.length - 1 - idx
+                          const isAchieved = currentLevelIndex >= actualIndex
+                          const isCurrent = currentLevelIndex === actualIndex
+                          const isLocked = currentLevelIndex < actualIndex
+                          const targetWeight = Math.ceil((profile.weight_kg ?? 0) * standard.multiplier)
+
+                          return (
+                            <View 
+                              key={standard.level}
+                              style={[
+                                styles.levelLadderItem,
+                                isCurrent && styles.levelLadderItemCurrent,
+                                isCurrent && { borderColor: standard.color },
+                              ]}
+                            >
+                                {/* Rank badge Column */}
+                                <View style={styles.levelLadderBadgeColumn}>
+                                  {idx < ladder.length - 1 && idx !== 0 && (
+                                    <View 
+                                      style={[
+                                        styles.levelLadderLine,
+                                        isAchieved && { backgroundColor: standard.color },
+                                      ]} 
+                                    />
+                                  )}
+                                  <LevelBadge 
+                                    level={standard.level} 
+                                    size="large" 
+                                    style={[
+                                      isLocked && { opacity: 0.5 },
+                                      isCurrent && styles.levelLadderBadgeCurrent,
+                                    ]}
+                                  />
+                                </View>
+
+                              {/* Level info */}
+                              <View style={styles.levelLadderInfo}>
+                                <Text 
+                                  style={[
+                                    styles.levelLadderName,
+                                    isCurrent && { color: standard.color, fontWeight: '700' },
+                                    isLocked && { color: colors.textSecondary },
+                                  ]}
+                                >
+                                  {standard.level}
+                                </Text>
+                                <Text 
+                                  style={[
+                                    styles.levelLadderDesc,
+                                    isLocked && { color: colors.textSecondary, opacity: 0.6 },
+                                  ]}
+                                >
+                                  {standard.description}
+                                </Text>
+                              </View>
+
+                              {/* Target weight */}
+                              <View style={styles.levelLadderTarget}>
+                                <Text 
+                                  style={[
+                                    styles.levelLadderWeight,
+                                    isCurrent && { color: standard.color },
+                                    isLocked && { color: colors.textSecondary },
+                                  ]}
+                                >
+                                  {formatWeight(targetWeight, { maximumFractionDigits: 0 })}
+                                </Text>
+                                <Text style={styles.levelLadderWeightLabel}>1RM</Text>
+                              </View>
+                            </View>
+                          )
+                        })}
+                      </View>
+                    </>
+                  )
+                })()
+              ) : (
+                <View style={styles.noLevelsContainer}>
+                  <Ionicons name="ribbon-outline" size={48} color={colors.textTertiary} />
+                  <Text style={styles.noLevelsTitle}>No Ranking Available</Text>
+                  <Text style={styles.noLevelsText}>
+                    {!profile?.weight_kg 
+                      ? 'Add your bodyweight in settings to see your strength ranking.'
+                      : 'Strength rankings are only available for major compound lifts.'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : activeTab === 'records' ? (
             <View style={styles.tabContent}>
               {/* Media Section */}
               <View style={styles.mediaContainer}>
@@ -989,14 +1169,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         gap: 24
     },
     mediaContainer: {
-        width: '100%',
         aspectRatio: 4 / 3,
         backgroundColor: '#FFFFFF',
-        // removed borderRadius and overflow for immersive view
+        // Negative margins to extend edge-to-edge (counteract tabContent padding)
+        marginHorizontal: -16,
+        marginTop: -16,
+        marginBottom: 16,
     },
     media: {
         width: '100%',
-        height: '100%'
+        height: '100%',
     },
     sectionContainer: {
         gap: 4
@@ -1287,5 +1469,187 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: '700',
+    },
+    // Level Tab - Hero Card
+    levelHeroCard: {
+        backgroundColor: colors.surface,
+        borderRadius: 16,
+        padding: 20,
+        borderWidth: 2,
+    },
+    levelHeroGlow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    levelHeroBadge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    levelHeroContent: {
+        flex: 1,
+    },
+    levelHeroLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.textSecondary,
+        letterSpacing: 1,
+        marginBottom: 2,
+    },
+    levelHeroTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+    },
+    levelHeroSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    // Level Tab - Progress Section
+    levelProgressSection: {
+        marginTop: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+    },
+    levelProgressHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    levelProgressLabel: {
+        fontSize: 14,
+        color: colors.textSecondary,
+    },
+    levelProgressPercent: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    levelProgressBar: {
+        height: 8,
+        backgroundColor: colors.surfaceSubtle,
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    levelProgressFill: {
+        height: '100%',
+        borderRadius: 4,
+    },
+    levelProgressTarget: {
+        fontSize: 13,
+        color: colors.textSecondary,
+        marginTop: 8,
+    },
+    // Level Tab - Levels Ladder
+    levelsLadder: {
+        gap: 0,
+    },
+    levelLadderItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        backgroundColor: colors.bg,
+        borderRadius: 0,
+        borderWidth: 0,
+        position: 'relative' as const,
+    },
+    levelLadderItemCurrent: {
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+        borderWidth: 2,
+        marginVertical: 4,
+    },
+    levelLadderBadgeColumn: {
+        width: 56,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+        position: 'relative',
+    },
+    levelLadderLine: {
+        position: 'absolute',
+        width: 3,
+        top: 24, // middle of first badge
+        bottom: -52, // reach far enough to connect to next badge center
+        left: 26.5, // (56/2) - (3/2)
+        backgroundColor: colors.surfaceSubtle,
+        zIndex: -1,
+    },
+    levelLadderBadge: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    levelLadderBadgeCurrent: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    levelLadderInfo: {
+        flex: 1,
+    },
+    levelLadderName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.textPrimary,
+    },
+    levelLadderDesc: {
+        fontSize: 13,
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    levelLadderTarget: {
+        alignItems: 'flex-end',
+    },
+    levelLadderWeight: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.textPrimary,
+    },
+    levelLadderWeightLabel: {
+        fontSize: 11,
+        color: colors.textSecondary,
+        fontWeight: '600',
+    },
+    // Level Tab - Info Card
+    levelInfoCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        padding: 16,
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+    },
+    levelInfoText: {
+        flex: 1,
+        fontSize: 13,
+        color: colors.textSecondary,
+        lineHeight: 18,
+    },
+    // Level Tab - No Levels State
+    noLevelsContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 48,
+        paddingHorizontal: 32,
+        gap: 12,
+    },
+    noLevelsTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: colors.textPrimary,
+        textAlign: 'center',
+    },
+    noLevelsText: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 20,
     },
   })
