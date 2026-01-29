@@ -1292,7 +1292,7 @@ const CommitmentStepContent = ({
         >
           {!isCommitted && (
             <View
-              style={{ alignItems: 'center', width: '100%', marginBottom: 20 }}
+              style={{ alignItems: 'center', width: '100%', marginBottom: 60 }}
             >
               <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                 <TouchableOpacity
