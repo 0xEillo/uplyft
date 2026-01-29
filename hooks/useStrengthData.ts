@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
+  clampStrengthProgress,
   getStrengthStandard,
   hasStrengthStandards,
   type StrengthLevel
@@ -165,7 +166,9 @@ export function useStrengthData() {
         const averageScore = totalScore / count
         const levelIndex = Math.floor(averageScore) - 1
         const level = LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
-        const progress = averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
+        const progress = clampStrengthProgress(
+          averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
+        )
 
         result.set(group, {
           group,
@@ -221,8 +224,9 @@ export function useStrengthData() {
       LEVEL_ORDER[Math.min(levelIndex + 1, LEVEL_ORDER.length - 1)]
 
     // Calculate progress to next level (fractional part of averageScore)
-    const progress =
+    const progress = clampStrengthProgress(
       averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
+    )
 
     // Calculate Balanced Level (Harmonic Mean of group averages)
     const validGroups = Object.entries(groupTotals)
@@ -265,8 +269,9 @@ export function useStrengthData() {
         LEVEL_ORDER[Math.max(0, Math.min(balancedIndex, LEVEL_ORDER.length - 1))]
     }
 
-    const balancedProgress =
-        balancedScore >= 6 ? 100 : (balancedScore - Math.floor(balancedScore)) * 100
+    const balancedProgress = clampStrengthProgress(
+      balancedScore >= 6 ? 100 : (balancedScore - Math.floor(balancedScore)) * 100
+    )
     
     const balancedLevelIndex = LEVEL_ORDER.indexOf(balancedLevel)
     const balancedNextLevel = 
@@ -325,8 +330,9 @@ export function useStrengthData() {
         const currentLevel =
           LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
         
-        const progress =
+        const progress = clampStrengthProgress(
           averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
+        )
 
         result.push({
           name,

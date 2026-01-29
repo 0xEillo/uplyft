@@ -67,8 +67,13 @@ export function getStrengthStandard(
     level: currentLevel.level,
     standard: currentLevel,
     nextLevel,
-    progress,
+    progress: clampStrengthProgress(progress),
   }
+}
+
+export function clampStrengthProgress(progress: number): number {
+  if (!Number.isFinite(progress)) return 0
+  return Math.max(0, Math.min(99, progress))
 }
 
 /**

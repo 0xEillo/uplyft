@@ -1,6 +1,7 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
+import { StrengthLevelIntroStep } from '@/components/onboarding/StrengthLevelIntroStep'
 import {
   EQUIPMENT_PREF_KEY,
   WORKOUT_PLANNING_PREFS_KEY,
@@ -108,9 +109,9 @@ const STEP_NAMES: { [key: number]: string } = {
   10: 'experience_level',
   11: 'equipment_selection',
   12: 'stats_entry',
-  13: 'target_weight',
-  14: 'body_scan_feature',
-  15: 'focus_areas',
+  13: 'strength_level_intro', // NEW: Gym Ranked strength level teaser
+  14: 'focus_areas',
+  15: 'body_scan_feature',
   16: 'processing',
   17: 'plan_ready',
   18: 'commitment_pledge',
@@ -548,20 +549,7 @@ const HabitReinforcementStepContent = ({
   styles,
 }: StepContentProps) => {
   useEffect(() => {
-    const triggerReview = async () => {
-      try {
-        await requestReview()
-        await markUserAsRated()
-      } catch (error) {
-        console.error('Error requesting review in habit step:', error)
-      }
-    }
-
-    const timeoutId = setTimeout(() => {
-      triggerReview()
-    }, 200)
-
-    return () => clearTimeout(timeoutId)
+    // Analytics tracked via parent component now
   }, [])
 
   const activeGoal = data.goal[0] || 'build_muscle'
@@ -1481,7 +1469,6 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(1)
   const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
-  const [targetWeight, setTargetWeight] = useState<number>(75)
   const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
   const [data, setData] = useState<OnboardingData>({
     name: '',
@@ -1512,14 +1499,14 @@ export default function OnboardingScreen() {
 
   // Progress dot animations
   const progressDotAnims = useRef(
-    Array.from({ length: 15 }, () => new Animated.Value(1)),
+    Array.from({ length: 16 }, () => new Animated.Value(1)),
   ).current
 
   const scrollViewRef = useRef<ScrollView>(null)
 
   // Reset scroll position for specific steps
   useEffect(() => {
-    if (step === 18) {
+    if (step === 19) {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
@@ -1580,7 +1567,7 @@ export default function OnboardingScreen() {
       }
 
       // Animate progress dot
-      if (step >= 1 && step <= 15) {
+      if (step >= 1 && step <= 16) {
         Animated.sequence([
           Animated.spring(progressDotAnims[step - 1], {
             toValue: 1.3,
@@ -1615,6 +1602,20 @@ export default function OnboardingScreen() {
       step,
       step_name: STEP_NAMES[step],
     })
+
+    // Trigger app rating request after strength rank (now focus areas page)
+    if (step === 14) {
+      const triggerReview = async () => {
+        try {
+          await requestReview()
+          await markUserAsRated()
+        } catch (error) {
+          console.error('Error requesting review in onboarding:', error)
+        }
+      }
+      const timeoutId = setTimeout(triggerReview, 800)
+      return () => clearTimeout(timeoutId)
+    }
   }, [step, trackEvent])
 
   const handleNext = () => {
@@ -1691,10 +1692,7 @@ export default function OnboardingScreen() {
       AsyncStorage.setItem(EQUIPMENT_PREF_KEY, JSON.stringify(equipmentType))
     }
 
-    // Initialize target weight when entering step 12
-    if (step === 11 && data.weight_kg) {
-      setTargetWeight(parseFloat(data.weight_kg))
-    }
+    // Initialize target weight logic removed as step is gone
 
     if (step < 18) {
       setStep(step + 1)
@@ -1828,9 +1826,12 @@ export default function OnboardingScreen() {
   const hasAutoSwipe = () => {
     // Step 7 (gender) and 10 (experience) auto-swipe when an option is selected
     // Step 8 (commitment) is now multi-select, so it requires manual "Next"
-    // Step 16 is processing (auto-advances after bars fill)
-    // Step 18 (commitment pledge) has its own custom footer/interaction
-    return step === 7 || step === 10 || step === 16 || step === 18
+    // Step 13 (strength level) has its own flow and completion handler
+    // Step 17 is processing (auto-advances after bars fill)
+    // Step 19 (commitment pledge) has its own custom footer/interaction
+    return (
+      step === 7 || step === 10 || step === 13 || step === 16 || step === 18
+    )
   }
 
   const canProceed = () => {
@@ -1860,11 +1861,11 @@ export default function OnboardingScreen() {
       case 12:
         return true // Stats entry step - defaults are fine
       case 13:
-        return true // Target weight is just UI
+        return true // Strength level intro - handled by component
       case 14:
-        return true // Body scan feature intro
-      case 15:
         return true // Focus areas (optional)
+      case 15:
+        return true // Body scan feature intro
       case 16:
         return false // Step 16 is processing, no next button
       case 17:
@@ -2550,251 +2551,23 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 13: {
-        // Target Weight Step
-        const selectedCoachForWeight =
-          COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
-        const currentW = parseFloat(data.weight_kg) || 75
-        const diff = targetWeight - currentW
-        const percentChange = (diff / currentW) * 100
-
-        let feedbackTitle = ''
-        let feedbackDesc = ''
-        let feedbackColor = ''
-
-        if (diff < 0) {
-          // Weight loss
-          const lossPercent = Math.abs(percentChange)
-          if (lossPercent <= 3) {
-            feedbackTitle = `Quick win: Lose ${Math.round(lossPercent)}%`
-            feedbackDesc =
-              'A great starting point! This is very achievable with some simple lifestyle changes. Build momentum with quick wins.'
-            feedbackColor = '#22C55E' // Green
-          } else if (lossPercent <= 7) {
-            feedbackTitle = `Moderate goal: Lose ${Math.round(lossPercent)}%`
-            feedbackDesc =
-              "A solid, achievable target. With consistent effort and good habits, you'll see great results in a few months."
-            feedbackColor = '#84CC16' // Lime
-          } else if (lossPercent <= 12) {
-            feedbackTitle = `Challenging goal: Lose ${Math.round(lossPercent)}%`
-            feedbackDesc =
-              "This is ambitious but doable! It'll require real commitment to your nutrition and training. Stay disciplined!"
-            feedbackColor = '#F97316' // Orange
-          } else {
-            feedbackTitle = `Very ambitious: Lose ${Math.round(lossPercent)}%`
-            feedbackDesc =
-              'This is a significant transformation. Consider breaking it into smaller milestones and give yourself time to succeed.'
-            feedbackColor = '#EF4444' // Red
-          }
-        } else if (diff > 0) {
-          // Weight gain (Muscle) - tighter thresholds since muscle gain is slower
-          const gainPercent = Math.round(percentChange)
-          if (gainPercent <= 2) {
-            feedbackTitle = `Steady gains: Add ${gainPercent}%`
-            feedbackDesc =
-              'A realistic target for lean muscle growth. Stay consistent with your training and protein intake.'
-            feedbackColor = '#22C55E' // Green
-          } else if (gainPercent <= 5) {
-            feedbackTitle = `Solid goal: Gain ${gainPercent}%`
-            feedbackDesc =
-              'Good target! Building quality muscle takes time. Focus on progressive overload and proper nutrition.'
-            feedbackColor = '#84CC16' // Lime
-          } else if (gainPercent <= 8) {
-            feedbackTitle = `Challenging goal: Gain ${gainPercent}%`
-            feedbackDesc =
-              'This will take serious dedication. Expect this to take 6+ months with optimal training and nutrition.'
-            feedbackColor = '#F97316' // Orange
-          } else {
-            feedbackTitle = `Very ambitious: Gain ${gainPercent}%`
-            feedbackDesc =
-              'Building this much muscle takes significant time. Most people gain 1-2% muscle per month at best. Plan for the long haul!'
-            feedbackColor = '#EF4444' // Red
-          }
-        } else {
-          feedbackTitle = 'Maintenance Goal'
-          feedbackDesc =
-            'Keeping your current weight is a great way to focus on body recomposition and fitness.'
-          feedbackColor = '#22C55E' // Green
-        }
-
-        // Generate ruler ticks (range +/- 15 units)
-        const range = 15
-        const startWeight = Math.floor(currentW - range)
-        const ticks = Array.from(
-          { length: range * 2 * 10 + 1 },
-          (_, i) => startWeight + i * 0.1,
-        )
-
+      case 13:
+        // Strength Level Intro
         return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.statsTitle}>What is your target weight?</Text>
-            </View>
-
-            <View style={styles.targetWeightContainer}>
-              <View style={styles.targetWeightDisplay}>
-                <Text style={styles.targetWeightValue}>
-                  {targetWeight.toFixed(1).replace('.', ',')}
-                </Text>
-                <Text style={styles.targetWeightUnit}>{weightUnit}</Text>
-              </View>
-
-              <View style={styles.rulerContainer}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  snapToInterval={10} // Snap to small ticks
-                  decelerationRate="fast"
-                  contentContainerStyle={styles.rulerContent}
-                  onScroll={(e) => {
-                    const offsetX = e.nativeEvent.contentOffset.x
-                    // 10px per 0.1 unit -> 100px per 1 unit
-                    // Offset 0 is startWeight
-                    const value = startWeight + offsetX / 100
-                    setTargetWeight(Math.round(value * 10) / 10)
-                  }}
-                  scrollEventThrottle={16}
-                  // Start in middle (current weight)
-                  contentOffset={{ x: (currentW - startWeight) * 100, y: 0 }}
-                >
-                  {ticks.map((t, i) => {
-                    const isInt = Math.abs(t % 1) < 0.05
-                    const isFilled = t <= targetWeight
-                    const tickColor = isFilled
-                      ? colors.brandPrimary
-                      : isInt
-                      ? colors.textPrimary + '40'
-                      : colors.textPrimary + '15'
-
-                    return (
-                      <View
-                        key={i}
-                        style={[styles.rulerTickContainer, { width: 10 }]}
-                      >
-                        {isInt && (
-                          <Text
-                            style={[
-                              styles.rulerTickText,
-                              {
-                                color: isFilled
-                                  ? colors.brandPrimary
-                                  : colors.textSecondary,
-                              },
-                            ]}
-                          >
-                            {Math.round(t)}
-                          </Text>
-                        )}
-                        <View
-                          style={[
-                            styles.rulerTick,
-                            {
-                              height: isInt ? 36 : 18,
-                              backgroundColor: tickColor,
-                              marginTop: isInt ? 0 : 24, // Align short ticks to bottom
-                            },
-                          ]}
-                        />
-                      </View>
-                    )
-                  })}
-                </ScrollView>
-              </View>
-
-              <View style={styles.feedbackCard}>
-                <View style={styles.feedbackCoachIconContainer}>
-                  <Image
-                    source={selectedCoachForWeight.image}
-                    style={styles.feedbackCoachImage}
-                  />
-                </View>
-                <Text style={[styles.feedbackTitle, { color: feedbackColor }]}>
-                  {feedbackTitle}
-                </Text>
-                <Text style={styles.feedbackDesc}>{feedbackDesc}</Text>
-              </View>
-            </View>
-          </View>
+          <StrengthLevelIntroStep
+            gender={data.gender as 'male' | 'female' | null}
+            weightKg={
+              data.weight_kg 
+                ? convertInputToKg(parseFloat(data.weight_kg)) || 75
+                : 75
+            }
+            weightUnit={weightUnit}
+            onComplete={handleNext}
+            colors={colors}
+          />
         )
-      }
+
       case 14: {
-        // Body Scan Feature Step
-        const currentWeightNum = parseFloat(data.weight_kg) || 75
-        const isLosing = targetWeight < currentWeightNum
-        const goalAction = isLosing ? 'FAT LOSS' : 'MUSCLE GAIN'
-
-        // Placeholder values for the scan
-        const mockMuscleMass = (currentWeightNum * 0.78).toFixed(1)
-        const mockBodyFat = isLosing ? '24' : '18'
-
-        const scanImage =
-          data.gender === 'female'
-            ? require('../../assets/images/coach/body-scan-female.png')
-            : require('../../assets/images/coach/body-scan-male.png')
-
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.bodyScanTitle}>
-                Body Scan analyzes your lean muscle so you can accurately track
-                your{' '}
-                <Text style={{ color: '#8B5CF6', fontStyle: 'italic' }}>
-                  {goalAction}
-                </Text>
-                !
-              </Text>
-            </View>
-
-            <View style={styles.bodyScanMockupContainer}>
-              <View style={styles.bodyScanPhoneFrame}>
-                <Image
-                  source={scanImage}
-                  defaultSource={require('../../assets/images/icon.png')}
-                  style={styles.bodyScanImage}
-                />
-                <View style={styles.bodyScanOverlay}>
-                  <View style={styles.scanLine} />
-                  <View style={[styles.scanLine, { top: '45%' }]} />
-                  <View style={[styles.scanLine, { top: '60%' }]} />
-                </View>
-              </View>
-
-              {/* Right side callouts */}
-              <View style={styles.bodyScanCallouts}>
-                <View style={styles.bodyScanCalloutItem}>
-                  <Text style={styles.bodyScanCalloutLabel}>Muscle Mass</Text>
-                  <Text
-                    style={[styles.bodyScanCalloutValue, { color: '#F59E0B' }]}
-                  >
-                    {mockMuscleMass} kg
-                  </Text>
-                  <View style={styles.bodyScanCalloutLineContainer}>
-                    <View style={styles.bodyScanCalloutLine} />
-                  </View>
-                </View>
-
-                <View style={[styles.bodyScanCalloutItem, { marginTop: 60 }]}>
-                  <Text style={styles.bodyScanCalloutLabel}>Body Fat</Text>
-                  <Text
-                    style={[styles.bodyScanCalloutValue, { color: '#EF4444' }]}
-                  >
-                    {mockBodyFat}%
-                  </Text>
-                  <View style={styles.bodyScanCalloutLineContainer}>
-                    <View
-                      style={[
-                        styles.bodyScanCalloutLine,
-                        { transform: [{ rotate: '-10deg' }] },
-                      ]}
-                    />
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        )
-      }
-      case 15: {
         const MUSCLE_GROUP_MAPPING: Record<
           string,
           { label: string; slugs: BodyPartSlug[] }
@@ -2856,10 +2629,8 @@ export default function OnboardingScreen() {
 
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.focusAreasHeader}>
-              <Text style={styles.focusAreasTitle}>
-                Choose your focus areas
-              </Text>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Choose your focus areas</Text>
             </View>
 
             <View style={styles.bodyHighlightContainer}>
@@ -2998,6 +2769,83 @@ export default function OnboardingScreen() {
                       Full body
                     </Text>
                   </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 15: {
+        // Body Scan Feature Step
+        const currentWeightNum = parseFloat(data.weight_kg) || 75
+        const isLosing = data.goal.includes('lose_fat')
+        const goalAction = isLosing ? 'FAT LOSS' : 'MUSCLE GAIN'
+
+        // Placeholder values for the scan
+        const mockMuscleMass = (currentWeightNum * 0.78).toFixed(1)
+        const mockBodyFat = isLosing ? '24' : '18'
+
+        const scanImage =
+          data.gender === 'female'
+            ? require('../../assets/images/coach/body-scan-female.png')
+            : require('../../assets/images/coach/body-scan-male.png')
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.bodyScanTitle}>
+                Body Scan analyzes your lean muscle so you can accurately track
+                your{' '}
+                <Text style={{ color: '#8B5CF6', fontStyle: 'italic' }}>
+                  {goalAction}
+                </Text>
+                !
+              </Text>
+            </View>
+
+            <View style={styles.bodyScanMockupContainer}>
+              <View style={styles.bodyScanPhoneFrame}>
+                <Image
+                  source={scanImage}
+                  defaultSource={require('../../assets/images/icon.png')}
+                  style={styles.bodyScanImage}
+                />
+                <View style={styles.bodyScanOverlay}>
+                  <View style={styles.scanLine} />
+                  <View style={[styles.scanLine, { top: '45%' }]} />
+                  <View style={[styles.scanLine, { top: '60%' }]} />
+                </View>
+              </View>
+
+              {/* Right side callouts */}
+              <View style={styles.bodyScanCallouts}>
+                <View style={styles.bodyScanCalloutItem}>
+                  <Text style={styles.bodyScanCalloutLabel}>Muscle Mass</Text>
+                  <Text
+                    style={[styles.bodyScanCalloutValue, { color: '#F59E0B' }]}
+                  >
+                    {mockMuscleMass} kg
+                  </Text>
+                  <View style={styles.bodyScanCalloutLineContainer}>
+                    <View style={styles.bodyScanCalloutLine} />
+                  </View>
+                </View>
+
+                <View style={[styles.bodyScanCalloutItem, { marginTop: 60 }]}>
+                  <Text style={styles.bodyScanCalloutLabel}>Body Fat</Text>
+                  <Text
+                    style={[styles.bodyScanCalloutValue, { color: '#EF4444' }]}
+                  >
+                    {mockBodyFat}%
+                  </Text>
+                  <View style={styles.bodyScanCalloutLineContainer}>
+                    <View
+                      style={[
+                        styles.bodyScanCalloutLine,
+                        { transform: [{ rotate: '-10deg' }] },
+                      ]}
+                    />
+                  </View>
                 </View>
               </View>
             </View>
@@ -3312,9 +3160,9 @@ export default function OnboardingScreen() {
     <SafeAreaView
       style={styles.container}
       edges={
-        step === 18
+        step === 19
           ? ['left', 'right']
-          : step === 16 || step === 17
+          : step === 17 || step === 18
           ? ['top', 'left', 'right']
           : ['top', 'bottom', 'left', 'right']
       }
@@ -3324,7 +3172,7 @@ export default function OnboardingScreen() {
         <View
           style={[
             styles.header,
-            step === 18 && {
+            step === 19 && {
               position: 'absolute',
               top: 0,
               left: 0,
@@ -3341,8 +3189,8 @@ export default function OnboardingScreen() {
               name="arrow-back"
               size={24}
               color={
-                step === 18
-                  ? isCommitmentHolding || (step === 18 && false) // Logic for transition could go here, for now stick to consistency
+                step === 19
+                  ? isCommitmentHolding || (step === 19 && false) // Logic for transition could go here, for now stick to consistency
                     ? '#fff'
                     : colors.textPrimary
                   : colors.textPrimary
@@ -3356,7 +3204,7 @@ export default function OnboardingScreen() {
                 style={[
                   styles.headerProgressBarFill,
                   {
-                    width: `${(step / 17) * 100}%`,
+                    width: `${(step / 18) * 100}%`,
                     backgroundColor: colors.brandPrimary,
                   },
                 ]}
@@ -3378,15 +3226,15 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
-              (step === 16 || step === 17) && { paddingBottom: 0 },
+              (step === 17 || step === 18) && { paddingBottom: 0 },
               !hasAutoSwipe() &&
-                step !== 16 &&
-                step !== 17 && { paddingBottom: 140 },
+                step !== 17 &&
+                step !== 18 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            bounces={step !== 16}
+            bounces={step !== 17}
           >
             <View style={styles.contentWrapper}>
               <Animated.View
@@ -3423,7 +3271,7 @@ export default function OnboardingScreen() {
                     ? "Let's Go"
                     : step === 4
                     ? "Let's Get Started!"
-                    : step === 16
+                    : step === 17
                     ? 'Get Started'
                     : 'Next'}
                 </Text>
@@ -4088,94 +3936,6 @@ const createStyles = (
       color: colors.textSecondary,
     },
 
-    // Target Weight Styles
-    targetWeightContainer: {
-      flex: 1,
-      alignItems: 'center',
-      marginTop: 20,
-    },
-    targetWeightDisplay: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 6,
-      marginBottom: 32,
-    },
-    targetWeightValue: {
-      fontSize: 48,
-      fontWeight: '800',
-      color: colors.textPrimary,
-      letterSpacing: -1,
-    },
-    targetWeightUnit: {
-      fontSize: 20,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    },
-    rulerContainer: {
-      height: 100,
-      width: '100%',
-      marginBottom: 32,
-      justifyContent: 'center',
-    },
-    rulerContent: {
-      paddingHorizontal: SCREEN_WIDTH / 2 - 5, // Subtract half tick width (10/2)
-      alignItems: 'center',
-    },
-    rulerTickContainer: {
-      height: 70,
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-    },
-    rulerTick: {
-      width: 2,
-      borderRadius: 1,
-    },
-    rulerTickText: {
-      position: 'absolute',
-      top: 0,
-      width: 40,
-      left: -19, // Center 40px label on 2px tick (40/2 - 2/2 = 19)
-      textAlign: 'center',
-      fontSize: 15,
-      fontWeight: '700',
-    },
-    feedbackCard: {
-      width: '100%',
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      padding: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    feedbackCoachIconContainer: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      position: 'absolute',
-      top: -18,
-      left: 20,
-      borderWidth: 2,
-      borderColor: colors.surface,
-      overflow: 'hidden',
-      backgroundColor: colors.surface,
-    },
-    feedbackCoachImage: {
-      width: '100%',
-      height: '100%',
-    },
-    feedbackTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      marginBottom: 6,
-      lineHeight: 22,
-    },
-    feedbackDesc: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: colors.textSecondary,
-      fontWeight: '400',
-    },
-
     // Body Scan Styles
     bodyScanTitle: {
       fontSize: 28,
@@ -4331,16 +4091,7 @@ const createStyles = (
     },
 
     // Focus Areas Step - New Styles
-    focusAreasHeader: {
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    focusAreasTitle: {
-      fontSize: 26,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      textAlign: 'center',
-    },
+
     bodySideBySide: {
       flexDirection: 'row',
       justifyContent: 'center',
