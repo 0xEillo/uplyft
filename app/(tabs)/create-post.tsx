@@ -36,9 +36,11 @@ import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
   clearDraft as clearWorkoutDraft,
+  compactDraft as compactWorkoutDraft,
   loadPendingWorkout,
   loadDraft as loadWorkoutDraft,
   saveDraft as saveWorkoutDraft,
+  saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import {
   generateWorkoutMessage,
@@ -58,6 +60,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Easing,
   InteractionManager,
   Keyboard,
@@ -335,6 +338,15 @@ export default function CreatePostScreen() {
   const scrollViewRef = useRef<ScrollView>(null)
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
+  const structuredDataRef = useRef(structuredData)
+  const isStructuredModeRef = useRef(isStructuredMode)
+  const selectedRoutineIdRef = useRef<string | null>(null)
+  const pendingDraftRoutineIdRef = useRef<string | null>(null)
+  const workoutTimerStateRef = useRef(workoutTimerSerializableState)
+  const lastLocalEditAtRef = useRef(0)
+  const lastDraftSavedAtRef = useRef(0)
+  const hasHydratedRef = useRef(false)
+  const suppressLocalEditTrackingRef = useRef(false)
   const suppressDraftToastRef = useRef(false)
   // Skip counter - decrements each time auto-save would run, skips while > 0
   const skipPersistCountRef = useRef(0)
@@ -347,6 +359,22 @@ export default function CreatePostScreen() {
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
 
+  const buildDraftMetrics = useCallback((data: StructuredExerciseDraft[]) => {
+    let setsWithData = 0
+    data.forEach((exercise) => {
+      exercise.sets.forEach((set) => {
+        if (set.weight?.trim() || set.reps?.trim()) {
+          setsWithData += 1
+        }
+      })
+    })
+
+    return {
+      structuredExercisesCount: data.length,
+      structuredSetsWithDataCount: setsWithData,
+    }
+  }, [])
+
   useEffect(() => {
     notesRef.current = notes
   }, [notes])
@@ -354,6 +382,43 @@ export default function CreatePostScreen() {
   useEffect(() => {
     titleRef.current = workoutTitle
   }, [workoutTitle])
+
+  useEffect(() => {
+    structuredDataRef.current = structuredData
+  }, [structuredData])
+
+  useEffect(() => {
+    isStructuredModeRef.current = isStructuredMode
+  }, [isStructuredMode])
+
+  useEffect(() => {
+    selectedRoutineIdRef.current = selectedRoutine?.id ?? null
+  }, [selectedRoutine?.id])
+
+  useEffect(() => {
+    pendingDraftRoutineIdRef.current = pendingDraftRoutineId
+  }, [pendingDraftRoutineId])
+
+  useEffect(() => {
+    workoutTimerStateRef.current = workoutTimerSerializableState
+  }, [workoutTimerSerializableState])
+
+  useEffect(() => {
+    if (isHydratingRef.current || !hasHydratedRef.current) {
+      return
+    }
+    if (suppressLocalEditTrackingRef.current) {
+      suppressLocalEditTrackingRef.current = false
+      return
+    }
+    lastLocalEditAtRef.current = Date.now()
+  }, [
+    notes,
+    workoutTitle,
+    structuredData,
+    isStructuredMode,
+    selectedRoutine?.id,
+  ])
 
   useEffect(() => {
     if (isHydratingRef.current) {
@@ -610,18 +675,45 @@ export default function CreatePostScreen() {
 
     // Persist the routine selection immediately to avoid losing it on navigation
     // Use the transformed exercises if we just set them
+    const routineTitleToSave =
+      source === 'route' ? routine.name : titleRef.current
+    const structuredToSave =
+      source === 'route' ? transformedExercises : structuredData
+    const routineUpdatedAt = Date.now()
     void saveWorkoutDraft({
       notes,
-      title: source === 'route' ? routine.name : titleRef.current,
-      structuredData:
-        source === 'route' ? transformedExercises : structuredData,
+      title: routineTitleToSave,
+      structuredData: structuredToSave,
       isStructuredMode: true,
       selectedRoutineId: routine.id,
       timerStartedAt: workoutTimerSerializableState.timerStartedAt,
       timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-    }).catch((error) =>
-      console.error('[Routine] Immediate persist failed:', error),
-    )
+      updatedAt: routineUpdatedAt,
+    })
+      .then(() => {
+        const metrics = buildDraftMetrics(structuredToSave)
+        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+          action: 'compact',
+          source: 'routine',
+          length: notes.trim().length,
+          hasTitle: Boolean(routineTitleToSave.trim()),
+          updatedAt: routineUpdatedAt,
+          ...metrics,
+        })
+      })
+      .catch((error) => {
+        console.error('[Routine] Immediate persist failed:', error)
+        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+          action: 'fail',
+          source: 'routine',
+          reason: 'save_failed',
+          error: error instanceof Error ? error.message : String(error),
+          length: notes.trim().length,
+          hasTitle: Boolean(routineTitleToSave.trim()),
+          updatedAt: routineUpdatedAt,
+          ...buildDraftMetrics(structuredToSave),
+        })
+      })
 
     // Hydrate last workout data and update structured data with history if needed
     if (user?.id) {
@@ -674,6 +766,8 @@ export default function CreatePostScreen() {
     structuredData,
     workoutTimerSerializableState.timerElapsedSeconds,
     workoutTimerSerializableState.timerStartedAt,
+    buildDraftMetrics,
+    trackEvent,
   ])
 
   // Track animation state to reset on each focus
@@ -693,6 +787,46 @@ export default function CreatePostScreen() {
         loadWorkoutDraft(),
         loadPendingWorkout(),
       ])
+
+      const draftUpdatedAt = draft?.updatedAt ?? 0
+      const hasLocalEdits =
+        hasHydratedRef.current && lastLocalEditAtRef.current > draftUpdatedAt
+
+      if (hasLocalEdits && !selectedRoutineId) {
+        const metrics = buildDraftMetrics(structuredDataRef.current)
+        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+          action: 'skip',
+          source: 'hydrate',
+          reason: 'local_newer_than_disk',
+          length: notesRef.current.trim().length,
+          hasTitle: Boolean(titleRef.current.trim()),
+          updatedAt: lastLocalEditAtRef.current,
+          ...metrics,
+        })
+        return
+      }
+
+      const routineIdFromDraft =
+        draft?.selectedRoutineId ?? pending?.routineId ?? null
+      const effectiveRoutineId = selectedRoutineId || routineIdFromDraft || null
+      const shouldApplyHydration =
+        Boolean(draft?.notes?.trim()) ||
+        Boolean(pending?.notes) ||
+        Boolean(draft?.title?.trim()) ||
+        Boolean(pending?.title) ||
+        (Array.isArray(draft?.structuredData) &&
+          draft.structuredData.length > 0) ||
+        typeof draft?.isStructuredMode === 'boolean' ||
+        Boolean(effectiveRoutineId) ||
+        Boolean(
+          draft &&
+            (draft.timerStartedAt ||
+              typeof draft.timerElapsedSeconds === 'number'),
+        )
+
+      if (shouldApplyHydration) {
+        suppressLocalEditTrackingRef.current = true
+      }
 
       if (draft?.notes?.trim()) {
         suppressDraftToastRef.current = true
@@ -719,10 +853,6 @@ export default function CreatePostScreen() {
         setIsStructuredMode(draft.isStructuredMode)
       }
 
-      const routineIdFromDraft =
-        draft?.selectedRoutineId ?? pending?.routineId ?? null
-      const effectiveRoutineId = selectedRoutineId || routineIdFromDraft || null
-
       if (effectiveRoutineId) {
         const source = selectedRoutineId ? 'route' : 'draft'
         setPendingDraftRoutineId(effectiveRoutineId)
@@ -746,10 +876,20 @@ export default function CreatePostScreen() {
 
       // Skip the next 3 auto-saves to allow all hydration state changes to settle
       skipPersistCountRef.current = 3
+
+      lastDraftSavedAtRef.current = draftUpdatedAt
+      lastLocalEditAtRef.current = draftUpdatedAt
     } finally {
       isHydratingRef.current = false
+      hasHydratedRef.current = true
     }
-  }, [hydrateWorkoutTimer, resetWorkoutTimer, selectedRoutineId])
+  }, [
+    buildDraftMetrics,
+    hydrateWorkoutTimer,
+    resetWorkoutTimer,
+    selectedRoutineId,
+    trackEvent,
+  ])
 
   // Handle screen focus and blur keyboard
   useFocusEffect(
@@ -812,8 +952,46 @@ export default function CreatePostScreen() {
   useEffect(() => {
     return () => {
       blurInputs()
+      const routineIdToSave =
+        selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
+      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
+      lastDraftSavedAtRef.current = updatedAt
+      void compactWorkoutDraft({
+        notes: notesRef.current,
+        title: titleRef.current,
+        structuredData: structuredDataRef.current,
+        isStructuredMode: isStructuredModeRef.current,
+        selectedRoutineId: routineIdToSave,
+        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
+        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
+        updatedAt,
+      })
+        .then(() => {
+          const metrics = buildDraftMetrics(structuredDataRef.current)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'compact',
+            source: 'unmount',
+            length: notesRef.current.trim().length,
+            hasTitle: Boolean(titleRef.current.trim()),
+            updatedAt,
+            ...metrics,
+          })
+        })
+        .catch((error) => {
+          console.error('[Draft] Unmount compact failed:', error)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'fail',
+            source: 'unmount',
+            reason: 'compact_failed',
+            error: error instanceof Error ? error.message : String(error),
+            length: notesRef.current.trim().length,
+            hasTitle: Boolean(titleRef.current.trim()),
+            updatedAt,
+            ...buildDraftMetrics(structuredDataRef.current),
+          })
+        })
     }
-  }, [blurInputs])
+  }, [blurInputs, buildDraftMetrics, trackEvent])
 
   // Load saved draft on mount or when refresh param changes
   useEffect(() => {
@@ -836,7 +1014,9 @@ export default function CreatePostScreen() {
     const routineIdToSave = selectedRoutine?.id ?? pendingDraftRoutineId ?? null
 
     const timeoutId = setTimeout(() => {
-      void saveWorkoutDraft({
+      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
+      lastDraftSavedAtRef.current = updatedAt
+      void saveWorkoutDraftPatch({
         notes,
         title: workoutTitle,
         structuredData,
@@ -844,7 +1024,32 @@ export default function CreatePostScreen() {
         selectedRoutineId: routineIdToSave,
         timerStartedAt: workoutTimerSerializableState.timerStartedAt,
         timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-      }).catch((error) => console.error('[Draft] Save failed:', error))
+        updatedAt,
+      })
+        .then(() => {
+          const metrics = buildDraftMetrics(structuredData)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'patch',
+            source: 'autosave',
+            length: notes.trim().length,
+            hasTitle: Boolean(workoutTitle.trim()),
+            updatedAt,
+            ...metrics,
+          })
+        })
+        .catch((error) => {
+          console.error('[Draft] Save failed:', error)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'fail',
+            source: 'autosave',
+            reason: 'save_patch_failed',
+            error: error instanceof Error ? error.message : String(error),
+            length: notes.trim().length,
+            hasTitle: Boolean(workoutTitle.trim()),
+            updatedAt,
+            ...buildDraftMetrics(structuredData),
+          })
+        })
     }, 2000)
 
     return () => clearTimeout(timeoutId)
@@ -857,7 +1062,61 @@ export default function CreatePostScreen() {
     pendingDraftRoutineId,
     workoutTimerSerializableState.timerElapsedSeconds,
     workoutTimerSerializableState.timerStartedAt,
+    buildDraftMetrics,
+    trackEvent,
   ])
+
+  // Persist draft immediately when app backgrounds (timers may be paused)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' || isHydratingRef.current) {
+        return
+      }
+
+      const routineIdToSave =
+        selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
+      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
+      lastDraftSavedAtRef.current = updatedAt
+      void compactWorkoutDraft({
+        notes: notesRef.current,
+        title: titleRef.current,
+        structuredData: structuredDataRef.current,
+        isStructuredMode: isStructuredModeRef.current,
+        selectedRoutineId: routineIdToSave,
+        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
+        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
+        updatedAt,
+      })
+        .then(() => {
+          const metrics = buildDraftMetrics(structuredDataRef.current)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'compact',
+            source: 'background',
+            length: notesRef.current.trim().length,
+            hasTitle: Boolean(titleRef.current.trim()),
+            updatedAt,
+            ...metrics,
+          })
+        })
+        .catch((error) => {
+          console.error('[Draft] Background compact failed:', error)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'fail',
+            source: 'background',
+            reason: 'compact_failed',
+            error: error instanceof Error ? error.message : String(error),
+            length: notesRef.current.trim().length,
+            hasTitle: Boolean(titleRef.current.trim()),
+            updatedAt,
+            ...buildDraftMetrics(structuredDataRef.current),
+          })
+        })
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [buildDraftMetrics, trackEvent])
 
   // Show "Draft saved" indicator with debounce (UI only)
   useEffect(() => {
@@ -1891,7 +2150,11 @@ export default function CreatePostScreen() {
             style={styles.headerButton}
             disabled={isLoading}
           >
-            <Ionicons name="chevron-down" size={24} color={colors.textPrimary} />
+            <Ionicons
+              name="chevron-down"
+              size={24}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
 
           <View pointerEvents="none" style={styles.headerCenter}>

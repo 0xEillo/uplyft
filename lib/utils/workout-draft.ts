@@ -1,11 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { MMKV } from 'react-native-mmkv'
 
-export const DRAFT_KEY = '@workout_draft'
-export const TITLE_DRAFT_KEY = '@workout_title_draft'
-export const STRUCTURED_DRAFT_KEY = '@workout_structured_draft'
-const WORKOUT_DRAFT_V2_KEY = '@workout_draft_v2'
 export const PENDING_POST_KEY = '@pending_workout_post'
 export const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
+const WORKOUT_DRAFT_SNAPSHOT_KEY = '@workout_draft_snapshot'
+const WORKOUT_DRAFT_OPS_KEY = '@workout_draft_ops'
+
+const storage = new MMKV({ id: 'workout-draft' })
 
 export type WeightUnit = 'kg' | 'lb'
 
@@ -34,6 +34,66 @@ export interface WorkoutDraft {
   selectedRoutineId?: string | null
   timerStartedAt?: string | null
   timerElapsedSeconds?: number
+  updatedAt?: number
+}
+
+export type DraftPatch = Partial<WorkoutDraft> & {
+  updatedAt?: number
+}
+
+type DraftOp = {
+  ts: number
+  patch: DraftPatch
+}
+
+function readJson<T>(key: string): T | null {
+  const raw = storage.getString(key)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return null
+  }
+}
+
+function writeJson<T>(key: string, value: T): void {
+  storage.set(key, JSON.stringify(value))
+}
+
+function removeKey(key: string): void {
+  storage.delete(key)
+}
+
+function applyPatch(base: WorkoutDraft, patch: DraftPatch): WorkoutDraft {
+  return {
+    ...base,
+    ...patch,
+    notes: patch.notes ?? base.notes ?? '',
+    title: patch.title ?? base.title ?? '',
+    structuredData: Array.isArray(patch.structuredData)
+      ? patch.structuredData
+      : base.structuredData ?? [],
+    isStructuredMode:
+      typeof patch.isStructuredMode === 'boolean'
+        ? patch.isStructuredMode
+        : base.isStructuredMode ?? false,
+    selectedRoutineId:
+      typeof patch.selectedRoutineId === 'string' || patch.selectedRoutineId === null
+        ? patch.selectedRoutineId ?? null
+        : base.selectedRoutineId ?? null,
+    timerStartedAt:
+      typeof patch.timerStartedAt === 'string' || patch.timerStartedAt === null
+        ? patch.timerStartedAt ?? null
+        : base.timerStartedAt ?? null,
+    timerElapsedSeconds:
+      typeof patch.timerElapsedSeconds === 'number'
+        ? patch.timerElapsedSeconds
+        : base.timerElapsedSeconds ?? 0,
+    updatedAt:
+      typeof patch.updatedAt === 'number'
+        ? patch.updatedAt
+        : base.updatedAt ?? 0,
+  }
 }
 
 export interface PendingWorkout {
@@ -107,148 +167,49 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
 }
 
 export async function hasStoredDraft(): Promise<boolean> {
-  const stored = await AsyncStorage.getItem(WORKOUT_DRAFT_V2_KEY)
-
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored) as WorkoutDraft
-      const hasContent = draftHasContent(parsed)
-      if (hasContent) {
-        return true
-      }
-    } catch (error) {
-      await AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY)
-    }
-  }
-
-  const [notes, title, structuredPayload] = await Promise.all([
-    AsyncStorage.getItem(DRAFT_KEY),
-    AsyncStorage.getItem(TITLE_DRAFT_KEY),
-    AsyncStorage.getItem(STRUCTURED_DRAFT_KEY),
-  ])
-
-  if (
-    (notes && notes.trim().length > 0) ||
-    (title && title.trim().length > 0)
-  ) {
-    return true
-  }
-
-  if (structuredPayload) {
-    try {
-      const parsed = JSON.parse(structuredPayload) as {
-        structuredData?: StructuredExerciseDraft[]
-        isStructuredMode?: boolean
-        selectedRoutineId?: string | null
-      }
-
-      const combinedDraft: WorkoutDraft = {
-        notes: notes ?? '',
-        title: title ?? '',
-        structuredData: parsed.structuredData ?? [],
-        isStructuredMode: parsed.isStructuredMode,
-        selectedRoutineId: parsed.selectedRoutineId,
-      }
-      return draftHasContent(combinedDraft)
-    } catch (error) {
-      await AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY)
-    }
-  }
-
-  return false
+  const draft = await loadDraft()
+  return draftHasContent(draft)
 }
 
 export async function loadDraft(): Promise<WorkoutDraft | null> {
-  const stored = await AsyncStorage.getItem(WORKOUT_DRAFT_V2_KEY)
+  const snapshot = readJson<WorkoutDraft>(WORKOUT_DRAFT_SNAPSHOT_KEY)
+  const ops = readJson<DraftOp[]>(WORKOUT_DRAFT_OPS_KEY) ?? []
 
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored) as WorkoutDraft
-      const normalized: WorkoutDraft = {
-        notes: parsed.notes ?? '',
-        title: parsed.title ?? '',
-        structuredData: Array.isArray(parsed.structuredData)
-          ? parsed.structuredData
-          : [],
-        isStructuredMode: Boolean(parsed.isStructuredMode),
-        selectedRoutineId:
-          typeof parsed.selectedRoutineId === 'string'
-            ? parsed.selectedRoutineId
-            : null,
-        timerStartedAt:
-          typeof parsed.timerStartedAt === 'string'
-            ? parsed.timerStartedAt
-            : null,
-        timerElapsedSeconds:
-          typeof parsed.timerElapsedSeconds === 'number'
-            ? parsed.timerElapsedSeconds
-            : 0,
-      }
-
-      return draftHasContent(normalized) ? normalized : null
-    } catch {
-      await AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY)
-    }
+  let merged: WorkoutDraft = {
+    notes: snapshot?.notes ?? '',
+    title: snapshot?.title ?? '',
+    structuredData: Array.isArray(snapshot?.structuredData)
+      ? snapshot?.structuredData
+      : [],
+    isStructuredMode: Boolean(snapshot?.isStructuredMode),
+    selectedRoutineId:
+      typeof snapshot?.selectedRoutineId === 'string'
+        ? snapshot?.selectedRoutineId
+        : null,
+    timerStartedAt:
+      typeof snapshot?.timerStartedAt === 'string'
+        ? snapshot?.timerStartedAt
+        : null,
+    timerElapsedSeconds:
+      typeof snapshot?.timerElapsedSeconds === 'number'
+        ? snapshot?.timerElapsedSeconds
+        : 0,
+    updatedAt: typeof snapshot?.updatedAt === 'number' ? snapshot?.updatedAt : 0,
   }
 
-  const [notes, title, structuredPayload] = await Promise.all([
-    AsyncStorage.getItem(DRAFT_KEY),
-    AsyncStorage.getItem(TITLE_DRAFT_KEY),
-    AsyncStorage.getItem(STRUCTURED_DRAFT_KEY),
-  ])
-
-  if (!notes && !title && !structuredPayload) {
-    return null
+  if (Array.isArray(ops)) {
+    ops.forEach((op) => {
+      if (op?.patch) {
+        merged = applyPatch(merged, op.patch)
+      }
+    })
   }
 
-  let structuredData: StructuredExerciseDraft[] = []
-  let isStructuredMode = false
-  let selectedRoutineId: string | null = null
-
-  if (structuredPayload) {
-    try {
-      const parsed = JSON.parse(structuredPayload) as {
-        structuredData?: StructuredExerciseDraft[]
-        isStructuredMode?: boolean
-        selectedRoutineId?: string | null
-      }
-
-      if (Array.isArray(parsed.structuredData)) {
-        structuredData = parsed.structuredData
-      }
-
-      if (typeof parsed.isStructuredMode === 'boolean') {
-        isStructuredMode = parsed.isStructuredMode
-      }
-
-      if (
-        typeof parsed.selectedRoutineId === 'string' ||
-        parsed.selectedRoutineId === null
-      ) {
-        selectedRoutineId = parsed.selectedRoutineId ?? null
-      }
-    } catch {
-      await AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY)
-    }
+  if (draftHasContent(merged)) {
+    return merged
   }
 
-  const fallbackDraft: WorkoutDraft = {
-    notes: notes ?? '',
-    title: title ?? '',
-    structuredData,
-    isStructuredMode,
-    selectedRoutineId,
-    timerStartedAt: null,
-    timerElapsedSeconds: 0,
-  }
-
-  if (!draftHasContent(fallbackDraft)) {
-    await clearDraft()
-    return null
-  }
-
-  await saveDraft(fallbackDraft)
-  return fallbackDraft
+  return null
 }
 
 export async function saveDraft(draft: WorkoutDraft): Promise<void> {
@@ -260,6 +221,7 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
     selectedRoutineId = null,
     timerStartedAt = null,
     timerElapsedSeconds = 0,
+    updatedAt,
   } = draft
 
   const normalized: WorkoutDraft = {
@@ -271,6 +233,7 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
     timerStartedAt: typeof timerStartedAt === 'string' ? timerStartedAt : null,
     timerElapsedSeconds:
       typeof timerElapsedSeconds === 'number' ? timerElapsedSeconds : 0,
+    updatedAt: typeof updatedAt === 'number' ? updatedAt : Date.now(),
   }
 
   if (!draftHasContent(normalized)) {
@@ -278,33 +241,53 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
     return
   }
 
-  await AsyncStorage.setItem(WORKOUT_DRAFT_V2_KEY, JSON.stringify(normalized))
+  writeJson(WORKOUT_DRAFT_SNAPSHOT_KEY, normalized)
+  removeKey(WORKOUT_DRAFT_OPS_KEY)
+}
 
-  await Promise.all([
-    AsyncStorage.removeItem(DRAFT_KEY),
-    AsyncStorage.removeItem(TITLE_DRAFT_KEY),
-    AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY),
-  ])
+export async function saveDraftPatch(patch: DraftPatch): Promise<void> {
+  const ops = readJson<DraftOp[]>(WORKOUT_DRAFT_OPS_KEY) ?? []
+  const op: DraftOp = {
+    ts: typeof patch.updatedAt === 'number' ? patch.updatedAt : Date.now(),
+    patch: {
+      ...patch,
+      updatedAt:
+        typeof patch.updatedAt === 'number' ? patch.updatedAt : Date.now(),
+    },
+  }
+
+  ops.push(op)
+  writeJson(WORKOUT_DRAFT_OPS_KEY, ops)
+
+  if (ops.length >= 50) {
+    await compactDraft()
+  }
+}
+
+export async function compactDraft(draft?: WorkoutDraft): Promise<void> {
+  const hydrated = draft ?? (await loadDraft())
+  if (!hydrated || !draftHasContent(hydrated)) {
+    await clearDraft()
+    return
+  }
+
+  await saveDraft(hydrated)
 }
 
 export async function clearDraft(): Promise<void> {
-  await Promise.all([
-    AsyncStorage.removeItem(WORKOUT_DRAFT_V2_KEY),
-    AsyncStorage.removeItem(DRAFT_KEY),
-    AsyncStorage.removeItem(TITLE_DRAFT_KEY),
-    AsyncStorage.removeItem(STRUCTURED_DRAFT_KEY),
-  ])
+  removeKey(WORKOUT_DRAFT_SNAPSHOT_KEY)
+  removeKey(WORKOUT_DRAFT_OPS_KEY)
 }
 
 export async function loadPendingWorkout(): Promise<PendingWorkout | null> {
-  const data = await AsyncStorage.getItem(PENDING_POST_KEY)
+  const data = storage.getString(PENDING_POST_KEY)
   if (!data) return null
 
   try {
     return JSON.parse(data) as PendingWorkout
   } catch (error) {
     console.error('Failed to parse pending workout payload', error)
-    await AsyncStorage.removeItem(PENDING_POST_KEY)
+    removeKey(PENDING_POST_KEY)
     return null
   }
 }
@@ -312,22 +295,22 @@ export async function loadPendingWorkout(): Promise<PendingWorkout | null> {
 export async function savePendingWorkout(
   pending: PendingWorkout,
 ): Promise<void> {
-  await AsyncStorage.setItem(PENDING_POST_KEY, JSON.stringify(pending))
+  storage.set(PENDING_POST_KEY, JSON.stringify(pending))
 }
 
 export async function clearPendingWorkout(): Promise<void> {
-  await AsyncStorage.removeItem(PENDING_POST_KEY)
+  removeKey(PENDING_POST_KEY)
 }
 
 export async function loadPlaceholderWorkout(): Promise<PlaceholderWorkout | null> {
-  const data = await AsyncStorage.getItem(PLACEHOLDER_WORKOUT_KEY)
+  const data = storage.getString(PLACEHOLDER_WORKOUT_KEY)
   if (!data) return null
 
   try {
     return JSON.parse(data) as PlaceholderWorkout
   } catch (error) {
     console.error('Failed to parse placeholder workout payload', error)
-    await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
+    removeKey(PLACEHOLDER_WORKOUT_KEY)
     return null
   }
 }
@@ -335,14 +318,11 @@ export async function loadPlaceholderWorkout(): Promise<PlaceholderWorkout | nul
 export async function savePlaceholderWorkout(
   placeholder: PlaceholderWorkout,
 ): Promise<void> {
-  await AsyncStorage.setItem(
-    PLACEHOLDER_WORKOUT_KEY,
-    JSON.stringify(placeholder),
-  )
+  storage.set(PLACEHOLDER_WORKOUT_KEY, JSON.stringify(placeholder))
 }
 
 export async function clearPlaceholderWorkout(): Promise<void> {
-  await AsyncStorage.removeItem(PLACEHOLDER_WORKOUT_KEY)
+  removeKey(PLACEHOLDER_WORKOUT_KEY)
 }
 
 export async function clearPendingArtifacts(): Promise<void> {
@@ -365,3 +345,4 @@ export function createPlaceholderWorkout(
     profile,
   }
 }
+

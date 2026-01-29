@@ -3,20 +3,37 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
 import {
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  InputAccessoryView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    InputAccessoryView,
+    LayoutAnimation,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
+import Animated, {
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated'
+
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 interface SetData {
   weight: string
@@ -82,8 +99,23 @@ export function StructuredWorkoutInput({
     field: 'weight' | 'reps'
   } | null>(null)
 
+  // Drag and drop state
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const draggingScale = useSharedValue(1)
+  const draggingOpacity = useSharedValue(1)
+
   // Get the display unit text (kg or lbs)
   const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
+
+  // Threshold for warning about suspiciously high weights (350kg or ~770lbs)
+  const MAX_REASONABLE_WEIGHT_KG = 350
+  const isWeightSuspicious = (weight: string): boolean => {
+    const numeric = parseFloat(weight)
+    if (isNaN(numeric) || numeric <= 0) return false
+    // Convert to kg if user is in lbs mode for consistent comparison
+    const weightInKg = weightUnit === 'kg' ? numeric : numeric / 2.205
+    return weightInKg > MAX_REASONABLE_WEIGHT_KG
+  }
 
   // Initialize exercise data from routine or initialExercises
   const [exercises, setExercises] = useState<ExerciseData[]>(() => {
@@ -378,6 +410,78 @@ export function StructuredWorkoutInput({
     onInputBlur?.()
   }, [onInputBlur])
 
+  // Drag and drop handlers
+  const handleLongPressExercise = useCallback(
+    async (index: number) => {
+      await hapticAsync('medium')
+      setDraggingIndex(index)
+      draggingScale.value = withSpring(1.02, {
+        damping: 15,
+        stiffness: 150,
+      })
+      draggingOpacity.value = withTiming(0.9, {
+        duration: 150,
+        easing: Easing.inOut(Easing.ease),
+      })
+    },
+    [draggingScale, draggingOpacity],
+  )
+
+  const handleMoveExerciseUp = useCallback(
+    async (index: number) => {
+      if (index <= 0) return
+      await hapticAsync('light')
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      
+      // Compute the new order
+      const updated = [...exercises]
+      ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
+      
+      // Update state and notify parent
+      setExercises(updated)
+      setDraggingIndex(index - 1)
+      onDataChange(updated)
+    },
+    [exercises, onDataChange],
+  )
+
+  const handleMoveExerciseDown = useCallback(
+    async (index: number) => {
+      if (index >= exercises.length - 1) return
+      await hapticAsync('light')
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      
+      // Compute the new order
+      const updated = [...exercises]
+      ;[updated[index + 1], updated[index]] = [updated[index], updated[index + 1]]
+      
+      // Update state and notify parent
+      setExercises(updated)
+      setDraggingIndex(index + 1)
+      onDataChange(updated)
+    },
+    [exercises, onDataChange],
+  )
+
+  const handleDropExercise = useCallback(async () => {
+    await hapticAsync('light')
+    draggingScale.value = withSpring(1, {
+      damping: 10,
+      stiffness: 100,
+    })
+    draggingOpacity.value = withTiming(1, {
+      duration: 200,
+      easing: Easing.inOut(Easing.ease),
+    })
+    setDraggingIndex(null)
+  }, [draggingScale, draggingOpacity])
+
+  // Single animated style for the dragging exercise
+  const dragAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: draggingScale.value }],
+    opacity: draggingOpacity.value,
+  }))
+
   const inputAccessoryViewID = 'structured-workout-accessory-view'
 
   return (
@@ -404,163 +508,244 @@ export function StructuredWorkoutInput({
         </InputAccessoryView>
       )}
 
-      {exercises.map((exercise, exerciseIndex) => (
-        <View key={exercise.id} style={styles.exerciseBlock}>
-          {/* Exercise Name with delete button */}
-          <View style={styles.exerciseHeader}>
-            <TouchableOpacity
-              onPress={() => onExerciseNamePress?.(exercise.name)}
-              disabled={!onExerciseNamePress}
-              activeOpacity={onExerciseNamePress ? 0.6 : 1}
-              style={styles.exerciseNameButton}
-            >
-              <Text style={styles.exerciseName}>{exercise.name}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteExerciseButton}
-              onPress={() => handleDeleteExercise(exerciseIndex)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="close-circle" size={20} color={colors.statusError} />
-            </TouchableOpacity>
-          </View>
+      {exercises.map((exercise, exerciseIndex) => {
+        const isDragging = draggingIndex === exerciseIndex
 
-          {/* Sets as inline text with inputs */}
-          {(() => {
-            let workingSetNumber = 0
-            return exercise.sets.map((set, setIndex) => {
-              const isWarmup = set.isWarmup === true
-              if (!isWarmup) workingSetNumber++
-              const displayLabel = isWarmup ? 'W' : workingSetNumber
-
-              let targetText = ''
-              if (
-                typeof set.targetRepsMin === 'number' &&
-                typeof set.targetRepsMax === 'number'
-              ) {
-                if (set.targetRepsMin === set.targetRepsMax) {
-                  targetText = ` (${set.targetRepsMin})`
-                } else {
-                  targetText = ` (${set.targetRepsMin}-${set.targetRepsMax})`
-                }
-              }
-
-              return (
-                <View key={setIndex} style={styles.setRow}>
-                    <TouchableOpacity
-                      style={[styles.setNumberBadge, isWarmup && styles.warmupBadge]}
-                      onPress={() => handleToggleWarmup(exerciseIndex, setIndex)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
-                        {displayLabel}
-                      </Text>
-                    </TouchableOpacity>
-                    <TextInput
-                      ref={(ref) => {
-                        inputRefs.current[
-                          `${exerciseIndex}-${setIndex}-weight`
-                        ] = ref
-                      }}
-                      style={styles.inlineInput}
-                      placeholder={
-                        set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
-                      }
-                      placeholderTextColor={
-                        set.lastWorkoutWeight
-                          ? colors.textTertiary
-                          : colors.textPlaceholder
-                      }
-                      keyboardType="decimal-pad"
-                      value={set.weight}
-                      onChangeText={(value) =>
-                        handleWeightChange(exerciseIndex, setIndex, value)
-                      }
-                      onSubmitEditing={() =>
-                        focusNextInput(exerciseIndex, setIndex, 'weight')
-                      }
-                      returnKeyType="next"
-                      cursorColor={colors.brandPrimary}
-                      selectionColor={colors.brandPrimary}
-                      onFocus={() =>
-                        handleFocus(exerciseIndex, setIndex, 'weight')
-                      }
-                      onBlur={handleBlur}
-                      inputAccessoryViewID={inputAccessoryViewID}
-                    />
-                    <Text style={styles.setText}> {unitDisplay} x </Text>
-                    <TextInput
-                      ref={(ref) => {
-                        inputRefs.current[
-                          `${exerciseIndex}-${setIndex}-reps`
-                        ] = ref
-                      }}
-                      style={styles.inlineInput}
-                      placeholder={
-                        set.lastWorkoutReps ? set.lastWorkoutReps : '___'
-                      }
-                      placeholderTextColor={
-                        set.lastWorkoutReps
-                          ? colors.textTertiary
-                          : colors.textPlaceholder
-                      }
-                      keyboardType="number-pad"
-                      value={set.reps}
-                      onChangeText={(value) =>
-                        handleRepsChange(exerciseIndex, setIndex, value)
-                      }
-                      onSubmitEditing={() =>
-                        focusNextInput(exerciseIndex, setIndex, 'reps')
-                      }
-                      returnKeyType="next"
-                      cursorColor={colors.brandPrimary}
-                      selectionColor={colors.brandPrimary}
-                      onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
-                      onBlur={handleBlur}
-                      inputAccessoryViewID={inputAccessoryViewID}
-                    />
-                    <Text style={styles.setText}> reps</Text>
-                    {targetText && (
-                      <Text style={styles.targetText}>{targetText}</Text>
-                    )}
-                    <View style={styles.deleteSetButtonContainer}>
-                      {setIndex === exercise.sets.length - 1 &&
-                        exercise.sets.length > 1 && (
-                          <TouchableOpacity
-                            style={styles.deleteSetButton}
-                            onPress={() =>
-                              handleDeleteSet(exerciseIndex, setIndex)
-                            }
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons
-                              name="close-circle"
-                              size={18}
-                              color={colors.textTertiary}
-                            />
-                          </TouchableOpacity>
-                        )}
-                    </View>
-                  </View>
-                )
-              })
-          })()}
-
-          {/* Add Set Button */}
-          <TouchableOpacity
-            style={styles.addSetButton}
-            onPress={() => handleAddSet(exerciseIndex)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        return (
+          <Animated.View
+            key={exercise.id}
+            style={[
+              styles.exerciseBlock,
+              isDragging && dragAnimatedStyle,
+              isDragging && styles.exerciseBlockDragging,
+            ]}
           >
-            <Ionicons
-              name="add-circle-outline"
-              size={18}
-              color={colors.brandPrimary}
-            />
-            <Text style={styles.addSetText}>Add set</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+            {/* Exercise Header */}
+            <View style={styles.exerciseHeader}>
+              <TouchableOpacity
+                onPress={() => onExerciseNamePress?.(exercise.name)}
+                onLongPress={() => handleLongPressExercise(exerciseIndex)}
+                delayLongPress={400}
+                activeOpacity={0.6}
+                style={styles.exerciseNameButton}
+              >
+                <Text
+                  style={styles.exerciseName}
+                  numberOfLines={isDragging ? 1 : undefined}
+                  ellipsizeMode={isDragging ? 'tail' : undefined}
+                >
+                  {exercise.name}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Drag Controls or Delete Button */}
+              {isDragging ? (
+                <View style={styles.dragControls}>
+                  <TouchableOpacity
+                    onPress={() => handleMoveExerciseUp(exerciseIndex)}
+                    style={[
+                      styles.dragArrow,
+                      exerciseIndex === 0 && styles.dragArrowDisabled,
+                    ]}
+                    activeOpacity={0.5}
+                    disabled={exerciseIndex === 0}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name="chevron-up"
+                      size={22}
+                      color={exerciseIndex === 0 ? colors.textTertiary : colors.textPrimary}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => handleMoveExerciseDown(exerciseIndex)}
+                    style={[
+                      styles.dragArrow,
+                      exerciseIndex === exercises.length - 1 && styles.dragArrowDisabled,
+                    ]}
+                    activeOpacity={0.5}
+                    disabled={exerciseIndex === exercises.length - 1}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name="chevron-down"
+                      size={22}
+                      color={exerciseIndex === exercises.length - 1 ? colors.textTertiary : colors.textPrimary}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleDropExercise}
+                    style={styles.dragDone}
+                    activeOpacity={0.5}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="checkmark" size={20} color={colors.brandPrimary} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.deleteExerciseButton}
+                  onPress={() => handleDeleteExercise(exerciseIndex)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close-circle" size={20} color={colors.statusError} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Sets as inline text with inputs - hide when dragging for cleaner look */}
+            {!isDragging && (
+              <>
+                {(() => {
+                  let workingSetNumber = 0
+                  return exercise.sets.map((set, setIndex) => {
+                    const isWarmup = set.isWarmup === true
+                    if (!isWarmup) workingSetNumber++
+                    const displayLabel = isWarmup ? 'W' : workingSetNumber
+
+                    let targetText = ''
+                    if (
+                      typeof set.targetRepsMin === 'number' &&
+                      typeof set.targetRepsMax === 'number'
+                    ) {
+                      if (set.targetRepsMin === set.targetRepsMax) {
+                        targetText = ` (${set.targetRepsMin})`
+                      } else {
+                        targetText = ` (${set.targetRepsMin}-${set.targetRepsMax})`
+                      }
+                    }
+
+                    return (
+                      <View key={setIndex} style={styles.setRow}>
+                        <TouchableOpacity
+                          style={[styles.setNumberBadge, isWarmup && styles.warmupBadge]}
+                          onPress={() => handleToggleWarmup(exerciseIndex, setIndex)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
+                            {displayLabel}
+                          </Text>
+                        </TouchableOpacity>
+                        <TextInput
+                          ref={(ref) => {
+                            inputRefs.current[
+                              `${exerciseIndex}-${setIndex}-weight`
+                            ] = ref
+                          }}
+                          style={[
+                            styles.inlineInput,
+                            isWeightSuspicious(set.weight) && styles.inlineInputWarning,
+                          ]}
+                          placeholder={
+                            set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
+                          }
+                          placeholderTextColor={
+                            set.lastWorkoutWeight
+                              ? colors.textTertiary
+                              : colors.textPlaceholder
+                          }
+                          keyboardType="decimal-pad"
+                          value={set.weight}
+                          onChangeText={(value) =>
+                            handleWeightChange(exerciseIndex, setIndex, value)
+                          }
+                          onSubmitEditing={() =>
+                            focusNextInput(exerciseIndex, setIndex, 'weight')
+                          }
+                          returnKeyType="next"
+                          cursorColor={colors.brandPrimary}
+                          selectionColor={colors.brandPrimary}
+                          onFocus={() =>
+                            handleFocus(exerciseIndex, setIndex, 'weight')
+                          }
+                          onBlur={handleBlur}
+                          inputAccessoryViewID={inputAccessoryViewID}
+                        />
+                        <Text style={styles.setText}> {unitDisplay} x </Text>
+                        <TextInput
+                          ref={(ref) => {
+                            inputRefs.current[
+                              `${exerciseIndex}-${setIndex}-reps`
+                            ] = ref
+                          }}
+                          style={styles.inlineInput}
+                          placeholder={
+                            set.lastWorkoutReps ? set.lastWorkoutReps : '___'
+                          }
+                          placeholderTextColor={
+                            set.lastWorkoutReps
+                              ? colors.textTertiary
+                              : colors.textPlaceholder
+                          }
+                          keyboardType="number-pad"
+                          value={set.reps}
+                          onChangeText={(value) =>
+                            handleRepsChange(exerciseIndex, setIndex, value)
+                          }
+                          onSubmitEditing={() =>
+                            focusNextInput(exerciseIndex, setIndex, 'reps')
+                          }
+                          returnKeyType="next"
+                          cursorColor={colors.brandPrimary}
+                          selectionColor={colors.brandPrimary}
+                          onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
+                          onBlur={handleBlur}
+                          inputAccessoryViewID={inputAccessoryViewID}
+                        />
+                        <Text style={styles.setText}> reps</Text>
+                        {targetText && (
+                          <Text style={styles.targetText}>{targetText}</Text>
+                        )}
+                        <View style={styles.deleteSetButtonContainer}>
+                          {setIndex === exercise.sets.length - 1 &&
+                            exercise.sets.length > 1 && (
+                              <TouchableOpacity
+                                style={styles.deleteSetButton}
+                                onPress={() =>
+                                  handleDeleteSet(exerciseIndex, setIndex)
+                                }
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Ionicons
+                                  name="close-circle"
+                                  size={18}
+                                  color={colors.textTertiary}
+                                />
+                              </TouchableOpacity>
+                            )}
+                        </View>
+                      </View>
+                    )
+                  })
+                })()}
+
+                {/* Add Set Button */}
+                <TouchableOpacity
+                  style={styles.addSetButton}
+                  onPress={() => handleAddSet(exerciseIndex)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={18}
+                    color={colors.brandPrimary}
+                  />
+                  <Text style={styles.addSetText}>Add set</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Compact info when dragging */}
+            {isDragging && (
+              <Text style={styles.dragInfo}>
+                {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
+              </Text>
+            )}
+          </Animated.View>
+        )
+      })}
     </View>
   )
 }
@@ -646,6 +831,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       fontWeight: '500',
     },
+    inlineInputWarning: {
+      color: colors.statusError,
+      borderBottomColor: colors.statusError,
+    },
     deleteSetButtonContainer: {
       width: 28,
       marginLeft: 4,
@@ -696,5 +885,42 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     toolbarContainer: {
       // The toolbar itself handles its own layout/styles, just wrapping it
+    },
+    // Drag and drop styles
+    exerciseBlockDragging: {
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginHorizontal: -12,
+      borderWidth: 1,
+      borderColor: colors.brandPrimary,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    dragControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dragArrow: {
+      padding: 4,
+    },
+    dragArrowDisabled: {
+      opacity: 0.4,
+    },
+    dragDone: {
+      marginLeft: 8,
+      padding: 6,
+      backgroundColor: `${colors.brandPrimary}20`,
+      borderRadius: 16,
+    },
+    dragInfo: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
     },
   })

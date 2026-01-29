@@ -54,6 +54,7 @@ export const AnalyticsEvents = {
   // Workout Creation
   WORKOUT_CREATE_STARTED: 'Workout Create Started',
   WORKOUT_DRAFT_AUTO_SAVED: 'Workout Draft Auto-Saved',
+  WORKOUT_DRAFT_PERSISTED: 'Workout Draft Persisted',
   WORKOUT_SAVED_TO_PENDING: 'Workout Saved To Pending',
   WORKOUT_CREATE_SUBMITTED: 'Workout Create Submitted',
   WORKOUT_CREATION_CANCELLED: 'Workout Creation Cancelled',
@@ -259,6 +260,18 @@ export interface WorkoutDraftProperties extends BaseEventProperties {
   auto_save?: boolean
 }
 
+export interface WorkoutDraftPersistedProperties extends BaseEventProperties {
+  action: 'patch' | 'compact' | 'skip' | 'fail'
+  source?: 'autosave' | 'background' | 'unmount' | 'routine' | 'hydrate'
+  length?: number
+  hasTitle?: boolean
+  structuredExercisesCount?: number
+  structuredSetsWithDataCount?: number
+  updatedAt?: number
+  reason?: string
+  error?: string
+}
+
 export interface WorkoutSubmittedProperties extends BaseEventProperties {
   mode?: 'text' | 'speech' | 'camera'
   hasTitle?: boolean
@@ -370,7 +383,12 @@ export interface SubscriptionProperties extends BaseEventProperties {
   trial_duration_days?: number
   reminder_enabled?: boolean
   source_screen?: 'paywall' | 'trial_offer' | 'onboarding' | string
-  subscription_action?: 'started' | 'completed' | 'cancelled' | 'failed' | 'restored'
+  subscription_action?:
+    | 'started'
+    | 'completed'
+    | 'cancelled'
+    | 'failed'
+    | 'restored'
   error_message?: string
   is_restore?: boolean
   entitlement_granted?: boolean
@@ -458,6 +476,7 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.FEED_VIEWED]: FeedViewedProperties
   [AnalyticsEvents.WORKOUT_CREATE_STARTED]: WorkoutCreateStartedProperties
   [AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED]: WorkoutDraftProperties
+  [AnalyticsEvents.WORKOUT_DRAFT_PERSISTED]: WorkoutDraftPersistedProperties
   [AnalyticsEvents.WORKOUT_SAVED_TO_PENDING]: WorkoutDraftProperties
   [AnalyticsEvents.WORKOUT_CREATE_SUBMITTED]: WorkoutSubmittedProperties
   [AnalyticsEvents.WORKOUT_CREATION_CANCELLED]: WorkoutCancelledProperties
