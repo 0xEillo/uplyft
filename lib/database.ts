@@ -1177,6 +1177,54 @@ export const database = {
       return data as Exercise
     },
 
+    async update(
+      exerciseId: string,
+      userId: string,
+      updates: {
+        name?: string
+        muscle_group?: string
+        type?: string
+        equipment?: string
+      },
+    ) {
+      // First, verify the user owns this exercise
+      const { data: exercise, error: fetchError } = await supabase
+        .from('exercises')
+        .select('id, created_by')
+        .eq('id', exerciseId)
+        .single()
+
+      if (fetchError) throw fetchError
+      if (!exercise) throw new Error('Exercise not found')
+      if (exercise.created_by !== userId) {
+        throw new Error('You can only update exercises that you created')
+      }
+
+      // If name is being updated, normalize it
+      const finalUpdates: typeof updates = { ...updates }
+      if (updates.name) {
+        const trimmed = updates.name.trim()
+        if (!trimmed) throw new Error('Exercise name cannot be empty')
+        
+        // Normalize
+        finalUpdates.name = trimmed
+            .toLowerCase()
+            .split(' ')
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+      }
+
+      const { data, error } = await supabase
+        .from('exercises')
+        .update(finalUpdates)
+        .eq('id', exerciseId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Exercise
+    },
+
     async delete(exerciseId: string, userId: string) {
       // First, verify the user owns this exercise
       const { data: exercise, error: fetchError } = await supabase

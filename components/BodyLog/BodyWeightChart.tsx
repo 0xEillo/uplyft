@@ -3,12 +3,11 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
     Dimensions,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
@@ -73,8 +72,8 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   const minWeight =
     data.length > 0 ? Math.min(...data.map((d) => d.weight_kg)) : 0
   const range = maxWeight - minWeight
-  // Use aggressive padding (50% of range, min 1kg) to make small changes more visible
-  const padding = range === 0 ? 2 : Math.max(1, range * 0.5)
+  // Use tighter padding (15% of range, min 0.1kg) to make even small changes visible
+  const padding = range === 0 ? 0.5 : Math.max(0.1, range * 0.15)
 
   // Find min and max points with dates
   const minPoint = data.reduce((prev, curr) =>

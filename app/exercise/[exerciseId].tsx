@@ -2,13 +2,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native'
@@ -61,6 +67,35 @@ interface LeaderboardEntry {
 
 type TabType = 'level' | 'records' | 'history' | 'leaderboard' | 'how_to'
 
+const MUSCLE_GROUPS = [
+  'Chest',
+  'Back',
+  'Shoulders',
+  'Biceps',
+  'Triceps',
+  'Forearms',
+  'Core',
+  'Glutes',
+  'Quads',
+  'Hamstrings',
+  'Calves',
+  'Cardio',
+  'Full Body',
+] as const
+
+const EXERCISE_TYPES = ['compound', 'isolation'] as const
+
+const EQUIPMENT_OPTIONS = [
+  'barbell',
+  'dumbbell',
+  'bodyweight',
+  'cable',
+  'machine',
+  'kettlebell',
+  'resistance band',
+  'other',
+] as const
+
 export default function ExerciseDetailScreen() {
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
   const { user } = useAuth()
@@ -92,6 +127,15 @@ export default function ExerciseDetailScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editMuscleGroup, setEditMuscleGroup] = useState('')
+  const [editType, setEditType] = useState('')
+  const [editEquipment, setEditEquipment] = useState('')
+  const [showMuscleGroupModal, setShowMuscleGroupModal] = useState(false)
+  const [showTypeModal, setShowTypeModal] = useState(false)
+  const [showEquipmentModal, setShowEquipmentModal] = useState(false)
+
   const insets = useSafeAreaInsets()
 
   // Check if current user owns this exercise
@@ -375,6 +419,107 @@ export default function ExerciseDetailScreen() {
     )
   }
 
+  const handleStartEdit = () => {
+    if (!exercise) return
+    setEditName(exercise.name)
+    setEditMuscleGroup(exercise.muscle_group || '')
+    setEditType(exercise.type || '')
+    setEditEquipment(exercise.equipment || '')
+    setIsEditing(true)
+  }
+
+  const handleUpdateExercise = async () => {
+    if (!user?.id || !exerciseId) return
+
+    if (!editName.trim()) {
+      Alert.alert('Error', 'Exercise name cannot be empty')
+      return
+    }
+
+    try {
+      const updatedExercise = await database.exercises.update(
+        exerciseId,
+        user.id,
+        {
+          name: editName.trim(),
+          muscle_group: editMuscleGroup || undefined,
+          type: editType || undefined,
+          equipment: editEquipment || undefined,
+        }
+      )
+      
+      setExercise(updatedExercise)
+      setIsEditing(false)
+      Alert.alert('Success', 'Exercise updated successfully')
+    } catch (error) {
+      console.error('Error updating exercise:', error)
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to update exercise'
+      )
+    }
+  }
+
+  const showMuscleGroupPicker = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', ...MUSCLE_GROUPS],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex > 0) {
+            setEditMuscleGroup(MUSCLE_GROUPS[buttonIndex - 1])
+          }
+        },
+      )
+    } else {
+      setShowMuscleGroupModal(true)
+    }
+  }
+
+  const showTypePicker = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [
+            'Cancel',
+            ...EXERCISE_TYPES.map((t) => t.charAt(0).toUpperCase() + t.slice(1)),
+          ],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex > 0) {
+            setEditType(EXERCISE_TYPES[buttonIndex - 1])
+          }
+        },
+      )
+    } else {
+      setShowTypeModal(true)
+    }
+  }
+
+  const showEquipmentPicker = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [
+            'Cancel',
+            ...EQUIPMENT_OPTIONS.map((e) => e.charAt(0).toUpperCase() + e.slice(1)),
+          ],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex > 0) {
+            setEditEquipment(EQUIPMENT_OPTIONS[buttonIndex - 1])
+          }
+        },
+      )
+    } else {
+      setShowEquipmentModal(true)
+    }
+  }
+
   const styles = createStyles(colors)
   const strengthInfo = getStrengthInfo()
 
@@ -387,27 +532,37 @@ export default function ExerciseDetailScreen() {
       <View style={[styles.innerContainer, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.header}>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {exercise?.name || 'Exercise Details'}
+            </Text>
+          </View>
           <TouchableOpacity
             onPress={handleBack}
             style={styles.headerBackButton}
           >
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {exercise?.name || 'Exercise Details'}
-          </Text>
           {isOwner ? (
-            <TouchableOpacity
-              onPress={handleDeleteExercise}
-              style={styles.headerDeleteButton}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : (
-                <Ionicons name="trash-outline" size={22} color="#EF4444" />
-              )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={handleStartEdit}
+                style={styles.headerActionButton}
+              >
+                <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDeleteExercise}
+                style={styles.headerDeleteButton}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                )}
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.headerRightSpacer} />
           )}
@@ -689,11 +844,12 @@ export default function ExerciseDetailScreen() {
           ) : activeTab === 'records' ? (
             <View style={styles.tabContent}>
               {/* Media Section */}
-              <View style={styles.mediaContainer}>
+              <View style={[styles.mediaContainer, !!exercise?.created_by && { backgroundColor: '#1A1A1A' }]}>
                   <ExerciseMedia 
                       gifUrl={exercise?.gif_url} 
                       mode="full" 
                       style={styles.media}
+                      isCustom={!!exercise?.created_by}
                   />
               </View>
 
@@ -855,11 +1011,12 @@ export default function ExerciseDetailScreen() {
           ) : activeTab === 'how_to' ? (
               <View style={styles.tabContent}>
                   {/* Media Section */}
-                  <View style={styles.mediaContainer}>
+                  <View style={[styles.mediaContainer, !!exercise?.created_by && { backgroundColor: '#1A1A1A' }]}>
                       <ExerciseMedia 
                           gifUrl={exercise?.gif_url} 
                           mode="full" 
                           style={styles.media}
+                          isCustom={!!exercise?.created_by}
                       />
                   </View>
 
@@ -867,7 +1024,17 @@ export default function ExerciseDetailScreen() {
                   <View style={styles.sectionHeader}>
                       <Text style={styles.sectionTitle}>{exercise?.name}</Text>
                   </View>
-                  <View style={styles.musclesSection}>
+                   <View style={styles.musclesSection}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          {exercise?.muscle_group && (
+                              <Text style={styles.musclesText}>{exercise.muscle_group}</Text>
+                          )}
+                          {exercise?.created_by && (
+                              <View style={styles.customBadge}>
+                                  <Text style={styles.customBadgeText}>Custom</Text>
+                              </View>
+                          )}
+                      </View>
                       {exercise?.target_muscles && exercise.target_muscles.length > 0 && (
                           <Text style={styles.musclesText}>
                               Primary: <Text style={styles.muscleHighlight}>{exercise.target_muscles.join(', ')}</Text>
@@ -978,6 +1145,226 @@ export default function ExerciseDetailScreen() {
           title="Unlock Leaderboard"
           message="See how you rank against friends on every exercise."
         />
+
+        <Modal
+          visible={isEditing}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setIsEditing(false)}
+        >
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={[styles.modalContainer, { backgroundColor: colors.bg }]}
+          >
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setIsEditing(false)}>
+                <Text style={styles.modalCancelButton}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Edit Exercise</Text>
+              <TouchableOpacity onPress={handleUpdateExercise}>
+                <Text style={styles.modalSaveButton}>Save</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+               {/* Exercise Name */}
+               <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Name</Text>
+                <TextInput
+                  style={[styles.input, { color: colors.textPrimary, backgroundColor: colors.surface }]}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Exercise Name"
+                  placeholderTextColor={colors.textPlaceholder}
+                />
+              </View>
+
+              {/* Muscle Group */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Muscle Group</Text>
+                <TouchableOpacity
+                  style={[styles.selectButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={showMuscleGroupPicker}
+                >
+                  <Text
+                    style={[
+                      styles.selectButtonText,
+                      { color: editMuscleGroup ? colors.textPrimary : colors.textPlaceholder }
+                    ]}
+                  >
+                    {editMuscleGroup || 'Select muscle group'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Exercise Type */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Type</Text>
+                <TouchableOpacity
+                  style={[styles.selectButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={showTypePicker}
+                >
+                  <Text
+                     style={[
+                      styles.selectButtonText,
+                      { color: editType ? colors.textPrimary : colors.textPlaceholder }
+                    ]}
+                  >
+                    {editType
+                      ? editType.charAt(0).toUpperCase() + editType.slice(1)
+                      : 'Select type'}
+                  </Text>
+                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Equipment */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Equipment</Text>
+                <TouchableOpacity
+                  style={[styles.selectButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={showEquipmentPicker}
+                >
+                  <Text
+                     style={[
+                      styles.selectButtonText,
+                      { color: editEquipment ? colors.textPrimary : colors.textPlaceholder }
+                    ]}
+                  >
+                    {editEquipment
+                      ? editEquipment.charAt(0).toUpperCase() + editEquipment.slice(1)
+                      : 'Select equipment'}
+                  </Text>
+                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Android Modals */}
+        {Platform.OS === 'android' && (
+        <>
+          {/* Muscle Group Modal */}
+          <Modal
+            visible={showMuscleGroupModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowMuscleGroupModal(false)}
+          >
+            <Pressable
+              style={styles.androidModalOverlay}
+              onPress={() => setShowMuscleGroupModal(false)}
+            >
+              <View style={[styles.androidModalContent, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.androidModalTitle, { color: colors.textPrimary, borderColor: colors.border }]}>Select Muscle Group</Text>
+                <ScrollView style={styles.androidModalScroll}>
+                  {MUSCLE_GROUPS.map((group) => (
+                    <TouchableOpacity
+                      key={group}
+                      style={[styles.androidModalOption, { borderColor: colors.border }]}
+                      onPress={() => {
+                        setEditMuscleGroup(group)
+                        setShowMuscleGroupModal(false)
+                      }}
+                    >
+                      <Text style={[styles.androidModalOptionText, { color: colors.textPrimary }]}>{group}</Text>
+                      {editMuscleGroup === group && (
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </Pressable>
+          </Modal>
+
+          {/* Type Modal */}
+          <Modal
+            visible={showTypeModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowTypeModal(false)}
+          >
+             <Pressable
+              style={styles.androidModalOverlay}
+              onPress={() => setShowTypeModal(false)}
+            >
+              <View style={[styles.androidModalContent, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.androidModalTitle, { color: colors.textPrimary, borderColor: colors.border }]}>Select Exercise Type</Text>
+                <ScrollView style={styles.androidModalScroll}>
+                  {EXERCISE_TYPES.map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.androidModalOption, { borderColor: colors.border }]}
+                      onPress={() => {
+                        setEditType(type)
+                        setShowTypeModal(false)
+                      }}
+                    >
+                      <Text style={[styles.androidModalOptionText, { color: colors.textPrimary }]}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                      {editType === type && (
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </Pressable>
+          </Modal>
+
+          {/* Equipment Modal */}
+          <Modal
+            visible={showEquipmentModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowEquipmentModal(false)}
+          >
+             <Pressable
+              style={styles.androidModalOverlay}
+              onPress={() => setShowEquipmentModal(false)}
+            >
+              <View style={[styles.androidModalContent, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.androidModalTitle, { color: colors.textPrimary, borderColor: colors.border }]}>Select Equipment</Text>
+                <ScrollView style={styles.androidModalScroll}>
+                  {EQUIPMENT_OPTIONS.map((equip) => (
+                    <TouchableOpacity
+                      key={equip}
+                      style={[styles.androidModalOption, { borderColor: colors.border }]}
+                      onPress={() => {
+                        setEditEquipment(equip)
+                        setShowEquipmentModal(false)
+                      }}
+                    >
+                      <Text style={[styles.androidModalOptionText, { color: colors.textPrimary }]}>
+                        {equip.charAt(0).toUpperCase() + equip.slice(1)}
+                      </Text>
+                      {editEquipment === equip && (
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </Pressable>
+          </Modal>
+        </>
+      )}
       </View>
     </SlideInView>
   )
@@ -987,10 +1374,102 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: colors.bg,
     },
     innerContainer: {
       flex: 1,
-      backgroundColor: colors.bg,
+    },
+    headerActionButton: {
+        padding: 8,
+    },
+    modalContainer: {
+        flex: 1,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+    },
+    modalCancelButton: {
+        fontSize: 16,
+        color: colors.brandPrimary,
+    },
+    modalSaveButton: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.brandPrimary,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: colors.textPrimary,
+    },
+    modalContent: {
+        flex: 1,
+        padding: 20,
+    },
+    inputSection: {
+        marginBottom: 24,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.textSecondary,
+        marginBottom: 8,
+        textTransform: 'uppercase',
+    },
+    input: {
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        fontSize: 16,
+    },
+    selectButton: {
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+    },
+    selectButtonText: {
+        fontSize: 16,
+    },
+    androidModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    androidModalContent: {
+      borderRadius: 16,
+      width: '100%',
+      maxHeight: '70%',
+      overflow: 'hidden',
+    },
+    androidModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      padding: 20,
+      paddingBottom: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    androidModalScroll: {
+      maxHeight: 400,
+    },
+    androidModalOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    androidModalOptionText: {
+      fontSize: 16,
     },
     header: {
       flexDirection: 'row',
@@ -1004,16 +1483,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: 4,
       marginLeft: -4,
     },
+    headerTitleContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 60,
+    },
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
       color: colors.textPrimary,
-      flex: 1,
       textAlign: 'center',
     },
     headerRightSpacer: {
-      width: 32,
-      alignItems: 'flex-end'
+      width: 40,
     },
     headerDeleteButton: {
       padding: 4,
@@ -1651,5 +2138,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
+    },
+    customBadge: {
+        backgroundColor: '#1C1C1E',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    customBadgeText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '700',
     },
   })

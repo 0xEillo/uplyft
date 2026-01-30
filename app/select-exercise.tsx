@@ -135,6 +135,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         <ExerciseMediaThumbnail
           gifUrl={exercise.gif_url}
           style={styles.cardImage}
+          isCustom={!!exercise.created_by}
         />
         {/* Overlay Icons */}
         <View style={styles.cardOverlay}>
@@ -156,7 +157,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
             <Ionicons
               name="information-circle"
               size={22}
-              color="rgba(0,0,0,0.6)"
+              color={exercise.created_by ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.6)"}
             />
           </TouchableOpacity>
         </View>
@@ -173,11 +174,18 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         >
           {exercise.name}
         </Text>
-        {exercise.muscle_group && (
-          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-            {exercise.muscle_group}
-          </Text>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+          {exercise.muscle_group && (
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+              {exercise.muscle_group}
+            </Text>
+          )}
+          {exercise.created_by && (
+            <View style={styles.customBadge}>
+              <Text style={styles.customBadgeText}>Custom</Text>
+            </View>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   )
@@ -211,6 +219,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
       <ExerciseMediaThumbnail
         gifUrl={exercise.gif_url}
         style={styles.exerciseListItemThumbnail}
+        isCustom={!!exercise.created_by}
       />
       <View style={styles.exerciseListItemContent}>
         <Text
@@ -226,16 +235,23 @@ const ExerciseListItem = memo(function ExerciseListItem({
         >
           {exercise.name}
         </Text>
-        {exercise.muscle_group && (
-          <Text
-            style={[
-              styles.exerciseListItemMuscle,
-              { color: colors.textSecondary },
-            ]}
-          >
-            {exercise.muscle_group}
-          </Text>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {exercise.muscle_group && (
+            <Text
+              style={[
+                styles.exerciseListItemMuscle,
+                { color: colors.textSecondary },
+              ]}
+            >
+              {exercise.muscle_group}
+            </Text>
+          )}
+          {exercise.created_by && (
+            <View style={styles.customBadge}>
+              <Text style={styles.customBadgeText}>Custom</Text>
+            </View>
+          )}
+        </View>
       </View>
       <TouchableOpacity
         style={styles.listItemCheckbox}
@@ -1234,5 +1250,17 @@ const styles = StyleSheet.create({
     marginLeft: -60,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  customBadge: {
+    backgroundColor: '#1C1C1E',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginLeft: 2,
+  },
+  customBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 })

@@ -162,6 +162,7 @@ export function ExerciseDetailCard({
           mode="thumbnail"
           style={{ width: 56, height: 56, borderRadius: 14 }}
           autoPlay={false}
+          isCustom={!!exercise.created_by}
         />
         <Text style={[styles.exerciseName, { color: colors.brandPrimary }]}>
           {exercise.name}

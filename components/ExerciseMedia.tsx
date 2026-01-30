@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { memo, useMemo, useState } from 'react'
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
@@ -20,6 +19,7 @@ interface ExerciseMediaProps {
   autoPlay?: boolean
   style?: StyleProp<ViewStyle>
   contentFit?: ExerciseMediaContentFit
+  isCustom?: boolean
 }
 
 // Memoized component - only re-renders when props change
@@ -29,6 +29,7 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   autoPlay = true,
   style,
   contentFit = 'contain',
+  isCustom = false,
 }: ExerciseMediaProps) {
   const [hasError, setHasError] = useState(false)
 
@@ -39,9 +40,25 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   }, [gifUrl])
 
   if (!fullUrl || hasError) {
+    if (isCustom) {
+      return (
+        <View style={[styles.container, style, { backgroundColor: '#1A1A1A' }]}>
+          <Image
+            source={require('@/assets/images/logo-transparent.png')}
+            style={{ width: '60%', height: '60%' }}
+            contentFit="contain"
+          />
+        </View>
+      )
+    }
+
     return (
       <View style={[styles.container, style]}>
-        <Ionicons name="barbell-outline" size={24} color="#333" />
+        <Image
+          source={require('@/assets/images/bicep-icon.png')}
+          style={{ width: '50%', height: '50%', opacity: 0.5 }}
+          contentFit="contain"
+        />
       </View>
     )
   }
@@ -72,10 +89,12 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
   gifUrl,
   style,
   autoPlay = true,
+  isCustom = false,
 }: {
   gifUrl?: string | null
   style?: StyleProp<ViewStyle>
   autoPlay?: boolean
+  isCustom?: boolean
 }) {
   const fullUrl = useMemo(() => {
     if (!gifUrl) return null
@@ -83,9 +102,25 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
   }, [gifUrl])
 
   if (!fullUrl) {
+    if (isCustom) {
+      return (
+        <View style={[styles.container, style, { backgroundColor: '#1A1A1A' }]}>
+          <Image
+            source={require('@/assets/images/logo-transparent.png')}
+            style={{ width: '60%', height: '60%' }}
+            contentFit="contain"
+          />
+        </View>
+      )
+    }
+
     return (
       <View style={[styles.container, style]}>
-        <Ionicons name="barbell-outline" size={18} color="#333" />
+        <Image
+          source={require('@/assets/images/bicep-icon.png')}
+          style={{ width: '50%', height: '50%', opacity: 0.5 }}
+          contentFit="contain"
+        />
       </View>
     )
   }
