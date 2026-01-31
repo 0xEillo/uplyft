@@ -99,6 +99,18 @@ export function StructuredWorkoutInput({
     field: 'weight' | 'reps'
   } | null>(null)
 
+  // Ref to debounce blur callback - prevents double toolbar when focus transfers between inputs
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup blur timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current)
+      }
+    }
+  }, [])
+
   // Drag and drop state
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const draggingScale = useSharedValue(1)
@@ -399,6 +411,11 @@ export function StructuredWorkoutInput({
 
   const handleFocus = useCallback(
     (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+      // Cancel any pending blur callback - focus transferred within component
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current)
+        blurTimeoutRef.current = null
+      }
       setFocusedInput({ exerciseIndex, setIndex, field })
       onInputFocus?.()
     },
@@ -407,7 +424,15 @@ export function StructuredWorkoutInput({
 
   const handleBlur = useCallback(() => {
     setFocusedInput(null)
-    onInputBlur?.()
+    // Debounce the blur callback to allow focus to transfer between inputs
+    // This prevents the double toolbar glitch on iOS
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+    }
+    blurTimeoutRef.current = setTimeout(() => {
+      onInputBlur?.()
+      blurTimeoutRef.current = null
+    }, 50)
   }, [onInputBlur])
 
   // Drag and drop handlers

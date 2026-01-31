@@ -1,27 +1,27 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
-  memo,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactElement,
+    memo,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactElement,
 } from 'react'
 
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
+    ActivityIndicator,
+    Animated,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
+    type NativeScrollEvent,
+    type NativeSyntheticEvent,
 } from 'react-native'
 
 import { useTheme } from '@/contexts/theme-context'
@@ -86,6 +86,7 @@ interface ExerciseDisplay {
   reps: string
   weight: string
   hasVariedSets: boolean
+  isCustom?: boolean // True if exercise was created by a user
   setDetails?: SetDetail[]
 }
 
@@ -448,6 +449,7 @@ export const FeedCard = memo(function FeedCard({
                       <ExerciseMediaThumbnail
                         gifUrl={exercise.gifUrl}
                         style={styles.exerciseThumbnail}
+                        isCustom={exercise.isCustom}
                       />
                       <View
                         style={{

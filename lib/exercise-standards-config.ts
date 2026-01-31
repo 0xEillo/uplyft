@@ -4,6 +4,7 @@
  */
 
 export type StrengthLevel =
+  | 'Untrained'
   | 'Beginner'
   | 'Novice'
   | 'Intermediate'

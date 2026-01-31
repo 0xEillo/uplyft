@@ -2,39 +2,35 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
-import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  getStandardsLadder,
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel
+    getStandardsLadder,
+    getStrengthStandard,
+    hasStrengthStandards
 } from '@/lib/strength-standards'
 import { Exercise, Profile } from '@/types/database.types'
 
@@ -54,18 +50,8 @@ interface WorkoutSessionRecord {
   }[]
 }
 
-interface LeaderboardEntry {
-  rank: number
-  userId: string
-  displayName: string
-  userTag: string
-  avatarUrl: string | null
-  max1RM: number
-  isCurrentUser: boolean
-  strengthLevel: StrengthLevel | null
-}
 
-type TabType = 'level' | 'records' | 'history' | 'leaderboard' | 'how_to'
+type TabType = 'level' | 'records' | 'history' | 'how_to'
 
 const MUSCLE_GROUPS = [
   'Chest',
@@ -99,7 +85,6 @@ const EQUIPMENT_OPTIONS = [
 export default function ExerciseDetailScreen() {
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const router = useRouter()
@@ -120,11 +105,9 @@ export default function ExerciseDetailScreen() {
   })
   const [recordsList, setRecordsList] = useState<ExerciseRecord[]>([])
   const [history, setHistory] = useState<WorkoutSessionRecord[]>([])
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('records')
-  const [paywallVisible, setPaywallVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -227,95 +210,6 @@ export default function ExerciseDetailScreen() {
         setPersonalRecords(prev => ({ ...prev, bestSessionVolume: maxSessionVol }))
       }
 
-      // Load Leaderboard Data
-      // 1. Get following list
-      const following = await database.follows.listFollowing(user.id)
-      // Note: followingIds would be used for batch queries in future
-      const _followingIds = following.map(f => f.followee_id)
-      void _followingIds // suppress unused warning - reserved for batch queries
-
-      // 3. Get max estimated 1RM (Epley) for each user on this exercise
-      // We need to fetch per-user stats. Since we don't have a batch function for this specific query across users yet,
-      // we'll iterate for now. In production, a dedicated RPC or view would be better.
-      
-      const leaderboardData: LeaderboardEntry[] = []
-
-      const myEstimated1RM = records.length > 0 ? Math.max(...records.map(r => r.estimated1RM)) : 0
-      
-      if (profileData) {
-        let strengthLevel: StrengthLevel | null = null
-        if (exerciseData && exerciseData.name && profileData.weight_kg && profileData.gender) {
-             const info = getStrengthStandard(
-                exerciseData.name,
-                profileData.gender as 'male' | 'female',
-                profileData.weight_kg,
-                myEstimated1RM
-             )
-             if (info) strengthLevel = info.level
-        }
-
-        leaderboardData.push({
-            rank: 0, // temporary
-            userId: user.id,
-            displayName: 'You', // Display "You" for current user
-            userTag: profileData.user_tag || '',
-            avatarUrl: profileData.avatar_url,
-            max1RM: myEstimated1RM,
-            isCurrentUser: true,
-            strengthLevel
-        })
-      }
-
-      // Get friends' max estimated 1RMs
-      // Limit concurrent requests
-      await Promise.all(following.map(async (follow) => {
-          const friendId = follow.followee_id
-          const friendProfile = follow.followee
-          
-          try {
-              // Need profile details for standards calculation (gender, weight)
-              const fullFriendProfile = await database.profiles.getById(friendId)
-
-              const friendRecords = await database.stats.getExerciseRecordsByWeight(friendId, exerciseId)
-              const friendEstimated1RM = friendRecords.length > 0 ? Math.max(...friendRecords.map(r => r.estimated1RM)) : 0
-              
-              if (friendEstimated1RM > 0) { // Only include if they have any tracked sets for this exercise
-                  let strengthLevel: StrengthLevel | null = null
-                  if (exerciseData && exerciseData.name && fullFriendProfile?.weight_kg && fullFriendProfile?.gender) {
-                       const info = getStrengthStandard(
-                          exerciseData.name,
-                          fullFriendProfile.gender as 'male' | 'female',
-                          fullFriendProfile.weight_kg,
-                          friendEstimated1RM
-                       )
-                       if (info) strengthLevel = info.level
-                  }
-
-                  leaderboardData.push({
-                      rank: 0,
-                      userId: friendId,
-                      displayName: friendProfile.display_name || 'User',
-                      userTag: friendProfile.user_tag || '',
-                      avatarUrl: friendProfile.avatar_url,
-                      max1RM: friendEstimated1RM,
-                      isCurrentUser: false,
-                      strengthLevel
-                  })
-              }
-          } catch (e) {
-              console.warn(`Could not fetch stats for user ${friendId}`, e)
-          }
-      }))
-
-      // Sort by max estimated 1RM descending
-      leaderboardData.sort((a, b) => b.max1RM - a.max1RM)
-
-      // Assign ranks
-      leaderboardData.forEach((entry, index) => {
-          entry.rank = index + 1
-      })
-
-      setLeaderboard(leaderboardData)
 
     } catch (error) {
       console.error('Error loading exercise details:', error)
@@ -642,28 +536,6 @@ export default function ExerciseDetailScreen() {
                 How To
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'leaderboard' && styles.activeTab,
-              ]}
-              onPress={() => {
-                if (!isProMember) {
-                  setPaywallVisible(true)
-                } else {
-                  setActiveTab('leaderboard')
-                }
-              }}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === 'leaderboard' && styles.activeTabText,
-                ]}
-              >
-                Leaderboard
-              </Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
 
@@ -960,54 +832,6 @@ export default function ExerciseDetailScreen() {
                 )}
               </View>
             </View>
-          ) : activeTab === 'leaderboard' ? (
-            <View style={styles.tabContent}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Following</Text>
-                </View>
-
-                <View style={styles.leaderboardList}>
-                    {leaderboard.map((entry, index) => (
-                        <View key={entry.userId}>
-                            <View style={styles.leaderboardItem}>
-                                <View style={styles.rankContainer}>
-                                    <View style={[styles.rankBadge, entry.rank <= 3 ? styles[`rankBadge${entry.rank}` as keyof typeof styles] : styles.rankBadgeDefault]}>
-                                        <Text style={[styles.rankText, entry.rank <= 3 ? styles.rankTextTop : styles.rankTextDefault]}>{entry.rank}</Text>
-                                    </View>
-                                </View>
-                                <View style={styles.userContainer}>
-                                    {entry.avatarUrl ? (
-                                        <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} />
-                                    ) : (
-                                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                            <Text style={styles.avatarInitial}>{entry.displayName.charAt(0)}</Text>
-                                        </View>
-                                    )}
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.userName} numberOfLines={1}>
-                                            {entry.displayName}
-                                        </Text>
-                                        {entry.strengthLevel && (
-                                            <View 
-                                                style={[
-                                                    styles.miniLevelBadge, 
-                                                    { backgroundColor: getLevelColor(entry.strengthLevel as any) }
-                                                ]}
-                                            >
-                                                <Text style={styles.miniLevelText}>{entry.strengthLevel}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                                <Text style={styles.leaderboardValue}>
-                                    {formatWeight(entry.max1RM, { maximumFractionDigits: 0 })}
-                                </Text>
-                            </View>
-                            {index < leaderboard.length - 1 && <View style={styles.separator} />}
-                        </View>
-                    ))}
-                </View>
-            </View>
           ) : activeTab === 'how_to' ? (
               <View style={styles.tabContent}>
                   {/* Media Section */}
@@ -1139,12 +963,6 @@ export default function ExerciseDetailScreen() {
           </ScrollView>
         )}
 
-        <Paywall
-          visible={paywallVisible}
-          onClose={() => setPaywallVisible(false)}
-          title="Unlock Leaderboard"
-          message="See how you rank against friends on every exercise."
-        />
 
         <Modal
           visible={isEditing}
@@ -1847,105 +1665,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     recordEstimate: {
       fontSize: 12,
       color: colors.textSecondary,
-    },
-    leaderboardContainer: {
-        gap: 16,
-    },
-    leaderboardSubtitle: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        marginBottom: 8
-    },
-    leaderboardList: {
-        backgroundColor: colors.bg,
-        borderRadius: 12,
-        overflow: 'hidden'
-    },
-    leaderboardItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: colors.border
-    },
-    rankContainer: {
-        width: 32,
-        alignItems: 'center',
-        marginRight: 12
-    },
-    rankBadge: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    rankBadge1: {
-        backgroundColor: '#FFD700' // Gold
-    },
-    rankBadge2: {
-        backgroundColor: '#C0C0C0' // Silver
-    },
-    rankBadge3: {
-        backgroundColor: '#CD7F32' // Bronze
-    },
-    rankBadgeDefault: {
-        backgroundColor: 'transparent'
-    },
-    rankText: {
-        fontSize: 12,
-        fontWeight: '700'
-    },
-    rankTextTop: {
-        color: '#FFFFFF'
-    },
-    rankTextDefault: {
-        color: colors.textPrimary
-    },
-    userContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12
-    },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: colors.bg
-    },
-    avatarPlaceholder: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: colors.brandPrimary
-    },
-    avatarInitial: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#FFFFFF'
-    },
-    userName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.textPrimary
-    },
-    leaderboardValue: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.textPrimary
-    },
-    miniLevelBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        marginTop: 4
-    },
-    miniLevelText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#FFFFFF'
     },
     levelBadge: {
         paddingHorizontal: 8,

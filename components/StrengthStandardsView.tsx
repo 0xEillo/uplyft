@@ -1,23 +1,25 @@
+import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
 import {
-    getLevelColor,
-    useStrengthData
+  getLevelColor,
+  useStrengthData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { getStandardsLadder, type StrengthStandard } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
@@ -117,7 +119,9 @@ export function StrengthStandardsView() {
     onRefresh,
     overallLevel,
     muscleGroups,
-    getStrengthInfo
+    getStrengthInfo,
+    exerciseData,
+    profile,
   } = useStrengthData()
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -145,6 +149,51 @@ export function StrengthStandardsView() {
     },
     [router],
   )
+
+  // Compute tracked exercises with their level-up progression info
+  const trackedExercisesWithProgress = useMemo(() => {
+    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+      return []
+    }
+
+    return exerciseData.map((exercise) => {
+      const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
+      if (!strengthInfo) {
+        return {
+          ...exercise,
+          level: null,
+          progress: 0,
+          nextLevel: null,
+          targetWeight: null,
+        }
+      }
+
+      // Get the standards ladder for this exercise
+      const ladder = getStandardsLadder(
+        exercise.exerciseName,
+        profile.gender as 'male' | 'female'
+      )
+      
+      let targetWeight: number | null = null
+      if (ladder && strengthInfo.nextLevel) {
+        // Find the multiplier for the next level
+        const nextLevelName = strengthInfo.nextLevel.level
+        const nextLevelStandard = ladder.find((s: StrengthStandard) => s.level === nextLevelName)
+        if (nextLevelStandard && profile.weight_kg) {
+          targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
+        }
+      }
+
+      return {
+        ...exercise,
+        level: strengthInfo.level,
+        progress: strengthInfo.progress,
+        nextLevel: strengthInfo.nextLevel?.level || null,
+        targetWeight,
+      }
+    }).filter(e => e.level !== null) // Only show exercises with standards
+      .sort((a, b) => b.progress - a.progress)
+  }, [exerciseData, profile, getStrengthInfo])
 
   const styles = createStyles(colors)
 
@@ -244,8 +293,88 @@ export function StrengthStandardsView() {
             </View>
           )}
 
-          {/* Section Header */}
-          <View style={styles.sectionHeader}>
+          {/* Your Exercises Section - Gamified Exercise Progress */}
+          {trackedExercisesWithProgress.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderText}>Your Exercises</Text>
+                <View style={styles.exerciseCountBadge}>
+                  <Text style={styles.exerciseCountText}>
+                    {trackedExercisesWithProgress.length}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.exerciseCardsContainer}>
+                {trackedExercisesWithProgress.map((exercise) => {
+                  const levelColor = getLevelColor(exercise.level!)
+                  return (
+                    <TouchableOpacity
+                      key={exercise.exerciseId}
+                      style={styles.exerciseCard}
+                      onPress={() => navigateToExercise(exercise.exerciseId)}
+                      activeOpacity={0.7}
+                    >
+                      {/* Header: Thumbnail + Name + Badge */}
+                      <View style={styles.cardHeader}>
+                        <ExerciseMediaThumbnail
+                          gifUrl={exercise.gifUrl}
+                          style={styles.exerciseCardThumbnail}
+                        />
+                        <View style={styles.cardHeaderContent}>
+                          <Text style={styles.exerciseCardName} numberOfLines={1}>
+                            {exercise.exerciseName}
+                          </Text>
+                          <View style={styles.levelBadgeContainer}>
+                            <LevelBadge level={exercise.level!} size="small" variant="pill" />
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Goal Bar Section */}
+                      {exercise.targetWeight && exercise.nextLevel ? (
+                        <View style={styles.goalSection}>
+                          <View style={styles.goalLabels}>
+                            <Text style={styles.currentWeightText}>
+                              {formatWeight(exercise.max1RM, { maximumFractionDigits: 0 })}
+                            </Text>
+                            <Text style={styles.targetWeightText}>
+                              {formatWeight(exercise.targetWeight, { maximumFractionDigits: 0 })}
+                            </Text>
+                          </View>
+
+                          {/* The Bar */}
+                          <View style={styles.goalBarBg}>
+                            <View
+                              style={[
+                                styles.goalBarFill,
+                                {
+                                  width: `${Math.min(100, Math.max(5, exercise.progress))}%`,
+                                  backgroundColor: levelColor,
+                                },
+                              ]}
+                            />
+                          </View>
+
+                          <View style={styles.goalSubLabels}>
+                            <Text style={styles.currentLabelText}>Current 1RM</Text>
+                            <Text style={styles.targetLabelText}>To {exercise.nextLevel}</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.goalSection}>
+                          <Text style={styles.maxReachedText}>Max Standards Reached</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </>
+          )}
+
+          {/* Section Header - Strength Levels */}
+          <View style={[styles.sectionHeader, trackedExercisesWithProgress.length > 0 && { marginTop: 24 }]}>
             <Text style={styles.sectionHeaderText}>Strength Levels</Text>
             <TouchableOpacity 
               onPress={() => setShowSupportedSheet(true)}
@@ -685,5 +814,109 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseLevelText: {
       fontSize: 12,
       fontWeight: '700',
+    },
+
+    // Exercise Cards Section (Your Exercises)
+    exerciseCountBadge: {
+      backgroundColor: colors.brandPrimary + '20',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    exerciseCountText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.brandPrimary,
+    },
+    exerciseCardsContainer: {
+      paddingHorizontal: 20,
+      gap: 12,
+    },
+    exerciseCard: {
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 16,
+      padding: 16,
+      gap: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    exerciseCardThumbnail: {
+      width: 48,
+      height: 48,
+      borderRadius: 10,
+      backgroundColor: colors.bg,
+      overflow: 'hidden',
+    },
+    cardHeaderContent: {
+      flex: 1,
+      gap: 4,
+    },
+    exerciseCardName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.3,
+    },
+    levelBadgeContainer: {
+      alignSelf: 'flex-start',
+    },
+    
+    // Goal Bar Styles
+    goalSection: {
+      gap: 8,
+    },
+    goalLabels: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+    },
+    currentWeightText: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    targetWeightText: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    goalBarBg: {
+      height: 8,
+      backgroundColor: colors.border,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    goalBarFill: {
+      height: '100%',
+      borderRadius: 4,
+    },
+    goalSubLabels: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    currentLabelText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    targetLabelText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.brandPrimary,
+    },
+    maxReachedText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
     },
   })

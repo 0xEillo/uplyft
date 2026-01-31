@@ -9,6 +9,7 @@ export interface ExerciseDisplay {
   reps: string
   weight: string
   hasVariedSets: boolean
+  isCustom?: boolean // True if exercise was created by a user
   setDetails?: {
     reps: number | null
     weight: number | null
@@ -80,6 +81,7 @@ export function formatWorkoutForDisplay(
           reps: '-',
           weight: '-',
           hasVariedSets: false,
+          isCustom: !!exercise.created_by,
         }
       }
 
@@ -119,6 +121,7 @@ export function formatWorkoutForDisplay(
         reps: repsDisplay,
         weight: weightDisplay,
         hasVariedSets,
+        isCustom: !!exercise.created_by,
         setDetails: sets.map((s) => ({
           reps: s.reps,
           weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,

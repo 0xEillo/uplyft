@@ -3271,6 +3271,7 @@ function createStyles(
     exerciseCardsContainer: {
       marginTop: 12,
       gap: 8,
+      alignSelf: 'stretch',
     },
     exerciseCard: {
       flexDirection: 'row',

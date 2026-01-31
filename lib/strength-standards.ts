@@ -7,10 +7,10 @@
  */
 
 import {
-  EXERCISES_WITH_STANDARDS,
-  getExerciseNameMap,
-  type StrengthLevel,
-  type StrengthStandard,
+    EXERCISES_WITH_STANDARDS,
+    getExerciseNameMap,
+    type StrengthLevel,
+    type StrengthStandard,
 } from './exercise-standards-config'
 
 // Create lookup maps for fast access
@@ -42,7 +42,7 @@ export function getStrengthStandard(
   // Find current level
   let currentLevel = standards[0]
   let nextLevel: StrengthStandard | null = null
-  let levelIndex = 0
+  let levelIndex = -1
 
   for (let i = standards.length - 1; i >= 0; i--) {
     if (ratio >= standards[i].multiplier) {
@@ -55,16 +55,22 @@ export function getStrengthStandard(
 
   // Calculate progress to next level
   let progress = 100 // Default to 100% if at max level
-  if (nextLevel) {
+  
+  if (levelIndex === -1 && standards.length > 0) {
+    // Below the first milestone
+    nextLevel = standards[0]
+    const nextThreshold = nextLevel.multiplier
+    progress = nextThreshold > 0 ? (ratio / nextThreshold) * 100 : 0
+  } else if (nextLevel) {
     const currentThreshold = currentLevel.multiplier
     const nextThreshold = nextLevel.multiplier
     const range = nextThreshold - currentThreshold
     const currentProgress = ratio - currentThreshold
-    progress = Math.min(100, Math.max(0, (currentProgress / range) * 100))
+    progress = range > 0 ? (currentProgress / range) * 100 : 0
   }
 
   return {
-    level: currentLevel.level,
+    level: levelIndex === -1 ? 'Untrained' : currentLevel.level,
     standard: currentLevel,
     nextLevel,
     progress: clampStrengthProgress(progress),
@@ -73,7 +79,7 @@ export function getStrengthStandard(
 
 export function clampStrengthProgress(progress: number): number {
   if (!Number.isFinite(progress)) return 0
-  return Math.max(0, Math.min(99, progress))
+  return Math.max(0, Math.min(100, progress))
 }
 
 /**

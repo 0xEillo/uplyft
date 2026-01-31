@@ -2,10 +2,10 @@ import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-  clampStrengthProgress,
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel
+    clampStrengthProgress,
+    getStrengthStandard,
+    hasStrengthStandards,
+    type StrengthLevel
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -55,6 +55,7 @@ export interface GroupLevelData {
 }
 
 const LEVEL_ORDER: StrengthLevel[] = [
+  'Untrained',
   'Beginner',
   'Novice',
   'Intermediate',
@@ -64,6 +65,7 @@ const LEVEL_ORDER: StrengthLevel[] = [
 ]
 
 const LEVEL_SCORES: Record<StrengthLevel, number> = {
+  Untrained: 0,
   Beginner: 1,
   Novice: 2,
   Intermediate: 3,
@@ -164,7 +166,8 @@ export function useStrengthData() {
 
       if (count > 0) {
         const averageScore = totalScore / count
-        const levelIndex = Math.floor(averageScore) - 1
+        // LEVEL_SCORES now starts at 0 for Untrained, so levelIndex maps directly
+        const levelIndex = Math.floor(averageScore)
         const level = LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
         const progress = clampStrengthProgress(
           averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
@@ -217,11 +220,12 @@ export function useStrengthData() {
     if (count === 0) return null
 
     const averageScore = totalScore / count
-    const levelIndex = Math.floor(averageScore) - 1
+    // LEVEL_SCORES now starts at 0 for Untrained, so levelIndex maps directly
+    const levelIndex = Math.floor(averageScore)
     const currentLevel =
       LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
     const nextLevel =
-      LEVEL_ORDER[Math.min(levelIndex + 1, LEVEL_ORDER.length - 1)]
+      levelIndex < LEVEL_ORDER.length - 1 ? LEVEL_ORDER[levelIndex + 1] : null
 
     // Calculate progress to next level (fractional part of averageScore)
     const progress = clampStrengthProgress(
@@ -264,7 +268,8 @@ export function useStrengthData() {
         weakestGroup = weakest.name
       }
 
-      const balancedIndex = Math.floor(balancedScore) - 1
+      // LEVEL_SCORES now starts at 0 for Untrained, so balancedIndex maps directly
+      const balancedIndex = Math.floor(balancedScore)
       balancedLevel =
         LEVEL_ORDER[Math.max(0, Math.min(balancedIndex, LEVEL_ORDER.length - 1))]
     }
@@ -326,7 +331,9 @@ export function useStrengthData() {
 
       if (count > 0) {
         const averageScore = totalScore / count
-        const levelIndex = Math.floor(averageScore) - 1
+        // LEVEL_SCORES: Untrained=0, Beginner=1, Novice=2, etc.
+        // So levelIndex = floor(averageScore) directly maps to LEVEL_ORDER index
+        const levelIndex = Math.floor(averageScore)
         const currentLevel =
           LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
         
@@ -378,6 +385,7 @@ export function getLevelIntensity(level: StrengthLevel): number {
 }
 
 export const LEVEL_COLORS: Record<StrengthLevel, string> = {
+  Untrained: '#6B7280',   // Darker Gray
   Beginner: '#9CA3AF',    // Gray - matches BODY_COLORS index 2
   Novice: '#3B82F6',      // Blue - matches BODY_COLORS index 3
   Intermediate: '#10B981', // Green - matches BODY_COLORS index 4

@@ -38,6 +38,7 @@ function lightenColor(hex: string, percent: number): string {
 }
 
 type StrengthLevel =
+  | 'Untrained'
   | 'Beginner'
   | 'Novice'
   | 'Intermediate'
@@ -46,6 +47,7 @@ type StrengthLevel =
   | 'World Class'
 
 const LEVEL_COLORS: Record<StrengthLevel, string> = {
+  Untrained: '#6B7280',   // Darker Gray
   Beginner: '#9CA3AF',    // Gray
   Novice: '#3B82F6',      // Blue
   Intermediate: '#10B981', // Green

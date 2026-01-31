@@ -1,4 +1,4 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BaseNavbar } from '@/components/base-navbar'
 import { RecoveryBodyView } from '@/components/RecoveryBodyView'
 import { StatsView } from '@/components/StatsView'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
@@ -9,22 +9,24 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
+    Animated,
+    LayoutChangeEvent,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 type ViewMode = 'recovery' | 'strength' | 'stats'
-type BodyTab = 'recovery' | 'strength'
+type BodyTab = 'strength' | 'recovery'
 
-const VIEW_LABELS: Record<ViewMode, string> = {
-  recovery: 'Recovery',
-  strength: 'Strength',
-  stats: 'Stats',
-}
+const TABS: { key: BodyTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'strength', label: 'Strength', icon: 'barbell-outline' },
+  { key: 'recovery', label: 'Recovery', icon: 'heart-outline' },
+]
 
 export default function AnalyticsScreen() {
   const { user } = useAuth()
@@ -32,6 +34,10 @@ export default function AnalyticsScreen() {
   const { trackEvent } = useAnalytics()
   const [viewMode, setViewMode] = useState<ViewMode>('strength')
   const [bodyTab, setBodyTab] = useState<BodyTab>('strength')
+  
+  // Animation for the sliding pill indicator
+  const slideAnim = useRef(new Animated.Value(0)).current
+  const [tabWidth, setTabWidth] = useState(0)
 
   useFocusEffect(
     useCallback(() => {
@@ -41,50 +47,77 @@ export default function AnalyticsScreen() {
     }, [trackEvent]),
   )
 
-  // NOTE: Stats view toggle functions - currently not in use (feature hidden)
-  // Kept for potential future re-enablement
-  const toggleViewMode = useCallback(() => {
-    setViewMode((current) => (current === 'stats' ? bodyTab : 'stats'))
-  }, [bodyTab])
+  // Animate the pill indicator when tab changes
+  useEffect(() => {
+    const toValue = bodyTab === 'strength' ? 0 : 1
+    Animated.spring(slideAnim, {
+      toValue,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 30,
+    }).start()
+  }, [bodyTab, slideAnim])
 
-  const getViewIcon = (): keyof typeof Ionicons.glyphMap => {
-    return viewMode === 'stats' ? 'body' : 'stats-chart'
-  }
-
-  const showSwapIcon = viewMode !== 'stats'
-  // END: Stats view toggle functions
-
-  const handleTitlePress = useCallback(() => {
-    // Light haptic feedback
+  const handleTabPress = useCallback((tab: BodyTab) => {
+    if (tab === bodyTab) return
+    
     haptic('light')
-
-    // Toggle between strength and recovery
-    const newTab = bodyTab === 'strength' ? 'recovery' : 'strength'
-    setBodyTab(newTab)
-    setViewMode(newTab)
+    setBodyTab(tab)
+    setViewMode(tab)
   }, [bodyTab])
+
+  const handleTabLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout
+    setTabWidth(width / 2)
+  }, [])
 
   const styles = createStyles(colors)
+
+  // Calculate the translateX for the sliding indicator
+  const translateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [4, tabWidth + 4], // 4px padding offset
+  })
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <BaseNavbar
-        leftContent={
-          <NavbarIsland>
-            <Text style={styles.headerTitle}>{VIEW_LABELS[viewMode]}</Text>
-          </NavbarIsland>
-        }
-        rightContent={
-          <TouchableOpacity
-            onPress={handleTitlePress}
-            style={{ padding: 4 }}
-          >
-            <Ionicons
-              name="swap-horizontal"
-              size={24}
-              color={colors.textPrimary}
+        leftContent={<View style={styles.navbarSpacer} />}
+        rightContent={<View style={styles.navbarSpacer} />}
+        centerContent={
+          <View style={styles.segmentedControl} onLayout={handleTabLayout}>
+            {/* Animated sliding background */}
+            <Animated.View
+              style={[
+                styles.slideIndicator,
+                {
+                  width: tabWidth - 8,
+                  transform: [{ translateX }],
+                },
+              ]}
             />
-          </TouchableOpacity>
+            
+            {/* Tab buttons */}
+            {TABS.map((tab) => {
+              const isActive = bodyTab === tab.key
+              return (
+                <Pressable
+                  key={tab.key}
+                  onPress={() => handleTabPress(tab.key)}
+                  style={styles.tabButton}
+                >
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      isActive && styles.tabLabelActive,
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
         }
       />
 
@@ -106,17 +139,49 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.bg,
     },
-    titleButton: {
+    navbarSpacer: {
+      width: 40, // Matches typical icon button width for balance
+    },
+    
+    // Segmented Control Styles
+    segmentedControl: {
+      flexDirection: 'row',
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 12,
+      padding: 4,
+      position: 'relative',
+    },
+    slideIndicator: {
+      position: 'absolute',
+      top: 4,
+      bottom: 4,
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    tabButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      zIndex: 1,
     },
-    headerTitle: {
-      fontSize: 20,
+    tabIcon: {
+      marginRight: 6,
+    },
+    tabLabel: {
+      fontSize: 14,
       fontWeight: '600',
-      color: colors.textPrimary,
+      color: colors.textSecondary,
     },
-    swapIcon: {
-      marginTop: 1,
+    tabLabelActive: {
+      color: colors.textPrimary,
+      fontWeight: '700',
     },
   })
