@@ -355,11 +355,6 @@ export function StrengthStandardsView() {
                               ]}
                             />
                           </View>
-
-                          <View style={styles.goalSubLabels}>
-                            <Text style={styles.currentLabelText}>Current 1RM</Text>
-                            <Text style={styles.targetLabelText}>To {exercise.nextLevel}</Text>
-                          </View>
                         </View>
                       ) : (
                         <View style={styles.goalSection}>
