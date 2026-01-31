@@ -72,8 +72,9 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   const minWeight =
     data.length > 0 ? Math.min(...data.map((d) => d.weight_kg)) : 0
   const range = maxWeight - minWeight
-  // Use tighter padding (15% of range, min 0.1kg) to make even small changes visible
-  const padding = range === 0 ? 0.5 : Math.max(0.1, range * 0.15)
+  // Extremely tight padding to maximize sensitivity to small fluctuations
+  // 5% of range or min 0.1kg, whichever is smaller to "zoom in"
+  const padding = range === 0 ? 1 : Math.max(0.05, range * 0.05)
 
   // Find min and max points with dates
   const minPoint = data.reduce((prev, curr) =>
@@ -134,28 +135,37 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
               initialSpacing={20}
               endSpacing={20}
               color={colors.brandPrimary}
-              thickness={3}
-              startFillColor={colors.brandPrimarySoft}
+              thickness={4}
+              startFillColor={colors.brandPrimary}
               endFillColor={colors.bg}
-              startOpacity={0.4}
-              endOpacity={0.0}
+              startOpacity={0.25}
+              endOpacity={0.01}
+              gradientDirection="vertical"
               areaChart
               curved
-              hideDataPoints
+              curvature={0.35} // Smooth, natural looking curve
+              animateOnDataChange
+              animationDuration={1000}
+              hideDataPoints={false}
+              dataPointsColor={colors.brandPrimary}
+              dataPointsRadius={0} // Hide by default, show on pointer
+              focusedDataPointRadius={6}
+              focusedDataPointColor={colors.brandPrimary}
               hideRules
               hideYAxisText
               yAxisColor="transparent"
               xAxisColor="transparent"
               xAxisLabelTextStyle={{
-                color: colors.textSecondary,
+                color: colors.textTertiary,
                 fontSize: 10,
+                fontWeight: '500',
               }}
               maxValue={maxWeight + padding}
               yAxisOffset={Math.max(0, minWeight - padding)}
               pointerConfig={{
-                pointerStripHeight: 160,
+                pointerStripHeight: 180,
                 pointerStripColor: colors.border,
-                pointerStripWidth: 2,
+                pointerStripWidth: 1.5,
                 pointerColor: colors.brandPrimary,
                 radius: 6,
                 pointerLabelWidth: 100,
@@ -324,8 +334,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 24,
       borderRadius: 16,
       padding: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,

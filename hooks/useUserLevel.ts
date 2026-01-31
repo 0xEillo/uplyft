@@ -7,6 +7,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 
 const LEVEL_ORDER: StrengthLevel[] = [
+  'Untrained',
   'Beginner',
   'Novice',
   'Intermediate',
@@ -16,6 +17,7 @@ const LEVEL_ORDER: StrengthLevel[] = [
 ]
 
 const LEVEL_SCORES: Record<StrengthLevel, number> = {
+  Untrained: 0,
   Beginner: 1,
   Novice: 2,
   Intermediate: 3,
@@ -85,7 +87,7 @@ export function useUserLevel(userId: string | undefined): UseUserLevelResult {
       }
 
       const averageScore = totalScore / count
-      const levelIndex = Math.floor(averageScore) - 1
+      const levelIndex = Math.floor(averageScore)
       const currentLevel =
         LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
 

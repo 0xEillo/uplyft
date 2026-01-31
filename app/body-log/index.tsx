@@ -1,4 +1,3 @@
-import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
 import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
@@ -7,7 +6,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
+import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { getThumbnailUrlsWithPrefetch } from '@/lib/utils/body-log-storage'
@@ -104,8 +103,12 @@ const EntryRow = memo(
         {/* Info */}
         <View style={styles.info}>
           <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
-          {hasWeight && (
-            <Text style={styles.weight}>{formatWeight(entry.weight_kg)}</Text>
+          {(hasWeight || entry.body_fat_percentage !== null) && (
+            <Text style={styles.weight}>
+              {hasWeight && formatWeight(entry.weight_kg)}
+              {hasWeight && entry.body_fat_percentage !== null && '  •  '}
+              {entry.body_fat_percentage !== null && formatBodyFat(entry.body_fat_percentage)}
+            </Text>
           )}
         </View>
 
@@ -117,7 +120,8 @@ const EntryRow = memo(
   (prev, next) =>
     prev.entry.id === next.entry.id &&
     prev.entry.thumbnailUrl === next.entry.thumbnailUrl &&
-    prev.entry.weight_kg === next.entry.weight_kg,
+    prev.entry.weight_kg === next.entry.weight_kg &&
+    prev.entry.body_fat_percentage === next.entry.body_fat_percentage,
 )
 
 EntryRow.displayName = 'EntryRow'
@@ -294,7 +298,6 @@ export default function BodyLogScreen() {
             initialNumToRender={10}
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
-            ListHeaderComponent={user ? <BodyWeightChart userId={user.id} /> : null}
             ListFooterComponent={
               isLoadingMore ? (
                 <View style={{ padding: 16, alignItems: 'center' }}>
