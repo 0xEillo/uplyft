@@ -1,12 +1,13 @@
 import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
+import * as Notifications from 'expo-notifications'
 import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
 } from 'react'
 import { AppState } from 'react-native'
 
@@ -34,6 +35,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const endTimeRef = useRef<number | null>(null)
   const appStateRef = useRef(AppState.currentState)
+  const notificationIdRef = useRef<string | null>(null)
 
   const player = useAudioPlayer(timerSound)
 
@@ -46,6 +48,45 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Cancel any scheduled rest timer notification
+  const cancelNotification = useCallback(async () => {
+    if (notificationIdRef.current) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(
+          notificationIdRef.current,
+        )
+      } catch (error) {
+        console.log('Error cancelling notification:', error)
+      }
+      notificationIdRef.current = null
+    }
+  }, [])
+
+  // Schedule a notification for when the rest timer completes
+  const scheduleNotification = useCallback(async (seconds: number) => {
+    try {
+      // Cancel any existing notification first
+      await cancelNotification()
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Rest Complete ⏱️',
+          body: 'Time to start your next set!',
+          sound: true,
+          data: { type: 'rest_timer' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: seconds,
+        },
+      })
+
+      notificationIdRef.current = notificationId
+    } catch (error) {
+      console.log('Error scheduling notification:', error)
+    }
+  }, [cancelNotification])
+
   const stop = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
@@ -54,7 +95,9 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     setIsActive(false)
     setRemainingSeconds(0)
     endTimeRef.current = null
-  }, [])
+    // Cancel the background notification when timer is stopped
+    cancelNotification()
+  }, [cancelNotification])
 
   const start = useCallback(
     (duration: number) => {
@@ -65,6 +108,9 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
 
       endTimeRef.current = Date.now() + duration * 1000
 
+      // Schedule background notification
+      scheduleNotification(duration)
+
       intervalRef.current = setInterval(() => {
         if (!endTimeRef.current) return
 
@@ -72,11 +118,11 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
         const diff = Math.ceil((endTimeRef.current - now) / 1000)
 
         if (diff <= 0) {
-          // Timer finished
+          // Timer finished in foreground
           setRemainingSeconds(0)
-          stop()
+          stop() // This also cancels the notification
 
-          // Trigger feedback
+          // Trigger feedback (in-app vibration and sound)
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
           playSound()
         } else {
@@ -84,7 +130,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
         }
       }, 1000)
     },
-    [stop],
+    [stop, scheduleNotification],
   )
 
   const addTime = useCallback(
@@ -92,9 +138,14 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
       if (!isActive || !endTimeRef.current) return
 
       endTimeRef.current += seconds * 1000
-      setRemainingSeconds((prev) => prev + seconds)
+      setRemainingSeconds((prev) => {
+        const newRemaining = prev + seconds
+        // Reschedule notification with updated time
+        scheduleNotification(newRemaining)
+        return newRemaining
+      })
     },
-    [isActive],
+    [isActive, scheduleNotification],
   )
 
   // Handle background/foreground transitions to keep timer accurate
@@ -131,6 +182,12 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+      }
+      // Cancel any pending notification
+      if (notificationIdRef.current) {
+        Notifications.cancelScheduledNotificationAsync(
+          notificationIdRef.current,
+        ).catch(() => {})
       }
     }
   }, [])
