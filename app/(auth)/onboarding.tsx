@@ -108,7 +108,7 @@ const STEP_NAMES: { [key: number]: string } = {
   9: 'habit_reinforcement',
   10: 'experience_level',
   11: 'equipment_selection',
-  12: 'stats_entry',
+  12: 'weight_entry',
   13: 'strength_level_intro', // NEW: Gym Ranked strength level teaser
   14: 'focus_areas',
   15: 'body_scan_feature',
@@ -1619,9 +1619,44 @@ export default function OnboardingScreen() {
   }, [step, trackEvent])
 
   const handleNext = () => {
+    // Collect step-specific metadata for analytics
+    const stepMetadata: Record<string, any> = {}
+    
+    switch (step) {
+      case 1:
+        stepMetadata.coach_id = data.coach
+        break
+      case 3:
+        stepMetadata.name_provided = !!data.name
+        break
+      case 5:
+        stepMetadata.goals = data.goal
+        break
+      case 7:
+        stepMetadata.gender = data.gender
+        break
+      case 8:
+        stepMetadata.commitment = data.commitment
+        break
+      case 10:
+        stepMetadata.experience_level = data.experience_level
+        break
+      case 11:
+        stepMetadata.equipment = data.equipment
+        break
+      case 12:
+        stepMetadata.weight = data.weight_kg
+        stepMetadata.unit = weightUnit
+        break
+      case 14:
+        stepMetadata.focus_areas = focusAreas
+        break
+    }
+
     trackEvent(AnalyticsEvents.ONBOARDING_STEP_COMPLETED, {
       step,
       step_name: STEP_NAMES[step],
+      ...stepMetadata,
     })
 
     // Save goal preference when leaving goal selection step
@@ -2441,113 +2476,130 @@ export default function OnboardingScreen() {
           </View>
         )
       case 12:
-        // Stats Entry Step
-        const StatRow = ({
-          label,
-          value,
-          onPress,
-        }: {
-          label: string
-          value: string
-          onPress: () => void
-        }) => (
-          <TouchableOpacity
-            style={styles.statRow}
-            onPress={onPress}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.statRowLabel}>{label}</Text>
-            <View style={styles.statRowValueContainer}>
-              <Text style={styles.statRowValue}>{value}</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.textSecondary}
-              />
-            </View>
-          </TouchableOpacity>
-        )
+        // Stats Entry Step (Redesigned)
+        const weightRange =
+          weightUnit === 'kg'
+            ? Array.from({ length: 271 }, (_, i) => (30 + i).toString())
+            : Array.from({ length: 600 }, (_, i) => (60 + i).toString())
 
-        const getAgeString = () => {
-          if (!data.birth_day || !data.birth_month || !data.birth_year)
-            return 'Select Age'
-          // Simple age calculation for display
-          const birthDate = new Date(
-            parseInt(data.birth_year),
-            parseInt(data.birth_month) - 1,
-            parseInt(data.birth_day),
-          )
-          const today = new Date()
-          let age = today.getFullYear() - birthDate.getFullYear()
-          const monthDiff = today.getMonth() - birthDate.getMonth()
-          if (
-            monthDiff < 0 ||
-            (monthDiff === 0 && today.getDate() < birthDate.getDate())
-          ) {
-            age--
-          }
-
-          const months = [
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'May',
-            'Jun',
-            'Jul',
-            'Aug',
-            'Sep',
-            'Oct',
-            'Nov',
-            'Dec',
-          ]
-          const monthName = months[parseInt(data.birth_month) - 1] || 'Jan'
-          return `${age} (${monthName} ${data.birth_day}, ${data.birth_year})`
-        }
-
-        const getHeightString = () => {
-          if (weightUnit === 'kg') {
-            return `${data.height_cm || '180'} cm`
+        const toggleWeightUnit = () => {
+          const newUnit = weightUnit === 'kg' ? 'lb' : 'kg'
+          const currentVal = parseFloat(data.weight_kg)
+          let newVal
+          if (newUnit === 'lb') {
+            newVal = Math.round(currentVal * 2.20462).toString()
           } else {
-            return `${data.height_feet || '5'}'${data.height_inches || '10'}"`
+            newVal = Math.round(currentVal / 2.20462).toString()
           }
-        }
-
-        const getWeightString = () => {
-          return `${data.weight_kg || '75'} ${
-            weightUnit === 'kg' ? 'kg' : 'lb'
-          }`
+          setData((prev) => ({ ...prev, weight_kg: newVal }))
+          setWeightUnit(newUnit)
         }
 
         return (
           <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.statsTitle}>
-                Perfect! Let&apos;s just confirm your stats, {data.name}.
+            <View style={[styles.stepHeader, { paddingBottom: 64 }]}>
+              <Text style={styles.stepTitle}>
+                Enter your weight to get your strength ranks.
               </Text>
+          
             </View>
 
-            <View style={styles.statsList}>
-              <StatRow
-                label="Units"
-                value={weightUnit === 'kg' ? 'Metric' : 'Imperial'}
-                onPress={() => setEditingField('units')}
-              />
-              <StatRow
-                label="Age"
-                value={getAgeString()}
-                onPress={() => setEditingField('age')}
-              />
-              <StatRow
-                label="Height"
-                value={getHeightString()}
-                onPress={() => setEditingField('height')}
-              />
-              <StatRow
-                label="Weight"
-                value={getWeightString()}
-                onPress={() => setEditingField('weight')}
-              />
+            <View
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {/* Unit Toggle */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  backgroundColor: colors.surface,
+                  borderRadius: 12,
+                  padding: 4,
+                  marginBottom: 10,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => weightUnit !== 'kg' && toggleWeightUnit()}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 24,
+                    borderRadius: 8,
+                    backgroundColor:
+                      weightUnit === 'kg' ? colors.brandPrimary : 'transparent',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color:
+                        weightUnit === 'kg' ? '#fff' : colors.textSecondary,
+                      fontWeight: '700',
+                      fontSize: 14,
+                    }}
+                  >
+                    KG
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => weightUnit !== 'lb' && toggleWeightUnit()}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 24,
+                    borderRadius: 8,
+                    backgroundColor:
+                      weightUnit === 'lb' ? colors.brandPrimary : 'transparent',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color:
+                        weightUnit === 'lb' ? '#fff' : colors.textSecondary,
+                      fontWeight: '700',
+                      fontSize: 14,
+                    }}
+                  >
+                    LBS
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Picker */}
+              <View
+                style={{
+                  height: 250,
+                  width: '100%',
+                  overflow: 'hidden', 
+                }}
+              >
+                <Picker
+                  selectedValue={data.weight_kg}
+                  onValueChange={(itemValue) =>
+                    setData((prev) => ({ ...prev, weight_kg: itemValue }))
+                  }
+                  style={{
+                     color: colors.bg === '#000000' ? '#FFFFFF' : '#000000',
+                  }}
+                  itemStyle={{
+                    color: colors.bg === '#000000' ? '#FFFFFF' : '#000000',
+                    fontSize: 36,
+                    fontWeight: '800',
+                    height: 250,
+                  }}
+                >
+                  {weightRange.map((v) => (
+                    <Picker.Item
+                      key={v}
+                      label={`${v} ${weightUnit}`}
+                      value={v}
+                      color={colors.bg === '#000000' ? '#FFFFFF' : '#000000'}
+                    />
+                  ))}
+                </Picker>
+              </View>
             </View>
           </View>
         )
