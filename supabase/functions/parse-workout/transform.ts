@@ -1,9 +1,9 @@
 import { KG_TO_LB } from './constants.ts'
 import {
-  NormalizedExercise,
-  NormalizedSet,
-  NormalizedWorkout,
-  ParsedWorkout,
+    NormalizedExercise,
+    NormalizedSet,
+    NormalizedWorkout,
+    ParsedWorkout,
 } from './schemas.ts'
 
 function coerceNumber(value: unknown): number | null {
@@ -14,9 +14,27 @@ function coerceNumber(value: unknown): number | null {
   }
 
   if (typeof value === 'string') {
-    const cleaned = value.replace(/[^0-9.\-]/g, '')
+    // First, normalize locale-specific decimal separators:
+    // - Commas (European locales use ',' as decimal separator: "7,5" → "7.5")
+    // - Unicode middle dots (·) that may be input on some keyboards
+    // - Other Unicode decimal-like characters
+    const normalized = value
+      .replace(/,/g, '.')        // European decimal comma
+      .replace(/·/g, '.')        // Middle dot (U+00B7)
+      .replace(/٫/g, '.')        // Arabic decimal separator (U+066B)
+      .replace(/、/g, '.')       // Japanese comma that might be used
+
+    // Then remove everything except digits, periods, and minus signs
+    const cleaned = normalized.replace(/[^0-9.\-]/g, '')
     if (!cleaned) return null
-    const parsed = Number(cleaned)
+
+    // Handle multiple periods (e.g., "7.5.2" is invalid - keep only first decimal)
+    const parts = cleaned.split('.')
+    const finalValue = parts.length > 2
+      ? parts[0] + '.' + parts.slice(1).join('')
+      : cleaned
+
+    const parsed = Number(finalValue)
     return Number.isFinite(parsed) ? parsed : null
   }
 

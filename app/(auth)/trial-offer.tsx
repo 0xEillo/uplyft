@@ -14,14 +14,14 @@ import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 
@@ -266,6 +266,24 @@ export default function TrialOfferScreen() {
         )
       }
 
+      // Check if this is a trial period
+      const activeEntitlement = updatedCustomerInfo?.entitlements.active['Pro']
+      const isTrialPeriod = activeEntitlement?.periodType === 'trial'
+
+      if (isTrialPeriod) {
+        // Track trial start separately for clear funnel analysis
+        trackEvent(AnalyticsEvents.SUBSCRIPTION_TRIAL_STARTED, {
+          plan_type: selectedPlan.type,
+          product_id: targetPackage.identifier,
+          price_string: targetPackage.product.priceString,
+          price: targetPackage.product.price,
+          currency: targetPackage.product.currencyCode,
+          trial_enabled: isTrialEnabled,
+          trial_duration_days: 7,
+          source_screen: 'trial_offer',
+        })
+      }
+
       // Track successful subscription completion
       trackEvent(AnalyticsEvents.SUBSCRIPTION_COMPLETED, {
         plan_type: selectedPlan.type,
@@ -278,6 +296,7 @@ export default function TrialOfferScreen() {
         source_screen: 'trial_offer',
         subscription_action: 'completed',
         entitlement_granted: hasProEntitlement,
+        is_trial: isTrialPeriod,
       })
 
       try {
@@ -295,6 +314,7 @@ export default function TrialOfferScreen() {
         plan_type: selectedPlan.type,
         trial_enabled: isTrialEnabled,
         price_string: targetPackage.product.priceString,
+        is_trial: isTrialPeriod,
       })
       router.replace('/(tabs)')
     } catch (error) {

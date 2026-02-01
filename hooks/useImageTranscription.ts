@@ -185,7 +185,8 @@ export function useImageTranscription(
     // 2) weight x reps: "135 x 8"
     // 3) sets only: "3 sets" / "3 sets for 30 seconds"
     // 4) reps only: "10 reps"
-    const setPattern = /^[\s]*(\d+(?:\.\d+)?)\s*(?:lbs?|kg)?\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?/i
+    // Note: Weight pattern accepts both period and comma as decimal separators (e.g., "7.5" or "7,5")
+    const setPattern = /^[\s]*(\d+(?:[.,]\d+)?)\s*(?:lbs?|kg)?\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?/i
     const setsOnlyPattern = /^[\s]*(\d+)\s*sets?(?:\s*for\s*(.*))?/i
     const repsOnlyPattern = /^[\s]*(\d+)\s*reps?/i
 
@@ -228,7 +229,8 @@ export function useImageTranscription(
       }
 
       if (setMatch) {
-        const weight = setMatch[1]
+        // Normalize decimal separator: replace comma with period (for European locales)
+        const weight = setMatch[1].replace(',', '.')
         const reps = setMatch[2]
         const multiplier = setMatch[3] ? parseInt(setMatch[3], 10) : 1
 

@@ -10,15 +10,15 @@ import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    Modal,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -140,6 +140,15 @@ export function Paywall({
   }
 
   const handleSubscribe = async () => {
+    // Track CTA tap immediately (user expressed intent to subscribe)
+    trackEvent(AnalyticsEvents.PAYWALL_CTA_TAPPED, {
+      feature: 'subscription',
+      source_screen: 'paywall',
+      plan_type: plans[selectedPlanIndex].type,
+      product_id: selectedPackage?.identifier,
+      price_string: selectedPackage?.product.priceString,
+    })
+
     try {
       setIsPurchasing(true)
 
@@ -171,6 +180,25 @@ export function Paywall({
       )
 
       if (hasProEntitlement) {
+        // Check if this is a trial start (no payment processed yet)
+        const activeEntitlement = updatedCustomerInfo?.entitlements.active['Pro']
+        const isTrialPeriod = activeEntitlement?.periodType === 'trial'
+
+        if (isTrialPeriod) {
+          // Track trial start separately for clear funnel analysis
+          trackEvent(AnalyticsEvents.SUBSCRIPTION_TRIAL_STARTED, {
+            plan_type: plans[selectedPlanIndex].type,
+            product_id: selectedPackage.identifier,
+            price_string: selectedPackage.product.priceString,
+            price: selectedPackage.product.price,
+            currency: selectedPackage.product.currencyCode,
+            trial_enabled: true,
+            trial_duration_days: 7,
+            reminder_enabled: isReminderEnabled,
+            source_screen: 'paywall',
+          })
+        }
+
         // Purchase successful and entitlement verified - close the paywall
         trackEvent(AnalyticsEvents.SUBSCRIPTION_COMPLETED, {
           plan_type: plans[selectedPlanIndex].type,
@@ -184,6 +212,7 @@ export function Paywall({
           source_screen: 'paywall',
           subscription_action: 'completed',
           entitlement_granted: true,
+          is_trial: isTrialPeriod,
         })
         Alert.alert(
           'Success!',
