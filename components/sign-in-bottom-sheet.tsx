@@ -5,20 +5,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
 } from 'react-native-reanimated'
 
 interface SignInBottomSheetProps {
@@ -41,9 +40,8 @@ export function SignInBottomSheet({
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withSpring(0, {
-        damping: 40,
-        stiffness: 300,
+      translateY.value = withTiming(0, {
+        duration: 300,
       })
       backdropOpacity.value = withTiming(1, { duration: 200 })
     } else {

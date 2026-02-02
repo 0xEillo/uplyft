@@ -111,7 +111,7 @@ export default function SignInPasswordScreen() {
             hapticIntensity="medium"
           >
             {isLoading ? (
-              <ActivityIndicator color={colors.onPrimary} />
+              <ActivityIndicator color={colors.bg} />
             ) : (
               <Text style={styles.signInButtonText}>Sign In</Text>
             )}
@@ -202,17 +202,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 32,
     },
     signInButton: {
-      height: 56,
-      backgroundColor: colors.brandPrimary,
-      borderRadius: 28,
+      height: 64,
+      backgroundColor: colors.textPrimary,
+      borderRadius: 32,
       justifyContent: 'center',
       alignItems: 'center',
+      shadowColor: colors.textPrimary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
     signInButtonDisabled: {
-      opacity: 0.4,
+      opacity: 0.5,
+      shadowOpacity: 0,
     },
     signInButtonText: {
-      color: colors.onPrimary,
+      color: colors.bg,
       fontSize: 18,
       fontWeight: '700',
     },

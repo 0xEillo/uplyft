@@ -4,6 +4,7 @@ import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
 import {
   getLevelColor,
+  getLevelIntensity,
   useStrengthData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -192,7 +193,14 @@ export function StrengthStandardsView() {
         targetWeight,
       }
     }).filter(e => e.level !== null) // Only show exercises with standards
-      .sort((a, b) => b.progress - a.progress)
+      .sort((a, b) => {
+        const intensityA = getLevelIntensity(a.level!)
+        const intensityB = getLevelIntensity(b.level!)
+        if (intensityA !== intensityB) {
+          return intensityB - intensityA
+        }
+        return b.progress - a.progress
+      })
   }, [exerciseData, profile, getStrengthInfo])
 
   const styles = createStyles(colors)

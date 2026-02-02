@@ -6,22 +6,23 @@ import { IconSymbol } from '@/components/ui/icon-symbol'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { useAuth } from '@/contexts/auth-context'
+import { LiveActivityProvider } from '@/contexts/live-activity-context'
 import {
-  RatingPromptProvider,
-  useRatingPrompt,
+    RatingPromptProvider,
+    useRatingPrompt,
 } from '@/contexts/rating-prompt-context'
 import {
-  RestTimerProvider,
-  useRestTimerContext,
+    RestTimerProvider,
+    useRestTimerContext,
 } from '@/contexts/rest-timer-context'
 import {
-  ScrollToTopProvider,
-  useScrollToTop,
+    ScrollToTopProvider,
+    useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-  SuccessOverlayProvider,
-  useSuccessOverlay,
+    SuccessOverlayProvider,
+    useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -33,18 +34,18 @@ import { BlurView } from 'expo-blur'
 import { Tabs, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from 'react-native-reanimated'
 
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
@@ -526,15 +527,17 @@ function TabLayoutContent() {
 
 export default function TabLayout() {
   return (
-    <RestTimerProvider>
-      <ScrollToTopProvider>
-        <SuccessOverlayProvider>
-          <RatingPromptProvider>
-            <TabLayoutContent />
-          </RatingPromptProvider>
-        </SuccessOverlayProvider>
-      </ScrollToTopProvider>
-    </RestTimerProvider>
+    <LiveActivityProvider>
+      <RestTimerProvider>
+        <ScrollToTopProvider>
+          <SuccessOverlayProvider>
+            <RatingPromptProvider>
+              <TabLayoutContent />
+            </RatingPromptProvider>
+          </SuccessOverlayProvider>
+        </ScrollToTopProvider>
+      </RestTimerProvider>
+    </LiveActivityProvider>
   )
 }
 

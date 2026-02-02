@@ -8,6 +8,7 @@ import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useLiveActivity } from '@/contexts/live-activity-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -213,6 +214,11 @@ export default function CreatePostScreen() {
 
   const [showRestTimer, setShowRestTimer] = useState(false)
   const restTimer = useRestTimerContext()
+  const {
+    startWorkoutActivity,
+    updateWorkoutActivity,
+    stopWorkoutActivity,
+  } = useLiveActivity()
 
   const [structuredData, setStructuredData] = useState<
     StructuredExerciseDraft[]
@@ -438,6 +444,29 @@ export default function CreatePostScreen() {
     workoutElapsedSeconds,
     startWorkoutTimer,
     resetWorkoutTimer,
+  ])
+
+  // Sync Live Activity with workout timer for Dynamic Island display
+  useEffect(() => {
+    if (isWorkoutTimerRunning && workoutElapsedSeconds > 0) {
+      // Start or update the Live Activity
+      if (workoutElapsedSeconds === 1) {
+        // Just started - create the activity
+        startWorkoutActivity()
+      } else {
+        // Update with elapsed time (limited by the context to every 5 seconds)
+        updateWorkoutActivity(workoutElapsedSeconds)
+      }
+    } else if (!isWorkoutTimerRunning && workoutElapsedSeconds === 0) {
+      // Workout ended/cleared - stop the activity
+      stopWorkoutActivity()
+    }
+  }, [
+    isWorkoutTimerRunning,
+    workoutElapsedSeconds,
+    startWorkoutActivity,
+    updateWorkoutActivity,
+    stopWorkoutActivity,
   ])
 
   const blurInputs = useCallback(() => {

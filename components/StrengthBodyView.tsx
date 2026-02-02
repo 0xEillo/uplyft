@@ -143,7 +143,14 @@ export function StrengthBodyView() {
         targetWeight,
       }
     }).filter(e => e.level !== null)
-      .sort((a, b) => b.progress - a.progress)
+      .sort((a, b) => {
+        const intensityA = getLevelIntensity(a.level!)
+        const intensityB = getLevelIntensity(b.level!)
+        if (intensityA !== intensityB) {
+          return intensityB - intensityA
+        }
+        return b.progress - a.progress
+      })
   }, [exerciseData, profile, getStrengthInfo])
 
   // Navigate to exercise detail

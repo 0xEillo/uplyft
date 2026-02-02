@@ -6,28 +6,28 @@ import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  EXERCISES_WITH_STANDARDS,
-  type ExerciseStandardsConfig,
+    EXERCISES_WITH_STANDARDS,
+    type ExerciseStandardsConfig,
 } from '@/lib/exercise-standards-config'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import {
-  getStandardsLadder,
-  getStrengthStandard,
-  type StrengthLevel,
+    getStandardsLadder,
+    getStrengthStandard,
+    type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
 
@@ -693,7 +693,7 @@ export function StrengthLevelIntroStep({
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        <View style={[styles.resultFooter, { backgroundColor: isDark ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)' }]}>
+        <View style={[styles.resultFooter, { backgroundColor: isDark ? 'rgba(0,0,0,0.9)' : colors.bg }]}>
           <HapticButton
             style={[
               styles.primaryButton,
