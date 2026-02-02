@@ -171,6 +171,7 @@ export function StrengthLevelIntroStep({
   const fadeAnim = useRef(new Animated.Value(1)).current
   const slideAnim = useRef(new Animated.Value(0)).current
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const selectTimeoutRef = useRef<any>(null)
 
   useEffect(() => {
     const showListener = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -182,6 +183,7 @@ export function StrengthLevelIntroStep({
     return () => {
       showSubscription.remove()
       hideSubscription.remove()
+      if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current)
     }
   }, [])
 
@@ -233,8 +235,15 @@ export function StrengthLevelIntroStep({
     (exercise: ExerciseStandardsConfig) => {
       haptic('light')
       setSelectedExercise(exercise)
+      
+      if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current)
+
+      // Auto-advance after a small delay (0.2s as requested)
+      selectTimeoutRef.current = setTimeout(() => {
+        animateTransition('input')
+      }, 200)
     },
-    []
+    [animateTransition]
   )
 
   const handleContinueToInput = useCallback(() => {

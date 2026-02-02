@@ -1,13 +1,10 @@
-import {
-    startActivity,
-    stopActivity
-} from 'expo-live-activity'
+import { startActivity, stopActivity, updateActivity } from 'expo-live-activity'
 import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useRef,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
 } from 'react'
 import { Platform } from 'react-native'
 
@@ -22,53 +19,80 @@ const LiveActivityContext = createContext<LiveActivityContextType | undefined>(
   undefined,
 )
 
-export function LiveActivityProvider({ children }: { children: React.ReactNode }) {
+export function LiveActivityProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const activityIdRef = useRef<string | null>(null)
   const startTimeRef = useRef<number>(0)
+  const updateCountRef = useRef<number>(0)
+  const lastMinuteRef = useRef<number>(-1)
 
   // Live Activities only work on iOS 16.2+
   const isActivitySupported = Platform.OS === 'ios'
 
+  const logState = (label: string, state: any, config?: any) => {
+    console.log(`[LiveActivity] ${label}`)
+    console.log(`[LiveActivity]   State:`, JSON.stringify(state, null, 2))
+    if (config) {
+      console.log(`[LiveActivity]   Config:`, JSON.stringify(config, null, 2))
+    }
+  }
+
   const startWorkoutActivity = useCallback(() => {
+    console.log('[LiveActivity] ===== START startWorkoutActivity =====')
+    console.log('[LiveActivity] isActivitySupported:', isActivitySupported)
+    console.log('[LiveActivity] Platform.OS:', Platform.OS)
+    console.log('[LiveActivity] Current activityId:', activityIdRef.current)
+
     if (!isActivitySupported) {
-      console.log('[LiveActivity] Not supported on this platform')
+      console.log('[LiveActivity] ❌ Not supported on this platform')
       return
     }
 
     // Stop any existing activity first
     if (activityIdRef.current) {
-      console.log('[LiveActivity] Stopping existing activity:', activityIdRef.current)
+      console.log(
+        '[LiveActivity] Stopping existing activity:',
+        activityIdRef.current,
+      )
       try {
-        stopActivity(activityIdRef.current, {
+        const stopState = {
           title: 'Workout Ended',
-          subtitle: '',
-        })
+          subtitle: '0:00',
+        }
+        logState('stopActivity (existing)', stopState)
+        stopActivity(activityIdRef.current, stopState)
+        console.log('[LiveActivity] ✅ Stopped existing activity')
       } catch (error) {
-        console.log('[LiveActivity] Error stopping previous activity:', error)
+        console.log(
+          '[LiveActivity] ❌ Error stopping existing activity:',
+          error,
+        )
       }
       activityIdRef.current = null
     }
 
     try {
-      // Store workout start time - this will be used by native SwiftUI timer
       const workoutStartTime = Date.now()
       startTimeRef.current = workoutStartTime
-      
-      console.log('[LiveActivity] ===== STARTING ACTIVITY =====')
+      lastMinuteRef.current = -1
+      updateCountRef.current = 0
+
       console.log('[LiveActivity] Workout start time:', workoutStartTime)
-      console.log('[LiveActivity] As ISO date:', new Date(workoutStartTime).toISOString())
-      
-      // Pass start time via progressBar.date - the native module maps this to timerEndDateInMilliseconds
-      // Only pass dynamicIslandImageName (not imageName) to hide the image on lock screen
-      const state: any = {
+      console.log(
+        '[LiveActivity] Workout start ISO:',
+        new Date(workoutStartTime).toISOString(),
+      )
+
+      const state = {
         title: 'Rep AI',
         subtitle: 'Workout Active',
-        progressBar: {
-          date: workoutStartTime,
-        },
         dynamicIslandImageName: 'bicep',
+        timerStartDateInMilliseconds: workoutStartTime,
       }
-      
+
       const config = {
         backgroundColor: '#000000',
         titleColor: '#FFFFFF',
@@ -77,58 +101,144 @@ export function LiveActivityProvider({ children }: { children: React.ReactNode }
         deepLinkUrl: 'repai://create-post',
         timerType: 'digital' as const,
       }
-      
-      console.log('[LiveActivity] State:', JSON.stringify(state, null, 2))
-      
+
+      logState('startActivity', state, config)
+
       const activityId = startActivity(state, config)
 
       if (activityId) {
         activityIdRef.current = activityId
-        console.log('[LiveActivity] Started activity with ID:', activityId)
+        console.log('[LiveActivity] ✅ Started activity with ID:', activityId)
+        console.log('[LiveActivity] Activity ID type:', typeof activityId)
+        console.log('[LiveActivity] Activity ID length:', activityId.length)
       } else {
-        console.log('[LiveActivity] startActivity returned undefined/null')
+        console.log('[LiveActivity] ❌ startActivity returned null/undefined')
       }
     } catch (error) {
-      console.log('[LiveActivity] Error starting activity:', error)
+      console.log('[LiveActivity] ❌ Error starting activity:', error)
+      if (error instanceof Error) {
+        console.log('[LiveActivity] Error name:', error.name)
+        console.log('[LiveActivity] Error message:', error.message)
+        console.log('[LiveActivity] Error stack:', error.stack)
+      }
     }
+    console.log('[LiveActivity] ===== END startWorkoutActivity =====')
   }, [isActivitySupported])
 
-  const updateWorkoutActivity = useCallback((_elapsedSeconds: number) => {
-    // No need to update frequently - native SwiftUI timer handles the counting
-    // Only keep this for potential future use (e.g., updating subtitle on pause)
-  }, [])
+  const updateWorkoutActivity = useCallback(
+    (elapsedSeconds: number) => {
+      if (!isActivitySupported) {
+        console.log('[LiveActivity] ❌ updateWorkoutActivity: not supported')
+        return
+      }
+
+      if (!activityIdRef.current) {
+        console.log('[LiveActivity] ❌ updateWorkoutActivity: no activityId')
+        return
+      }
+
+      const safeSeconds = Math.max(0, Math.floor(elapsedSeconds))
+      const currentMinute = Math.floor(safeSeconds / 60)
+      if (currentMinute === lastMinuteRef.current) {
+        return
+      }
+      lastMinuteRef.current = currentMinute
+
+      if (!startTimeRef.current) {
+        const calculatedStartTime = Date.now() - safeSeconds * 1000
+        startTimeRef.current = calculatedStartTime
+        console.log(
+          `[LiveActivity] Calculated startTime: ${calculatedStartTime} (elapsed=${safeSeconds}s)`,
+        )
+      }
+
+      try {
+        updateCountRef.current += 1
+        const updateState = {
+          title: 'Rep AI',
+          subtitle: 'Workout Active',
+          dynamicIslandImageName: 'bicep',
+          timerStartDateInMilliseconds: startTimeRef.current,
+        }
+
+        console.log('[LiveActivity] ===== UPDATE =====')
+        console.log('[LiveActivity] elapsedSeconds:', safeSeconds)
+        console.log('[LiveActivity] currentMinute:', currentMinute)
+        console.log('[LiveActivity] activityId:', activityIdRef.current)
+        console.log('[LiveActivity] startTime:', startTimeRef.current)
+        console.log('[LiveActivity] updateCount:', updateCountRef.current)
+        logState('updateActivity', updateState)
+
+        updateActivity(activityIdRef.current, updateState)
+        console.log(
+          `[LiveActivity] ✅ updateActivity called (count=${updateCountRef.current})`,
+        )
+      } catch (error) {
+        console.log('[LiveActivity] ❌ Error updating activity:', error)
+        if (error instanceof Error) {
+          console.log('[LiveActivity] Error name:', error.name)
+          console.log('[LiveActivity] Error message:', error.message)
+          console.log('[LiveActivity] Error stack:', error.stack)
+        }
+      }
+    },
+    [isActivitySupported],
+  )
 
   const stopWorkoutActivity = useCallback(() => {
-    if (!isActivitySupported || !activityIdRef.current) return
+    console.log('[LiveActivity] ===== START stopWorkoutActivity =====')
+    console.log('[LiveActivity] isActivitySupported:', isActivitySupported)
+    console.log('[LiveActivity] activityId:', activityIdRef.current)
 
-    console.log('[LiveActivity] Stopping activity:', activityIdRef.current)
+    if (!isActivitySupported) {
+      console.log('[LiveActivity] ❌ Not supported')
+      return
+    }
+
+    if (!activityIdRef.current) {
+      console.log('[LiveActivity] ❌ No activityId to stop')
+      return
+    }
 
     try {
-      stopActivity(activityIdRef.current, {
+      const stopState = {
         title: 'Rep AI',
         subtitle: 'Complete! 💪',
-        progress: 1,
-      } as any)
-      console.log('[LiveActivity] Stopped successfully')
+      }
+      logState('stopActivity', stopState)
+      stopActivity(activityIdRef.current, stopState)
+      console.log('[LiveActivity] ✅ Stopped successfully')
       activityIdRef.current = null
       startTimeRef.current = 0
+      lastMinuteRef.current = -1
+      updateCountRef.current = 0
     } catch (error) {
-      console.log('[LiveActivity] Error stopping activity:', error)
+      console.log('[LiveActivity] ❌ Error stopping activity:', error)
+      if (error instanceof Error) {
+        console.log('[LiveActivity] Error name:', error.name)
+        console.log('[LiveActivity] Error message:', error.message)
+        console.log('[LiveActivity] Error stack:', error.stack)
+      }
     }
+    console.log('[LiveActivity] ===== END stopWorkoutActivity =====')
   }, [isActivitySupported])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (activityIdRef.current) {
-        console.log('[LiveActivity] Cleanup on unmount')
+        console.log(
+          '[LiveActivity] Cleanup on unmount, activityId:',
+          activityIdRef.current,
+        )
         try {
           stopActivity(activityIdRef.current, {
             title: 'Rep AI',
             subtitle: 'Session Ended',
           })
-        } catch {
-          // Silently fail on cleanup
+          console.log('[LiveActivity] ✅ Cleanup stopActivity called')
+        } catch (error) {
+          console.log('[LiveActivity] ❌ Cleanup error:', error)
         }
       }
     }

@@ -175,6 +175,8 @@ module.exports = {
       ...(facebookPluginConfig ? [facebookPluginConfig] : []),
       // Live Activity for Dynamic Island workout timer (iOS only)
       ['expo-live-activity', { enablePushNotifications: true }],
+      // Override Live Activity Swift UI (lock screen + Dynamic Island)
+      './plugins/with-custom-live-activity',
     ],
     experiments: {
       typedRoutes: true,

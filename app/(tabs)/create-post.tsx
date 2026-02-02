@@ -16,10 +16,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-    getExerciseSuggestion,
-    parseRepRange,
-    useExerciseAutocomplete,
-    useShowConvertButton,
+  getExerciseSuggestion,
+  parseRepRange,
+  useExerciseAutocomplete,
+  useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -36,21 +36,21 @@ import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    compactDraft as compactWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
-    saveDraftPatch as saveWorkoutDraftPatch,
+  clearDraft as clearWorkoutDraft,
+  compactDraft as compactWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
+  saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -58,22 +58,22 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    AppState,
-    Easing,
-    InteractionManager,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  AppState,
+  Easing,
+  InteractionManager,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -1705,6 +1705,7 @@ export default function CreatePostScreen() {
             if (set.weight || set.reps) {
               const weightText = set.weight || '___'
               const repsText = set.reps || '___'
+              
               lines.push(
                 `Set ${
                   index + 1
@@ -1749,9 +1750,12 @@ export default function CreatePostScreen() {
         // Try to parse set: "weight x reps" or "weight x reps reps" or "135 x 8"
         // Note: Weight pattern accepts both period and comma as decimal separators (e.g., "7.5" or "7,5")
         const setMatch = line.match(/(\d+(?:[.,]\d+)?)\s*(?:x|×)\s*(\d+)/i)
+        
         if (setMatch) {
           // Normalize decimal separator: replace comma with period (for European locales)
-          const weight = setMatch[1].replace(',', '.')
+          const rawWeight = setMatch[1]
+          const weight = rawWeight.replace(',', '.')
+          
           sets.push({
             weight,
             reps: setMatch[2],
