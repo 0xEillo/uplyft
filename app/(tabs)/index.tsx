@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
+import { AppPostCard } from '@/components/app-post-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { NotificationBadge } from '@/components/notification-badge'
@@ -30,6 +31,7 @@ import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
+import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -40,6 +42,46 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 
 // Extended type to include pending workouts (placeholders)
 type WorkoutWithPending = WorkoutSessionWithDetails & { isPending?: boolean }
+
+type FeedItem =
+  | { type: 'workout'; workout: WorkoutSessionWithDetails }
+  | { type: 'app_post'; post: AppPost }
+
+const FEED_APP_POST_FIRST_AFTER = 2
+const FEED_APP_POST_INTERVAL = 2
+const FEED_APP_POST_BASE_COUNT = 5
+const FEED_APP_POST_PER_WORKOUTS = 2
+
+const buildFeedItems = (
+  workouts: WorkoutSessionWithDetails[],
+  appPosts: AppPost[],
+): FeedItem[] => {
+  if (workouts.length === 0) {
+    return appPosts.map((post) => ({ type: 'app_post', post }))
+  }
+
+  const items: FeedItem[] = []
+  let postIndex = 0
+  let nextInsertAfter = FEED_APP_POST_FIRST_AFTER
+
+  workouts.forEach((workout, index) => {
+    items.push({ type: 'workout', workout })
+
+    const workoutsSeen = index + 1
+    if (postIndex < appPosts.length && workoutsSeen === nextInsertAfter) {
+      items.push({ type: 'app_post', post: appPosts[postIndex] })
+      postIndex += 1
+      nextInsertAfter += FEED_APP_POST_INTERVAL
+    }
+  })
+
+  while (postIndex < appPosts.length) {
+    items.push({ type: 'app_post', post: appPosts[postIndex] })
+    postIndex += 1
+  }
+
+  return items
+}
 
 // Enable LayoutAnimation on Android
 if (
@@ -107,7 +149,26 @@ export default function FeedScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [currentStreak, setCurrentStreak] = useState(0)
   const [isOffline, setIsOffline] = useState(false)
+  const [userWorkoutCount, setUserWorkoutCount] = useState(0)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
+  const appPosts = useMemo(() => {
+    const unlockedCount = Math.min(
+      APP_POSTS.length,
+      FEED_APP_POST_BASE_COUNT +
+        Math.floor(userWorkoutCount / FEED_APP_POST_PER_WORKOUTS),
+    )
+    return APP_POSTS.slice(0, unlockedCount)
+  }, [userWorkoutCount])
+
+  const loadUserWorkoutCount = useCallback(async () => {
+    if (!user) return
+    try {
+      const count = await database.workoutSessions.getCountByUserId(user.id)
+      setUserWorkoutCount(count)
+    } catch (error) {
+      console.error('Error loading workout count:', error)
+    }
+  }, [user])
 
   const loadStreak = useCallback(async () => {
     if (!user) return
@@ -123,6 +184,10 @@ export default function FeedScreen() {
   useEffect(() => {
     registerScrollRef('index', flatListRef)
   }, [registerScrollRef])
+
+  useEffect(() => {
+    loadUserWorkoutCount()
+  }, [loadUserWorkoutCount])
 
   // Hard Paywall is handled globally in (tabs)/_layout.tsx with a 0.4s delay
 
@@ -275,6 +340,7 @@ export default function FeedScreen() {
           const workoutCount = await database.workoutSessions.getCountByUserId(
             user.id,
           )
+          setUserWorkoutCount(workoutCount)
 
           // Only prompt if this is the first workout and we haven't asked before
           if (
@@ -411,56 +477,68 @@ export default function FeedScreen() {
 
       // Always refresh streak when screen is focused
       loadStreak()
+      loadUserWorkoutCount()
 
       // Process pending post in background (non-blocking)
       // CreateButton spinner in tab bar responds via shared pending status
       handlePendingPost()
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [handlePendingPost, loadWorkouts, isInitialLoad, trackEvent]),
+    }, [
+      handlePendingPost,
+      loadWorkouts,
+      isInitialLoad,
+      trackEvent,
+      loadUserWorkoutCount,
+    ]),
   )
 
   const styles = createStyles(colors)
+  const feedItems = useMemo(
+    () => buildFeedItems(workouts, appPosts),
+    [workouts, appPosts],
+  )
 
-  const renderWorkoutItem = useCallback(
-    ({
-      item: workout,
-      index,
-    }: {
-      item: WorkoutSessionWithDetails
-      index: number
-    }) => (
-      <AnimatedFeedCard
-        key={workout.id}
-        workout={workout}
-        index={index}
-        isNew={workout.id === newWorkoutId}
-        isDeleting={workout.id === deletingWorkoutId}
-        isFirst={index === 0}
-        isProcessingPending={
-          (workout as WorkoutWithPending).isPending && isProcessingPending
-        }
-        onDelete={() => {
-          // If already marked for deletion, actually remove from state
-          if (workout.id === deletingWorkoutId) {
-            // Smooth layout animation for remaining cards sliding up
-            LayoutAnimation.configureNext(CardDeleteAnimation)
-            setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
-            setDeletingWorkoutId(null)
+  const renderFeedItem = useCallback(
+    ({ item, index }: { item: FeedItem; index: number }) => {
+      if (item.type === 'app_post') {
+        return <AppPostCard post={item.post} isFirst={index === 0} />
+      }
 
-            trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
-              workout_id: workout.id,
-            })
-          } else {
-            // Mark for deletion to trigger exit animation
-            setDeletingWorkoutId(workout.id)
-
-            trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
-              workout_id: workout.id,
-            })
+      const workout = item.workout
+      return (
+        <AnimatedFeedCard
+          key={workout.id}
+          workout={workout}
+          index={index}
+          isNew={workout.id === newWorkoutId}
+          isDeleting={workout.id === deletingWorkoutId}
+          isFirst={index === 0}
+          isProcessingPending={
+            (workout as WorkoutWithPending).isPending && isProcessingPending
           }
-        }}
-      />
-    ),
+          onDelete={() => {
+            // If already marked for deletion, actually remove from state
+            if (workout.id === deletingWorkoutId) {
+              // Smooth layout animation for remaining cards sliding up
+              LayoutAnimation.configureNext(CardDeleteAnimation)
+              setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
+              setDeletingWorkoutId(null)
+
+              trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
+                workout_id: workout.id,
+              })
+            } else {
+              // Mark for deletion to trigger exit animation
+              setDeletingWorkoutId(workout.id)
+
+              trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
+                workout_id: workout.id,
+              })
+            }
+          }}
+        />
+      )
+    },
     [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending],
   )
 
@@ -547,7 +625,7 @@ export default function FeedScreen() {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={workouts}
+          data={feedItems}
           ItemSeparatorComponent={() => (
             <View
               style={{
@@ -556,11 +634,15 @@ export default function FeedScreen() {
               }}
             />
           )}
-          renderItem={renderWorkoutItem}
-          keyExtractor={(item) => item.id}
+          renderItem={renderFeedItem}
+          keyExtractor={(item) =>
+            item.type === 'workout'
+              ? `workout-${item.workout.id}`
+              : `app-post-${item.post.id}`
+          }
           contentContainerStyle={[
             styles.feed,
-            workouts.length === 0 && styles.emptyFeed,
+            feedItems.length === 0 && styles.emptyFeed,
           ]}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
@@ -578,7 +660,9 @@ export default function FeedScreen() {
             // Show empty state when:
             // 1. Tutorial is dismissed/loading OR we're offline, AND
             // 2. Feed is not loading
-            (isTutorialDismissed || isTutorialLoading || isOffline) && !isLoading ? (
+            (isTutorialDismissed || isTutorialLoading || isOffline) &&
+            !isLoading &&
+            feedItems.length === 0 ? (
               isOffline ? (
                 <EmptyState
                   icon="cloud-offline-outline"

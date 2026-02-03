@@ -43,6 +43,7 @@ import {
   saveDraft as saveWorkoutDraft,
   saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
+import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
   generateWorkoutMessage,
   parseCommitment,
@@ -351,6 +352,7 @@ export default function CreatePostScreen() {
   const workoutTimerStateRef = useRef(workoutTimerSerializableState)
   const lastLocalEditAtRef = useRef(0)
   const lastDraftSavedAtRef = useRef(0)
+  const lastRouteRoutineTokenRef = useRef<string | null>(null)
   const hasHydratedRef = useRef(false)
   const suppressLocalEditTrackingRef = useRef(false)
   const suppressDraftToastRef = useRef(false)
@@ -380,6 +382,51 @@ export default function CreatePostScreen() {
       structuredSetsWithDataCount: setsWithData,
     }
   }, [])
+
+  const persistDraft = useCallback(
+    (source: 'unmount' | 'background' | 'blur') => {
+      const routineIdToSave =
+        selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
+      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
+      lastDraftSavedAtRef.current = updatedAt
+
+      void compactWorkoutDraft({
+        notes: notesRef.current,
+        title: titleRef.current,
+        structuredData: structuredDataRef.current,
+        isStructuredMode: isStructuredModeRef.current,
+        selectedRoutineId: routineIdToSave,
+        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
+        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
+        updatedAt,
+      })
+        .then(() => {
+          const metrics = buildDraftMetrics(structuredDataRef.current)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'compact',
+            source,
+            length: notesRef.current.trim().length,
+            hasTitle: Boolean(titleRef.current.trim()),
+            updatedAt,
+            ...metrics,
+          })
+        })
+        .catch((error) => {
+          console.error(`[Draft] ${source} compact failed:`, error)
+          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
+            action: 'fail',
+            source,
+            reason: 'compact_failed',
+            error: error instanceof Error ? error.message : String(error),
+            length: notesRef.current.trim().length,
+            hasTitle: Boolean(titleRef.current.trim()),
+            updatedAt,
+            ...buildDraftMetrics(structuredDataRef.current),
+          })
+        })
+    },
+    [buildDraftMetrics, trackEvent],
+  )
 
   useEffect(() => {
     notesRef.current = notes
@@ -817,11 +864,17 @@ export default function CreatePostScreen() {
         loadPendingWorkout(),
       ])
 
-      const draftUpdatedAt = draft?.updatedAt ?? 0
-      const hasLocalEdits =
-        hasHydratedRef.current && lastLocalEditAtRef.current > draftUpdatedAt
+      const plan = buildHydrationPlan({
+        draft,
+        pending,
+        selectedRoutineId,
+        refresh,
+        lastRouteRoutineToken: lastRouteRoutineTokenRef.current,
+        hasHydrated: hasHydratedRef.current,
+        lastLocalEditAt: lastLocalEditAtRef.current,
+      })
 
-      if (hasLocalEdits && !selectedRoutineId) {
+      if (plan.shouldSkip) {
         const metrics = buildDraftMetrics(structuredDataRef.current)
         trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
           action: 'skip',
@@ -835,70 +888,38 @@ export default function CreatePostScreen() {
         return
       }
 
-      const routineIdFromDraft =
-        draft?.selectedRoutineId ?? pending?.routineId ?? null
-      const effectiveRoutineId = selectedRoutineId || routineIdFromDraft || null
-      const shouldApplyHydration =
-        Boolean(draft?.notes?.trim()) ||
-        Boolean(pending?.notes) ||
-        Boolean(draft?.title?.trim()) ||
-        Boolean(pending?.title) ||
-        (Array.isArray(draft?.structuredData) &&
-          draft.structuredData.length > 0) ||
-        typeof draft?.isStructuredMode === 'boolean' ||
-        Boolean(effectiveRoutineId) ||
-        Boolean(
-          draft &&
-            (draft.timerStartedAt ||
-              typeof draft.timerElapsedSeconds === 'number'),
-        )
-
-      if (shouldApplyHydration) {
+      if (plan.shouldApplyHydration) {
         suppressLocalEditTrackingRef.current = true
       }
 
-      if (draft?.notes?.trim()) {
+      if (plan.notes !== undefined) {
         suppressDraftToastRef.current = true
-        setNotes(draft.notes)
-      } else if (pending?.notes) {
-        suppressDraftToastRef.current = true
-        setNotes(pending.notes)
+        setNotes(plan.notes)
       }
 
-      if (draft?.title?.trim()) {
-        setWorkoutTitle(draft.title)
-      } else if (pending?.title) {
-        setWorkoutTitle(pending.title)
+      if (plan.title !== undefined) {
+        setWorkoutTitle(plan.title)
       }
 
-      if (Array.isArray(draft?.structuredData) && draft.structuredData.length) {
-        setStructuredData(draft.structuredData)
-        setIsStructuredMode(
-          typeof draft.isStructuredMode === 'boolean'
-            ? draft.isStructuredMode
-            : true,
-        )
-      } else if (typeof draft?.isStructuredMode === 'boolean') {
-        setIsStructuredMode(draft.isStructuredMode)
+      if (plan.structuredData) {
+        setStructuredData(plan.structuredData)
+        if (plan.isStructuredMode !== undefined) {
+          setIsStructuredMode(plan.isStructuredMode)
+        }
+      } else if (plan.isStructuredMode !== undefined) {
+        setIsStructuredMode(plan.isStructuredMode)
       }
 
-      if (effectiveRoutineId) {
-        const source = selectedRoutineId ? 'route' : 'draft'
-        setPendingDraftRoutineId(effectiveRoutineId)
-        setPendingRoutineSource(source)
+      if (plan.effectiveRoutineId) {
+        setPendingDraftRoutineId(plan.effectiveRoutineId)
+        setPendingRoutineSource(plan.routineSource)
       } else {
         setPendingDraftRoutineId(null)
         setPendingRoutineSource(null)
       }
 
-      if (
-        draft &&
-        (draft.timerStartedAt || typeof draft.timerElapsedSeconds === 'number')
-      ) {
-        hydrateWorkoutTimer(
-          draft.timerStartedAt ?? null,
-          draft.timerElapsedSeconds ?? 0,
-        )
+      if (plan.shouldHydrateTimer) {
+        hydrateWorkoutTimer(plan.timerStartedAt, plan.timerElapsedSeconds)
       } else {
         resetWorkoutTimer()
       }
@@ -906,8 +927,12 @@ export default function CreatePostScreen() {
       // Skip the next 3 auto-saves to allow all hydration state changes to settle
       skipPersistCountRef.current = 3
 
-      lastDraftSavedAtRef.current = draftUpdatedAt
-      lastLocalEditAtRef.current = draftUpdatedAt
+      lastDraftSavedAtRef.current = plan.draftUpdatedAt
+      lastLocalEditAtRef.current = plan.draftUpdatedAt
+
+      if (plan.hasNewRouteRoutine) {
+        lastRouteRoutineTokenRef.current = plan.routeRoutineToken
+      }
     } finally {
       isHydratingRef.current = false
       hasHydratedRef.current = true
@@ -916,6 +941,7 @@ export default function CreatePostScreen() {
     buildDraftMetrics,
     hydrateWorkoutTimer,
     resetWorkoutTimer,
+    refresh,
     selectedRoutineId,
     trackEvent,
   ])
@@ -973,54 +999,25 @@ export default function CreatePostScreen() {
         if (interactionHandle) {
           interactionHandle.cancel?.()
         }
+        persistDraft('blur')
       }
-    }, [blurInputs, trackEvent, user, loadRoutinesAndExercises, hydrateDraft]),
+    }, [
+      blurInputs,
+      trackEvent,
+      user,
+      loadRoutinesAndExercises,
+      hydrateDraft,
+      persistDraft,
+    ]),
   )
 
   // Blur inputs when component unmounts
   useEffect(() => {
     return () => {
       blurInputs()
-      const routineIdToSave =
-        selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
-      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
-      lastDraftSavedAtRef.current = updatedAt
-      void compactWorkoutDraft({
-        notes: notesRef.current,
-        title: titleRef.current,
-        structuredData: structuredDataRef.current,
-        isStructuredMode: isStructuredModeRef.current,
-        selectedRoutineId: routineIdToSave,
-        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
-        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
-        updatedAt,
-      })
-        .then(() => {
-          const metrics = buildDraftMetrics(structuredDataRef.current)
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'compact',
-            source: 'unmount',
-            length: notesRef.current.trim().length,
-            hasTitle: Boolean(titleRef.current.trim()),
-            updatedAt,
-            ...metrics,
-          })
-        })
-        .catch((error) => {
-          console.error('[Draft] Unmount compact failed:', error)
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'fail',
-            source: 'unmount',
-            reason: 'compact_failed',
-            error: error instanceof Error ? error.message : String(error),
-            length: notesRef.current.trim().length,
-            hasTitle: Boolean(titleRef.current.trim()),
-            updatedAt,
-            ...buildDraftMetrics(structuredDataRef.current),
-          })
-        })
+      persistDraft('unmount')
     }
-  }, [blurInputs, buildDraftMetrics, trackEvent])
+  }, [blurInputs, persistDraft])
 
   // Load saved draft on mount or when refresh param changes
   useEffect(() => {
@@ -1102,50 +1099,13 @@ export default function CreatePostScreen() {
         return
       }
 
-      const routineIdToSave =
-        selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
-      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
-      lastDraftSavedAtRef.current = updatedAt
-      void compactWorkoutDraft({
-        notes: notesRef.current,
-        title: titleRef.current,
-        structuredData: structuredDataRef.current,
-        isStructuredMode: isStructuredModeRef.current,
-        selectedRoutineId: routineIdToSave,
-        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
-        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
-        updatedAt,
-      })
-        .then(() => {
-          const metrics = buildDraftMetrics(structuredDataRef.current)
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'compact',
-            source: 'background',
-            length: notesRef.current.trim().length,
-            hasTitle: Boolean(titleRef.current.trim()),
-            updatedAt,
-            ...metrics,
-          })
-        })
-        .catch((error) => {
-          console.error('[Draft] Background compact failed:', error)
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'fail',
-            source: 'background',
-            reason: 'compact_failed',
-            error: error instanceof Error ? error.message : String(error),
-            length: notesRef.current.trim().length,
-            hasTitle: Boolean(titleRef.current.trim()),
-            updatedAt,
-            ...buildDraftMetrics(structuredDataRef.current),
-          })
-        })
+      persistDraft('background')
     })
 
     return () => {
       subscription.remove()
     }
-  }, [buildDraftMetrics, trackEvent])
+  }, [persistDraft])
 
   // Show "Draft saved" indicator with debounce (UI only)
   useEffect(() => {
