@@ -42,6 +42,14 @@ import os.log
     }
   }
 
+  private func timerDisplayText(from subtitle: String?) -> String {
+    guard let subtitle = subtitle, !subtitle.isEmpty else { return "--:--" }
+    if let range = subtitle.range(of: " • ") {
+      return String(subtitle[..<range.lowerBound])
+    }
+    return subtitle
+  }
+
   struct LiveActivityView: View {
     let contentState: LiveActivityAttributes.ContentState
     let attributes: LiveActivityAttributes
@@ -160,11 +168,11 @@ import os.log
       let _ = logger.info("[LA] LiveActivityView titleColor=\(attributes.titleColor ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView subtitleColor=\(attributes.subtitleColor ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView deepLinkUrl=\(attributes.deepLinkUrl ?? "nil", privacy: .public)")
-      
-      let extractedTimer = extractTimer(from: contentState.subtitle)
-      let _ = logger.info("[LA] LiveActivityView extractedTimer=\(extractedTimer, privacy: .public)")
-      
-      let defaultPadding = 24
+
+      let timerValue = timerDisplayText(from: contentState.subtitle)
+      let _ = logger.info("[LA] LiveActivityView timerValue=\(timerValue, privacy: .public)")
+
+      let defaultPadding = 20
 
       let top = CGFloat(
         attributes.paddingDetails?.top
@@ -194,20 +202,30 @@ import os.log
           ?? defaultPadding
       )
 
+      let displayTitle = contentState.title.isEmpty ? "Rep AI" : contentState.title
+      let timerLabel = "Workout timer"
+      let titleColor = attributes.titleColor.map { Color(hex: $0) } ?? Color.white
+      let subtitleColor = attributes.subtitleColor.map { Color(hex: $0) } ?? Color.white.opacity(0.7)
+      let baseBackground = attributes.backgroundColor.map { Color(hex: $0) } ?? Color(hex: "0B1C1A")
+      let containerShape = ContainerRelativeShape()
+
       VStack(spacing: 12) {
-        HStack(alignment: .center, spacing: 10) {
-          Text("REP AI")
-            .font(.system(size: 20, weight: .black, design: .rounded))
-            .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 12) {
+          Text(displayTitle)
+            .font(.system(size: 18, weight: .black, design: .rounded))
+            .foregroundStyle(titleColor)
 
-          timerText(
-            startMs: contentState.timerStartDateInMilliseconds,
-            endMs: contentState.timerEndDateInMilliseconds,
-            font: .system(size: 20, weight: .medium, design: .monospaced)
-          )
-          .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
+          Spacer(minLength: 8)
 
-          Spacer()
+          VStack(alignment: .trailing, spacing: 2) {
+            Text(timerLabel)
+              .font(.system(size: 11, weight: .medium, design: .rounded))
+              .foregroundStyle(subtitleColor)
+
+            Text(timerValue)
+              .font(.system(size: 18, weight: .semibold, design: .monospaced))
+              .foregroundStyle(titleColor)
+          }
         }
 
         Rectangle()
@@ -218,19 +236,35 @@ import os.log
            let url = URL(string: deepLinkUrl) {
           Link(destination: url) {
             Text("Add an exercise")
-              .font(.system(size: 18, weight: .semibold))
+              .font(.system(size: 22, weight: .semibold, design: .rounded))
               .foregroundStyle(Color.white)
               .frame(maxWidth: .infinity, maxHeight: .infinity)
               .contentShape(Rectangle())
           }
         } else {
           Text("Add an exercise")
-            .font(.system(size: 18, weight: .semibold))
+            .font(.system(size: 22, weight: .semibold, design: .rounded))
             .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
       }
       .padding(EdgeInsets(top: top, leading: leading, bottom: bottom, trailing: trailing))
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(
+        containerShape
+          .fill(baseBackground)
+          .overlay(
+            LinearGradient(
+              colors: [
+                Color.white.opacity(0.08),
+                Color.black.opacity(0.2)
+              ],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+            .clipShape(containerShape)
+          )
+      )
     }
   }
 

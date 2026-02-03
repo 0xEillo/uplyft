@@ -102,7 +102,7 @@ export function LiveActivityProvider({
       // subtitle format: "0:00 • Rep AI" - Swift extracts timer before " • "
       const state = {
         title: 'Rep AI',
-        subtitle: '0:00 • Rep AI',
+        subtitle: '0:00',
         dynamicIslandImageName: 'bicep',
       }
 
@@ -176,7 +176,7 @@ export function LiveActivityProvider({
       try {
         updateCountRef.current += 1
         const formattedTime = formatElapsed(elapsedSeconds)
-        const subtitle = `${formattedTime} • Rep AI`
+        const subtitle = formattedTime
 
         const updateState = {
           title: 'Rep AI',

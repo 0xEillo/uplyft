@@ -3175,90 +3175,6 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Hip Thrust (Barbell)
-  {
-    id: '67d8950c-2c29-44f8-8cdc-43d238b1a9f2',
-    name: 'Hip Thrust (barbell)',
-    aliases: ['Hip Thrust', 'Barbell Hip Thrust', 'Hip Thrust (Barbell)'],
-    gifUrl: null,
-    male: [
-      {
-        level: 'Beginner',
-        multiplier: 0.5,
-        color: '#64748B',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 1.0,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 1.75,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 2.5,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 3.5,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 4.25,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-    female: [
-      {
-        level: 'Beginner',
-        multiplier: 0.5,
-        color: '#64748B',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 1.0,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 1.5,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 2.25,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 3.0,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 3.75,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-
   // Hack Squat (Machine)
   {
     id: '4075e4c0-aeb6-460d-9de7-98064e5fde4c',
@@ -3756,7 +3672,6 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Glutes
   'Glute Bridge (Barbell)': 'Glutes',
-  'Hip Thrust (barbell)': 'Glutes',
 
   // Calves
   'Standing Calf Raise (Machine)': 'Calves',
