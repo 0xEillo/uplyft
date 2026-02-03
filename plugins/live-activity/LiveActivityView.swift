@@ -18,23 +18,28 @@ import os.log
     }
   }
 
-  // Helper to extract just the timer part from subtitle like "0:30 • Rep AI" -> "0:30"
-  private func extractTimer(from subtitle: String?) -> String {
-    let _ = logger.info("[LA] LiveActivityView.extractTimer called with subtitle=\(subtitle ?? "nil", privacy: .public)")
-    
-    guard let subtitle = subtitle else {
-      let _ = logger.warning("[LA] LiveActivityView.extractTimer: subtitle is nil, returning --:--")
-      return "--:--"
+  private func dateFromMilliseconds(_ milliseconds: Double?) -> Date? {
+    guard let milliseconds = milliseconds else { return nil }
+    return Date(timeIntervalSince1970: milliseconds / 1000)
+  }
+
+  @ViewBuilder
+  private func timerText(startMs: Double?, endMs: Double?, font: Font) -> some View {
+    if let startDate = dateFromMilliseconds(startMs) {
+      if let endDate = dateFromMilliseconds(endMs) {
+        Text(timerInterval: startDate...endDate, countsDown: true)
+          .font(font)
+      } else {
+        Text(startDate, style: .timer)
+          .font(font)
+      }
+    } else if let endMs = endMs {
+      Text(timerInterval: Date.toTimerInterval(miliseconds: endMs), countsDown: true)
+        .font(font)
+    } else {
+      Text("--:--")
+        .font(font)
     }
-    
-    if let range = subtitle.range(of: " • ") {
-      let extracted = String(subtitle[..<range.lowerBound])
-      let _ = logger.info("[LA] LiveActivityView.extractTimer: found separator, extracted=\(extracted, privacy: .public) from full=\(subtitle, privacy: .public)")
-      return extracted
-    }
-    
-    let _ = logger.info("[LA] LiveActivityView.extractTimer: no separator found, returning full subtitle=\(subtitle, privacy: .public)")
-    return subtitle
   }
 
   struct LiveActivityView: View {
@@ -189,69 +194,40 @@ import os.log
           ?? defaultPadding
       )
 
-      VStack(alignment: .leading, spacing: 12) {
-        let position = attributes.imagePosition ?? "right"
-        let isLeftImage = position.hasPrefix("left")
-        let hasImage = contentState.imageName != nil
+      VStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 10) {
+          Text("REP AI")
+            .font(.system(size: 20, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
 
-        // Top row: Title left, optional image right
-        HStack(alignment: .center) {
-          if hasImage, isLeftImage {
-            if let imageName = contentState.imageName {
-              alignedImage(imageName: imageName)
-            }
-          }
+          timerText(
+            startMs: contentState.timerStartDateInMilliseconds,
+            endMs: contentState.timerEndDateInMilliseconds,
+            font: .system(size: 20, weight: .medium, design: .monospaced)
+          )
+          .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
 
-          VStack(alignment: .leading, spacing: 2) {
-            Text(contentState.title)
-              .font(.title2)
-              .fontWeight(.semibold)
-              .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
-
-            Text("Workout Active")
-              .font(.subheadline)
-              .modifier(ConditionalForegroundViewModifier(color: attributes.subtitleColor))
-          }.layoutPriority(1)
-
-          if hasImage, !isLeftImage {
-            Spacer()
-            if let imageName = contentState.imageName {
-              alignedImage(imageName: imageName)
-            }
-          }
-        }
-
-        // Center: Big timer display
-        HStack {
-          Spacer()
-          Text(extractedTimer)
-            .font(.system(size: 48, weight: .bold, design: .monospaced))
-            .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
           Spacer()
         }
 
-        // Bottom: Add exercise button
+        Rectangle()
+          .fill(Color.white.opacity(0.15))
+          .frame(height: 1)
+
         if let deepLinkUrl = attributes.deepLinkUrl,
            let url = URL(string: deepLinkUrl) {
           Link(destination: url) {
-            Text("Add exercise +")
-              .font(.system(size: 15, weight: .semibold))
-              .foregroundStyle(Color.black)
-              .padding(.vertical, 10)
-              .padding(.horizontal, 16)
-              .frame(maxWidth: .infinity)
-              .background(Color.white.opacity(0.9))
-              .clipShape(Capsule())
+            Text("Add an exercise")
+              .font(.system(size: 18, weight: .semibold))
+              .foregroundStyle(Color.white)
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+              .contentShape(Rectangle())
           }
         } else {
-          Text("Add exercise +")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(Color.black)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity)
-            .background(Color.white.opacity(0.9))
-            .clipShape(Capsule())
+          Text("Add an exercise")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
       }
       .padding(EdgeInsets(top: top, leading: leading, bottom: bottom, trailing: trailing))
