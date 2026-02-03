@@ -1,11 +1,18 @@
 const fs = require('fs')
 const path = require('path')
-const { withDangerousMod } = require('@expo/config-plugins')
+const { withXcodeProject } = require('@expo/config-plugins')
 
 module.exports = function withCustomLiveActivity(config) {
-  return withDangerousMod(config, ['ios', async (cfg) => {
+  return withXcodeProject(config, (cfg) => {
     const projectRoot = cfg.modRequest.projectRoot
+    const expoLiveActivityPackagePath = path.dirname(
+      require.resolve('expo-live-activity/package.json'),
+    )
     const iosLiveActivityPath = path.join(projectRoot, 'ios', 'LiveActivity')
+    const expoLiveActivityIosFilesPath = path.join(
+      expoLiveActivityPackagePath,
+      'ios-files',
+    )
     const sourceDir = path.join(projectRoot, 'plugins', 'live-activity')
 
     // Create directory if it doesn't exist
@@ -42,8 +49,12 @@ module.exports = function withCustomLiveActivity(config) {
     for (const fileName of customFiles) {
       const sourcePath = path.join(sourceDir, fileName)
       const targetPath = path.join(iosLiveActivityPath, fileName)
+      const expoTargetPath = path.join(expoLiveActivityIosFilesPath, fileName)
       if (fs.existsSync(sourcePath)) {
         fs.copyFileSync(sourcePath, targetPath)
+        if (fs.existsSync(expoLiveActivityIosFilesPath)) {
+          fs.copyFileSync(sourcePath, expoTargetPath)
+        }
         console.log(`[withCustomLiveActivity] Overlaid custom: ${fileName}`)
       } else {
         console.warn(`[withCustomLiveActivity] Custom file not found: ${sourcePath}`)
@@ -51,7 +62,7 @@ module.exports = function withCustomLiveActivity(config) {
     }
 
     return cfg
-  }])
+  })
 }
 
 function copyDirSync(src, dest) {

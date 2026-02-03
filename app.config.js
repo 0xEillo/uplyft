@@ -173,10 +173,10 @@ module.exports = {
       ],
       // Facebook SDK - only included when env vars are configured
       ...(facebookPluginConfig ? [facebookPluginConfig] : []),
-      // Live Activity for Dynamic Island workout timer (iOS only)
-      ['expo-live-activity', { enablePushNotifications: true }],
       // Override Live Activity Swift UI (lock screen + Dynamic Island)
       './plugins/with-custom-live-activity',
+      // Live Activity for Dynamic Island workout timer (iOS only)
+      ['expo-live-activity', { enablePushNotifications: true }],
     ],
     experiments: {
       typedRoutes: true,
