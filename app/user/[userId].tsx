@@ -298,6 +298,7 @@ export default function UserProfileScreen() {
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
   const isOwnProfile = user?.id === userId
+  const canCompare = Boolean(relationship?.is_following)
 
   useFocusEffect(
     useCallback(() => {
@@ -625,18 +626,24 @@ export default function UserProfileScreen() {
                   <View style={styles.followButtonWrapper}>
                     {renderFollowButton()}
                   </View>
-                  <TouchableOpacity
-                    style={styles.compareButton}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/compare/[userId]',
-                        params: { userId },
-                      })
-                    }
-                  >
-                    <Ionicons name="stats-chart" size={18} color={colors.textPrimary} />
-                    <Text style={styles.compareButtonText}>Compare</Text>
-                  </TouchableOpacity>
+                  {canCompare && (
+                    <TouchableOpacity
+                      style={styles.compareButton}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/compare/[userId]',
+                          params: { userId },
+                        })
+                      }
+                    >
+                      <Ionicons
+                        name="stats-chart"
+                        size={18}
+                        color={colors.textPrimary}
+                      />
+                      <Text style={styles.compareButtonText}>Compare</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
               {/* Follow button for non-logged-in users */}

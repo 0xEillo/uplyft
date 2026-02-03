@@ -1,11 +1,12 @@
 import { BaseNavbar } from '@/components/base-navbar'
+import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { database } from '@/lib/database'
+import { database, PrivacyError } from '@/lib/database'
 import { Exercise, Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -84,6 +85,9 @@ export default function CompareScreen() {
     setExerciseComparison,
   ] = useState<ExerciseComparison | null>(null)
   const [loadingExercise, setLoadingExercise] = useState(false)
+  const [accessStatus, setAccessStatus] = useState<
+    'checking' | 'allowed' | 'follow-required' | 'pending'
+  >('checking')
   const shouldSkipNextEntryRef = useRef<boolean>(consumeCompareEntrySkipFlag())
   const isInitialFocusRef = useRef(true)
   const [shouldExit, setShouldExit] = useState(false)
@@ -92,6 +96,11 @@ export default function CompareScreen() {
   )
   const [timePeriod, setTimePeriod] = useState<'1M' | '6M' | '1Y' | 'ALL'>('1M')
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const isGlobalExercise = useCallback(
+    (exercise?: Exercise | null): exercise is Exercise =>
+      Boolean(exercise) && !exercise?.created_by,
+    [],
+  )
 
   useFocusEffect(
     useCallback(() => {
@@ -123,12 +132,40 @@ export default function CompareScreen() {
   const loadComparisonData = useCallback(async () => {
     if (!user?.id || !userId) return
 
+    let pendingRequest = false
     if (!myProfile) {
       setIsLoading(true)
     } else {
       setIsUpdating(true)
     }
+    setAccessStatus('checking')
     try {
+      if (userId !== user.id) {
+        try {
+          const [status] = await database.relationships.getStatuses(user.id, [
+            userId,
+          ])
+
+          pendingRequest = Boolean(status?.has_pending_request)
+
+          if (!status?.is_following) {
+            setAccessStatus(
+              pendingRequest ? 'pending' : 'follow-required',
+            )
+            setStats(null)
+            setExercisesInCommon([])
+            setSelectedExercise(null)
+            setExerciseComparison(null)
+            setIsLoading(false)
+            setIsUpdating(false)
+            return
+          }
+        } catch (relationshipError) {
+          console.error('Error checking relationship status:', relationshipError)
+        }
+      }
+      setAccessStatus('allowed')
+
       // Load both profiles
       const [myProfileData, theirProfileData] = await Promise.all([
         database.profiles.getById(user.id),
@@ -211,40 +248,57 @@ export default function CompareScreen() {
       })
 
       // Find exercises in common (across all workouts)
-      const myExerciseIds = new Set<string>()
+      const myExerciseMap = new Map<string, Exercise>()
       const theirExerciseMap = new Map<string, Exercise>()
 
       myWorkouts.forEach((w) => {
         w.workout_exercises.forEach((we) => {
-          myExerciseIds.add(we.exercise_id)
+          if (!isGlobalExercise(we.exercise)) return
+          if (!myExerciseMap.has(we.exercise_id)) {
+            myExerciseMap.set(we.exercise_id, we.exercise)
+          }
         })
       })
 
       theirWorkouts.forEach((w) => {
         w.workout_exercises.forEach((we) => {
-          if (myExerciseIds.has(we.exercise_id)) {
-            theirExerciseMap.set(we.exercise_id, we.exercise)
-          }
+          if (!isGlobalExercise(we.exercise)) return
+          theirExerciseMap.set(we.exercise_id, we.exercise)
         })
       })
 
-      const commonExercises: ExerciseInCommon[] = Array.from(
-        theirExerciseMap.values(),
-      ).map((e) => ({
-        exerciseId: e.id,
-        exerciseName: e.name,
-        muscleGroup: e.muscle_group,
-        gifUrl: e.gif_url || null,
-      }))
+      const commonExercises: ExerciseInCommon[] = []
+      myExerciseMap.forEach((myExercise, exerciseId) => {
+        if (!theirExerciseMap.has(exerciseId)) return
+
+        commonExercises.push({
+          exerciseId: myExercise.id,
+          exerciseName: myExercise.name,
+          muscleGroup: myExercise.muscle_group,
+          gifUrl: myExercise.gif_url || null,
+        })
+      })
+
+      commonExercises.sort((a, b) =>
+        a.exerciseName.localeCompare(b.exerciseName),
+      )
 
       setExercisesInCommon(commonExercises)
     } catch (error) {
+      if (error instanceof PrivacyError) {
+        setAccessStatus(pendingRequest ? 'pending' : 'follow-required')
+      }
       console.error('Error loading comparison data:', error)
     } finally {
       setIsLoading(false)
       setIsUpdating(false)
     }
-  }, [user?.id, userId, timePeriod])
+  }, [
+    isGlobalExercise,
+    user?.id,
+    userId,
+    timePeriod,
+  ])
 
   const loadExerciseComparison = useCallback(
     async (exercise: ExerciseInCommon) => {
@@ -267,28 +321,29 @@ export default function CompareScreen() {
 
           workouts.forEach((w) => {
             w.workout_exercises.forEach((we) => {
-              if (we.exercise_id === exercise.exerciseId) {
-                we.sets.forEach((set) => {
-                  if (set.weight && set.reps) {
-                    // Track heaviest weight
-                    if (set.weight > maxWeight) {
-                      maxWeight = set.weight
-                    }
+              if (!isGlobalExercise(we.exercise)) return
+              if (we.exercise_id !== exercise.exerciseId) return
 
-                    // Calculate estimated 1RM using Epley formula
-                    const estimated1RM = set.weight * (1 + set.reps / 30)
-                    if (estimated1RM > max1RM) {
-                      max1RM = estimated1RM
-                    }
-
-                    // Track best set volume
-                    const setVolume = set.weight * set.reps
-                    if (setVolume > maxSetVolume) {
-                      maxSetVolume = setVolume
-                    }
+              we.sets.forEach((set) => {
+                if (set.weight && set.reps) {
+                  // Track heaviest weight
+                  if (set.weight > maxWeight) {
+                    maxWeight = set.weight
                   }
-                })
-              }
+
+                  // Calculate estimated 1RM using Epley formula
+                  const estimated1RM = set.weight * (1 + set.reps / 30)
+                  if (estimated1RM > max1RM) {
+                    max1RM = estimated1RM
+                  }
+
+                  // Track best set volume
+                  const setVolume = set.weight * set.reps
+                  if (setVolume > maxSetVolume) {
+                    maxSetVolume = setVolume
+                  }
+                }
+              })
             })
           })
 
@@ -322,7 +377,7 @@ export default function CompareScreen() {
         setLoadingExercise(false)
       }
     },
-    [user?.id, userId],
+    [isGlobalExercise, user?.id, userId],
   )
 
   useFocusEffect(
@@ -757,68 +812,88 @@ export default function CompareScreen() {
           </View>
         )}
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {loadingExercise ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.brandPrimary} />
-            </View>
-          ) : selectedExercise && exerciseComparison ? (
-            renderExerciseComparison()
-          ) : (
-            <>
-              {/* Stats Section */}
-              <View style={styles.statsSection}>
-                <Text style={styles.sectionTitle}>
-                  Stats -{' '}
-                  {timePeriod === 'ALL'
-                    ? 'All Time'
-                    : `Last ${
-                        timePeriod === '1M'
-                          ? '1 Month'
-                          : timePeriod === '6M'
-                          ? '6 Months'
-                          : '1 Year'
-                      }`}
-                </Text>
-                {stats && (
-                  <>
-                    {renderComparisonBar(
-                      'Workout Count',
-                      stats.workoutCount.me,
-                      stats.workoutCount.them,
-                      (val) => `${val}`,
-                      '',
-                    )}
-                    {renderComparisonBar(
-                      'Workout Time',
-                      stats.workoutTime.me,
-                      stats.workoutTime.them,
-                      formatTime,
-                      '',
-                    )}
-                    {renderComparisonBar(
-                      'Total Volume',
-                      stats.totalVolume.me,
-                      stats.totalVolume.them,
-                      formatVolume,
-                      weightUnit,
-                    )}
-                  </>
-                )}
+        {accessStatus === 'follow-required' || accessStatus === 'pending' ? (
+          <View style={styles.accessContainer}>
+            <EmptyState
+              icon="lock-closed-outline"
+              title={
+                accessStatus === 'pending'
+                  ? 'Follow request pending'
+                  : 'Follow to compare'
+              }
+              description={
+                accessStatus === 'pending'
+                  ? 'Once they approve your follow request, you can compare stats.'
+                  : 'You need to follow this athlete to compare your strength.'
+              }
+              buttonText="Back to profile"
+              onPress={() => router.back()}
+            />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {loadingExercise ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.brandPrimary} />
               </View>
+            ) : selectedExercise && exerciseComparison ? (
+              renderExerciseComparison()
+            ) : (
+              <>
+                {/* Stats Section */}
+                <View style={styles.statsSection}>
+                  <Text style={styles.sectionTitle}>
+                    Stats -{' '}
+                    {timePeriod === 'ALL'
+                      ? 'All Time'
+                      : `Last ${
+                          timePeriod === '1M'
+                            ? '1 Month'
+                            : timePeriod === '6M'
+                            ? '6 Months'
+                            : '1 Year'
+                        }`}
+                  </Text>
+                  {stats && (
+                    <>
+                      {renderComparisonBar(
+                        'Workout Count',
+                        stats.workoutCount.me,
+                        stats.workoutCount.them,
+                        (val) => `${val}`,
+                        '',
+                      )}
+                      {renderComparisonBar(
+                        'Workout Time',
+                        stats.workoutTime.me,
+                        stats.workoutTime.them,
+                        formatTime,
+                        '',
+                      )}
+                      {renderComparisonBar(
+                        'Total Volume',
+                        stats.totalVolume.me,
+                        stats.totalVolume.them,
+                        formatVolume,
+                        weightUnit,
+                      )}
+                    </>
+                  )}
+                </View>
 
-              {/* Exercises in Common */}
-              <View style={styles.exercisesSection}>
-                <Text style={styles.sectionTitle}>Exercises in Common</Text>
-                {renderExerciseList()}
-              </View>
-            </>
-          )}
-        </ScrollView>
+                {/* Exercises in Common */}
+                <View style={styles.exercisesSection}>
+                  <Text style={styles.sectionTitle}>Exercises in Common</Text>
+                  {renderExerciseList()}
+                </View>
+              </>
+            )}
+          </ScrollView>
+        )}
       </View>
     </SlideInView>
   )
@@ -910,6 +985,9 @@ const createStyles = (
     },
     scrollContent: {
       paddingBottom: 40,
+    },
+    accessContainer: {
+      flex: 1,
     },
     statsSection: {
       paddingHorizontal: 16,
