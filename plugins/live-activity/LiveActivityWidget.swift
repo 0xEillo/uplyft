@@ -102,8 +102,8 @@ struct LiveActivityWidget: Widget {
       
       let extractedTimer = extractTimer(from: context.state.subtitle)
       let _ = logger.info("[LA] island extractedTimer=\(extractedTimer, privacy: .public)")
-      
-      DynamicIsland {
+
+      return DynamicIsland {
         DynamicIslandExpandedRegion(.leading, priority: 1) {
           let _ = logger.info("[LA] island expandedLeading rendering")
           dynamicIslandExpandedLeading(title: context.state.title, subtitle: context.state.subtitle)
