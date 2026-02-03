@@ -209,8 +209,8 @@ import os.log
       let baseBackground = attributes.backgroundColor.map { Color(hex: $0) } ?? Color(hex: "0B1C1A")
       let containerShape = ContainerRelativeShape()
 
-      VStack(spacing: 12) {
-        HStack(alignment: .top, spacing: 12) {
+      VStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
           Text(displayTitle)
             .font(.system(size: 18, weight: .black, design: .rounded))
             .foregroundStyle(titleColor)
@@ -227,26 +227,18 @@ import os.log
               .foregroundStyle(titleColor)
           }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
 
         Rectangle()
           .fill(Color.white.opacity(0.15))
           .frame(height: 1)
 
-        if let deepLinkUrl = attributes.deepLinkUrl,
-           let url = URL(string: deepLinkUrl) {
-          Link(destination: url) {
-            Text("Add an exercise")
-              .font(.system(size: 22, weight: .semibold, design: .rounded))
-              .foregroundStyle(Color.white)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-              .contentShape(Rectangle())
-          }
-        } else {
-          Text("Add an exercise")
-            .font(.system(size: 22, weight: .semibold, design: .rounded))
-            .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        Text("Add an exercise")
+          .font(.system(size: 22, weight: .semibold, design: .rounded))
+          .foregroundStyle(Color.white)
+          .frame(maxWidth: .infinity, alignment: .center)
+          .padding(.vertical, 6)
+          .layoutPriority(1)
       }
       .padding(EdgeInsets(top: top, leading: leading, bottom: bottom, trailing: trailing))
       .frame(maxWidth: .infinity, maxHeight: .infinity)
