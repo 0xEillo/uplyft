@@ -26,11 +26,24 @@ export function LiveActivityProvider({
 }) {
   const activityIdRef = useRef<string | null>(null)
   const startTimeRef = useRef<number>(0)
+  const lastUpdateAtRef = useRef<number>(0)
   const updateCountRef = useRef<number>(0)
-  const lastMinuteRef = useRef<number>(-1)
 
   // Live Activities only work on iOS 16.2+
   const isActivitySupported = Platform.OS === 'ios'
+
+  const formatElapsed = (totalSeconds: number) => {
+    const safeSeconds = Math.max(0, Math.floor(totalSeconds))
+    const hours = Math.floor(safeSeconds / 3600)
+    const minutes = Math.floor((safeSeconds % 3600) / 60)
+    const seconds = safeSeconds % 60
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(
+        seconds,
+      ).padStart(2, '0')}`
+    }
+    return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
 
   const logState = (label: string, state: any, config?: any) => {
     console.log(`[LiveActivity] ${label}`)
@@ -77,7 +90,7 @@ export function LiveActivityProvider({
     try {
       const workoutStartTime = Date.now()
       startTimeRef.current = workoutStartTime
-      lastMinuteRef.current = -1
+      lastUpdateAtRef.current = 0
       updateCountRef.current = 0
 
       console.log('[LiveActivity] Workout start time:', workoutStartTime)
@@ -86,11 +99,11 @@ export function LiveActivityProvider({
         new Date(workoutStartTime).toISOString(),
       )
 
+      // subtitle format: "0:00 • Rep AI" - Swift extracts timer before " • "
       const state = {
         title: 'Rep AI',
-        subtitle: 'Workout Active',
+        subtitle: '0:00 • Rep AI',
         dynamicIslandImageName: 'bicep',
-        timerStartDateInMilliseconds: workoutStartTime,
       }
 
       const config = {
@@ -137,37 +150,57 @@ export function LiveActivityProvider({
         return
       }
 
-      const safeSeconds = Math.max(0, Math.floor(elapsedSeconds))
-      const currentMinute = Math.floor(safeSeconds / 60)
-      if (currentMinute === lastMinuteRef.current) {
+      const now = Date.now()
+      const timeSinceLastUpdate = now - lastUpdateAtRef.current
+
+      // Throttle to once per second
+      if (timeSinceLastUpdate < 1000) {
+        if (elapsedSeconds % 5 === 0) {
+          console.log(
+            `[LiveActivity] ⏭️  Skipping update (throttled): elapsed=${elapsedSeconds}s, timeSinceLastUpdate=${timeSinceLastUpdate}ms`,
+          )
+        }
         return
       }
-      lastMinuteRef.current = currentMinute
+
+      lastUpdateAtRef.current = now
 
       if (!startTimeRef.current) {
-        const calculatedStartTime = Date.now() - safeSeconds * 1000
+        const calculatedStartTime = now - elapsedSeconds * 1000
         startTimeRef.current = calculatedStartTime
         console.log(
-          `[LiveActivity] Calculated startTime: ${calculatedStartTime} (elapsed=${safeSeconds}s)`,
+          `[LiveActivity] Calculated startTime: ${calculatedStartTime} (elapsed=${elapsedSeconds}s)`,
         )
       }
 
       try {
         updateCountRef.current += 1
+        const formattedTime = formatElapsed(elapsedSeconds)
+        const subtitle = `${formattedTime} • Rep AI`
+
         const updateState = {
           title: 'Rep AI',
-          subtitle: 'Workout Active',
+          subtitle,
           dynamicIslandImageName: 'bicep',
-          timerStartDateInMilliseconds: startTimeRef.current,
         }
 
-        console.log('[LiveActivity] ===== UPDATE =====')
-        console.log('[LiveActivity] elapsedSeconds:', safeSeconds)
-        console.log('[LiveActivity] currentMinute:', currentMinute)
-        console.log('[LiveActivity] activityId:', activityIdRef.current)
-        console.log('[LiveActivity] startTime:', startTimeRef.current)
-        console.log('[LiveActivity] updateCount:', updateCountRef.current)
-        logState('updateActivity', updateState)
+        // Log every update, but more detail every 5 seconds
+        if (elapsedSeconds % 5 === 0) {
+          console.log('[LiveActivity] ===== UPDATE =====')
+          console.log('[LiveActivity] elapsedSeconds:', elapsedSeconds)
+          console.log('[LiveActivity] formattedTime:', formattedTime)
+          console.log('[LiveActivity] subtitle:', subtitle)
+          console.log('[LiveActivity] activityId:', activityIdRef.current)
+          console.log('[LiveActivity] startTime:', startTimeRef.current)
+          console.log('[LiveActivity] now:', now)
+          console.log('[LiveActivity] updateCount:', updateCountRef.current)
+          logState('updateActivity', updateState)
+        } else {
+          // Light logging for other updates
+          console.log(
+            `[LiveActivity] Update ${updateCountRef.current}: ${formattedTime} (elapsed=${elapsedSeconds}s)`,
+          )
+        }
 
         updateActivity(activityIdRef.current, updateState)
         console.log(
@@ -210,7 +243,7 @@ export function LiveActivityProvider({
       console.log('[LiveActivity] ✅ Stopped successfully')
       activityIdRef.current = null
       startTimeRef.current = 0
-      lastMinuteRef.current = -1
+      lastUpdateAtRef.current = 0
       updateCountRef.current = 0
     } catch (error) {
       console.log('[LiveActivity] ❌ Error stopping activity:', error)

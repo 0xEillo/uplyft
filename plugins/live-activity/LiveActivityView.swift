@@ -18,28 +18,23 @@ import os.log
     }
   }
 
-  private func dateFromMilliseconds(_ milliseconds: Double?) -> Date? {
-    guard let milliseconds = milliseconds else { return nil }
-    return Date(timeIntervalSince1970: milliseconds / 1000)
-  }
-
-  @ViewBuilder
-  private func timerText(startMs: Double?, endMs: Double?, font: Font) -> some View {
-    if let startDate = dateFromMilliseconds(startMs) {
-      if let endDate = dateFromMilliseconds(endMs) {
-        Text(timerInterval: startDate...endDate, countsDown: true)
-          .font(font)
-      } else {
-        Text(startDate, style: .timer)
-          .font(font)
-      }
-    } else if let endMs = endMs {
-      Text(timerInterval: Date.toTimerInterval(miliseconds: endMs), countsDown: true)
-        .font(font)
-    } else {
-      Text("--:--")
-        .font(font)
+  // Helper to extract just the timer part from subtitle like "0:30 • Rep AI" -> "0:30"
+  private func extractTimer(from subtitle: String?) -> String {
+    let _ = logger.info("[LA] LiveActivityView.extractTimer called with subtitle=\(subtitle ?? "nil", privacy: .public)")
+    
+    guard let subtitle = subtitle else {
+      let _ = logger.warning("[LA] LiveActivityView.extractTimer: subtitle is nil, returning --:--")
+      return "--:--"
     }
+    
+    if let range = subtitle.range(of: " • ") {
+      let extracted = String(subtitle[..<range.lowerBound])
+      let _ = logger.info("[LA] LiveActivityView.extractTimer: found separator, extracted=\(extracted, privacy: .public) from full=\(subtitle, privacy: .public)")
+      return extracted
+    }
+    
+    let _ = logger.info("[LA] LiveActivityView.extractTimer: no separator found, returning full subtitle=\(subtitle, privacy: .public)")
+    return subtitle
   }
 
   struct LiveActivityView: View {
@@ -156,12 +151,13 @@ import os.log
       let _ = logger.info("[LA] LiveActivityView subtitle=\(contentState.subtitle ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView imageName=\(contentState.imageName ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView dynamicIslandImageName=\(contentState.dynamicIslandImageName ?? "nil", privacy: .public)")
-      let _ = logger.info("[LA] LiveActivityView timerStartDateInMilliseconds=\(contentState.timerStartDateInMilliseconds ?? 0, privacy: .public)")
-      let _ = logger.info("[LA] LiveActivityView timerEndDateInMilliseconds=\(contentState.timerEndDateInMilliseconds ?? 0, privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView backgroundColor=\(attributes.backgroundColor ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView titleColor=\(attributes.titleColor ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView subtitleColor=\(attributes.subtitleColor ?? "nil", privacy: .public)")
       let _ = logger.info("[LA] LiveActivityView deepLinkUrl=\(attributes.deepLinkUrl ?? "nil", privacy: .public)")
+      
+      let extractedTimer = extractTimer(from: contentState.subtitle)
+      let _ = logger.info("[LA] LiveActivityView extractedTimer=\(extractedTimer, privacy: .public)")
       
       let defaultPadding = 24
 
@@ -193,50 +189,69 @@ import os.log
           ?? defaultPadding
       )
 
-      VStack(spacing: 14) {
+      VStack(alignment: .leading, spacing: 12) {
         let position = attributes.imagePosition ?? "right"
         let isLeftImage = position.hasPrefix("left")
         let hasImage = contentState.imageName != nil
 
+        // Top row: Title left, optional image right
         HStack(alignment: .center) {
-          if hasImage, isLeftImage, let imageName = contentState.imageName {
-            alignedImage(imageName: imageName)
-              .frame(width: 28, height: 28)
-              .clipShape(RoundedRectangle(cornerRadius: 6))
+          if hasImage, isLeftImage {
+            if let imageName = contentState.imageName {
+              alignedImage(imageName: imageName)
+            }
           }
 
-          Text(contentState.title)
-            .font(.system(size: 22, weight: .bold, design: .rounded))
-            .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
+          VStack(alignment: .leading, spacing: 2) {
+            Text(contentState.title)
+              .font(.title2)
+              .fontWeight(.semibold)
+              .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
 
-          Spacer()
+            Text("Workout Active")
+              .font(.subheadline)
+              .modifier(ConditionalForegroundViewModifier(color: attributes.subtitleColor))
+          }.layoutPriority(1)
 
-          timerText(
-            startMs: contentState.timerStartDateInMilliseconds,
-            endMs: contentState.timerEndDateInMilliseconds,
-            font: .system(size: 20, weight: .semibold, design: .monospaced)
-          )
-          .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
+          if hasImage, !isLeftImage {
+            Spacer()
+            if let imageName = contentState.imageName {
+              alignedImage(imageName: imageName)
+            }
+          }
         }
 
-        Rectangle()
-          .fill(Color.white.opacity(0.12))
-          .frame(height: 1)
+        // Center: Big timer display
+        HStack {
+          Spacer()
+          Text(extractedTimer)
+            .font(.system(size: 48, weight: .bold, design: .monospaced))
+            .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
+          Spacer()
+        }
 
+        // Bottom: Add exercise button
         if let deepLinkUrl = attributes.deepLinkUrl,
            let url = URL(string: deepLinkUrl) {
           Link(destination: url) {
-            Text("Add an exercise")
-              .font(.system(size: 20, weight: .semibold))
-              .foregroundStyle(Color.white)
-              .frame(maxWidth: .infinity, minHeight: 56)
-              .contentShape(Rectangle())
+            Text("Add exercise +")
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundStyle(Color.black)
+              .padding(.vertical, 10)
+              .padding(.horizontal, 16)
+              .frame(maxWidth: .infinity)
+              .background(Color.white.opacity(0.9))
+              .clipShape(Capsule())
           }
         } else {
-          Text("Add an exercise")
-            .font(.system(size: 20, weight: .semibold))
-            .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, minHeight: 56)
+          Text("Add exercise +")
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(Color.black)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
+            .background(Color.white.opacity(0.9))
+            .clipShape(Capsule())
         }
       }
       .padding(EdgeInsets(top: top, leading: leading, bottom: bottom, trailing: trailing))
