@@ -383,7 +383,7 @@ export function WorkoutDetailView({
                 )}
                 {workoutSong && (
                   <View style={styles.songPreviewWrapper}>
-                    <WorkoutSongPreview song={workoutSong} showAttribution={true} artworkSize={52} />
+                    <WorkoutSongPreview song={workoutSong} artworkSize={52} />
                   </View>
                 )}
               </View>

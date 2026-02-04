@@ -1,27 +1,27 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
-    memo,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactElement,
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
 } from 'react'
 
 import {
-    ActivityIndicator,
-    Animated,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
-    type NativeScrollEvent,
-    type NativeSyntheticEvent,
+  ActivityIndicator,
+  Animated,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
@@ -200,7 +200,9 @@ export const FeedCard = memo(function FeedCard({
   const cardPadding = 14
   const carouselWidth = windowWidth - cardPadding * 2
   // Max height for the image to prevent it from growing too large (infinity zoom effect)
-  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.4, 380)
+  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.45, 420)
+  const DESIRED_ASPECT_RATIO = 1 // Square
+  const baselineHeight = carouselWidth / DESIRED_ASPECT_RATIO
 
   const handleCarouselScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -230,7 +232,7 @@ export const FeedCard = memo(function FeedCard({
     backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.9)',
   }
 
-  const PREVIEW_LIMIT = 3
+  const PREVIEW_LIMIT = coverImageUrl ? 4 : 3
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
@@ -623,7 +625,7 @@ export const FeedCard = memo(function FeedCard({
         )}
         {workoutSong && !coverImageUrl && (
           <View style={styles.songPreviewWrapper}>
-            <WorkoutSongPreview song={workoutSong} showAttribution={true} artworkSize={52} />
+            <WorkoutSongPreview song={workoutSong} artworkSize={52} />
           </View>
         )}
       </Pressable>
@@ -647,7 +649,7 @@ export const FeedCard = memo(function FeedCard({
                 style={[
                   styles.workoutImageContainer,
                   infoHeight > 0 && {
-                    height: infoHeight,
+                    height: Math.max(infoHeight, baselineHeight),
                     aspectRatio: undefined,
                     maxHeight: undefined,
                   },
@@ -685,7 +687,6 @@ export const FeedCard = memo(function FeedCard({
                   <View style={styles.songOverlayContainer}>
                     <WorkoutSongPreview
                       song={workoutSong}
-                      showAttribution={true}
                       containerStyle={songOverlayStyle}
                       artworkSize={52}
                     />
@@ -702,7 +703,7 @@ export const FeedCard = memo(function FeedCard({
                 // Update height if it differs by more than 2 pixels to avoid loops
                 // Also cap at MAX_IMAGE_HEIGHT to prevent runaway growth
                 if (Math.abs(height - infoHeight) > 2) {
-                  const newHeight = Math.min(height, MAX_IMAGE_HEIGHT)
+                  const newHeight = Math.min(Math.max(height, baselineHeight), MAX_IMAGE_HEIGHT)
                   setInfoHeight(newHeight)
                 }
               }}
@@ -1122,14 +1123,13 @@ function createStyles(
     },
     workoutImageContainer: {
       width: '100%',
-      aspectRatio: 16 / 9,
+      aspectRatio: 1,
       marginBottom: 12,
       borderRadius: 8,
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surfaceSubtle,
-      maxHeight: 380,
     },
     workoutImage: {
       width: '100%',
