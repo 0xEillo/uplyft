@@ -25,6 +25,14 @@ export const workoutSchema = z.object({
     .describe('List of exercises performed in order'),
 })
 
+export const songSchema = z.object({
+  trackId: z.number().int(),
+  trackName: z.string(),
+  artistName: z.string(),
+  artworkUrl100: z.string(),
+  previewUrl: z.string(),
+})
+
 const structuredSetSchema = z.object({
   weight: z.union([z.string(), z.number(), z.null()]).optional(),
   reps: z.union([z.string(), z.number(), z.null()]).optional(),
@@ -45,6 +53,7 @@ export const requestSchema = z.object({
   workoutTitle: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
+  song: songSchema.nullable().optional(),
   routineId: z.string().nullable().optional(),
   durationSeconds: z.number().int().min(0).optional(),
   structuredData: z.array(structuredExerciseSchema).optional(),
@@ -57,6 +66,7 @@ export const requestSchema = z.object({
 
 export type WorkoutRequest = z.infer<typeof requestSchema>
 export type ParsedWorkout = z.infer<typeof workoutSchema>
+export type WorkoutSong = z.infer<typeof songSchema>
 
 export interface NormalizedSet {
   set_number: number

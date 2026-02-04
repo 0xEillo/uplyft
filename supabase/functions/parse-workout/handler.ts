@@ -178,6 +178,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         payload.imageUrl,
         payload.routineId,
         payload.durationSeconds,
+        payload.song ?? null,
         payload.performedAt, // client timestamp for offline support
         correlationId,
       )
@@ -429,4 +430,3 @@ function mergeWorkouts(
     exercises: [...(structured.exercises ?? []), ...reindexedAdditional],
   }
 }
-

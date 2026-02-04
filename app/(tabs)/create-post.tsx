@@ -35,6 +35,7 @@ import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
+import type { WorkoutSong } from '@/types/music'
 import {
   clearDraft as clearWorkoutDraft,
   compactDraft as compactWorkoutDraft,
@@ -191,6 +192,7 @@ export default function CreatePostScreen() {
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
+  const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
 
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
@@ -1188,6 +1190,7 @@ export default function CreatePostScreen() {
             setStructuredData([])
             setLastRoutineWorkout(null)
             setFinalizeDescription('')
+            setSelectedSong(null)
 
             haptic('light')
           },
@@ -1276,6 +1279,7 @@ export default function CreatePostScreen() {
         routineId: routineIdValue,
         durationSeconds,
         description: descriptionValue?.trim() || undefined,
+        song: selectedSong,
         structuredData: isStructuredMode ? structuredData : undefined,
         isStructuredMode,
       })
@@ -1358,6 +1362,7 @@ export default function CreatePostScreen() {
       setStructuredData([])
       setLastRoutineWorkout(null)
       setFinalizeDescription('')
+      setSelectedSong(null)
       blurInputs()
 
       // Show streak overlay only if the streak increased (e.g., 2 weeks -> 3 weeks)
@@ -1386,6 +1391,7 @@ export default function CreatePostScreen() {
       completeStep,
       isStructuredMode,
       structuredData,
+      selectedSong,
     ],
   )
 
@@ -2424,6 +2430,9 @@ export default function CreatePostScreen() {
           onAttachWithLibrary={handleAttachWithLibrary}
           imageUri={attachedImageUri}
           onRemoveImage={handleRemoveAttachedImage}
+          selectedSong={selectedSong}
+          onSelectSong={setSelectedSong}
+          onRemoveSong={() => setSelectedSong(null)}
           description={finalizeDescription}
           setDescription={setFinalizeDescription}
           isLoading={isLoading}

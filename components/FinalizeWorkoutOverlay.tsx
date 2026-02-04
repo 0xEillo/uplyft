@@ -1,9 +1,13 @@
+import { WorkoutSongPicker } from '@/components/workout-song-picker'
+import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import {
     ActivityIndicator,
     Image,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -22,6 +26,9 @@ interface FinalizeWorkoutOverlayProps {
   onAttachWithLibrary: () => void
   imageUri: string | null
   onRemoveImage: () => void
+  selectedSong: WorkoutSong | null
+  onSelectSong: (song: WorkoutSong) => void
+  onRemoveSong: () => void
   description: string
   setDescription: (text: string) => void
   isLoading?: boolean
@@ -35,26 +42,55 @@ export function FinalizeWorkoutOverlay({
   onAttachWithLibrary,
   imageUri,
   onRemoveImage,
+  selectedSong,
+  onSelectSong,
+  onRemoveSong,
   description,
   setDescription,
   isLoading = false,
 }: FinalizeWorkoutOverlayProps) {
   const colors = useThemedColors()
   const [showPhotoMenu, setShowPhotoMenu] = React.useState(false)
+  const [showSongPicker, setShowSongPicker] = React.useState(false)
+  const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false)
 
   // Reset photo menu state when modal closes to prevent stale state
   React.useEffect(() => {
     if (!visible) {
       setShowPhotoMenu(false)
+      setShowSongPicker(false)
+      setIsKeyboardVisible(false)
     }
   }, [visible])
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true)
+    })
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false)
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
+
+  const handleRequestClose = React.useCallback(() => {
+    if (isKeyboardVisible) {
+      Keyboard.dismiss()
+      return
+    }
+    onClose()
+  }, [isKeyboardVisible, onClose])
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onRequestClose={handleRequestClose}
     >
       <View style={[styles.container, { backgroundColor: colors.surfaceSheet }]}>
         {/* Header */}
@@ -78,10 +114,91 @@ export function FinalizeWorkoutOverlay({
               },
             ]}
           >
-            {/* Media Row */}
-            <View style={styles.mediaButtonsRow}>
-              {/* Add Photo Button */}
-              <View style={{ position: 'relative', zIndex: 10 }}>
+            {/* Media Row - Hide when picking a song */}
+            {!showSongPicker && (
+              <View style={styles.mediaButtonsRow}>
+                {/* Add Photo Button */}
+                <View style={{ position: 'relative', zIndex: 10 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.mediaButton,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                      },
+                    ]}
+                    onPress={() => setShowPhotoMenu(!showPhotoMenu)}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name="images-outline"
+                      size={24}
+                      color={colors.brandPrimary}
+                    />
+                    <Text
+                      style={[
+                        styles.mediaButtonText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Photos
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Custom Context Menu */}
+                  {showPhotoMenu && (
+                    <View
+                      style={[
+                        styles.menuContainer,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          setShowPhotoMenu(false)
+                          onAttachWithCamera()
+                        }}
+                      >
+                        <Text style={[styles.menuText, { color: colors.textPrimary }]}>
+                          Take a photo
+                        </Text>
+                        <Ionicons
+                          name="camera-outline"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      </TouchableOpacity>
+                      <View
+                        style={[
+                          styles.menuDivider,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          setShowPhotoMenu(false)
+                          onAttachWithLibrary()
+                        }}
+                      >
+                        <Text style={[styles.menuText, { color: colors.textPrimary }]}>
+                          Choose from Library...
+                        </Text>
+                        <Ionicons
+                          name="grid-outline"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
                 <TouchableOpacity
                   style={[
                     styles.mediaButton,
@@ -91,110 +208,80 @@ export function FinalizeWorkoutOverlay({
                       borderWidth: 1,
                     },
                   ]}
-                  onPress={() => setShowPhotoMenu(!showPhotoMenu)}
+                  onPress={() => setShowSongPicker((prev) => !prev)}
                   disabled={isLoading}
                 >
                   <Ionicons
-                    name="images-outline"
+                    name="musical-notes-outline"
                     size={24}
                     color={colors.brandPrimary}
                   />
                   <Text
-                    style={[
-                      styles.mediaButtonText,
-                      { color: colors.textSecondary },
-                    ]}
+                    style={[styles.mediaButtonText, { color: colors.textSecondary }]}
                   >
-                    Photos
+                    Music
                   </Text>
                 </TouchableOpacity>
 
-                {/* Custom Context Menu */}
-                {showPhotoMenu && (
-                  <View
-                    style={[
-                      styles.menuContainer,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => {
-                        setShowPhotoMenu(false)
-                        onAttachWithCamera()
-                      }}
-                    >
-                      <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-                        Take a photo
-                      </Text>
-                      <Ionicons
-                        name="camera-outline"
-                        size={20}
-                        color={colors.brandPrimary}
-                      />
-                    </TouchableOpacity>
-                    <View
-                      style={[
-                        styles.menuDivider,
-                        { backgroundColor: colors.border },
-                      ]}
+                {/* Attached Image Preview */}
+                {imageUri && (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.imagePreview}
                     />
                     <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => {
-                        setShowPhotoMenu(false)
-                        onAttachWithLibrary()
-                      }}
+                      style={styles.removeImageButton}
+                      onPress={onRemoveImage}
+                      disabled={isLoading}
                     >
-                      <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-                        Choose from Library...
-                      </Text>
                       <Ionicons
-                        name="grid-outline"
-                        size={20}
-                        color={colors.brandPrimary}
+                        name="close-circle"
+                        size={24}
+                        color={colors.surface}
                       />
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
+            )}
 
-              {/* Attached Image Preview */}
-              {imageUri && (
-                <View style={styles.imagePreviewContainer}>
-                  <Image
-                    source={{ uri: imageUri }}
-                    style={styles.imagePreview}
-                  />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={onRemoveImage}
-                    disabled={isLoading}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={24}
-                      color={colors.surface}
-                    />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+            {selectedSong && !showSongPicker && (
+              <View style={styles.songPreviewContainer}>
+                <WorkoutSongPreview
+                  song={selectedSong}
+                  onRemove={onRemoveSong}
+                  showAttribution={true}
+                />
+              </View>
+            )}
 
-            {/* Description Input */}
-            <TextInput
-              style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="Say something about your workout (optional)"
-              placeholderTextColor={colors.textTertiary}
-              multiline
-              value={description}
-              onChangeText={setDescription}
-              textAlignVertical="top"
-              editable={!isLoading}
-            />
+            {showSongPicker && (
+              <View style={styles.songPickerContainer}>
+                <WorkoutSongPicker
+                  selectedSong={selectedSong}
+                  onSelectSong={(song) => {
+                    onSelectSong(song)
+                    setShowSongPicker(false)
+                  }}
+                  isDisabled={isLoading}
+                />
+              </View>
+            )}
+
+            {/* Description Input - Hide when picking a song */}
+            {!showSongPicker && (
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                placeholder="Say something about your workout (optional)"
+                placeholderTextColor={colors.textTertiary}
+                multiline
+                value={description}
+                onChangeText={setDescription}
+                textAlignVertical="top"
+                editable={!isLoading}
+              />
+            )}
           </View>
 
           {/* Finish Button */}
@@ -271,6 +358,12 @@ const styles = StyleSheet.create({
     height: 80,
     marginBottom: 16,
     position: 'relative',
+  },
+  songPreviewContainer: {
+    marginBottom: 16,
+  },
+  songPickerContainer: {
+    marginBottom: 16,
   },
   imagePreview: {
     width: '100%',

@@ -1,5 +1,6 @@
 import { callSupabaseFunction } from '@/lib/supabase-functions-client'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import type { WorkoutSong } from '@/types/music'
 
 import { ApiError, ApiErrorCode, toApiErrorShape } from './errors'
 
@@ -13,6 +14,7 @@ export interface WorkoutRequest {
   workoutTitle?: string
   description?: string
   imageUrl?: string | null
+  song?: WorkoutSong | null
   idempotencyKey?: string
   routineId?: string | null
   durationSeconds?: number

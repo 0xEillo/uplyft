@@ -1,4 +1,5 @@
 import { MMKV } from 'react-native-mmkv'
+import type { WorkoutSong } from '@/types/music'
 
 export const PENDING_POST_KEY = '@pending_workout_post'
 export const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
@@ -106,6 +107,7 @@ export interface PendingWorkout {
   routineId?: string | null
   durationSeconds?: number | null
   description?: string
+  song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
   /** ISO timestamp when the workout was logged locally (for offline support) */
@@ -118,6 +120,7 @@ export interface PlaceholderWorkout {
   id: string
   title: string
   imageUrl: string | null
+  song?: WorkoutSong | null
   created_at: string
   isPending: boolean
   user_id: string
@@ -334,15 +337,16 @@ export function createPlaceholderWorkout(
   imageUrl: string | null,
   userId: string,
   profile: { display_name: string; avatar_url: string | null } | null,
+  song?: WorkoutSong | null,
 ): PlaceholderWorkout {
   return {
     id: `temp-${Date.now()}`,
     title,
     imageUrl,
+    song: song ?? null,
     created_at: new Date().toISOString(),
     isPending: true,
     user_id: userId,
     profile,
   }
 }
-

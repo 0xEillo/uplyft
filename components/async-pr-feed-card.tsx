@@ -261,6 +261,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       workoutImageUrl={
         isPending ? (workout as any).imageUrl || null : workout.image_url
       }
+      workoutSong={workout.song ?? null}
       exercises={exercises}
       stats={{
         exercises: (workout.workout_exercises || []).length,

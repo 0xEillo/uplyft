@@ -10,6 +10,7 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
+import type { WorkoutSong } from '@/types/music'
 import {
     clearPendingArtifacts,
     createPlaceholderWorkout,
@@ -30,6 +31,7 @@ interface SubmitWorkoutArgs {
   routineId?: string | null
   durationSeconds?: number
   description?: string
+  song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
 }
@@ -159,6 +161,7 @@ export function useSubmitWorkout() {
       routineId,
       durationSeconds,
       description,
+      song,
       structuredData,
       isStructuredMode,
     }: SubmitWorkoutArgs) => {
@@ -213,6 +216,7 @@ export function useSubmitWorkout() {
         durationSeconds:
           typeof durationSeconds === 'number' ? durationSeconds : null,
         description,
+        song: song ?? null,
         structuredData:
           Array.isArray(structuredData) && structuredData.length > 0
             ? structuredData
@@ -245,6 +249,7 @@ export function useSubmitWorkout() {
         imageUrl,
         user.id,
         profileData,
+        song ?? null,
       )
 
       await Promise.all([
@@ -324,6 +329,7 @@ export function useSubmitWorkout() {
           routineId: pending.routineId,
           durationSeconds: pending.durationSeconds ?? undefined,
           description: pending.description,
+          song: pending.song ?? undefined,
           structuredData: pending.structuredData,
           isStructuredMode: pending.isStructuredMode,
           performedAt: pending.performedAt,

@@ -1,3 +1,5 @@
+import type { WorkoutSong } from '@/types/music'
+
 export type Gender = 'male' | 'female' | 'prefer_not_to_say'
 export type Goal =
   | 'build_muscle'
@@ -73,6 +75,7 @@ export interface WorkoutSession {
   notes: string | null
   type: string | null
   image_url: string | null
+  song?: WorkoutSong | null
   routine_id: string | null
   duration: number | null
   created_at: string

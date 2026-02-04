@@ -24,12 +24,14 @@ import {
     type NativeSyntheticEvent,
 } from 'react-native'
 
+import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
 import type { WorkoutSessionWithDetails } from '@/types/database.types'
+import type { WorkoutSong } from '@/types/music'
 
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PrTooltip } from './pr-tooltip'
@@ -113,6 +115,7 @@ export interface FeedCardProps {
   workoutTitle: string
   workoutDescription?: string | null
   workoutImageUrl?: string | null
+  workoutSong?: WorkoutSong | null
   exercises: ExerciseDisplay[]
   stats: WorkoutStats
   userId?: string
@@ -148,6 +151,7 @@ export const FeedCard = memo(function FeedCard({
   workoutTitle,
   workoutDescription,
   workoutImageUrl,
+  workoutSong: workoutSongProp,
   exercises,
   stats,
   userId,
@@ -174,6 +178,12 @@ export const FeedCard = memo(function FeedCard({
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
 
   const displayRoutine = routine || workout?.routine
+  const workoutSong = workoutSongProp ?? workout?.song ?? null
+  const coverImageUrl =
+    workoutImageUrl ||
+    (workoutSong?.artworkUrl100
+      ? workoutSong.artworkUrl100.replace('100x100', '600x600')
+      : null)
 
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [
@@ -216,6 +226,9 @@ export const FeedCard = memo(function FeedCard({
   const [analyzingDots, setAnalyzingDots] = useState('')
 
   const styles = createStyles(colors, isDark)
+  const songOverlayStyle = {
+    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.9)',
+  }
 
   const PREVIEW_LIMIT = 3
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
@@ -608,10 +621,15 @@ export const FeedCard = memo(function FeedCard({
         {workoutDescription && (
           <Text style={styles.workoutDescription}>{workoutDescription}</Text>
         )}
+        {workoutSong && !coverImageUrl && (
+          <View style={styles.songPreviewWrapper}>
+            <WorkoutSongPreview song={workoutSong} showAttribution={true} />
+          </View>
+        )}
       </Pressable>
 
       {/* Carousel or Info */}
-      {workoutImageUrl ? (
+      {coverImageUrl ? (
         <View>
           <ScrollView
             horizontal
@@ -638,7 +656,7 @@ export const FeedCard = memo(function FeedCard({
                 activeOpacity={0.9}
               >
                 <Animated.Image
-                  source={{ uri: workoutImageUrl }}
+                  source={{ uri: coverImageUrl }}
                   style={[styles.workoutImage, { opacity: imageOpacity }]}
                   resizeMode="cover"
                   onLoadStart={() => setImageLoading(true)}
@@ -661,6 +679,15 @@ export const FeedCard = memo(function FeedCard({
                 {imageLoading && (
                   <View style={styles.imageLoadingOverlay}>
                     <ActivityIndicator size="small" color={colors.brandPrimary} />
+                  </View>
+                )}
+                {workoutSong && (
+                  <View style={styles.songOverlayContainer}>
+                    <WorkoutSongPreview
+                      song={workoutSong}
+                      showAttribution={true}
+                      containerStyle={songOverlayStyle}
+                    />
                   </View>
                 )}
               </TouchableOpacity>
@@ -754,7 +781,7 @@ export const FeedCard = memo(function FeedCard({
       )}
 
       {/* Image Fullscreen Modal */}
-      {workoutImageUrl && (
+      {coverImageUrl && (
         <Modal
           visible={imageModalVisible}
           transparent
@@ -767,7 +794,7 @@ export const FeedCard = memo(function FeedCard({
           >
             <View style={styles.imageModalContent}>
               <Animated.Image
-                source={{ uri: workoutImageUrl }}
+                source={{ uri: coverImageUrl }}
                 style={[styles.fullscreenImage, { opacity: fullscreenOpacity }]}
                 resizeMode="contain"
                 onLoadStart={() => setFullscreenImageLoading(true)}
@@ -913,6 +940,15 @@ function createStyles(
       marginTop: 4,
       marginBottom: 12,
       lineHeight: 22,
+    },
+    songPreviewWrapper: {
+      marginBottom: 12,
+    },
+    songOverlayContainer: {
+      position: 'absolute',
+      left: 10,
+      right: 10,
+      bottom: 10,
     },
     exercisesContainer: {
       marginBottom: 0,

@@ -1,7 +1,7 @@
 import { createServiceClient } from '../_shared/supabase.ts'
 import { logWithCorrelation } from './metrics.ts'
 import { resolveExercises } from './resolver/agent.ts'
-import { NormalizedWorkout, WorkoutMetrics } from './schemas.ts'
+import { NormalizedWorkout, WorkoutMetrics, WorkoutSong } from './schemas.ts'
 
 export interface CreatedWorkoutResult {
   session: any
@@ -17,6 +17,7 @@ export async function createWorkoutSession(
   imageUrl: string | null | undefined,
   routineId: string | null | undefined,
   durationSeconds: number | null | undefined,
+  song: WorkoutSong | null | undefined,
   performedAt: string | null | undefined,
   correlationId: string,
 ): Promise<CreatedWorkoutResult> {
@@ -36,6 +37,7 @@ export async function createWorkoutSession(
       notes: description || null, // Use user-provided description, not AI-parsed notes
       type: workout.type ?? null,
       image_url: imageUrl ?? null,
+      song: song ?? null,
       routine_id: routineId ?? null,
       duration: typeof durationSeconds === 'number' ? durationSeconds : null,
       // Use client-provided timestamp for offline support, fallback to server time

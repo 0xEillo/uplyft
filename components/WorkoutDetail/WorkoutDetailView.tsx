@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { SlideInView } from '@/components/slide-in-view'
+import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { formatTimeAgo } from '@/lib/utils/formatters'
@@ -116,6 +117,7 @@ export function WorkoutDetailView({
   const workoutTitle = workout?.type || muscleGroups || 'Workout'
   const timeAgo = workout ? formatTimeAgo(workout.created_at) : ''
   const profile = workout?.profile
+  const workoutSong = workout?.song ?? null
 
   const handleBack = () => {
     // Trigger exit animation first
@@ -379,6 +381,11 @@ export function WorkoutDetailView({
                     {workout.notes}
                   </Text>
                 )}
+                {workoutSong && (
+                  <View style={styles.songPreviewWrapper}>
+                    <WorkoutSongPreview song={workoutSong} showAttribution={true} />
+                  </View>
+                )}
               </View>
 
               {/* Stats grid */}
@@ -580,6 +587,9 @@ const styles = StyleSheet.create({
   workoutNotes: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  songPreviewWrapper: {
+    marginTop: 12,
   },
   statsContainer: {
     marginHorizontal: -16,

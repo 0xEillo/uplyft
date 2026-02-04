@@ -35,6 +35,7 @@ The `migrations/` directory contains the exact migration files executed against 
 - `20251112T0009_cleanup.sql` - Cleanup operations
 - `20251112T0010_workout_routines_and_rpc.sql` - Workout routines
 - `20251112T0011_add_workout_session_image_url.sql` - Image URL field
+- `20251112T0012_add_workout_session_song.sql` - Song preview field
 
 For more commands and workflows, see [docs/COMMANDS.md](../docs/COMMANDS.md).
 
