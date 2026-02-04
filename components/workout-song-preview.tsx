@@ -11,6 +11,7 @@ interface WorkoutSongPreviewProps {
   onRemove?: () => void
   showAttribution?: boolean
   containerStyle?: StyleProp<ViewStyle>
+  artworkSize?: number
 }
 
 function formatMillis(ms?: number) {
@@ -26,6 +27,7 @@ export function WorkoutSongPreview({
   onRemove,
   showAttribution = false,
   containerStyle,
+  artworkSize = 42,
 }: WorkoutSongPreviewProps) {
   const colors = useThemedColors()
   const [isPlaying, setIsPlaying] = useState(false)
@@ -87,7 +89,10 @@ export function WorkoutSongPreview({
     <View
       style={[styles.container, containerStyle]}
     >
-      <Image source={{ uri: song.artworkUrl100 }} style={styles.artwork} />
+      <Image
+        source={{ uri: song.artworkUrl100 }}
+        style={[styles.artwork, { width: artworkSize, height: artworkSize }]}
+      />
       <View style={styles.info}>
         <Text style={[styles.trackName, { color: colors.textPrimary }]} numberOfLines={1}>
           {song.trackName}

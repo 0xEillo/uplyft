@@ -361,6 +361,7 @@ const styles = StyleSheet.create({
   },
   songPreviewContainer: {
     marginBottom: 16,
+    marginHorizontal: -10,
   },
   songPickerContainer: {
     marginBottom: 16,

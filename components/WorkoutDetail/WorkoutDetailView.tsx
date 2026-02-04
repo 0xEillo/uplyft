@@ -383,7 +383,7 @@ export function WorkoutDetailView({
                 )}
                 {workoutSong && (
                   <View style={styles.songPreviewWrapper}>
-                    <WorkoutSongPreview song={workoutSong} showAttribution={true} />
+                    <WorkoutSongPreview song={workoutSong} showAttribution={true} artworkSize={52} />
                   </View>
                 )}
               </View>
@@ -590,6 +590,7 @@ const styles = StyleSheet.create({
   },
   songPreviewWrapper: {
     marginTop: 12,
+    marginHorizontal: -10,
   },
   statsContainer: {
     marginHorizontal: -16,

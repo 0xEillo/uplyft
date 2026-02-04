@@ -623,7 +623,7 @@ export const FeedCard = memo(function FeedCard({
         )}
         {workoutSong && !coverImageUrl && (
           <View style={styles.songPreviewWrapper}>
-            <WorkoutSongPreview song={workoutSong} showAttribution={true} />
+            <WorkoutSongPreview song={workoutSong} showAttribution={true} artworkSize={52} />
           </View>
         )}
       </Pressable>
@@ -687,6 +687,7 @@ export const FeedCard = memo(function FeedCard({
                       song={workoutSong}
                       showAttribution={true}
                       containerStyle={songOverlayStyle}
+                      artworkSize={52}
                     />
                   </View>
                 )}
