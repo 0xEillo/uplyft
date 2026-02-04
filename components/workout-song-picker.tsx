@@ -1,5 +1,5 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useMusicPreviewState } from '@/hooks/useMusicPreviewState'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { searchItunesSongs } from '@/lib/api/itunes'
 import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { WorkoutSong } from '@/types/music'

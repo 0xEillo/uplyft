@@ -1,5 +1,5 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
 import { useMusicPreviewState } from '@/hooks/useMusicPreviewState'
+import { useThemedColors } from '@/hooks/useThemedColors'
 import { stopMusicPreview, toggleMusicPreview } from '@/lib/music-preview-player'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,6 +8,7 @@ import type { StyleProp, ViewStyle } from 'react-native'
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -55,28 +56,41 @@ export function WorkoutSongPreview({
     onRemove?.()
   }, [isActive, onRemove])
 
+  const handleOpenSong = useCallback(() => {
+    // We prefer the full trackViewUrl if available (new data), 
+    // but fallback to the i/trackId format for old data.
+    const url = song.trackViewUrl 
+      ? `https://song.link/${song.trackViewUrl}`
+      : `https://song.link/i/${song.trackId}`
+      
+    void Linking.openURL(url)
+  }, [song])
+
   return (
-    <View
-      style={[styles.container, containerStyle]}
-    >
-      <Image
-        source={{ uri: song.artworkUrl100 }}
-        style={[styles.artwork, { width: artworkSize, height: artworkSize }]}
-      />
-      <View style={styles.info}>
-        <Text style={[styles.trackName, { color: colors.textPrimary }]} numberOfLines={1}>
-          {song.trackName}
-        </Text>
-        <Text style={[styles.artistName, { color: colors.textSecondary }]} numberOfLines={1}>
-          {song.artistName}
-          {duration ? ` • ${duration}` : ''}
-        </Text>
-        {showAttribution && (
-          <Text style={[styles.attribution, { color: colors.textTertiary }]}>
-            Preview courtesy of iTunes
+    <View style={[styles.container, containerStyle]}>
+      <Pressable 
+        style={styles.clickableArea} 
+        onPress={handleOpenSong}
+      >
+        <Image
+          source={{ uri: song.artworkUrl100 }}
+          style={[styles.artwork, { width: artworkSize, height: artworkSize }]}
+        />
+        <View style={styles.info}>
+          <Text style={[styles.trackName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {song.trackName}
           </Text>
-        )}
-      </View>
+          <Text style={[styles.artistName, { color: colors.textSecondary }]} numberOfLines={1}>
+            {song.artistName}
+            {duration ? ` • ${duration}` : ''}
+          </Text>
+          {showAttribution && (
+            <Text style={[styles.attribution, { color: colors.textTertiary }]}>
+              Preview courtesy of iTunes
+            </Text>
+          )}
+        </View>
+      </Pressable>
       <Pressable
         style={styles.playButton}
         onPress={handleTogglePlayback}
@@ -137,6 +151,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  clickableArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   removeButton: {
     marginLeft: 4,

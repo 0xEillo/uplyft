@@ -9,6 +9,7 @@ interface ItunesSearchResponse {
     artistName: string
     previewUrl: string
     artworkUrl100: string
+    trackViewUrl: string
     trackTimeMillis?: number
     kind?: string
   }>
@@ -50,6 +51,7 @@ export async function searchItunesSongs(
         artistName: result.artistName,
         artworkUrl100: result.artworkUrl100,
         previewUrl: result.previewUrl,
+        trackViewUrl: result.trackViewUrl,
         trackTimeMillis: result.trackTimeMillis,
       }))
   } catch (error) {
