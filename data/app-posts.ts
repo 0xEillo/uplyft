@@ -81,7 +81,7 @@ export const APP_POSTS: AppPost[] = [
   },
   {
     id: 'rest-timer',
-    title: 'Rest Timer Without Leaving Your Notes',
+    title: 'Rest Timer Without Leaving Your Workout',
     body:
       'Start, pause, and add time from the overlay so your flow never breaks between sets.',
     createdAt: '2026-01-31T19:05:00.000Z',

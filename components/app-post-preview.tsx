@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { StyleSheet, Text, View } from 'react-native'
 
 import type { AppPostPreviewType } from '@/data/app-posts'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -159,8 +159,8 @@ function WorkoutCalendarPreview() {
         </View>
       </View>
       <View style={styles.weekRow}>
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label) => (
-          <Text key={label} style={styles.weekday}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, index) => (
+          <Text key={`${label}-${index}`} style={styles.weekday}>
             {label}
           </Text>
         ))}
@@ -216,7 +216,7 @@ function RestTimerPreview() {
             size={18}
             color={colors.textPrimary}
           />
-          <Text style={shared.headerTitle}>Rest Timer Overlay</Text>
+          <Text style={shared.headerTitle}>Rest Timer</Text>
         </View>
         <View style={shared.headerBadge}>
           <Text style={shared.headerBadgeText}>FLOW</Text>
@@ -530,7 +530,7 @@ function ExploreProgramsPreview() {
         {PROGRAM_PREVIEWS.map((program) => (
           <View key={program.name} style={styles.programCard}>
             <LinearGradient
-              colors={program.gradient as [string, string, ...string[]]}
+              colors={program.gradient as unknown as [string, string, ...string[]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.programGradient}
