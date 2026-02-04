@@ -1,10 +1,18 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useMusicPreviewState } from '@/hooks/useMusicPreviewState'
+import { stopMusicPreview, toggleMusicPreview } from '@/lib/music-preview-player'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
-import { Audio } from 'expo-av'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 
 interface WorkoutSongPreviewProps {
   song: WorkoutSong
@@ -30,60 +38,22 @@ export function WorkoutSongPreview({
   artworkSize = 42,
 }: WorkoutSongPreviewProps) {
   const colors = useThemedColors()
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isBuffering, setIsBuffering] = useState(false)
-  const soundRef = useRef<Audio.Sound | null>(null)
+  const playback = useMusicPreviewState()
+  const isActive = playback.trackId === song.trackId
+  const isPlaying = isActive && playback.isPlaying
+  const isBuffering = isActive && playback.isBuffering
   const duration = formatMillis(song.trackTimeMillis)
 
-  const stopPlayback = useCallback(async () => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync()
-        await soundRef.current.unloadAsync()
-      } catch {
-        // Ignore unload errors
-      }
-      soundRef.current = null
-    }
-    setIsPlaying(false)
-    setIsBuffering(false)
-  }, [])
+  const handleTogglePlayback = useCallback(() => {
+    void toggleMusicPreview(song)
+  }, [song])
 
-  const togglePlayback = useCallback(async () => {
-    if (isPlaying) {
-      await stopPlayback()
-      return
+  const handleRemove = useCallback(() => {
+    if (isActive) {
+      void stopMusicPreview()
     }
-
-    setIsBuffering(true)
-    try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: song.previewUrl },
-        { shouldPlay: true },
-      )
-      soundRef.current = sound
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded) return
-        setIsPlaying(status.isPlaying)
-        setIsBuffering(status.isBuffering)
-        if (status.didJustFinish) {
-          stopPlayback()
-        }
-      })
-    } catch (error) {
-      console.error('Error playing song preview:', error)
-      await stopPlayback()
-    } finally {
-      setIsBuffering(false)
-    }
-  }, [isPlaying, song.previewUrl, stopPlayback])
-
-  useEffect(() => {
-    return () => {
-      stopPlayback()
-    }
-  }, [stopPlayback])
+    onRemove?.()
+  }, [isActive, onRemove])
 
   return (
     <View
@@ -109,16 +79,20 @@ export function WorkoutSongPreview({
       </View>
       <Pressable
         style={styles.playButton}
-        onPress={togglePlayback}
+        onPress={handleTogglePlayback}
       >
-        <Ionicons
-          name={isPlaying ? 'pause' : 'play'}
-          size={20}
-          color={colors.brandPrimary}
-        />
+        {isBuffering ? (
+          <ActivityIndicator size="small" color={colors.textPrimary} />
+        ) : (
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={20}
+            color={colors.textPrimary}
+          />
+        )}
       </Pressable>
       {onRemove && (
-        <Pressable style={styles.removeButton} onPress={onRemove}>
+        <Pressable style={styles.removeButton} onPress={handleRemove}>
           <Ionicons name="close-circle" size={22} color={colors.textTertiary} />
         </Pressable>
       )}

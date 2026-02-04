@@ -1,9 +1,10 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useMusicPreviewState } from '@/hooks/useMusicPreviewState'
 import { searchItunesSongs } from '@/lib/api/itunes'
+import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
-import { Audio } from 'expo-av'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
     Image,
@@ -40,23 +41,9 @@ export function WorkoutSongPicker({
   const [results, setResults] = useState<WorkoutSong[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
-  const [playingTrackId, setPlayingTrackId] = useState<number | null>(null)
-  const soundRef = useRef<Audio.Sound | null>(null)
+  const playback = useMusicPreviewState()
 
   const trimmedQuery = useMemo(() => query.trim(), [query])
-
-  const stopPlayback = useCallback(async () => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync()
-        await soundRef.current.unloadAsync()
-      } catch {
-        // Ignore unload errors
-      }
-      soundRef.current = null
-    }
-    setPlayingTrackId(null)
-  }, [])
 
   const handleSearch = useCallback(async () => {
     if (!trimmedQuery) {
@@ -72,41 +59,9 @@ export function WorkoutSongPicker({
     setIsSearching(false)
   }, [trimmedQuery])
 
-  const handlePlayPreview = useCallback(
-    async (song: WorkoutSong) => {
-      if (playingTrackId === song.trackId) {
-        await stopPlayback()
-        return
-      }
-
-      await stopPlayback()
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: song.previewUrl },
-          { shouldPlay: true },
-        )
-        soundRef.current = sound
-        setPlayingTrackId(song.trackId)
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (!status.isLoaded) return
-          if (status.didJustFinish) {
-            stopPlayback()
-          }
-        })
-      } catch (error) {
-        console.error('Error playing preview:', error)
-        await stopPlayback()
-      }
-    },
-    [playingTrackId, stopPlayback],
-  )
-
-  useEffect(() => {
-    return () => {
-      stopPlayback()
-    }
-  }, [stopPlayback])
+  const handlePlayPreview = useCallback((song: WorkoutSong) => {
+    void toggleMusicPreview(song)
+  }, [])
 
   return (
     <View style={styles.container}>
@@ -134,7 +89,7 @@ export function WorkoutSongPicker({
           onPress={handleSearch}
           disabled={isDisabled}
         >
-          <Ionicons name="search" size={18} color={colors.brandPrimary} />
+          <Ionicons name="search" size={18} color={colors.textPrimary} />
         </Pressable>
       </View>
 
@@ -162,7 +117,9 @@ export function WorkoutSongPicker({
       >
         {results.map((song, index) => {
           const isSelected = selectedSong?.trackId === song.trackId
-          const isPlaying = playingTrackId === song.trackId
+          const isActive = playback.trackId === song.trackId
+          const isPlaying = isActive && playback.isPlaying
+          const isBuffering = isActive && playback.isBuffering
           const duration = formatMillis(song.trackTimeMillis)
 
           return (
@@ -197,11 +154,15 @@ export function WorkoutSongPicker({
                   style={styles.previewButton}
                   onPress={() => handlePlayPreview(song)}
                 >
-                  <Ionicons
-                    name={isPlaying ? 'pause' : 'play'}
-                    size={20}
-                    color={colors.brandPrimary}
-                  />
+                  {isBuffering ? (
+                    <ActivityIndicator size="small" color={colors.textPrimary} />
+                  ) : (
+                    <Ionicons
+                      name={isPlaying ? 'pause' : 'play'}
+                      size={20}
+                      color={colors.textPrimary}
+                    />
+                  )}
                 </Pressable>
               </Pressable>
               {index < results.length - 1 && (

@@ -9,7 +9,7 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { PostHogProvider } from 'posthog-react-native'
 import { useEffect, useRef } from 'react'
-import { Platform, UIManager } from 'react-native'
+import { AppState, Platform, UIManager } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -26,6 +26,7 @@ import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { stopMusicPreview } from '@/lib/music-preview-player'
 import { initializeFacebookSDK } from '@/lib/facebook-sdk'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
@@ -64,6 +65,7 @@ function RootLayoutNav() {
   const router = useRouter()
   const { isDark } = useTheme()
   const { trackEvent } = useAnalytics()
+  const lastRouteKey = useRef('')
 
   // Initialize push notifications
   usePushNotifications()
@@ -90,6 +92,26 @@ function RootLayoutNav() {
       hasTrackedAppOpen.current = true
     }
   }, [trackEvent, segments])
+
+  useEffect(() => {
+    const nextKey = segments.join('/')
+    if (lastRouteKey.current && lastRouteKey.current !== nextKey) {
+      void stopMusicPreview()
+    }
+    lastRouteKey.current = nextKey
+  }, [segments])
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') {
+        void stopMusicPreview()
+      }
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [])
 
   useEffect(() => {
     if (isLoading) return
