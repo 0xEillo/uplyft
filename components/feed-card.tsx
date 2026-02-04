@@ -1,27 +1,27 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
-  memo,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactElement,
+    memo,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactElement,
 } from 'react'
 
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
+    ActivityIndicator,
+    Animated,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
+    type NativeScrollEvent,
+    type NativeSyntheticEvent,
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
@@ -184,6 +184,8 @@ export const FeedCard = memo(function FeedCard({
     (workoutSong?.artworkUrl100
       ? workoutSong.artworkUrl100.replace('100x100', '600x600')
       : null)
+
+  const mediaFirst = !!workoutImageUrl
 
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [
@@ -544,6 +546,74 @@ export const FeedCard = memo(function FeedCard({
     ],
   )
 
+  const mediaSlide = coverImageUrl ? (
+    <View style={{ width: carouselWidth }}>
+      <TouchableOpacity
+        style={[
+          styles.workoutImageContainer,
+          infoHeight > 0 && {
+            height: Math.max(infoHeight, baselineHeight),
+            aspectRatio: undefined,
+            maxHeight: undefined,
+          },
+        ]}
+        onPress={() => setImageModalVisible(true)}
+        activeOpacity={0.9}
+      >
+        <Animated.Image
+          source={{ uri: coverImageUrl }}
+          style={[styles.workoutImage, { opacity: imageOpacity }]}
+          resizeMode="cover"
+          onLoadStart={() => setImageLoading(true)}
+          onLoad={() => {
+            setImageLoading(false)
+            Animated.timing(imageOpacity, {
+              toValue: 1,
+              duration: IMAGE_FADE_DURATION,
+              useNativeDriver: true,
+            }).start()
+          }}
+          onError={(error) => {
+            console.error(
+              'Failed to load workout image:',
+              error.nativeEvent.error,
+            )
+            setImageLoading(false)
+          }}
+        />
+        {imageLoading && (
+          <View style={styles.imageLoadingOverlay}>
+            <ActivityIndicator size="small" color={colors.brandPrimary} />
+          </View>
+        )}
+        {workoutSong && (
+          <View style={styles.songOverlayContainer}>
+            <WorkoutSongPreview
+              song={workoutSong}
+              containerStyle={songOverlayStyle}
+              artworkSize={52}
+            />
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
+  ) : null
+
+  const infoSlide = (
+    <View
+      style={{ width: carouselWidth }}
+      onLayout={(event) => {
+        const { height } = event.nativeEvent.layout
+        if (Math.abs(height - infoHeight) > 2) {
+          const newHeight = Math.min(Math.max(height, baselineHeight), MAX_IMAGE_HEIGHT)
+          setInfoHeight(newHeight)
+        }
+      }}
+    >
+      {infoContent}
+    </View>
+  )
+
   return (
     <View style={[styles.card, isFirst && { borderTopWidth: 0 }]}>
       {/* Header */}
@@ -643,73 +713,17 @@ export const FeedCard = memo(function FeedCard({
             snapToInterval={carouselWidth}
             contentContainerStyle={{ width: carouselWidth * 2 }}
           >
-            {/* Slide 1: Image */}
-            <View style={{ width: carouselWidth }}>
-              <TouchableOpacity
-                style={[
-                  styles.workoutImageContainer,
-                  infoHeight > 0 && {
-                    height: Math.max(infoHeight, baselineHeight),
-                    aspectRatio: undefined,
-                    maxHeight: undefined,
-                  },
-                ]}
-                onPress={() => setImageModalVisible(true)}
-                activeOpacity={0.9}
-              >
-                <Animated.Image
-                  source={{ uri: coverImageUrl }}
-                  style={[styles.workoutImage, { opacity: imageOpacity }]}
-                  resizeMode="cover"
-                  onLoadStart={() => setImageLoading(true)}
-                  onLoad={() => {
-                    setImageLoading(false)
-                    Animated.timing(imageOpacity, {
-                      toValue: 1,
-                      duration: IMAGE_FADE_DURATION,
-                      useNativeDriver: true,
-                    }).start()
-                  }}
-                  onError={(error) => {
-                    console.error(
-                      'Failed to load workout image:',
-                      error.nativeEvent.error,
-                    )
-                    setImageLoading(false)
-                  }}
-                />
-                {imageLoading && (
-                  <View style={styles.imageLoadingOverlay}>
-                    <ActivityIndicator size="small" color={colors.brandPrimary} />
-                  </View>
-                )}
-                {workoutSong && (
-                  <View style={styles.songOverlayContainer}>
-                    <WorkoutSongPreview
-                      song={workoutSong}
-                      containerStyle={songOverlayStyle}
-                      artworkSize={52}
-                    />
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Slide 2: Info */}
-            <View
-              style={{ width: carouselWidth }}
-              onLayout={(event) => {
-                const { height } = event.nativeEvent.layout
-                // Update height if it differs by more than 2 pixels to avoid loops
-                // Also cap at MAX_IMAGE_HEIGHT to prevent runaway growth
-                if (Math.abs(height - infoHeight) > 2) {
-                  const newHeight = Math.min(Math.max(height, baselineHeight), MAX_IMAGE_HEIGHT)
-                  setInfoHeight(newHeight)
-                }
-              }}
-            >
-              {infoContent}
-            </View>
+            {mediaFirst ? (
+              <>
+                {mediaSlide}
+                {infoSlide}
+              </>
+            ) : (
+              <>
+                {infoSlide}
+                {mediaSlide}
+              </>
+            )}
           </ScrollView>
 
           {/* Pagination Dots */}

@@ -1,3 +1,8 @@
+import {
+  CreatePostTutorialOverlay,
+  type CreatePostTutorialHighlightLayout,
+  type CreatePostTutorialStep,
+} from '@/components/create-post-tutorial-overlay'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { Paywall } from '@/components/paywall'
@@ -18,7 +23,7 @@ import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
   getExerciseSuggestion,
   parseRepRange,
-  useExerciseAutocomplete,
+  useExerciseAutocompleteGroup,
   useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
@@ -35,7 +40,6 @@ import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
-import type { WorkoutSong } from '@/types/music'
 import {
   clearDraft as clearWorkoutDraft,
   compactDraft as compactWorkoutDraft,
@@ -54,6 +58,7 @@ import {
   WorkoutRoutineWithDetails,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
+import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
@@ -68,6 +73,7 @@ import {
   InteractionManager,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -190,9 +196,13 @@ export default function CreatePostScreen() {
   const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
+  const [showCreatePostTutorial, setShowCreatePostTutorial] = useState(false)
+  const [chatButtonLayout, setChatButtonLayout] =
+    useState<CreatePostTutorialHighlightLayout | null>(null)
 
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
@@ -344,6 +354,15 @@ export default function CreatePostScreen() {
 
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
+  const titleRowRef = useRef<View>(null)
+  const chatButtonRef = useRef<View>(null)
+  const scanButtonRef = useRef<View>(null)
+  const micButtonRef = useRef<View>(null)
+  const timerButtonRef = useRef<View>(null)
+  const routineButtonRef = useRef<View>(null)
+  const searchButtonRef = useRef<View>(null)
+  const chatButtonLocalLayoutRef =
+    useRef<CreatePostTutorialHighlightLayout | null>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
@@ -368,6 +387,92 @@ export default function CreatePostScreen() {
   const { completeStep } = useTutorial()
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
+
+  const updateChatButtonLayout = useCallback(() => {
+    if (chatButtonRef.current) {
+      chatButtonRef.current.measureInWindow((x, y, width, height) => {
+        if (width > 0 && height > 0) {
+          setChatButtonLayout({ x, y, width, height })
+          return
+        }
+        if (!titleRowRef.current || !chatButtonLocalLayoutRef.current) return
+        titleRowRef.current.measureInWindow((rowX, rowY) => {
+          const local = chatButtonLocalLayoutRef.current
+          if (!local || local.width === 0 || local.height === 0) {
+            return
+          }
+          setChatButtonLayout({
+            x: rowX + local.x,
+            y: rowY + local.y,
+            width: local.width,
+            height: local.height,
+          })
+        })
+      })
+      return
+    }
+
+    if (!titleRowRef.current || !chatButtonLocalLayoutRef.current) return
+    titleRowRef.current.measureInWindow((rowX, rowY) => {
+      const local = chatButtonLocalLayoutRef.current
+      if (!local || local.width === 0 || local.height === 0) {
+        return
+      }
+      setChatButtonLayout({
+        x: rowX + local.x,
+        y: rowY + local.y,
+        width: local.width,
+        height: local.height,
+      })
+    })
+  }, [])
+
+  const handleChatButtonLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      chatButtonLocalLayoutRef.current = event.nativeEvent.layout
+      updateChatButtonLayout()
+    },
+    [updateChatButtonLayout],
+  )
+
+  const handleTitleRowLayout = useCallback(() => {
+    updateChatButtonLayout()
+  }, [updateChatButtonLayout])
+
+  useEffect(() => {
+    if (!showCreatePostTutorial) return
+    const shortTimeoutId = setTimeout(updateChatButtonLayout, 160)
+    const longTimeoutId = setTimeout(updateChatButtonLayout, 420)
+    const interactionHandle = InteractionManager.runAfterInteractions(() => {
+      updateChatButtonLayout()
+    })
+
+    return () => {
+      clearTimeout(shortTimeoutId)
+      clearTimeout(longTimeoutId)
+      interactionHandle.cancel?.()
+    }
+  }, [showCreatePostTutorial, updateChatButtonLayout])
+
+  const createPostTutorialStorageKey = useMemo(() => {
+    if (user?.id) {
+      return `@create_post_tutorial_seen_${user.id}`
+    }
+    return '@create_post_tutorial_seen'
+  }, [user?.id])
+
+  const markCreatePostTutorialSeen = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(createPostTutorialStorageKey, 'true')
+    } catch (error) {
+      console.error('[CreatePost] Error saving tutorial state:', error)
+    }
+  }, [createPostTutorialStorageKey])
+
+  const handleDismissCreatePostTutorial = useCallback(() => {
+    setShowCreatePostTutorial(false)
+    void markCreatePostTutorialSeen()
+  }, [markCreatePostTutorialSeen])
 
   const buildDraftMetrics = useCallback((data: StructuredExerciseDraft[]) => {
     let setsWithData = 0
@@ -650,6 +755,26 @@ export default function CreatePostScreen() {
       spinValue.setValue(0)
     }
   }, [isProcessingImage, isTranscribing, spinValue])
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setIsKeyboardVisible(true)
+    })
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setIsKeyboardVisible(false)
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
+
 
   // Load user's routines and exercises
   const loadRoutinesAndExercises = useCallback(async () => {
@@ -996,6 +1121,23 @@ export default function CreatePostScreen() {
 
       loadRoutinesAndExercises()
 
+      const checkCreatePostTutorial = async () => {
+        try {
+          const hasSeen = await AsyncStorage.getItem(
+            createPostTutorialStorageKey,
+          )
+          if (!hasSeen) {
+            setShowCreatePostTutorial(true)
+          }
+        } catch (error) {
+          console.error(
+            '[CreatePost] Error checking tutorial state:',
+            error,
+          )
+        }
+      }
+      void checkCreatePostTutorial()
+
       return () => {
         clearTimeout(timeoutId)
         if (interactionHandle) {
@@ -1010,6 +1152,7 @@ export default function CreatePostScreen() {
       loadRoutinesAndExercises,
       hydrateDraft,
       persistDraft,
+      createPostTutorialStorageKey,
     ]),
   )
 
@@ -1805,45 +1948,107 @@ export default function CreatePostScreen() {
   // =============================================================================
   // AUTOCOMPLETE STATE
   // =============================================================================
-  const currentSuggestion = useExerciseAutocomplete({
+  const exerciseAutocomplete = useExerciseAutocompleteGroup({
     text: notes,
     cursorPosition,
     exercises: allExercises,
     isInputFocused: isNotesFocused,
   })
 
-  const handleAcceptSuggestion = useCallback(async () => {
-    if (!currentSuggestion) return
+  const currentSuggestion = exerciseAutocomplete?.primary ?? null
 
-    try {
-      hapticSuccess()
+  const variationSuggestions = useMemo(() => {
+    const variations = exerciseAutocomplete?.variations ?? []
+    if (variations.length < 2) return []
+    return variations.slice(0, 4)
+  }, [exerciseAutocomplete])
 
-      // 1. Create structured workout entry with history data
-      const newExercise = await createExerciseWithHistory(
-        currentSuggestion.name,
-      )
+  const hasTrailingText = useMemo(() => {
+    const textAfter = notes.substring(cursorPosition)
+    const nextNewline = textAfter.indexOf('\n')
+    const currentLineSuffix =
+      nextNewline === -1 ? textAfter : textAfter.substring(0, nextNewline)
+    return currentLineSuffix.trim().length > 0
+  }, [notes, cursorPosition])
 
-      setStructuredData((prev) => [...prev, newExercise])
-      setIsStructuredMode(true)
+  const showInlineVariations =
+    isNotesFocused &&
+    variationSuggestions.length > 0 &&
+    !hasTrailingText
 
-      // 2. Remove the text that triggered the suggestion from the notes
-      // Find current line start/end
-      const textBeforeCursor = notes.substring(0, cursorPosition)
-      const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
-      const startOfLine = lastNewlineIndex + 1
 
-      // We simply remove the line where the user was typing
-      const newText =
-        notes.substring(0, startOfLine) + notes.substring(cursorPosition)
+  const stackedVariationSuggestions = useMemo(() => {
+    if (!showInlineVariations) return []
+    const primaryName = currentSuggestion?.name ?? null
+    return variationSuggestions.filter(
+      (suggestion) => suggestion.name !== primaryName,
+    )
+  }, [showInlineVariations, variationSuggestions, currentSuggestion])
 
-      setNotes(newText)
-    } catch (error) {
-      console.error(
-        '[handleAcceptSuggestion] Error accepting suggestion:',
-        error,
-      )
+  // Auto-scroll to show variations when they appear
+  useEffect(() => {
+    if (showInlineVariations && stackedVariationSuggestions.length > 0 && scrollViewRef.current) {
+      // Small delay to allow layout to update with new padding
+      requestAnimationFrame(() => {
+        if (scrollViewRef.current) {
+          // Calculate roughly where the cursor is
+          const cursorLineIndex = notes.substring(0, cursorPosition).split('\n').length
+          const lineHeight = 24
+          const structuredHeight = calculateStructuredContentHeight()
+          
+          // Calculate explicit cursor Y position
+          const cursorY = structuredHeight + (cursorLineIndex * lineHeight)
+
+          // Scroll such that the cursor is positioned slightly down from the top
+          // giving context above (approx 3 lines) while maximizing space below for variations
+          // The buffer of -80 ensures previous lines are visible
+          scrollViewRef.current.scrollTo({
+            y: Math.max(0, cursorY - 80), 
+            animated: true,
+          })
+        }
+      })
     }
-  }, [currentSuggestion, notes, cursorPosition, createExerciseWithHistory])
+  }, [showInlineVariations, stackedVariationSuggestions.length, notes, cursorPosition, calculateStructuredContentHeight])
+
+  const acceptSuggestionByName = useCallback(
+    async (exerciseName: string) => {
+      try {
+        hapticSuccess()
+
+        // 1. Create structured workout entry with history data
+        const newExercise = await createExerciseWithHistory(exerciseName)
+
+        setStructuredData((prev) => [...prev, newExercise])
+        setIsStructuredMode(true)
+
+        // 2. Remove the text that triggered the suggestion from the notes
+        // Find current line start/end
+        const textBeforeCursor = notes.substring(0, cursorPosition)
+        const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
+        const startOfLine = lastNewlineIndex + 1
+
+        // We simply remove the line where the user was typing
+        const newText =
+          notes.substring(0, startOfLine) + notes.substring(cursorPosition)
+
+        setNotes(newText)
+        return true
+      } catch (error) {
+        console.error(
+          '[acceptSuggestionByName] Error accepting suggestion:',
+          error,
+        )
+        return false
+      }
+    },
+    [notes, cursorPosition, createExerciseWithHistory],
+  )
+
+  const handleAcceptSuggestion = useCallback(() => {
+    if (!currentSuggestion) return
+    void acceptSuggestionByName(currentSuggestion.name)
+  }, [currentSuggestion, acceptSuggestionByName])
 
   // Handle text change
   const handleNotesChange = useCallback(
@@ -1860,27 +2065,8 @@ export default function CreatePostScreen() {
           allExercises,
         )
         if (suggestion) {
-          try {
-            // Manually call accept suggestion logic with the calculated suggestion
-            hapticSuccess()
-
-            // 1. Create structured workout entry with history data
-            const newExercise = await createExerciseWithHistory(suggestion.name)
-
-            setStructuredData((prev) => [...prev, newExercise])
-            setIsStructuredMode(true)
-
-            // 2. Remove the text line
-            const textBeforeCursor = notes.substring(0, cursorPosition)
-            const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n')
-            const startOfLine = lastNewlineIndex + 1
-
-            const newText =
-              notes.substring(0, startOfLine) + notes.substring(cursorPosition)
-
-            setNotes(newText)
-          } catch (error) {
-            console.error('[handleNotesChange] Error creating exercise:', error)
+          const accepted = await acceptSuggestionByName(suggestion.name)
+          if (!accepted) {
             // Fallback: just set the text with the newline
             setNotes(text)
           }
@@ -1890,7 +2076,7 @@ export default function CreatePostScreen() {
 
       setNotes(text)
     },
-    [notes, cursorPosition, allExercises, createExerciseWithHistory],
+    [notes, cursorPosition, allExercises, acceptSuggestionByName],
   )
 
   // Convert text to structured format
@@ -2119,6 +2305,77 @@ export default function CreatePostScreen() {
     ],
   )
 
+  const editorToolbarTutorialProps = useMemo(
+    () => ({
+      ...editorToolbarProps,
+      scanButtonRef,
+      micButtonRef,
+      timerButtonRef,
+      routineButtonRef,
+      searchButtonRef,
+    }),
+    [
+      editorToolbarProps,
+      scanButtonRef,
+      micButtonRef,
+      timerButtonRef,
+      routineButtonRef,
+      searchButtonRef,
+    ],
+  )
+
+  const createPostTutorialSteps = useMemo<CreatePostTutorialStep[]>(
+    () => [
+      {
+        id: 'coach_chat',
+        title: 'AI Coach Chat',
+        description:
+          'Ask your coach for ideas, tweaks, or to add exercises to your workout.',
+        ref: chatButtonRef,
+        layout: chatButtonLayout,
+      },
+      {
+        id: 'scan_workout',
+        title: 'Scan a Workout',
+        description:
+          'Snap a photo of a whiteboard or program and we will extract the exercises.',
+        ref: scanButtonRef,
+      },
+      {
+        id: 'voice_log',
+        title: 'Voice Log',
+        description: 'Log sets hands-free. Tap to start and stop recording.',
+        ref: micButtonRef,
+      },
+      {
+        id: 'rest_timer',
+        title: 'Rest Timer',
+        description: 'Start a rest timer and keep your workout on track.',
+        ref: timerButtonRef,
+      },
+      {
+        id: 'routines',
+        title: 'Routines',
+        description: 'Load a saved routine to pre-fill your workout.',
+        ref: routineButtonRef,
+      },
+      {
+        id: 'search_exercises',
+        title: 'Search Exercises',
+        description: 'Quickly find and add exercises to your workout.',
+        ref: searchButtonRef,
+      },
+    ],
+    [
+      chatButtonRef,
+      scanButtonRef,
+      micButtonRef,
+      timerButtonRef,
+      routineButtonRef,
+      searchButtonRef,
+    ],
+  )
+
   // Ensure structured input focus state is reset when keyboard is dismissed
   useEffect(() => {
     const hideEvent =
@@ -2145,6 +2402,7 @@ export default function CreatePostScreen() {
         friction={14}
         shouldExit={shouldExit}
         onExitComplete={handleExitComplete}
+        enabled={!showCreatePostTutorial}
       >
         <Pressable style={styles.header} onPress={blurInputs}>
           <TouchableOpacity
@@ -2227,7 +2485,12 @@ export default function CreatePostScreen() {
             automaticallyAdjustContentInsets={false}
           >
             {/* Title Input */}
-            <View style={styles.titleInputContainer}>
+            <View
+              style={styles.titleInputContainer}
+              ref={titleRowRef}
+              collapsable={false}
+              onLayout={handleTitleRowLayout}
+            >
               <TextInput
                 ref={titleInputRef}
                 style={styles.titleInput}
@@ -2241,22 +2504,28 @@ export default function CreatePostScreen() {
                 cursorColor={colors.brandPrimary}
                 selectionColor={colors.brandPrimary}
               />
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => {
-                  haptic('light')
-                  blurInputs()
-                  setShowCoachSheet(true)
-                }}
-                disabled={isLoading || isRecording || isTranscribing}
-                activeOpacity={0.6}
+              <View
+                ref={chatButtonRef}
+                collapsable={false}
+                onLayout={handleChatButtonLayout}
               >
-                <Ionicons
-                  name="chatbubble-ellipses-outline"
-                  size={28}
-                  color={colors.brandPrimary}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.chatButton}
+                  onPress={() => {
+                    haptic('light')
+                    blurInputs()
+                    setShowCoachSheet(true)
+                  }}
+                  disabled={isLoading || isRecording || isTranscribing}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={28}
+                    color={colors.brandPrimary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Divider */}
@@ -2292,6 +2561,11 @@ export default function CreatePostScreen() {
                   isStructuredMode &&
                     (structuredData.length > 0 || selectedRoutine) &&
                     styles.notesInputWithStructured,
+                  {
+                    paddingBottom: showInlineVariations
+                      ? stackedVariationSuggestions.length * 28 + 24 // 28px per line approx + base padding
+                      : 24,
+                  },
                 ]}
                 // Android alignment fix
                 {...Platform.select({ android: { includeFontPadding: false } })}
@@ -2313,14 +2587,16 @@ export default function CreatePostScreen() {
                 onSelectionChange={handleNotesSelectionChange}
                 onFocus={() => {
                   setIsNotesFocused(true)
+                  setIsKeyboardVisible(true)
                 }}
                 onBlur={() => {
                   setIsNotesFocused(false)
+                  setIsKeyboardVisible(false)
                 }}
               />
 
               {/* Ghost Text Overlay - Rendered AFTER TextInput to allow touch interception on suffix */}
-              {currentSuggestion && isNotesFocused && (
+              {(currentSuggestion || showInlineVariations) && isNotesFocused && (
                 <View
                   style={[
                     styles.notesInput,
@@ -2348,16 +2624,32 @@ export default function CreatePostScreen() {
                     }}
                   >
                     {notes.substring(0, cursorPosition)}
-                    <Text
-                      style={{ color: colors.textTertiary }}
-                      onPress={handleAcceptSuggestion}
-                      suppressHighlighting={true}
-                    >
-                      {currentSuggestion.name.slice(
-                        currentSuggestion.inputLength,
-                      )}
-                    </Text>
-                    {notes.substring(cursorPosition)}
+                    {currentSuggestion && (
+                      <Text
+                        style={{ color: colors.textTertiary }}
+                        onPress={handleAcceptSuggestion}
+                        suppressHighlighting={true}
+                      >
+                        {currentSuggestion.name.slice(
+                          currentSuggestion.inputLength,
+                        )}
+                      </Text>
+                    )}
+                    {showInlineVariations &&
+                      stackedVariationSuggestions.map((suggestion) => (
+                        <Text
+                          key={suggestion.name}
+                          style={{ color: colors.textTertiary }}
+                          onPress={() =>
+                            void acceptSuggestionByName(suggestion.name)
+                          }
+                          suppressHighlighting={true}
+                        >
+                          {'\n'}
+                          {suggestion.name}
+                        </Text>
+                      ))}
+                    {!showInlineVariations && notes.substring(cursorPosition)}
                   </Text>
                 </View>
               )}
@@ -2376,7 +2668,7 @@ export default function CreatePostScreen() {
 
           {/* Editor Toolbar */}
           {(!isStructuredInputFocused || Platform.OS !== 'ios') && (
-            <EditorToolbar {...editorToolbarProps} />
+            <EditorToolbar {...editorToolbarTutorialProps} />
           )}
         </KeyboardAvoidingView>
 
@@ -2456,6 +2748,13 @@ export default function CreatePostScreen() {
         onAddExercise={handleAddExerciseFromCoach}
         onReplaceExercise={handleReplaceExerciseFromCoach}
         isWorkoutEmpty={isWorkoutEmpty}
+      />
+
+      <CreatePostTutorialOverlay
+        visible={showCreatePostTutorial}
+        steps={createPostTutorialSteps}
+        onSkip={handleDismissCreatePostTutorial}
+        onDone={handleDismissCreatePostTutorial}
       />
     </SafeAreaView>
   )

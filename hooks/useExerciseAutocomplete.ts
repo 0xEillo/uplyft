@@ -1,10 +1,38 @@
 import { useMemo } from 'react'
 
+import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
+
 import { Exercise } from '@/types/database.types'
 
 export interface ExerciseSuggestion {
   name: string
   inputLength: number
+}
+
+export interface ExerciseVariationSuggestion {
+  name: string
+  label: string
+}
+
+export interface ExerciseAutocompleteGroup {
+  input: string
+  primary: ExerciseSuggestion | null
+  baseName: string | null
+  variations: ExerciseVariationSuggestion[]
+}
+
+function getExerciseNameParts(name: string): {
+  baseName: string
+  variation: string | null
+} {
+  const match = name.match(/^(.*?)(?:\s*\(([^)]+)\))\s*$/)
+  if (match) {
+    return {
+      baseName: match[1].trim(),
+      variation: match[2].trim(),
+    }
+  }
+  return { baseName: name.trim(), variation: null }
 }
 
 /**
@@ -38,15 +66,16 @@ export function detectExerciseName(text: string, cursorPos: number): boolean {
   return true
 }
 
+
 /**
- * Get an exercise suggestion based on current input.
- * Returns null if no valid suggestion is available.
+ * Get exercise suggestions and related variations based on current input.
+ * Returns null if no valid suggestions are available.
  */
-export function getExerciseSuggestion(
+export function getExerciseAutocompleteGroup(
   text: string,
   cursorPos: number,
   exercises: Exercise[],
-): ExerciseSuggestion | null {
+): ExerciseAutocompleteGroup | null {
   if (!text || !exercises.length) return null
 
   // Find start of current line
@@ -76,17 +105,76 @@ export function getExerciseSuggestion(
 
   const normalizedInput = trimmedPrefix.toLowerCase()
 
-  // Find best match - exact start match
-  const match = exercises.find((ex) =>
-    ex.name.toLowerCase().startsWith(normalizedInput),
+  // Use fuzzy search to find matches
+  // This allows for typos and non-prefix matches
+  const matches = fuzzySearchExercises(exercises, trimmedPrefix)
+
+  if (!matches.length) return null
+
+  const firstMatch = matches[0]
+  
+  // Only show inline primary suggestion if it's a prefix match
+  // Otherwise the ghost text overlay won't align with what the user typed (e.g. typos)
+  const isPrefixMatch = firstMatch.name.toLowerCase().startsWith(normalizedInput)
+  
+  const primary =
+    isPrefixMatch && firstMatch.name.toLowerCase() !== normalizedInput
+      ? { name: firstMatch.name, inputLength: trimmedPrefix.length }
+      : null
+
+  const firstParts = getExerciseNameParts(firstMatch.name)
+  const baseName = firstParts.baseName || null
+  const baseKey = baseName ? baseName.toLowerCase() : null
+
+  // We use all fuzzy matches found
+  const groupedMatches = matches
+
+  const seen = new Set<string>()
+  const variations = groupedMatches.reduce<ExerciseVariationSuggestion[]>(
+    (acc, ex) => {
+      if (seen.has(ex.name)) return acc
+      seen.add(ex.name)
+
+      const parts = getExerciseNameParts(ex.name)
+      const isSameBase = parts.baseName.toLowerCase() === baseKey
+      
+      let label: string
+
+      if (isSameBase) {
+        // If it shares the same base name as the primary match, 
+        // we can use the short variation name (e.g. "Dumbbell")
+        label = parts.variation || (groupedMatches.length > 1 ? 'Standard' : parts.baseName)
+      } else {
+        // If it has a different base name (e.g. "Bench Dip" vs "Bench Press"), 
+        // we should show the full name to avoid confusion
+        label = ex.name
+      }
+
+      acc.push({ name: ex.name, label })
+      return acc
+    },
+    [],
   )
 
-  // Only return if it's a strictly longer match
-  if (match && match.name.toLowerCase() !== normalizedInput) {
-    return { name: match.name, inputLength: trimmedPrefix.length }
+  return {
+    input: trimmedPrefix,
+    primary,
+    baseName,
+    variations,
   }
+}
 
-  return null
+/**
+ * Get an exercise suggestion based on current input.
+ * Returns null if no valid suggestion is available.
+ */
+export function getExerciseSuggestion(
+  text: string,
+  cursorPos: number,
+  exercises: Exercise[],
+): ExerciseSuggestion | null {
+  const group = getExerciseAutocompleteGroup(text, cursorPos, exercises)
+  return group?.primary ?? null
 }
 
 /**
@@ -186,6 +274,21 @@ export function useExerciseAutocomplete({
   return useMemo(() => {
     if (!isInputFocused) return null
     return getExerciseSuggestion(text, cursorPosition, exercises)
+  }, [text, cursorPosition, exercises, isInputFocused])
+}
+
+/**
+ * Hook for exercise autocomplete groups (primary suggestion + variations).
+ */
+export function useExerciseAutocompleteGroup({
+  text,
+  cursorPosition,
+  exercises,
+  isInputFocused,
+}: UseExerciseAutocompleteOptions): ExerciseAutocompleteGroup | null {
+  return useMemo(() => {
+    if (!isInputFocused) return null
+    return getExerciseAutocompleteGroup(text, cursorPosition, exercises)
   }, [text, cursorPosition, exercises, isInputFocused])
 }
 

@@ -6,13 +6,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useCallback } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
 import {
-  ActivityIndicator,
-  Image,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Image,
+    Linking,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 
 interface WorkoutSongPreviewProps {

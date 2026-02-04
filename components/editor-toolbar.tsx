@@ -1,6 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import {
   Animated,
   Easing,
@@ -27,6 +27,11 @@ interface EditorToolbarProps {
   showAddExercise: boolean
   isRestTimerActive?: boolean
   restTimerRemaining?: number
+  scanButtonRef?: RefObject<View>
+  micButtonRef?: RefObject<View>
+  timerButtonRef?: RefObject<View>
+  routineButtonRef?: RefObject<View>
+  searchButtonRef?: RefObject<View>
 }
 
 export function EditorToolbar({
@@ -43,6 +48,11 @@ export function EditorToolbar({
   showAddExercise,
   isRestTimerActive,
   restTimerRemaining,
+  scanButtonRef,
+  micButtonRef,
+  timerButtonRef,
+  routineButtonRef,
+  searchButtonRef,
 }: EditorToolbarProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -139,69 +149,79 @@ export function EditorToolbar({
     >
       <View style={styles.toolbar}>
         {/* Scan Workout */}
-        <TouchableOpacity
-          style={[styles.button, isProcessingImage && styles.activeButton]}
-          onPress={onScanWorkout}
-          disabled={isDisabled}
-        >
-          {isProcessingImage ? (
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <Ionicons name="sync" size={24} color={colors.surface} />
-            </Animated.View>
-          ) : (
-            <Ionicons name="camera-outline" size={24} color={colors.textPrimary} />
-          )}
-        </TouchableOpacity>
+        <View ref={scanButtonRef} collapsable={false}>
+          <TouchableOpacity
+            style={[styles.button, isProcessingImage && styles.activeButton]}
+            onPress={onScanWorkout}
+            disabled={isDisabled}
+          >
+            {isProcessingImage ? (
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <Ionicons name="sync" size={24} color={colors.surface} />
+              </Animated.View>
+            ) : (
+              <Ionicons name="camera-outline" size={24} color={colors.textPrimary} />
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Microphone */}
-        <TouchableOpacity
-          style={[styles.button, isRecording && styles.activeButton]}
-          onPress={onMicPress}
-          disabled={isDisabled}
-        >
-          <Ionicons
-            name={isRecording ? 'stop' : 'mic-outline'}
-            size={24}
-            color={isRecording ? colors.surface : colors.textPrimary}
-          />
-        </TouchableOpacity>
+        <View ref={micButtonRef} collapsable={false}>
+          <TouchableOpacity
+            style={[styles.button, isRecording && styles.activeButton]}
+            onPress={onMicPress}
+            disabled={isDisabled}
+          >
+            <Ionicons
+              name={isRecording ? 'stop' : 'mic-outline'}
+              size={24}
+              color={isRecording ? colors.surface : colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
 
         {/* Stopwatch / Timer */}
-        <TouchableOpacity
-          style={[styles.button, isRestTimerActive && styles.activeTimerButton]}
-          onPress={onStopwatchPress}
-          disabled={isDisabled}
-        >
-          {isRestTimerActive && restTimerRemaining !== undefined ? (
-            <Text style={styles.timerText}>
-              {formatTime(restTimerRemaining)}
-            </Text>
-          ) : (
-            <Ionicons name="stopwatch-outline" size={24} color={colors.textPrimary} />
-          )}
-        </TouchableOpacity>
+        <View ref={timerButtonRef} collapsable={false}>
+          <TouchableOpacity
+            style={[styles.button, isRestTimerActive && styles.activeTimerButton]}
+            onPress={onStopwatchPress}
+            disabled={isDisabled}
+          >
+            {isRestTimerActive && restTimerRemaining !== undefined ? (
+              <Text style={styles.timerText}>
+                {formatTime(restTimerRemaining)}
+              </Text>
+            ) : (
+              <Ionicons name="stopwatch-outline" size={24} color={colors.textPrimary} />
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Routines (moved from title area) */}
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onRoutinePress}
-          disabled={isDisabled}
-        >
-          <Ionicons name="albums-outline" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <View ref={routineButtonRef} collapsable={false}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={onRoutinePress}
+            disabled={isDisabled}
+          >
+            <Ionicons name="albums-outline" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
 
         {/* Search / Add Exercise (Merged) */}
-        <TouchableOpacity
-          style={styles.button}
-          onPress={shouldShowAdd ? onAddExercise : onSearchExercise}
-          disabled={isDisabled}
-        >
-          <Ionicons
-            name={shouldShowAdd ? 'add-circle-outline' : 'search-outline'}
-            size={24}
-            color={colors.textPrimary}
-          />
-        </TouchableOpacity>
+        <View ref={searchButtonRef} collapsable={false}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={shouldShowAdd ? onAddExercise : onSearchExercise}
+            disabled={isDisabled}
+          >
+            <Ionicons
+              name={shouldShowAdd ? 'add-circle-outline' : 'search-outline'}
+              size={24}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </Animated.View>
   )
