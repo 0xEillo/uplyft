@@ -5,6 +5,7 @@ import { StrengthBodyView } from '@/components/StrengthBodyView'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
@@ -12,11 +13,10 @@ import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
     Animated,
-    LayoutChangeEvent,
     Pressable,
     StyleSheet,
     Text,
-    View,
+    View
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -35,9 +35,14 @@ export default function AnalyticsScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('strength')
   const [bodyTab, setBodyTab] = useState<BodyTab>('strength')
   
+  // Constants for perfect centering
+  const CONTROL_WIDTH = 210
+  const TAB_WIDTH = CONTROL_WIDTH / 2
+  const PILL_PADDING = 3
+  const CONTROL_HEIGHT = 38
+  
   // Animation for the sliding pill indicator
   const slideAnim = useRef(new Animated.Value(0)).current
-  const [tabWidth, setTabWidth] = useState(0)
 
   useFocusEffect(
     useCallback(() => {
@@ -66,17 +71,13 @@ export default function AnalyticsScreen() {
     setViewMode(tab)
   }, [bodyTab])
 
-  const handleTabLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width } = event.nativeEvent.layout
-    setTabWidth(width / 2)
-  }, [])
-
-  const styles = createStyles(colors)
+  const { isDark } = useTheme()
+  const styles = createStyles(colors, isDark)
 
   // Calculate the translateX for the sliding indicator
   const translateX = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [4, tabWidth + 4], // 4px padding offset
+    outputRange: [PILL_PADDING, TAB_WIDTH + PILL_PADDING],
   })
 
   return (
@@ -85,13 +86,13 @@ export default function AnalyticsScreen() {
         leftContent={<View style={styles.navbarSpacer} />}
         rightContent={<View style={styles.navbarSpacer} />}
         centerContent={
-          <View style={styles.segmentedControl} onLayout={handleTabLayout}>
+          <View style={styles.segmentedControl}>
             {/* Animated sliding background */}
             <Animated.View
               style={[
                 styles.slideIndicator,
                 {
-                  width: tabWidth - 8,
+                  width: TAB_WIDTH - PILL_PADDING * 2,
                   transform: [{ translateX }],
                 },
               ]}
@@ -133,7 +134,10 @@ export default function AnalyticsScreen() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -146,39 +150,37 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Segmented Control Styles
     segmentedControl: {
       flexDirection: 'row',
-      backgroundColor: colors.surfaceSubtle,
-      borderRadius: 12,
-      padding: 4,
+      backgroundColor: 'transparent',
       position: 'relative',
+      width: 210, // Match CONTROL_WIDTH
     },
     slideIndicator: {
       position: 'absolute',
-      top: 4,
-      bottom: 4,
-      backgroundColor: colors.surfaceCard,
-      borderRadius: 10,
+      top: 3, // Match PILL_PADDING
+      bottom: 3, // Match PILL_PADDING
+      backgroundColor: isDark ? '#262626' : '#F0F0F5',
+      borderRadius: 20,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
+      shadowOpacity: 0.05,
       shadowRadius: 2,
-      elevation: 2,
+      elevation: 1,
     },
     tabButton: {
       flex: 1,
-      flexDirection: 'row',
+      height: 38, // Match CONTROL_HEIGHT
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
       zIndex: 1,
     },
     tabIcon: {
       marginRight: 6,
     },
     tabLabel: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.textSecondary,
+      letterSpacing: -0.2,
     },
     tabLabelActive: {
       color: colors.textPrimary,

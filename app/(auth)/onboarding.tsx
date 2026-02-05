@@ -1,17 +1,15 @@
 import { AnimatedInput } from '@/components/animated-input'
-import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import { StrengthLevelIntroStep } from '@/components/onboarding/StrengthLevelIntroStep'
 import {
-  EQUIPMENT_PREF_KEY,
-  WORKOUT_PLANNING_PREFS_KEY,
+    EQUIPMENT_PREF_KEY,
+    WORKOUT_PLANNING_PREFS_KEY,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
-  COMMITMENTS,
-  EXPERIENCE_LEVELS,
-  GENDERS,
-  GOALS,
+    COMMITMENTS,
+    GENDERS,
+    GOALS
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -34,19 +32,19 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Easing,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextStyle,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import ConfettiCannon from 'react-native-confetti-cannon'
@@ -106,15 +104,14 @@ const STEP_NAMES: { [key: number]: string } = {
   7: 'gender_selection',
   8: 'commitment_level',
   9: 'habit_reinforcement',
-  10: 'experience_level',
-  11: 'equipment_selection',
-  12: 'weight_entry',
-  13: 'strength_level_intro', // NEW: Gym Ranked strength level teaser
-  14: 'focus_areas',
-  15: 'body_scan_feature',
-  16: 'processing',
-  17: 'plan_ready',
-  18: 'commitment_pledge',
+  10: 'equipment_selection',
+  11: 'weight_entry',
+  12: 'strength_level_intro',
+  13: 'focus_areas',
+  14: 'body_scan_feature',
+  15: 'processing',
+  16: 'plan_ready',
+  17: 'commitment_pledge',
 }
 
 const FadeInWords = ({
@@ -709,7 +706,7 @@ const ProcessingStepContent = ({
 
   useEffect(() => {
     if (progress3 >= 100) {
-      setTimeout(() => setStep(17), 400)
+      setTimeout(() => setStep(16), 400)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setStep is stable from parent
   }, [progress3])
@@ -1499,14 +1496,14 @@ export default function OnboardingScreen() {
 
   // Progress dot animations
   const progressDotAnims = useRef(
-    Array.from({ length: 16 }, () => new Animated.Value(1)),
+    Array.from({ length: 15 }, () => new Animated.Value(1)),
   ).current
 
   const scrollViewRef = useRef<ScrollView>(null)
 
   // Reset scroll position for specific steps
   useEffect(() => {
-    if (step === 19) {
+    if (step === 18) {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
@@ -1567,7 +1564,7 @@ export default function OnboardingScreen() {
       }
 
       // Animate progress dot
-      if (step >= 1 && step <= 16) {
+      if (step >= 1 && step <= 15) {
         Animated.sequence([
           Animated.spring(progressDotAnims[step - 1], {
             toValue: 1.3,
@@ -1604,7 +1601,7 @@ export default function OnboardingScreen() {
     })
 
     // Trigger app rating request after strength rank (now focus areas page)
-    if (step === 14) {
+    if (step === 13) {
       const triggerReview = async () => {
         try {
           await requestReview()
@@ -1639,16 +1636,13 @@ export default function OnboardingScreen() {
         stepMetadata.commitment = data.commitment
         break
       case 10:
-        stepMetadata.experience_level = data.experience_level
-        break
-      case 11:
         stepMetadata.equipment = data.equipment
         break
-      case 12:
+      case 11:
         stepMetadata.weight = data.weight_kg
         stepMetadata.unit = weightUnit
         break
-      case 14:
+      case 13:
         stepMetadata.focus_areas = focusAreas
         break
     }
@@ -1700,7 +1694,7 @@ export default function OnboardingScreen() {
 
     // Save equipment preference to AsyncStorage when leaving equipment step
     // This will be used by the workout wizard to pre-fill the equipment setting
-    if (step === 11 && data.equipment.length > 0) {
+    if (step === 10 && data.equipment.length > 0) {
       let equipmentType = 'home_minimal'
 
       if (data.equipment.includes('full_gym')) {
@@ -1729,7 +1723,7 @@ export default function OnboardingScreen() {
 
     // Initialize target weight logic removed as step is gone
 
-    if (step < 18) {
+    if (step < 17) {
       setStep(step + 1)
     } else {
       // Calculate age from birth date
@@ -1865,7 +1859,7 @@ export default function OnboardingScreen() {
     // Step 17 is processing (auto-advances after bars fill)
     // Step 19 (commitment pledge) has its own custom footer/interaction
     return (
-      step === 7 || step === 10 || step === 13 || step === 16 || step === 18
+      step === 7 || step === 12 || step === 15 || step === 17
     )
   }
 
@@ -1890,21 +1884,19 @@ export default function OnboardingScreen() {
       case 9:
         return true // Habit reinforcement
       case 10:
-        return data.experience_level !== null
-      case 11:
         return data.equipment.length > 0 // Equipment selection
-      case 12:
+      case 11:
         return true // Stats entry step - defaults are fine
-      case 13:
+      case 12:
         return true // Strength level intro - handled by component
-      case 14:
+      case 13:
         return true // Focus areas (optional)
-      case 15:
+      case 14:
         return true // Body scan feature intro
+      case 15:
+        return false // Step 15 is processing, no next button
       case 16:
-        return false // Step 16 is processing, no next button
-      case 17:
-        return true // Step 17 has "Get Started"
+        return true // Step 16 has "Get Started"
       default:
         return false
     }
@@ -2242,49 +2234,6 @@ export default function OnboardingScreen() {
           />
         )
       case 10:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>What level are you?</Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              <View style={styles.optionsContainer}>
-                {EXPERIENCE_LEVELS.map((item) => (
-                  <HapticButton
-                    key={item.value}
-                    style={[
-                      styles.card,
-                      data.experience_level === item.value &&
-                        styles.cardSelected,
-                    ]}
-                    onPress={() => {
-                      setData({ ...data, experience_level: item.value })
-                      setTimeout(() => setStep(step + 1), 400)
-                    }}
-                    hapticIntensity="light"
-                  >
-                    <View style={styles.cardContent}>
-                      <Text style={styles.cardLabel}>{item.label}</Text>
-                      <View
-                        style={[
-                          styles.radioButton,
-                          data.experience_level === item.value &&
-                            styles.radioButtonSelected,
-                        ]}
-                      >
-                        {data.experience_level === item.value && (
-                          <View style={styles.radioButtonInner} />
-                        )}
-                      </View>
-                    </View>
-                  </HapticButton>
-                ))}
-              </View>
-            </View>
-          </View>
-        )
-      case 11:
         // Equipment Selection Step
         const EQUIPMENT_OPTIONS = [
           { value: 'full_gym', label: 'Full gym' },
@@ -2374,108 +2323,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 6:
-        // Tailored Preview Step
-        const primaryGoal = data.goal[0] || 'build_muscle'
-        const goalInfo: Record<
-          string,
-          { text: string; color: string; exercise: string; gif: string }
-        > = {
-          build_muscle: {
-            text: 'GAIN MUSCLE',
-            color: '#8B5CF6',
-            exercise: 'Barbell Incline Bench Press',
-            gif: '3TZduzM.gif',
-          },
-          lose_fat: {
-            text: 'LOSE FAT',
-            color: '#EF4444',
-            exercise: 'Burpee',
-            gif: 'dK9394r.gif',
-          },
-          gain_strength: {
-            text: 'GET STRONGER',
-            color: '#F59E0B',
-            exercise: 'Barbell Squat',
-            gif: 'DhMl549.gif',
-          },
-          improve_cardio: {
-            text: 'IMPROVE CARDIO',
-            color: '#3B82F6',
-            exercise: 'Burpee',
-            gif: 'dK9394r.gif',
-          },
-          become_flexible: {
-            text: 'GET FLEXIBLE',
-            color: '#10B981',
-            exercise: 'Stiff Leg Deadlift',
-            gif: 'kuMiR2T.gif',
-          },
-          general_fitness: {
-            text: 'STAY FIT',
-            color: '#6366F1',
-            exercise: 'Goblet Squat',
-            gif: 'ZA8b5hc.gif',
-          },
-        }
-
-        const currentGoalInfo =
-          goalInfo[primaryGoal as string] || goalInfo.build_muscle
-
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.tailoredTitle}>
-                I&apos;ll create workouts that will help you{' '}
-                <Text
-                  style={{ color: currentGoalInfo.color, fontStyle: 'italic' }}
-                >
-                  {currentGoalInfo.text}
-                </Text>
-                !
-              </Text>
-            </View>
-
-            <View style={styles.tailoredMockupContainer}>
-              <View style={styles.tailoredPhoneFrame}>
-                <View style={styles.tailoredStatusBar}>
-                  <Text style={styles.tailoredStatusTime}>9:41</Text>
-                  <View style={styles.tailoredDynamicIsland} />
-                  <View style={styles.tailoredStatusIcons}>
-                    <Ionicons name="cellular" size={12} color="#000" />
-                    <Ionicons name="wifi" size={12} color="#000" />
-                    <Ionicons name="battery-full" size={12} color="#000" />
-                  </View>
-                </View>
-
-                <View style={styles.tailoredExerciseContent}>
-                  <View style={styles.tailoredGifContainer}>
-                    <ExerciseMediaThumbnail
-                      gifUrl={currentGoalInfo.gif}
-                      style={styles.tailoredGif}
-                    />
-                  </View>
-                  <View style={styles.tailoredExerciseInfo}>
-                    <View style={styles.tailoredExerciseMeta}>
-                      <View style={styles.tailoredExerciseIconContainer}>
-                        <Ionicons name="barbell" size={16} color="#4F46E5" />
-                      </View>
-                      <View>
-                        <Text style={styles.tailoredExerciseName}>
-                          {currentGoalInfo.exercise}
-                        </Text>
-                        <Text style={styles.tailoredExerciseSub}>
-                          Round 1/3 • Exercise 1/3
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        )
-      case 12:
+      case 11:
         // Stats Entry Step (Redesigned)
         const weightRange =
           weightUnit === 'kg'
@@ -2501,7 +2349,7 @@ export default function OnboardingScreen() {
               <Text style={styles.stepTitle}>
                 Enter your weight to get your strength ranks.
               </Text>
-          
+
             </View>
 
             <View
@@ -2572,7 +2420,7 @@ export default function OnboardingScreen() {
                 style={{
                   height: 250,
                   width: '100%',
-                  overflow: 'hidden', 
+                  overflow: 'hidden',
                 }}
               >
                 <Picker
@@ -2603,13 +2451,13 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 13:
+      case 12:
         // Strength Level Intro
         return (
           <StrengthLevelIntroStep
             gender={data.gender as 'male' | 'female' | null}
             weightKg={
-              data.weight_kg 
+              data.weight_kg
                 ? convertInputToKg(parseFloat(data.weight_kg)) || 75
                 : 75
             }
@@ -2619,7 +2467,7 @@ export default function OnboardingScreen() {
           />
         )
 
-      case 14: {
+      case 13: {
         const MUSCLE_GROUP_MAPPING: Record<
           string,
           { label: string; slugs: BodyPartSlug[] }
@@ -2827,7 +2675,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 15: {
+      case 14: {
         // Body Scan Feature Step
         const currentWeightNum = parseFloat(data.weight_kg) || 75
         const isLosing = data.goal.includes('lose_fat')
@@ -2904,7 +2752,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 16: {
+      case 15: {
         return (
           <ProcessingStepContent
             data={data}
@@ -2914,7 +2762,7 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 17: {
+      case 16: {
         return (
           <FinalPlanStepContent
             data={data}
@@ -2924,7 +2772,7 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 18: {
+      case 17: {
         return (
           <CommitmentStepContent
             data={data}
@@ -3212,9 +3060,9 @@ export default function OnboardingScreen() {
     <SafeAreaView
       style={styles.container}
       edges={
-        step === 19
+        step === 17
           ? ['left', 'right']
-          : step === 17 || step === 18
+          : step === 15 || step === 16
           ? ['top', 'left', 'right']
           : ['top', 'bottom', 'left', 'right']
       }
@@ -3224,7 +3072,7 @@ export default function OnboardingScreen() {
         <View
           style={[
             styles.header,
-            step === 19 && {
+            step === 17 && {
               position: 'absolute',
               top: 0,
               left: 0,
@@ -3241,8 +3089,8 @@ export default function OnboardingScreen() {
               name="arrow-back"
               size={24}
               color={
-                step === 19
-                  ? isCommitmentHolding || (step === 19 && false) // Logic for transition could go here, for now stick to consistency
+                step === 17
+                  ? isCommitmentHolding || (step === 17 && false) // Logic for transition could go here, for now stick to consistency
                     ? '#fff'
                     : colors.textPrimary
                   : colors.textPrimary
@@ -3256,7 +3104,7 @@ export default function OnboardingScreen() {
                 style={[
                   styles.headerProgressBarFill,
                   {
-                    width: `${(step / 18) * 100}%`,
+                    width: `${(step / 17) * 100}%`,
                     backgroundColor: colors.brandPrimary,
                   },
                 ]}
@@ -3278,15 +3126,15 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
-              (step === 17 || step === 18) && { paddingBottom: 0 },
+              (step === 16 || step === 17) && { paddingBottom: 0 },
               !hasAutoSwipe() &&
-                step !== 17 &&
-                step !== 18 && { paddingBottom: 140 },
+                step !== 16 &&
+                step !== 17 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            bounces={step !== 17}
+            bounces={step !== 15}
           >
             <View style={styles.contentWrapper}>
               <Animated.View
@@ -3323,7 +3171,7 @@ export default function OnboardingScreen() {
                     ? "Let's Go"
                     : step === 4
                     ? "Let's Get Started!"
-                    : step === 17
+                    : step === 16
                     ? 'Get Started'
                     : 'Next'}
                 </Text>

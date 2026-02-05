@@ -50,13 +50,6 @@ import os.log
     return subtitle
   }
 
-  private func timerLabelText(from subtitle: String?) -> String? {
-    guard let subtitle = subtitle, !subtitle.isEmpty else { return nil }
-    guard let range = subtitle.range(of: " • ") else { return nil }
-    let label = String(subtitle[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-    return label.isEmpty ? nil : label
-  }
-
   struct LiveActivityView: View {
     let contentState: LiveActivityAttributes.ContentState
     let attributes: LiveActivityAttributes
@@ -177,9 +170,7 @@ import os.log
       let _ = logger.info("[LA] LiveActivityView deepLinkUrl=\(attributes.deepLinkUrl ?? "nil", privacy: .public)")
 
       let timerValue = timerDisplayText(from: contentState.subtitle)
-      let timerLabel = timerLabelText(from: contentState.subtitle) ?? "Workout timer"
       let _ = logger.info("[LA] LiveActivityView timerValue=\(timerValue, privacy: .public)")
-      let _ = logger.info("[LA] LiveActivityView timerLabel=\(timerLabel, privacy: .public)")
 
       let defaultPadding = 20
 
@@ -226,7 +217,7 @@ import os.log
           Spacer(minLength: 8)
 
           VStack(alignment: .trailing, spacing: 2) {
-            Text(timerLabel)
+            Text("Workout timer")
               .font(.system(size: 11, weight: .medium, design: .rounded))
               .foregroundStyle(subtitleColor)
 

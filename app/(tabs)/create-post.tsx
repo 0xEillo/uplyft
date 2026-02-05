@@ -602,13 +602,6 @@ export default function CreatePostScreen() {
 
   // Sync Live Activity with workout timer for Dynamic Island display
   useEffect(() => {
-    const isRestTimerActive =
-      restTimer.isActive && restTimer.remainingSeconds > 0
-    const timerMode = isRestTimerActive ? 'rest' : 'workout'
-    const displaySeconds = isRestTimerActive
-      ? restTimer.remainingSeconds
-      : workoutElapsedSeconds
-
     if (isWorkoutTimerRunning && workoutElapsedSeconds > 0) {
       // Start or update the Live Activity
       if (workoutElapsedSeconds === 1) {
@@ -616,10 +609,7 @@ export default function CreatePostScreen() {
         startWorkoutActivity()
       } else {
         // Update with elapsed time (limited by the context to every 5 seconds)
-        updateWorkoutActivity(workoutElapsedSeconds, {
-          mode: timerMode,
-          displaySeconds,
-        })
+        updateWorkoutActivity(workoutElapsedSeconds)
       }
     } else if (!isWorkoutTimerRunning && workoutElapsedSeconds === 0) {
       // Workout ended/cleared - stop the activity
@@ -628,8 +618,6 @@ export default function CreatePostScreen() {
   }, [
     isWorkoutTimerRunning,
     workoutElapsedSeconds,
-    restTimer.isActive,
-    restTimer.remainingSeconds,
     startWorkoutActivity,
     updateWorkoutActivity,
     stopWorkoutActivity,

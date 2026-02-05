@@ -462,32 +462,8 @@ export default function ExerciseDetailScreen() {
           )}
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabsBorder}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tabs}
-            contentContainerStyle={styles.tabsContent}
-          >
-            {exerciseHasRankTracking && (
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  activeTab === 'level' && styles.activeTab,
-                ]}
-                onPress={() => setActiveTab('level')}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === 'level' && styles.activeTabText,
-                  ]}
-                >
-                  Level
-                </Text>
-              </TouchableOpacity>
-            )}
+          <View style={styles.tabsContent}>
             <TouchableOpacity
               style={[
                 styles.tab,
@@ -501,9 +477,10 @@ export default function ExerciseDetailScreen() {
                   activeTab === 'records' && styles.activeTabText,
                 ]}
               >
-                Records
+                Stats
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.tab,
@@ -520,6 +497,26 @@ export default function ExerciseDetailScreen() {
                 History
               </Text>
             </TouchableOpacity>
+
+            {exerciseHasRankTracking && (
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'level' && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab('level')}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'level' && styles.activeTabText,
+                  ]}
+                >
+                  Rank
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={[
                 styles.tab,
@@ -533,10 +530,10 @@ export default function ExerciseDetailScreen() {
                   activeTab === 'how_to' && styles.activeTabText,
                 ]}
               >
-                How To
+                How to
               </Text>
             </TouchableOpacity>
-          </ScrollView>
+          </View>
         </View>
 
         {isLoading ? (
@@ -1333,11 +1330,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexGrow: 0,
     },
     tabsContent: {
+      flexDirection: 'row',
       paddingHorizontal: 8,
     },
     tab: {
+      flex: 1,
       paddingVertical: 16,
-      paddingHorizontal: 16,
       alignItems: 'center',
       borderBottomWidth: 2,
       borderBottomColor: 'transparent',
