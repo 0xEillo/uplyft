@@ -4,6 +4,8 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import type { AppPostPreviewType } from '@/data/app-posts'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { getRoutineImageUrl } from '@/lib/utils/routine-images'
+import { Image } from 'expo-image'
 
 interface AppPostPreviewProps {
   type: AppPostPreviewType
@@ -26,24 +28,24 @@ const SHARE_CARDS = [
 const BODY_LOG_TREND = [8, 12, 10, 14, 16, 13, 18]
 const PROGRAM_PREVIEWS = [
   {
-    name: 'Strength Builder',
-    description: '4-week plan',
-    routines: '6 routines',
+    name: 'Push Pull Legs',
+    description: '3-day classic split',
+    routines: '3 routines',
     icon: 'flash-outline',
     gradient: ['#2563EB', '#3B82F6'],
   },
   {
-    name: 'Full Body Starter',
-    description: '3 days / week',
-    routines: '4 routines',
+    name: 'Full Body',
+    description: 'Foundation plan',
+    routines: '3 routines',
     icon: 'body-outline',
     gradient: ['#EA580C', '#F97316'],
   },
 ] as const
 
 const ROUTINE_PREVIEWS = [
-  { name: 'Upper Strength', tint: '#A3E635' },
-  { name: 'Cardio Builder', tint: '#22D3EE' },
+  { name: 'Upper Strength', imagePath: 'Upper Body A.png', tint: '#A3E635' },
+  { name: 'Leg Day', imagePath: 'Legs.png', tint: '#FB923C' },
 ] as const
 
 export function AppPostPreview({ type }: AppPostPreviewProps) {
@@ -58,6 +60,8 @@ export function AppPostPreview({ type }: AppPostPreviewProps) {
       return <ScanWorkoutPreview />
     case 'voice_logging':
       return <VoiceLoggingPreview />
+    case 'music_preview':
+      return <MusicPreview />
     case 'pr_tooltip':
       return <PrTooltipPreview />
     case 'share_widgets':
@@ -301,6 +305,49 @@ function VoiceLoggingPreview() {
           <Text style={styles.voiceText}>Listening for your sets...</Text>
         </View>
       </View>
+    </View>
+  )
+}
+
+function MusicPreview() {
+  const colors = useThemedColors()
+  const shared = createSharedStyles(colors)
+  const styles = createMusicStyles(colors)
+
+  return (
+    <View style={shared.previewCard}>
+      <View style={shared.headerRow}>
+        <View style={shared.headerTitleRow}>
+          <Ionicons
+            name="musical-notes-outline"
+            size={18}
+            color={colors.textPrimary}
+          />
+          <Text style={shared.headerTitle}>Workout Song Preview</Text>
+        </View>
+        <View style={shared.headerBadge}>
+          <Text style={shared.headerBadgeText}>NEW</Text>
+        </View>
+      </View>
+      <View style={styles.searchRow}>
+        <Text style={styles.searchPlaceholder}>Search for a song</Text>
+        <Ionicons name="search" size={16} color={colors.textSecondary} />
+      </View>
+      <View style={styles.resultRow}>
+        <View style={styles.artwork} />
+        <View style={styles.resultInfo}>
+          <Text style={styles.trackName} numberOfLines={1}>
+            Power Moves
+          </Text>
+          <Text style={styles.artistName} numberOfLines={1}>
+            LDN Beats • 2:34
+          </Text>
+        </View>
+        <View style={styles.previewButton}>
+          <Ionicons name="play" size={18} color={colors.textPrimary} />
+        </View>
+      </View>
+      <Text style={styles.attribution}>Previews courtesy of iTunes.</Text>
     </View>
   )
 }
@@ -581,11 +628,11 @@ function ExploreRoutinesPreview() {
       <View style={styles.routinesRow}>
         {ROUTINE_PREVIEWS.map((routine) => (
           <View key={routine.name} style={styles.routineCard}>
-            <LinearGradient
-              colors={['#0F172A', '#1F2937']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <Image
+              source={getRoutineImageUrl(routine.imagePath)}
               style={StyleSheet.absoluteFillObject}
+              contentFit="cover"
+              cachePolicy="memory-disk"
             />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.7)']}
@@ -819,6 +866,67 @@ function createScanStyles(colors: ReturnType<typeof useThemedColors>) {
       width: '70%',
       borderRadius: 6,
       backgroundColor: colors.surface,
+    },
+  })
+}
+
+function createMusicStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      marginBottom: 12,
+    },
+    searchPlaceholder: {
+      fontSize: 13,
+      color: colors.textTertiary,
+    },
+    resultRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 12,
+      padding: 10,
+    },
+    artwork: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: colors.surface,
+    },
+    resultInfo: {
+      flex: 1,
+      gap: 4,
+    },
+    trackName: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    artistName: {
+      fontSize: 11,
+      color: colors.textSecondary,
+    },
+    previewButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    attribution: {
+      marginTop: 8,
+      fontSize: 10,
+      color: colors.textTertiary,
     },
   })
 }

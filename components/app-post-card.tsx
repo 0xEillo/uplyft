@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback } from 'react'
 import {
-  Image,
-  Linking,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    Image,
+    Linking,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native'
 
 import { AppPostPreview } from '@/components/app-post-preview'
@@ -19,9 +19,14 @@ import { formatTimeAgo } from '@/lib/utils/formatters'
 interface AppPostCardProps {
   post: AppPost
   isFirst?: boolean
+  onCtaPress?: (post: AppPost) => void
 }
 
-export function AppPostCard({ post, isFirst = false }: AppPostCardProps) {
+export function AppPostCard({
+  post,
+  isFirst = false,
+  onCtaPress,
+}: AppPostCardProps) {
   const colors = useThemedColors()
   const router = useRouter()
   const { width } = useWindowDimensions()
@@ -32,6 +37,7 @@ export function AppPostCard({ post, isFirst = false }: AppPostCardProps) {
   const shouldShowImage = Boolean(post.image) && !post.preview
 
   const handleCtaPress = useCallback(() => {
+    onCtaPress?.(post)
     if (post.ctaRoute) {
       router.push(post.ctaRoute)
       return
@@ -42,7 +48,7 @@ export function AppPostCard({ post, isFirst = false }: AppPostCardProps) {
         console.error('Failed to open app post URL:', error)
       })
     }
-  }, [post.ctaRoute, post.ctaUrl, router])
+  }, [onCtaPress, post, post.ctaRoute, post.ctaUrl, router])
 
   return (
     <View style={[styles.card, isFirst && { borderTopWidth: 0 }]}>
@@ -65,11 +71,6 @@ export function AppPostCard({ post, isFirst = false }: AppPostCardProps) {
             </Text>
           </View>
         </View>
-        {post.badge ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{post.badge}</Text>
-          </View>
-        ) : null}
       </View>
 
       <Text style={styles.title} numberOfLines={2}>

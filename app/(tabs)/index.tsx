@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -47,6 +48,19 @@ type FeedItem =
   | { type: 'workout'; workout: WorkoutSessionWithDetails }
   | { type: 'app_post'; post: AppPost }
 
+type AppPostState = {
+  dismissed: Record<string, boolean>
+  seenAtWorkoutCount: Record<string, number>
+}
+
+const DEFAULT_APP_POST_STATE: AppPostState = {
+  dismissed: {},
+  seenAtWorkoutCount: {},
+}
+
+const APP_POST_STORAGE_KEY = '@app_post_state'
+const APP_POST_HIDE_AFTER_WORKOUTS = 6
+
 const FEED_APP_POST_FIRST_AFTER = 2
 const FEED_APP_POST_INTERVAL = 2
 const FEED_APP_POST_BASE_COUNT = 5
@@ -74,11 +88,6 @@ const buildFeedItems = (
       nextInsertAfter += FEED_APP_POST_INTERVAL
     }
   })
-
-  while (postIndex < appPosts.length) {
-    items.push({ type: 'app_post', post: appPosts[postIndex] })
-    postIndex += 1
-  }
 
   return items
 }
@@ -150,6 +159,9 @@ export default function FeedScreen() {
   const [currentStreak, setCurrentStreak] = useState(0)
   const [isOffline, setIsOffline] = useState(false)
   const [userWorkoutCount, setUserWorkoutCount] = useState(0)
+  const [appPostState, setAppPostState] = useState<AppPostState>(
+    DEFAULT_APP_POST_STATE,
+  )
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const appPosts = useMemo(() => {
     const unlockedCount = Math.min(
@@ -157,8 +169,62 @@ export default function FeedScreen() {
       FEED_APP_POST_BASE_COUNT +
         Math.floor(userWorkoutCount / FEED_APP_POST_PER_WORKOUTS),
     )
-    return APP_POSTS.slice(0, unlockedCount)
-  }, [userWorkoutCount])
+    const unlockedPosts = APP_POSTS.slice(0, unlockedCount)
+    return unlockedPosts.filter((post) => {
+      if (appPostState.dismissed[post.id]) return false
+      const seenAt = appPostState.seenAtWorkoutCount[post.id]
+      if (seenAt === undefined) return true
+      return userWorkoutCount - seenAt < APP_POST_HIDE_AFTER_WORKOUTS
+    })
+  }, [userWorkoutCount, appPostState])
+
+  const persistAppPostState = useCallback(
+    (nextState: AppPostState) => {
+      setAppPostState(nextState)
+      if (!user) return
+      const storageKey = `${APP_POST_STORAGE_KEY}:${user.id}`
+      AsyncStorage.setItem(storageKey, JSON.stringify(nextState)).catch(
+        (error) => {
+          console.error('Error saving app post state:', error)
+        },
+      )
+    },
+    [user],
+  )
+
+  const loadAppPostState = useCallback(async () => {
+    if (!user) {
+      setAppPostState(DEFAULT_APP_POST_STATE)
+      return
+    }
+    const storageKey = `${APP_POST_STORAGE_KEY}:${user.id}`
+    try {
+      const stored = await AsyncStorage.getItem(storageKey)
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<AppPostState>
+        setAppPostState({
+          dismissed: parsed.dismissed ?? {},
+          seenAtWorkoutCount: parsed.seenAtWorkoutCount ?? {},
+        })
+      } else {
+        setAppPostState(DEFAULT_APP_POST_STATE)
+      }
+    } catch (error) {
+      console.error('Error loading app post state:', error)
+      setAppPostState(DEFAULT_APP_POST_STATE)
+    }
+  }, [user])
+
+  const handleAppPostCta = useCallback(
+    (postId: string) => {
+      const nextState: AppPostState = {
+        dismissed: { ...appPostState.dismissed, [postId]: true },
+        seenAtWorkoutCount: { ...appPostState.seenAtWorkoutCount },
+      }
+      persistAppPostState(nextState)
+    },
+    [appPostState, persistAppPostState],
+  )
 
   const loadUserWorkoutCount = useCallback(async () => {
     if (!user) return
@@ -188,6 +254,10 @@ export default function FeedScreen() {
   useEffect(() => {
     loadUserWorkoutCount()
   }, [loadUserWorkoutCount])
+
+  useEffect(() => {
+    loadAppPostState()
+  }, [loadAppPostState])
 
   // Hard Paywall is handled globally in (tabs)/_layout.tsx with a 0.4s delay
 
@@ -498,10 +568,37 @@ export default function FeedScreen() {
     [workouts, appPosts],
   )
 
+  useEffect(() => {
+    if (!user || appPosts.length === 0) return
+    const unseenPosts = appPosts.filter(
+      (post) =>
+        appPostState.seenAtWorkoutCount[post.id] === undefined &&
+        !appPostState.dismissed[post.id],
+    )
+    if (unseenPosts.length === 0) return
+
+    const nextState: AppPostState = {
+      dismissed: { ...appPostState.dismissed },
+      seenAtWorkoutCount: { ...appPostState.seenAtWorkoutCount },
+    }
+
+    unseenPosts.forEach((post) => {
+      nextState.seenAtWorkoutCount[post.id] = userWorkoutCount
+    })
+
+    persistAppPostState(nextState)
+  }, [appPosts, appPostState, persistAppPostState, user, userWorkoutCount])
+
   const renderFeedItem = useCallback(
     ({ item, index }: { item: FeedItem; index: number }) => {
       if (item.type === 'app_post') {
-        return <AppPostCard post={item.post} isFirst={index === 0} />
+        return (
+          <AppPostCard
+            post={item.post}
+            isFirst={index === 0}
+            onCtaPress={(post) => handleAppPostCta(post.id)}
+          />
+        )
       }
 
       const workout = item.workout
@@ -539,7 +636,7 @@ export default function FeedScreen() {
         />
       )
     },
-    [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending],
+    [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending, handleAppPostCta],
   )
 
   const renderFooter = useCallback(() => {

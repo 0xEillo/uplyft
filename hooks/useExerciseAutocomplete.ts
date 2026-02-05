@@ -107,7 +107,9 @@ export function getExerciseAutocompleteGroup(
 
   // Use fuzzy search to find matches
   // This allows for typos and non-prefix matches
-  const matches = fuzzySearchExercises(exercises, trimmedPrefix)
+  const matches = fuzzySearchExercises(exercises, trimmedPrefix, {
+    preferRecent: true,
+  })
 
   if (!matches.length) return null
 

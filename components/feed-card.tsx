@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -240,7 +241,12 @@ export const FeedCard = memo(function FeedCard({
     backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.9)',
   }
 
-  const PREVIEW_LIMIT = coverImageUrl ? 4 : 3
+  const PREVIEW_LIMIT = 4
+  const SKELETON_ROW_WIDTHS = [60, 80, 70, 75]
+  const skeletonRowWidths = Array.from(
+    { length: PREVIEW_LIMIT },
+    (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
+  )
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
@@ -351,6 +357,41 @@ export const FeedCard = memo(function FeedCard({
     outputRange: [0.6, 1],
   })
 
+  const finishImageLoad = useCallback(() => {
+    setImageLoading(false)
+    Animated.timing(imageOpacity, {
+      toValue: 1,
+      duration: IMAGE_FADE_DURATION,
+      useNativeDriver: true,
+    }).start()
+  }, [imageOpacity])
+
+  useEffect(() => {
+    if (!coverImageUrl) {
+      setImageLoading(false)
+      imageOpacity.setValue(1)
+      return
+    }
+
+    let isActive = true
+    imageOpacity.setValue(0)
+    setImageLoading(true)
+
+    Image.prefetch(coverImageUrl)
+      .then(() => {
+        if (!isActive) return
+        finishImageLoad()
+      })
+      .catch(() => {
+        if (!isActive) return
+        setImageLoading(false)
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [coverImageUrl, finishImageLoad, imageOpacity])
+
   const handleCloseShareScreen = () => {
     setShowShareScreen(false)
   }
@@ -423,7 +464,7 @@ export const FeedCard = memo(function FeedCard({
           {/* Skeleton Rows (when pending) */}
           {isPending && (
             <>
-              {[60, 80, 70].map((width, index) => (
+              {skeletonRowWidths.map((width, index) => (
                 <View key={`skeleton-${index}`} style={styles.exerciseRow}>
                   <View style={styles.exerciseNameContainer}>
                     <Animated.View
@@ -549,6 +590,7 @@ export const FeedCard = memo(function FeedCard({
       exercises.length,
       styles,
       PREVIEW_LIMIT,
+      skeletonRowWidths,
     ],
   )
 
@@ -570,15 +612,7 @@ export const FeedCard = memo(function FeedCard({
           source={{ uri: coverImageUrl }}
           style={[styles.workoutImage, { opacity: imageOpacity }]}
           resizeMode="cover"
-          onLoadStart={() => setImageLoading(true)}
-          onLoad={() => {
-            setImageLoading(false)
-            Animated.timing(imageOpacity, {
-              toValue: 1,
-              duration: IMAGE_FADE_DURATION,
-              useNativeDriver: true,
-            }).start()
-          }}
+          onLoad={finishImageLoad}
           onError={(error) => {
             console.error(
               'Failed to load workout image:',

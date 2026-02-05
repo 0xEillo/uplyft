@@ -10,9 +10,19 @@ import { Platform } from 'react-native'
 
 interface LiveActivityContextType {
   startWorkoutActivity: () => void
-  updateWorkoutActivity: (elapsedSeconds: number) => void
+  updateWorkoutActivity: (
+    elapsedSeconds: number,
+    options?: UpdateWorkoutActivityOptions,
+  ) => void
   stopWorkoutActivity: () => void
   isActivitySupported: boolean
+}
+
+type TimerMode = 'workout' | 'rest'
+
+interface UpdateWorkoutActivityOptions {
+  mode?: TimerMode
+  displaySeconds?: number
 }
 
 const LiveActivityContext = createContext<LiveActivityContextType | undefined>(
@@ -43,6 +53,11 @@ export function LiveActivityProvider({
       ).padStart(2, '0')}`
     }
     return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
+
+  const buildSubtitle = (time: string, mode: TimerMode) => {
+    const label = mode === 'rest' ? 'Rest timer' : 'Workout timer'
+    return `${time} • ${label}`
   }
 
   const logState = (label: string, state: any, config?: any) => {
@@ -99,10 +114,10 @@ export function LiveActivityProvider({
         new Date(workoutStartTime).toISOString(),
       )
 
-      // subtitle format: "0:00 • Rep AI" - Swift extracts timer before " • "
+      // subtitle format: "0:00 • Workout timer" - Swift extracts timer before " • "
       const state = {
         title: 'Rep AI',
-        subtitle: '0:00',
+        subtitle: buildSubtitle('0:00', 'workout'),
         dynamicIslandImageName: 'bicep',
       }
 
@@ -139,7 +154,7 @@ export function LiveActivityProvider({
   }, [isActivitySupported])
 
   const updateWorkoutActivity = useCallback(
-    (elapsedSeconds: number) => {
+    (elapsedSeconds: number, options?: UpdateWorkoutActivityOptions) => {
       if (!isActivitySupported) {
         console.log('[LiveActivity] ❌ updateWorkoutActivity: not supported')
         return
@@ -175,8 +190,14 @@ export function LiveActivityProvider({
 
       try {
         updateCountRef.current += 1
-        const formattedTime = formatElapsed(elapsedSeconds)
-        const subtitle = formattedTime
+        const timerMode = options?.mode ?? 'workout'
+        const rawDisplaySeconds =
+          typeof options?.displaySeconds === 'number'
+            ? options.displaySeconds
+            : elapsedSeconds
+        const displaySeconds = Math.max(0, Math.floor(rawDisplaySeconds))
+        const formattedTime = formatElapsed(displaySeconds)
+        const subtitle = buildSubtitle(formattedTime, timerMode)
 
         const updateState = {
           title: 'Rep AI',
@@ -188,6 +209,8 @@ export function LiveActivityProvider({
         if (elapsedSeconds % 5 === 0) {
           console.log('[LiveActivity] ===== UPDATE =====')
           console.log('[LiveActivity] elapsedSeconds:', elapsedSeconds)
+          console.log('[LiveActivity] displaySeconds:', displaySeconds)
+          console.log('[LiveActivity] timerMode:', timerMode)
           console.log('[LiveActivity] formattedTime:', formattedTime)
           console.log('[LiveActivity] subtitle:', subtitle)
           console.log('[LiveActivity] activityId:', activityIdRef.current)

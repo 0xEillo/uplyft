@@ -53,6 +53,10 @@ function getFuseInstance(exercises: Exercise[]): Fuse<Exercise> {
 export function fuzzySearchExercises(
   exercises: Exercise[],
   query: string,
+  options?: {
+    preferRecent?: boolean
+    recencyScoreThreshold?: number
+  },
 ): Exercise[] {
   const trimmedQuery = query.trim()
 
@@ -72,8 +76,35 @@ export function fuzzySearchExercises(
   const fuse = getFuseInstance(exercises)
   const results = fuse.search(trimmedQuery)
 
-  // Extract exercises from Fuse results
-  return results.map((result) => result.item)
+  if (!options?.preferRecent) {
+    // Extract exercises from Fuse results
+    return results.map((result) => result.item)
+  }
+
+  const scoreThreshold =
+    options.recencyScoreThreshold !== undefined
+      ? options.recencyScoreThreshold
+      : 0.06
+
+  const sorted = results
+    .slice()
+    .sort((a, b) => {
+      const scoreA = a.score ?? 1
+      const scoreB = b.score ?? 1
+      const scoreDiff = scoreA - scoreB
+
+      // If relevance is close, prefer the exercise that appears earlier
+      // in the provided list (which is ordered with recent exercises first).
+      if (Math.abs(scoreDiff) <= scoreThreshold) {
+        const indexA = a.refIndex ?? 0
+        const indexB = b.refIndex ?? 0
+        return indexA - indexB
+      }
+
+      return scoreDiff
+    })
+
+  return sorted.map((result) => result.item)
 }
 
 /**

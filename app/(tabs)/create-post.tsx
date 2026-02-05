@@ -602,6 +602,13 @@ export default function CreatePostScreen() {
 
   // Sync Live Activity with workout timer for Dynamic Island display
   useEffect(() => {
+    const isRestTimerActive =
+      restTimer.isActive && restTimer.remainingSeconds > 0
+    const timerMode = isRestTimerActive ? 'rest' : 'workout'
+    const displaySeconds = isRestTimerActive
+      ? restTimer.remainingSeconds
+      : workoutElapsedSeconds
+
     if (isWorkoutTimerRunning && workoutElapsedSeconds > 0) {
       // Start or update the Live Activity
       if (workoutElapsedSeconds === 1) {
@@ -609,7 +616,10 @@ export default function CreatePostScreen() {
         startWorkoutActivity()
       } else {
         // Update with elapsed time (limited by the context to every 5 seconds)
-        updateWorkoutActivity(workoutElapsedSeconds)
+        updateWorkoutActivity(workoutElapsedSeconds, {
+          mode: timerMode,
+          displaySeconds,
+        })
       }
     } else if (!isWorkoutTimerRunning && workoutElapsedSeconds === 0) {
       // Workout ended/cleared - stop the activity
@@ -618,6 +628,8 @@ export default function CreatePostScreen() {
   }, [
     isWorkoutTimerRunning,
     workoutElapsedSeconds,
+    restTimer.isActive,
+    restTimer.remainingSeconds,
     startWorkoutActivity,
     updateWorkoutActivity,
     stopWorkoutActivity,
@@ -1076,6 +1088,9 @@ export default function CreatePostScreen() {
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
+      let isActive = true
+      let tutorialInteractionHandle: { cancel?: () => void } | null = null
+      let tutorialRafId: number | null = null
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
 
@@ -1126,8 +1141,16 @@ export default function CreatePostScreen() {
           const hasSeen = await AsyncStorage.getItem(
             createPostTutorialStorageKey,
           )
-          if (!hasSeen) {
-            setShowCreatePostTutorial(true)
+          if (!hasSeen && isActive) {
+            tutorialInteractionHandle = InteractionManager.runAfterInteractions(
+              () => {
+                if (!isActive) return
+                tutorialRafId = requestAnimationFrame(() => {
+                  if (!isActive) return
+                  setShowCreatePostTutorial(true)
+                })
+              },
+            )
           }
         } catch (error) {
           console.error(
@@ -1139,9 +1162,16 @@ export default function CreatePostScreen() {
       void checkCreatePostTutorial()
 
       return () => {
+        isActive = false
         clearTimeout(timeoutId)
         if (interactionHandle) {
           interactionHandle.cancel?.()
+        }
+        if (tutorialInteractionHandle) {
+          tutorialInteractionHandle.cancel?.()
+        }
+        if (tutorialRafId !== null) {
+          cancelAnimationFrame(tutorialRafId)
         }
         persistDraft('blur')
       }

@@ -6,6 +6,7 @@ export type AppPostPreviewType =
   | 'rest_timer'
   | 'scan_workout'
   | 'voice_logging'
+  | 'music_preview'
   | 'pr_tooltip'
   | 'share_widgets'
   | 'body_log'
@@ -66,6 +67,17 @@ export const APP_POSTS: AppPost[] = [
     badge: 'EXPLORE',
     ctaText: 'See routines',
     ctaRoute: '/explore',
+  },
+  {
+    id: 'music-preview',
+    title: 'Add a Song Preview to Your Workout',
+    body:
+      'Attach a track preview so friends can feel the vibe you trained to.',
+    createdAt: '2026-02-02T13:10:00.000Z',
+    preview: 'music_preview',
+    badge: 'NEW',
+    ctaText: 'Add a song',
+    ctaRoute: '/(tabs)/create-post',
   },
   {
     id: 'quick-toolbar',

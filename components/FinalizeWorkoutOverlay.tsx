@@ -136,14 +136,6 @@ export function FinalizeWorkoutOverlay({
                       size={24}
                       color={colors.brandPrimary}
                     />
-                    <Text
-                      style={[
-                        styles.mediaButtonText,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      Photos
-                    </Text>
                   </TouchableOpacity>
 
                   {/* Custom Context Menu */}
@@ -216,11 +208,6 @@ export function FinalizeWorkoutOverlay({
                     size={24}
                     color={colors.brandPrimary}
                   />
-                  <Text
-                    style={[styles.mediaButtonText, { color: colors.textSecondary }]}
-                  >
-                    Music
-                  </Text>
                 </TouchableOpacity>
 
                 {/* Attached Image Preview */}
@@ -339,23 +326,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   mediaButton: {
-    // Actually screenshot shows square buttons with icon on top of text.
-    // Let's adjust to match screenshot: square buttons.
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    flexDirection: 'column',
   },
   mediaButtonText: {
     fontSize: 12,
     fontWeight: '500',
   },
   imagePreviewContainer: {
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
     marginBottom: 16,
     position: 'relative',
   },
