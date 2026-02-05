@@ -6,15 +6,15 @@ import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Image,
-    Keyboard,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Image,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native'
 
 interface WorkoutSongPickerProps {
@@ -77,7 +77,7 @@ export function WorkoutSongPicker({
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search iTunes for a song"
+          placeholder="Search for a song"
           placeholderTextColor={colors.textTertiary}
           style={[styles.searchInput, { color: colors.textPrimary }]}
           returnKeyType="search"
