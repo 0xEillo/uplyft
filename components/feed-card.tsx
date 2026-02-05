@@ -1,31 +1,32 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
-    memo,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactElement,
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
 } from 'react'
 
 import {
-    ActivityIndicator,
-    Animated,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
-    type NativeScrollEvent,
-    type NativeSyntheticEvent,
+  ActivityIndicator,
+  Animated,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { useTheme } from '@/contexts/theme-context'
+import { useMusicPreviewState } from '@/hooks/useMusicPreviewState'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
@@ -176,9 +177,14 @@ export const FeedCard = memo(function FeedCard({
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  const playback = useMusicPreviewState()
 
   const displayRoutine = routine || workout?.routine
   const workoutSong = workoutSongProp ?? workout?.song ?? null
+
+  const isThisSongPlaying = playback.trackId === workoutSong?.trackId && playback.isPlaying
+  const isThisSongBuffering = playback.trackId === workoutSong?.trackId && playback.isBuffering
+
   const coverImageUrl =
     workoutImageUrl ||
     (workoutSong?.artworkUrl100
@@ -660,6 +666,15 @@ export const FeedCard = memo(function FeedCard({
             )}
           </View>
         </TouchableOpacity>
+        {workoutSong && !isPending && (
+          <View style={styles.headerMusicIndicator}>
+            <Ionicons
+              name={isThisSongPlaying || isThisSongBuffering ? 'volume-high-outline' : 'volume-mute-outline'}
+              size={17}
+              color={colors.textTertiary}
+            />
+          </View>
+        )}
         {isPending && (
           <Animated.View
             style={[
@@ -1173,6 +1188,13 @@ function createStyles(
     },
     fullscreenLoadingOverlay: {
       ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    headerMusicIndicator: {
+      padding: 4,
+      marginLeft: 4,
+      marginRight: 2,
       justifyContent: 'center',
       alignItems: 'center',
     },
