@@ -407,8 +407,13 @@ export function WorkoutDetailView({
                 >
                   <Ionicons
                     name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
-                    size={20}
+                    size={22}
                     color={isLiked ? colors.brandPrimary : colors.iconDefault}
+                    style={{
+                      textShadowColor: isLiked ? colors.brandPrimary : colors.iconDefault,
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 0.5,
+                    }}
                   />
                   {likeCount > 0 && (
                     <Text
@@ -429,8 +434,13 @@ export function WorkoutDetailView({
                 >
                   <Ionicons
                     name="chatbubble-outline"
-                    size={20}
+                    size={22}
                     color={colors.iconDefault}
+                    style={{
+                      textShadowColor: colors.iconDefault,
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 0.5,
+                    }}
                   />
                   {commentCount > 0 && (
                     <Text
@@ -451,8 +461,13 @@ export function WorkoutDetailView({
                 >
                   <Ionicons
                     name="share-outline"
-                    size={20}
+                    size={22}
                     color={colors.iconDefault}
+                    style={{
+                      textShadowColor: colors.iconDefault,
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 0.5,
+                    }}
                   />
                 </TouchableOpacity>
               </View>
@@ -599,10 +614,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 10,
     marginHorizontal: -16,
-    marginTop: 12,
+    marginTop: 8,
   },
   socialButton: {
     flexDirection: 'row',
@@ -612,7 +627,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   socialCount: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
   sectionTitle: {

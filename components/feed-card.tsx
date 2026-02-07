@@ -945,8 +945,13 @@ export const FeedCard = memo(function FeedCard({
           >
             <Ionicons
               name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
-              size={20}
+              size={22}
               color={isLiked ? colors.brandPrimary : colors.textSecondary}
+              style={{
+                textShadowColor: isLiked ? colors.brandPrimary : colors.textSecondary,
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 0.5,
+              }}
             />
             {likeCount > 0 && (
               <Text style={styles.socialActionCount}>{likeCount}</Text>
@@ -961,8 +966,13 @@ export const FeedCard = memo(function FeedCard({
           >
             <Ionicons
               name="chatbubble-outline"
-              size={20}
+              size={22}
               color={colors.textSecondary}
+              style={{
+                textShadowColor: colors.textSecondary,
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 0.5,
+              }}
             />
             {commentCount > 0 && (
               <Text style={styles.socialActionCount}>{commentCount}</Text>
@@ -977,8 +987,13 @@ export const FeedCard = memo(function FeedCard({
             >
               <Ionicons
                 name="share-outline"
-                size={20}
+                size={22}
                 color={colors.textSecondary}
+                style={{
+                  textShadowColor: colors.textSecondary,
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 0.5,
+                }}
               />
             </TouchableOpacity>
           )}
@@ -1518,7 +1533,7 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-around',
-      paddingVertical: 8,
+      paddingVertical: 10,
       marginTop: 4,
     },
     socialActionButton: {
@@ -1529,7 +1544,7 @@ function createStyles(
       paddingHorizontal: 8,
     },
     socialActionCount: {
-      fontSize: 13,
+      fontSize: 14,
       color: colors.textSecondary,
       fontWeight: '500',
     },
