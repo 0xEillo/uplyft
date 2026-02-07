@@ -10,10 +10,13 @@ import {
 } from 'react'
 
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   Animated,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,6 +35,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
+import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { WorkoutSessionWithDetails } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 
@@ -170,6 +174,9 @@ export const FeedCard = memo(function FeedCard({
   isLiked = false,
   onLike,
   onComment,
+  onEdit,
+  onDelete,
+  onCreateRoutine,
   routine,
   onRoutinePress,
 }: FeedCardProps): ReactElement {
@@ -204,13 +211,77 @@ export const FeedCard = memo(function FeedCard({
   const [infoHeight, setInfoHeight] = useState(0)
   const [workoutCountThisWeek, setWorkoutCountThisWeek] = useState(1)
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Workout',
+      'Are you sure you want to delete this workout? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            onDelete?.()
+          },
+        },
+      ],
+    )
+  }
+
+  const handleOptionsPress = () => {
+    if (Platform.OS !== 'ios') {
+      // Fallback for Android (simple alert for now as ActionSheet is iOS only)
+      Alert.alert('Options', 'Select an action', [
+        ...(onEdit ? [{ text: 'Edit Workout', onPress: onEdit }] : []),
+        ...(onCreateRoutine
+          ? [{ text: 'Save as Routine', onPress: onCreateRoutine }]
+          : []),
+        ...(onDelete
+          ? [{ text: 'Delete Workout', onPress: handleDelete, style: 'destructive' as const }]
+          : []),
+        { text: 'Cancel', style: 'cancel' },
+      ])
+      return
+    }
+
+    const options = ['Cancel']
+    const actions: (() => void)[] = [() => {}] // No-op for cancel
+
+    if (onEdit) {
+      options.push('Edit Workout')
+      actions.push(onEdit)
+    }
+    if (onCreateRoutine) {
+      options.push('Save as Routine')
+      actions.push(onCreateRoutine)
+    }
+    if (onDelete) {
+      options.push('Delete Workout')
+      actions.push(handleDelete)
+    }
+
+    const destructiveButtonIndex = onDelete ? options.length - 1 : -1
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: 0,
+        destructiveButtonIndex,
+        userInterfaceStyle: isDark ? 'dark' : 'light',
+      },
+      (buttonIndex) => {
+        actions[buttonIndex]?.()
+      },
+    )
+  }
+
   // Calculate carousel width (screen width - card padding * 2)
   // Card padding is 14 horizontal
   const cardPadding = 14
   const carouselWidth = windowWidth - cardPadding * 2
   // Max height for the image to prevent it from growing too large (infinity zoom effect)
-  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.45, 420)
-  const DESIRED_ASPECT_RATIO = 1 // Square
+  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.32, 320)
+  const DESIRED_ASPECT_RATIO = 1.45 // Shorter Aspect Ratio
   const baselineHeight = carouselWidth / DESIRED_ASPECT_RATIO
 
   const handleCarouselScroll = (
@@ -241,12 +312,14 @@ export const FeedCard = memo(function FeedCard({
     backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.9)',
   }
 
-  const PREVIEW_LIMIT = 4
-  const SKELETON_ROW_WIDTHS = [60, 80, 70, 75]
+  const PREVIEW_LIMIT = 5
+  const SKELETON_ROW_WIDTHS = [60, 80, 70, 75, 65]
   const skeletonRowWidths = Array.from(
     { length: PREVIEW_LIMIT },
     (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
   )
+  const ROW_HEIGHT = 65 // 48 (thumb) + 16 (padding) + 1 (border)
+  const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
 
@@ -404,62 +477,83 @@ export const FeedCard = memo(function FeedCard({
     await shareWorkoutWidget(widgetRef, shareType)
   }
 
-  // Memoize info content to prevent unnecessary re-layouts
+  // Memoize stats section to keep it fixed
+  const statsContent = useMemo(
+    () => {
+      if (isPending) return null
+      return (
+        <Pressable
+          onPress={onCardPress}
+          disabled={!onCardPress}
+          style={styles.statsContainer}
+        >
+          <View style={styles.statItem}>
+            <View style={styles.statLabelContainer}>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={colors.statusSuccess}
+              />
+              <Text style={styles.statLabel}>Duration</Text>
+            </View>
+            <Text style={styles.statValue}>
+              {formatDurationCompact(stats.durationSeconds || 0)}
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <View style={styles.statLabelContainer}>
+              <Ionicons
+                name="barbell-outline"
+                size={14}
+                color={colors.statusInfo}
+              />
+              <Text style={styles.statLabel}>Volume</Text>
+            </View>
+            <Text style={styles.statValue}>
+              {formatVolumeCompact(stats.volume || 0, weightUnit)}
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <View style={styles.statLabelContainer}>
+              <Ionicons
+                name="trophy-outline"
+                size={14}
+                color={colors.brandPrimary}
+              />
+              <Text style={styles.statLabel}>Records</Text>
+            </View>
+            <Text style={styles.statValue}>{stats.prs}</Text>
+          </View>
+        </Pressable>
+      )
+    },
+    [
+      isPending,
+      onCardPress,
+      styles.statsContainer,
+      styles.statItem,
+      styles.statLabelContainer,
+      colors.statusSuccess,
+      styles.statLabel,
+      stats.durationSeconds,
+      colors.statusInfo,
+      stats.volume,
+      weightUnit,
+      colors.brandPrimary,
+      stats.prs,
+      styles.statValue,
+    ],
+  )
+
+  // Memoize info content (now just exercises) to prevent unnecessary re-layouts
   const infoContent = useMemo(
     () => (
       <>
-        {/* Stats Summary */}
-        {!isPending && (
-          <Pressable
-            onPress={onCardPress}
-            disabled={!onCardPress}
-            style={styles.statsContainer}
-          >
-            <View style={styles.statItem}>
-              <View style={styles.statLabelContainer}>
-                <Ionicons
-                  name="time-outline"
-                  size={14}
-                  color={colors.statusSuccess}
-                />
-                <Text style={styles.statLabel}>Duration</Text>
-              </View>
-              <Text style={styles.statValue}>
-                {formatDurationCompact(stats.durationSeconds || 0)}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={styles.statLabelContainer}>
-                <Ionicons
-                  name="barbell-outline"
-                  size={14}
-                  color={colors.statusInfo}
-                />
-                <Text style={styles.statLabel}>Volume</Text>
-              </View>
-              <Text style={styles.statValue}>
-                {formatVolumeCompact(stats.volume || 0, weightUnit)}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={styles.statLabelContainer}>
-                <Ionicons
-                  name="trophy-outline"
-                  size={14}
-                  color={colors.brandPrimary}
-                />
-                <Text style={styles.statLabel}>Records</Text>
-              </View>
-              <Text style={styles.statValue}>{stats.prs}</Text>
-            </View>
-          </Pressable>
-        )}
-
         {/* Exercises List */}
         <Pressable
           onPress={onCardPress}
           disabled={!onCardPress || isPending}
-          style={styles.exercisesContainer}
+          style={[styles.exercisesContainer, { minHeight: MIN_CONTENT_HEIGHT }]}
         >
           {/* Skeleton Rows (when pending) */}
           {isPending && (
@@ -577,20 +671,17 @@ export const FeedCard = memo(function FeedCard({
       isPending,
       isProcessingPending,
       onCardPress,
-      stats,
       shimmerOpacity,
       exercisesFadeAnim,
       displayedExercises,
       hasMoreExercises,
-      weightUnit,
       colors.brandPrimary,
-      colors.statusInfo,
-      colors.statusSuccess,
       isDark,
       exercises.length,
       styles,
       PREVIEW_LIMIT,
       skeletonRowWidths,
+      MIN_CONTENT_HEIGHT,
     ],
   )
 
@@ -600,7 +691,7 @@ export const FeedCard = memo(function FeedCard({
         style={[
           styles.workoutImageContainer,
           infoHeight > 0 && {
-            height: Math.max(infoHeight, baselineHeight),
+            height: infoHeight,
             aspectRatio: undefined,
             maxHeight: undefined,
           },
@@ -641,12 +732,11 @@ export const FeedCard = memo(function FeedCard({
 
   const infoSlide = (
     <View
-      style={{ width: carouselWidth }}
+      style={{ width: carouselWidth, alignSelf: 'flex-start' }}
       onLayout={(event) => {
         const { height } = event.nativeEvent.layout
         if (Math.abs(height - infoHeight) > 2) {
-          const newHeight = Math.min(Math.max(height, baselineHeight), MAX_IMAGE_HEIGHT)
-          setInfoHeight(newHeight)
+          setInfoHeight(height)
         }
       }}
     >
@@ -700,16 +790,8 @@ export const FeedCard = memo(function FeedCard({
             )}
           </View>
         </TouchableOpacity>
-        {workoutSong && !isPending && (
-          <View style={styles.headerMusicIndicator}>
-            <Ionicons
-              name={isThisSongPlaying || isThisSongBuffering ? 'volume-high-outline' : 'volume-mute-outline'}
-              size={17}
-              color={colors.textTertiary}
-            />
-          </View>
-        )}
-        {isPending && (
+
+        {isPending ? (
           <Animated.View
             style={[
               styles.analyzingBadge,
@@ -722,34 +804,92 @@ export const FeedCard = memo(function FeedCard({
               {isProcessingPending ? `Analyzing${analyzingDots}` : 'Queued'}
             </Text>
           </Animated.View>
+        ) : (
+          (onEdit || onDelete || onCreateRoutine) && (
+            <View style={{ zIndex: 10 }}>
+              <TouchableOpacity
+                onPress={handleOptionsPress}
+                style={styles.menuButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+          )
         )}
       </View>
 
-      {/* Workout Title - Clickable to navigate to detail */}
       <Pressable
         onPress={onCardPress}
         disabled={!onCardPress || isPending}
         style={({ pressed }) => [
-          styles.titleContainer,
+          styles.titleRowContainer,
           pressed && onCardPress && styles.titleContainerPressed,
         ]}
       >
-        {workoutTitle && (
-          <Text style={styles.workoutTitle} numberOfLines={2}>
-            {workoutTitle}
-          </Text>
+        <View style={styles.titleContent}>
+          {workoutTitle && (
+            <Text style={styles.workoutTitle} numberOfLines={2}>
+              {workoutTitle}
+            </Text>
+          )}
+          {workoutDescription && (
+            <>
+              <Text
+                style={styles.workoutDescription}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {workoutDescription}
+              </Text>
+              {workoutDescription.length > 85 && (
+                <Text style={styles.readMore}>Read more...</Text>
+              )}
+            </>
+          )}
+        </View>
+
+        {workoutSong && !isPending && (
+          <TouchableOpacity
+            style={styles.headerMusicIndicator}
+            onPress={() => toggleMusicPreview(workoutSong)}
+            activeOpacity={0.8}
+          >
+            {workoutSong.artworkUrl100 && (
+              <Image
+                source={{ uri: workoutSong.artworkUrl100 }}
+                style={styles.headerArtwork}
+              />
+            )}
+            <View style={styles.headerMusicIconOverlay}>
+              <Ionicons
+                name={
+                  isThisSongPlaying || isThisSongBuffering
+                    ? 'volume-high'
+                    : 'volume-mute'
+                }
+                size={18}
+                color="#FFFFFF"
+              />
+            </View>
+          </TouchableOpacity>
         )}
-        {workoutDescription && (
-          <Text style={styles.workoutDescription}>{workoutDescription}</Text>
-        )}
-        {workoutSong && !coverImageUrl && (
+
+        {workoutSong && !coverImageUrl && !workoutSong.artworkUrl100 && (
           <View style={styles.songPreviewWrapper}>
             <WorkoutSongPreview song={workoutSong} artworkSize={52} />
           </View>
         )}
       </Pressable>
 
-      {/* Carousel or Info */}
+      {/* Stats Summary - Fixed */}
+      {statsContent}
+
+      {/* Carousel or Exercises */}
       {coverImageUrl ? (
         <View>
           <ScrollView
@@ -987,6 +1127,15 @@ function createStyles(
       fontWeight: '600',
       color: colors.brandPrimary,
     },
+    titleRowContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 16,
+    },
+    titleContent: {
+      flex: 1,
+    },
     titleContainer: {
       // Container for clickable title/description area
     },
@@ -994,17 +1143,17 @@ function createStyles(
       opacity: 0.6,
     },
     workoutTitle: {
-      fontSize: 18,
+      fontSize: 22,
       fontWeight: '600',
       color: colors.textPrimary,
       marginBottom: 8,
     },
     workoutDescription: {
-      fontSize: 15,
+      fontSize: 14,
       color: colors.textPrimary,
       marginTop: 4,
       marginBottom: 12,
-      lineHeight: 22,
+      lineHeight: 20,
     },
     songPreviewWrapper: {
       marginBottom: 12,
@@ -1186,7 +1335,7 @@ function createStyles(
     },
     workoutImageContainer: {
       width: '100%',
-      aspectRatio: 1,
+      aspectRatio: 1.45,
       marginBottom: 12,
       borderRadius: 8,
       overflow: 'hidden',
@@ -1226,9 +1375,20 @@ function createStyles(
       alignItems: 'center',
     },
     headerMusicIndicator: {
-      padding: 4,
-      marginLeft: 4,
-      marginRight: 2,
+      width: 41,
+      height: 41,
+      marginLeft: 8,
+      borderRadius: 8,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    headerArtwork: {
+      width: '100%',
+      height: '100%',
+    },
+    headerMusicIconOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.35)',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -1253,7 +1413,6 @@ function createStyles(
       alignItems: 'center',
       paddingVertical: 8,
       paddingHorizontal: 12,
-      backgroundColor: colors.rowTint,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -1359,10 +1518,8 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-around',
-      paddingVertical: 11,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      marginTop: 10,
+      paddingVertical: 8,
+      marginTop: 4,
     },
     socialActionButton: {
       flexDirection: 'row',
@@ -1379,14 +1536,24 @@ function createStyles(
     pagination: {
       flexDirection: 'row',
       justifyContent: 'center',
-      marginTop: 8,
+      marginTop: 4,
       marginBottom: 4, // reduced margin as social bar has top margin
       gap: 6,
+    },
+    menuButton: {
+      padding: 4,
     },
     paginationDot: {
       height: 6,
       width: 6,
       borderRadius: 3,
+    },
+    readMore: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: -8,
+      marginBottom: 12,
+      fontWeight: '500',
     },
   })
 }

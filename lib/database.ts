@@ -1522,6 +1522,40 @@ export const database = {
       return count || 0
     },
 
+    async getFirstWorkoutIdByDate(
+      userId: string,
+      dateStr: string,
+    ): Promise<string | null> {
+      const [year, month, day] = dateStr
+        .split('-')
+        .map((value) => Number(value))
+
+      if (
+        !Number.isFinite(year) ||
+        !Number.isFinite(month) ||
+        !Number.isFinite(day)
+      ) {
+        return null
+      }
+
+      const nextDate = new Date(Date.UTC(year, month - 1, day + 1))
+      const nextDateStr = nextDate.toISOString().split('T')[0]
+
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('date', dateStr)
+        .lt('date', nextDateStr)
+        .order('date', { ascending: true })
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) throw error
+      return data?.id ?? null
+    },
+
     async getById(id: string) {
       const { data, error } = await supabase
         .from('workout_sessions')

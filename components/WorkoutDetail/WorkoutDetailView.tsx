@@ -4,14 +4,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState, type ReactElement } from 'react'
 
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -186,7 +186,7 @@ export function WorkoutDetailView({
           }
           centerContent={
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              Workout Detail
+              Workout
             </Text>
           }
           rightContent={
@@ -603,7 +603,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginHorizontal: -16,
     marginTop: 12,
-    borderTopWidth: 1,
   },
   socialButton: {
     flexDirection: 'row',

@@ -2,20 +2,20 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -23,14 +23,15 @@ import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    getStandardsLadder,
-    getStrengthStandard,
-    hasStrengthStandards
+  getStandardsLadder,
+  getStrengthStandard,
+  hasStrengthStandards
 } from '@/lib/strength-standards'
 import { Exercise, Profile } from '@/types/database.types'
 
@@ -85,6 +86,7 @@ const EQUIPMENT_OPTIONS = [
 export default function ExerciseDetailScreen() {
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const router = useRouter()
@@ -313,6 +315,33 @@ export default function ExerciseDetailScreen() {
     )
   }
 
+  const handleOptionsPress = () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert('Options', 'Select an action', [
+        { text: 'Edit Exercise', onPress: handleStartEdit },
+        { text: 'Delete Exercise', onPress: handleDeleteExercise, style: 'destructive' },
+        { text: 'Cancel', style: 'cancel' },
+      ])
+      return
+    }
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ['Cancel', 'Edit Exercise', 'Delete Exercise'],
+        cancelButtonIndex: 0,
+        destructiveButtonIndex: 2,
+        userInterfaceStyle: isDark ? 'dark' : 'light',
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 1) {
+          handleStartEdit()
+        } else if (buttonIndex === 2) {
+          handleDeleteExercise()
+        }
+      },
+    )
+  }
+
   const handleStartEdit = () => {
     if (!exercise) return
     setEditName(exercise.name)
@@ -440,21 +469,19 @@ export default function ExerciseDetailScreen() {
           {isOwner ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <TouchableOpacity
-                onPress={handleStartEdit}
+                onPress={handleOptionsPress}
                 style={styles.headerActionButton}
-              >
-                <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleDeleteExercise}
-                style={styles.headerDeleteButton}
                 disabled={isDeleting}
               >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color="#EF4444" />
-                ) : (
-                  <Ionicons name="trash-outline" size={22} color="#EF4444" />
-                )}
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color={colors.textPrimary} />
+                  ) : (
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={24}
+                      color={colors.textPrimary}
+                    />
+                  )}
               </TouchableOpacity>
             </View>
           ) : (

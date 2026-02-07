@@ -7,10 +7,11 @@ import { database } from '@/lib/database'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Dimensions,
+  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,11 +28,12 @@ export default function WorkoutCalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const [isLoading, setIsLoading] = useState(true)
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
-  const [currentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(() => new Date())
   const [shouldExit, setShouldExit] = useState(false)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [currentStreak, setCurrentStreak] = useState<number | null>(null)
+  const [isNavigatingToWorkout, setIsNavigatingToWorkout] = useState(false)
   const { shareWorkoutWidget } = useWorkoutShare()
 
   const loadWorkoutDates = useCallback(async () => {
@@ -84,6 +86,75 @@ export default function WorkoutCalendarScreen() {
     await shareWorkoutWidget(widgetRef, shareType)
   }
 
+  const handleMonthChange = useCallback((direction: -1 | 1) => {
+    setCurrentDate((prevDate) => {
+      return new Date(prevDate.getFullYear(), prevDate.getMonth() + direction, 1)
+    })
+  }, [])
+
+  const handleDayPress = useCallback(
+    async (dateStr: string | null) => {
+      if (
+        !user?.id ||
+        !dateStr ||
+        !workoutDates.has(dateStr) ||
+        isNavigatingToWorkout
+      ) {
+        return
+      }
+
+      setIsNavigatingToWorkout(true)
+      try {
+        const workoutId =
+          await database.workoutSessions.getFirstWorkoutIdByDate(
+            user.id,
+            dateStr,
+          )
+
+        if (!workoutId) return
+
+        router.push({
+          pathname: '/workout/[workoutId]',
+          params: { workoutId, returnTo: '/workout-calendar' },
+        })
+      } catch (error) {
+        console.error('Error opening workout from calendar day:', error)
+      } finally {
+        setIsNavigatingToWorkout(false)
+      }
+    },
+    [user?.id, workoutDates, isNavigatingToWorkout],
+  )
+
+  const monthSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          if (viewMode !== 'month') return false
+          const horizontalDistance = Math.abs(gestureState.dx)
+          const verticalDistance = Math.abs(gestureState.dy)
+          return horizontalDistance > 10 && horizontalDistance > verticalDistance
+        },
+        onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+          if (viewMode !== 'month') return false
+          const horizontalDistance = Math.abs(gestureState.dx)
+          const verticalDistance = Math.abs(gestureState.dy)
+          return horizontalDistance > 10 && horizontalDistance > verticalDistance
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (viewMode !== 'month') return
+          if (gestureState.dx <= -40) {
+            handleMonthChange(1)
+            return
+          }
+          if (gestureState.dx >= 40) {
+            handleMonthChange(-1)
+          }
+        },
+      }),
+    [handleMonthChange, viewMode],
+  )
+
   const renderMonthView = () => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -122,7 +193,7 @@ export default function WorkoutCalendarScreen() {
     })
 
     return (
-      <View style={styles.content}>
+      <View style={styles.content} {...monthSwipeResponder.panHandlers}>
         <Text style={styles.monthTitle}>{monthName}</Text>
 
         {/* Day headers */}
@@ -144,7 +215,13 @@ export default function WorkoutCalendarScreen() {
               day.dateStr === new Date().toISOString().split('T')[0]
 
             return (
-              <View key={index} style={styles.dayCellLarge}>
+              <TouchableOpacity
+                key={index}
+                style={styles.dayCellLarge}
+                activeOpacity={0.7}
+                disabled={!day.date || !hasWorkout || isNavigatingToWorkout}
+                onPress={() => handleDayPress(day.dateStr)}
+              >
                 {day.date && (
                   <View
                     style={[
@@ -163,7 +240,7 @@ export default function WorkoutCalendarScreen() {
                     </Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             )
           })}
         </View>
