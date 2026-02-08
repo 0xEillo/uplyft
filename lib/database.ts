@@ -6,6 +6,11 @@ import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
+    DailyLogConfidence,
+    DailyLogEntry,
+    DailyLogMeal,
+    DailyLogMealSource,
+    DailyLogSummary,
     Exercise,
     ExploreProgram,
     ExploreProgramRoutine,
@@ -28,18 +33,6 @@ import type {
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-
-// Local types for Supabase query results
-type WorkoutExerciseQueryResult = {
-  exercise: Exercise | null
-  sets?: Set[]
-}
-
-type SessionWithExercisesQueryResult = {
-  id: string
-  created_at: string
-  workout_exercises?: WorkoutExerciseQueryResult[]
-}
 
 type ExploreProgramQueryResult = ExploreProgram & {
   explore_program_routines?: { routine_id: string }[]
@@ -132,6 +125,37 @@ const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
   }
 
   return sanitized
+}
+
+const normalizeDailyLogDate = (value?: string): string => {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value
+  }
+
+  if (value) {
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10)
+    }
+    throw new Error('Invalid daily log date. Expected YYYY-MM-DD format.')
+  }
+
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = `${now.getMonth() + 1}`.padStart(2, '0')
+  const day = `${now.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const toNonNegativeNumber = (value: number): number => {
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Number(value.toFixed(1)))
+}
+
+const toNullableInteger = (value: number | null | undefined): number | null => {
+  if (value === null || value === undefined) return null
+  if (!Number.isFinite(value)) return null
+  return Math.max(0, Math.round(value))
 }
 
 export const database = {
@@ -2783,11 +2807,13 @@ export const database = {
       userId: string,
       options?: {
         weightKg?: number | null
+        createdAt?: string
       },
     ) {
       const payload: {
         user_id: string
         weight_kg?: number
+        created_at?: string
       } = {
         user_id: userId,
       }
@@ -2799,6 +2825,13 @@ export const database = {
         !Number.isNaN(options.weightKg)
       ) {
         payload.weight_kg = options.weightKg
+      }
+
+      if (options?.createdAt) {
+        const createdDate = new Date(options.createdAt)
+        if (!Number.isNaN(createdDate.getTime())) {
+          payload.created_at = createdDate.toISOString()
+        }
       }
 
       const { data, error } = await supabase
@@ -3086,6 +3119,515 @@ export const database = {
       if (error) {
         throw error
       }
+    },
+  },
+
+  // Daily log operations (nutrition + optional daily metrics)
+  dailyLog: {
+    /**
+     * Ensure a day entry exists for the user and date.
+     */
+    async ensureEntry(userId: string, logDate?: string) {
+      const normalizedDate = normalizeDailyLogDate(logDate)
+      console.log('[DailyLogDB] ensureEntry called:', {
+        userId,
+        logDate: normalizedDate,
+      })
+      const { data, error } = await supabase
+        .from('daily_log_entries')
+        .upsert(
+          {
+            user_id: userId,
+            log_date: normalizedDate,
+          },
+          { onConflict: 'user_id,log_date' },
+        )
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[DailyLogDB] ensureEntry failed:', {
+          userId,
+          logDate: normalizedDate,
+          error,
+        })
+        throw error
+      }
+
+      console.log('[DailyLogDB] ensureEntry success:', {
+        entryId: data.id,
+        userId: data.user_id,
+        logDate: data.log_date,
+      })
+      return data as DailyLogEntry
+    },
+
+    /**
+     * Save or update daily targets (calories/protein) or day-level weight.
+     */
+    async updateDay(
+      userId: string,
+      payload: {
+        logDate?: string
+        weightKg?: number | null
+        calorieGoal?: number | null
+        proteinGoalG?: number | null
+      },
+    ) {
+      const normalizedDate = normalizeDailyLogDate(payload.logDate)
+      const entry = await database.dailyLog.ensureEntry(userId, normalizedDate)
+
+      const { data, error } = await supabase
+        .from('daily_log_entries')
+        .update({
+          weight_kg:
+            payload.weightKg === undefined
+              ? entry.weight_kg
+              : payload.weightKg,
+          calorie_goal:
+            payload.calorieGoal === undefined
+              ? entry.calorie_goal
+              : toNullableInteger(payload.calorieGoal),
+          protein_goal_g:
+            payload.proteinGoalG === undefined
+              ? entry.protein_goal_g
+              : toNullableInteger(payload.proteinGoalG),
+        })
+        .eq('id', entry.id)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('[DailyLogDB] updateDay success:', {
+        entryId: data.id,
+        logDate: data.log_date,
+        calorie_goal: data.calorie_goal,
+        protein_goal_g: data.protein_goal_g,
+        weight_kg: data.weight_kg,
+      })
+      return data as DailyLogEntry
+    },
+
+    /**
+     * Insert one meal-level macro estimate into the daily log.
+     */
+    async logMeal(
+      userId: string,
+      payload: {
+        description: string
+        calories: number
+        protein_g: number
+        carbs_g: number
+        fat_g: number
+        source?: DailyLogMealSource
+        confidence?: DailyLogConfidence | null
+        chatMessageId?: string | null
+        metadata?: Record<string, unknown> | null
+        logDate?: string
+      },
+    ) {
+      const normalizedDate = normalizeDailyLogDate(payload.logDate)
+      const entry = await database.dailyLog.ensureEntry(userId, normalizedDate)
+
+      const description = payload.description.trim()
+      if (!description) {
+        throw new Error('Meal description is required')
+      }
+
+      const { data, error } = await supabase
+        .from('daily_log_meals')
+        .insert({
+          daily_log_entry_id: entry.id,
+          user_id: userId,
+          description,
+          calories: toNonNegativeNumber(payload.calories),
+          protein_g: toNonNegativeNumber(payload.protein_g),
+          carbs_g: toNonNegativeNumber(payload.carbs_g),
+          fat_g: toNonNegativeNumber(payload.fat_g),
+          source: payload.source ?? 'text',
+          confidence: payload.confidence ?? null,
+          chat_message_id: payload.chatMessageId ?? null,
+          metadata: payload.metadata ?? {},
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[DailyLogDB] logMeal failed:', {
+          userId,
+          logDate: normalizedDate,
+          description,
+          error,
+        })
+        throw error
+      }
+
+      console.log('[DailyLogDB] logMeal success:', {
+        mealId: data.id,
+        entryId: data.daily_log_entry_id,
+        logDate: normalizedDate,
+        calories: data.calories,
+        protein_g: data.protein_g,
+        carbs_g: data.carbs_g,
+        fat_g: data.fat_g,
+        source: data.source,
+      })
+      return data as DailyLogMeal
+    },
+
+    /**
+     * Update one logged meal (used for conversational corrections).
+     */
+    async updateMeal(
+      userId: string,
+      mealId: string,
+      payload: Partial<{
+        description: string
+        calories: number
+        protein_g: number
+        carbs_g: number
+        fat_g: number
+        source: DailyLogMealSource
+        confidence: DailyLogConfidence | null
+        metadata: Record<string, unknown> | null
+        logDate: string
+      }>,
+    ) {
+      const updates: Record<string, unknown> = {}
+
+      if (typeof payload.description === 'string') {
+        const description = payload.description.trim()
+        if (!description) throw new Error('Meal description is required')
+        updates.description = description
+      }
+      if (typeof payload.calories === 'number') {
+        updates.calories = toNonNegativeNumber(payload.calories)
+      }
+      if (typeof payload.protein_g === 'number') {
+        updates.protein_g = toNonNegativeNumber(payload.protein_g)
+      }
+      if (typeof payload.carbs_g === 'number') {
+        updates.carbs_g = toNonNegativeNumber(payload.carbs_g)
+      }
+      if (typeof payload.fat_g === 'number') {
+        updates.fat_g = toNonNegativeNumber(payload.fat_g)
+      }
+      if (payload.source) updates.source = payload.source
+      if (payload.confidence !== undefined) updates.confidence = payload.confidence
+      if (payload.metadata !== undefined) updates.metadata = payload.metadata ?? {}
+
+      if (payload.logDate) {
+        const targetDate = normalizeDailyLogDate(payload.logDate)
+        const entry = await database.dailyLog.ensureEntry(userId, targetDate)
+        updates.daily_log_entry_id = entry.id
+      }
+
+      if (Object.keys(updates).length === 0) {
+        throw new Error('No updates provided for meal')
+      }
+
+      const { data, error } = await supabase
+        .from('daily_log_meals')
+        .update(updates)
+        .eq('id', mealId)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('[DailyLogDB] updateMeal success:', {
+        mealId: data.id,
+        entryId: data.daily_log_entry_id,
+        calories: data.calories,
+        protein_g: data.protein_g,
+        carbs_g: data.carbs_g,
+        fat_g: data.fat_g,
+        source: data.source,
+      })
+      return data as DailyLogMeal
+    },
+
+    /**
+     * Fetch one day summary with macro totals.
+     */
+    async getDaySummary(userId: string, logDate?: string): Promise<DailyLogSummary> {
+      const normalizedDate = normalizeDailyLogDate(logDate)
+
+      const { data: entry, error: entryError } = await supabase
+        .from('daily_log_entries')
+        .select('id, calorie_goal, protein_goal_g')
+        .eq('user_id', userId)
+        .eq('log_date', normalizedDate)
+        .maybeSingle()
+
+      if (entryError) throw entryError
+
+      if (!entry) {
+        console.log('[DailyLogDB] getDaySummary empty day:', {
+          userId,
+          logDate: normalizedDate,
+        })
+        return {
+          logDate: normalizedDate,
+          entryId: null,
+          totals: {
+            calories: 0,
+            protein_g: 0,
+            carbs_g: 0,
+            fat_g: 0,
+            meal_count: 0,
+          },
+          goals: {
+            calorie_goal: null,
+            protein_goal_g: null,
+          },
+        }
+      }
+
+      const { data: meals, error: mealsError } = await supabase
+        .from('daily_log_meals')
+        .select('calories, protein_g, carbs_g, fat_g')
+        .eq('user_id', userId)
+        .eq('daily_log_entry_id', entry.id)
+
+      if (mealsError) throw mealsError
+
+      const totals = (meals || []).reduce<{
+        calories: number
+        protein_g: number
+        carbs_g: number
+        fat_g: number
+        meal_count: number
+      }>(
+        (acc, meal) => {
+          acc.calories += Number(meal.calories || 0)
+          acc.protein_g += Number(meal.protein_g || 0)
+          acc.carbs_g += Number(meal.carbs_g || 0)
+          acc.fat_g += Number(meal.fat_g || 0)
+          acc.meal_count += 1
+          return acc
+        },
+        {
+          calories: 0,
+          protein_g: 0,
+          carbs_g: 0,
+          fat_g: 0,
+          meal_count: 0,
+        },
+      )
+
+      return {
+        logDate: normalizedDate,
+        entryId: entry.id,
+        totals: {
+          calories: toNonNegativeNumber(totals.calories),
+          protein_g: toNonNegativeNumber(totals.protein_g),
+          carbs_g: toNonNegativeNumber(totals.carbs_g),
+          fat_g: toNonNegativeNumber(totals.fat_g),
+          meal_count: totals.meal_count,
+        },
+        goals: {
+          calorie_goal: entry.calorie_goal,
+          protein_goal_g: entry.protein_goal_g,
+        },
+      }
+    },
+
+    /**
+     * Get paginated day-level entries (used for Daily Log list merge).
+     */
+    async getEntriesPage(
+      userId: string,
+      page: number = 0,
+      pageSize: number = 40,
+    ): Promise<{
+      entries: DailyLogEntry[]
+      hasMore: boolean
+    }> {
+      const from = page * pageSize
+      const to = from + pageSize - 1
+
+      const { data, error, count } = await supabase
+        .from('daily_log_entries')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('log_date', { ascending: false })
+        .range(from, to)
+
+      if (error) throw error
+
+      const rows = (data || []) as DailyLogEntry[]
+      return {
+        entries: rows,
+        hasMore: count !== null ? from + rows.length < count : false,
+      }
+    },
+
+    /**
+     * Get meal rows for a specific day.
+     */
+    async getMealsForDay(userId: string, logDate?: string): Promise<DailyLogMeal[]> {
+      const normalizedDate = normalizeDailyLogDate(logDate)
+      const { data: entry, error: entryError } = await supabase
+        .from('daily_log_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('log_date', normalizedDate)
+        .maybeSingle()
+
+      if (entryError) throw entryError
+      if (!entry) return []
+
+      const { data, error } = await supabase
+        .from('daily_log_meals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('daily_log_entry_id', entry.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return (data || []) as DailyLogMeal[]
+    },
+
+    /**
+     * Batch summaries by date to avoid N requests in Daily Log list.
+     */
+    async getSummariesForDates(
+      userId: string,
+      logDates: string[],
+    ): Promise<Record<string, DailyLogSummary>> {
+      const normalizedDates = Array.from(
+        new Set(
+          logDates
+            .map((date) => {
+              try {
+                return normalizeDailyLogDate(date)
+              } catch {
+                return null
+              }
+            })
+            .filter((value): value is string => Boolean(value)),
+        ),
+      )
+
+      if (normalizedDates.length === 0) return {}
+
+      const defaultSummaryForDate = (logDate: string): DailyLogSummary => ({
+        logDate,
+        entryId: null,
+        totals: {
+          calories: 0,
+          protein_g: 0,
+          carbs_g: 0,
+          fat_g: 0,
+          meal_count: 0,
+        },
+        goals: {
+          calorie_goal: null,
+          protein_goal_g: null,
+        },
+      })
+
+      const summaryByDate: Record<string, DailyLogSummary> = {}
+      normalizedDates.forEach((logDate) => {
+        summaryByDate[logDate] = defaultSummaryForDate(logDate)
+      })
+
+      const { data: entries, error: entryError } = await supabase
+        .from('daily_log_entries')
+        .select('id, log_date, calorie_goal, protein_goal_g')
+        .eq('user_id', userId)
+        .in('log_date', normalizedDates)
+
+      if (entryError) throw entryError
+      if (!entries || entries.length === 0) return summaryByDate
+
+      const entryIds = entries.map((entry) => entry.id)
+      const dateByEntryId = new Map<string, string>()
+
+      entries.forEach((entry) => {
+        const dateKey = normalizeDailyLogDate(entry.log_date)
+        dateByEntryId.set(entry.id, dateKey)
+        summaryByDate[dateKey] = {
+          logDate: dateKey,
+          entryId: entry.id,
+          totals: {
+            calories: 0,
+            protein_g: 0,
+            carbs_g: 0,
+            fat_g: 0,
+            meal_count: 0,
+          },
+          goals: {
+            calorie_goal: entry.calorie_goal,
+            protein_goal_g: entry.protein_goal_g,
+          },
+        }
+      })
+
+      const { data: meals, error: mealsError } = await supabase
+        .from('daily_log_meals')
+        .select('daily_log_entry_id, calories, protein_g, carbs_g, fat_g')
+        .eq('user_id', userId)
+        .in('daily_log_entry_id', entryIds)
+
+      if (mealsError) throw mealsError
+
+      ;(meals || []).forEach((meal) => {
+        const dateKey = dateByEntryId.get(meal.daily_log_entry_id)
+        if (!dateKey) return
+        const current = summaryByDate[dateKey]
+        if (!current) return
+
+        current.totals.calories += Number(meal.calories || 0)
+        current.totals.protein_g += Number(meal.protein_g || 0)
+        current.totals.carbs_g += Number(meal.carbs_g || 0)
+        current.totals.fat_g += Number(meal.fat_g || 0)
+        current.totals.meal_count += 1
+      })
+
+      Object.values(summaryByDate).forEach((summary) => {
+        summary.totals.calories = toNonNegativeNumber(summary.totals.calories)
+        summary.totals.protein_g = toNonNegativeNumber(summary.totals.protein_g)
+        summary.totals.carbs_g = toNonNegativeNumber(summary.totals.carbs_g)
+        summary.totals.fat_g = toNonNegativeNumber(summary.totals.fat_g)
+      })
+
+      return summaryByDate
+    },
+
+    /**
+     * Fetch latest meal for quick "correction" workflows.
+     */
+    async getLatestMeal(userId: string, logDate?: string) {
+      const normalizedDate = normalizeDailyLogDate(logDate)
+      const { data: entry, error: entryError } = await supabase
+        .from('daily_log_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('log_date', normalizedDate)
+        .maybeSingle()
+
+      if (entryError) throw entryError
+      if (!entry) return null
+
+      const { data, error } = await supabase
+        .from('daily_log_meals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('daily_log_entry_id', entry.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) throw error
+      console.log('[DailyLogDB] getLatestMeal result:', {
+        userId,
+        logDate: normalizedDate,
+        mealId: data?.id ?? null,
+      })
+      return (data as DailyLogMeal | null) ?? null
     },
   },
 

@@ -10,6 +10,7 @@ import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metad
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { getThumbnailUrlsWithPrefetch } from '@/lib/utils/body-log-storage'
+import type { DailyLogEntry, DailyLogSummary } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
@@ -29,6 +30,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 const THUMB_SIZE = 72
 const PAGE_SIZE = 40
 const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
+
+function getLocalDateKey(dateString: string): string {
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function dateKeyToMiddayIso(logDate: string): string {
+  const [year, month, day] = logDate.split('-').map((value) => parseInt(value, 10))
+  const date = new Date(year, Math.max(month - 1, 0), day, 12, 0, 0)
+  return date.toISOString()
+}
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString)
@@ -50,6 +65,13 @@ function formatDate(dateString: string): string {
 
 interface EntryWithSignedUrl extends BodyLogEntryWithImages {
   thumbnailUrl: string | null
+  logDate: string
+  dailySummary: DailyLogSummary | null
+  isNutritionOnly: boolean
+}
+
+type BodyEntryWithThumbnail = BodyLogEntryWithImages & {
+  thumbnailUrl: string | null
 }
 
 interface RowProps {
@@ -66,6 +88,8 @@ const EntryRow = memo(
     const hasImage = entry.images.length > 0 && entry.thumbnailUrl
     const hasWeight = entry.weight_kg !== null
     const imageCount = entry.images.length
+    const nutritionTotals = entry.dailySummary?.totals
+    const hasNutrition = (nutritionTotals?.meal_count ?? 0) > 0
 
     return (
       <TouchableOpacity
@@ -87,7 +111,13 @@ const EntryRow = memo(
           ) : (
             <View style={styles.thumbPlaceholder}>
               <Ionicons
-                name={hasWeight ? 'scale-outline' : 'camera-outline'}
+                name={
+                  hasWeight
+                    ? 'scale-outline'
+                    : hasNutrition
+                    ? 'restaurant-outline'
+                    : 'camera-outline'
+                }
                 size={24}
                 color={colors.textTertiary}
               />
@@ -103,13 +133,13 @@ const EntryRow = memo(
         {/* Info */}
         <View style={styles.info}>
           <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
-          {(hasWeight || entry.body_fat_percentage !== null) && (
-            <Text style={styles.weight}>
-              {hasWeight && formatWeight(entry.weight_kg)}
-              {hasWeight && entry.body_fat_percentage !== null && '  •  '}
-              {entry.body_fat_percentage !== null && formatBodyFat(entry.body_fat_percentage)}
-            </Text>
-          )}
+          <Text style={styles.weight}>
+            {[
+              hasWeight && formatWeight(entry.weight_kg),
+              entry.body_fat_percentage !== null && formatBodyFat(entry.body_fat_percentage),
+              hasNutrition && `${Math.round(nutritionTotals?.calories ?? 0)} cal`
+            ].filter(Boolean).join('  •  ')}
+          </Text>
         </View>
 
         {/* Chevron */}
@@ -121,7 +151,9 @@ const EntryRow = memo(
     prev.entry.id === next.entry.id &&
     prev.entry.thumbnailUrl === next.entry.thumbnailUrl &&
     prev.entry.weight_kg === next.entry.weight_kg &&
-    prev.entry.body_fat_percentage === next.entry.body_fat_percentage,
+    prev.entry.body_fat_percentage === next.entry.body_fat_percentage &&
+    prev.entry.dailySummary?.totals.calories ===
+      next.entry.dailySummary?.totals.calories,
 )
 
 EntryRow.displayName = 'EntryRow'
@@ -139,10 +171,13 @@ export default function BodyLogScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const pageRef = useRef(0)
+  const bodyPageRef = useRef(0)
+  const dailyPageRef = useRef(0)
 
   const fetchThumbnailUrls = useCallback(
-    async (rawEntries: BodyLogEntryWithImages[]): Promise<EntryWithSignedUrl[]> => {
+    async (
+      rawEntries: BodyLogEntryWithImages[],
+    ): Promise<BodyEntryWithThumbnail[]> => {
       const pathMap = new Map<string, number>()
       const paths: string[] = []
 
@@ -169,6 +204,64 @@ export default function BodyLogScreen() {
     [],
   )
 
+  const buildMergedEntries = useCallback(
+    async (
+      rawBodyEntries: BodyLogEntryWithImages[],
+      rawDailyEntries: DailyLogEntry[],
+    ): Promise<EntryWithSignedUrl[]> => {
+      const bodyWithThumbnails = await fetchThumbnailUrls(rawBodyEntries)
+      const bodyDateKeys = new Set(
+        bodyWithThumbnails.map((entry) => getLocalDateKey(entry.created_at)),
+      )
+
+      const allDateKeys = Array.from(
+        new Set([
+          ...bodyWithThumbnails.map((entry) => getLocalDateKey(entry.created_at)),
+          ...rawDailyEntries.map((entry) => entry.log_date),
+        ]),
+      )
+
+      const summaryByDate =
+        user && allDateKeys.length > 0
+          ? await database.dailyLog.getSummariesForDates(user.id, allDateKeys)
+          : {}
+
+      const bodyRows: EntryWithSignedUrl[] = bodyWithThumbnails.map((entry) => {
+        const logDate = getLocalDateKey(entry.created_at)
+        return {
+          ...entry,
+          logDate,
+          dailySummary: summaryByDate[logDate] ?? null,
+          isNutritionOnly: false,
+        }
+      })
+
+      const nutritionOnlyRows: EntryWithSignedUrl[] = rawDailyEntries
+        .filter((dailyEntry) => !bodyDateKeys.has(dailyEntry.log_date))
+        .map((dailyEntry) => ({
+          id: `nutrition-${dailyEntry.log_date}`,
+          user_id: dailyEntry.user_id,
+          created_at: dateKeyToMiddayIso(dailyEntry.log_date),
+          weight_kg: dailyEntry.weight_kg ?? null,
+          body_fat_percentage: null,
+          bmi: null,
+          muscle_mass_kg: null,
+          analysis_summary: null,
+          images: [],
+          thumbnailUrl: null,
+          logDate: dailyEntry.log_date,
+          dailySummary: summaryByDate[dailyEntry.log_date] ?? null,
+          isNutritionOnly: true,
+        }))
+
+      return [...bodyRows, ...nutritionOnlyRows].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+    },
+    [fetchThumbnailUrls, user],
+  )
+
   const loadEntries = useCallback(
     async (refresh = false) => {
       if (!user) {
@@ -177,22 +270,35 @@ export default function BodyLogScreen() {
         return
       }
 
-      refresh ? setIsRefreshing(true) : setIsInitialLoading(true)
-      pageRef.current = 0
+      if (refresh) {
+        setIsRefreshing(true)
+      } else {
+        setIsInitialLoading(true)
+      }
+      bodyPageRef.current = 0
+      dailyPageRef.current = 0
 
       try {
         await AsyncStorage.setItem(HAS_VISITED_BODY_LOG_KEY, 'true')
-        const { entries: raw, hasMore: more } = await database.bodyLog.getEntriesPage(user.id, 0, PAGE_SIZE)
+        const [bodyPage, dailyPage] = await Promise.all([
+          database.bodyLog.getEntriesPage(user.id, 0, PAGE_SIZE),
+          database.dailyLog.getEntriesPage(user.id, 0, PAGE_SIZE),
+        ])
+        const mergedEntries = await buildMergedEntries(
+          bodyPage.entries,
+          dailyPage.entries,
+        )
 
-        if (!raw?.length) {
+        if (!mergedEntries.length) {
           setEntries([])
           setHasMore(false)
           return
         }
 
-        setEntries(await fetchThumbnailUrls(raw))
-        setHasMore(more)
-        pageRef.current = 1
+        setEntries(mergedEntries)
+        setHasMore(bodyPage.hasMore || dailyPage.hasMore)
+        bodyPageRef.current = 1
+        dailyPageRef.current = 1
       } catch (e) {
         console.error('Error loading entries:', e)
       } finally {
@@ -200,7 +306,7 @@ export default function BodyLogScreen() {
         setIsRefreshing(false)
       }
     },
-    [user, fetchThumbnailUrls],
+    [user, buildMergedEntries],
   )
 
   const loadMore = useCallback(async () => {
@@ -208,23 +314,34 @@ export default function BodyLogScreen() {
     setIsLoadingMore(true)
 
     try {
-      const { entries: raw, hasMore: more } = await database.bodyLog.getEntriesPage(
-        user.id,
-        pageRef.current,
-        PAGE_SIZE,
-      )
-      if (raw.length) {
-        const enriched = await fetchThumbnailUrls(raw)
-        setEntries((prev) => [...prev, ...enriched])
-        pageRef.current += 1
-      }
-      setHasMore(more)
+      const [bodyPage, dailyPage] = await Promise.all([
+        database.bodyLog.getEntriesPage(user.id, bodyPageRef.current, PAGE_SIZE),
+        database.dailyLog.getEntriesPage(user.id, dailyPageRef.current, PAGE_SIZE),
+      ])
+
+      const newRows = await buildMergedEntries(bodyPage.entries, dailyPage.entries)
+
+      setEntries((prev) => {
+        const map = new Map(prev.map((entry) => [entry.id, entry]))
+        newRows.forEach((entry) => {
+          map.set(entry.id, entry)
+        })
+
+        return Array.from(map.values()).sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        )
+      })
+
+      bodyPageRef.current += 1
+      dailyPageRef.current += 1
+      setHasMore(bodyPage.hasMore || dailyPage.hasMore)
     } catch (e) {
       console.error('Error loading more:', e)
     } finally {
       setIsLoadingMore(false)
     }
-  }, [user, isLoadingMore, hasMore, fetchThumbnailUrls])
+  }, [user, isLoadingMore, hasMore, buildMergedEntries])
 
   useFocusEffect(useCallback(() => { loadEntries(true) }, [loadEntries]))
 
@@ -237,12 +354,15 @@ export default function BodyLogScreen() {
       })
 
       const params: { entryId: string; [key: string]: string } = {
-        entryId: entry.id,
+        entryId: entry.isNutritionOnly ? 'new' : entry.id,
         createdAt: entry.created_at,
+        logDate: entry.logDate,
       }
-      if (entry.weight_kg !== null) params.weightKg = entry.weight_kg.toString()
-      if (entry.body_fat_percentage !== null) params.bodyFatPercentage = entry.body_fat_percentage.toString()
-      if (entry.bmi !== null) params.bmi = entry.bmi.toString()
+      if (!entry.isNutritionOnly) {
+        if (entry.weight_kg !== null) params.weightKg = entry.weight_kg.toString()
+        if (entry.body_fat_percentage !== null) params.bodyFatPercentage = entry.body_fat_percentage.toString()
+        if (entry.bmi !== null) params.bmi = entry.bmi.toString()
+      }
 
       router.push({ pathname: '/body-log/[entryId]', params })
     },
@@ -266,7 +386,7 @@ export default function BodyLogScreen() {
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScreenHeader
-          title="Body Log"
+          title="Daily Log"
           onLeftPress={() => setShouldExit(true)}
           leftIcon="arrow-back"
           rightIcon="add"
@@ -280,8 +400,8 @@ export default function BodyLogScreen() {
         ) : entries.length === 0 ? (
           <EmptyState
             icon="images-outline"
-            title="Your body log is empty"
-            description="Track your transformation with photos and measurements."
+            title="Your daily log is empty"
+            description="Track meals, body metrics, and progress photos in one place."
             buttonText="Add First Entry"
             onPress={handleAdd}
           />
@@ -365,13 +485,13 @@ const createRowStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     date: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '600',
       color: colors.textPrimary,
       marginBottom: 2,
     },
     weight: {
-      fontSize: 14,
+      fontSize: 15,
       color: colors.textSecondary,
     },
   })

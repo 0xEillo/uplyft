@@ -60,8 +60,8 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
   },
   {
     id: 'body_log',
-    title: 'Track Your Body',
-    description: 'Log your weight or take progress photos',
+    title: 'Track Daily Log',
+    description: 'Log meals, weight, and progress photos',
     icon: 'body-outline',
     route: '/body-log',
     trialFeature: null,

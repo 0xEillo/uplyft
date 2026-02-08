@@ -54,6 +54,7 @@ import {
     Image,
     Keyboard,
     KeyboardAvoidingView,
+    LayoutAnimation,
     Linking,
     Modal,
     Platform,
@@ -77,12 +78,44 @@ import AnimatedReanimated, {
     withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Circle, G, Svg } from 'react-native-svg'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   images?: string[] // Image URIs for display
+}
+
+type FoodLogAction = 'log' | 'update_last'
+type FoodLogConfidence = 'low' | 'medium' | 'high'
+type FoodLogSource = 'text' | 'photo' | 'voice' | 'manual' | 'correction'
+
+interface FoodLogPayload {
+  action: FoodLogAction
+  summary: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  confidence: FoodLogConfidence
+  source: FoodLogSource
+}
+
+interface DailyLogSummaryState {
+  logDate: string
+  entryId: string | null
+  totals: {
+    calories: number
+    protein_g: number
+    carbs_g: number
+    fat_g: number
+    meal_count: number
+  }
+  goals: {
+    calorie_goal: number | null
+    protein_goal_g: number | null
+  }
 }
 
 interface PlanningState {
@@ -325,6 +358,7 @@ const DEFAULT_SUGGESTIONS: SuggestionsConfig = {
 const MAX_IMAGES = 10
 
 const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
+const FOOD_LOG_BLOCK_REGEX = /<food_log>([\s\S]*?)<\/food_log>/i
 
 // Storage key for tracking welcome message
 const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
@@ -386,7 +420,7 @@ function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
         // If we successfully parsed JSON, return immediately
         if (suggestions.length > 0) return suggestions
       }
-    } catch (e) {
+    } catch {
       // Incomplete JSON during streaming is expected
     }
   }
@@ -420,6 +454,97 @@ function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
   }
 
   return suggestions
+}
+
+const getLocalDateString = (): string => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = `${now.getMonth() + 1}`.padStart(2, '0')
+  const day = `${now.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const stripFoodLogBlock = (content: string): string =>
+  content
+    .replace(/<food_log>[\s\S]*?<\/food_log>/gi, '')
+    .replace(/<food_log>[\s\S]*$/i, '')
+    .trim()
+
+const parseFoodLogPayload = (content: string): FoodLogPayload | null => {
+  const match = content.match(FOOD_LOG_BLOCK_REGEX)
+  if (!match?.[1]) return null
+
+  try {
+    const parsed = JSON.parse(match[1])
+    const action: FoodLogAction =
+      parsed?.action === 'update_last' ? 'update_last' : 'log'
+    const confidence: FoodLogConfidence =
+      parsed?.confidence === 'low' || parsed?.confidence === 'high'
+        ? parsed.confidence
+        : 'medium'
+    const source: FoodLogSource =
+      parsed?.source === 'photo' ||
+      parsed?.source === 'voice' ||
+      parsed?.source === 'manual' ||
+      parsed?.source === 'correction'
+        ? parsed.source
+        : 'text'
+
+    const summary = (parsed?.summary || '').toString().trim()
+    if (!summary) return null
+
+    const toSafe = (value: unknown) => {
+      const num = Number(value)
+      if (!Number.isFinite(num)) return 0
+      return Math.max(0, Number(num.toFixed(1)))
+    }
+
+    const payload = {
+      action,
+      summary,
+      calories: toSafe(parsed?.calories),
+      protein_g: toSafe(parsed?.protein_g),
+      carbs_g: toSafe(parsed?.carbs_g),
+      fat_g: toSafe(parsed?.fat_g),
+      confidence,
+      source,
+    }
+    console.log('[FoodLog] Parsed payload from assistant response:', {
+      action: payload.action,
+      summary: payload.summary,
+      calories: payload.calories,
+      protein_g: payload.protein_g,
+      carbs_g: payload.carbs_g,
+      fat_g: payload.fat_g,
+      confidence: payload.confidence,
+      source: payload.source,
+    })
+    return payload
+  } catch {
+    console.warn('[FoodLog] Failed to parse <food_log> payload block')
+    return null
+  }
+}
+
+const roundMacro = (value: number): number => Math.round(value)
+
+const formatFoodConfidenceLabel = (confidence: FoodLogConfidence): string => {
+  if (confidence === 'high') return 'High'
+  if (confidence === 'low') return 'Low'
+  return 'Medium'
+}
+
+const getFoodCardMealLabel = (
+  payload: FoodLogPayload,
+  currentMealCount: number,
+): string => {
+  if (payload.action === 'update_last') {
+    const mealNumber = Math.max(1, currentMealCount)
+    return `Meal ${mealNumber}`
+  }
+
+  const nextMealNumber = Math.max(1, currentMealCount + 1)
+  return `Meal ${nextMealNumber}`
 }
 
 export function WorkoutChat({
@@ -463,7 +588,6 @@ export function WorkoutChat({
   ) // Track which exercise is being replaced
   const { coachId, profile, isLoading: isProfileLoading } = useProfile()
   const coach = getCoach(coachId)
-  const coachFirstName = coach.name.split(' ')[1] || coach.name
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [
@@ -472,6 +596,37 @@ export function WorkoutChat({
   ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
+  const [isDailyLogVisible, setIsDailyLogVisible] = useState(false)
+  const pillAnimation = useSharedValue(0)
+
+  useEffect(() => {
+    pillAnimation.value = withSpring(isDailyLogVisible ? 1 : 0, {
+      damping: 25,
+      stiffness: 400,
+      mass: 0.8,
+    })
+  }, [isDailyLogVisible, pillAnimation])
+
+  const animatedPillStyle = useAnimatedStyle(() => {
+    return {
+      opacity: pillAnimation.value,
+      transform: [
+        { scale: 0.8 + 0.2 * pillAnimation.value },
+        { translateY: (1 - pillAnimation.value) * 15 },
+      ],
+    }
+  })
+  const [dailyLogSummary, setDailyLogSummary] =
+    useState<DailyLogSummaryState | null>(null)
+  const [latestLoggedMealId, setLatestLoggedMealId] = useState<string | null>(
+    null,
+  )
+  const [foodActionState, setFoodActionState] = useState<
+    Record<string, 'idle' | 'saving' | 'saved'>
+  >({})
+  const [loggedMealIdByMessage, setLoggedMealIdByMessage] = useState<
+    Record<string, string>
+  >({})
   const { user, session } = useAuth()
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
@@ -598,13 +753,56 @@ export function WorkoutChat({
           } else {
             setLoadedDraftContext(null)
           }
-        } catch (error) {
+        } catch {
           // console.error('[WorkoutChat] Failed to load workout draft:', error)
         }
       }
 
       loadDraftContext()
     }, [workoutContext]),
+  )
+
+  const refreshDailyLogSummary = useCallback(async () => {
+    if (!user?.id) {
+      setDailyLogSummary(null)
+      setLatestLoggedMealId(null)
+      return
+    }
+
+    try {
+      const today = getLocalDateString()
+      const [summary, latestMeal] = await Promise.all([
+        database.dailyLog.getDaySummary(user.id, today),
+        database.dailyLog.getLatestMeal(user.id, today),
+      ])
+      console.log('[FoodLog] Refreshed daily log summary:', {
+        logDate: summary.logDate,
+        totals: summary.totals,
+        goals: summary.goals,
+        latestMealId: latestMeal?.id ?? null,
+      })
+      setDailyLogSummary(summary as DailyLogSummaryState)
+      setLatestLoggedMealId(latestMeal?.id ?? null)
+    } catch (error) {
+      console.error('[WorkoutChat] Failed to load daily log summary:', error)
+    }
+  }, [user?.id])
+
+  const handleUpdateCalorieGoal = useCallback(async (goal: number) => {
+    if (!user?.id) return
+    try {
+      await database.dailyLog.updateDay(user.id, { calorieGoal: goal })
+      await refreshDailyLogSummary()
+    } catch (error) {
+      console.error('[WorkoutChat] Failed to update calorie goal:', error)
+      throw error
+    }
+  }, [user?.id, refreshDailyLogSummary])
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshDailyLogSummary()
+    }, [refreshDailyLogSummary]),
   )
 
   // Combined context: prefer passed prop, fall back to loaded draft
@@ -1079,9 +1277,101 @@ export function WorkoutChat({
     }
   }
 
+  const handleFoodLogAction = async (
+    messageId: string,
+    payload: FoodLogPayload,
+  ) => {
+    if (!user?.id) {
+      Alert.alert('Sign In Required', 'Please sign in to save food logs.')
+      return
+    }
+
+    setFoodActionState((prev) => ({ ...prev, [messageId]: 'saving' }))
+    console.log('[FoodLog] Log action started:', {
+      messageId,
+      action: payload.action,
+      summary: payload.summary,
+      source: payload.source,
+      confidence: payload.confidence,
+    })
+
+    try {
+      const today = getLocalDateString()
+      const mealPayload = {
+        description: payload.summary,
+        calories: payload.calories,
+        protein_g: payload.protein_g,
+        carbs_g: payload.carbs_g,
+        fat_g: payload.fat_g,
+        source:
+          payload.action === 'update_last'
+            ? ('correction' as const)
+            : payload.source,
+        confidence: payload.confidence,
+        metadata: { from: 'chat_food_log' },
+        logDate: today,
+      }
+
+      let savedMealId: string
+      if (payload.action === 'update_last') {
+        const mealIdToUpdate =
+          loggedMealIdByMessage[messageId] || latestLoggedMealId
+        console.log('[FoodLog] Update-last resolution:', {
+          messageId,
+          mealIdFromMessage: loggedMealIdByMessage[messageId] ?? null,
+          latestLoggedMealId,
+          resolvedMealId: mealIdToUpdate ?? null,
+        })
+        if (mealIdToUpdate) {
+          const updated = await database.dailyLog.updateMeal(
+            user.id,
+            mealIdToUpdate,
+            mealPayload,
+          )
+          savedMealId = updated.id
+          console.log('[FoodLog] Updated existing meal:', {
+            mealId: updated.id,
+            daily_log_entry_id: updated.daily_log_entry_id,
+          })
+        } else {
+          const inserted = await database.dailyLog.logMeal(user.id, mealPayload)
+          savedMealId = inserted.id
+          console.log('[FoodLog] No meal to update; inserted new meal:', {
+            mealId: inserted.id,
+            daily_log_entry_id: inserted.daily_log_entry_id,
+          })
+        }
+      } else {
+        const inserted = await database.dailyLog.logMeal(user.id, mealPayload)
+        savedMealId = inserted.id
+        console.log('[FoodLog] Inserted meal:', {
+          mealId: inserted.id,
+          daily_log_entry_id: inserted.daily_log_entry_id,
+        })
+      }
+
+      setLoggedMealIdByMessage((prev) => ({ ...prev, [messageId]: savedMealId }))
+      setLatestLoggedMealId(savedMealId)
+      await refreshDailyLogSummary()
+      setFoodActionState((prev) => ({ ...prev, [messageId]: 'saved' }))
+      console.log('[FoodLog] Log action completed:', {
+        messageId,
+        savedMealId,
+      })
+      hapticSuccess()
+    } catch (error) {
+      console.error('[WorkoutChat] Failed to save meal log:', error)
+      setFoodActionState((prev) => ({ ...prev, [messageId]: 'idle' }))
+      Alert.alert('Could not save meal', 'Please try again.')
+    }
+  }
+
   const handleSendMessage = async (hiddenPrompt?: string) => {
-    const messageContent = hiddenPrompt || input.trim()
-    if (!messageContent || isLoading) return
+    const hasImages = selectedImages.length > 0
+    const typedInput = input.trim()
+    const messageContent =
+      hiddenPrompt || typedInput || (hasImages ? 'Please log this meal.' : '')
+    if ((!messageContent && !hasImages) || isLoading) return
 
     // Check if user is pro member or has tutorial trial available
     const canAccessAiChat = isProMember || canUseTrial('ai_workout')
@@ -1184,12 +1474,33 @@ export function WorkoutChat({
           notes?: string
           exercises?: unknown
         }
+        dailyLogSummary?: {
+          logDate?: string
+          totals?: {
+            calories?: number
+            protein_g?: number
+            carbs_g?: number
+            fat_g?: number
+            meal_count?: number
+          }
+          goals?: {
+            calorie_goal?: number | null
+            protein_goal_g?: number | null
+          }
+        }
         images?: { type: string; image_url: { url: string } }[]
       }
       const requestBody: ChatRequestBody = {
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
+        dailyLogSummary: dailyLogSummary
+          ? {
+              logDate: dailyLogSummary.logDate,
+              totals: dailyLogSummary.totals,
+              goals: dailyLogSummary.goals,
+            }
+          : undefined,
         // Include current workout context so AI knows what workout is in progress
         workoutContext: effectiveWorkoutContext
           ? {
@@ -1199,6 +1510,12 @@ export function WorkoutChat({
             }
           : undefined,
       }
+      console.log('[FoodLog] Sending chat request context:', {
+        hasDailyLogSummary: Boolean(requestBody.dailyLogSummary),
+        dailyTotals: requestBody.dailyLogSummary?.totals,
+        hasImages: imageBase64Array.length > 0,
+        messageLength: messageContent.length,
+      })
 
       // Add images array if present
       if (imageBase64Array.length > 0) {
@@ -1292,6 +1609,8 @@ export function WorkoutChat({
     setMessages([])
     setInput('')
     setSelectedImages([])
+    setFoodActionState({})
+    setLoggedMealIdByMessage({})
     setPlanningState({
       isActive: false,
       step: 'none',
@@ -1932,23 +2251,153 @@ export function WorkoutChat({
           <>
             {/* Top Left Menu Button - Toggles between Settings (if empty) and Clear (if messages) */}
             {mode === 'fullscreen' && (
-              <TouchableOpacity
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.newChatButton,
+                    { top: Math.max(insets.top - 38, 0) },
+                  ]}
+                  onPress={
+                    messages.length > 0
+                      ? handleNewChat
+                      : () => {
+                          haptic('light')
+                          setIsCoachSheetVisible(true)
+                        }
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={
+                      messages.length > 0 ? 'create-outline' : 'settings-sharp'
+                    }
+                    size={24}
+                    color={colors.brandPrimary}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.foodToggleButton,
+                    { top: Math.max(insets.top - 38, 0) + 56 },
+                  ]}
+                  onPress={() => {
+                    haptic('light')
+                    LayoutAnimation.configureNext(
+                      LayoutAnimation.Presets.easeInEaseOut,
+                    )
+                    setIsDailyLogVisible(!isDailyLogVisible)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={isDailyLogVisible ? 'restaurant' : 'restaurant-outline'}
+                    size={24}
+                    color={
+                      isDailyLogVisible
+                        ? colors.brandPrimary
+                        : colors.brandPrimary
+                    }
+                  />
+                </TouchableOpacity>
+              </>
+            )}
+
+            {dailyLogSummary && (
+              <AnimatedReanimated.View
+                pointerEvents={isDailyLogVisible ? 'auto' : 'none'}
                 style={[
-                  styles.newChatButton,
-                  { top: Math.max(insets.top - 38, 0) },
+                  styles.dailyMacroPillContainer,
+                  mode === 'fullscreen'
+                    ? {} // Position handled by absolute values in the second style object
+                    : {}, // Simplify sheet logic for now, or adapt if needed
+                  { 
+                    paddingVertical: 12,
+                    paddingHorizontal: 0,
+                    borderRadius: 24,
+                    width: 48, // EXACT MATCH to button width
+                    left: 16, // EXACT MATCH to button left
+                    top: Math.max(insets.top - 38, 0) + 110,
+                    alignItems: 'center',
+                  },
+                  animatedPillStyle
                 ]}
-                onPress={messages.length > 0 ? handleNewChat : () => {
-                  haptic('light')
-                  setIsCoachSheetVisible(true)
-                }}
-                activeOpacity={0.7}
               >
-                <Ionicons
-                  name={messages.length > 0 ? "trash-outline" : "settings-sharp"}
-                  size={messages.length > 0 ? 24 : 24}
-                  color={colors.brandPrimary}
-                />
-              </TouchableOpacity>
+                {(() => {
+                  const { calories, protein_g, carbs_g, fat_g } = dailyLogSummary.totals
+                  const { calorie_goal, protein_goal_g } = dailyLogSummary.goals
+                  const safeCalGoal = calorie_goal || 2500
+                  // Calculate progress for all macros
+                  const safeProtGoal = protein_goal_g || 150
+                  const safeCarbGoal = 250 // Default estimation
+                  const safeFatGoal = 70   // Default estimation
+
+                  const calProgress = Math.min(calories / safeCalGoal, 1)
+                  const protProgress = Math.min(protein_g / safeProtGoal, 1)
+                  const carbProgress = Math.min(carbs_g / safeCarbGoal, 1)
+                  const fatProgress = Math.min(fat_g / safeFatGoal, 1)
+
+                  const renderCompactChart = (
+                    color: string, 
+                    progress: number, 
+                    value: number, 
+                    label: string
+                  ) => {
+                    const size = 36 // Smaller to fit in 48px container padding
+                    const strokeWidth = 3
+                    const radius = (size - strokeWidth) / 2
+                    const circumference = radius * 2 * Math.PI
+                    const dashOffset = circumference * (1 - progress)
+                    
+                    return (
+                      <View style={{ alignItems: 'center', gap: 0 }}>
+                        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+                            <Svg width={size} height={size}>
+                              <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+                                <Circle 
+                                  cx={size/2} 
+                                  cy={size/2} 
+                                  r={radius} 
+                                  stroke={isDark ? colors.border : "#E5E5E5"} 
+                                  strokeWidth={strokeWidth} 
+                                  fill="transparent" 
+                                />
+                                <Circle 
+                                  cx={size/2} 
+                                  cy={size/2} 
+                                  r={radius} 
+                                  stroke={color} 
+                                  strokeWidth={strokeWidth} 
+                                  fill="transparent" 
+                                  strokeDasharray={`${circumference}`} 
+                                  strokeDashoffset={`${dashOffset}`} 
+                                  strokeLinecap="round" 
+                                />
+                              </G>
+                            </Svg>
+                            <View style={{ position: 'absolute', justifyContent: 'center', alignItems: 'center' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.5 }}>
+                                {roundMacro(value)}
+                              </Text>
+                            </View>
+                        </View>
+                        <Text style={{ fontSize: 9, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginTop: 3 }}>
+                          {label}
+                        </Text>
+                      </View>
+                    )
+                  }
+
+                  return (
+                    <View style={{ gap: 8, alignItems: 'center' }}>
+                      {renderCompactChart(colors.textPrimary, calProgress, calories, "kcal")}
+                      {renderCompactChart("#F87171", protProgress, protein_g, "p")}
+                      {renderCompactChart("#FBBF24", carbProgress, carbs_g, "c")}
+                      {renderCompactChart("#60A5FA", fatProgress, fat_g, "f")}
+                    </View>
+                  )
+                })()}
+              </AnimatedReanimated.View>
             )}
 
             <ScrollView
@@ -1959,9 +2408,13 @@ export function WorkoutChat({
                 {
                   paddingTop:
                     mode === 'sheet'
-                      ? 16
+                      ? dailyLogSummary
+                        ? 56
+                        : 16
                       : messages.length === 0 && !isLoading
                       ? 16
+                      : dailyLogSummary
+                      ? 128
                       : 80,
                 },
               ]}
@@ -2069,7 +2522,54 @@ export function WorkoutChat({
 
                             // Regular messages show with coach avatar
                             // Hide partial JSON blocks while streaming
-                            const displayContent = message.content
+                            const foodLogPayload = parseFoodLogPayload(
+                              message.content,
+                            )
+
+                            // Calculate progress for chart rings
+                            const { calorie_goal, protein_goal_g } = dailyLogSummary?.goals || {}
+                            const safeCalGoal = calorie_goal || 2500
+                            const safeProtGoal = protein_goal_g || 150
+                            const safeCarbGoal = 250
+                            const safeFatGoal = 70
+
+                            const calProgress = foodLogPayload ? Math.min(foodLogPayload.calories / safeCalGoal, 1) : 0
+                            const protProgress = foodLogPayload ? Math.min(foodLogPayload.protein_g / safeProtGoal, 1) : 0
+                            const carbProgress = foodLogPayload ? Math.min(foodLogPayload.carbs_g / safeCarbGoal, 1) : 0
+                            const fatProgress = foodLogPayload ? Math.min(foodLogPayload.fat_g / safeFatGoal, 1) : 0
+                            const mealCountToday =
+                              dailyLogSummary?.totals.meal_count ?? 0
+                            const foodCardLabel = foodLogPayload
+                              ? getFoodCardMealLabel(foodLogPayload, mealCountToday)
+                              : `Meal ${Math.max(1, mealCountToday + 1)}`
+                            const foodConfidenceLabel = foodLogPayload
+                              ? formatFoodConfidenceLabel(foodLogPayload.confidence)
+                              : 'Medium'
+                            const confidenceTone = foodLogPayload?.confidence || 'medium'
+                            const foodConfidenceBadgeBg =
+                              confidenceTone === 'high'
+                                ? isDark
+                                  ? 'rgba(52, 199, 89, 0.2)'
+                                  : '#E7F8EE'
+                                : confidenceTone === 'low'
+                                ? isDark
+                                  ? 'rgba(255, 159, 10, 0.2)'
+                                  : '#FFF4E6'
+                                : isDark
+                                ? colors.surfaceSubtle
+                                : '#E5E5E5'
+                            const foodConfidenceColor =
+                              confidenceTone === 'high'
+                                ? '#34C759'
+                                : confidenceTone === 'low'
+                                ? '#FF9F0A'
+                                : colors.textSecondary
+
+                            const calCircumference = 28 * 2 * Math.PI
+                            const smallCircumference = 16 * 2 * Math.PI
+                            const displayContent = stripFoodLogBlock(
+                              message.content,
+                            )
                               .replace(JSON_BLOCK_REGEX, '')
                               .replace(/```(?:json|).*/gs, '') // Strip partial code blocks
                               .replace(/\[\s*\{.*/gs, '')      // Strip partial JSON arrays
@@ -2082,134 +2582,389 @@ export function WorkoutChat({
                             )
 
                             // Don't render empty bubbles (prevents glitch when streaming JSON)
-                            if (!displayContent && exerciseSuggestions.length === 0) {
+                            if (
+                              !displayContent &&
+                              exerciseSuggestions.length === 0 &&
+                              !foodLogPayload
+                            ) {
                               return null
                             }
 
                             return (
                               <>
-                                {/* Coach Avatar */}
-                                <View style={styles.messageAvatarContainer}>
-                                  <Image
-                                    source={coach.image}
-                                    style={styles.messageAvatar}
-                                  />
-                                </View>
                                 <View style={styles.assistantMessageContent}>
-                                  <View style={styles.assistantMessageBubble}>
-                                    <Markdown
-                                      style={{
-                                        body: {
-                                          fontSize: 16,
-                                          lineHeight: 23,
-                                          color: colors.textPrimary,
-                                          margin: 0,
-                                        },
-                                        paragraph: {
-                                          marginTop: 0,
-                                          marginBottom: 8,
-                                        },
-                                        heading1: {
-                                          fontSize: 22,
-                                          fontWeight: '700',
-                                          color: colors.textPrimary,
-                                          marginTop: 16,
-                                          marginBottom: 8,
-                                        },
-                                        heading2: {
-                                          fontSize: 20,
-                                          fontWeight: '700',
-                                          color: colors.textPrimary,
-                                          marginTop: 14,
-                                          marginBottom: 6,
-                                        },
-                                        heading3: {
-                                          fontSize: 18,
-                                          fontWeight: '600',
-                                          color: colors.textPrimary,
-                                          marginTop: 12,
-                                          marginBottom: 6,
-                                        },
-                                        code_inline: {
-                                          backgroundColor: colors.bg,
-                                          paddingHorizontal: 4,
-                                          paddingVertical: 2,
-                                          borderRadius: 4,
-                                          fontSize: 15,
-                                          fontFamily:
-                                            Platform.OS === 'ios'
-                                              ? 'Menlo'
-                                              : 'monospace',
-                                          color: colors.textPrimary,
-                                        },
-                                        code_block: {
-                                          backgroundColor: colors.bg,
-                                          padding: 12,
-                                          borderRadius: 8,
-                                          fontSize: 15,
-                                          fontFamily:
-                                            Platform.OS === 'ios'
-                                              ? 'Menlo'
-                                              : 'monospace',
-                                          color: colors.textPrimary,
-                                          marginVertical: 8,
-                                          overflow: 'hidden',
-                                        },
-                                        fence: {
-                                          backgroundColor: colors.bg,
-                                          padding: 12,
-                                          borderRadius: 8,
-                                          fontSize: 15,
-                                          fontFamily:
-                                            Platform.OS === 'ios'
-                                              ? 'Menlo'
-                                              : 'monospace',
-                                          color: colors.textPrimary,
-                                          marginVertical: 8,
-                                        },
-                                        strong: {
-                                          fontWeight: '600',
-                                          color: colors.textPrimary,
-                                        },
-                                        em: {
-                                          fontStyle: 'italic',
-                                        },
-                                        bullet_list: {
-                                          marginTop: 0,
-                                          marginBottom: 12,
-                                        },
-                                        ordered_list: {
-                                          marginTop: 0,
-                                          marginBottom: 12,
-                                        },
-                                        list_item: {
-                                          marginTop: 4,
-                                          marginBottom: 4,
-                                        },
-                                        hr: {
-                                          backgroundColor: colors.border,
-                                          height: 1,
-                                          marginVertical: 16,
-                                        },
-                                        blockquote: {
-                                          borderLeftWidth: 3,
-                                          borderLeftColor: colors.brandPrimary,
-                                          paddingLeft: 12,
-                                          marginVertical: 8,
-                                          backgroundColor: colors.bg,
-                                          paddingVertical: 8,
-                                          paddingRight: 8,
-                                          borderRadius: 4,
-                                        },
-                                        link: {
-                                          color: colors.brandPrimary,
-                                          textDecorationLine: 'underline',
-                                        },
-                                      }}
+                                  {displayContent && (
+                                    <View style={styles.assistantCoachRow}>
+                                      <View style={styles.messageAvatarContainer}>
+                                        <Image
+                                          source={coach.image}
+                                          style={styles.messageAvatar}
+                                        />
+                                      </View>
+                                      <View style={styles.assistantCoachBubbleWrap}>
+                                        <View style={styles.assistantMessageBubble}>
+                                          <Markdown
+                                            style={{
+                                              body: {
+                                                fontSize: 16,
+                                                lineHeight: 23,
+                                                color: colors.textPrimary,
+                                                margin: 0,
+                                              },
+                                              paragraph: {
+                                                marginTop: 0,
+                                                marginBottom: 8,
+                                              },
+                                              heading1: {
+                                                fontSize: 22,
+                                                fontWeight: '700',
+                                                color: colors.textPrimary,
+                                                marginTop: 16,
+                                                marginBottom: 8,
+                                              },
+                                              heading2: {
+                                                fontSize: 20,
+                                                fontWeight: '700',
+                                                color: colors.textPrimary,
+                                                marginTop: 14,
+                                                marginBottom: 6,
+                                              },
+                                              heading3: {
+                                                fontSize: 18,
+                                                fontWeight: '600',
+                                                color: colors.textPrimary,
+                                                marginTop: 12,
+                                                marginBottom: 6,
+                                              },
+                                              code_inline: {
+                                                backgroundColor: colors.bg,
+                                                paddingHorizontal: 4,
+                                                paddingVertical: 2,
+                                                borderRadius: 4,
+                                                fontSize: 15,
+                                                fontFamily:
+                                                  Platform.OS === 'ios'
+                                                    ? 'Menlo'
+                                                    : 'monospace',
+                                                color: colors.textPrimary,
+                                              },
+                                              code_block: {
+                                                backgroundColor: colors.bg,
+                                                padding: 12,
+                                                borderRadius: 8,
+                                                fontSize: 15,
+                                                fontFamily:
+                                                  Platform.OS === 'ios'
+                                                    ? 'Menlo'
+                                                    : 'monospace',
+                                                color: colors.textPrimary,
+                                                marginVertical: 8,
+                                                overflow: 'hidden',
+                                              },
+                                              fence: {
+                                                backgroundColor: colors.bg,
+                                                padding: 12,
+                                                borderRadius: 8,
+                                                fontSize: 15,
+                                                fontFamily:
+                                                  Platform.OS === 'ios'
+                                                    ? 'Menlo'
+                                                    : 'monospace',
+                                                color: colors.textPrimary,
+                                                marginVertical: 8,
+                                              },
+                                              strong: {
+                                                fontWeight: '600',
+                                                color: colors.textPrimary,
+                                              },
+                                              em: {
+                                                fontStyle: 'italic',
+                                              },
+                                              bullet_list: {
+                                                marginTop: 0,
+                                                marginBottom: 12,
+                                              },
+                                              ordered_list: {
+                                                marginTop: 0,
+                                                marginBottom: 12,
+                                              },
+                                              list_item: {
+                                                marginTop: 4,
+                                                marginBottom: 4,
+                                              },
+                                              hr: {
+                                                backgroundColor: colors.border,
+                                                height: 1,
+                                                marginVertical: 16,
+                                              },
+                                              blockquote: {
+                                                borderLeftWidth: 3,
+                                                borderLeftColor: colors.brandPrimary,
+                                                paddingLeft: 12,
+                                                marginVertical: 8,
+                                                backgroundColor: colors.bg,
+                                                paddingVertical: 8,
+                                                paddingRight: 8,
+                                                borderRadius: 4,
+                                              },
+                                              link: {
+                                                color: colors.brandPrimary,
+                                                textDecorationLine: 'underline',
+                                              },
+                                            }}
+                                          >
+                                            {displayContent}
+                                          </Markdown>
+                                        </View>
+                                      </View>
+                                    </View>
+                                  )}
+
+                                  {foodLogPayload && (
+                                    <View
+                                      style={[
+                                        styles.foodLogCard,
+                                        !displayContent && styles.foodLogCardStandalone,
+                                      ]}
                                     >
-                                      {displayContent}
-                                    </Markdown>
-                                  </View>
+                                      <View style={styles.foodLogHeaderRow}>
+                                        <View style={styles.foodLogHeaderText}>
+                                          <Text style={styles.foodLogEyebrow}>
+                                            {foodCardLabel}
+                                          </Text>
+                                        </View>
+                                        <View
+                                          style={[
+                                            styles.foodConfidenceBadge,
+                                            { backgroundColor: foodConfidenceBadgeBg },
+                                          ]}
+                                        >
+                                          <Text
+                                            style={[
+                                              styles.foodConfidenceText,
+                                              { color: foodConfidenceColor },
+                                            ]}
+                                          >
+                                            {foodConfidenceLabel}
+                                          </Text>
+                                        </View>
+                                      </View>
+
+                                      {/* Calories Row (Full Width) */}
+                                      <View style={styles.foodCaloriesCard}>
+                                        <View>
+                                          <Text style={styles.foodCaloriesValue}>
+                                            {roundMacro(foodLogPayload.calories)}
+                                          </Text>
+                                          <Text style={styles.foodCaloriesLabel}>
+                                            Calories
+                                          </Text>
+                                        </View>
+                                        <View style={styles.chartContainer}>
+                                          <Svg width={70} height={70}>
+                                            <G rotation="-90" origin="35, 35">
+                                              <Circle
+                                                cx="35"
+                                                cy="35"
+                                                r="28"
+                                                stroke={isDark ? colors.border : "#E5E5E5"}
+                                                strokeWidth="6"
+                                                fill="transparent"
+                                              />
+                                              <Circle
+                                                cx="35"
+                                                cy="35"
+                                                r="28"
+                                                stroke={colors.textPrimary}
+                                                strokeWidth="6"
+                                                fill="transparent"
+                                                strokeDasharray={`${calCircumference}`}
+                                                strokeDashoffset={`${calCircumference * (1 - calProgress)}`}
+                                                strokeLinecap="round"
+                                              />
+                                            </G>
+                                          </Svg>
+                                          <View style={styles.chartIcon}>
+                                            <Ionicons
+                                              name="flame"
+                                              size={20}
+                                              color={colors.textPrimary}
+                                            />
+                                          </View>
+                                        </View>
+                                      </View>
+
+                                      {/* Macros Grid (3 Cols) */}
+                                      <View style={styles.foodMacroGrid}>
+                                        {/* Protein */}
+                                        <View style={styles.foodMacroCard}>
+                                          <Text style={styles.foodMacroValueSmall}>
+                                            {roundMacro(foodLogPayload.protein_g)}g
+                                          </Text>
+                                          <Text style={styles.foodMacroLabelSmall}>
+                                            Protein
+                                          </Text>
+                                          <View style={styles.smallChartContainer}>
+                                            <Svg width={40} height={40}>
+                                              <G rotation="-90" origin="20, 20">
+                                                <Circle
+                                                  cx="20"
+                                                  cy="20"
+                                                  r="16"
+                                                  stroke="rgba(248, 113, 113, 0.2)"
+                                                  strokeWidth="4"
+                                                  fill="transparent"
+                                                />
+                                                <Circle
+                                                  cx="20"
+                                                  cy="20"
+                                                  r="16"
+                                                  stroke="#F87171"
+                                                  strokeWidth="4"
+                                                  fill="transparent"
+                                                  strokeDasharray={`${smallCircumference}`}
+                                                  strokeDashoffset={`${smallCircumference * (1 - protProgress)}`}
+                                                  strokeLinecap="round"
+                                                />
+                                              </G>
+                                            </Svg>
+                                            <View style={styles.chartIcon}>
+                                              <Ionicons
+                                                name="flash"
+                                                size={12}
+                                                color="#F87171"
+                                              />
+                                            </View>
+                                          </View>
+                                        </View>
+
+                                        {/* Carbs */}
+                                        <View style={styles.foodMacroCard}>
+                                          <Text style={styles.foodMacroValueSmall}>
+                                            {roundMacro(foodLogPayload.carbs_g)}g
+                                          </Text>
+                                          <Text style={styles.foodMacroLabelSmall}>
+                                            Carbs
+                                          </Text>
+                                          <View style={styles.smallChartContainer}>
+                                            <Svg width={40} height={40}>
+                                              <G rotation="-90" origin="20, 20">
+                                                <Circle
+                                                  cx="20"
+                                                  cy="20"
+                                                  r="16"
+                                                  stroke="rgba(251, 191, 36, 0.2)"
+                                                  strokeWidth="4"
+                                                  fill="transparent"
+                                                />
+                                                <Circle
+                                                  cx="20"
+                                                  cy="20"
+                                                  r="16"
+                                                  stroke="#FBBF24"
+                                                  strokeWidth="4"
+                                                  fill="transparent"
+                                                  strokeDasharray={`${smallCircumference}`}
+                                                  strokeDashoffset={`${smallCircumference * (1 - carbProgress)}`}
+                                                  strokeLinecap="round"
+                                                />
+                                              </G>
+                                            </Svg>
+                                            <View style={styles.chartIcon}>
+                                              <Ionicons
+                                                name="leaf"
+                                                size={12}
+                                                color="#FBBF24"
+                                              />
+                                            </View>
+                                          </View>
+                                        </View>
+
+                                        {/* Fat */}
+                                        <View style={styles.foodMacroCard}>
+                                          <Text style={styles.foodMacroValueSmall}>
+                                            {roundMacro(foodLogPayload.fat_g)}g
+                                          </Text>
+                                          <Text style={styles.foodMacroLabelSmall}>
+                                            Fats
+                                          </Text>
+                                          <View style={styles.smallChartContainer}>
+                                            <Svg width={40} height={40}>
+                                              <G rotation="-90" origin="20, 20">
+                                                <Circle
+                                                  cx="20"
+                                                  cy="20"
+                                                  r="16"
+                                                  stroke="rgba(96, 165, 250, 0.2)"
+                                                  strokeWidth="4"
+                                                  fill="transparent"
+                                                />
+                                                <Circle
+                                                  cx="20"
+                                                  cy="20"
+                                                  r="16"
+                                                  stroke="#60A5FA"
+                                                  strokeWidth="4"
+                                                  fill="transparent"
+                                                  strokeDasharray={`${smallCircumference}`}
+                                                  strokeDashoffset={`${smallCircumference * (1 - fatProgress)}`}
+                                                  strokeLinecap="round"
+                                                />
+                                              </G>
+                                            </Svg>
+                                            <View style={styles.chartIcon}>
+                                              <Ionicons
+                                                name="water"
+                                                size={12}
+                                                color="#60A5FA"
+                                              />
+                                            </View>
+                                          </View>
+                                        </View>
+                                      </View>
+
+                                      {(() => {
+                                        const state =
+                                          foodActionState[message.id] || 'idle'
+                                        const isSaving = state === 'saving'
+                                        const isSaved = state === 'saved'
+                                        const isUpdateAction =
+                                          foodLogPayload.action === 'update_last'
+                                        
+                                        const buttonLabel = isSaved
+                                          ? 'Logged'
+                                          : isUpdateAction
+                                          ? 'Update'
+                                          : 'Log Meal'
+
+                                        return (
+                                          <TouchableOpacity
+                                            style={[
+                                              styles.foodLogActionButton,
+                                              isSaved && styles.foodLogActionButtonDone,
+                                            ]}
+                                            onPress={() =>
+                                              handleFoodLogAction(
+                                                message.id,
+                                                foodLogPayload,
+                                              )
+                                            }
+                                            disabled={isSaving || isSaved}
+                                            activeOpacity={0.85}
+                                          >
+                                            <Ionicons
+                                              name={isSaved ? "checkmark-circle" : "add-circle"}
+                                              size={24}
+                                              color={colors.bg}
+                                            />
+                                            <Text style={styles.foodLogActionButtonText}>
+                                              {buttonLabel}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        )
+                                      })()}
+                                    </View>
+                                  )}
 
                                   {exerciseSuggestions.length > 0 && (
                                     <View style={styles.exerciseCardsContainer}>
@@ -2411,7 +3166,7 @@ export function WorkoutChat({
             </ScrollView>
 
             {/* Suggestions Row */}
-            {!generatedPlanContent && !planningState.isActive && (
+            {!generatedPlanContent && !planningState.isActive && !messages.some(m => m.role === 'user') && (
               <View style={styles.suggestionsContainer}>
                 <ScrollView
                   horizontal
@@ -2595,7 +3350,7 @@ export function WorkoutChat({
                     placeholder={
                       generatedPlanContent
                         ? 'Make changes to your plan...'
-                        : 'Ask about your workouts...'
+                        : 'Ask anything'
                     }
                     placeholderTextColor={colors.textPlaceholder}
                     value={input}
@@ -2611,10 +3366,14 @@ export function WorkoutChat({
                   <TouchableOpacity
                     style={[
                       styles.sendButton,
-                      (!input.trim() || isLoading) && styles.sendButtonDisabled,
+                      ((!input.trim() && selectedImages.length === 0) ||
+                        isLoading) &&
+                        styles.sendButtonDisabled,
                     ]}
                     onPress={() => handleSendMessage()}
-                    disabled={!input.trim() || isLoading}
+                    disabled={
+                      (!input.trim() && selectedImages.length === 0) || isLoading
+                    }
                   >
                     {isLoading ? (
                       <ActivityIndicator
@@ -2693,6 +3452,8 @@ export function WorkoutChat({
       <CoachSelectionSheet
         visible={isCoachSheetVisible}
         onClose={() => setIsCoachSheetVisible(false)}
+        currentCalorieGoal={dailyLogSummary?.goals.calorie_goal}
+        onUpdateCalorieGoal={handleUpdateCalorieGoal}
       />
     </>
   )
@@ -2720,6 +3481,38 @@ function createStyles(
       alignItems: 'center',
       zIndex: 10,
       padding: 0,
+    },
+    dailyMacroPillContainer: {
+      position: 'absolute',
+      left: 72,
+      right: 16,
+      zIndex: 9,
+      borderRadius: 24,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+    },
+    dailyMacroPillContainerSheet: {
+      position: 'relative',
+      left: 0,
+      right: 0,
+      top: 0,
+      marginHorizontal: 16,
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    dailyMacroPillText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.1,
+    },
+    dailyMacroPillSubtext: {
+      marginTop: 2,
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
     actionButtonsContainer: {
       flexDirection: 'row',
@@ -2812,9 +3605,8 @@ function createStyles(
     assistantMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
-      alignItems: 'flex-end',
+      alignItems: 'flex-start',
       marginBottom: 16,
-      gap: 8,
     },
     messageAvatarContainer: {
       width: 32,
@@ -2831,7 +3623,7 @@ function createStyles(
       maxWidth: '80%',
     },
     userMessageContent: {
-      backgroundColor: colors.brandPrimary,
+      backgroundColor: colors.textPrimary,
       padding: 12,
       paddingHorizontal: 14,
       borderRadius: 18,
@@ -2840,12 +3632,19 @@ function createStyles(
     userMessageText: {
       fontSize: 16,
       lineHeight: 22,
-      color: colors.surface,
+      color: isDark ? colors.bg : colors.surface,
     },
     assistantMessageContent: {
-      alignItems: 'flex-start',
-      maxWidth: '85%',
+      width: '100%',
       paddingVertical: 0,
+    },
+    assistantCoachRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+    },
+    assistantCoachBubbleWrap: {
+      maxWidth: '85%',
     },
     workoutCardContainer: {
       flex: 1,
@@ -2857,6 +3656,135 @@ function createStyles(
       paddingHorizontal: 14,
       borderRadius: 18,
       borderBottomLeftRadius: 4,
+    },
+    foodLogCard: {
+      marginTop: 12,
+      width: '100%',
+      borderRadius: 24,
+      backgroundColor: isDark ? colors.surfaceCard : '#F2F2F7', // matches app surfaceCard
+      padding: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 4,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#E5E5E5',
+    },
+    foodLogCardStandalone: {
+      marginTop: 0,
+    },
+    foodLogHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    foodLogHeaderText: {
+      flex: 1,
+      marginRight: 10,
+    },
+    foodLogEyebrow: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginBottom: 0,
+    },
+    foodConfidenceBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: isDark ? colors.surfaceSubtle : '#E5E5E5',
+    },
+    foodConfidenceText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    foodCaloriesCard: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: isDark ? colors.surfaceSubtle : '#FFFFFF',
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 10,
+      width: '100%',
+    },
+    foodCaloriesValue: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: -1,
+      marginBottom: 4,
+    },
+    foodCaloriesLabel: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    chartContainer: {
+      position: 'relative',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    chartIcon: {
+      position: 'absolute',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    smallChartContainer: {
+      marginTop: 12,
+      position: 'relative',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    foodMacroGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      gap: 10,
+    },
+    foodMacroCard: {
+      flex: 1,
+      backgroundColor: isDark ? colors.surfaceSubtle : '#FFFFFF',
+      borderRadius: 20,
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    foodMacroValueSmall: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+    foodMacroLabelSmall: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    foodLogActionButton: {
+      marginTop: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.textPrimary, // Contrast button
+      width: '100%',
+    },
+    foodLogActionButtonDone: {
+      backgroundColor: colors.statusSuccess,
+    },
+    foodLogActionButtonText: {
+      color: colors.bg,
+      fontSize: 16,
+      fontWeight: '700',
     },
     welcomeHintContainer: {
       alignItems: 'center',
@@ -3357,6 +4285,18 @@ function createStyles(
       flex: 1,
       paddingLeft: 12,
       paddingBottom: 8,
+    },
+    foodToggleButton: {
+      position: 'absolute',
+      left: 16,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.bg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+      padding: 0,
     },
   })
 }

@@ -135,6 +135,59 @@ export interface WorkoutRoutineSet {
   updated_at: string
 }
 
+export type DailyLogMealSource =
+  | 'text'
+  | 'photo'
+  | 'voice'
+  | 'manual'
+  | 'correction'
+
+export type DailyLogConfidence = 'low' | 'medium' | 'high'
+
+export interface DailyLogEntry {
+  id: string
+  user_id: string
+  log_date: string
+  weight_kg: number | null
+  calorie_goal: number | null
+  protein_goal_g: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DailyLogMeal {
+  id: string
+  daily_log_entry_id: string
+  user_id: string
+  description: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  source: DailyLogMealSource
+  confidence: DailyLogConfidence | null
+  chat_message_id: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DailyLogSummary {
+  logDate: string
+  entryId: string | null
+  totals: {
+    calories: number
+    protein_g: number
+    carbs_g: number
+    fat_g: number
+    meal_count: number
+  }
+  goals: {
+    calorie_goal: number | null
+    protein_goal_g: number | null
+  }
+}
+
 // Extended types with relations
 export interface WorkoutExerciseWithDetails extends WorkoutExercise {
   exercise: Exercise

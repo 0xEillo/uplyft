@@ -111,7 +111,7 @@ export const ProfileDashboard = memo(
             onPress={() => router.push('/explore')}
           />
           <DashboardButton
-            title="Body Log"
+            title="Daily Log"
             icon="body-outline"
             onPress={() => router.push('/body-log')}
           />

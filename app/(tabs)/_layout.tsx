@@ -316,8 +316,8 @@ function TabLayoutContent() {
                 style={[
                   StyleSheet.absoluteFill,
                   {
-                    backgroundColor: isDark ? '#000' : '#fff',
-                    opacity: 0.8,
+                    backgroundColor: colors.bg,
+                    opacity: isDark ? 0.95 : 0.8,
                   },
                 ]}
               />
@@ -441,7 +441,7 @@ function TabLayoutContent() {
                 {hasUnreadChat && (
                   <PulsingBadge
                     color={colors.brandPrimary}
-                    borderColor={isDark ? '#000' : '#fff'}
+                    borderColor={colors.bg}
                   />
                 )}
               </View>

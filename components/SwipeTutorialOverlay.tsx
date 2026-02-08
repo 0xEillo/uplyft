@@ -78,7 +78,7 @@ export default function SwipeTutorialOverlay({ onDismiss }: SwipeTutorialOverlay
           <Animated.View style={[styles.handContainer, handAnimatedStyle]}>
             <Ionicons name="hand-left" size={64} color="#fff" />
           </Animated.View>
-          <Text style={styles.text}>Swipe left for body log</Text>
+          <Text style={styles.text}>Swipe left for daily log</Text>
         </View>
       </Animated.View>
     </Modal>

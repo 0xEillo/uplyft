@@ -53,12 +53,37 @@ const workoutContextSchema = z
   })
   .optional()
 
+const dailyLogSummarySchema = z
+  .object({
+    logDate: z.string().optional(),
+    totals: z
+      .object({
+        calories: z.number().nonnegative().optional(),
+        protein_g: z.number().nonnegative().optional(),
+        carbs_g: z.number().nonnegative().optional(),
+        fat_g: z.number().nonnegative().optional(),
+        meal_count: z.number().int().nonnegative().optional(),
+      })
+      .partial()
+      .optional(),
+    goals: z
+      .object({
+        calorie_goal: z.number().nonnegative().nullable().optional(),
+        protein_goal_g: z.number().nonnegative().nullable().optional(),
+      })
+      .partial()
+      .optional(),
+  })
+  .partial()
+  .optional()
+
 const requestSchema = z.object({
   messages: z.array(messagesSchema),
   userId: z.string().optional(),
   weightUnit: z.enum(['kg', 'lb']).optional(),
   images: z.array(imageSchema).optional(),
   workoutContext: workoutContextSchema,
+  dailyLogSummary: dailyLogSummarySchema,
 })
 
 type WorkoutSessionWithDetails = {
@@ -104,6 +129,14 @@ serve(async (req) => {
 
   try {
     const payload = requestSchema.parse(await req.json())
+    console.log('[chat-edge] Request received:', {
+      hasUserId: Boolean(payload.userId?.trim()),
+      messagesCount: payload.messages.length,
+      hasImages: Boolean(payload.images && payload.images.length > 0),
+      hasWorkoutContext: Boolean(payload.workoutContext),
+      hasDailyLogSummary: Boolean(payload.dailyLogSummary),
+      dailyLogDate: payload.dailyLogSummary?.logDate,
+    })
 
     const bearer = req.headers.get('Authorization')
     const accessToken = bearer?.startsWith('Bearer ')
@@ -123,8 +156,13 @@ serve(async (req) => {
           summary,
           payload.weightUnit,
           payload.workoutContext,
+          payload.dailyLogSummary,
         )
         tools = chatTools
+        console.log('[chat-edge] User context built successfully', {
+          userId: payload.userId,
+          toolsCount: Object.keys(chatTools || {}).length,
+        })
       } catch (contextError) {
         console.warn('Failed to build user context summary:', contextError)
       }
@@ -161,12 +199,29 @@ serve(async (req) => {
         content: msg.content,
       }
     })
+    console.log('[chat-edge] Messages transformed:', {
+      filteredCount: filteredMessages.length,
+      transformedCount: transformedMessages.length,
+      includesImageParts: Boolean(payload.images && payload.images.length > 0),
+    })
 
     // Use OpenAI vision model if images are present, otherwise use Gemini via OpenRouter
     const modelToUse =
       payload.images && payload.images.length > 0
         ? openai('gpt-4o')
         : openrouter.chat(GEMINI_MODEL)
+    console.log('[chat-edge] Model selected:', {
+      model: payload.images && payload.images.length > 0 ? 'openai:gpt-4o' : `openrouter:${GEMINI_MODEL}`,
+    })
+
+    const latestUserMessage = [...filteredMessages]
+      .reverse()
+      .find((msg) => msg.role === 'user')
+    console.log('[chat-edge] Latest user message snapshot:', {
+      textPreview: latestUserMessage?.content?.slice(0, 120) ?? '',
+      hasDailyTotals: Boolean(payload.dailyLogSummary?.totals),
+      dailyTotals: payload.dailyLogSummary?.totals,
+    })
 
     const result = streamText({
       model: modelToUse,
@@ -179,6 +234,7 @@ serve(async (req) => {
         console.error('❌ [streamText] response error:', error)
       },
     })
+    console.log('[chat-edge] streamText started')
 
     return result.toTextStreamResponse({
       headers: {
@@ -1018,9 +1074,11 @@ function buildSystemPrompt(
   summary: Awaited<ReturnType<typeof buildUserContextSummary>>,
   weightUnit: 'kg' | 'lb' = 'kg',
   workoutContext?: z.infer<typeof workoutContextSchema>,
+  dailyLogSummary?: z.infer<typeof dailyLogSummarySchema>,
 ): string {
   // Build current workout context section if there's a workout in progress
   const workoutInProgressSection = buildWorkoutInProgressSection(workoutContext)
+  const dailyLogSection = buildDailyLogSection(dailyLogSummary)
 
   return [
     `You are the Rep AI gym training copilot—a knowledgeable training coach, not a lecture bot.
@@ -1038,6 +1096,16 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
     "Ground answers in the user's actual data when relevant. If the data is missing, say so. Keep suggestions actionable and tied to their metrics. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
     'If the user asks about saved routines or templates by name, call the getWorkoutRoutines tool with the routineName parameter. The user context above shows available routine names.',
+    'NUTRITION LOGGING (CHAT-FIRST):',
+    'If the user message is logging food (text/voice shorthand like "had my usual breakfast" or a food photo), respond like a supportive coach and provide an approximate estimate.',
+    'When nutrition logging is detected, append this machine-readable block at the very end of your response with no markdown wrapping:',
+    '<food_log>{"action":"log","summary":"short meal summary","calories":450,"protein_g":35,"carbs_g":38,"fat_g":16,"confidence":"medium","source":"text"}</food_log>',
+    'For corrections to the most recent meal estimate ("actually that was cauliflower rice"), use action="update_last" and output corrected macros.',
+    'If the user says "usual" (e.g., "had my usual breakfast"), infer from prior chat context when possible instead of forcing manual detail entry.',
+    'Use confidence values only: low, medium, high.',
+    'Do not ask for confirmation of every ingredient. Fast estimate > perfect precision. Ask at most one clarifying question only if confidence is low.',
+    'Keep tone judgment-free. Avoid shaming language. If over target, suggest a calm adjustment for the next meal/day.',
+    'Only include <food_log> block when the message is actually about food logging/correction.',
     'WORKOUT GENERATION:',
     "If (and ONLY if) the user explicitly asks you to create, plan, or generate a workout/routine (e.g. 'Create a chest workout', 'Plan a leg day'), you MUST output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
@@ -1074,6 +1142,7 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     '- You discuss specific exercises the user could try',
     'Example: "I\'d suggest adding some tricep work to balance your push day. Here are a couple options:\\n[{\\"name\\": \\"Tricep Pushdown\\", \\"sets\\": 3, \\"reps\\": \\"12-15\\"}, {\\"name\\": \\"Overhead Tricep Extension\\", \\"sets\\": 3, \\"reps\\": \\"10-12\\"}]"',
     'Do NOT include the JSON for general exercise questions like "what muscles does bench press work?" - only when actually suggesting exercises to add/do.',
+    dailyLogSection,
     workoutInProgressSection,
   ]
     .filter(Boolean)
@@ -1152,6 +1221,60 @@ function buildWorkoutInProgressSection(
     'When the user asks for suggestions, exercise replacements, or modifications, consider this context.',
     'If they ask to add exercises, suggest ones that complement their current workout.',
     'If they ask to replace an exercise, suggest alternatives based on the exercise being replaced.',
+  )
+
+  return lines.join('\n')
+}
+
+function buildDailyLogSection(
+  dailyLogSummary?: z.infer<typeof dailyLogSummarySchema>,
+): string {
+  if (!dailyLogSummary) return ''
+
+  const lines: string[] = ['CURRENT DAILY NUTRITION CONTEXT:']
+  if (dailyLogSummary.logDate) {
+    lines.push(`Date: ${dailyLogSummary.logDate}`)
+  }
+
+  const totals = dailyLogSummary.totals
+  if (totals) {
+    const parts: string[] = []
+    if (typeof totals.calories === 'number') {
+      parts.push(`calories=${totals.calories}`)
+    }
+    if (typeof totals.protein_g === 'number') {
+      parts.push(`protein=${totals.protein_g}g`)
+    }
+    if (typeof totals.carbs_g === 'number') {
+      parts.push(`carbs=${totals.carbs_g}g`)
+    }
+    if (typeof totals.fat_g === 'number') {
+      parts.push(`fat=${totals.fat_g}g`)
+    }
+    if (typeof totals.meal_count === 'number') {
+      parts.push(`meals=${totals.meal_count}`)
+    }
+    if (parts.length > 0) {
+      lines.push('Today so far: ' + parts.join(', '))
+    }
+  }
+
+  const goals = dailyLogSummary.goals
+  if (goals) {
+    const goalParts: string[] = []
+    if (typeof goals.calorie_goal === 'number') {
+      goalParts.push(`calorie_goal=${goals.calorie_goal}`)
+    }
+    if (typeof goals.protein_goal_g === 'number') {
+      goalParts.push(`protein_goal=${goals.protein_goal_g}g`)
+    }
+    if (goalParts.length > 0) {
+      lines.push('Goals: ' + goalParts.join(', '))
+    }
+  }
+
+  lines.push(
+    'Use this context for adaptive nudges (e.g., low-energy from low carbs or protein pacing suggestions).',
   )
 
   return lines.join('\n')
