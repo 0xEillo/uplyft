@@ -33,7 +33,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 const BASE_RECOVERY_COLORS = getRecoveryGradientColors()
 const READY_GREEN = '#10B981' // Green for Ready to Train chips
 
-export function RecoveryBodyView() {
+export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = {}) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
@@ -141,30 +141,9 @@ export function RecoveryBodyView() {
     return `${days}`
   }
 
-  return (
-    <View style={styles.container}>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.brandPrimary} />
-          <Text style={styles.loadingText}>Loading recovery data...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.contentContainer,
-            { paddingBottom: 100 + insets.bottom },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.brandPrimary]}
-              tintColor={colors.brandPrimary}
-            />
-          }
-        >
+  // When embedded, render content without ScrollView wrapper
+  const content = (
+    <>
 
 
           {/* Body Section */}
@@ -275,7 +254,52 @@ export function RecoveryBodyView() {
               </>
             )}
           </View>
+        </View>
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
+            <Text style={styles.loadingText}>Loading recovery data...</Text>
           </View>
+        ) : (
+          content
+        )}
+      </>
+    )
+  }
+
+  return (
+    <View style={styles.container}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+          <Text style={styles.loadingText}>Loading recovery data...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: 100 + insets.bottom },
+          ]}
+          contentInsetAdjustmentBehavior="automatic"
+          automaticallyAdjustContentInsets
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.brandPrimary]}
+              tintColor={colors.brandPrimary}
+            />
+          }
+        >
+          {content}
         </ScrollView>
       )}
     </View>

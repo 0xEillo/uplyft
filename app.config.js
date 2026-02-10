@@ -79,7 +79,6 @@ module.exports = {
     icon: './assets/images/icon.png',
     scheme: 'repai',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
     ios: {
       supportsTablet: false,
       usesAppleSignIn: true,
@@ -125,6 +124,7 @@ module.exports = {
     },
     updates: {
       url: 'https://u.expo.dev/d92cf9e6-0901-4a68-9f50-741decd5c10f',
+      enableBsdiffPatchSupport: true,
     },
     runtimeVersion: {
       policy: 'appVersion',
@@ -135,7 +135,10 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      '@react-native-community/datetimepicker',
       'expo-audio',
+      'expo-font',
+      'expo-image',
       [
         'expo-updates',
         {
@@ -164,6 +167,8 @@ module.exports = {
           sounds: [],
         },
       ],
+      'expo-sharing',
+      'expo-web-browser',
       [
         'expo-tracking-transparency',
         {

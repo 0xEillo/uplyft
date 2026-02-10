@@ -1,21 +1,22 @@
+import { GlassIconButton } from '@/components/glass-icon-button'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -29,9 +30,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  getStandardsLadder,
-  getStrengthStandard,
-  hasStrengthStandards
+    getStandardsLadder,
+    getStrengthStandard,
+    hasStrengthStandards
 } from '@/lib/strength-standards'
 import { Exercise, Profile } from '@/types/database.types'
 
@@ -460,29 +461,15 @@ export default function ExerciseDetailScreen() {
               {exercise?.name || 'Exercise Details'}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.headerBackButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
           {isOwner ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TouchableOpacity
+              <GlassIconButton
+                icon="ellipsis-horizontal"
                 onPress={handleOptionsPress}
-                style={styles.headerActionButton}
+                color={colors.textPrimary}
                 disabled={isDeleting}
-              >
-                  {isDeleting ? (
-                    <ActivityIndicator size="small" color={colors.textPrimary} />
-                  ) : (
-                    <Ionicons
-                      name="ellipsis-horizontal"
-                      size={24}
-                      color={colors.textPrimary}
-                    />
-                  )}
-              </TouchableOpacity>
+              />
             </View>
           ) : (
             <View style={styles.headerRightSpacer} />

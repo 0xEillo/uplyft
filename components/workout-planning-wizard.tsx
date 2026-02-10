@@ -49,6 +49,11 @@ interface WorkoutPlanningWizardProps {
     primary: string
     border: string
     white: string
+    brandPrimary: string
+    surface: string
+    surfaceSubtle: string
+    textPrimary: string
+    bg: string
   }
   onComplete: (data: WorkoutPlanningData) => void
   onCancel: () => void
@@ -229,10 +234,10 @@ const DURATION_OPTIONS = [
 ]
 
 const EQUIPMENT_IMAGES: Record<EquipmentType, any> = {
-  full_gym: require('@/assets/images/equipment/full_gym.png'),
-  home_minimal: require('@/assets/images/equipment/home_minimal.png'),
-  dumbbells_only: require('@/assets/images/equipment/dumbbells.png'),
-  bodyweight: require('@/assets/images/equipment/bodyweight.png'),
+  full_gym: require('../assets/images/equipment/full_gym.png'),
+  home_minimal: require('../assets/images/equipment/home_minimal.png'),
+  dumbbells_only: require('../assets/images/equipment/dumbbells.png'),
+  bodyweight: require('../assets/images/equipment/bodyweight.png'),
 }
 
 export const EQUIPMENT_OPTIONS: {

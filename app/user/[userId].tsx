@@ -1,5 +1,5 @@
 import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
@@ -458,31 +458,33 @@ export default function UserProfileScreen() {
         >
           <BaseNavbar
             leftContent={
-              <View style={styles.navbarLeft}>
-                <TouchableOpacity
-                  onPress={handleBack}
-                  style={styles.navbarBackAction}
-                >
-                  <View style={styles.iconWrapper}>
-                    <Animated.View style={{ opacity: whiteOpacity }}>
-                      <Ionicons
-                        name="arrow-back"
-                        size={24}
-                        color={startColor}
-                      />
-                    </Animated.View>
-                    <Animated.View
-                      style={{ opacity: themedOpacity, position: 'absolute' }}
-                    >
-                      <Ionicons
-                        name="arrow-back"
-                        size={24}
-                        color={colors.textPrimary}
-                      />
-                    </Animated.View>
-                  </View>
-                </TouchableOpacity>
-              </View>
+              <NavbarIsland>
+                <View style={styles.navbarLeft}>
+                  <TouchableOpacity
+                    onPress={handleBack}
+                    style={styles.navbarBackAction}
+                  >
+                    <View style={styles.iconWrapper}>
+                      <Animated.View style={{ opacity: whiteOpacity }}>
+                        <Ionicons
+                          name="arrow-back"
+                          size={24}
+                          color={startColor}
+                        />
+                      </Animated.View>
+                      <Animated.View
+                        style={{ opacity: themedOpacity, position: 'absolute' }}
+                      >
+                        <Ionicons
+                          name="arrow-back"
+                          size={24}
+                          color={colors.textPrimary}
+                        />
+                      </Animated.View>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </NavbarIsland>
             }
           />
         </Animated.View>

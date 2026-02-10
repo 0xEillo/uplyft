@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/EmptyState'
+import { GlassIconButton } from '@/components/glass-icon-button'
 import { UserListItem } from '@/components/UserListItem'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -14,8 +15,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
-    View,
+    View
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -203,9 +203,7 @@ export default function FollowersScreen() {
       <View style={[styles.statusBarBackground, { height: insets.top }]} />
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
           <Text style={styles.headerTitle}>Followers</Text>
           <View style={styles.headerPlaceholder} />
         </View>

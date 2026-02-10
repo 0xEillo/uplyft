@@ -18,8 +18,9 @@ import {
   type BodyPartSlug
 } from '@/lib/body-mapping'
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
-import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useIsFocused } from '@react-navigation/native'
+import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -31,7 +32,6 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useIsFocused } from '@react-navigation/native'
 import Svg, { Circle } from 'react-native-svg'
 
 const LIFTER_LEVEL_PROGRESS_KEY = '@lifter_level_progress_v1'
@@ -88,7 +88,7 @@ function ProgressRing({
   )
 }
 
-export function StrengthBodyView() {
+export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = {}) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -192,6 +192,68 @@ export function StrengthBodyView() {
     overallLevel?.balancedNextLevel,
   ])
 
+  // Compute tracked exercises with their level-up progression info
+  const trackedExercisesWithProgress = useMemo(() => {
+    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+      return []
+    }
+
+    return exerciseData.map((exercise) => {
+      const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
+      if (!strengthInfo) {
+        return {
+          ...exercise,
+          level: null,
+          progress: 0,
+          nextLevel: null,
+          targetWeight: null,
+        }
+      }
+
+      // Get the standards ladder for this exercise
+      const ladder = getStandardsLadder(
+        exercise.exerciseName,
+        profile.gender as 'male' | 'female'
+      )
+      
+      let targetWeight: number | null = null
+      if (ladder && strengthInfo.nextLevel) {
+        const nextLevelName = strengthInfo.nextLevel.level
+        const nextLevelStandard = ladder.find((s: StrengthStandard) => s.level === nextLevelName)
+        if (nextLevelStandard && profile.weight_kg) {
+          targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
+        }
+      }
+
+      return {
+        ...exercise,
+        level: strengthInfo.level,
+        progress: strengthInfo.progress,
+        nextLevel: strengthInfo.nextLevel?.level || null,
+        targetWeight,
+      }
+    }).filter(e => e.level !== null)
+      .sort((a, b) => {
+        const intensityA = getLevelIntensity(a.level!)
+        const intensityB = getLevelIntensity(b.level!)
+        if (intensityA !== intensityB) {
+          return intensityB - intensityA
+        }
+        return b.progress - a.progress
+      })
+  }, [exerciseData, profile, getStrengthInfo])
+
+  // Navigate to exercise detail
+  const navigateToExercise = useCallback(
+    (exerciseId: string) => {
+      router.push({
+        pathname: '/exercise/[exerciseId]',
+        params: { exerciseId },
+      })
+    },
+    [router],
+  )
+
   useEffect(() => {
     if (!isFocused) {
       setExerciseProgressDeltas({})
@@ -266,68 +328,6 @@ export function StrengthBodyView() {
       isActive = false
     }
   }, [isFocused, user?.id, trackedExercisesWithProgress])
-
-  // Compute tracked exercises with their level-up progression info
-  const trackedExercisesWithProgress = useMemo(() => {
-    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
-      return []
-    }
-
-    return exerciseData.map((exercise) => {
-      const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-      if (!strengthInfo) {
-        return {
-          ...exercise,
-          level: null,
-          progress: 0,
-          nextLevel: null,
-          targetWeight: null,
-        }
-      }
-
-      // Get the standards ladder for this exercise
-      const ladder = getStandardsLadder(
-        exercise.exerciseName,
-        profile.gender as 'male' | 'female'
-      )
-      
-      let targetWeight: number | null = null
-      if (ladder && strengthInfo.nextLevel) {
-        const nextLevelName = strengthInfo.nextLevel.level
-        const nextLevelStandard = ladder.find((s: StrengthStandard) => s.level === nextLevelName)
-        if (nextLevelStandard && profile.weight_kg) {
-          targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
-        }
-      }
-
-      return {
-        ...exercise,
-        level: strengthInfo.level,
-        progress: strengthInfo.progress,
-        nextLevel: strengthInfo.nextLevel?.level || null,
-        targetWeight,
-      }
-    }).filter(e => e.level !== null)
-      .sort((a, b) => {
-        const intensityA = getLevelIntensity(a.level!)
-        const intensityB = getLevelIntensity(b.level!)
-        if (intensityA !== intensityB) {
-          return intensityB - intensityA
-        }
-        return b.progress - a.progress
-      })
-  }, [exerciseData, profile, getStrengthInfo])
-
-  // Navigate to exercise detail
-  const navigateToExercise = useCallback(
-    (exerciseId: string) => {
-      router.push({
-        pathname: '/exercise/[exerciseId]',
-        params: { exerciseId },
-      })
-    },
-    [router],
-  )
 
   // Custom colors for the body highlighter based on strength levels
   // ARCHITECTURE NOTE:
@@ -420,30 +420,9 @@ export function StrengthBodyView() {
   // Determine gender for body display
   const bodyGender = profile?.gender === 'female' ? 'female' : 'male'
 
-  return (
-    <View style={styles.container}>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.brandPrimary} />
-          <Text style={styles.loadingText}>Loading strength data...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.contentContainer,
-            { paddingBottom: 100 + insets.bottom },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.brandPrimary]}
-              tintColor={colors.brandPrimary}
-            />
-          }
-        >
+  // When embedded, render content without ScrollView wrapper
+  const content = (
+    <>
 
           {/* Body Section */}
           <View style={styles.bodySection}>
@@ -648,9 +627,11 @@ export function StrengthBodyView() {
               </>
             )}
           </View>
-        </ScrollView>
-      )}
+    </>
+  )
 
+  const modals = (
+    <>
       {/* Lifter Levels Sheet - keeping as modal since it's a full-screen carousel */}
       {overallLevel && (
         <LifterLevelsSheet
@@ -660,6 +641,55 @@ export function StrengthBodyView() {
           progressToNext={overallLevel.balancedProgress}
         />
       )}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
+            <Text style={styles.loadingText}>Loading strength data...</Text>
+          </View>
+        ) : (
+          content
+        )}
+        {modals}
+      </>
+    )
+  }
+
+  return (
+    <View style={styles.container}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+          <Text style={styles.loadingText}>Loading strength data...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: 100 + insets.bottom },
+          ]}
+          contentInsetAdjustmentBehavior="automatic"
+          automaticallyAdjustContentInsets
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.brandPrimary]}
+              tintColor={colors.brandPrimary}
+            />
+          }
+        >
+          {content}
+        </ScrollView>
+      )}
+      {modals}
     </View>
   )
 }

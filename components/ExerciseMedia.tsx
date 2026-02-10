@@ -43,7 +43,7 @@ export const ExerciseMedia = memo(function ExerciseMedia({
     return (
       <View style={[styles.container, style, { backgroundColor: '#1A1A1A' }]}>
         <Image
-          source={require('@/assets/images/logo-transparent.png')}
+          source={require('../assets/images/logo-transparent.png')}
           style={{ width: '60%', height: '60%' }}
           contentFit="contain"
         />
@@ -93,7 +93,7 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
     return (
       <View style={[styles.container, style, { backgroundColor: '#1A1A1A' }]}>
         <Image
-          source={require('@/assets/images/logo-transparent.png')}
+          source={require('../assets/images/logo-transparent.png')}
           style={{ width: '60%', height: '60%' }}
           contentFit="contain"
         />

@@ -29,7 +29,7 @@ export const COACHES: Record<CoachId, Coach> = {
     - You explain the "why" behind every recommendation using scientific principles.
     - You are precise and avoid "bro-science".
     - Tone: Professional, educational, slightly nerdy but helpful.`,
-    image: require('@/assets/images/coaches/Ross.jpeg'),
+    image: require('../assets/images/coaches/Ross.jpeg'),
     trainingParams: {
       compoundSets: '2-4',
       isolationSets: '2-3',
@@ -49,7 +49,7 @@ export const COACHES: Record<CoachId, Coach> = {
     - You are obsessed with progressive overload and tracking PRs.
     - You dislike "fluff" exercises and overcomplication.
     - Tone: Direct, no-nonsense, motivating in a tough-love way.`,
-    image: require('@/assets/images/coaches/Kino.jpeg'),
+    image: require('../assets/images/coaches/Kino.jpeg'),
     trainingParams: {
       compoundSets: '2-3',
       isolationSets: '2',
@@ -69,7 +69,7 @@ export const COACHES: Record<CoachId, Coach> = {
     - You talk about "momentum," "mindset," and "showing up."
     - You help the user overcome mental barriers and gym anxiety.
     - Tone: Energetic, supportive, empathetic, and uplifting.`,
-    image: require('@/assets/images/coaches/Maya.jpeg'),
+    image: require('../assets/images/coaches/Maya.jpeg'),
     trainingParams: {
       compoundSets: '3-4',
       isolationSets: '2',

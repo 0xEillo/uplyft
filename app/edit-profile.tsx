@@ -1,8 +1,9 @@
+import { GlassIconButton } from '@/components/glass-icon-button'
 import {
-  COMMITMENTS,
-  EXPERIENCE_LEVELS,
-  GENDERS,
-  GOALS,
+    COMMITMENTS,
+    EXPERIENCE_LEVELS,
+    GENDERS,
+    GOALS,
 } from '@/constants/options'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -15,17 +16,17 @@ import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -192,9 +193,7 @@ export default function EditProfileScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <GlassIconButton icon="arrow-back" onPress={() => router.back()} color={colors.textPrimary} />
           <Text style={styles.headerTitle}>Edit Profile</Text>
           <View style={styles.placeholder} />
         </View>
@@ -209,9 +208,7 @@ export default function EditProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+          <GlassIconButton icon="close" onPress={() => router.back()} color={colors.textPrimary} />
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <TouchableOpacity onPress={handleSave} disabled={isSaving}>
           {isSaving ? (

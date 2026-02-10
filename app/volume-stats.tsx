@@ -1,7 +1,6 @@
 import { EmptyState } from '@/components/EmptyState'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
-import { SlideInView } from '@/components/slide-in-view'
 import { VolumeProgressChart } from '@/components/volume-progress-chart'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -11,12 +10,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -64,7 +64,6 @@ export default function VolumeStatsScreen() {
     totalWorkouts: 0,
     avgSetsPerWorkout: 0,
   })
-  const [shouldExit, setShouldExit] = useState(false)
   const [paywallVisible, setPaywallVisible] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -101,76 +100,70 @@ export default function VolumeStatsScreen() {
   }, [loadData])
 
   const handleBack = () => {
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = () => {
     router.back()
   }
 
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
+  const isIOS = Platform.OS === 'ios'
 
   return (
-    <SlideInView
-      style={{ flex: 1 }}
-      shouldExit={shouldExit}
-      onExitComplete={handleExitComplete}
-    >
+    <View style={[styles.safeArea, { paddingTop: isIOS ? 0 : insets.top }]}>
       <Stack.Screen
         options={{
-          headerShown: false,
+          title: 'Training Volume',
         }}
       />
-      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-        {/* Header */}
+      {isIOS ? (
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button icon="chevron.left" onPress={handleBack} />
+        </Stack.Toolbar>
+      ) : (
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.headerBackButton}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.headerBackButton}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Training Volume</Text>
           <View style={styles.headerRightSpacer} />
         </View>
+      )}
 
-        {/* Time Range Selector */}
-        <View style={styles.timeRangeContainer}>
-          {(['30D', '3M', '6M', 'ALL'] as TimeRange[]).map((range) => (
-            <TouchableOpacity
-              key={range}
-              style={[
-                styles.timeRangeButton,
-                timeRange === range && styles.timeRangeButtonActive,
-              ]}
-              onPress={() => setTimeRange(range)}
-            >
-              <Text
-                style={[
-                  styles.timeRangeText,
-                  timeRange === range && styles.timeRangeTextActive,
-                ]}
-              >
-                {range}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.brandPrimary} />
-            <Text style={styles.loadingText}>
-              Loading your training data...
-            </Text>
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.contentContainer}
-            showsVerticalScrollIndicator={false}
+      {/* Time Range Selector */}
+      <View style={styles.timeRangeContainer}>
+        {(['30D', '3M', '6M', 'ALL'] as TimeRange[]).map((range) => (
+          <TouchableOpacity
+            key={range}
+            style={[
+              styles.timeRangeButton,
+              timeRange === range && styles.timeRangeButtonActive,
+            ]}
+            onPress={() => setTimeRange(range)}
           >
+            <Text
+              style={[
+                styles.timeRangeText,
+                timeRange === range && styles.timeRangeTextActive,
+              ]}
+            >
+              {range}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+          <Text style={styles.loadingText}>
+            Loading your training data...
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
             {/* Section 1: Session Stats */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -320,9 +313,8 @@ export default function VolumeStatsScreen() {
               ) : (
                 <VolumeProgressChart userId={user.id} timeRange={timeRange} />
               ))}
-          </ScrollView>
-        )}
-      </View>
+        </ScrollView>
+      )}
 
       {/* Paywall Modal */}
       <Paywall
@@ -331,7 +323,7 @@ export default function VolumeStatsScreen() {
         title="Training Volume Analytics - Premium Feature"
         message="Track your volume by muscle group and monitor your progression over time. Unlock detailed insights to optimize your training split."
       />
-    </SlideInView>
+    </View>
   )
 }
 

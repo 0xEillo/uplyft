@@ -1,6 +1,7 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { DailyMacrosSheet } from '@/components/daily-macros-sheet'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
@@ -597,6 +598,7 @@ export function WorkoutChat({
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(false)
+  const [navGlassKey, setNavGlassKey] = useState(0)
   const [dailyLogSummary, setDailyLogSummary] =
     useState<DailyLogSummaryState | null>(null)
   const [latestLoggedMealId, setLatestLoggedMealId] = useState<string | null>(
@@ -620,9 +622,13 @@ export function WorkoutChat({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
-  const TAB_BAR_HEIGHT = 45
-  const keyboardVerticalOffset =
-    mode === 'sheet' ? 0 : insets.bottom + TAB_BAR_HEIGHT
+  const bottomSafeInset =
+    Platform.OS === 'ios' ? Math.min(insets.bottom, 34) : insets.bottom
+  // Native tab bar height (49pt on iOS) — not part of RN layout, so we must account for it manually
+  const nativeTabBarHeight = mode === 'fullscreen' && Platform.OS === 'ios' ? 49 : 0
+  // Extra padding for the floating tab bar when keyboard is closed (taller than standard 49pt)
+  const closedTabBarPadding = mode === 'fullscreen' && Platform.OS === 'ios' ? 65 : 0
+  const keyboardVerticalOffset = nativeTabBarHeight
 
   // Merge custom suggestions with defaults
   const suggestions: SuggestionsConfig =
@@ -741,6 +747,13 @@ export function WorkoutChat({
 
       loadDraftContext()
     }, [workoutContext]),
+  )
+
+  // Remount top nav glass buttons on focus to recover native glass after nav transitions.
+  useFocusEffect(
+    useCallback(() => {
+      setNavGlassKey((prev) => prev + 1)
+    }, []),
   )
 
   const refreshDailyLogSummary = useCallback(async () => {
@@ -2203,7 +2216,7 @@ export function WorkoutChat({
     }
   }
 
-  const styles = createStyles(colors, insets, isDark, mode)
+  const styles = createStyles(colors, { bottom: bottomSafeInset }, isDark, mode)
 
   return (
     <>
@@ -2233,47 +2246,69 @@ export function WorkoutChat({
             {/* Top Left Menu Button - Toggles between Settings (if empty) and Clear (if messages) */}
             {mode === 'fullscreen' && (
               <>
-                <TouchableOpacity
+                <LiquidGlassSurface
+                  key={`plan-settings-glass-${navGlassKey}`}
+                  debugLabel="plan-settings-button"
                   style={[
-                    styles.newChatButton,
+                    styles.newChatButtonGlass,
                     { top: Math.max(insets.top - 38, 0) },
                   ]}
-                  onPress={
-                    messages.length > 0
-                      ? handleNewChat
-                      : () => {
-                          haptic('light')
-                          setIsCoachSheetVisible(true)
-                        }
-                  }
-                  activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={
-                      messages.length > 0 ? 'create-outline' : 'settings-sharp'
+                  <TouchableOpacity
+                    style={styles.newChatButton}
+                    onPress={
+                      messages.length > 0
+                        ? handleNewChat
+                        : () => {
+                            haptic('light')
+                            setIsCoachSheetVisible(true)
+                          }
                     }
-                    size={24}
-                    color={colors.brandPrimary}
-                  />
-                </TouchableOpacity>
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={
+                        messages.length > 0 ? 'create-outline' : 'settings-sharp'
+                      }
+                      size={24}
+                      color={colors.brandPrimary}
+                    />
+                  </TouchableOpacity>
+                </LiquidGlassSurface>
 
-                <TouchableOpacity
+                <LiquidGlassSurface
+                  key={`plan-food-glass-${navGlassKey}`}
+                  debugLabel="plan-food-button"
                   style={[
-                    styles.foodToggleButton,
+                    styles.foodToggleButtonGlass,
                     { top: Math.max(insets.top - 38, 0) + 56 },
                   ]}
-                  onPress={() => {
-                    haptic('light')
-                    setIsDailyMacrosSheetVisible(true)
-                  }}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name="restaurant-outline"
-                    size={24}
-                    color={colors.brandPrimary}
-                  />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.foodToggleButton}
+                    onPress={() => {
+                      haptic('light')
+                      if (Platform.OS === 'ios' && dailyLogSummary) {
+                        router.push({
+                          pathname: '/daily-macros-detail',
+                          params: {
+                            totalsJson: JSON.stringify(dailyLogSummary.totals),
+                            goalsJson: JSON.stringify(dailyLogSummary.goals),
+                          },
+                        })
+                        return
+                      }
+                      setIsDailyMacrosSheetVisible(true)
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="restaurant-outline"
+                      size={24}
+                      color={colors.brandPrimary}
+                    />
+                  </TouchableOpacity>
+                </LiquidGlassSurface>
               </>
             )}
 
@@ -3160,10 +3195,10 @@ export function WorkoutChat({
                 {
                   paddingBottom:
                     mode === 'sheet'
-                      ? Math.max(insets.bottom, 16)
+                      ? Math.max(bottomSafeInset, 16)
                       : isKeyboardVisible
-                      ? 0
-                      : 60,
+                      ? Math.max(bottomSafeInset, 12)
+                      : Math.max(bottomSafeInset, 12) + closedTabBarPadding,
                 },
               ]}
               onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
@@ -3203,17 +3238,22 @@ export function WorkoutChat({
               <View style={styles.inputWrapper}>
                 {/* Add Image Button - hidden when hideImagePicker is true */}
                 {!hideImagePicker && (
-                  <TouchableOpacity
-                    style={styles.addImageButton}
-                    onPress={showImagePickerActionSheet}
-                    disabled={isLoading}
+                  <LiquidGlassSurface
+                    style={styles.addImageButtonGlass}
+                    debugLabel="plan-image-button"
                   >
-                    <Ionicons
-                      name="image-outline"
-                      size={22}
-                      color={isLoading ? colors.textPlaceholder : colors.brandPrimary}
-                    />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.addImageButton}
+                      onPress={showImagePickerActionSheet}
+                      disabled={isLoading}
+                    >
+                      <Ionicons
+                        name="image-outline"
+                        size={22}
+                        color={isLoading ? colors.textPlaceholder : colors.brandPrimary}
+                      />
+                    </TouchableOpacity>
+                  </LiquidGlassSurface>
                 )}
 
                 <View style={styles.textInputContainer}>
@@ -3328,7 +3368,7 @@ export function WorkoutChat({
         currentCalorieGoal={dailyLogSummary?.goals.calorie_goal}
         onUpdateCalorieGoal={handleUpdateCalorieGoal}
       />
-      {dailyLogSummary && (
+      {dailyLogSummary && Platform.OS !== 'ios' && (
         <DailyMacrosSheet
           visible={isDailyMacrosSheetVisible}
           onClose={() => setIsDailyMacrosSheetVisible(false)}
@@ -3352,16 +3392,22 @@ function createStyles(
       backgroundColor: colors.bg,
     },
     newChatButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 0,
+    },
+    newChatButtonGlass: {
       position: 'absolute',
       left: 16,
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
-      padding: 0,
     },
 
     actionButtonsContainer: {
@@ -3844,20 +3890,19 @@ function createStyles(
       fontWeight: '600',
       color: colors.textSecondary,
     },
+    addImageButtonGlass: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     addImageButton: {
       width: 40,
       height: 40,
-      borderRadius: 9999,
-      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : colors.surfaceSubtle,
+      borderRadius: 20,
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : '#FAFAFA',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
     },
     // Images in messages
     messageImagesGrid: {
@@ -4137,16 +4182,22 @@ function createStyles(
       paddingBottom: 8,
     },
     foodToggleButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 0,
+    },
+    foodToggleButtonGlass: {
       position: 'absolute',
       left: 16,
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
-      padding: 0,
     },
   })
 }

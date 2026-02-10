@@ -5,11 +5,12 @@ import {
   ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
+import * as SystemUI from 'expo-system-ui'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { PostHogProvider } from 'posthog-react-native'
 import { useEffect, useRef } from 'react'
-import { AppState, Platform, UIManager } from 'react-native'
+import { Appearance, AppState, Platform, UIManager } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -70,6 +71,40 @@ function RootLayoutNav() {
   // Initialize push notifications
   usePushNotifications()
 
+  const formSheetContentStyle = {
+    backgroundColor: isDark ? getColors(true).surfaceSheet : getColors(false).surfaceSheet,
+  }
+  const navigationBackground = isDark
+    ? CustomDarkTheme.colors.background
+    : CustomLightTheme.colors.background
+
+  const sheetCornerRadius = -1
+  const transparentModalFallback = {
+    presentation: 'transparentModal' as const,
+    animation: 'none' as const,
+    contentStyle: { backgroundColor: 'transparent' },
+    headerShown: false,
+  }
+  const getNativeFormSheetOptions = (sheetAllowedDetents: [number, number]) =>
+    Platform.OS === 'ios'
+      ? {
+          presentation: 'formSheet' as const,
+          headerShown: false,
+          contentStyle: formSheetContentStyle,
+          sheetAllowedDetents,
+          sheetGrabberVisible: true,
+          sheetInitialDetentIndex: 0,
+          sheetCornerRadius,
+          sheetExpandsWhenScrolledToEdge: false,
+          scrollEdgeEffects: {
+            top: 'hidden' as const,
+            bottom: 'hidden' as const,
+            left: 'hidden' as const,
+            right: 'hidden' as const,
+          },
+        }
+      : transparentModalFallback
+
   // Pre-load exercise cache for faster lookups throughout the app
   useEffect(() => {
     exerciseLookup.initialize().catch((err) => {
@@ -114,6 +149,14 @@ function RootLayoutNav() {
   }, [])
 
   useEffect(() => {
+    // Keep native UIKit/theme sampling in sync with app-level theme to prevent white flash on transitions.
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      Appearance.setColorScheme(isDark ? 'dark' : 'light')
+      void SystemUI.setBackgroundColorAsync(navigationBackground)
+    }
+  }, [isDark, navigationBackground])
+
+  useEffect(() => {
     if (isLoading) return
 
     const inAuthGroup = segments[0] === '(auth)'
@@ -145,66 +188,71 @@ function RootLayoutNav() {
       <NavigationThemeProvider
         value={isDark ? CustomDarkTheme : CustomLightTheme}
       >
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: navigationBackground },
+          }}
+        >
           <Stack.Screen
             name="strength-stats"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="volume-stats"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="workout-calendar"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="notifications"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="routine/[routineId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="search"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="explore"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="routines"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="explore/program/[programId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="create-exercise"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="select-exercise"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="user/[userId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="compare/[userId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="workout/[workoutId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="exercise/[exerciseId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="workout-comments/[workoutId]"
@@ -215,54 +263,48 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="(stand-alone)/create-routine"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="(stand-alone)/edit-workout/[workoutId]"
-            options={{ presentation: 'transparentModal', animation: 'none' }}
+            options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
             name="body-log/index"
             options={{
-              presentation: 'transparentModal',
-              animation: 'none',
+              presentation: 'card',
+              animation: 'default',
               gestureEnabled: false,
             }}
           />
           <Stack.Screen
             name="body-log/[entryId]"
             options={{
-              presentation: 'transparentModal',
-              animation: 'none',
+              presentation: 'card',
+              animation: 'default',
               gestureEnabled: false,
             }}
           />
           <Stack.Screen
             name="body-log/capture"
             options={{
-              presentation: 'transparentModal',
-              animation: 'none',
+              presentation: 'card',
+              animation: 'default',
               gestureEnabled: false,
             }}
           />
           {/* Native Bottom Sheets - using formSheet for 100% native sheet presentation */}
           <Stack.Screen
             name="recovery-detail"
-            options={{
-              presentation: 'transparentModal',
-              animation: 'none',
-              contentStyle: { backgroundColor: 'transparent' },
-              headerShown: false,
-            }}
+            options={getNativeFormSheetOptions([0.72, 0.95])}
           />
           <Stack.Screen
             name="muscle-group-detail"
-            options={{
-              presentation: 'transparentModal',
-              animation: 'none',
-              contentStyle: { backgroundColor: 'transparent' },
-              headerShown: false,
-            }}
+            options={getNativeFormSheetOptions([0.72, 1.0])}
+          />
+          <Stack.Screen
+            name="daily-macros-detail"
+            options={getNativeFormSheetOptions([0.6, 0.95])}
           />
         </Stack>
       </NavigationThemeProvider>

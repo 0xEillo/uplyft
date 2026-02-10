@@ -204,10 +204,13 @@ export default function ProgramDetailScreen() {
       >
         <BaseNavbar
           leftContent={
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+            <NavbarIsland>
+              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </NavbarIsland>
           }
+          centerGlass={false}
           centerContent={
             <NavbarIsland>
               <Text style={styles.headerTitle}>Program</Text>
@@ -837,4 +840,3 @@ const createStyles = (
       ...StyleSheet.absoluteFillObject,
     },
   })
-

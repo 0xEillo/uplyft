@@ -121,7 +121,7 @@ export function Paywall({
   // Get hero image based on user gender (if available)
   const getHeroImage = () => {
     // Default to male image, can be extended to read user profile
-    return require('@/assets/images/onboarding/male_muscle_flex.png')
+    return require('../assets/images/onboarding/male_muscle_flex.png')
   }
 
   // Button text - always show "Start Free Trial" since trial is default

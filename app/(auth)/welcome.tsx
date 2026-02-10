@@ -19,13 +19,13 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 const IMAGES = [
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_08PM.jpeg'),
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_14PM.jpeg'),
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_12PM.jpeg'),
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_15PM.jpeg'),
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_16PM.jpeg'),
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_17PM.jpeg'),
-  require('@/assets/images/user-carousel/Generated Image December 10, 2025 - 1_12PM (1).jpeg'),
+  require('../../assets/images/user-carousel/user-01.jpeg'),
+  require('../../assets/images/user-carousel/user-02.jpeg'),
+  require('../../assets/images/user-carousel/user-03.jpeg'),
+  require('../../assets/images/user-carousel/user-04.jpeg'),
+  require('../../assets/images/user-carousel/user-05.jpeg'),
+  require('../../assets/images/user-carousel/user-06.jpeg'),
+  require('../../assets/images/user-carousel/user-07.jpeg'),
 ]
 
 // Duplicate images to create infinite scroll effect

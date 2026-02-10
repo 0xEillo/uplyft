@@ -1,19 +1,22 @@
 import { BaseNavbar } from '@/components/base-navbar'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RecoveryBodyView } from '@/components/RecoveryBodyView'
 import { StatsView } from '@/components/StatsView'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
-import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
+import { isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
     Animated,
+    Platform,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     View
@@ -34,34 +37,52 @@ export default function AnalyticsScreen() {
   const { trackEvent } = useAnalytics()
   const [viewMode, setViewMode] = useState<ViewMode>('strength')
   const [bodyTab, setBodyTab] = useState<BodyTab>('strength')
+  const [glassInstanceKey, setGlassInstanceKey] = useState(0)
   
   // Constants for perfect centering
   const CONTROL_WIDTH = 210
   const TAB_WIDTH = CONTROL_WIDTH / 2
   const PILL_PADDING = 3
-  const CONTROL_HEIGHT = 38
   
   // Animation for the sliding pill indicator
-  const slideAnim = useRef(new Animated.Value(0)).current
+  const indicatorLeft = useRef(new Animated.Value(PILL_PADDING)).current
 
   useFocusEffect(
     useCallback(() => {
       trackEvent(AnalyticsEvents.ANALYTICS_VIEWED, {
         timestamp: Date.now(),
       })
+
+      // Force remount on focus to recover native glass if iOS drops it after transitions.
+      setGlassInstanceKey((prev) => prev + 1)
+
+      if (__DEV__) {
+        const liquidAvailable =
+          Platform.OS === 'ios' ? isLiquidGlassAvailable() : false
+        const apiAvailable =
+          Platform.OS === 'ios' ? isGlassEffectAPIAvailable() : false
+        console.log('[analytics-slider] focus', {
+          platform: Platform.OS,
+          liquidAvailable,
+          apiAvailable,
+        })
+      }
     }, [trackEvent]),
   )
 
   // Animate the pill indicator when tab changes
   useEffect(() => {
-    const toValue = bodyTab === 'strength' ? 0 : 1
-    Animated.spring(slideAnim, {
+    const toValue =
+      bodyTab === 'strength' ? PILL_PADDING : TAB_WIDTH + PILL_PADDING
+    Animated.spring(indicatorLeft, {
       toValue,
-      useNativeDriver: true,
+      // Keep this on JS driver; native transform animation can cause glass layers
+      // to intermittently fail to render after navigation transitions.
+      useNativeDriver: false,
       tension: 300,
       friction: 30,
     }).start()
-  }, [bodyTab, slideAnim])
+  }, [TAB_WIDTH, bodyTab, indicatorLeft, PILL_PADDING])
 
   const handleTabPress = useCallback((tab: BodyTab) => {
     if (tab === bodyTab) return
@@ -71,64 +92,75 @@ export default function AnalyticsScreen() {
     setViewMode(tab)
   }, [bodyTab])
 
-  const { isDark } = useTheme()
-  const styles = createStyles(colors, isDark)
-
-  // Calculate the translateX for the sliding indicator
-  const translateX = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [PILL_PADDING, TAB_WIDTH + PILL_PADDING],
-  })
+  const styles = createStyles(colors)
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <BaseNavbar
         leftContent={<View style={styles.navbarSpacer} />}
         rightContent={<View style={styles.navbarSpacer} />}
+        centerGlass={false}
         centerContent={
-          <View style={styles.segmentedControl}>
-            {/* Animated sliding background */}
-            <Animated.View
-              style={[
-                styles.slideIndicator,
-                {
-                  width: TAB_WIDTH - PILL_PADDING * 2,
-                  transform: [{ translateX }],
-                },
-              ]}
-            />
-            
-            {/* Tab buttons */}
-            {TABS.map((tab) => {
-              const isActive = bodyTab === tab.key
-              return (
-                <Pressable
-                  key={tab.key}
-                  onPress={() => handleTabPress(tab.key)}
-                  style={styles.tabButton}
-                >
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      isActive && styles.tabLabelActive,
-                    ]}
+          <View style={styles.segmentedWrapper}>
+            <View style={styles.segmentedControl}>
+              {/* Animated sliding background */}
+              <Animated.View
+                style={[
+                  styles.slideIndicator,
+                  {
+                    width: TAB_WIDTH - PILL_PADDING * 2,
+                    left: indicatorLeft,
+                  },
+                ]}>
+                <LiquidGlassSurface
+                  key={`analytics-pill-${glassInstanceKey}`}
+                  style={styles.activeTabBubble}
+                  debugLabel="analytics-slider-pill"
+                />
+              </Animated.View>
+
+              {/* Tab buttons */}
+              {TABS.map((tab) => {
+                const isActive = bodyTab === tab.key
+                return (
+                  <Pressable
+                    key={tab.key}
+                    onPress={() => handleTabPress(tab.key)}
+                    style={styles.tabButton}
                   >
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              )
-            })}
+                    <Text
+                      style={[
+                        styles.tabLabel,
+                        isActive && styles.tabLabelActive,
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
           </View>
         }
       />
 
-      {/* Content */}
+      {/* Content - ScrollView at screen level for native tab minimize detection */}
       {viewMode === 'stats' ? (
         user && <StatsView userId={user.id} />
-      ) : viewMode === 'recovery' ? (
-        <RecoveryBodyView />
       ) : (
-        <StrengthBodyView />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          contentInsetAdjustmentBehavior="automatic"
+          automaticallyAdjustContentInsets
+          showsVerticalScrollIndicator={false}
+        >
+          {viewMode === 'recovery' ? (
+            <RecoveryBodyView embedded />
+          ) : (
+            <StrengthBodyView embedded />
+          )}
+        </ScrollView>
       )}
     </SafeAreaView>
   )
@@ -136,7 +168,6 @@ export default function AnalyticsScreen() {
 
 const createStyles = (
   colors: ReturnType<typeof useThemedColors>,
-  isDark: boolean
 ) =>
   StyleSheet.create({
     container: {
@@ -146,6 +177,12 @@ const createStyles = (
     navbarSpacer: {
       width: 40, // Matches typical icon button width for balance
     },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 100,
+    },
     
     // Segmented Control Styles
     segmentedControl: {
@@ -154,17 +191,21 @@ const createStyles = (
       position: 'relative',
       width: 210, // Match CONTROL_WIDTH
     },
+    segmentedWrapper: {
+      paddingHorizontal: 4,
+      paddingVertical: 4,
+    },
     slideIndicator: {
       position: 'absolute',
       top: 3, // Match PILL_PADDING
       bottom: 3, // Match PILL_PADDING
-      backgroundColor: isDark ? '#262626' : '#F0F0F5',
       borderRadius: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
+      overflow: 'hidden',
+      backgroundColor: 'transparent',
+    },
+    activeTabBubble: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 20,
     },
     tabButton: {
       flex: 1,

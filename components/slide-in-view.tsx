@@ -1,152 +1,60 @@
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
-import { ReactNode, useEffect, useRef } from 'react'
-import { Animated, Dimensions, StyleProp, ViewStyle } from 'react-native'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
+import { ReactNode, useEffect } from 'react'
+import { StyleProp, View, ViewStyle } from 'react-native'
 
 interface SlideInViewProps {
   children: ReactNode
   style?: StyleProp<ViewStyle>
-  /** Duration of the animation in milliseconds (default: 200) */
+  /** Deprecated: kept for backward compatibility */
   duration?: number
-  /** Delay before animation starts in milliseconds (default: 0) */
+  /** Deprecated: kept for backward compatibility */
   delay?: number
-  /** Whether to animate on mount (default: true) */
+  /** Deprecated: kept for backward compatibility */
   enabled?: boolean
-  /** Whether to include fade effect with slide (default: false) */
+  /** Deprecated: kept for backward compatibility */
   fade?: boolean
-  /** Background color (defaults to theme background color) */
+  /** Optional override background color */
   backgroundColor?: string
-  /** Trigger exit animation (slides out to the right) */
+  /** Trigger exit flow; callback fires immediately */
   shouldExit?: boolean
-  /** Callback when exit animation completes */
+  /** Callback when exit flow completes */
   onExitComplete?: () => void
 }
 
 /**
- * A reusable view component that slides in from the right to left.
- * Creates a smooth page transition effect similar to Strava's navigation.
+ * Compatibility wrapper.
  *
- * @example
- * ```tsx
- * <SlideInView>
- *   <YourPageContent />
- * </SlideInView>
- * ```
+ * Native stack transitions now handle page animation. This component no longer
+ * applies custom JS-driven slide effects, but preserves the previous API so
+ * existing screens don't break.
  */
 export function SlideInView({
   children,
   style,
-  duration = 200,
-  delay = 0,
-  enabled = true,
-  fade = false,
   backgroundColor,
   shouldExit = false,
   onExitComplete,
 }: SlideInViewProps) {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
-  const slideAnim = useRef(new Animated.Value(enabled ? SCREEN_WIDTH : 0))
-    .current
-  const opacityAnim = useRef(new Animated.Value(fade && enabled ? 0 : 1))
-    .current
 
-  // Entry animation
-  useEffect(() => {
-    if (!enabled) {
-      slideAnim.setValue(0)
-      if (fade) {
-        opacityAnim.setValue(1)
-      }
-      return
-    }
-
-    slideAnim.setValue(SCREEN_WIDTH)
-    if (fade) {
-      opacityAnim.setValue(0)
-    }
-
-    const animations = [
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration,
-        delay,
-        useNativeDriver: true,
-      }),
-    ]
-
-    if (fade) {
-      animations.push(
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: duration * 0.7, // Fade completes slightly before slide
-          delay,
-          useNativeDriver: true,
-        }),
-      )
-    }
-
-    Animated.parallel(animations).start(() => {
-      // Animation complete
-    })
-  }, [enabled, slideAnim, opacityAnim, duration, delay, fade])
-
-  // Exit animation
   useEffect(() => {
     if (shouldExit) {
-      const animations = [
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_WIDTH,
-          duration,
-          useNativeDriver: true,
-        }),
-      ]
-
-      if (fade) {
-        animations.push(
-          Animated.timing(opacityAnim, {
-            toValue: 0,
-            duration: duration * 0.7,
-            useNativeDriver: true,
-          }),
-        )
-      }
-
-      Animated.parallel(animations).start(() => {
-        onExitComplete?.()
-      })
+      onExitComplete?.()
     }
-  }, [shouldExit, slideAnim, opacityAnim, duration, fade, onExitComplete])
-
-  const bgColor = backgroundColor || colors.bg
-
-  // Shadow style to create separation from the underlying screen
-  const shadowStyle = {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -10, // Shadow on left side
-      height: 0,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
-  }
+  }, [shouldExit, onExitComplete])
 
   return (
-    <Animated.View
+    <View
       style={[
         {
-          backgroundColor: bgColor,
-          transform: [{ translateX: slideAnim }],
-          opacity: fade ? opacityAnim : 1,
+          backgroundColor: backgroundColor || colors.bg,
         },
-        shadowStyle,
         style,
       ]}
     >
       {children}
-    </Animated.View>
+    </View>
   )
 }

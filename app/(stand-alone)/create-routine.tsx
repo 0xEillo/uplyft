@@ -1048,6 +1048,7 @@ export default function CreateRoutineScreen() {
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           }
+          centerGlass={false}
           centerContent={
             <NavbarIsland>
               <Text style={styles.headerTitle}>

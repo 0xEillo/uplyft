@@ -2,14 +2,14 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import {
-  Animated,
-  Easing,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Easing,
+    Keyboard,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -32,6 +32,7 @@ interface EditorToolbarProps {
   timerButtonRef?: RefObject<View>
   routineButtonRef?: RefObject<View>
   searchButtonRef?: RefObject<View>
+  bottomInsetOverride?: number
 }
 
 export function EditorToolbar({
@@ -53,15 +54,19 @@ export function EditorToolbar({
   timerButtonRef,
   routineButtonRef,
   searchButtonRef,
+  bottomInsetOverride,
 }: EditorToolbarProps) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
-  const styles = createStyles(colors, insets)
-  const [, setKeyboardHeight] = useState(0)
-  const [, setIsKeyboardVisible] = useState(false)
+  const styles = createStyles(colors)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const bottomInset =
+    Platform.OS === 'ios'
+      ? Math.min(bottomInsetOverride ?? insets.bottom, 34)
+      : bottomInsetOverride ?? insets.bottom
 
   // Animation for padding bottom (safe area)
-  const paddingBottom = useRef(new Animated.Value(insets.bottom)).current
+  const paddingBottom = useRef(new Animated.Value(bottomInset)).current
 
   // Spinning animation for processing state
   const spinValue = useRef(new Animated.Value(0)).current
@@ -96,28 +101,32 @@ export function EditorToolbar({
   }, [isProcessingImage, spinValue])
 
   useEffect(() => {
+    if (!isKeyboardVisible) {
+      paddingBottom.setValue(bottomInset)
+    }
+  }, [bottomInset, isKeyboardVisible, paddingBottom])
+
+  useEffect(() => {
     const showEvent =
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
     const hideEvent =
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
 
-    const showSub = Keyboard.addListener(showEvent, (e) => {
+    const showSub = Keyboard.addListener(showEvent, () => {
       setIsKeyboardVisible(true)
-      setKeyboardHeight(e.endCoordinates.height)
 
       Animated.timing(paddingBottom, {
         toValue: 0,
-        duration: e.duration || 250,
+        duration: 250,
         useNativeDriver: false, // Layout animation
       }).start()
     })
 
     const hideSub = Keyboard.addListener(hideEvent, (e) => {
       setIsKeyboardVisible(false)
-      setKeyboardHeight(0)
 
       Animated.timing(paddingBottom, {
-        toValue: insets.bottom,
+        toValue: bottomInset,
         duration: e.duration || 250,
         useNativeDriver: false, // Layout animation
       }).start()
@@ -127,7 +136,7 @@ export function EditorToolbar({
       showSub.remove()
       hideSub.remove()
     }
-  }, [insets.bottom, paddingBottom])
+  }, [bottomInset, paddingBottom])
 
   const isDisabled = isLoading || isTranscribing || isProcessingImage
   const shouldShowAdd = showAddExercise
@@ -227,10 +236,7 @@ export function EditorToolbar({
   )
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useThemedColors>,
-  insets: { bottom: number },
-) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       backgroundColor: colors.bg, // Match background to blend in

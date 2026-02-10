@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av'
+import { createAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState } from 'react-native'
@@ -15,16 +15,14 @@ export function useRestTimer() {
 
   const playSound = async () => {
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        require('@/assets/sounds/stopwatch.mp3')
-      )
-      await sound.playAsync()
-      // Unload sound after playing to free resources
-      sound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          await sound.unloadAsync()
+      const player = createAudioPlayer(require('../assets/sounds/stopwatch.mp3'))
+      const subscription = player.addListener('playbackStatusUpdate', (status) => {
+        if (status.didJustFinish) {
+          subscription.remove()
+          player.remove()
         }
       })
+      player.play()
     } catch (error) {
       console.log('Error playing sound:', error)
     }

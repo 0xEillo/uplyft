@@ -1,199 +1,43 @@
-import { HapticTab } from '@/components/haptic-tab'
 import { Paywall } from '@/components/paywall'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
-import { IconSymbol } from '@/components/ui/icon-symbol'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { useAuth } from '@/contexts/auth-context'
 import { LiveActivityProvider } from '@/contexts/live-activity-context'
 import {
-    RatingPromptProvider,
-    useRatingPrompt,
+  RatingPromptProvider,
+  useRatingPrompt,
 } from '@/contexts/rating-prompt-context'
 import {
-    RestTimerProvider,
-    useRestTimerContext,
+  RestTimerProvider,
+  useRestTimerContext,
 } from '@/contexts/rest-timer-context'
 import {
-    ScrollToTopProvider,
-    useScrollToTop,
+  ScrollToTopProvider,
+  useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-    SuccessOverlayProvider,
-    useSuccessOverlay,
+  SuccessOverlayProvider,
+  useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
-import { Ionicons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native'
-import { BlurView } from 'expo-blur'
-import { Tabs, useRouter } from 'expo-router'
-import React, { useEffect, useState } from 'react'
-import {
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native'
-import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withTiming,
-} from 'react-native-reanimated'
-
 import { hasStoredDraft } from '@/lib/utils/workout-draft'
-
-const formatTimerCompact = (seconds: number) => {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  if (mins > 0) {
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${secs}`
-}
-
-// Pulsing notification badge
-function PulsingBadge({
-  color,
-  borderColor,
-}: {
-  color: string
-  borderColor: string
-}) {
-  const scale = useSharedValue(1)
-  const opacity = useSharedValue(1)
-
-  useEffect(() => {
-    scale.value = withRepeat(
-      withTiming(1.3, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true,
-    )
-    opacity.value = withRepeat(
-      withTiming(0.6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true,
-    )
-  }, [scale, opacity])
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }))
-
-  return (
-    <View
-      style={{
-        position: 'absolute',
-        top: -3,
-        right: -5,
-        width: 14,
-        height: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      {/* Pulse ring */}
-      <Animated.View
-        style={[
-          {
-            position: 'absolute',
-            width: 14,
-            height: 14,
-            borderRadius: 7,
-            backgroundColor: color,
-          },
-          pulseStyle,
-        ]}
-      />
-      {/* Solid center */}
-      <View
-        style={{
-          width: 12,
-          height: 12,
-          borderRadius: 6,
-          backgroundColor: color,
-          borderWidth: 2,
-          borderColor: borderColor,
-        }}
-      />
-    </View>
-  )
-}
-
-function TikTokPlusButton() {
-  const router = useRouter()
-  const colors = useThemedColors()
-  const [hasDraft, setHasDraft] = useState(false)
-  const {
-    isActive: isRestTimerActive,
-    remainingSeconds,
-  } = useRestTimerContext()
-
-  // Check for draft on mount and when returning from create-post
-  useEffect(() => {
-    const checkDraft = async () => {
-      const draftExists = await hasStoredDraft()
-      setHasDraft(draftExists)
-    }
-
-    checkDraft()
-
-    // Check every second while mounted
-    const interval = setInterval(checkDraft, 1000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Timer takes priority over draft state for button color
-  const buttonColor = isRestTimerActive
-    ? colors.statusError
-    : hasDraft
-    ? colors.statusError
-    : colors.brandPrimary
-  const styles = createButtonStyles(colors, buttonColor)
-
-  return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={() => router.push('/(tabs)/create-post')}
-      activeOpacity={0.8}
-    >
-      <View style={styles.leftLayer} />
-      <View style={styles.rightLayer} />
-      <View style={styles.centerLayer}>
-        {isRestTimerActive ? (
-          <View style={styles.timerContent}>
-            <Ionicons name="timer-outline" size={14} color={colors.surface} />
-            <View style={styles.timerTextContainer}>
-              <Text style={styles.timerText}>
-                {formatTimerCompact(remainingSeconds)}
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <Ionicons
-            name={hasDraft ? 'document-text' : 'add'}
-            size={22}
-            color={colors.surface}
-          />
-        )}
-      </View>
-    </TouchableOpacity>
-  )
-}
+import { Ionicons } from '@expo/vector-icons'
+import { useRouter, useSegments } from 'expo-router'
+import { NativeTabs } from 'expo-router/unstable-native-tabs'
+import React, { useEffect, useState } from 'react'
+import { Platform, StatusBar, Text, TouchableOpacity, View } from 'react-native'
 
 function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const navigation = useNavigation()
+  const segments = useSegments()
+  const router = useRouter()
   const { scrollToTop } = useScrollToTop()
   const {
     isVisible,
@@ -206,9 +50,11 @@ function TabLayoutContent() {
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
   const { isVisible: isRatingPromptVisible } = useRatingPrompt()
   const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
+  const { isActive: isRestTimerActive } = useRestTimerContext()
   const { user } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
+  const [hasDraft, setHasDraft] = useState(false)
 
   // Check for unread welcome message
   useEffect(() => {
@@ -222,6 +68,18 @@ function TabLayoutContent() {
     const interval = setInterval(checkUnread, 2000)
     return () => clearInterval(interval)
   }, [user?.id])
+
+  // Keep create action state in sync with saved draft.
+  useEffect(() => {
+    const checkDraft = async () => {
+      const draftExists = await hasStoredDraft()
+      setHasDraft(draftExists)
+    }
+
+    checkDraft()
+    const interval = setInterval(checkDraft, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (!isSubscriptionLoading && !isProMember) {
@@ -299,203 +157,132 @@ function TabLayoutContent() {
     setShowShareScreen(false)
   }
 
+  const currentTab = (segments[1] as string | undefined) ?? 'index'
+  const isTabBarHidden =
+    currentTab === 'create-post' || currentTab === 'create-speech'
+  const isIOS26OrNewer =
+    Platform.OS === 'ios' &&
+    Number.parseInt(String(Platform.Version).split('.')[0] ?? '0', 10) >= 26
+  const showNativeBottomAccessory =
+    isIOS26OrNewer && !isTabBarHidden && (isRestTimerActive || hasDraft)
+  const bottomAccessoryLabel = isRestTimerActive
+    ? 'Workout in progress'
+    : 'Continue draft'
+  const bottomAccessoryIconName = isRestTimerActive ? 'timer-outline' : 'document-text-outline'
+  const createActionColor =
+    isRestTimerActive || hasDraft ? colors.statusError : colors.brandPrimary
+  const createActionSfSymbol = isRestTimerActive
+    ? 'timer'
+    : hasDraft
+    ? 'doc.text'
+    : 'plus.circle.fill'
+  const createActionMdSymbol = isRestTimerActive
+    ? 'timer'
+    : hasDraft
+    ? 'description'
+    : 'add_circle'
+  const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
+
   return (
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <Tabs
+      <NativeTabs
         backBehavior="history"
-        screenOptions={{
-          tabBarActiveTintColor: colors.brandPrimary,
-          headerShown: false,
-          tabBarHideOnKeyboard: false,
-          tabBarButton: HapticTab,
-          tabBarShowLabel: false,
-          tabBarBackground: () => (
-            <View style={StyleSheet.absoluteFill}>
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  {
-                    backgroundColor: colors.bg,
-                    opacity: isDark ? 0.95 : 0.8,
-                  },
-                ]}
-              />
-              <BlurView
-                intensity={100}
-                tint={isDark ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-              />
-            </View>
-          ),
-          tabBarStyle: {
-            backgroundColor: 'transparent',
-            borderTopWidth: 0,
-            height: 79,
-            paddingBottom: 30,
-            paddingTop: 2,
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            elevation: 0, // Remove shadow on Android
-          },
-          tabBarInactiveTintColor: colors.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: 10,
-            fontWeight: '600',
-            marginTop: -4,
-          },
+        hidden={isTabBarHidden}
+        minimizeBehavior="onScrollDown"
+        tintColor={colors.brandPrimary}
+        iconColor={colors.textSecondary}
+        backgroundColor={
+          isDark ? 'rgba(17, 17, 17, 0.38)' : 'rgba(255, 255, 255, 0.56)'
+        }
+        blurEffect={
+          isDark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'
+        }
+        labelStyle={{
+          color: colors.textSecondary,
+          fontSize: 11,
+          fontWeight: '600',
         }}
       >
-        {/* Home tab */}
-        <Tabs.Screen
+        <NativeTabs.Trigger
           name="index"
-          options={{
-            title: 'Home',
-            tabBarIcon: ({ color, focused }) => (
-              <View style={{ marginTop: 5 }}>
-                <IconSymbol
-                  size={32}
-                  name={focused ? 'house.fill' : 'house'}
-                  color={color}
-                />
-              </View>
-            ),
-          }}
           listeners={{
-            tabPress: (e) => {
-              // If already on home tab (index route), scroll to top
-              const state = navigation.getState()
-              const currentRoute = state?.routes[state.index]
-              const currentRouteState = currentRoute?.state
-              const isOnHomeTab =
-                currentRoute?.name === '(tabs)' &&
-                (currentRouteState?.index !== undefined
-                  ? currentRouteState.routes[currentRouteState.index]?.name ===
-                    'index'
-                  : true)
-              if (isOnHomeTab) {
-                e.preventDefault()
+            tabPress: () => {
+              if (currentTab === 'index') {
                 scrollToTop('index')
               }
             },
           }}
-        />
-        {/* Progress tab */}
-        <Tabs.Screen
-          name="analytics"
-          options={{
-            title: 'Progress',
-            tabBarIcon: ({ color, focused }) => (
-              <View style={{ overflow: 'visible', marginBottom: -1 }}>
-                <Ionicons
-                  name={focused ? 'bar-chart' : 'bar-chart-outline'}
-                  size={30}
-                  color={color}
-                />
-              </View>
-            ),
-          }}
-        />
-        {/* Create tab */}
-        <Tabs.Screen
-          name="create"
-          options={{
-            title: '',
-            tabBarIcon: () => null,
-            tabBarButton: () => (
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <TikTokPlusButton />
-              </View>
-            ),
-          }}
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault()
-            },
-          }}
-        />
-        {/* Chat tab */}
-        <Tabs.Screen
-          name="chat"
-          options={{
-            title: 'Plan',
-            tabBarIcon: ({ color, focused }) => (
-              <View>
-                <Ionicons
-                  name={
-                    focused
-                      ? 'chatbubble-ellipses'
-                      : 'chatbubble-ellipses-outline'
-                  }
-                  size={30}
-                  color={color}
-                />
-                {hasUnreadChat && (
-                  <PulsingBadge
-                    color={colors.brandPrimary}
-                    borderColor={colors.bg}
-                  />
-                )}
-              </View>
-            ),
-          }}
-        />
-        {/* Profile tab */}
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'person' : 'person-outline'}
-                size={30}
-                color={color}
-              />
-            ),
-          }}
-          listeners={{
-            tabPress: (e) => {
-              // If already on profile tab, scroll to top
-              const state = navigation.getState()
-              const currentRoute = state?.routes[state.index]
-              const currentRouteState = currentRoute?.state
-              const isOnProfileTab =
-                currentRoute?.name === '(tabs)' &&
-                currentRouteState?.index !== undefined &&
-                currentRouteState.routes[currentRouteState.index]?.name ===
-                  'profile'
+        >
+          <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'house', selected: 'house.fill' }}
+            md="home"
+          />
+        </NativeTabs.Trigger>
 
-              if (isOnProfileTab) {
-                e.preventDefault()
+        <NativeTabs.Trigger name="analytics">
+          <NativeTabs.Trigger.Label>Progress</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'chart.bar', selected: 'chart.bar.fill' }}
+            md="bar_chart"
+          />
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="chat">
+          <NativeTabs.Trigger.Label>Plan</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{
+              default: 'bubble.left.and.bubble.right',
+              selected: 'bubble.left.and.bubble.right.fill',
+            }}
+            md="chat"
+          />
+          <NativeTabs.Trigger.Badge hidden={!hasUnreadChat} />
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger
+          name="profile"
+          listeners={{
+            tabPress: () => {
+              if (currentTab === 'profile') {
                 scrollToTop('profile')
               }
             },
           }}
-        />
-        {/* Hidden screens */}
-        <Tabs.Screen
-          name="create-post"
-          options={{
-            href: null,
-            tabBarStyle: { display: 'none' },
-          }}
-        />
-        <Tabs.Screen
-          name="create-speech"
-          options={{
-            href: null,
-            tabBarStyle: { display: 'none' },
-          }}
-        />
-      </Tabs>
+        >
+          <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'person', selected: 'person.fill' }}
+            md="person"
+          />
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="create-post" role="search">
+          <NativeTabs.Trigger.Label hidden />
+          <NativeTabs.Trigger.Icon
+            sf={{
+              default: createActionSfSymbol,
+              selected: createActionSfSymbol,
+            }}
+            md={createActionMdSymbol}
+            selectedColor={createActionColor}
+          />
+        </NativeTabs.Trigger>
+
+        {showNativeBottomAccessory ? (
+          <NativeTabs.BottomAccessory>
+            <BottomAccessoryAction
+              isDark={isDark}
+              label={bottomAccessoryLabel}
+              iconName={bottomAccessoryIconName}
+              textPrimary={colors.textPrimary}
+              textSecondary={colors.textSecondary}
+              onPress={handleOpenCreatePost}
+            />
+          </NativeTabs.BottomAccessory>
+        ) : null}
+      </NativeTabs>
       <SubmitSuccessOverlay
         visible={isVisible}
         onAnimationComplete={handleAnimationComplete}
@@ -525,6 +312,69 @@ function TabLayoutContent() {
   )
 }
 
+function BottomAccessoryAction({
+  isDark,
+  label,
+  iconName,
+  textPrimary,
+  textSecondary,
+  onPress,
+}: {
+  isDark: boolean
+  label: string
+  iconName: keyof typeof Ionicons.glyphMap
+  textPrimary: string
+  textSecondary: string
+  onPress: () => void
+}) {
+  const placement = NativeTabs.BottomAccessory.usePlacement()
+  const isInline = placement === 'inline'
+
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      activeOpacity={0.85}
+      style={{
+        alignSelf: 'center',
+        marginTop: isInline ? 2 : 4,
+        marginBottom: isInline ? 4 : 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: isInline ? 6 : 8,
+        paddingHorizontal: isInline ? 10 : 14,
+        paddingVertical: isInline ? 6 : 8,
+        borderRadius: isInline ? 14 : 18,
+        backgroundColor: isDark
+          ? 'rgba(20, 20, 22, 0.95)'
+          : 'rgba(255, 255, 255, 0.97)',
+        borderWidth: 1,
+        borderColor: isDark
+          ? 'rgba(255, 255, 255, 0.12)'
+          : 'rgba(0, 0, 0, 0.08)',
+      }}
+    >
+      <Ionicons
+        name={iconName}
+        size={isInline ? 14 : 15}
+        color={textSecondary}
+      />
+      <Text
+        numberOfLines={1}
+        style={{
+          color: textPrimary,
+          fontSize: isInline ? 12 : 13,
+          fontWeight: '600',
+          letterSpacing: -0.1,
+        }}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  )
+}
+
 export default function TabLayout() {
   return (
     <LiveActivityProvider>
@@ -540,57 +390,3 @@ export default function TabLayout() {
     </LiveActivityProvider>
   )
 }
-
-const createButtonStyles = (
-  colors: ReturnType<typeof useThemedColors>,
-  buttonColor: string,
-) =>
-  StyleSheet.create({
-    container: {
-      width: 55,
-      height: 33,
-      justifyContent: 'center',
-      alignItems: 'center',
-      position: 'relative',
-    },
-    leftLayer: {
-      position: 'absolute',
-      left: 0,
-      width: 46,
-      height: 33,
-      backgroundColor: buttonColor,
-      borderRadius: 10,
-    },
-    rightLayer: {
-      position: 'absolute',
-      right: 0,
-      width: 46,
-      height: 33,
-      backgroundColor: buttonColor,
-      borderRadius: 10,
-    },
-    centerLayer: {
-      width: 46,
-      height: 33,
-      backgroundColor: buttonColor,
-      borderRadius: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1,
-    },
-    timerContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
-    },
-    timerTextContainer: {
-      minWidth: 24,
-      alignItems: 'center',
-    },
-    timerText: {
-      color: colors.surface,
-      fontSize: 12,
-      fontWeight: '700',
-      fontVariant: ['tabular-nums'],
-    },
-  })

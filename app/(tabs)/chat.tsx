@@ -9,7 +9,7 @@ export default function ChatScreen() {
   const styles = createStyles(colors)
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.content}>
         <WorkoutChat />
       </View>

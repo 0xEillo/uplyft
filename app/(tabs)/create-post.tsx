@@ -1,10 +1,11 @@
 import {
-  CreatePostTutorialOverlay,
-  type CreatePostTutorialHighlightLayout,
-  type CreatePostTutorialStep,
+    CreatePostTutorialOverlay,
+    type CreatePostTutorialHighlightLayout,
+    type CreatePostTutorialStep,
 } from '@/components/create-post-tutorial-overlay'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { SlideUpView } from '@/components/slide-up-view'
@@ -21,10 +22,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-  getExerciseSuggestion,
-  parseRepRange,
-  useExerciseAutocompleteGroup,
-  useShowConvertButton,
+    getExerciseSuggestion,
+    parseRepRange,
+    useExerciseAutocompleteGroup,
+    useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -41,22 +42,22 @@ import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearDraft as clearWorkoutDraft,
-  compactDraft as compactWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
-  saveDraftPatch as saveWorkoutDraftPatch,
+    clearDraft as clearWorkoutDraft,
+    compactDraft as compactWorkoutDraft,
+    loadPendingWorkout,
+    loadDraft as loadWorkoutDraft,
+    saveDraft as saveWorkoutDraft,
+    saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
-  generateWorkoutMessage,
-  parseCommitment,
+    generateWorkoutMessage,
+    parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-  Exercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    Exercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
@@ -65,24 +66,27 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  AppState,
-  Easing,
-  InteractionManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  LayoutChangeEvent,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    AppState,
+    Easing,
+    InteractionManager,
+    Keyboard,
+    LayoutChangeEvent,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
+import Reanimated, {
+    useAnimatedKeyboard,
+    useAnimatedStyle,
+} from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 function formatTimerDisplay(seconds: number): string {
@@ -159,6 +163,9 @@ export default function CreatePostScreen() {
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
   const insets = useSafeAreaInsets()
+  const isIOS = Platform.OS === 'ios'
+  const bottomSafeInset =
+    isIOS ? Math.min(insets.bottom, 34) : insets.bottom
 
   // Exercise history hook for creating exercises with last performance data
   const {
@@ -196,7 +203,6 @@ export default function CreatePostScreen() {
   const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
@@ -719,7 +725,10 @@ export default function CreatePostScreen() {
     },
   })
 
-  const styles = createStyles(colors, insets)
+  const styles = createStyles(colors, {
+    ...insets,
+    bottom: bottomSafeInset,
+  })
 
   // Animate draft saved indicator
   useEffect(() => {
@@ -755,26 +764,6 @@ export default function CreatePostScreen() {
       spinValue.setValue(0)
     }
   }, [isProcessingImage, isTranscribing, spinValue])
-
-  useEffect(() => {
-    const showEvent =
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent =
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-
-    const showSub = Keyboard.addListener(showEvent, () => {
-      setIsKeyboardVisible(true)
-    })
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setIsKeyboardVisible(false)
-    })
-
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
-  }, [])
-
 
   // Load user's routines and exercises
   const loadRoutinesAndExercises = useCallback(async () => {
@@ -2305,6 +2294,7 @@ export default function CreatePostScreen() {
       showAddExercise: showConvertButton,
       isRestTimerActive: restTimer.isActive,
       restTimerRemaining: restTimer.remainingSeconds,
+      bottomInsetOverride: bottomSafeInset,
     }),
     [
       handleScanWorkoutPress,
@@ -2320,6 +2310,7 @@ export default function CreatePostScreen() {
       showConvertButton,
       restTimer.isActive,
       restTimer.remainingSeconds,
+      bottomSafeInset,
     ],
   )
 
@@ -2385,6 +2376,7 @@ export default function CreatePostScreen() {
       },
     ],
     [
+      chatButtonLayout,
       chatButtonRef,
       scanButtonRef,
       micButtonRef,
@@ -2393,6 +2385,13 @@ export default function CreatePostScreen() {
       searchButtonRef,
     ],
   )
+
+  // Keyboard handling with Reanimated for perfect sync
+  const keyboard = useAnimatedKeyboard()
+  
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: keyboard.height.value,
+  }))
 
   // Ensure structured input focus state is reset when keyboard is dismissed
   useEffect(() => {
@@ -2413,8 +2412,7 @@ export default function CreatePostScreen() {
         key={slideKey}
         style={{ flex: 1 }}
         backgroundColor={colors.bg}
-        fade={true}
-        fadeFrom={0}
+        fade={false}
         duration={200}
         tension={65}
         friction={14}
@@ -2423,36 +2421,45 @@ export default function CreatePostScreen() {
         enabled={!showCreatePostTutorial}
       >
         <Pressable style={styles.header} onPress={blurInputs}>
-          <TouchableOpacity
-            onPress={handleCancel}
-            style={styles.headerButton}
-            disabled={isLoading}
+          <LiquidGlassSurface
+            style={styles.headerIconShell}
+            debugLabel="create-post-close-button"
           >
-            <Ionicons
-              name="chevron-down"
-              size={24}
-              color={colors.textPrimary}
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleCancel}
+              style={styles.headerButton}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name="chevron-down"
+                size={24}
+                color={colors.textPrimary}
+              />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
 
           <View pointerEvents="none" style={styles.headerCenter}>
-            {shouldShowWorkoutTimer && !showDraftSaved && (
-              <Text style={styles.headerTimerText}>{headerTimerDisplay}</Text>
-            )}
-            {showDraftSaved && (
-              <Animated.View
-                style={[
-                  styles.draftSavedContainer,
-                  { opacity: fadeAnim, position: 'absolute' },
-                ]}
-              >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={16}
-                  color={colors.brandPrimary}
-                />
-                <Text style={styles.draftSavedText}>Draft saved</Text>
-              </Animated.View>
+            {(shouldShowWorkoutTimer || showDraftSaved) && (
+              <View style={styles.headerCenterContainer}>
+                {shouldShowWorkoutTimer && !showDraftSaved && (
+                  <Text style={styles.headerTimerText}>{headerTimerDisplay}</Text>
+                )}
+                {showDraftSaved && (
+                  <Animated.View
+                    style={[
+                      styles.draftSavedContainer,
+                      { opacity: fadeAnim, position: 'absolute' },
+                    ]}
+                  >
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={colors.brandPrimary}
+                    />
+                    <Text style={styles.draftSavedText}>Draft saved</Text>
+                  </Animated.View>
+                )}
+              </View>
             )}
           </View>
           <View style={styles.headerRightButtons}>
@@ -2466,28 +2473,29 @@ export default function CreatePostScreen() {
                 <Ionicons name="trash-outline" size={22} color="#E53935" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              onPress={handlePost}
-              style={[styles.headerButton, styles.primaryButton]}
-              disabled={isLoading}
-              activeOpacity={0.8}
+            <LiquidGlassSurface
+              style={styles.headerIconShell}
+              debugLabel="create-post-submit-button"
             >
-              <Animated.View
-                style={{
-                  transform: [{ scale: buttonScaleAnim }],
-                }}
+              <TouchableOpacity
+                onPress={handlePost}
+                style={styles.headerButton}
+                disabled={isLoading}
+                activeOpacity={0.8}
               >
-                <Ionicons name="checkmark" size={24} color={colors.surface} />
-              </Animated.View>
-            </TouchableOpacity>
+                <Animated.View
+                  style={{
+                    transform: [{ scale: buttonScaleAnim }],
+                  }}
+                >
+                  <Ionicons name="checkmark" size={24} color={colors.brandPrimary} />
+                </Animated.View>
+              </TouchableOpacity>
+            </LiquidGlassSurface>
           </View>
         </Pressable>
 
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-        >
+        <View style={styles.keyboardView}>
           <ScrollView
             ref={scrollViewRef}
             style={styles.inputContainer}
@@ -2499,7 +2507,6 @@ export default function CreatePostScreen() {
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             bounces={true}
-            automaticallyAdjustKeyboardInsets={true}
             automaticallyAdjustContentInsets={false}
           >
             {/* Title Input */}
@@ -2605,11 +2612,9 @@ export default function CreatePostScreen() {
                 onSelectionChange={handleNotesSelectionChange}
                 onFocus={() => {
                   setIsNotesFocused(true)
-                  setIsKeyboardVisible(true)
                 }}
                 onBlur={() => {
                   setIsNotesFocused(false)
-                  setIsKeyboardVisible(false)
                 }}
               />
 
@@ -2685,10 +2690,11 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          {(!isStructuredInputFocused || Platform.OS !== 'ios') && (
+          {!isStructuredInputFocused || Platform.OS !== 'ios' ? (
             <EditorToolbar {...editorToolbarTutorialProps} />
-          )}
-        </KeyboardAvoidingView>
+          ) : null}
+          <Reanimated.View style={spacerStyle} />
+        </View>
 
         {isLoading && (
           <View style={styles.submissionOverlay} pointerEvents="auto">
@@ -2801,8 +2807,15 @@ const createStyles = (
       position: 'relative',
     },
     headerButton: {
-      padding: 8,
-      minWidth: 44,
+      width: 44,
+      height: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    headerIconShell: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -2814,17 +2827,21 @@ const createStyles = (
       justifyContent: 'center',
       pointerEvents: 'none',
     },
+    headerCenterContainer: {
+      minHeight: 40,
+      minWidth: 72,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
     headerTimerText: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.textPrimary,
       fontVariant: ['tabular-nums'],
-    },
-    primaryButton: {
-      backgroundColor: colors.brandPrimary,
-      borderRadius: 20,
-      paddingHorizontal: 16,
-      height: 44,
     },
     headerRightButtons: {
       flexDirection: 'row',
@@ -2884,7 +2901,7 @@ const createStyles = (
     scrollContent: {
       flexGrow: 1,
       position: 'relative',
-      paddingBottom: 150 + insets.bottom,
+      paddingBottom: 96 + insets.bottom,
     },
     titleInputContainer: {
       flexDirection: 'row',

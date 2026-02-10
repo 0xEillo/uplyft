@@ -196,9 +196,9 @@ export default function TrialOfferScreen() {
 
   const getHeroImage = () => {
     if (onboardingData?.gender === 'female') {
-      return require('@/assets/images/onboarding/female_muscle_flex.png')
+      return require('../../assets/images/onboarding/female_muscle_flex.png')
     }
-    return require('@/assets/images/onboarding/male_muscle_flex.png')
+    return require('../../assets/images/onboarding/male_muscle_flex.png')
   }
 
   const hasTrackedViewRef = useRef(false)

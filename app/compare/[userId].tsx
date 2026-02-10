@@ -1,4 +1,4 @@
-import { BaseNavbar } from '@/components/base-navbar'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
@@ -14,7 +14,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   ScrollView,
   StyleSheet,
@@ -23,8 +22,6 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { width } = Dimensions.get('window')
 
 // Animation stack management - prevents re-animation when returning from child pages
 let skipNextCompareEntryAnimation = false
@@ -751,13 +748,15 @@ export default function CompareScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <BaseNavbar
           leftContent={
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
+            <NavbarIsland>
+              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+            </NavbarIsland>
           }
           centerContent={
             <View style={styles.headerRow}>

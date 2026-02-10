@@ -4,17 +4,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  LayoutAnimation,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    LayoutAnimation,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -654,7 +654,7 @@ export default function FeedScreen() {
         leftContent={
           <View style={styles.headerTitleContainer}>
             {isProMember ? (
-              <NavbarIsland>
+              <NavbarIsland glass={false} style={styles.homeTitleIsland}>
                 <TouchableOpacity
                   style={styles.repAiBadge}
                   onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
@@ -673,17 +673,20 @@ export default function FeedScreen() {
             )}
             {currentStreak > 0 && (
               <TouchableOpacity
-                style={styles.streakButton}
                 onPress={() => router.push('/workout-calendar')}
                 activeOpacity={0.7}
               >
-                <Ionicons 
-                  name="flame" 
-                  size={24} 
-                  color={colors.brandPrimary} 
-                  style={{ marginTop: 2 }} // Moved down by 2px (1px requested, but 2 looks better usually)
-                />
-                <View style={[styles.streakBadge, { bottom: -3 }]}> 
+                <NavbarIsland style={styles.circleActionIsland}>
+                  <View style={styles.streakButton}>
+                    <Ionicons
+                      name="flame"
+                      size={24}
+                      color={colors.brandPrimary}
+                      style={{ marginTop: 2 }} // Moved down by 2px (1px requested, but 2 looks better usually)
+                    />
+                  </View>
+                </NavbarIsland>
+                <View style={styles.streakBadge}>
                   <Text style={styles.streakBadgeText}>{currentStreak}</Text>
                 </View>
               </TouchableOpacity>
@@ -692,25 +695,29 @@ export default function FeedScreen() {
         }
         rightContent={
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => router.push('/search')}
-              style={styles.iconButton}
-            >
-              <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push('/notifications')}
-              style={{ position: 'relative', padding: 4 }}
-            >
-              <Ionicons
-                name={
-                  unreadCount > 0 ? 'notifications' : 'notifications-outline'
-                }
-                size={24}
-                color={colors.textPrimary}
-              />
-              <NotificationBadge count={unreadCount} />
-            </TouchableOpacity>
+            <NavbarIsland style={styles.circleActionIsland}>
+              <TouchableOpacity
+                onPress={() => router.push('/search')}
+                style={styles.iconButton}
+              >
+                <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </NavbarIsland>
+            <NavbarIsland style={styles.circleActionIsland}>
+              <TouchableOpacity
+                onPress={() => router.push('/notifications')}
+                style={styles.notificationButton}
+              >
+                <Ionicons
+                  name={
+                    unreadCount > 0 ? 'notifications' : 'notifications-outline'
+                  }
+                  size={24}
+                  color={colors.textPrimary}
+                />
+                <NotificationBadge count={unreadCount} />
+              </TouchableOpacity>
+            </NavbarIsland>
           </View>
         }
       />
@@ -801,17 +808,27 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerTitleContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 8,
     },
     streakButton: {
-      flexDirection: 'row',
+      width: 44,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
+    circleActionIsland: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      minWidth: 44,
+      minHeight: 44,
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+    },
     streakBadge: {
       position: 'absolute',
-      bottom: -4,
-      right: -6,
+      bottom: 4,
+      right: 4,
       backgroundColor: colors.bg,
       borderRadius: 8,
       paddingHorizontal: 2,
@@ -839,6 +856,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 0,
       marginLeft: 0,
     },
+    homeTitleIsland: {
+      paddingHorizontal: 4,
+      borderRadius: 22,
+    },
     repAiBadgeText: {
       fontSize: 20,
       fontWeight: '600',
@@ -850,7 +871,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
     },
     iconButton: {
-      padding: 4,
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    notificationButton: {
+      position: 'relative',
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     content: {
       flex: 1,

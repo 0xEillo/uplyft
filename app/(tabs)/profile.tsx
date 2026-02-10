@@ -450,7 +450,7 @@ export default function ProfileScreen() {
       >
         <BaseNavbar
           leftContent={
-            <NavbarIsland style={styles.navbarIsland}>
+            <NavbarIsland glass={false} style={styles.navbarIsland}>
               <Animated.Text
                 style={[
                   styles.headerTitle,
@@ -474,25 +474,27 @@ export default function ProfileScreen() {
             </NavbarIsland>
           }
           rightContent={
-            <TouchableOpacity
-              onPress={() => router.push('/account-settings')}
-              style={styles.navbarRightButton}
-            >
-              <View style={styles.iconWrapper}>
-                <Animated.View style={{ opacity: whiteOpacity }}>
-                  <Ionicons name="settings-sharp" size={24} color={startColor} />
-                </Animated.View>
-                <Animated.View
-                  style={{ opacity: themedOpacity, position: 'absolute' }}
-                >
-                  <Ionicons
-                    name="settings-sharp"
-                    size={24}
-                    color={colors.textPrimary}
-                  />
-                </Animated.View>
-              </View>
-            </TouchableOpacity>
+            <NavbarIsland>
+              <TouchableOpacity
+                onPress={() => router.push('/account-settings')}
+                style={styles.navbarRightButton}
+              >
+                <View style={styles.iconWrapper}>
+                  <Animated.View style={{ opacity: whiteOpacity }}>
+                    <Ionicons name="settings-sharp" size={24} color={startColor} />
+                  </Animated.View>
+                  <Animated.View
+                    style={{ opacity: themedOpacity, position: 'absolute' }}
+                  >
+                    <Ionicons
+                      name="settings-sharp"
+                      size={24}
+                      color={colors.textPrimary}
+                    />
+                  </Animated.View>
+                </View>
+              </TouchableOpacity>
+            </NavbarIsland>
           }
         />
       </Animated.View>
@@ -721,6 +723,8 @@ export default function ProfileScreen() {
           }
           key={viewMode}
           numColumns={viewMode === 'grid' ? 3 : 1}
+          contentInsetAdjustmentBehavior="automatic"
+          automaticallyAdjustContentInsets
           contentContainerStyle={[
             styles.feedContent,
             viewMode === 'grid' && styles.gridContent,
@@ -758,8 +762,10 @@ const createStyles = (
       zIndex: 10,
     },
     navbarRightButton: {
-      padding: 8,
-      marginRight: -4,
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     navbarIsland: {
       flexDirection: 'row',

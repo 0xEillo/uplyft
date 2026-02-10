@@ -16,7 +16,7 @@ export function LoadingScreen() {
     >
       <View style={styles.logoContainer}>
         <Image
-          source={require('@/assets/images/logo-transparent.png')}
+          source={require('../assets/images/logo-transparent.png')}
           style={styles.logo}
           resizeMode="contain"
         />

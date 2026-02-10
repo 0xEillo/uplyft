@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av'
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
 import type { WorkoutSong } from '@/types/music'
 
@@ -16,7 +16,8 @@ let state: MusicPreviewState = {
   isPlaying: false,
   isBuffering: false,
 }
-let sound: Audio.Sound | null = null
+let player: ReturnType<typeof createAudioPlayer> | null = null
+let statusSubscription: { remove: () => void } | null = null
 let activeToken = 0
 
 function notify() {
@@ -36,19 +37,16 @@ function setState(next: MusicPreviewState) {
 }
 
 async function cleanupSound() {
-  if (!sound) return
+  if (!player) return
+  statusSubscription?.remove()
+  statusSubscription = null
   try {
-    await sound.stopAsync()
+    player.pause()
   } catch {
     // Ignore stop errors
   }
-  try {
-    await sound.unloadAsync()
-  } catch {
-    // Ignore unload errors
-  }
-  sound.setOnPlaybackStatusUpdate(null)
-  sound = null
+  player.remove()
+  player = null
 }
 
 export function getMusicPreviewState(): MusicPreviewState {
@@ -78,24 +76,17 @@ export async function playMusicPreview(song: WorkoutSong): Promise<void> {
   setState({ trackId: song.trackId, isPlaying: false, isBuffering: true })
 
   try {
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-    const { sound: nextSound } = await Audio.Sound.createAsync(
-      { uri: song.previewUrl },
-      { shouldPlay: true },
-    )
+    await setAudioModeAsync({ playsInSilentMode: true })
+    const nextPlayer = createAudioPlayer({ uri: song.previewUrl })
 
     if (token !== activeToken) {
-      try {
-        await nextSound.unloadAsync()
-      } catch {
-        // Ignore unload errors
-      }
+      nextPlayer.remove()
       return
     }
 
-    sound = nextSound
-    nextSound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded || token !== activeToken) return
+    player = nextPlayer
+    statusSubscription = nextPlayer.addListener('playbackStatusUpdate', (status) => {
+      if (token !== activeToken) return
 
       if (status.didJustFinish) {
         void stopMusicPreview()
@@ -104,11 +95,12 @@ export async function playMusicPreview(song: WorkoutSong): Promise<void> {
 
       setState({
         trackId: song.trackId,
-        isPlaying: status.isPlaying,
+        isPlaying: status.playing,
         isBuffering: status.isBuffering,
       })
     })
 
+    nextPlayer.play()
     setState({ trackId: song.trackId, isPlaying: true, isBuffering: false })
   } catch (error) {
     console.error('Error playing preview:', error)

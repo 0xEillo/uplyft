@@ -1431,8 +1431,8 @@ const FinalPlanStepContent = ({
 
   const planImage =
     data.gender === 'female'
-      ? require('@/assets/images/female_plan_preview.png')
-      : require('@/assets/images/male_plan_preview.png')
+      ? require('../../assets/images/female_plan_preview.png')
+      : require('../../assets/images/male_plan_preview.png')
 
   return (
     <View style={styles.stepContainer}>

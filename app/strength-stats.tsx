@@ -1,7 +1,6 @@
 import { EmptyState } from '@/components/EmptyState'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
-import { SlideInView } from '@/components/slide-in-view'
 import { StrengthInfoSheet } from '@/components/StrengthInfoSheet'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
@@ -20,6 +19,7 @@ import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
     ActivityIndicator,
+    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -55,7 +55,6 @@ export default function StrengthStatsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('standards')
-  const [shouldExit, setShouldExit] = useState(false)
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   )
@@ -93,10 +92,6 @@ export default function StrengthStatsScreen() {
   }, [loadData])
 
   const handleBack = () => {
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = () => {
     router.back()
   }
 
@@ -155,36 +150,41 @@ export default function StrengthStatsScreen() {
 
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
+  const isIOS = Platform.OS === 'ios'
 
   return (
-    <SlideInView
-      style={{ flex: 1 }}
-      shouldExit={shouldExit}
-      onExitComplete={handleExitComplete}
-    >
+    <View style={[styles.safeArea, { paddingTop: isIOS ? 0 : insets.top }]}>
       <Stack.Screen
         options={{
           title: 'Strength Progress',
-          headerShown: false,
         }}
       />
-      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-        {/* Custom Header */}
+      {isIOS ? (
+        <>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button icon="chevron.left" onPress={handleBack} />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              icon="info.circle"
+              onPress={() => setShowInfoSheet(true)}
+            />
+          </Stack.Toolbar>
+        </>
+      ) : (
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.headerBackButton}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.headerBackButton}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Strength Progress</Text>
           <View style={styles.headerRightSpacer} />
         </View>
+      )}
 
-        <View style={styles.container}>
-          {/* Top Info Bar */}
+      <View style={styles.container}>
+        {!isIOS && (
           <View style={styles.topInfoBar}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowInfoSheet(true)}
               style={styles.supportedLink}
             >
@@ -192,6 +192,7 @@ export default function StrengthStatsScreen() {
               <Text style={styles.supportedLinkText}>About Strength Levels</Text>
             </TouchableOpacity>
           </View>
+        )}
 
         {/* Tabs */}
         <View style={styles.tabs}>
@@ -505,7 +506,6 @@ export default function StrengthStatsScreen() {
           )}
           </ScrollView>
         )}
-        </View>
       </View>
 
       {/* Paywall Modal */}
@@ -520,7 +520,7 @@ export default function StrengthStatsScreen() {
         isVisible={showInfoSheet}
         onClose={() => setShowInfoSheet(false)}
       />
-    </SlideInView>
+    </View>
   )
 }
 

@@ -546,6 +546,8 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustContentInsets
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl

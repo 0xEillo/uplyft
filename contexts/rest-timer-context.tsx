@@ -11,7 +11,7 @@ import React, {
 } from 'react'
 import { AppState } from 'react-native'
 
-const timerSound = require('@/assets/sounds/stopwatch.mp3')
+const timerSound = require('../assets/sounds/stopwatch.mp3')
 
 interface RestTimerContextType {
   remainingSeconds: number

@@ -1,5 +1,4 @@
 import { CalendarShareScreen } from '@/components/calendar-share-screen'
-import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
@@ -9,14 +8,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  PanResponder,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    PanResponder,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -29,7 +29,6 @@ export default function WorkoutCalendarScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
   const [currentDate, setCurrentDate] = useState(() => new Date())
-  const [shouldExit, setShouldExit] = useState(false)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [currentStreak, setCurrentStreak] = useState<number | null>(null)
@@ -67,10 +66,6 @@ export default function WorkoutCalendarScreen() {
   }, [loadWorkoutDates])
 
   const handleBack = () => {
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = () => {
     router.back()
   }
 
@@ -517,116 +512,109 @@ export default function WorkoutCalendarScreen() {
 
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
+  const isIOS = Platform.OS === 'ios'
 
   return (
-    <SlideInView
-      style={{ flex: 1 }}
-      shouldExit={shouldExit}
-      onExitComplete={handleExitComplete}
-    >
-      <View style={[styles.safeAreaContainer, { paddingTop: insets.top }]}>
-        <Stack.Screen
-          options={{
-            headerShown: false,
-          }}
-        />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitleText}>Workout Calendar</Text>
-          </View>
-          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+    <View style={[styles.safeAreaContainer, { paddingTop: isIOS ? 0 : insets.top }]}>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <View style={[styles.header, { paddingTop: isIOS ? insets.top + 6 : 12 }]}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitleText}>Workout Calendar</Text>
         </View>
-
-        {/* View Mode Selector */}
-        <View style={styles.viewModeSelectorContainer}>
-          <View style={styles.viewModeSelector}>
-            <TouchableOpacity
-              style={[
-                styles.viewModeButton,
-                viewMode === 'month' && styles.viewModeButtonActive,
-              ]}
-              onPress={() => setViewMode('month')}
-            >
-              <Text
-                style={[
-                  styles.viewModeText,
-                  viewMode === 'month' && styles.viewModeTextActive,
-                ]}
-              >
-                Month
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.viewModeButton,
-                viewMode === 'year' && styles.viewModeButtonActive,
-              ]}
-              onPress={() => setViewMode('year')}
-            >
-              <Text
-                style={[
-                  styles.viewModeText,
-                  viewMode === 'year' && styles.viewModeTextActive,
-                ]}
-              >
-                Year
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.viewModeButton,
-                viewMode === 'multi-year' && styles.viewModeButtonActive,
-              ]}
-              onPress={() => setViewMode('multi-year')}
-            >
-              <Text
-                style={[
-                  styles.viewModeText,
-                  viewMode === 'multi-year' && styles.viewModeTextActive,
-                ]}
-              >
-                Multi-year
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Content */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.brandPrimary} />
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderStreakHero()}
-            {viewMode === 'month' && renderMonthView()}
-            {viewMode === 'year' && renderYearView()}
-            {viewMode === 'multi-year' && renderMultiYearView()}
-          </ScrollView>
-        )}
-
-        {showShareScreen && (
-          <CalendarShareScreen
-            visible={showShareScreen}
-            workoutDates={workoutDates}
-            userTag={profile?.user_tag}
-            displayName={profile?.display_name}
-            onClose={() => setShowShareScreen(false)}
-            onShare={handleShareWidget}
-          />
-        )}
+        <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+          <Ionicons name="share-outline" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
       </View>
-    </SlideInView>
+
+      {/* View Mode Selector */}
+      <View style={styles.viewModeSelectorContainer}>
+        <View style={styles.viewModeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.viewModeButton,
+              viewMode === 'month' && styles.viewModeButtonActive,
+            ]}
+            onPress={() => setViewMode('month')}
+          >
+            <Text
+              style={[
+                styles.viewModeText,
+                viewMode === 'month' && styles.viewModeTextActive,
+              ]}
+            >
+              Month
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.viewModeButton,
+              viewMode === 'year' && styles.viewModeButtonActive,
+            ]}
+            onPress={() => setViewMode('year')}
+          >
+            <Text
+              style={[
+                styles.viewModeText,
+                viewMode === 'year' && styles.viewModeTextActive,
+              ]}
+            >
+              Year
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.viewModeButton,
+              viewMode === 'multi-year' && styles.viewModeButtonActive,
+            ]}
+            onPress={() => setViewMode('multi-year')}
+          >
+            <Text
+              style={[
+                styles.viewModeText,
+                viewMode === 'multi-year' && styles.viewModeTextActive,
+              ]}
+            >
+              Multi-year
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Content */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderStreakHero()}
+          {viewMode === 'month' && renderMonthView()}
+          {viewMode === 'year' && renderYearView()}
+          {viewMode === 'multi-year' && renderMultiYearView()}
+        </ScrollView>
+      )}
+
+      {showShareScreen && (
+        <CalendarShareScreen
+          visible={showShareScreen}
+          workoutDates={workoutDates}
+          userTag={profile?.user_tag}
+          displayName={profile?.display_name}
+          onClose={() => setShowShareScreen(false)}
+          onShare={handleShareWidget}
+        />
+      )}
+    </View>
   )
 }
 

@@ -1,13 +1,15 @@
-import { useThemedColors } from '@/hooks/useThemedColors'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { ReactNode } from 'react'
-import { StyleSheet, View, ViewStyle } from 'react-native'
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
 
 interface BaseNavbarProps {
   leftContent: ReactNode
   rightContent?: ReactNode
   centerContent?: ReactNode
   paddingVertical?: number
+  centerGlass?: boolean
 }
+type NavbarIslandVariant = 'icon'
 
 /**
  * Base navbar component used across Home, Progress, and Profile screens.
@@ -18,9 +20,9 @@ export function BaseNavbar({
   rightContent,
   centerContent,
   paddingVertical = 8,
+  centerGlass = false,
 }: BaseNavbarProps) {
-  const colors = useThemedColors()
-  const styles = createStyles(colors, paddingVertical)
+  const styles = createStyles(paddingVertical)
 
   return (
     <View style={styles.header}>
@@ -28,7 +30,7 @@ export function BaseNavbar({
 
       {centerContent && (
         <View style={styles.centerContainer} pointerEvents="box-none">
-          {centerContent}
+          {centerGlass ? <NavbarIsland style={styles.centerIsland}>{centerContent}</NavbarIsland> : centerContent}
         </View>
       )}
 
@@ -39,14 +41,29 @@ export function BaseNavbar({
   )
 }
 
-export function NavbarIsland({ children, style }: { children: ReactNode; style?: ViewStyle }) {
-  return <View style={style}>{children}</View>
+export function NavbarIsland({
+  children,
+  style,
+  glass = true,
+  variant = 'icon',
+}: {
+  children: ReactNode
+  style?: StyleProp<ViewStyle>
+  glass?: boolean
+  variant?: NavbarIslandVariant
+}) {
+  if (!glass) {
+    return <View style={style}>{children}</View>
+  }
+
+  return (
+    <LiquidGlassSurface style={[islandStyles.icon, style]}>
+      {children}
+    </LiquidGlassSurface>
+  )
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useThemedColors>,
-  paddingVertical: number,
-) =>
+const createStyles = (paddingVertical: number) =>
   StyleSheet.create({
     header: {
       flexDirection: 'row',
@@ -74,8 +91,25 @@ const createStyles = (
       alignItems: 'center',
       zIndex: 1,
     },
+    centerIsland: {
+      maxWidth: '82%',
+    },
     rightContent: {
       flexDirection: 'row',
       alignItems: 'center',
     },
   })
+
+const islandStyles = StyleSheet.create({
+  icon: {
+    width: 44,
+    height: 44,
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+})
