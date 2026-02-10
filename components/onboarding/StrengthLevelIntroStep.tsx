@@ -6,28 +6,29 @@ import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    EXERCISES_WITH_STANDARDS,
-    type ExerciseStandardsConfig,
+  EXERCISES_WITH_STANDARDS,
+  type ExerciseStandardsConfig,
 } from '@/lib/exercise-standards-config'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import { markUserAsRated, requestReview } from '@/lib/rating'
 import {
-    getStandardsLadder,
-    getStrengthStandard,
-    type StrengthLevel,
+  getStandardsLadder,
+  getStrengthStandard,
+  type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Animated,
-    Dimensions,
-    Keyboard,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
 
@@ -153,7 +154,7 @@ export function StrengthLevelIntroStep({
   onComplete,
   colors,
 }: StrengthLevelIntroStepProps) {
-  const [phase, setPhase] = useState<'select' | 'input' | 'result'>('select')
+  const [phase, setPhase] = useState<'select' | 'input' | 'result' | 'affirmation'>('select')
   const [selectedExercise, setSelectedExercise] =
     useState<ExerciseStandardsConfig | null>(null)
   const [inputWeight, setInputWeight] = useState('')
@@ -197,7 +198,7 @@ export function StrengthLevelIntroStep({
   }, [])
 
   const animateTransition = useCallback(
-    (nextPhase: 'select' | 'input' | 'result') => {
+    (nextPhase: 'select' | 'input' | 'result' | 'affirmation') => {
       // Fade out
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -261,6 +262,26 @@ export function StrengthLevelIntroStep({
       onComplete()
     }
   }, [selectedExercise, handleContinueToInput, onComplete])
+
+  useEffect(() => {
+    // Reset inputs when selected exercise changes
+    setInputWeight('')
+    setInputReps('')
+  }, [selectedExercise])
+
+  useEffect(() => {
+    if (phase === 'affirmation') {
+      const timer = setTimeout(async () => {
+        try {
+          await requestReview()
+          await markUserAsRated()
+        } catch (error) {
+          console.log('Error requesting review:', error)
+        }
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [phase])
 
   const handleCalculateLevel = useCallback(() => {
     if (!selectedExercise || !inputWeight || !inputReps || !gender) return
@@ -456,54 +477,69 @@ export function StrengthLevelIntroStep({
       {/* Input Fields */}
       <View style={[styles.inputContainer, isKeyboardVisible && { marginTop: 20 }]}>
         <View style={styles.inputRow}>
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          <View style={[styles.inputGroup, { 
+              backgroundColor: colors.surfaceCard, 
+              borderRadius: 20, 
+              padding: 16,
+              alignItems: 'center' 
+          }]}>
+            <Text style={[styles.inputLabel, { color: colors.textTertiary, marginBottom: 4, textTransform: 'uppercase', fontSize: 13 }]}>
               Weight ({weightUnit})
             </Text>
             <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
+              style={{
+                  fontSize: 36,
+                  fontWeight: '800',
                   color: colors.textPrimary,
-                  borderColor: colors.border,
-                },
-              ]}
+                  textAlign: 'center',
+                  width: '100%',
+                  paddingVertical: 8
+              }}
               value={inputWeight}
               onChangeText={setInputWeight}
               keyboardType="numeric"
               placeholder="0"
-              placeholderTextColor={colors.textPlaceholder}
+              placeholderTextColor={colors.textTertiary}
               maxLength={4}
+              selectionColor={colors.brandPrimary}
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          <View style={[styles.inputGroup, { 
+              backgroundColor: colors.surfaceCard, 
+              borderRadius: 20, 
+              padding: 16,
+              alignItems: 'center' 
+          }]}>
+            <Text style={[styles.inputLabel, { color: colors.textTertiary, marginBottom: 4, textTransform: 'uppercase', fontSize: 13 }]}>
               Reps
             </Text>
             <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
+              style={{
+                  fontSize: 36,
+                  fontWeight: '800',
                   color: colors.textPrimary,
-                  borderColor: colors.border,
-                },
-              ]}
+                  textAlign: 'center',
+                  width: '100%',
+                  paddingVertical: 8
+              }}
               value={inputReps}
               onChangeText={setInputReps}
               keyboardType="numeric"
               placeholder="0"
-              placeholderTextColor={colors.textPlaceholder}
+              placeholderTextColor={colors.textTertiary}
               maxLength={2}
+              selectionColor={colors.brandPrimary}
             />
           </View>
         </View>
 
-        <Text style={[styles.inputHint, { color: colors.textTertiary }]}>
-          💡 Use your best recent set (1-12 reps)
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24, opacity: 0.8 }}>
+             <Ionicons name="bulb" size={14} color={colors.brandPrimary} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 14, color: colors.textSecondary, fontWeight: '500' }}>
+               Use your best recent set (1-12 reps)
+            </Text>
+        </View>
       </View>
 
       <View style={styles.footer}>
@@ -573,42 +609,11 @@ export function StrengthLevelIntroStep({
             </Text>
           </View>
 
-          {/* Current Level Hero Card - matching ExerciseDetailScreen */}
-          <View
-            style={[
-              styles.levelHeroCard,
-              { borderColor: calculatedLevel.color, backgroundColor: colors.surfaceCard },
-            ]}
-          >
-            <View style={styles.levelHeroGlow}>
-              <LevelBadge level={calculatedLevel.level} size="large" />
-              <View style={styles.levelHeroContent}>
-                <Text style={[styles.levelHeroLabel, { color: colors.textSecondary }]}>CURRENT RANK</Text>
-                <Text style={[styles.levelHeroTitle, { color: calculatedLevel.color }]}>
-                  {calculatedLevel.level}
-                </Text>
-                <View style={styles.levelHeroSubRow}>
-                  <Text style={[styles.levelHeroSubtitle, { color: colors.textSecondary }]}>
-                    {selectedExercise.name}
-                  </Text>
-                  <Text style={[styles.levelHeroBestSet, { color: colors.textTertiary }]}>
-                    • {Math.round(
-                      weightUnit === 'lb'
-                        ? calculatedLevel.estimated1RM * 2.20462
-                        : calculatedLevel.estimated1RM,
-                    )}{' '}
-                    {weightUnit} (Est. 1RM)
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
+
 
           {/* Levels Ladder Section - matching ExerciseDetailScreen */}
           <View style={styles.ladderSection}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 32 }]}>
-              All Ranks for this lift
-            </Text>
+
 
             <View style={styles.levelsLadder}>
               {[...ladder].reverse().map((standard, idx) => {
@@ -689,17 +694,8 @@ export function StrengthLevelIntroStep({
             </View>
           </View>
 
-          <View style={styles.explanationContainer}>
-            <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
-              Track more exercises to unlock your{' '}
-              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
-                overall gym rank
-              </Text>{' '}
-            </Text>
-          </View>
-
           {/* Added spacer for footer */}
-          <View style={{ height: 100 }} />
+          <View style={{ height: 20 }} />
         </ScrollView>
 
         <View style={[styles.resultFooter, { backgroundColor: isDark ? 'rgba(0,0,0,0.9)' : colors.bg }]}>
@@ -708,10 +704,136 @@ export function StrengthLevelIntroStep({
               styles.primaryButton,
               { backgroundColor: colors.textPrimary, shadowColor: colors.textPrimary },
             ]}
-            onPress={onComplete}
+            onPress={() => animateTransition('affirmation')}
             hapticIntensity="medium"
           >
             <Text style={[styles.primaryButtonText, { color: colors.bg }]}>Continue</Text>
+          </HapticButton>
+        </View>
+      </View>
+    )
+  }
+
+  const renderAffirmationPhase = () => {
+    if (!calculatedLevel || !selectedExercise || !gender) return null
+
+    const ladder = getStandardsLadder(selectedExercise.name, gender)
+    if (!ladder) return null
+
+    const currentLevelIndex = ladder.findIndex((s: any) => s.level === calculatedLevel.level)
+    
+    // Target a +2 level jump to "sell the dream", falling back to max level if needed
+    let targetIndex = currentLevelIndex + 2
+    if (targetIndex >= ladder.length) targetIndex = ladder.length - 1
+    
+    // Ensure we at least show the next level if possible, else current (for World Class users)
+    if (targetIndex === currentLevelIndex && currentLevelIndex < ladder.length - 1) {
+        targetIndex = currentLevelIndex + 1
+    }
+
+    const targetLevel = ladder[targetIndex]
+    const ranksGained = targetIndex - currentLevelIndex
+    
+    // Dynamic copy based on potential growth
+    const titleText = ranksGained >= 2 ? "Unlock your true potential." : 
+                      ranksGained === 1 ? "Reach peak performance." :
+                      "Redefine your limits."
+                      
+    const subtitleText = ranksGained >= 2 ? "On average, Rep AI members gain +2 strength ranks in their first 6 months." :
+                         ranksGained === 1 ? "You're almost at the top. We'll give you the roadmap to the 1%." :
+                         "You're already elite. We'll help you squeeze out every last pound of progress."
+
+    
+    // Target weight calculation
+    const targetWeightKg = Math.ceil(weightKg * targetLevel.multiplier)
+    const displayWeight = Math.round(weightUnit === 'lb' ? targetWeightKg * 2.20462 : targetWeightKg)
+
+    return (
+      <View style={styles.phaseContainer}>
+        <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+                {titleText}
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                {subtitleText}
+            </Text>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
+            <View style={{
+                backgroundColor: colors.surfaceCard,
+                borderRadius: 24,
+                padding: 24,
+                borderWidth: 1,
+                borderColor: colors.border,
+                width: '100%',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.05,
+                shadowRadius: 16,
+                elevation: 4,
+            }}>
+                <Text style={{
+                    fontSize: 13,
+                    fontWeight: '700',
+                    color: colors.textTertiary,
+                    marginBottom: 20,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1
+                }}>
+                    {selectedExercise.name}
+                </Text>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+                    <LevelBadge level={targetLevel.level as any} size="hero" />
+                    
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <Text 
+                            style={{
+                                fontSize: 32,
+                                fontWeight: '900',
+                                color: targetLevel.color,
+                                letterSpacing: -1,
+                                lineHeight: 36,
+                                marginBottom: 4
+                            }}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                        >
+                            {targetLevel.level}
+                        </Text>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                             <Text style={{
+                                fontSize: 24,
+                                fontWeight: '800',
+                                color: colors.textPrimary,
+                            }}>
+                                {displayWeight} {weightUnit}
+                            </Text>
+                            <Text style={{
+                                fontSize: 13,
+                                fontWeight: '600',
+                                color: colors.textTertiary,
+                            }}>
+                                (Est. 1RM)
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </View>
+
+        <View style={styles.footer}>
+           <HapticButton
+            style={[
+              styles.primaryButton,
+              { backgroundColor: colors.textPrimary, shadowColor: colors.textPrimary },
+            ]}
+            onPress={onComplete}
+            hapticIntensity="medium"
+          >
+            <Text style={[styles.primaryButtonText, { color: colors.bg }]}>Let&rsquo;s do this</Text>
           </HapticButton>
         </View>
       </View>
@@ -732,6 +854,7 @@ export function StrengthLevelIntroStep({
         {phase === 'select' && renderSelectPhase()}
         {phase === 'input' && renderInputPhase()}
         {phase === 'result' && renderResultPhase()}
+        {phase === 'affirmation' && renderAffirmationPhase()}
       </Animated.View>
     </View>
   )

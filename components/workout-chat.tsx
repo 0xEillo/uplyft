@@ -1,5 +1,6 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
+import { DailyMacrosSheet } from '@/components/daily-macros-sheet'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
@@ -39,7 +40,7 @@ import {
     loadDraft as loadWorkoutDraft,
     saveDraft,
 } from '@/lib/utils/workout-draft'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -54,7 +55,6 @@ import {
     Image,
     Keyboard,
     KeyboardAvoidingView,
-    LayoutAnimation,
     Linking,
     Modal,
     Platform,
@@ -66,7 +66,7 @@ import {
     TextStyle,
     TouchableOpacity,
     View,
-    ViewStyle,
+    ViewStyle
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
@@ -596,26 +596,7 @@ export function WorkoutChat({
   ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
-  const [isDailyLogVisible, setIsDailyLogVisible] = useState(false)
-  const pillAnimation = useSharedValue(0)
-
-  useEffect(() => {
-    pillAnimation.value = withSpring(isDailyLogVisible ? 1 : 0, {
-      damping: 25,
-      stiffness: 400,
-      mass: 0.8,
-    })
-  }, [isDailyLogVisible, pillAnimation])
-
-  const animatedPillStyle = useAnimatedStyle(() => {
-    return {
-      opacity: pillAnimation.value,
-      transform: [
-        { scale: 0.8 + 0.2 * pillAnimation.value },
-        { translateY: (1 - pillAnimation.value) * 15 },
-      ],
-    }
-  })
+  const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(false)
   const [dailyLogSummary, setDailyLogSummary] =
     useState<DailyLogSummaryState | null>(null)
   const [latestLoggedMealId, setLatestLoggedMealId] = useState<string | null>(
@@ -2283,121 +2264,17 @@ export function WorkoutChat({
                   ]}
                   onPress={() => {
                     haptic('light')
-                    LayoutAnimation.configureNext(
-                      LayoutAnimation.Presets.easeInEaseOut,
-                    )
-                    setIsDailyLogVisible(!isDailyLogVisible)
+                    setIsDailyMacrosSheetVisible(true)
                   }}
                   activeOpacity={0.7}
                 >
                   <Ionicons
-                    name={isDailyLogVisible ? 'restaurant' : 'restaurant-outline'}
+                    name="restaurant-outline"
                     size={24}
-                    color={
-                      isDailyLogVisible
-                        ? colors.brandPrimary
-                        : colors.brandPrimary
-                    }
+                    color={colors.brandPrimary}
                   />
                 </TouchableOpacity>
               </>
-            )}
-
-            {dailyLogSummary && (
-              <AnimatedReanimated.View
-                pointerEvents={isDailyLogVisible ? 'auto' : 'none'}
-                style={[
-                  styles.dailyMacroPillContainer,
-                  mode === 'fullscreen'
-                    ? {} // Position handled by absolute values in the second style object
-                    : {}, // Simplify sheet logic for now, or adapt if needed
-                  { 
-                    paddingVertical: 12,
-                    paddingHorizontal: 0,
-                    borderRadius: 24,
-                    width: 48, // EXACT MATCH to button width
-                    left: 16, // EXACT MATCH to button left
-                    top: Math.max(insets.top - 38, 0) + 110,
-                    alignItems: 'center',
-                  },
-                  animatedPillStyle
-                ]}
-              >
-                {(() => {
-                  const { calories, protein_g, carbs_g, fat_g } = dailyLogSummary.totals
-                  const { calorie_goal, protein_goal_g } = dailyLogSummary.goals
-                  const safeCalGoal = calorie_goal || 2500
-                  // Calculate progress for all macros
-                  const safeProtGoal = protein_goal_g || 150
-                  const safeCarbGoal = 250 // Default estimation
-                  const safeFatGoal = 70   // Default estimation
-
-                  const calProgress = Math.min(calories / safeCalGoal, 1)
-                  const protProgress = Math.min(protein_g / safeProtGoal, 1)
-                  const carbProgress = Math.min(carbs_g / safeCarbGoal, 1)
-                  const fatProgress = Math.min(fat_g / safeFatGoal, 1)
-
-                  const renderCompactChart = (
-                    color: string, 
-                    progress: number, 
-                    value: number, 
-                    label: string
-                  ) => {
-                    const size = 36 // Smaller to fit in 48px container padding
-                    const strokeWidth = 3
-                    const radius = (size - strokeWidth) / 2
-                    const circumference = radius * 2 * Math.PI
-                    const dashOffset = circumference * (1 - progress)
-                    
-                    return (
-                      <View style={{ alignItems: 'center', gap: 0 }}>
-                        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-                            <Svg width={size} height={size}>
-                              <G rotation="-90" origin={`${size/2}, ${size/2}`}>
-                                <Circle 
-                                  cx={size/2} 
-                                  cy={size/2} 
-                                  r={radius} 
-                                  stroke={isDark ? colors.border : "#E5E5E5"} 
-                                  strokeWidth={strokeWidth} 
-                                  fill="transparent" 
-                                />
-                                <Circle 
-                                  cx={size/2} 
-                                  cy={size/2} 
-                                  r={radius} 
-                                  stroke={color} 
-                                  strokeWidth={strokeWidth} 
-                                  fill="transparent" 
-                                  strokeDasharray={`${circumference}`} 
-                                  strokeDashoffset={`${dashOffset}`} 
-                                  strokeLinecap="round" 
-                                />
-                              </G>
-                            </Svg>
-                            <View style={{ position: 'absolute', justifyContent: 'center', alignItems: 'center' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.5 }}>
-                                {roundMacro(value)}
-                              </Text>
-                            </View>
-                        </View>
-                        <Text style={{ fontSize: 9, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginTop: 3 }}>
-                          {label}
-                        </Text>
-                      </View>
-                    )
-                  }
-
-                  return (
-                    <View style={{ gap: 8, alignItems: 'center' }}>
-                      {renderCompactChart(colors.textPrimary, calProgress, calories, "kcal")}
-                      {renderCompactChart("#F87171", protProgress, protein_g, "p")}
-                      {renderCompactChart("#FBBF24", carbProgress, carbs_g, "c")}
-                      {renderCompactChart("#60A5FA", fatProgress, fat_g, "f")}
-                    </View>
-                  )
-                })()}
-              </AnimatedReanimated.View>
             )}
 
             <ScrollView
@@ -2408,13 +2285,9 @@ export function WorkoutChat({
                 {
                   paddingTop:
                     mode === 'sheet'
-                      ? dailyLogSummary
-                        ? 56
-                        : 16
+                      ? 16
                       : messages.length === 0 && !isLoading
                       ? 16
-                      : dailyLogSummary
-                      ? 128
                       : 80,
                 },
               ]}
@@ -2829,8 +2702,8 @@ export function WorkoutChat({
                                               </G>
                                             </Svg>
                                             <View style={styles.chartIcon}>
-                                              <Ionicons
-                                                name="flash"
+                                              <MaterialCommunityIcons
+                                                name="food-drumstick"
                                                 size={12}
                                                 color="#F87171"
                                               />
@@ -2872,7 +2745,7 @@ export function WorkoutChat({
                                             </Svg>
                                             <View style={styles.chartIcon}>
                                               <Ionicons
-                                                name="leaf"
+                                                name="nutrition"
                                                 size={12}
                                                 color="#FBBF24"
                                               />
@@ -3455,6 +3328,14 @@ export function WorkoutChat({
         currentCalorieGoal={dailyLogSummary?.goals.calorie_goal}
         onUpdateCalorieGoal={handleUpdateCalorieGoal}
       />
+      {dailyLogSummary && (
+        <DailyMacrosSheet
+          visible={isDailyMacrosSheetVisible}
+          onClose={() => setIsDailyMacrosSheetVisible(false)}
+          totals={dailyLogSummary.totals}
+          goals={dailyLogSummary.goals}
+        />
+      )}
     </>
   )
 }
@@ -3482,38 +3363,7 @@ function createStyles(
       zIndex: 10,
       padding: 0,
     },
-    dailyMacroPillContainer: {
-      position: 'absolute',
-      left: 72,
-      right: 16,
-      zIndex: 9,
-      borderRadius: 24,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: 'transparent',
-      borderWidth: 0,
-    },
-    dailyMacroPillContainerSheet: {
-      position: 'relative',
-      left: 0,
-      right: 0,
-      top: 0,
-      marginHorizontal: 16,
-      marginTop: 4,
-      marginBottom: 10,
-    },
-    dailyMacroPillText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      letterSpacing: -0.1,
-    },
-    dailyMacroPillSubtext: {
-      marginTop: 2,
-      fontSize: 11,
-      color: colors.textSecondary,
-      fontWeight: '500',
-    },
+
     actionButtonsContainer: {
       flexDirection: 'row',
       justifyContent: 'center',

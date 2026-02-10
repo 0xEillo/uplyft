@@ -7,11 +7,11 @@ import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
-  getExercisePercentile,
-  getExerciseStrengthProgressByName,
-  getMuscleGroupDistribution,
-  getStrengthScoreProgress,
-  getTopExercisesByEstimated1RM,
+    getExercisePercentile,
+    getExerciseStrengthProgressByName,
+    getMuscleGroupDistribution,
+    getStrengthScoreProgress,
+    getTopExercisesByEstimated1RM,
 } from '../_shared/stats.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 import { buildUserContextSummary, userContextToPrompt } from './user-context.ts'
@@ -1096,16 +1096,20 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
     "Ground answers in the user's actual data when relevant. If the data is missing, say so. Keep suggestions actionable and tied to their metrics. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
     'If the user asks about saved routines or templates by name, call the getWorkoutRoutines tool with the routineName parameter. The user context above shows available routine names.',
-    'NUTRITION LOGGING (CHAT-FIRST):',
-    'If the user message is logging food (text/voice shorthand like "had my usual breakfast" or a food photo), respond like a supportive coach and provide an approximate estimate.',
-    'When nutrition logging is detected, append this machine-readable block at the very end of your response with no markdown wrapping:',
-    '<food_log>{"action":"log","summary":"short meal summary","calories":450,"protein_g":35,"carbs_g":38,"fat_g":16,"confidence":"medium","source":"text"}</food_log>',
-    'For corrections to the most recent meal estimate ("actually that was cauliflower rice"), use action="update_last" and output corrected macros.',
-    'If the user says "usual" (e.g., "had my usual breakfast"), infer from prior chat context when possible instead of forcing manual detail entry.',
-    'Use confidence values only: low, medium, high.',
-    'Do not ask for confirmation of every ingredient. Fast estimate > perfect precision. Ask at most one clarifying question only if confidence is low.',
-    'Keep tone judgment-free. Avoid shaming language. If over target, suggest a calm adjustment for the next meal/day.',
-    'Only include <food_log> block when the message is actually about food logging/correction.',
+    ...(dailyLogSummary
+      ? [
+          'NUTRITION LOGGING (CHAT-FIRST):',
+          'If the user message is logging food (text/voice shorthand like "had my usual breakfast" or a food photo), respond like a supportive coach and provide an approximate estimate.',
+          'When nutrition logging is detected, append this machine-readable block at the very end of your response with no markdown wrapping:',
+          '<food_log>{"action":"log","summary":"short meal summary","calories":450,"protein_g":35,"carbs_g":38,"fat_g":16,"confidence":"medium","source":"text"}</food_log>',
+          'For corrections to the most recent meal estimate ("actually that was cauliflower rice"), use action="update_last" and output corrected macros.',
+          'If the user says "usual" (e.g., "had my usual breakfast"), infer from prior chat context when possible instead of forcing manual detail entry.',
+          'Use confidence values only: low, medium, high.',
+          'Do not ask for confirmation of every ingredient. Fast estimate > perfect precision. Ask at most one clarifying question only if confidence is low.',
+          'Keep tone judgment-free. Avoid shaming language. If over target, suggest a calm adjustment for the next meal/day.',
+          'Only include <food_log> block when the message is actually about food logging/correction.',
+        ]
+      : []),
     'WORKOUT GENERATION:',
     "If (and ONLY if) the user explicitly asks you to create, plan, or generate a workout/routine (e.g. 'Create a chest workout', 'Plan a leg day'), you MUST output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",

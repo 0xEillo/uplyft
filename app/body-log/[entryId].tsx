@@ -1,5 +1,5 @@
 import { haptic, hapticSuccess } from '@/lib/haptics'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
@@ -1348,12 +1348,12 @@ export default function BodyLogDetailScreen() {
         >
 
             {/* Progress Photos - Clean Horizontal Carousel */}
-            <View style={styles.progressSection}>
-              <View style={styles.progressHeader}>
-                <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>
-                  Progress
-                </Text>
-                {imageUrls.length > 0 && (
+            {imageUrls.length > 0 && (
+              <View style={styles.progressSection}>
+                <View style={styles.progressHeader}>
+                  <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>
+                    Progress
+                  </Text>
                   <View style={styles.progressDots}>
                     {imageUrls.map((_, i) => (
                       <View
@@ -1365,31 +1365,9 @@ export default function BodyLogDetailScreen() {
                       />
                     ))}
                   </View>
-                )}
-              </View>
+                </View>
 
-              {imageUrls.length === 0 ? (
-                // Empty State - Minimal & Clean
-                <TouchableOpacity
-                  style={[styles.progressEmptyCard, { backgroundColor: colors.surfaceCard }]}
-                  onPress={handleAddPhotos}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.progressEmptyIcon, { backgroundColor: colors.surfaceSubtle }]}>
-                    <Ionicons name="camera" size={28} color={colors.brandPrimary} />
-                  </View>
-                  <View style={styles.progressEmptyText}>
-                    <Text style={[styles.progressEmptyTitle, { color: colors.textPrimary }]}>
-                      Add Progress Photos
-                    </Text>
-                    <Text style={[styles.progressEmptySubtitle, { color: colors.textSecondary }]}>
-                      Upload 2+ photos for body analysis
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
-                </TouchableOpacity>
-              ) : (
-                // Horizontal Carousel - Spacious Cards
+                {/* Horizontal Carousel - Spacious Cards */}
                 <FlatList
                   horizontal
                   pagingEnabled
@@ -1450,8 +1428,8 @@ export default function BodyLogDetailScreen() {
                     )
                   }}
                 />
-              )}
-            </View>
+              </View>
+            )}
 
             {/* Measurements Row */}
             <View style={styles.sectionContainer}>
@@ -1655,7 +1633,7 @@ export default function BodyLogDetailScreen() {
                               </G>
                             </Svg>
                             <View style={styles.chartIcon}>
-                              <Ionicons name="flash" size={12} color="#F87171" />
+                              <MaterialCommunityIcons name="food-drumstick" size={12} color="#F87171" />
                             </View>
                           </View>
                         </View>
@@ -1691,7 +1669,7 @@ export default function BodyLogDetailScreen() {
                               </G>
                             </Svg>
                             <View style={styles.chartIcon}>
-                              <Ionicons name="leaf" size={12} color="#FBBF24" />
+                              <Ionicons name="nutrition" size={12} color="#FBBF24" />
                             </View>
                           </View>
                         </View>
@@ -2075,35 +2053,6 @@ const createStyles = (colors: Colors) =>
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  progressEmptyCard: {
-    marginHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 20,
-    gap: 16,
-  },
-  progressEmptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressEmptyText: {
-    flex: 1,
-    gap: 4,
-  },
-  progressEmptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  progressEmptySubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    opacity: 0.6,
   },
   progressPhotoCard: {
     width: SCREEN_WIDTH - 60,

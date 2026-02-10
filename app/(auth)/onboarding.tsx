@@ -2,14 +2,14 @@ import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
 import { StrengthLevelIntroStep } from '@/components/onboarding/StrengthLevelIntroStep'
 import {
-    EQUIPMENT_PREF_KEY,
-    WORKOUT_PLANNING_PREFS_KEY,
+  EQUIPMENT_PREF_KEY,
+  WORKOUT_PLANNING_PREFS_KEY,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
-    COMMITMENTS,
-    GENDERS,
-    GOALS
+  COMMITMENTS,
+  GENDERS,
+  GOALS
 } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -21,7 +21,6 @@ import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { requestTrackingPermission } from '@/lib/facebook-sdk'
 import { haptic, hapticSuccess } from '@/lib/haptics'
-import { markUserAsRated, requestReview } from '@/lib/rating'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -32,25 +31,27 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextStyle,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Easing,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const HEIGHT_RULER_TICK_SPACING = 14
 
 type OnboardingData = {
   name: string
@@ -68,6 +69,9 @@ type OnboardingData = {
   equipment: string[]
   bio: string
   coach: string
+  // Calorie tracking fields
+  wantsCalorieTracking: boolean | null
+  calorieGoal: number | null
 }
 
 // Colors type for themed colors
@@ -94,24 +98,72 @@ interface FinalPlanStepProps extends StepContentProps {
 }
 
 // Map step numbers to their human-readable names
+// Three section interstitials are inserted to group the onboarding flow.
 const STEP_NAMES: { [key: number]: string } = {
   1: 'coach_selection',
   2: 'coach_greeting',
   3: 'name_entry',
   4: 'chat_feature_intro',
-  5: 'goals_selection',
-  6: 'tailored_preview',
-  7: 'gender_selection',
-  8: 'commitment_level',
-  9: 'habit_reinforcement',
-  10: 'equipment_selection',
-  11: 'weight_entry',
-  12: 'strength_level_intro',
-  13: 'focus_areas',
-  14: 'body_scan_feature',
-  15: 'processing',
-  16: 'plan_ready',
-  17: 'commitment_pledge',
+  5: 'section_goals',
+  6: 'goals_selection',
+  7: 'tailored_preview',
+  8: 'gender_selection',
+  9: 'commitment_level',
+  10: 'habit_reinforcement',
+  11: 'section_body_nutrition',
+  12: 'equipment_selection',
+  13: 'weight_entry',
+  // Strength level comes first so user gets their rank
+  14: 'strength_level_intro',
+  // Calorie tracking branch (steps 15-19)
+  15: 'nutrition_opt_in',
+  16: 'height_entry',
+  17: 'age_entry',
+  18: 'calorie_goal_selection',
+  19: 'nutrition_target_summary',
+  20: 'section_plan',
+  // Continuation of main flow
+  21: 'focus_areas',
+  22: 'body_scan_feature',
+  23: 'processing',
+  24: 'plan_ready',
+  25: 'commitment_pledge',
+}
+
+// Total number of steps in the onboarding flow
+const TOTAL_STEPS = 25
+
+const calculateAgeFromBirthDate = (
+  birthYear: string,
+  birthMonth: string,
+  birthDay: string,
+  today: Date = new Date(),
+): number | null => {
+  const year = parseInt(birthYear, 10)
+  const month = parseInt(birthMonth, 10)
+  const day = parseInt(birthDay, 10)
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null
+  }
+
+  const birthDate = new Date(year, month - 1, day)
+  const isSameDate =
+    birthDate.getFullYear() === year &&
+    birthDate.getMonth() === month - 1 &&
+    birthDate.getDate() === day
+
+  if (!isSameDate) {
+    return null
+  }
+
+  let age = today.getFullYear() - year
+  const monthDiff = today.getMonth() - (month - 1)
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
+    age -= 1
+  }
+
+  return age >= 0 ? age : null
 }
 
 const FadeInWords = ({
@@ -552,10 +604,10 @@ const HabitReinforcementStepContent = ({
   const activeGoal = data.goal[0] || 'build_muscle'
   const habitGoalInfo: Record<string, { text: string; color: string }> = {
     build_muscle: { text: 'GAIN MUSCLE', color: '#8B5CF6' },
-    lose_fat: { text: 'LOSE FAT', color: '#EF4444' },
+    lose_fat: { text: 'LOSE FAT', color: '#3B82F6' },
     gain_strength: { text: 'GET STRONGER', color: '#F59E0B' },
     improve_cardio: { text: 'IMPROVE CARDIO', color: '#3B82F6' },
-    become_flexible: { text: 'GET FLEXIBLE', color: '#10B981' },
+
     general_fitness: { text: 'STAY FIT', color: '#6366F1' },
   }
   const currentHabitGoal =
@@ -706,7 +758,7 @@ const ProcessingStepContent = ({
 
   useEffect(() => {
     if (progress3 >= 100) {
-      setTimeout(() => setStep(16), 400)
+      setTimeout(() => setStep(24), 400)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setStep is stable from parent
   }, [progress3])
@@ -876,7 +928,6 @@ const CommitmentStepContent = ({
 
   const coach =
     COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
-  const coachFirstName = coach.name.split(' ')[0]
 
   useEffect(() => {
     Animated.loop(
@@ -971,7 +1022,7 @@ const CommitmentStepContent = ({
   const breakoutStyle = {
     marginHorizontal: -24,
     marginTop: 0, // Removed negative margin to stay below header correctly
-    marginBottom: -60,
+    marginBottom: 0,
     flex: 1,
   }
 
@@ -1189,16 +1240,6 @@ const CommitmentStepContent = ({
               style={{ width: 48, height: 48, borderRadius: 24 }}
             />
             <View>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: colors.textSecondary,
-                  marginBottom: 4,
-                }}
-              >
-                Coach {coachFirstName}
-              </Text>
               <View
                 style={{
                   backgroundColor: colors.surface,
@@ -1232,7 +1273,7 @@ const CommitmentStepContent = ({
                 style={{
                   fontSize: 20,
                   lineHeight: 32,
-                  color: colors.textSecondary,
+                  color: colors.textPrimary,
                   fontWeight: '500',
                   marginTop: 8,
                 }}
@@ -1277,13 +1318,10 @@ const CommitmentStepContent = ({
           style={[
             styles.footer,
             {
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
               zIndex: 50,
               elevation: 50,
-              paddingBottom: Math.max(insets?.bottom || 0, 20) + 20,
+              marginTop: 'auto',
+              paddingBottom: Math.max(insets?.bottom || 0, 20) + 10,
             },
           ]}
         >
@@ -1364,12 +1402,12 @@ const FinalPlanStepContent = ({
     GOALS.find((g) => g.value === data.goal[0])?.label || 'Gain Muscle'
 
   // Calculate age
-  let displayAge = '35'
-  if (data.birth_year) {
-    displayAge = (
-      new Date().getFullYear() - parseInt(data.birth_year)
-    ).toString()
-  }
+  const age = calculateAgeFromBirthDate(
+    data.birth_year,
+    data.birth_month,
+    data.birth_day,
+  )
+  const displayAge = age !== null ? age.toString() : '35'
 
   const stats = [
     { label: 'Goal', value: mainGoal },
@@ -1467,6 +1505,7 @@ export default function OnboardingScreen() {
   const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
+  const [heightRulerWidth, setHeightRulerWidth] = useState(SCREEN_WIDTH - 48)
   const [data, setData] = useState<OnboardingData>({
     name: '',
     gender: null,
@@ -1483,6 +1522,9 @@ export default function OnboardingScreen() {
     equipment: [],
     bio: '',
     coach: DEFAULT_COACH_ID,
+    // Calorie tracking
+    wantsCalorieTracking: null,
+    calorieGoal: null,
   })
   const colors = useThemedColors()
   const { weightUnit, setWeightUnit, convertInputToKg } = useWeightUnits()
@@ -1503,7 +1545,7 @@ export default function OnboardingScreen() {
 
   // Reset scroll position for specific steps
   useEffect(() => {
-    if (step === 18) {
+    if (step === 21) {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
@@ -1599,21 +1641,25 @@ export default function OnboardingScreen() {
       step,
       step_name: STEP_NAMES[step],
     })
-
-    // Trigger app rating request after strength rank (now focus areas page)
-    if (step === 13) {
-      const triggerReview = async () => {
-        try {
-          await requestReview()
-          await markUserAsRated()
-        } catch (error) {
-          console.error('Error requesting review in onboarding:', error)
-        }
-      }
-      const timeoutId = setTimeout(triggerReview, 800)
-      return () => clearTimeout(timeoutId)
-    }
   }, [step, trackEvent])
+
+  // Auto-advance section interstitial pages so they only act as flow separators.
+  useEffect(() => {
+    const SECTION_STEP_TRANSITIONS: Record<number, number> = {
+      5: 6,
+      11: 12,
+      20: 21,
+    }
+
+    const nextStep = SECTION_STEP_TRANSITIONS[step]
+    if (!nextStep) return
+
+    const timeout = setTimeout(() => {
+      setStep((current) => (current === step ? nextStep : current))
+    }, 1700)
+
+    return () => clearTimeout(timeout)
+  }, [step])
 
   const handleNext = () => {
     // Collect step-specific metadata for analytics
@@ -1626,23 +1672,37 @@ export default function OnboardingScreen() {
       case 3:
         stepMetadata.name_provided = !!data.name
         break
-      case 5:
+      case 6:
         stepMetadata.goals = data.goal
         break
-      case 7:
+      case 8:
         stepMetadata.gender = data.gender
         break
-      case 8:
+      case 9:
         stepMetadata.commitment = data.commitment
         break
-      case 10:
+      case 12:
         stepMetadata.equipment = data.equipment
         break
-      case 11:
+      case 13:
         stepMetadata.weight = data.weight_kg
         stepMetadata.unit = weightUnit
         break
-      case 13:
+      case 15:
+        stepMetadata.wants_calorie_tracking = data.wantsCalorieTracking
+        break
+      case 16:
+        stepMetadata.height_cm = data.height_cm
+        stepMetadata.height_feet = data.height_feet
+        stepMetadata.height_inches = data.height_inches
+        break
+      case 17:
+        stepMetadata.age = data.birth_year
+        break
+      case 18:
+        stepMetadata.calorie_goal = data.calorieGoal
+        break
+      case 21:
         stepMetadata.focus_areas = focusAreas
         break
     }
@@ -1655,7 +1715,7 @@ export default function OnboardingScreen() {
 
     // Save goal preference when leaving goal selection step
     // This pre-fills the "Goal" in the workout generation wizard
-    if (step === 5 && data.goal.length > 0) {
+    if (step === 6 && data.goal.length > 0) {
       const primaryGoal = data.goal[0]
       let wizardGoal = 'Hypertrophy'
 
@@ -1694,7 +1754,7 @@ export default function OnboardingScreen() {
 
     // Save equipment preference to AsyncStorage when leaving equipment step
     // This will be used by the workout wizard to pre-fill the equipment setting
-    if (step === 10 && data.equipment.length > 0) {
+    if (step === 12 && data.equipment.length > 0) {
       let equipmentType = 'home_minimal'
 
       if (data.equipment.includes('full_gym')) {
@@ -1723,27 +1783,23 @@ export default function OnboardingScreen() {
 
     // Initialize target weight logic removed as step is gone
 
-    if (step < 17) {
+    // Handle calorie tracking branch navigation
+    // Step 15: User chose whether to track calories
+    // If they said no (wantsCalorieTracking === false), skip to step 20 (plan section interstitial)
+    // If they said yes, continue to step 16 (height entry)
+    if (step === 15 && data.wantsCalorieTracking === false) {
+      setStep(20) // Skip to plan section
+      return
+    }
+
+    if (step < TOTAL_STEPS) {
       setStep(step + 1)
     } else {
-      // Calculate age from birth date
-      let age = null
-      if (data.birth_day && data.birth_month && data.birth_year) {
-        const birthDate = new Date(
-          parseInt(data.birth_year),
-          parseInt(data.birth_month) - 1,
-          parseInt(data.birth_day),
-        )
-        const today = new Date()
-        age = today.getFullYear() - birthDate.getFullYear()
-        const monthDiff = today.getMonth() - birthDate.getMonth()
-        if (
-          monthDiff < 0 ||
-          (monthDiff === 0 && today.getDate() < birthDate.getDate())
-        ) {
-          age--
-        }
-      }
+      const age = calculateAgeFromBirthDate(
+        data.birth_year,
+        data.birth_month,
+        data.birth_day,
+      )
 
       // Calculate height in cm
       let heightCm = null
@@ -1811,6 +1867,17 @@ export default function OnboardingScreen() {
             } else {
               // Refresh profile context so chat has the correct coach data
               await refreshProfile()
+
+              // Save calorie goal to today's daily log if user opted in
+              if (data.wantsCalorieTracking && data.calorieGoal) {
+                try {
+                  await database.dailyLog.updateDay(currentUserId, {
+                    calorieGoal: data.calorieGoal,
+                  })
+                } catch (calorieError) {
+                  console.error('Error saving calorie goal:', calorieError)
+                }
+              }
             }
           }
 
@@ -1827,6 +1894,8 @@ export default function OnboardingScreen() {
             experience_level: data.experience_level,
             bio: data.bio,
             coach: data.coach,
+            wants_calorie_tracking: data.wantsCalorieTracking,
+            calorie_goal: data.calorieGoal,
           })
 
           router.replace('/(tabs)')
@@ -1846,21 +1915,67 @@ export default function OnboardingScreen() {
     haptic('medium')
 
     if (step > 1) {
-      setStep(step - 1)
+      // Handle calorie tracking branch when going back
+      // If user skipped calorie tracking (step 20) and goes back, return to step 15
+      if (step === 20 && data.wantsCalorieTracking === false) {
+        setStep(15) // Return to nutrition opt-in
+      } else {
+        setStep(step - 1)
+      }
     } else {
       router.back()
     }
   }
 
   const hasAutoSwipe = () => {
-    // Step 7 (gender) and 10 (experience) auto-swipe when an option is selected
-    // Step 8 (commitment) is now multi-select, so it requires manual "Next"
-    // Step 13 (strength level) has its own flow and completion handler
-    // Step 17 is processing (auto-advances after bars fill)
-    // Step 19 (commitment pledge) has its own custom footer/interaction
+    // Section pages auto-advance (5, 11, 20).
+    // Step 8 (gender) auto-swipes when an option is selected.
+    // Step 14 (strength level) has its own flow and completion handler.
+    // Step 15 (nutrition opt-in) auto-swipes on selection.
+    // Step 23 (processing) auto-advances after bars fill.
+    // Step 25 (commitment pledge) has its own custom footer/interaction.
     return (
-      step === 7 || step === 12 || step === 15 || step === 17
+      step === 5 ||
+      step === 8 ||
+      step === 11 ||
+      step === 14 ||
+      step === 15 ||
+      step === 20 ||
+      step === 23 ||
+      step === 25
     )
+  }
+
+  const calculateEstimatedTDEE = () => {
+    let heightCm = parseFloat(data.height_cm)
+    if (weightUnit === 'lb') {
+      const feet = parseFloat(data.height_feet)
+      const inches = parseFloat(data.height_inches)
+      if (Number.isFinite(feet) && Number.isFinite(inches)) {
+        heightCm = (feet * 12 + inches) * 2.54
+      }
+    }
+    if (!Number.isFinite(heightCm)) {
+      heightCm = 170
+    }
+
+    const weightKgRaw = convertInputToKg(parseFloat(data.weight_kg))
+    const weightKg = Number.isFinite(weightKgRaw) ? weightKgRaw : 75
+    const age =
+      calculateAgeFromBirthDate(
+        data.birth_year,
+        data.birth_month,
+        data.birth_day,
+      ) ?? 25
+
+    // Mifflin-St Jeor Equation + lightly active multiplier
+    let bmr = 10 * weightKg + 6.25 * heightCm - 5 * age
+    if (data.gender === 'male') {
+      bmr += 5
+    } else {
+      bmr -= 161
+    }
+    return Math.round(bmr * 1.375)
   }
 
   const canProceed = () => {
@@ -1874,29 +1989,47 @@ export default function OnboardingScreen() {
       case 4:
         return true // Chat feature intro
       case 5:
-        return data.goal.length > 0
+        return false // Section interstitial
       case 6:
-        return true // Tailored preview step
+        return data.goal.length > 0
       case 7:
-        return data.gender !== null
+        return true // Tailored preview step
       case 8:
-        return data.commitment.length > 0
+        return data.gender !== null
       case 9:
-        return true // Habit reinforcement
+        return data.commitment.length > 0
       case 10:
-        return data.equipment.length > 0 // Equipment selection
+        return true // Habit reinforcement
       case 11:
-        return true // Stats entry step - defaults are fine
+        return false // Section interstitial
       case 12:
-        return true // Strength level intro - handled by component
+        return data.equipment.length > 0 // Equipment selection
       case 13:
-        return true // Focus areas (optional)
+        return true // Weight entry step - defaults are fine
       case 14:
-        return true // Body scan feature intro
+        return true // Strength level intro - handled by component
       case 15:
-        return false // Step 15 is processing, no next button
+        return false // Nutrition opt-in - auto-swipes
       case 16:
-        return true // Step 16 has "Get Started"
+        return true // Height entry - defaults are fine
+      case 17:
+        return true // Age entry - defaults are fine
+      case 18:
+        return data.calorieGoal !== null // Calorie goal selection
+      case 19:
+        return true // Calorie target summary
+      case 20:
+        return false // Section interstitial
+      case 21:
+        return true // Focus areas (optional)
+      case 22:
+        return true // Body scan feature intro
+      case 23:
+        return false // Processing - auto-advances
+      case 24:
+        return true // Plan ready - has "Get Started"
+      case 25:
+        return false // Commitment pledge - has custom interaction
       default:
         return false
     }
@@ -2043,6 +2176,19 @@ export default function OnboardingScreen() {
         )
       case 5:
         return (
+          <View style={styles.sectionScreen}>
+            <Text style={styles.sectionIndex}>1</Text>
+            <Text style={styles.sectionTitle}>Your Goals</Text>
+            <View style={styles.sectionProgressTrack}>
+              <View style={[styles.sectionProgressFill, { width: '33%' }]} />
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              Let&apos;s align your motivation and training direction.
+            </Text>
+          </View>
+        )
+      case 6:
+        return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>
@@ -2106,7 +2252,113 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 7:
+      case 7: {
+        // Goal Validation / Social Proof Step
+        const goalValidation: Record<string, {
+          title: string
+          leadIn: string
+          stat: string
+          statLabel: string
+          color: string
+        }> = {
+          gain_strength: {
+            title: 'Building strength is the best investment you can make.',
+            leadIn: 'On average, members get',
+            stat: '15%',
+            statLabel: 'stronger in 8 weeks',
+            color: '#EF4444', // Red
+          },
+          build_muscle: {
+            title: "There's no better time to build lean muscle.",
+            leadIn: 'On average, members gain',
+            stat: '3.2 lbs',
+            statLabel: 'lean muscle in 12 weeks',
+            color: '#F59E0B', // Amber
+          },
+          lose_fat: {
+            title: "Let's get you lean and feeling amazing.",
+            leadIn: 'On average, members lose',
+            stat: '8 lbs',
+            statLabel: 'of fat in their first 8 weeks',
+            color: '#3B82F6', // Blue
+          },
+          improve_cardio: {
+            title: 'Heart health is the ultimate engine.',
+            leadIn: 'On average, members see a',
+            stat: '22%',
+            statLabel: 'endurance improvement in 6 weeks',
+            color: '#EC4899', // Pink
+          },
+
+          general_fitness: {
+            title: 'A solid fitness routine changes everything.',
+            leadIn: 'On average, members are',
+            stat: '3×',
+            statLabel: 'more consistent than training alone',
+            color: '#10B981', // Green
+          },
+        }
+
+        const primaryGoal = data.goal[0] || 'general_fitness'
+        const validation = goalValidation[primaryGoal] || goalValidation.general_fitness
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={[styles.stepTitle, { fontSize: 28, lineHeight: 36, fontWeight: '800' }]}>
+                {validation.title}
+              </Text>
+            </View>
+
+            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 20 }}>
+              {/* Dynamic spacers to hit the optical center regardless of screen size */}
+              <View style={{ flex: 1.5 }} />
+              
+              {/* Hero Stat Group */}
+              <View style={{
+                alignItems: 'center',
+                width: '100%',
+              }}>
+                <Text style={{
+                  fontSize: 20,
+                  fontWeight: '700',
+                  color: colors.textPrimary,
+                  textAlign: 'center',
+                  letterSpacing: -0.5,
+                  lineHeight: 24,
+                }}>
+                  {validation.leadIn}
+                </Text>
+                <Text style={{
+                  fontSize: 72,
+                  fontWeight: '900',
+                  color: validation.color,
+                  letterSpacing: -3,
+                  marginTop: 16,
+                  marginBottom: 4,
+                  textAlign: 'center',
+                  lineHeight: 72,
+                }}>
+                  {validation.stat}
+                </Text>
+                <Text style={{
+                  fontSize: 20,
+                  fontWeight: '700',
+                  color: colors.textPrimary,
+                  textAlign: 'center',
+                  letterSpacing: -0.5,
+                  lineHeight: 24,
+                }}>
+                  {validation.statLabel}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1 }} />
+            </View>
+          </View>
+        )
+      }
+      case 8:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -2164,7 +2416,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 8:
+      case 9:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -2225,7 +2477,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 9:
+      case 10:
         return (
           <HabitReinforcementStepContent
             data={data}
@@ -2233,7 +2485,20 @@ export default function OnboardingScreen() {
             styles={styles}
           />
         )
-      case 10:
+      case 11:
+        return (
+          <View style={styles.sectionScreen}>
+            <Text style={styles.sectionIndex}>2</Text>
+            <Text style={styles.sectionTitle}>Your Body</Text>
+            <View style={styles.sectionProgressTrack}>
+              <View style={[styles.sectionProgressFill, { width: '66%' }]} />
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              We&apos;ll set your stats and nutrition target.
+            </Text>
+          </View>
+        )
+      case 12:
         // Equipment Selection Step
         const EQUIPMENT_OPTIONS = [
           { value: 'full_gym', label: 'Full gym' },
@@ -2323,7 +2588,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 11:
+      case 13:
         // Stats Entry Step (Redesigned)
         const weightRange =
           weightUnit === 'kg'
@@ -2451,8 +2716,9 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 12:
-        // Strength Level Intro
+      // ========== Strength Level Intro (Step 14) ==========
+      case 14:
+        // Strength Level Intro - comes right after weight entry
         return (
           <StrengthLevelIntroStep
             gender={data.gender as 'male' | 'female' | null}
@@ -2467,7 +2733,614 @@ export default function OnboardingScreen() {
           />
         )
 
-      case 13: {
+      // ========== Calorie Tracking Branch (Steps 15-19) ==========
+      case 15: {
+        // Nutrition Opt-In Step
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>
+                Want to track your nutrition?
+              </Text>
+              <Text style={[styles.stepSubtitle, { marginTop: 8, fontSize: 16, color: colors.textSecondary }]}>
+                We can calculate your daily calorie target based on your goals.
+              </Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                <HapticButton
+                  style={[
+                    styles.card,
+                    data.wantsCalorieTracking === true && styles.cardSelected,
+                  ]}
+                  onPress={() => {
+                    setData({ ...data, wantsCalorieTracking: true })
+                    setTimeout(() => setStep(step + 1), 400)
+                  }}
+                  hapticIntensity="light"
+                >
+                  <View style={styles.cardContent}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons name="restaurant" size={24} color="#10B981" />
+                    </View>
+                    <Text style={styles.cardLabel}>Yes, help me track</Text>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        data.wantsCalorieTracking === true && styles.radioButtonSelected,
+                      ]}
+                    >
+                      {data.wantsCalorieTracking === true && (
+                        <View style={styles.radioButtonInner} />
+                      )}
+                    </View>
+                  </View>
+                </HapticButton>
+
+                <HapticButton
+                  style={[
+                    styles.card,
+                    data.wantsCalorieTracking === false && styles.cardSelected,
+                  ]}
+                  onPress={() => {
+                    setData({ ...data, wantsCalorieTracking: false })
+                    setTimeout(() => setStep(20), 400) // Skip to plan section
+                  }}
+                  hapticIntensity="light"
+                >
+                  <View style={styles.cardContent}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons name="close-circle-outline" size={24} color={colors.textSecondary} />
+                    </View>
+                    <Text style={styles.cardLabel}>Skip for now</Text>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        data.wantsCalorieTracking === false && styles.radioButtonSelected,
+                      ]}
+                    >
+                      {data.wantsCalorieTracking === false && (
+                        <View style={styles.radioButtonInner} />
+                      )}
+                    </View>
+                  </View>
+                </HapticButton>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 16: {
+        // Height Entry Step (stable non-Picker UI)
+        const MIN_CM = 120
+        const MAX_CM = 240
+        const MIN_TOTAL_IN = 48 // 4'0"
+        const MAX_TOTAL_IN = 95 // 7'11"
+
+        const clamp = (value: number, min: number, max: number) =>
+          Math.min(max, Math.max(min, value))
+
+        const safeInt = (value: string, fallback: number) => {
+          const parsed = parseInt(value, 10)
+          return Number.isFinite(parsed) ? parsed : fallback
+        }
+
+        const setHeightFromCm = (cmInput: number) => {
+          const cm = clamp(Math.round(cmInput), MIN_CM, MAX_CM)
+          const totalInches = cm / 2.54
+          const feet = Math.floor(totalInches / 12)
+          const inches = Math.round(totalInches % 12)
+          const normalizedFeet = inches === 12 ? feet + 1 : feet
+          const normalizedInches = inches === 12 ? 0 : inches
+
+          setData((prev) => ({
+            ...prev,
+            height_cm: cm.toString(),
+            height_feet: normalizedFeet.toString(),
+            height_inches: normalizedInches.toString(),
+          }))
+        }
+
+        const setHeightFromImperial = (feetInput: number, inchesInput: number) => {
+          const rawTotalInches = feetInput * 12 + inchesInput
+          const totalInches = clamp(rawTotalInches, MIN_TOTAL_IN, MAX_TOTAL_IN)
+          const feet = Math.floor(totalInches / 12)
+          const inches = totalInches % 12
+          const cm = Math.round(totalInches * 2.54)
+
+          setData((prev) => ({
+            ...prev,
+            height_cm: cm.toString(),
+            height_feet: feet.toString(),
+            height_inches: inches.toString(),
+          }))
+        }
+
+        const toggleHeightUnit = () => {
+          const newUnit = weightUnit === 'kg' ? 'lb' : 'kg'
+          if (newUnit === 'lb') {
+            setHeightFromCm(safeInt(data.height_cm, 170))
+          } else {
+            setHeightFromImperial(
+              safeInt(data.height_feet, 5),
+              safeInt(data.height_inches, 7),
+            )
+          }
+          setWeightUnit(newUnit)
+        }
+
+        const currentCm = clamp(safeInt(data.height_cm, 170), MIN_CM, MAX_CM)
+        const currentFeet = clamp(safeInt(data.height_feet, 5), 4, 7)
+        const currentInches = clamp(safeInt(data.height_inches, 7), 0, 11)
+        const currentTotalInches = clamp(
+          currentFeet * 12 + currentInches,
+          MIN_TOTAL_IN,
+          MAX_TOTAL_IN,
+        )
+        const displayFeet = Math.floor(currentCm / 30.48)
+        const displayInches = Math.round((currentCm / 2.54) % 12)
+        const rulerValues =
+          weightUnit === 'kg'
+            ? Array.from({ length: MAX_CM - MIN_CM + 1 }, (_, i) => MIN_CM + i)
+            : Array.from(
+                { length: MAX_TOTAL_IN - MIN_TOTAL_IN + 1 },
+                (_, i) => MIN_TOTAL_IN + i,
+              )
+        const selectedRulerValue =
+          weightUnit === 'kg' ? currentCm : currentTotalInches
+        const initialRulerIndex = Math.max(
+          0,
+          rulerValues.findIndex((value) => value === selectedRulerValue),
+        )
+
+        const updateHeightFromRuler = (value: number) => {
+          if (weightUnit === 'kg') {
+            setHeightFromCm(value)
+            return
+          }
+
+          const feet = Math.floor(value / 12)
+          const inches = value % 12
+          setHeightFromImperial(feet, inches)
+        }
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>
+                How tall are you?
+              </Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              <View style={styles.heightUnitToggle}>
+                <TouchableOpacity
+                  onPress={() => weightUnit !== 'kg' && toggleHeightUnit()}
+                  style={[
+                    styles.heightUnitButton,
+                    weightUnit === 'kg' && styles.heightUnitButtonActive,
+                  ]}
+                >
+                  <Text style={weightUnit === 'kg' ? styles.heightUnitTextActive : styles.heightUnitText}>
+                    CM
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => weightUnit !== 'lb' && toggleHeightUnit()}
+                  style={[
+                    styles.heightUnitButton,
+                    weightUnit === 'lb' && styles.heightUnitButtonActive,
+                  ]}
+                >
+                  <Text style={weightUnit === 'lb' ? styles.heightUnitTextActive : styles.heightUnitText}>
+                    FT/IN
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.heightSummaryCard}>
+                <Text style={styles.heightSummaryValue}>
+                  {currentCm} cm
+                </Text>
+                <Text style={styles.heightSummarySubvalue}>
+                  {displayFeet}&apos;{displayInches}&quot;
+                </Text>
+              </View>
+
+              <View
+                style={styles.heightRulerCard}
+                onLayout={(event) =>
+                  setHeightRulerWidth(event.nativeEvent.layout.width)
+                }
+              >
+                <Text style={styles.heightControlLabel}>
+                  {weightUnit === 'kg'
+                    ? 'Scroll to set height in centimeters'
+                    : 'Scroll to set height in feet/inches'}
+                </Text>
+
+                <View style={styles.heightRulerViewport}>
+                  <FlatList
+                    key={weightUnit}
+                    horizontal
+                    data={rulerValues}
+                    keyExtractor={(item) => `${weightUnit}-${item}`}
+                    showsHorizontalScrollIndicator={false}
+                    bounces={false}
+                    snapToInterval={HEIGHT_RULER_TICK_SPACING}
+                    decelerationRate="fast"
+                    initialScrollIndex={initialRulerIndex}
+                    getItemLayout={(_, index) => ({
+                      length: HEIGHT_RULER_TICK_SPACING,
+                      offset: HEIGHT_RULER_TICK_SPACING * index,
+                      index,
+                    })}
+                    contentContainerStyle={{
+                      paddingHorizontal: Math.max(
+                        0,
+                        heightRulerWidth / 2 - HEIGHT_RULER_TICK_SPACING / 2,
+                      ),
+                    }}
+                    onScroll={(event) => {
+                      const offsetX = event.nativeEvent.contentOffset.x
+                      const index = clamp(
+                        Math.round(offsetX / HEIGHT_RULER_TICK_SPACING),
+                        0,
+                        rulerValues.length - 1,
+                      )
+                      updateHeightFromRuler(rulerValues[index])
+                    }}
+                    scrollEventThrottle={16}
+                    renderItem={({ item }) => {
+                      const isMajorTick =
+                        weightUnit === 'kg' ? item % 5 === 0 : item % 4 === 0
+                      const inches = item % 12
+                      const feet = Math.floor(item / 12)
+                      const label =
+                        weightUnit === 'kg'
+                          ? `${item}`
+                          : `${feet}'${inches}`
+
+                      return (
+                        <View style={styles.heightRulerTickWrap}>
+                          <View
+                            style={[
+                              styles.heightRulerTick,
+                              isMajorTick && styles.heightRulerTickMajor,
+                            ]}
+                          />
+                          {isMajorTick && (
+                            <Text numberOfLines={1} style={styles.heightRulerTickLabel}>
+                              {label}
+                            </Text>
+                          )}
+                        </View>
+                      )
+                    }}
+                  />
+                  <View pointerEvents="none" style={styles.heightRulerCenterLine} />
+                </View>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 17: {
+        // Age/Birthday Entry Step
+        const currentYear = new Date().getFullYear()
+        const years = Array.from({ length: 82 }, (_, i) => (currentYear - 16 - i).toString()) // Ages 16-97
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const monthValues = months.map((_, idx) => (idx + 1).toString())
+
+        const safeString = (value: unknown, fallback: string) => {
+          if (typeof value === 'string') return value
+          if (typeof value === 'number' && Number.isFinite(value)) return value.toString()
+          return fallback
+        }
+
+        const getMaxDaysInMonth = (monthValue: string, yearValue: string) => {
+          const monthNumber = parseInt(monthValue, 10)
+          const yearNumber = parseInt(yearValue, 10)
+          const safeMonth = Number.isFinite(monthNumber) ? monthNumber : 1
+          const safeYear = Number.isFinite(yearNumber) ? yearNumber : currentYear
+          return new Date(safeYear, safeMonth, 0).getDate()
+        }
+
+        const maxDayForSelection = getMaxDaysInMonth(data.birth_month, data.birth_year)
+        const days = Array.from({ length: maxDayForSelection }, (_, i) => (i + 1).toString())
+
+        const normalizePickerValue = (
+          itemValue: unknown,
+          allowedValues: string[],
+          fallbackValue: string,
+        ) => {
+          const normalized = safeString(itemValue, fallbackValue)
+          return allowedValues.includes(normalized) ? normalized : fallbackValue
+        }
+
+        const selectedAge = calculateAgeFromBirthDate(
+          data.birth_year,
+          data.birth_month,
+          data.birth_day,
+        )
+        const displayAge = selectedAge !== null ? selectedAge.toString() : '--'
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={[styles.stepHeader, { paddingBottom: 32 }]}>
+              <Text style={styles.stepTitle}>
+                When were you born?
+              </Text>
+            
+            </View>
+
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              {/* Age Display */}
+              <View style={styles.birthAgeBlock}>
+                <Text style={styles.birthAgeValue}>
+                  {displayAge}
+                </Text>
+                <Text style={styles.birthAgeLabel}>
+                  years old
+                </Text>
+              </View>
+
+              {/* Date Picker Card */}
+              <View style={styles.birthPickerCard}>
+                <View style={styles.birthPickerHeaderRow}>
+                  <View style={styles.birthPickerColumnMonth}>
+                    <Text style={styles.birthPickerHeaderText}>Month</Text>
+                  </View>
+                  <View style={styles.birthPickerColumnDay}>
+                    <Text style={styles.birthPickerHeaderText}>Day</Text>
+                  </View>
+                  <View style={styles.birthPickerColumnYear}>
+                    <Text style={styles.birthPickerHeaderText}>Year</Text>
+                  </View>
+                </View>
+
+                <View style={styles.birthPickerRow}>
+                  <View style={styles.birthPickerColumnMonth}>
+                    <Picker
+                      selectedValue={safeString(data.birth_month, '1')}
+                      onValueChange={(itemValue) => {
+                        const nextMonth = normalizePickerValue(
+                          itemValue,
+                          monthValues,
+                          data.birth_month || '1',
+                        )
+                        setData((prev) => {
+                          const maxDay = getMaxDaysInMonth(nextMonth, prev.birth_year)
+                          const prevDayNumber = parseInt(prev.birth_day, 10)
+                          const safePrevDay = Number.isFinite(prevDayNumber) ? prevDayNumber : 1
+                          const nextDay = Math.min(safePrevDay, maxDay).toString()
+                          return {
+                            ...prev,
+                            birth_month: nextMonth,
+                            birth_day: nextDay,
+                          }
+                        })
+                      }}
+                      style={styles.birthPicker}
+                      itemStyle={styles.birthPickerItem}
+                      selectionColor={colors.brandPrimary}
+                    >
+                      {months.map((m, idx) => (
+                        <Picker.Item
+                          key={m}
+                          label={m}
+                          value={(idx + 1).toString()}
+                          color={colors.textPrimary}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  <View style={styles.birthPickerColumnDay}>
+                    <Picker
+                      selectedValue={safeString(data.birth_day, '1')}
+                      onValueChange={(itemValue) => {
+                        const nextDay = normalizePickerValue(
+                          itemValue,
+                          days,
+                          data.birth_day || '1',
+                        )
+                        setData((prev) => ({ ...prev, birth_day: nextDay }))
+                      }}
+                      style={styles.birthPicker}
+                      itemStyle={styles.birthPickerItem}
+                      selectionColor={colors.brandPrimary}
+                    >
+                      {days.map((d) => (
+                        <Picker.Item
+                          key={d}
+                          label={d}
+                          value={d}
+                          color={colors.textPrimary}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  <View style={styles.birthPickerColumnYear}>
+                    <Picker
+                      selectedValue={safeString(data.birth_year, years[0])}
+                      onValueChange={(itemValue) => {
+                        const nextYear = normalizePickerValue(
+                          itemValue,
+                          years,
+                          data.birth_year || years[0],
+                        )
+                        setData((prev) => {
+                          const maxDay = getMaxDaysInMonth(prev.birth_month, nextYear)
+                          const prevDayNumber = parseInt(prev.birth_day, 10)
+                          const safePrevDay = Number.isFinite(prevDayNumber) ? prevDayNumber : 1
+                          const nextDay = Math.min(safePrevDay, maxDay).toString()
+                          return {
+                            ...prev,
+                            birth_year: nextYear,
+                            birth_day: nextDay,
+                          }
+                        })
+                      }}
+                      style={styles.birthPicker}
+                      itemStyle={styles.birthPickerItem}
+                      selectionColor={colors.brandPrimary}
+                    >
+                      {years.map((y) => (
+                        <Picker.Item
+                          key={y}
+                          label={y}
+                          value={y}
+                          color={colors.textPrimary}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      case 18: {
+        // Calorie Goal Selection Step
+        const tdee = calculateEstimatedTDEE()
+
+        const calorieOptions = [
+          { label: 'Bulk', description: '10% surplus', calories: Math.round(tdee * 1.1), color: '#10B981', icon: 'trending-up' as keyof typeof Ionicons.glyphMap },
+          { label: 'Maintenance', description: 'Stay the same', calories: tdee, color: '#3B82F6', icon: 'swap-horizontal' as keyof typeof Ionicons.glyphMap },
+          { label: 'Cut', description: '15% deficit', calories: Math.round(tdee * 0.85), color: '#F97316', icon: 'trending-down' as keyof typeof Ionicons.glyphMap },
+          { label: 'Aggressive Cut', description: '25% deficit', calories: Math.round(tdee * 0.75), color: '#EF4444', icon: 'flash' as keyof typeof Ionicons.glyphMap },
+        ]
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>
+                Choose your daily target.
+              </Text>
+              </View>
+
+            <View style={styles.stepContent}>
+              <View style={styles.optionsContainer}>
+                {calorieOptions.map((option) => (
+                  <HapticButton
+                    key={option.label}
+                    style={[
+                      styles.card,
+                      data.calorieGoal === option.calories && styles.cardSelected,
+                      data.calorieGoal === option.calories && { borderColor: option.color },
+                    ]}
+                    onPress={() => {
+                      setData({ ...data, calorieGoal: option.calories })
+                    }}
+                    hapticIntensity="light"
+                  >
+                    <View style={styles.cardContent}>
+                      <View style={[styles.iconContainer, { width: 44 }]}>
+                        <View
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: option.color + '20',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Ionicons name={option.icon} size={22} color={option.color} />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardLabel}>{option.label}</Text>
+                        <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+                          {option.description}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: option.color }}>
+                        {option.calories}
+                      </Text>
+                      <View
+                        style={[
+                          styles.radioButton,
+                          data.calorieGoal === option.calories && styles.radioButtonSelected,
+                          data.calorieGoal === option.calories && { borderColor: option.color },
+                        ]}
+                      >
+                        {data.calorieGoal === option.calories && (
+                          <View style={[styles.radioButtonInner, { backgroundColor: option.color }]} />
+                        )}
+                      </View>
+                    </View>
+                  </HapticButton>
+                ))}
+              </View>
+            </View>
+          </View>
+        )
+      }
+      // ========== End Calorie Tracking Branch ==========
+
+      case 19: {
+        const tdee = calculateEstimatedTDEE()
+        const targetCalories = data.calorieGoal ?? tdee
+        const dailyDelta = targetCalories - tdee
+        const weeklyLbs = Math.abs((dailyDelta * 7) / 3500)
+        const weeklyKg = weeklyLbs * 0.453592
+        const isMaintenance = Math.abs(dailyDelta) < 10
+        const isCut = dailyDelta < 0
+        const weeklyRate = weightUnit === 'kg' ? weeklyKg : weeklyLbs
+        const weeklyUnit = weightUnit === 'kg' ? 'kg/week' : 'lb/week'
+        const accentColor = isMaintenance
+          ? '#3B82F6'
+          : isCut
+          ? '#F97316'
+          : '#10B981'
+        const weeklyRateText = `${weeklyRate.toFixed(1)} ${weeklyUnit}`
+        const headlinePrefix = isMaintenance
+          ? 'Maintain your weight'
+          : `${isCut ? 'Lose' : 'Gain'} `
+        const headlineSuffix = ` at ${targetCalories} kcal/day`
+
+        return (
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>
+                Target locked in.
+                {'\n'}
+                <Text style={styles.stepTitleOutcome}>
+                  {headlinePrefix}
+                  {!isMaintenance && (
+                    <Text
+                      style={[styles.stepTitleOutcomeAccent, { color: accentColor }]}
+                    >
+                      {weeklyRateText}
+                    </Text>
+                  )}
+                  {headlineSuffix}
+                </Text>
+              </Text>
+            </View>
+          </View>
+        )
+      }
+
+      case 20:
+        return (
+          <View style={styles.sectionScreen}>
+            <Text style={styles.sectionIndex}>3</Text>
+            <Text style={styles.sectionTitle}>Your Plan</Text>
+            <View style={styles.sectionProgressTrack}>
+              <View style={[styles.sectionProgressFill, { width: '100%' }]} />
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              Finalizing your personalized plan and focus areas.
+            </Text>
+          </View>
+        )
+      case 21: {
         const MUSCLE_GROUP_MAPPING: Record<
           string,
           { label: string; slugs: BodyPartSlug[] }
@@ -2675,7 +3548,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 14: {
+      case 22: {
         // Body Scan Feature Step
         const currentWeightNum = parseFloat(data.weight_kg) || 75
         const isLosing = data.goal.includes('lose_fat')
@@ -2752,7 +3625,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 15: {
+      case 23: {
         return (
           <ProcessingStepContent
             data={data}
@@ -2762,7 +3635,7 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 16: {
+      case 24: {
         return (
           <FinalPlanStepContent
             data={data}
@@ -2772,7 +3645,7 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 17: {
+      case 25: {
         return (
           <CommitmentStepContent
             data={data}
@@ -3060,9 +3933,9 @@ export default function OnboardingScreen() {
     <SafeAreaView
       style={styles.container}
       edges={
-        step === 17
+        step === 25
           ? ['left', 'right']
-          : step === 15 || step === 16
+          : step === 23 || step === 24
           ? ['top', 'left', 'right']
           : ['top', 'bottom', 'left', 'right']
       }
@@ -3072,7 +3945,7 @@ export default function OnboardingScreen() {
         <View
           style={[
             styles.header,
-            step === 17 && {
+            step === 25 && {
               position: 'absolute',
               top: 0,
               left: 0,
@@ -3089,8 +3962,8 @@ export default function OnboardingScreen() {
               name="arrow-back"
               size={24}
               color={
-                step === 17
-                  ? isCommitmentHolding || (step === 17 && false) // Logic for transition could go here, for now stick to consistency
+                step === 25
+                  ? isCommitmentHolding || (step === 25 && false) // Logic for transition could go here, for now stick to consistency
                     ? '#fff'
                     : colors.textPrimary
                   : colors.textPrimary
@@ -3104,7 +3977,7 @@ export default function OnboardingScreen() {
                 style={[
                   styles.headerProgressBarFill,
                   {
-                    width: `${(step / 17) * 100}%`,
+                    width: `${(step / TOTAL_STEPS) * 100}%`,
                     backgroundColor: colors.brandPrimary,
                   },
                 ]}
@@ -3126,15 +3999,15 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
-              (step === 16 || step === 17) && { paddingBottom: 0 },
+              (step === 24 || step === 25) && { paddingBottom: 0 },
               !hasAutoSwipe() &&
-                step !== 16 &&
-                step !== 17 && { paddingBottom: 140 },
+                step !== 24 &&
+                step !== 25 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            bounces={step !== 15}
+            bounces={step !== 23}
           >
             <View style={styles.contentWrapper}>
               <Animated.View
@@ -3171,7 +4044,7 @@ export default function OnboardingScreen() {
                     ? "Let's Go"
                     : step === 4
                     ? "Let's Get Started!"
-                    : step === 16
+                    : step === 24
                     ? 'Get Started'
                     : 'Next'}
                 </Text>
@@ -3188,7 +4061,11 @@ export default function OnboardingScreen() {
 const createStyles = (
   colors: ReturnType<typeof useThemedColors>,
   weightUnit: 'kg' | 'lb',
-) =>
+) => {
+  const isDarkMode = colors.bg === '#000000'
+  const heightPanelBackground = isDarkMode ? colors.surfaceSheet : colors.surface
+
+  return (
   StyleSheet.create({
     container: {
       flex: 1,
@@ -3273,8 +4150,243 @@ const createStyles = (
       marginBottom: 8,
       letterSpacing: -0.5,
     },
+    stepTitleOutcome: {
+      fontSize: 30,
+      fontWeight: '800',
+      lineHeight: 38,
+      letterSpacing: -0.6,
+      color: colors.textPrimary,
+    },
+    stepTitleOutcomeAccent: {
+      fontSize: 30,
+      fontWeight: '800',
+      lineHeight: 38,
+      letterSpacing: -0.6,
+    },
+    sectionScreen: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    sectionIndex: {
+      fontSize: 92,
+      fontWeight: '900',
+      color: colors.textPrimary,
+      letterSpacing: -2,
+      lineHeight: 96,
+      marginBottom: 22,
+    },
+    sectionTitle: {
+      fontSize: 46,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      letterSpacing: -1.4,
+      marginBottom: 20,
+    },
+    sectionProgressTrack: {
+      width: '100%',
+      maxWidth: 360,
+      height: 10,
+      borderRadius: 999,
+      backgroundColor: colors.border + (isDarkMode ? '70' : 'A0'),
+      overflow: 'hidden',
+      marginBottom: 24,
+    },
+    sectionProgressFill: {
+      height: '100%',
+      borderRadius: 999,
+      backgroundColor: colors.brandPrimary,
+    },
+    sectionSubtitle: {
+      fontSize: 18,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 27,
+      maxWidth: 420,
+    },
     stepContent: {
       flex: 1,
+    },
+    heightUnitToggle: {
+      flexDirection: 'row',
+      alignSelf: 'center',
+      backgroundColor: heightPanelBackground,
+      borderRadius: 14,
+      padding: 4,
+      marginBottom: 20,
+    },
+    heightUnitButton: {
+      minWidth: 100,
+      paddingVertical: 10,
+      paddingHorizontal: 18,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heightUnitButtonActive: {
+      backgroundColor: colors.brandPrimary,
+    },
+    heightUnitText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    heightUnitTextActive: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    heightSummaryCard: {
+      backgroundColor: heightPanelBackground,
+      borderRadius: 20,
+      paddingVertical: 22,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    heightSummaryValue: {
+      fontSize: 42,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: -1,
+    },
+    heightSummarySubvalue: {
+      marginTop: 6,
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    heightRulerCard: {
+      backgroundColor: heightPanelBackground,
+      borderRadius: 20,
+      padding: 16,
+      gap: 10,
+    },
+    heightControlLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    heightRulerViewport: {
+      height: 94,
+      justifyContent: 'center',
+    },
+    heightRulerTickWrap: {
+      width: HEIGHT_RULER_TICK_SPACING,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      paddingTop: 8,
+    },
+    heightRulerTick: {
+      width: 2,
+      height: 20,
+      borderRadius: 1,
+      backgroundColor: colors.textSecondary + '88',
+    },
+    heightRulerTickMajor: {
+      height: 34,
+      backgroundColor: colors.textPrimary,
+    },
+    heightRulerTickLabel: {
+      position: 'absolute',
+      top: 46,
+      left: '50%',
+      width: 34,
+      marginLeft: -17,
+      fontSize: 11,
+      lineHeight: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    heightRulerCenterLine: {
+      position: 'absolute',
+      alignSelf: 'center',
+      width: 3,
+      height: 56,
+      borderRadius: 2,
+      backgroundColor: colors.brandPrimary,
+      shadowColor: colors.brandPrimary,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.35,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    birthAgeBlock: {
+      marginBottom: 44,
+      alignItems: 'center',
+    },
+    birthAgeValue: {
+      fontSize: 80,
+      fontWeight: '900',
+      color: colors.textPrimary,
+      letterSpacing: -2,
+      lineHeight: 80,
+    },
+    birthAgeLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginTop: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    birthPickerCard: {
+      width: '100%',
+      borderRadius: 24,
+      backgroundColor: heightPanelBackground,
+      paddingHorizontal: 12,
+      paddingTop: 12,
+      paddingBottom: 10,
+      overflow: 'hidden',
+    },
+    birthPickerHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 4,
+      marginBottom: 4,
+    },
+    birthPickerHeaderText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      textAlign: 'center',
+    },
+    birthPickerRow: {
+      height: 240,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    birthPickerColumnMonth: {
+      flex: 1.05,
+      minWidth: 96,
+    },
+    birthPickerColumnDay: {
+      flex: 0.72,
+      minWidth: 74,
+      paddingRight: 4,
+    },
+    birthPickerColumnYear: {
+      flex: 1.58,
+      minWidth: 132,
+    },
+    birthPicker: {
+      width: '100%',
+      height: 240,
+    },
+    birthPickerItem: {
+      color: colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '600',
+      height: 240,
     },
     optionsContainer: {
       gap: 12,
@@ -4094,7 +5206,7 @@ const createStyles = (
       marginBottom: 20,
     },
     testimonialCard: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 24,
       padding: 24,
       width: '100%',
@@ -4103,8 +5215,6 @@ const createStyles = (
       shadowOpacity: 0.05,
       shadowRadius: 10,
       elevation: 3,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     testimonialHeader: {
       flexDirection: 'row',
@@ -4153,7 +5263,7 @@ const createStyles = (
       backgroundColor: colors.textPrimary,
     },
     appStoreBadge: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.surfaceCard,
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 20,
@@ -4178,12 +5288,10 @@ const createStyles = (
       letterSpacing: -1,
     },
     summaryCard: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.surfaceCard,
       borderRadius: 28,
       padding: 24,
       marginBottom: 32,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     summaryCardTitle: {
       fontSize: 22,
@@ -4278,3 +5386,5 @@ const createStyles = (
       backgroundColor: 'rgba(255,255,255,0.2)',
     },
   })
+  )
+}

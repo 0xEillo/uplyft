@@ -520,8 +520,8 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
   const mainButtonHeight = isSmallScreen ? 46 : isMediumScreen ? 50 : 54
 
   // Dynamic gaps
-  const planGap = isSmallScreen ? 6 : isMediumScreen ? 8 : 10
-  const bottomMargin = isSmallScreen ? 8 : isMediumScreen ? 10 : 14
+  const planGap = isSmallScreen ? 10 : isMediumScreen ? 12 : 14
+  const bottomMargin = isSmallScreen ? 14 : isMediumScreen ? 18 : 22
 
   return StyleSheet.create({
     container: {
@@ -668,7 +668,6 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       position: 'relative',
     },
     planCardSelected: {
-      height: planCardSelectedHeight,
       borderColor: colors.textPrimary,
       backgroundColor: colors.surface,
     },
@@ -760,7 +759,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       width: '100%',
       height: mainButtonHeight,
       backgroundColor: colors.textPrimary,
-      borderRadius: mainButtonHeight / 2,
+      borderRadius: isSmallScreen ? 12 : 16,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.textPrimary,
@@ -779,7 +778,7 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: isSmallScreen ? 8 : 12,
+      marginTop: isSmallScreen ? 12 : 16,
       gap: 4,
     },
     noPaymentText: {

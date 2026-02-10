@@ -15,7 +15,6 @@ export const GOALS: {
   { value: 'build_muscle', label: 'Build muscle', icon: 'arrow-up' },
   { value: 'lose_fat', label: 'Lose fat', icon: 'arrow-down' },
   { value: 'improve_cardio', label: 'Improve cardio', icon: 'heart' },
-  { value: 'become_flexible', label: 'Become flexible', icon: 'sync' },
   { value: 'general_fitness', label: 'General fitness', icon: 'ellipse' },
 ]
 

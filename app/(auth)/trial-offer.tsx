@@ -646,8 +646,8 @@ function createStyles(
     plansContainer: {
       flexDirection: 'column',
       justifyContent: 'center',
-      marginBottom: 24,
-      gap: 12,
+      marginBottom: 32,
+      gap: 16,
     },
     planCard: {
       width: '100%',
@@ -664,7 +664,6 @@ function createStyles(
       position: 'relative',
     },
     planCardSelected: {
-      height: 82,
       borderColor: colors.brandPrimary,
       backgroundColor: colors.surface,
     },
@@ -730,7 +729,7 @@ function createStyles(
       borderRadius: 20,
       paddingHorizontal: 20,
       height: 56,
-      marginBottom: 20,
+      marginBottom: 28,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: colors.shadow,
@@ -753,7 +752,7 @@ function createStyles(
       width: '100%',
       height: 64,
       backgroundColor: colors.textPrimary,
-      borderRadius: 32,
+      borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: colors.textPrimary,
@@ -770,7 +769,7 @@ function createStyles(
     },
     footerContainer: {
       alignItems: 'center',
-      marginTop: 16,
+      marginTop: 20,
     },
     footerGuarenteeText: {
       textAlign: 'center',

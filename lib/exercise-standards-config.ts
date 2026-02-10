@@ -2108,6 +2108,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+
+  // Rope Pushdown
+  {
+    id: '591af367-e71d-4ad5-9754-1c3f39a9b434',
+    name: 'Rope Pushdown (Cable)',
+    aliases: ['Cable Pushdown (Rope)', 'Rope Pushdown', 'Tricep Rope Pushdown'],
+    gifUrl: 'dU605di.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.9,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.25,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.6,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.85,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.05,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
   // Standing Calf Raise
   {
     id: '51f08b8b-34d3-4e8b-bf9d-5d28c071c4ae',
@@ -3594,6 +3679,90 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+
+  // Cable Crunch
+  {
+    id: 'f59ce0f6-5118-421e-9010-0074247c9d9f',
+    name: 'Cable Crunch (Cable)',
+    aliases: ['Cable Crunch', 'Kneeling Cable Crunch', 'Cable Crunches'],
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
 ]
 
 /**
@@ -3654,6 +3823,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Weighted Dip': 'Triceps',
   'Close Grip Bench Press (Barbell)': 'Triceps',
   'Pushdown (Cable)': 'Triceps',
+  'Rope Pushdown (Cable)': 'Triceps',
   'Triceps Extension (Machine)': 'Triceps',
   'Overhead Cable Extension (Cable)': 'Triceps',
 
@@ -3679,6 +3849,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Core
   'Hanging Leg Raise': 'Core',
+  'Cable Crunch (Cable)': 'Core',
 
   // Lower Back
   'Back Extension (Machine)': 'Lower Back',
@@ -3702,6 +3873,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
 
   'Close Grip Bench Press (Barbell)': 'Push',
   'Pushdown (Cable)': 'Push',
+  'Rope Pushdown (Cable)': 'Push',
   'Seated Lateral Raise (Dumbbell)': 'Push',
   'Triceps Extension (Machine)': 'Push',
 

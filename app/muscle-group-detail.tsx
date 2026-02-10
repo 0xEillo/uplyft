@@ -367,8 +367,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         },
         untrackedCard: {
             backgroundColor: colors.bg,
-            opacity: 0.8,
-            borderStyle: 'dashed',
             elevation: 0,
             shadowOpacity: 0,
         },

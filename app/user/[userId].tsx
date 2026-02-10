@@ -739,7 +739,7 @@ export default function UserProfileScreen() {
                 </View>
               ) : workouts.length === 0 ? (
                 <EmptyState
-                  icon="fitness-outline"
+                  style={{ paddingTop: 40 }}
                   title="No workouts posted"
                   description="This user hasn't logged any public workouts yet."
                 />

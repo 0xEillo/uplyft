@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface EmptyStateProps {
-  icon: keyof typeof Ionicons.glyphMap
+  icon?: keyof typeof Ionicons.glyphMap
   title: string
   description?: string
   buttonText?: string
@@ -56,13 +56,15 @@ export function EmptyState({
         style
       ]}
     >
-      <View style={styles.iconWrapper}>
-        <Ionicons
-          name={icon}
-          size={42}
-          color={colors.brandPrimary}
-        />
-      </View>
+      {icon && (
+        <View style={styles.iconWrapper}>
+          <Ionicons
+            name={icon}
+            size={42}
+            color={colors.brandPrimary}
+          />
+        </View>
+      )}
 
       <Text style={styles.title}>{title}</Text>
       
@@ -92,7 +94,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 40,
-      paddingBottom: 80, // Optical centering - shifts content upward
+      paddingVertical: 60, // Symmetrical vertical padding for better centering
     },
     iconWrapper: {
       width: 90,
@@ -104,35 +106,35 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 24,
     },
     title: {
-      fontSize: 22,
-      fontWeight: '800',
+      fontSize: 24, // Slightly larger for better status presence
+      fontWeight: '900', // Even bolder
       color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 12,
-      letterSpacing: -0.5,
+      letterSpacing: -0.8, // Tighter tracking for premium feel
     },
     description: {
       fontSize: 16,
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
-      marginBottom: 32,
-      paddingHorizontal: 20,
+      marginBottom: 28, // Slightly reduced
+      paddingHorizontal: 10, // Adjusted padding
     },
     button: {
       backgroundColor: colors.brandPrimary,
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 12,
+      paddingVertical: 14, // Slightly taller button
+      paddingHorizontal: 32, // Wider button
+      borderRadius: 14, // More rounded corners to match the premium theme
       shadowColor: colors.brandPrimary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 6,
     },
     buttonText: {
       color: '#FFFFFF',
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 16, // Slightly larger text
+      fontWeight: '800', // Bolder text
     },
   })
