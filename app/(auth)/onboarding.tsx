@@ -1472,14 +1472,7 @@ const FinalPlanStepContent = ({
           {stats.map((stat, i) => (
             <View key={i} style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>{stat.label}</Text>
-              <Text 
-                style={[
-                  styles.summaryValue, 
-                  stat.label === 'Goal' && { color: getGoalColor(data.goal[0]) }
-                ]}
-              >
-                {stat.value}
-              </Text>
+              <Text style={styles.summaryValue}>{stat.value}</Text>
             </View>
           ))}
         </View>
@@ -1495,7 +1488,7 @@ const FinalPlanStepContent = ({
             style={styles.planPreviewGradient}
           >
             <View style={styles.planPreviewContent}>
-              <Text style={[styles.planPreviewName, { color: getGoalColor(data.goal[0]) }]}>{mainGoal}</Text>
+              <Text style={styles.planPreviewName}>{mainGoal}</Text>
               <Text style={styles.planPreviewDesc}>
                 Achieve an aesthetic physique with a focus on strength and
                 hypertrophy.
