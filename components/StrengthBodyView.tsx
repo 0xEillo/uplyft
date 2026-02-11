@@ -632,7 +632,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
 
   const modals = (
     <>
-      {/* Lifter Levels Sheet - keeping as modal since it's a full-screen carousel */}
+      {/* Lifter Levels Sheet */}
       {overallLevel && (
         <LifterLevelsSheet
           isVisible={showLevelsSheet}
