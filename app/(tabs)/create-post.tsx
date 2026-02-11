@@ -2795,7 +2795,7 @@ const createStyles = (
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       paddingVertical: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,

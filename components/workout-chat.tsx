@@ -2247,71 +2247,64 @@ export function WorkoutChat({
             {mode === 'fullscreen' && (
               <>
                 <LiquidGlassSurface
-                  key={`plan-settings-glass-${navGlassKey}`}
-                  debugLabel="plan-settings-button"
+                  key={`plan-actions-glass-${navGlassKey}`}
+                  debugLabel="plan-actions-group"
                   style={[
-                    styles.newChatButtonGlass,
+                    styles.headerActionGroupGlass,
                     { top: Math.max(insets.top - 38, 0) },
                   ]}
                 >
-                  <TouchableOpacity
-                    style={styles.newChatButton}
-                    onPress={
-                      messages.length > 0
-                        ? handleNewChat
-                        : () => {
-                            haptic('light')
-                            if (Platform.OS === 'ios') {
-                              router.push('/chat-settings')
-                              return
-                            }
-                            setIsCoachSheetVisible(true)
-                          }
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={
-                        messages.length > 0 ? 'create-outline' : 'settings-sharp'
-                      }
-                      size={24}
-                      color={colors.brandPrimary}
-                    />
-                  </TouchableOpacity>
-                </LiquidGlassSurface>
+                  <View style={styles.headerActionGroup}>
+                    <TouchableOpacity
+                      style={styles.foodToggleButton}
+                      onPress={() => {
+                        haptic('light')
+                        if (Platform.OS === 'ios' && dailyLogSummary) {
+                          router.push({
+                            pathname: '/daily-macros-detail',
+                            params: {
+                              totalsJson: JSON.stringify(dailyLogSummary.totals),
+                              goalsJson: JSON.stringify(dailyLogSummary.goals),
+                            },
+                          })
+                          return
+                        }
+                        setIsDailyMacrosSheetVisible(true)
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name="restaurant-outline"
+                        size={24}
+                        color={colors.brandPrimary}
+                      />
+                    </TouchableOpacity>
 
-                <LiquidGlassSurface
-                  key={`plan-food-glass-${navGlassKey}`}
-                  debugLabel="plan-food-button"
-                  style={[
-                    styles.foodToggleButtonGlass,
-                    { top: Math.max(insets.top - 38, 0) },
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={styles.foodToggleButton}
-                    onPress={() => {
-                      haptic('light')
-                      if (Platform.OS === 'ios' && dailyLogSummary) {
-                        router.push({
-                          pathname: '/daily-macros-detail',
-                          params: {
-                            totalsJson: JSON.stringify(dailyLogSummary.totals),
-                            goalsJson: JSON.stringify(dailyLogSummary.goals),
-                          },
-                        })
-                        return
+                    <TouchableOpacity
+                      style={styles.newChatButton}
+                      onPress={
+                        messages.length > 0
+                          ? handleNewChat
+                          : () => {
+                              haptic('light')
+                              if (Platform.OS === 'ios') {
+                                router.push('/chat-settings')
+                                return
+                              }
+                              setIsCoachSheetVisible(true)
+                            }
                       }
-                      setIsDailyMacrosSheetVisible(true)
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="restaurant-outline"
-                      size={24}
-                      color={colors.brandPrimary}
-                    />
-                  </TouchableOpacity>
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={
+                          messages.length > 0 ? 'create-outline' : 'settings-sharp'
+                        }
+                        size={24}
+                        color={colors.brandPrimary}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </LiquidGlassSurface>
               </>
             )}
@@ -3199,7 +3192,8 @@ export function WorkoutChat({
                 {
                   paddingBottom:
                     mode === 'sheet'
-                      ? Math.max(bottomSafeInset, 16)
+                      ? Math.max(bottomSafeInset, 16) +
+                        (isKeyboardVisible ? 10 : 0)
                       : isKeyboardVisible
                       ? Math.max(bottomSafeInset, 12)
                       : Math.max(bottomSafeInset, 12) + closedTabBarPadding,
@@ -3260,48 +3254,53 @@ export function WorkoutChat({
                   </LiquidGlassSurface>
                 )}
 
-                <View style={styles.textInputContainer}>
-                  <TextInput
-                    ref={inputRef}
-                    style={styles.input}
-                    placeholder={
-                      generatedPlanContent
-                        ? 'Make changes to your plan...'
-                        : 'Ask anything'
-                    }
-                    placeholderTextColor={colors.textPlaceholder}
-                    value={input}
-                    onChangeText={setInput}
-                    multiline
-                    maxLength={500}
-                    returnKeyType="send"
-                    onSubmitEditing={() => handleSendMessage()}
-                    blurOnSubmit={false}
-                    editable={!isLoading}
-                  />
+                <LiquidGlassSurface
+                  style={styles.textInputGlass}
+                  debugLabel="plan-chat-input"
+                >
+                  <View style={styles.textInputContainer}>
+                    <TextInput
+                      ref={inputRef}
+                      style={styles.input}
+                      placeholder={
+                        generatedPlanContent
+                          ? 'Make changes to your plan...'
+                          : 'Ask anything'
+                      }
+                      placeholderTextColor={colors.textPlaceholder}
+                      value={input}
+                      onChangeText={setInput}
+                      multiline
+                      maxLength={500}
+                      returnKeyType="send"
+                      onSubmitEditing={() => handleSendMessage()}
+                      blurOnSubmit={false}
+                      editable={!isLoading}
+                    />
 
-                  <TouchableOpacity
-                    style={[
-                      styles.sendButton,
-                      ((!input.trim() && selectedImages.length === 0) ||
-                        isLoading) &&
-                        styles.sendButtonDisabled,
-                    ]}
-                    onPress={() => handleSendMessage()}
-                    disabled={
-                      (!input.trim() && selectedImages.length === 0) || isLoading
-                    }
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={colors.textPlaceholder}
-                      />
-                    ) : (
-                      <Ionicons name="arrow-up" size={20} color={colors.surface} />
-                    )}
-                  </TouchableOpacity>
-                </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        ((!input.trim() && selectedImages.length === 0) ||
+                          isLoading) &&
+                          styles.sendButtonDisabled,
+                      ]}
+                      onPress={() => handleSendMessage()}
+                      disabled={
+                        (!input.trim() && selectedImages.length === 0) || isLoading
+                      }
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={colors.textPlaceholder}
+                        />
+                      ) : (
+                        <Ionicons name="arrow-up" size={20} color={colors.surface} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </LiquidGlassSurface>
               </View>
             </View>
 
@@ -3412,6 +3411,24 @@ function createStyles(
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
+    },
+    headerActionGroupGlass: {
+      position: 'absolute',
+      right: 20,
+      width: 104,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    headerActionGroup: {
+      width: '100%',
+      height: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 4,
     },
 
     actionButtonsContainer: {
@@ -3732,21 +3749,20 @@ function createStyles(
       alignItems: 'flex-end',
       gap: 8,
     },
+    textInputGlass: {
+      flex: 1,
+      borderRadius: 24,
+    },
     textInputContainer: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-end',
-      backgroundColor: isDark
-        ? mode === 'sheet'
-          ? colors.surfaceSubtle
-          : colors.surfaceCard
-        : colors.surfaceSubtle,
+      backgroundColor: 'transparent',
       borderRadius: 24,
       paddingRight: 4,
       paddingLeft: 16,
-      paddingVertical: 4,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : '#FAFAFA',
+      paddingVertical: 5,
+      borderWidth: 0,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -3759,7 +3775,7 @@ function createStyles(
       paddingBottom: 6,
       marginRight: 8,
       fontSize: 17,
-      lineHeight: 22,
+      lineHeight: 24,
       color: colors.textPrimary,
       maxHeight: 100,
       textAlignVertical: 'center',
@@ -3771,7 +3787,7 @@ function createStyles(
       backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 2,
+      marginTop: 1,
     },
     sendButtonDisabled: {
       backgroundColor: colors.textPlaceholder,

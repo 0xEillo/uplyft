@@ -69,7 +69,7 @@ const createStyles = (paddingVertical: number) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 14,
+      paddingHorizontal: 20,
       paddingVertical: paddingVertical,
       minHeight: 60,
       backgroundColor: 'transparent',

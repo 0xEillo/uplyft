@@ -203,12 +203,18 @@ export function WorkoutCoachSheet({
                     // Match prior behavior: fixed offset keeps the input fully above the keyboard on iOS.
                     // (keyboardHeight already includes the safe-area region in many cases; subtracting insets
                     // can under-shoot and leave the input hidden.)
-                    marginBottom: Math.max(0, keyboardHeight - 26 + 10),
-                    // When keyboard is up, constrain height to max 75% of available space above keyboard
-                    height: Math.min(
-                      INITIAL_SHEET_HEIGHT,
-                      (SCREEN_HEIGHT - keyboardHeight) * 0.75,
+                    // Extend the sheet slightly downward behind the keyboard corners
+                    // while preserving the same visible top position.
+                    marginBottom: Math.max(
+                      0,
+                      keyboardHeight - 26 + 10 - (Platform.OS === 'ios' ? 22 : 0),
                     ),
+                    // When keyboard is up, constrain height to max 75% of available space above keyboard
+                    height:
+                      Math.min(
+                        INITIAL_SHEET_HEIGHT,
+                        (SCREEN_HEIGHT - keyboardHeight) * 0.75,
+                      ) + (Platform.OS === 'ios' ? 22 : 0),
                   }
                 : null,
             ]}
@@ -267,8 +273,8 @@ const createStyles = (
     sheet: {
       height: sheetHeight,
       backgroundColor: colors.surfaceSheet,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: 34,
+      borderTopRightRadius: 34,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: -4 },
       shadowOpacity: 0.15,

@@ -526,7 +526,7 @@ export function StructuredWorkoutInput({
             </View>
             {editorToolbarProps && (
               <View style={styles.toolbarContainer}>
-                <EditorToolbar {...editorToolbarProps} />
+                <EditorToolbar {...editorToolbarProps} accessoryMode />
               </View>
             )}
           </View>
