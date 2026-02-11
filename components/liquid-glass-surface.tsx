@@ -23,6 +23,11 @@ interface LiquidGlassSurfaceProps {
   tintColor?: GlassViewProps['tintColor']
   isInteractive?: GlassViewProps['isInteractive']
   debugLabel?: string
+  /**
+   * Forces a native glass layer refresh without remounting children.
+   * Useful when iOS drops glass rendering after route transitions.
+   */
+  refreshToken?: string | number
 }
 
 function readGlassAvailability() {
@@ -51,6 +56,7 @@ export function LiquidGlassSurface({
   tintColor,
   isInteractive = false,
   debugLabel,
+  refreshToken,
 }: LiquidGlassSurfaceProps) {
   const { isDark } = useTheme()
   const [availability, setAvailability] = useState(readGlassAvailability)
@@ -64,7 +70,9 @@ export function LiquidGlassSurface({
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     let attempts = 0
 
-    const refreshAvailability = (reason: 'theme-change' | 'retry' | 'app-active') => {
+    const refreshAvailability = (
+      reason: 'theme-change' | 'retry' | 'app-active' | 'refresh-token',
+    ) => {
       const next = readGlassAvailability()
       if (!cancelled) {
         setAvailability(next)
@@ -90,9 +98,10 @@ export function LiquidGlassSurface({
       }
     }
 
-    // Force remount GlassView on theme changes to avoid stale native layer state.
+    // Force remount GlassView on theme changes and explicit refreshes
+    // to avoid stale native layer state.
     setThemeRenderKey((prev) => prev + 1)
-    refreshAvailability('theme-change')
+    refreshAvailability(refreshToken === undefined ? 'theme-change' : 'refresh-token')
 
     const appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
@@ -106,7 +115,7 @@ export function LiquidGlassSurface({
       if (timeoutId) clearTimeout(timeoutId)
       appStateSubscription.remove()
     }
-  }, [debugLabel, isDark])
+  }, [debugLabel, isDark, refreshToken])
 
   const { liquidGlassAvailable, glassApiAvailable, canUseNativeGlass } = availability
   const glassKey = useMemo(
@@ -140,19 +149,23 @@ export function LiquidGlassSurface({
 
   if (canUseNativeGlass) {
     return (
-      <GlassView
-        key={glassKey}
+      <View
         style={[
           styles.base,
           isDark ? styles.nativeVisibilityDark : styles.nativeVisibilityLight,
           style,
         ]}
-        glassEffectStyle={glassEffectStyle}
-        tintColor={tintColor}
-        isInteractive={isInteractive}
       >
+        <GlassView
+          key={glassKey}
+          pointerEvents={isInteractive ? 'auto' : 'none'}
+          style={styles.nativeGlassFill}
+          glassEffectStyle={glassEffectStyle}
+          tintColor={tintColor}
+          isInteractive={isInteractive}
+        />
         {children}
-      </GlassView>
+      </View>
     )
   }
 
@@ -173,6 +186,9 @@ export function LiquidGlassSurface({
 const styles = StyleSheet.create({
   base: {
     overflow: 'hidden',
+  },
+  nativeGlassFill: {
+    ...StyleSheet.absoluteFillObject,
   },
   fallbackLight: {
     backgroundColor: 'rgba(255,255,255,0.64)',

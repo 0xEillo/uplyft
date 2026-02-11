@@ -11,7 +11,7 @@ export const WORKOUT_JSON_SCHEMA = `{
       "sets": [
         {
           "type": "warmup" | "working",
-          "reps": "12" | "8-10",
+          "reps": "6-8" | "10-12",
           "restSeconds": 60
         }
       ]

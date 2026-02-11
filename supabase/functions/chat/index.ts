@@ -81,6 +81,7 @@ const requestSchema = z.object({
   messages: z.array(messagesSchema),
   userId: z.string().optional(),
   weightUnit: z.enum(['kg', 'lb']).optional(),
+  coachSystemPrompt: z.string().max(4000).optional(),
   images: z.array(imageSchema).optional(),
   workoutContext: workoutContextSchema,
   dailyLogSummary: dailyLogSummarySchema,
@@ -132,6 +133,7 @@ serve(async (req) => {
     console.log('[chat-edge] Request received:', {
       hasUserId: Boolean(payload.userId?.trim()),
       messagesCount: payload.messages.length,
+      hasCoachSystemPrompt: Boolean(payload.coachSystemPrompt?.trim()),
       hasImages: Boolean(payload.images && payload.images.length > 0),
       hasWorkoutContext: Boolean(payload.workoutContext),
       hasDailyLogSummary: Boolean(payload.dailyLogSummary),
@@ -155,6 +157,7 @@ serve(async (req) => {
         systemPrompt = buildSystemPrompt(
           summary,
           payload.weightUnit,
+          payload.coachSystemPrompt,
           payload.workoutContext,
           payload.dailyLogSummary,
         )
@@ -1062,7 +1065,7 @@ const WORKOUT_JSON_SCHEMA = `{
       "sets": [
         {
           "type": "warmup" | "working",
-          "reps": "12" | "8-10",
+          "reps": "6-8" | "10-12",
           "restSeconds": 60
         }
       ]
@@ -1073,6 +1076,7 @@ const WORKOUT_JSON_SCHEMA = `{
 function buildSystemPrompt(
   summary: Awaited<ReturnType<typeof buildUserContextSummary>>,
   weightUnit: 'kg' | 'lb' = 'kg',
+  coachSystemPrompt?: string,
   workoutContext?: z.infer<typeof workoutContextSchema>,
   dailyLogSummary?: z.infer<typeof dailyLogSummarySchema>,
 ): string {
@@ -1090,6 +1094,13 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
 - Only elaborate when they actually ask a question or want details.
 - If they ask something simple, answer simply. One sentence is often enough.
 - Save the detailed explanations for when they specifically ask "why" or "how" or want to learn more.`,
+    ...(coachSystemPrompt
+      ? [
+          'COACH PERSONALITY (STYLE ONLY):',
+          coachSystemPrompt,
+          'Use this coach personality for tone and communication style only. Keep the training programming defaults the same across coaches.',
+        ]
+      : []),
     'User context:\n' + userContextToPrompt(summary),
     `Weight preferences: The user prefers ${
       weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
@@ -1111,6 +1122,12 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
         ]
       : []),
     'WORKOUT GENERATION:',
+    'DEFAULT PROGRAMMING STYLE (ALL COACHES):',
+    '- Use a high-intensity, low-volume approach by default.',
+    '- Working sets per exercise: mostly 2; sometimes 3 for compound movements; never more than 3 working sets.',
+    '- Rep targets: compounds 6-8 reps, isolations 10-12 reps.',
+    '- Warm-up sets are separate and do not count toward working set totals.',
+    '- Use this default unless the user explicitly asks for a different style.',
     "If (and ONLY if) the user explicitly asks you to create, plan, or generate a workout/routine (e.g. 'Create a chest workout', 'Plan a leg day'), you MUST output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
     `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
@@ -1138,13 +1155,15 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     '',
     'EXERCISE SUGGESTIONS FORMAT:',
     'Whenever you suggest, recommend, or mention specific exercises (whether adding to a workout, replacing an exercise, or just discussing options), ALWAYS include a JSON array at the END of your response with the exercise details.',
-    'Format: [{"name": "Exercise Name", "sets": 3, "reps": "8-10"}, ...]',
+    'Format: [{"name": "Exercise Name", "sets": 2, "reps": "6-8"}, ...]',
+    'Use sets=2 for most exercises; sets=3 only when needed (typically compounds), never 4.',
+    'Use reps="6-8" for compound movements and reps="10-12" for isolation movements by default.',
     'This applies when:',
     '- User asks you to add exercises to their workout',
     '- User asks for exercise alternatives or replacements',
     '- You recommend exercises in your response',
     '- You discuss specific exercises the user could try',
-    'Example: "I\'d suggest adding some tricep work to balance your push day. Here are a couple options:\\n[{\\"name\\": \\"Tricep Pushdown\\", \\"sets\\": 3, \\"reps\\": \\"12-15\\"}, {\\"name\\": \\"Overhead Tricep Extension\\", \\"sets\\": 3, \\"reps\\": \\"10-12\\"}]"',
+    'Example: "I\'d suggest adding some tricep work to balance your push day. Here are a couple options:\\n[{\\"name\\": \\"Tricep Pushdown\\", \\"sets\\": 2, \\"reps\\": \\"10-12\\"}, {\\"name\\": \\"Overhead Tricep Extension\\", \\"sets\\": 2, \\"reps\\": \\"10-12\\"}]"',
     'Do NOT include the JSON for general exercise questions like "what muscles does bench press work?" - only when actually suggesting exercises to add/do.',
     dailyLogSection,
     workoutInProgressSection,

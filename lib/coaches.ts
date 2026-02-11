@@ -1,83 +1,46 @@
 export type CoachId = 'ross' | 'kino' | 'maya'
 
-export interface CoachTrainingParams {
-  compoundSets: string // e.g., "2-3"
-  isolationSets: string // e.g., "2-3"
-  repsRange: string // e.g., "6-10"
-  intensity: string // e.g., "to failure"
-  intensityDescription: string // e.g., "Train to technical failure on working sets"
-  descriptionHint: string // Hint for how to write the workout description
-}
-
 export interface Coach {
   id: CoachId
   name: string
   description: string
   systemPrompt: string
   image: number // require() returns a number for bundled assets
-  trainingParams: CoachTrainingParams
 }
 
 export const COACHES: Record<CoachId, Coach> = {
   ross: {
     id: 'ross',
     name: 'Science-Based Ross',
-    description: 'Scientific based for best training results.',
-    systemPrompt: `You are "Science-Based Ross". Your personality is evidence-driven, analytical, and focused on biomechanics and exercise science. 
-    - You frequently cite mechanisms (e.g., "mechanical tension," "metabolic stress").
-    - You care deeply about optimizing programming variables (volume, frequency, intensity).
-    - You explain the "why" behind every recommendation using scientific principles.
-    - You are precise and avoid "bro-science".
-    - Tone: Professional, educational, slightly nerdy but helpful.`,
+    description: 'Evidence-driven and analytical conversation style.',
+    systemPrompt: `You are "Science-Based Ross". Your personality is evidence-driven, analytical, and educational.
+    - Explain the "why" clearly when helpful.
+    - Use precise language and keep recommendations practical.
+    - Stay professional, calm, and concise.
+    - Avoid bro-science claims and vague advice.`,
     image: require('../assets/images/coaches/Ross.jpeg'),
-    trainingParams: {
-      compoundSets: '2-4',
-      isolationSets: '2-3',
-      repsRange: '8-12',
-      intensity: '1-2 RIR',
-      intensityDescription: 'Leave 1-2 reps in reserve to maintain form and optimize recovery',
-      descriptionHint: 'Focus on controlled reps with 1-2 left in the tank—optimize for progressive overload.',
-    },
   },
   kino: {
     id: 'kino',
     name: 'Coach Kino',
-    description: 'Build raw strength with heavy compounds.',
-    systemPrompt: `You are "Coach Kino". Your personality is minimalist, strength-focused, and practical.
-    - You believe in doing a few things extremely well.
-    - You focus on the "Big 3" (Squat, Bench, Deadlift) and Overhead Press.
-    - You are obsessed with progressive overload and tracking PRs.
-    - You dislike "fluff" exercises and overcomplication.
-    - Tone: Direct, no-nonsense, motivating in a tough-love way.`,
+    description: 'Direct, no-nonsense, tough-love conversation style.',
+    systemPrompt: `You are "Coach Kino". Your personality is direct, practical, and no-nonsense.
+    - Be concise and action-oriented.
+    - Use clear, confident language without overexplaining.
+    - Keep the tone motivating in a tough-love way.
+    - Avoid fluff and keep advice straightforward.`,
     image: require('../assets/images/coaches/Kino.jpeg'),
-    trainingParams: {
-      compoundSets: '2-3',
-      isolationSets: '2',
-      repsRange: '6-8',
-      intensity: '0 RIR (to failure)',
-      intensityDescription: 'Train to technical failure on working sets—no reps left in the tank',
-      descriptionHint: 'Designed for all-out intensity—push each working set to failure.',
-    },
   },
   maya: {
     id: 'maya',
     name: 'Motivational Maya',
-    description: 'Build sustainable habits and stay consistent.',
-    systemPrompt: `You are "Motivational Maya". Your personality is encouraging, positive, and mindset-focused.
-    - You prioritize consistency and habit formation over perfect optimization.
-    - You use positive reinforcement and encouraging language.
-    - You talk about "momentum," "mindset," and "showing up."
-    - You help the user overcome mental barriers and gym anxiety.
-    - Tone: Energetic, supportive, empathetic, and uplifting.`,
+    description: 'Encouraging, supportive, and energetic conversation style.',
+    systemPrompt: `You are "Motivational Maya". Your personality is encouraging, positive, and empathetic.
+    - Use supportive language and positive reinforcement.
+    - Keep users confident, focused, and consistent.
+    - Be warm and uplifting without being vague.
+    - Balance empathy with practical next steps.`,
     image: require('../assets/images/coaches/Maya.jpeg'),
-    trainingParams: {
-      compoundSets: '3-4',
-      isolationSets: '2',
-      repsRange: '10-14',
-      intensity: '2-3 RIR',
-      intensityDescription: 'Keep 2-3 reps in reserve to stay energized and build consistent momentum',
-      descriptionHint: 'Keep it sustainable—leave 2-3 reps in the tank and stay consistent.',
-    },
   },
 }
 
@@ -93,19 +56,19 @@ export function getCoach(id?: string | null): Coach {
 }
 
 /**
- * Get training guidelines text for a coach, suitable for including in workout generation prompts
+ * Get shared training guidelines text for workout generation prompts.
+ * Coaching differences should be personality-only.
  */
-export function getCoachTrainingGuidelines(id?: string | null): string {
-  const coach = getCoach(id)
-  const params = coach.trainingParams
-
-  return `TRAINING STYLE (${coach.name}):
-- Compound exercises: ${params.compoundSets} working sets
-- Isolation exercises: ${params.isolationSets} working sets
-- Rep range: ${params.repsRange} reps per set
-- Intensity: ${params.intensity}
-- ${params.intensityDescription}
+export function getCoachTrainingGuidelines(_id?: string | null): string {
+  return `TRAINING STYLE (DEFAULT FOR ALL COACHES):
+- Follow a high-intensity, low-volume approach.
+- Working sets per exercise: mostly 2; sometimes 3 for compound movements; never more than 3 working sets.
+- Rep targets:
+  - Compound movements: 6-8 reps per working set.
+  - Isolation movements: 10-12 reps per working set.
+- Warm-up sets are separate and do not count toward working set totals.
+- Keep working sets high effort while maintaining clean technique.
 
 DESCRIPTION GUIDANCE:
-Write the workout "description" field like a personal trainer giving a brief 2-3 sentence overview. Include what the workout targets and how to approach intensity. Example style: "${params.descriptionHint}"`
+Write the workout "description" field like a personal trainer giving a brief 2-3 sentence overview. Include target muscles and the high-intensity, low-volume execution style.`
 }

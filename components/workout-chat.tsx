@@ -600,6 +600,7 @@ export function WorkoutChat({
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(false)
   const [navGlassKey, setNavGlassKey] = useState(0)
+  const [composerGlassKey, setComposerGlassKey] = useState(0)
   const [dailyLogSummary, setDailyLogSummary] =
     useState<DailyLogSummaryState | null>(null)
   const [latestLoggedMealId, setLatestLoggedMealId] = useState<string | null>(
@@ -750,10 +751,19 @@ export function WorkoutChat({
     }, [workoutContext]),
   )
 
-  // Remount top nav glass buttons on focus to recover native glass after nav transitions.
+  // Remount glass surfaces on focus to recover native glass after nav transitions.
   useFocusEffect(
     useCallback(() => {
       setNavGlassKey((prev) => prev + 1)
+
+      // Composer glass can miss first mount on iOS during initial route transition.
+      // Kick an immediate + delayed remount to recover without requiring user navigation.
+      setComposerGlassKey((prev) => prev + 1)
+      const composerRetryTimeout = setTimeout(() => {
+        setComposerGlassKey((prev) => prev + 1)
+      }, 200)
+
+      return () => clearTimeout(composerRetryTimeout)
     }, []),
   )
 
@@ -1464,6 +1474,7 @@ export function WorkoutChat({
         messages: { role: string; content: string }[]
         userId: string | undefined
         weightUnit: string
+        coachSystemPrompt?: string
         workoutContext?: {
           title?: string
           notes?: string
@@ -1489,6 +1500,7 @@ export function WorkoutChat({
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
+        coachSystemPrompt: getCoach(coachId).systemPrompt,
         dailyLogSummary: dailyLogSummary
           ? {
               logDate: dailyLogSummary.logDate,
@@ -1759,6 +1771,7 @@ export function WorkoutChat({
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
+        coachSystemPrompt: getCoach(coachId).systemPrompt,
       }
 
       const response = await appFetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
@@ -2248,7 +2261,7 @@ export function WorkoutChat({
             {mode === 'fullscreen' && (
               <>
                 <LiquidGlassSurface
-                  key={`plan-actions-glass-${navGlassKey}`}
+                  refreshToken={navGlassKey}
                   debugLabel="plan-actions-group"
                   style={[
                     styles.headerActionGroupGlass,
@@ -3238,6 +3251,7 @@ export function WorkoutChat({
                 {/* Add Image Button - hidden when hideImagePicker is true */}
                 {!hideImagePicker && (
                   <LiquidGlassSurface
+                    refreshToken={composerGlassKey}
                     style={styles.addImageButtonGlass}
                     debugLabel="plan-image-button"
                   >
@@ -3256,6 +3270,7 @@ export function WorkoutChat({
                 )}
 
                 <LiquidGlassSurface
+                  refreshToken={composerGlassKey}
                   style={styles.textInputGlass}
                   debugLabel="plan-chat-input"
                 >
