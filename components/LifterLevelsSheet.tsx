@@ -1,5 +1,6 @@
 import { LevelBadge } from '@/components/LevelBadge'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { useTheme } from '@/contexts/theme-context'
 import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { StrengthLevel } from '@/lib/strength-standards'
@@ -48,6 +49,7 @@ export function LifterLevelsSheet({
   progressToNext,
 }: LifterLevelsSheetProps) {
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -91,7 +93,7 @@ export function LifterLevelsSheet({
     slideAnim.setValue(24)
   }, [fadeAnim, isVisible, slideAnim])
 
-  const styles = createStyles(colors, insets)
+  const styles = createStyles(colors, insets, isDark)
 
   if (!isVisible) return null
 
@@ -213,7 +215,9 @@ export function LifterLevelsSheet({
                       : 'checkmark-circle'
                   const tileStatusColor = isLocked ? colors.textTertiary : levelColor
                   const tilePillBackground = isLocked
-                    ? 'rgba(255,255,255,0.22)'
+                    ? isDark
+                      ? 'rgba(255,255,255,0.22)'
+                      : 'rgba(0,0,0,0.10)'
                     : `${levelColor}33`
 
                   return (
@@ -280,15 +284,57 @@ export function LifterLevelsSheet({
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top: number; bottom: number }) =>
-  StyleSheet.create({
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  insets: { top: number; bottom: number },
+  isDark: boolean,
+) => {
+  const palette = isDark
+    ? {
+      backdrop: 'rgba(8,10,14,0.90)',
+      closeShellBg: 'rgba(22,24,28,0.86)',
+      closeShellBorder: 'rgba(255,255,255,0.20)',
+      headerShellBg: 'rgba(24,26,30,0.84)',
+      headerShellBorder: 'rgba(255,255,255,0.16)',
+      contentScrim: 'rgba(14,16,20,0.20)',
+      currentCardBg: 'rgba(26,28,32,0.82)',
+      currentCardBorder: 'rgba(255,255,255,0.18)',
+      progressTrack: 'rgba(255,255,255,0.30)',
+      badgeTileBg: 'rgba(34,37,43,0.86)',
+      badgeTileBorder: 'rgba(255,255,255,0.24)',
+      badgeTileLockedBg: 'rgba(18,20,24,0.90)',
+      badgeTileLockedBorder: 'rgba(255,255,255,0.14)',
+      badgeTileCurrentBorder: 'rgba(255,255,255,0.60)',
+      lockBadgeBg: 'rgba(26,28,32,0.84)',
+      lockBadgeBorder: 'rgba(255,255,255,0.16)',
+    }
+    : {
+      backdrop: 'rgba(8,10,14,0.46)',
+      closeShellBg: 'rgba(255,255,255,0.86)',
+      closeShellBorder: 'rgba(0,0,0,0.14)',
+      headerShellBg: 'rgba(255,255,255,0.84)',
+      headerShellBorder: 'rgba(0,0,0,0.12)',
+      contentScrim: 'rgba(255,255,255,0.14)',
+      currentCardBg: 'rgba(255,255,255,0.86)',
+      currentCardBorder: 'rgba(0,0,0,0.13)',
+      progressTrack: 'rgba(0,0,0,0.16)',
+      badgeTileBg: 'rgba(255,255,255,0.88)',
+      badgeTileBorder: 'rgba(0,0,0,0.14)',
+      badgeTileLockedBg: 'rgba(246,248,252,0.90)',
+      badgeTileLockedBorder: 'rgba(0,0,0,0.10)',
+      badgeTileCurrentBorder: 'rgba(0,0,0,0.30)',
+      lockBadgeBg: 'rgba(255,255,255,0.92)',
+      lockBadgeBorder: 'rgba(0,0,0,0.16)',
+    }
+
+  return StyleSheet.create({
     container: {
       flex: 1,
       justifyContent: 'flex-end',
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(8,10,14,0.90)',
+      backgroundColor: palette.backdrop,
     },
     content: {
       flex: 1,
@@ -305,8 +351,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: 'rgba(22,24,28,0.86)',
-      borderColor: 'rgba(255,255,255,0.20)',
+      backgroundColor: palette.closeShellBg,
+      borderColor: palette.closeShellBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -324,8 +370,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       alignSelf: 'stretch',
       borderRadius: 18,
       marginBottom: 16,
-      backgroundColor: 'rgba(24,26,30,0.84)',
-      borderColor: 'rgba(255,255,255,0.16)',
+      backgroundColor: palette.headerShellBg,
+      borderColor: palette.headerShellBorder,
       overflow: 'hidden',
     },
     headerCopy: {
@@ -349,7 +395,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
     },
     contentScrim: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(14,16,20,0.20)',
+      backgroundColor: palette.contentScrim,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       zIndex: 1,
@@ -369,8 +415,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       padding: 18,
       overflow: 'hidden',
       marginBottom: 16,
-      backgroundColor: 'rgba(26,28,32,0.82)',
-      borderColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: palette.currentCardBg,
+      borderColor: palette.currentCardBorder,
     },
     currentCardTopRow: {
       flexDirection: 'row',
@@ -410,7 +456,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       marginTop: 16,
       height: 8,
       borderRadius: 4,
-      backgroundColor: 'rgba(255,255,255,0.30)',
+      backgroundColor: palette.progressTrack,
       overflow: 'hidden',
     },
     progressBarFill: {
@@ -446,8 +492,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: 'rgba(34,37,43,0.86)',
-      borderColor: 'rgba(255,255,255,0.24)',
+      backgroundColor: palette.badgeTileBg,
+      borderColor: palette.badgeTileBorder,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.22,
@@ -455,11 +501,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       elevation: 3,
     },
     badgeTileLocked: {
-      backgroundColor: 'rgba(18,20,24,0.90)',
-      borderColor: 'rgba(255,255,255,0.14)',
+      backgroundColor: palette.badgeTileLockedBg,
+      borderColor: palette.badgeTileLockedBorder,
     },
     badgeTileCurrent: {
-      borderColor: 'rgba(255,255,255,0.60)',
+      borderColor: palette.badgeTileCurrentBorder,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 5 },
       shadowOpacity: 0.28,
@@ -483,11 +529,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       width: 20,
       height: 20,
       borderRadius: 10,
-      backgroundColor: 'rgba(26,28,32,0.84)',
+      backgroundColor: palette.lockBadgeBg,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.16)',
+      borderColor: palette.lockBadgeBorder,
     },
     badgeName: {
       marginTop: 8,
@@ -518,3 +564,4 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, insets: { top:
       fontWeight: '700',
     },
   })
+}
