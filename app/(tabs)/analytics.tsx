@@ -100,7 +100,10 @@ export default function AnalyticsScreen() {
   const headerTotalHeight = insets.top + NAVBAR_HEIGHT
 
   return (
-    <View style={styles.container}>
+    <View
+      collapsable={false}
+      style={styles.container}
+    >
       <BlurredHeader>
         <BaseNavbar
           leftContent={<View style={styles.navbarSpacer} />}

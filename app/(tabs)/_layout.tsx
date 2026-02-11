@@ -48,6 +48,7 @@ const IS_DEV_RUNTIME =
     ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
     : process.env.NODE_ENV !== 'production'
 const DEBUG_LOGS = false
+const MINIMIZE_ON_SCROLL_TABS = new Set(['index', 'analytics', 'profile'])
 
 function formatAccessoryElapsed(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -218,6 +219,11 @@ function TabLayoutContent() {
   const isIOS26OrNewer =
     Platform.OS === 'ios' &&
     Number.parseInt(String(Platform.Version).split('.')[0] ?? '0', 10) >= 26
+  const shouldEnableTabBarMinimize =
+    isIOS26OrNewer && MINIMIZE_ON_SCROLL_TABS.has(currentTab)
+  const tabBarMinimizeBehavior = shouldEnableTabBarMinimize
+    ? 'onScrollDown'
+    : 'never'
   const showNativeBottomAccessory =
     isIOS26OrNewer &&
     !isTabBarHidden &&
@@ -299,7 +305,7 @@ function TabLayoutContent() {
       <NativeTabs
         backBehavior="history"
         hidden={isTabBarHidden}
-        minimizeBehavior="onScrollDown"
+        minimizeBehavior={tabBarMinimizeBehavior}
         tintColor={colors.brandPrimary}
         iconColor={colors.textSecondary}
         backgroundColor={
@@ -440,6 +446,7 @@ function BottomAccessoryAction({
   const placement = NativeTabs.BottomAccessory.usePlacement()
   const isInline = placement === 'inline'
   const sideSlotWidth = isInline ? 56 : 68
+  const contentTranslateY = isInline ? 3 : -2
 
   return (
     <View
@@ -465,7 +472,7 @@ function BottomAccessoryAction({
           bottom: 0,
           zIndex: 1,
           justifyContent: 'center',
-          transform: [{ translateY: -2 }],
+          transform: [{ translateY: contentTranslateY }],
         }}
       >
         <View
@@ -541,7 +548,7 @@ function BottomAccessoryAction({
           paddingHorizontal: 6,
           alignItems: 'center',
           justifyContent: 'center',
-          transform: [{ translateY: -2 }],
+          transform: [{ translateY: contentTranslateY }],
         }}
       >
         <Ionicons

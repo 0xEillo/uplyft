@@ -439,7 +439,10 @@ export default function ProfileScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <View
+      collapsable={false}
+      style={styles.container}
+    >
       <BlurredHeader style={styles.navbarContainer}>
         <BaseNavbar
           leftContent={

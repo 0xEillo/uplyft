@@ -661,7 +661,10 @@ export default function FeedScreen() {
   const headerTotalHeight = insets.top + NAVBAR_HEIGHT
 
   return (
-    <View style={styles.container}>
+    <View
+      collapsable={false}
+      style={styles.container}
+    >
       {/* Blurred navbar overlay */}
       <BlurredHeader>
         <BaseNavbar
