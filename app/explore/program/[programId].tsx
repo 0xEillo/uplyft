@@ -10,7 +10,10 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
-import { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
+import {
+    ExploreProgramWithRoutines,
+    ExploreRoutineWithExercises,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
@@ -58,7 +61,7 @@ export default function ProgramDetailScreen() {
   const CARD_WIDTH = windowWidth - CARD_MARGIN * 2 - PEEK_WIDTH
   const CARD_SPACING = 12
 
-  const flatListRef = useRef<FlatList<ExploreRoutine>>(null)
+  const flatListRef = useRef<FlatList<ExploreRoutineWithExercises>>(null)
 
   const handleRoutineScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -72,7 +75,7 @@ export default function ProgramDetailScreen() {
 
   const styles = useMemo(() => createStyles(colors, isDark, CARD_WIDTH), [colors, isDark, CARD_WIDTH])
 
-  const getRoutineImage = (routine: ExploreRoutine) => {
+  const getRoutineImage = (routine: ExploreRoutineWithExercises) => {
     // If the database already has a full URL, use it
     if (routine.image_url && routine.image_url.startsWith('http')) {
       return routine.image_url

@@ -1970,7 +1970,10 @@ export default function OnboardingScreen() {
     }
 
     const weightKgRaw = convertInputToKg(parseFloat(data.weight_kg))
-    const weightKg = Number.isFinite(weightKgRaw) ? weightKgRaw : 75
+    const weightKg =
+      typeof weightKgRaw === 'number' && Number.isFinite(weightKgRaw)
+        ? weightKgRaw
+        : 75
     const age =
       calculateAgeFromBirthDate(
         data.birth_year,

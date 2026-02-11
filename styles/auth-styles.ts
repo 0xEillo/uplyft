@@ -5,13 +5,13 @@ import { StyleSheet } from 'react-native'
  * Provides consistent styling for forms, inputs, buttons, and layout.
  */
 export const createAuthStyles = (colors: {
-  background: string
-  text: string
+  bg: string
+  textPrimary: string
   textSecondary: string
   border: string
-  inputBackground: string
-  primary: string
-  buttonText: string
+  surfaceInput: string
+  brandPrimary: string
+  onPrimary: string
 }) =>
   StyleSheet.create({
     container: {

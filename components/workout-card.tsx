@@ -48,7 +48,7 @@ export function WorkoutCard({
         <View style={styles.coachRow}>
           <Image source={coachImage} style={styles.coachAvatar} />
           <Text style={styles.coachLabel}>
-            Here's what I put together for you
+            Here&apos;s what I put together for you
           </Text>
         </View>
       )}
@@ -490,5 +490,4 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>, isDark: boolea
       fontWeight: '600',
     },
   })
-
 

@@ -1,3 +1,4 @@
+import type { Href } from 'expo-router'
 import type { ImageSourcePropType } from 'react-native'
 
 export type AppPostPreviewType =
@@ -25,7 +26,7 @@ export type AppPost = {
   preview?: AppPostPreviewType
   badge?: string
   ctaText?: string
-  ctaRoute?: string
+  ctaRoute?: Href
   ctaUrl?: string
 }
 

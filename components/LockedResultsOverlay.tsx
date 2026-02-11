@@ -26,12 +26,13 @@ export function LockedResultsOverlay({
 }: LockedResultsOverlayProps) {
   const colors = useThemedColors()
   const styles = createStyles(colors)
+  const blurTint = colors.bg === '#000000' ? 'dark' : 'light'
 
   return (
     <View style={styles.container}>
       {/* Real Blur Effect */}
       <BlurView
-        tint={colors.bg === '#f6f6f8' ? 'light' : 'dark'}
+        tint={blurTint}
         intensity={Platform.OS === 'ios' ? 60 : 80}
         style={StyleSheet.absoluteFill}
       />

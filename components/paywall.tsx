@@ -372,7 +372,7 @@ export function Paywall({
                 ))}
               </View>
               <Text style={styles.reviewText}>
-               "Rep AI is the best workout tracker I have tried and the only one I actually stick to."
+                &quot;Rep AI is the best workout tracker I have tried and the only one I actually stick to.&quot;
               </Text>
               <View style={styles.authorContainer}>
                 <Text style={styles.reviewAuthor}>Matt J.</Text>

@@ -103,7 +103,7 @@ export function DailyMacrosSheet({
 
           {/* Title row */}
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Today's Nutrition</Text>
+            <Text style={styles.title}>Today&apos;s Nutrition</Text>
             <View style={styles.mealCountBadge}>
               <Ionicons
                 name="restaurant-outline"

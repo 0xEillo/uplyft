@@ -601,6 +601,7 @@ export function WorkoutChat({
   const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(false)
   const [navGlassKey, setNavGlassKey] = useState(0)
   const [composerGlassKey, setComposerGlassKey] = useState(0)
+  const hasRunInitialComposerRecoveryRef = useRef(false)
   const [dailyLogSummary, setDailyLogSummary] =
     useState<DailyLogSummaryState | null>(null)
   const [latestLoggedMealId, setLatestLoggedMealId] = useState<string | null>(
@@ -651,17 +652,6 @@ export function WorkoutChat({
   ) => {
     layoutRef.current[label] = data.height
   }
-
-  // Auto-focus input when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      const timeoutId = setTimeout(() => {
-        inputRef.current?.focus()
-      }, 100)
-
-      return () => clearTimeout(timeoutId)
-    }, []),
-  )
 
   // Initialize exercise lookup cache on mount
   useEffect(() => {
@@ -751,19 +741,34 @@ export function WorkoutChat({
     }, [workoutContext]),
   )
 
-  // Remount glass surfaces on focus to recover native glass after nav transitions.
+  // Recover native glass on focus and then autofocus once recovery has settled.
   useFocusEffect(
     useCallback(() => {
       setNavGlassKey((prev) => prev + 1)
-
-      // Composer glass can miss first mount on iOS during initial route transition.
-      // Kick an immediate + delayed remount to recover without requiring user navigation.
       setComposerGlassKey((prev) => prev + 1)
-      const composerRetryTimeout = setTimeout(() => {
-        setComposerGlassKey((prev) => prev + 1)
-      }, 200)
 
-      return () => clearTimeout(composerRetryTimeout)
+      // Only on first focus: run one extra remount before focusing input.
+      const needsInitialComposerRetry = !hasRunInitialComposerRecoveryRef.current
+      hasRunInitialComposerRecoveryRef.current = true
+
+      let composerRetryTimeout: ReturnType<typeof setTimeout> | null = null
+      if (needsInitialComposerRetry) {
+        composerRetryTimeout = setTimeout(() => {
+          setComposerGlassKey((prev) => prev + 1)
+        }, 80)
+      }
+
+      const focusTimeout = setTimeout(
+        () => {
+          inputRef.current?.focus()
+        },
+        needsInitialComposerRetry ? 180 : 100,
+      )
+
+      return () => {
+        if (composerRetryTimeout) clearTimeout(composerRetryTimeout)
+        clearTimeout(focusTimeout)
+      }
     }, []),
   )
 
@@ -2261,7 +2266,7 @@ export function WorkoutChat({
             {mode === 'fullscreen' && (
               <>
                 <LiquidGlassSurface
-                  refreshToken={navGlassKey}
+                  key={`plan-actions-glass-${navGlassKey}`}
                   debugLabel="plan-actions-group"
                   style={[
                     styles.headerActionGroupGlass,
@@ -3251,7 +3256,7 @@ export function WorkoutChat({
                 {/* Add Image Button - hidden when hideImagePicker is true */}
                 {!hideImagePicker && (
                   <LiquidGlassSurface
-                    refreshToken={composerGlassKey}
+                    key={`plan-image-button-glass-${composerGlassKey}`}
                     style={styles.addImageButtonGlass}
                     debugLabel="plan-image-button"
                   >
@@ -3270,7 +3275,7 @@ export function WorkoutChat({
                 )}
 
                 <LiquidGlassSurface
-                  refreshToken={composerGlassKey}
+                  key={`plan-chat-input-glass-${composerGlassKey}`}
                   style={styles.textInputGlass}
                   debugLabel="plan-chat-input"
                 >
