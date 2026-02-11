@@ -2612,7 +2612,7 @@ export default function CreatePostScreen() {
         )}
 
         {/* New-user guide - shown when user has no workouts and inputs are empty */}
-        {!notes.trim() && !workoutTitle.trim() && userWorkoutCount === 0 && (
+        {!hasWorkoutDraftContent && userWorkoutCount === 0 && (
           <View style={styles.newUserGuideContainer} pointerEvents="none">
             <View style={styles.newUserGuideCard}>
               <Text style={styles.newUserGuideTitle}>
