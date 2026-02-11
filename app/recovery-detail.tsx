@@ -192,12 +192,12 @@ export default function RecoveryDetailScreen() {
         <View collapsable={false} style={styles.formSheetHeaderSection}>
           <View style={styles.formSheetHeaderRow}>
             <Text style={styles.title}>{muscleGroup}</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-            <Ionicons name={icon} size={16} color={statusColor} />
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {getRecoveryLabel(recoveryStatus)}
-            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+              <Ionicons name={icon} size={16} color={statusColor} />
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {getRecoveryLabel(recoveryStatus)}
+              </Text>
+            </View>
           </View>
         </View>
         <ScrollView
@@ -287,7 +287,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     formSheetHeaderRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'space-between',
       gap: 12,
     },
     formSheetScroll: {

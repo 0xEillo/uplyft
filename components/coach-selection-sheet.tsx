@@ -7,18 +7,18 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -212,7 +212,6 @@ export function CoachSelectionSheet({
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Coach</Text>
-          <Text style={styles.sectionSubtitle}>Choose your training personality</Text>
           
           <ScrollView 
             horizontal 
@@ -311,15 +310,16 @@ const createStyles = (colors: any, insets: any) =>
     },
     header: {
       alignItems: 'center',
-      paddingTop: 12,
-      paddingBottom: 20,
+      paddingTop: 14,
+      paddingBottom: 14,
+      paddingHorizontal: 20,
     },
     handle: {
       width: 40,
       height: 4,
       backgroundColor: colors.border,
       borderRadius: 2,
-      marginBottom: 16,
+      marginBottom: 14,
     },
     title: {
       fontSize: 20,
@@ -332,18 +332,18 @@ const createStyles = (colors: any, insets: any) =>
       color: colors.textSecondary,
     },
     section: {
-      marginBottom: 32,
+      gap: 12,
     },
     sectionTitle: {
       fontSize: 18,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 8,
+      marginBottom: 0,
     },
     sectionSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginBottom: 16,
+      marginBottom: 0,
     },
     settingRow: {
       flexDirection: 'row',
@@ -444,7 +444,9 @@ const createStyles = (colors: any, insets: any) =>
     },
     scrollContent: {
       paddingHorizontal: 20,
+      paddingTop: 8,
       paddingBottom: 40,
+      gap: 28,
     },
     horizontalScrollContent: {
       paddingHorizontal: 20,

@@ -2285,7 +2285,7 @@ export function WorkoutChat({
                   debugLabel="plan-food-button"
                   style={[
                     styles.foodToggleButtonGlass,
-                    { top: Math.max(insets.top - 38, 0) + 56 },
+                    { top: Math.max(insets.top - 38, 0) },
                   ]}
                 >
                   <TouchableOpacity
@@ -3405,7 +3405,7 @@ function createStyles(
     },
     newChatButtonGlass: {
       position: 'absolute',
-      left: 16,
+      right: 16,
       width: 48,
       height: 48,
       borderRadius: 24,

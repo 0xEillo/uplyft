@@ -377,6 +377,7 @@ const createStyles = (
   insets: { bottom: number },
   isDark: boolean,
 ) =>
+  // Explicit elevated surfaces keep cards visible even when theme tokens are close.
   StyleSheet.create({
     backdrop: {
       flex: 1,
@@ -418,10 +419,12 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: isDark ? colors.surfaceSubtle : '#F2F2F7',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F2F2F7',
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 20,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB',
     },
     mealCountText: {
       fontSize: 13,
@@ -433,11 +436,13 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: isDark ? colors.surfaceCard : '#F8F8FA',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       borderRadius: 24,
       paddingVertical: 28,
       paddingHorizontal: 28,
       marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
     },
     caloriesTextColumn: {
       flex: 1,
@@ -473,12 +478,14 @@ const createStyles = (
     },
     macroCard: {
       flex: 1,
-      backgroundColor: isDark ? colors.surfaceCard : '#F8F8FA',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       borderRadius: 20,
       paddingTop: 16,
       paddingBottom: 14,
       paddingHorizontal: 8,
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
     },
     macroValue: {
       fontSize: 18,
@@ -512,7 +519,7 @@ const createStyles = (
       height: 6,
       borderRadius: 6,
       overflow: 'hidden',
-      backgroundColor: isDark ? colors.border : '#E8E8ED',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : '#E8E8ED',
     },
     breakdownSegment: {
       height: '100%',

@@ -1,7 +1,8 @@
+import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
@@ -30,11 +31,18 @@ const getLocalDateString = (): string => {
   return `${year}-${month}-${day}`
 }
 
+const SHEET_SPACING = {
+  top: 32,
+  section: 28,
+  sectionInner: 12,
+} as const
+
 export default function ChatSettingsScreen() {
   const router = useRouter()
   const { user } = useAuth()
   const { profile, updateProfile } = useProfile()
   const colors = useThemedColors()
+  const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [isUpdating, setIsUpdating] = useState(false)
@@ -152,7 +160,7 @@ export default function ChatSettingsScreen() {
     }, 250)
   }
 
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, isDark)
 
   return (
     <View
@@ -231,7 +239,6 @@ export default function ChatSettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Coach</Text>
-          <Text style={styles.sectionSubtitle}>Choose your training personality</Text>
 
           <ScrollView
             horizontal
@@ -285,7 +292,10 @@ export default function ChatSettingsScreen() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     formSheetContainer: {
       flex: 1,
@@ -298,32 +308,33 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     formSheetScrollContent: {
       paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
-      paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
+      paddingTop: SHEET_SPACING.top,
       paddingBottom: NATIVE_SHEET_LAYOUT.contentBottomSpacing + 8,
+      gap: SHEET_SPACING.section,
     },
     section: {
-      marginBottom: NATIVE_SHEET_LAYOUT.sectionSpacing,
+      gap: SHEET_SPACING.sectionInner,
     },
     sectionTitle: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 8,
+      marginBottom: 0,
     },
     sectionSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginBottom: 16,
+      marginBottom: 0,
     },
     settingRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       padding: 16,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
     },
     settingLabel: {
       fontSize: 16,
@@ -338,13 +349,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     inputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.bg,
+      backgroundColor: isDark ? 'rgba(0,0,0,0.30)' : colors.bg,
       borderRadius: 10,
       paddingHorizontal: 12,
       paddingVertical: 8,
       minWidth: 104,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: isDark ? 'rgba(255,255,255,0.14)' : colors.border,
     },
     input: {
       flex: 1,
@@ -363,11 +374,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      marginTop: 12,
+      marginTop: 4,
     },
     recommendationCard: {
       width: '48%',
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       borderRadius: 16,
       padding: 12,
       borderWidth: 1,
@@ -387,20 +398,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     missingStatsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       padding: 16,
       borderRadius: 16,
       gap: 12,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
     },
     missingStatsIconContainer: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.bg,
+      backgroundColor: isDark ? 'rgba(0,0,0,0.30)' : colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.12)' : colors.border,
     },
     missingStatsTextContainer: {
       flex: 1,

@@ -108,16 +108,16 @@ export default function DailyMacrosDetailScreen() {
       <View collapsable={false} style={styles.headerSection}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Today&apos;s Nutrition</Text>
-        </View>
-        <View style={styles.mealCountBadge}>
-          <Ionicons
-            name="restaurant-outline"
-            size={13}
-            color={colors.textSecondary}
-          />
-          <Text style={styles.mealCountText}>
-            {meal_count} {meal_count === 1 ? 'meal' : 'meals'}
-          </Text>
+          <View style={styles.mealCountBadge}>
+            <Ionicons
+              name="restaurant-outline"
+              size={13}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.mealCountText}>
+              {meal_count} {meal_count === 1 ? 'meal' : 'meals'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -371,7 +371,7 @@ const createStyles = (
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'space-between',
       gap: 12,
     },
     title: {
@@ -381,14 +381,15 @@ const createStyles = (
       letterSpacing: -0.3,
     },
     mealCountBadge: {
-      alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: isDark ? colors.surfaceSubtle : '#F2F2F7',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F2F2F7',
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 20,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB',
     },
     mealCountText: {
       fontSize: 13,
@@ -405,11 +406,13 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: isDark ? colors.surfaceCard : '#F8F8FA',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       borderRadius: 24,
       paddingVertical: 28,
       paddingHorizontal: 28,
       marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
     },
     caloriesTextColumn: {
       flex: 1,
@@ -444,12 +447,14 @@ const createStyles = (
     },
     macroCard: {
       flex: 1,
-      backgroundColor: isDark ? colors.surfaceCard : '#F8F8FA',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
       borderRadius: 20,
       paddingTop: 16,
       paddingBottom: 14,
       paddingHorizontal: 8,
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
     },
     macroValue: {
       fontSize: 18,
@@ -482,7 +487,7 @@ const createStyles = (
       height: 6,
       borderRadius: 6,
       overflow: 'hidden',
-      backgroundColor: isDark ? colors.border : '#E8E8ED',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : '#E8E8ED',
     },
     breakdownSegment: {
       height: '100%',
