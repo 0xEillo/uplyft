@@ -56,6 +56,7 @@ interface StructuredWorkoutInputProps {
   routine?: WorkoutRoutineWithDetails
   lastWorkout?: WorkoutSessionWithDetails | null
   initialExercises?: ExerciseData[]
+  compactPreview?: boolean
   onDataChange: (exercises: ExerciseData[]) => void
   onRestTimerStart?: (seconds: number) => void
   onInputFocus?: () => void
@@ -80,6 +81,7 @@ export function StructuredWorkoutInput({
   routine,
   lastWorkout,
   initialExercises,
+  compactPreview = false,
   onDataChange,
   onRestTimerStart,
   onInputFocus,
@@ -90,7 +92,7 @@ export function StructuredWorkoutInput({
 }: StructuredWorkoutInputProps) {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, compactPreview)
   const isInitialMount = useRef(true)
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
   const [focusedInput, setFocusedInput] = useState<{
@@ -609,7 +611,7 @@ export function StructuredWorkoutInput({
                     <Ionicons name="checkmark" size={20} color={colors.brandPrimary} />
                   </TouchableOpacity>
                 </View>
-              ) : (
+              ) : !compactPreview ? (
                 <TouchableOpacity
                   style={styles.deleteExerciseButton}
                   onPress={() => handleDeleteExercise(exerciseIndex)}
@@ -617,7 +619,8 @@ export function StructuredWorkoutInput({
                 >
                   <Ionicons name="close-circle" size={20} color={colors.statusError} />
                 </TouchableOpacity>
-              )}
+              ) : null
+              }
             </View>
 
             {/* Sets as inline text with inputs - hide when dragging for cleaner look */}
@@ -723,42 +726,46 @@ export function StructuredWorkoutInput({
                         {targetText && (
                           <Text style={styles.targetText}>{targetText}</Text>
                         )}
-                        <View style={styles.deleteSetButtonContainer}>
-                          {setIndex === exercise.sets.length - 1 &&
-                            exercise.sets.length > 1 && (
-                              <TouchableOpacity
-                                style={styles.deleteSetButton}
-                                onPress={() =>
-                                  handleDeleteSet(exerciseIndex, setIndex)
-                                }
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              >
-                                <Ionicons
-                                  name="close-circle"
-                                  size={18}
-                                  color={colors.textTertiary}
-                                />
-                              </TouchableOpacity>
-                            )}
-                        </View>
+                        {!compactPreview && (
+                          <View style={styles.deleteSetButtonContainer}>
+                            {setIndex === exercise.sets.length - 1 &&
+                              exercise.sets.length > 1 && (
+                                <TouchableOpacity
+                                  style={styles.deleteSetButton}
+                                  onPress={() =>
+                                    handleDeleteSet(exerciseIndex, setIndex)
+                                  }
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                  <Ionicons
+                                    name="close-circle"
+                                    size={18}
+                                    color={colors.textTertiary}
+                                  />
+                                </TouchableOpacity>
+                              )}
+                          </View>
+                        )}
                       </View>
                     )
                   })
                 })()}
 
                 {/* Add Set Button */}
-                <TouchableOpacity
-                  style={styles.addSetButton}
-                  onPress={() => handleAddSet(exerciseIndex)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={18}
-                    color={colors.brandPrimary}
-                  />
-                  <Text style={styles.addSetText}>Add set</Text>
-                </TouchableOpacity>
+                {!compactPreview && (
+                  <TouchableOpacity
+                    style={styles.addSetButton}
+                    onPress={() => handleAddSet(exerciseIndex)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={18}
+                      color={colors.brandPrimary}
+                    />
+                    <Text style={styles.addSetText}>Add set</Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
 
@@ -775,28 +782,31 @@ export function StructuredWorkoutInput({
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  compactPreview = false,
+) =>
   StyleSheet.create({
     container: {
       width: '100%',
     },
     exerciseBlock: {
-      marginBottom: 20,
+      marginBottom: compactPreview ? 10 : 20,
     },
     exerciseHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 4,
+      marginBottom: compactPreview ? 2 : 4,
     },
     exerciseNameButton: {
       flex: 1,
     },
     exerciseName: {
-      fontSize: 17,
+      fontSize: compactPreview ? 15 : 17,
       fontWeight: '600',
       color: colors.textPrimary,
-      lineHeight: 24,
+      lineHeight: compactPreview ? 20 : 24,
     },
     deleteExerciseButton: {
       marginLeft: 8,
@@ -804,32 +814,32 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexShrink: 0,
     },
     targetText: {
-      fontSize: 14,
+      fontSize: compactPreview ? 12 : 14,
       color: colors.textSecondary,
       fontWeight: '400',
-      marginTop: 4,
+      marginTop: compactPreview ? 2 : 4,
     },
     setRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 2,
-      lineHeight: 24,
+      marginBottom: compactPreview ? 1 : 2,
+      lineHeight: compactPreview ? 20 : 24,
       width: '100%',
     },
     setNumberBadge: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: compactPreview ? 20 : 24,
+      height: compactPreview ? 20 : 24,
+      borderRadius: compactPreview ? 10 : 12,
       backgroundColor: colors.border,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 8,
+      marginRight: compactPreview ? 6 : 8,
     },
     warmupBadge: {
       backgroundColor: `${colors.statusWarning}25`,
     },
     setNumberText: {
-      fontSize: 12,
+      fontSize: compactPreview ? 11 : 12,
       fontWeight: '700',
       color: colors.textSecondary,
     },
@@ -837,16 +847,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.statusWarning,
     },
     setText: {
-      fontSize: 17,
+      fontSize: compactPreview ? 15 : 17,
       color: colors.textPrimary,
-      lineHeight: 24,
+      lineHeight: compactPreview ? 20 : 24,
     },
     inlineInput: {
-      minWidth: 40,
+      minWidth: compactPreview ? 34 : 40,
       paddingHorizontal: 2,
       paddingTop: 0,
       paddingBottom: 0,
-      fontSize: 17,
+      fontSize: compactPreview ? 15 : 17,
       color: colors.textPrimary,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
@@ -872,12 +882,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     addSetButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 8,
-      paddingVertical: 4,
+      marginTop: compactPreview ? 4 : 8,
+      paddingVertical: compactPreview ? 2 : 4,
       alignSelf: 'flex-start',
     },
     addSetText: {
-      fontSize: 15,
+      fontSize: compactPreview ? 13 : 15,
       color: colors.brandPrimary,
       marginLeft: 4,
       fontWeight: '500',

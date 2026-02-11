@@ -345,7 +345,7 @@ export function StrengthLevelIntroStep({
 
       <View style={styles.gridContainer}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          Pick an exercise you know
+          Pick an exercise you know.
         </Text>
         <View style={styles.gridWrapper}>
           {featuredExercises.map((item) => (
@@ -607,6 +607,14 @@ export function StrengthLevelIntroStep({
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               Congrats! You got your first rank.
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -4 }}>
+              <Text style={{ fontSize: 18, color: colors.textSecondary }}>
+                Estimated 1RM:
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginLeft: 6 }}>
+                {Math.round(weightUnit === 'lb' ? calculatedLevel.estimated1RM * 2.20462 : calculatedLevel.estimated1RM)} {weightUnit}
+              </Text>
+            </View>
           </View>
 
 
@@ -622,6 +630,10 @@ export function StrengthLevelIntroStep({
                 const isCurrent = currentLevelIndex === actualIndex
                 const isLocked = currentLevelIndex < actualIndex
                 const targetWeight = Math.ceil(weightKg * standard.multiplier)
+                
+                const displayWeight = isCurrent 
+                  ? calculatedLevel.estimated1RM 
+                  : targetWeight
 
                 return (
                   <View
@@ -681,11 +693,11 @@ export function StrengthLevelIntroStep({
                         ]}
                       >
                         {Math.round(
-                          weightUnit === 'lb' ? targetWeight * 2.20462 : targetWeight,
+                          weightUnit === 'lb' ? displayWeight * 2.20462 : displayWeight,
                         )}
                       </Text>
                       <Text style={[styles.levelLadderWeightLabel, { color: colors.textSecondary }]}>
-                        {weightUnit}
+                        {isCurrent ? 'Est. 1RM' : weightUnit}
                       </Text>
                     </View>
                   </View>

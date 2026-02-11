@@ -14,7 +14,6 @@ import {
 import { AppPostPreview } from '@/components/app-post-preview'
 import { APP_ACCOUNT, type AppPost } from '@/data/app-posts'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { formatTimeAgo } from '@/lib/utils/formatters'
 
 interface AppPostCardProps {
   post: AppPost
@@ -66,9 +65,6 @@ export function AppPostCard({
                 color={colors.brandPrimary}
               />
             </View>
-            <Text style={styles.timeAgo} numberOfLines={1}>
-              {formatTimeAgo(post.createdAt)}
-            </Text>
           </View>
         </View>
       </View>
@@ -150,11 +146,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       color: colors.textPrimary,
       maxWidth: 160,
     },
-    timeAgo: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
+
     badge: {
       backgroundColor: colors.brandPrimarySoft,
       paddingHorizontal: 10,

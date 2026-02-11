@@ -396,7 +396,7 @@ const AnimatedChatMockup = ({
                         ]
                       : [
                           chatMockupStyles.userBubble,
-                          { backgroundColor: colors.brandPrimary },
+                          { backgroundColor: '#000' },
                         ],
                   ]}
                 >
@@ -445,7 +445,7 @@ const AnimatedChatMockup = ({
           <View
             style={[
               chatMockupStyles.sendButton,
-              { backgroundColor: colors.brandPrimary },
+              { backgroundColor: '#000' },
             ]}
           >
             <Ionicons name="send" size={12} color="#fff" />
@@ -782,7 +782,7 @@ const ProcessingStepContent = ({
           >
             {coloredGoal}
           </Text>{' '}
-          plan
+          plan.
         </Text>
       </View>
 
@@ -831,7 +831,7 @@ const ProcessingStepContent = ({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Ionicons name="leaf" size={24} color="#000" />
             <View style={{ alignItems: 'center' }}>
-              <Text style={styles.ratingValue}>5.0 on App Store</Text>
+              <Text style={styles.ratingValue}>5.0 on App Store.</Text>
               <View style={{ flexDirection: 'row', gap: 2 }}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Ionicons key={s} name="star" size={12} color="#F59E0B" />
@@ -1031,6 +1031,10 @@ const CommitmentStepContent = ({
     outputRange: ['0deg', '360deg'],
   })
 
+  // Theme-based colors for the "water" effect
+  const isDark = colors.bg === '#000000'
+  const waveColor = isDark ? '#F97316' : '#000000'
+
   return (
     <View style={[styles.stepContainer, breakoutStyle]}>
       {/* Confetti Celebration */}
@@ -1075,7 +1079,7 @@ const CommitmentStepContent = ({
               left: 0,
               right: 0,
               height: screenHeight * 2, // plenty of height
-              backgroundColor: '#F97316',
+              backgroundColor: waveColor,
             }}
           />
 
@@ -1087,7 +1091,7 @@ const CommitmentStepContent = ({
               left: '-50%',
               width: 1000,
               height: 1000,
-              backgroundColor: '#F97316', // Same as body
+              backgroundColor: waveColor, // Same as body
               borderRadius: 420,
               transform: [{ rotate: spin }],
             }}
@@ -1099,7 +1103,7 @@ const CommitmentStepContent = ({
               right: '-40%',
               width: 900,
               height: 900,
-              backgroundColor: '#F97316',
+              backgroundColor: waveColor,
               borderRadius: 400, // slightly different for chaos
               transform: [{ rotate: spin }],
             }}
@@ -1206,7 +1210,7 @@ const CommitmentStepContent = ({
                   }}
                 >
                   {isCommitted
-                    ? "The hardest part is over. Let's build your future."
+                    ? ""
                     : 'Commitment takes discipline.'}
                 </Text>
               </View>
@@ -1338,10 +1342,10 @@ const CommitmentStepContent = ({
                     width: 140,
                     height: 140,
                     borderRadius: 70,
-                    backgroundColor: '#F97316',
+                    backgroundColor: waveColor,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    shadowColor: '#F97316',
+                    shadowColor: waveColor,
                     shadowOpacity: 0.4,
                     shadowRadius: 16,
                     shadowOffset: { width: 0, height: 8 },
@@ -1361,7 +1365,7 @@ const CommitmentStepContent = ({
                   color: holding ? 'transparent' : '#fff',
                 }}
               >
-                Tap and hold to commit
+                Tap and hold to commit.
               </Text>
             </View>
           )}
@@ -1380,7 +1384,7 @@ const CommitmentStepContent = ({
               hapticIntensity="medium"
             >
               <Text
-                style={[styles.nextButtonText, { color: colors.brandPrimary }]}
+                style={[styles.nextButtonText, { color: waveColor }]}
               >
                 Continue
               </Text>
@@ -1409,6 +1413,12 @@ const FinalPlanStepContent = ({
   )
   const displayAge = age !== null ? age.toString() : '35'
 
+  // Determine Optimal Intensity (biased towards High)
+  const intensity =
+    data.experience_level === 'beginner' && data.commitment.length < 3
+      ? 'Moderate'
+      : 'High'
+
   const stats = [
     { label: 'Goal', value: mainGoal },
     { label: 'Age', value: displayAge },
@@ -1426,7 +1436,7 @@ const FinalPlanStepContent = ({
         : 'Beginner',
     },
     { label: 'Weight', value: `${data.weight_kg} ${weightUnit}` },
-    { label: 'Optimal Intensity', value: 'Moderate' },
+    { label: 'Optimal Intensity', value: intensity },
   ]
 
   const planImage =
@@ -1443,7 +1453,7 @@ const FinalPlanStepContent = ({
       </View>
 
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryCardTitle}>It&apos;s all about you</Text>
+        <Text style={styles.summaryCardTitle}>It&apos;s all about you.</Text>
         <View style={styles.summaryGrid}>
           {stats.map((stat, i) => (
             <View key={i} style={styles.summaryItem}>
@@ -1455,7 +1465,7 @@ const FinalPlanStepContent = ({
       </View>
 
       <View style={styles.customCraftedSection}>
-        <Text style={styles.customCraftedTitle}>Custom-Crafted</Text>
+        <Text style={styles.customCraftedTitle}>Custom-Crafted.</Text>
 
         <View style={styles.planPreviewCard}>
           <Image source={planImage} style={styles.planPreviewImage} />
@@ -2041,7 +2051,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Pick your personal trainer</Text>
+              <Text style={styles.stepTitle}>Pick your personal trainer.</Text>
             </View>
 
             <View style={styles.stepContent}>
@@ -2162,7 +2172,7 @@ export default function OnboardingScreen() {
             <View style={styles.chatIntroHeader}>
               <Text style={styles.chatIntroTitle}>
                 {data.name ? `${data.name}, I'll` : "I'll"} be on hand 24/7 to
-                motivate you and give you tips.
+                coach and fuel your progress.
               </Text>
             </View>
 
@@ -2256,45 +2266,38 @@ export default function OnboardingScreen() {
         // Goal Validation / Social Proof Step
         const goalValidation: Record<string, {
           title: string
-          leadIn: string
           stat: string
           statLabel: string
           color: string
         }> = {
           gain_strength: {
             title: 'Building strength is the best investment you can make.',
-            leadIn: 'On average, members get',
             stat: '15%',
-            statLabel: 'stronger in 8 weeks',
+            statLabel: 'average strength increase for Rep AI members in 8 weeks',
             color: '#EF4444', // Red
           },
           build_muscle: {
             title: "There's no better time to build lean muscle.",
-            leadIn: 'On average, members gain',
             stat: '3.2 lbs',
-            statLabel: 'lean muscle in 12 weeks',
+            statLabel: 'average muscle gain for Rep AI members in 12 weeks',
             color: '#F59E0B', // Amber
           },
           lose_fat: {
             title: "Let's get you lean and feeling amazing.",
-            leadIn: 'On average, members lose',
             stat: '8 lbs',
-            statLabel: 'of fat in their first 8 weeks',
+            statLabel: 'average fat loss for Rep AI members in 8 weeks',
             color: '#3B82F6', // Blue
           },
           improve_cardio: {
             title: 'Heart health is the ultimate engine.',
-            leadIn: 'On average, members see a',
             stat: '22%',
-            statLabel: 'endurance improvement in 6 weeks',
+            statLabel: 'average endurance boost for Rep AI members in 6 weeks',
             color: '#EC4899', // Pink
           },
-
           general_fitness: {
             title: 'A solid fitness routine changes everything.',
-            leadIn: 'On average, members are',
             stat: '3×',
-            statLabel: 'more consistent than training alone',
+            statLabel: 'more consistent training for Rep AI members',
             color: '#10B981', // Green
           },
         }
@@ -2320,22 +2323,11 @@ export default function OnboardingScreen() {
                 width: '100%',
               }}>
                 <Text style={{
-                  fontSize: 20,
-                  fontWeight: '700',
-                  color: colors.textPrimary,
-                  textAlign: 'center',
-                  letterSpacing: -0.5,
-                  lineHeight: 24,
-                }}>
-                  {validation.leadIn}
-                </Text>
-                <Text style={{
                   fontSize: 72,
                   fontWeight: '900',
                   color: validation.color,
                   letterSpacing: -3,
-                  marginTop: 16,
-                  marginBottom: 4,
+                  marginBottom: 12,
                   textAlign: 'center',
                   lineHeight: 72,
                 }}>
@@ -2347,7 +2339,8 @@ export default function OnboardingScreen() {
                   color: colors.textPrimary,
                   textAlign: 'center',
                   letterSpacing: -0.5,
-                  lineHeight: 24,
+                  lineHeight: 26,
+                  maxWidth: '85%',
                 }}>
                   {validation.statLabel}
                 </Text>
@@ -2948,19 +2941,19 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
 
-              <View
-                style={styles.heightRulerCard}
-                onLayout={(event) =>
-                  setHeightRulerWidth(event.nativeEvent.layout.width)
-                }
-              >
+              <View style={styles.heightRulerCard}>
                 <Text style={styles.heightControlLabel}>
                   {weightUnit === 'kg'
                     ? 'Scroll to set height in centimeters'
                     : 'Scroll to set height in feet/inches'}
                 </Text>
 
-                <View style={styles.heightRulerViewport}>
+                <View
+                  style={styles.heightRulerViewport}
+                  onLayout={(event) =>
+                    setHeightRulerWidth(event.nativeEvent.layout.width)
+                  }
+                >
                   <FlatList
                     key={weightUnit}
                     horizontal
@@ -3302,7 +3295,7 @@ export default function OnboardingScreen() {
         const headlinePrefix = isMaintenance
           ? 'Maintain your weight'
           : `${isCut ? 'Lose' : 'Gain'} `
-        const headlineSuffix = ` at ${targetCalories} kcal/day`
+        const headlineSuffix = ` at ${targetCalories} kcal/day.`
 
         return (
           <View style={styles.stepContainer}>
@@ -3353,7 +3346,7 @@ export default function OnboardingScreen() {
           },
           chest: { label: 'Chest', slugs: ['chest'] },
           abs: { label: 'Abs', slugs: ['abs', 'obliques'] },
-          butt: { label: 'Butt', slugs: ['gluteal'] },
+          glutes: { label: 'Glutes', slugs: ['gluteal'] },
           legs: {
             label: 'Legs',
             slugs: ['quadriceps', 'hamstring', 'calves', 'adductors'],
@@ -3403,7 +3396,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Choose your focus areas</Text>
+              <Text style={styles.stepTitle}>Choose your focus areas.</Text>
             </View>
 
             <View style={styles.bodyHighlightContainer}>
@@ -3414,7 +3407,7 @@ export default function OnboardingScreen() {
                     data={bodyData}
                     gender={data.gender === 'female' ? 'female' : 'male'}
                     side="front"
-                    scale={0.72}
+                    scale={0.65}
                     colors={[colors.brandPrimary]}
                     onBodyPartPress={handleBodyPartPress}
                     border={colors.textPrimary}
@@ -3425,7 +3418,7 @@ export default function OnboardingScreen() {
                     data={bodyData}
                     gender={data.gender === 'female' ? 'female' : 'male'}
                     side="back"
-                    scale={0.72}
+                    scale={0.65}
                     colors={[colors.brandPrimary]}
                     onBodyPartPress={handleBodyPartPress}
                     border={colors.textPrimary}
@@ -3435,91 +3428,8 @@ export default function OnboardingScreen() {
 
               {/* Muscle selection buttons in organized rows */}
               <View style={styles.focusMuscleGrid}>
-                {/* Row 1: Back, Arm, Shoulder */}
+                {/* Row 1: Full Body, Shoulders, Chest */}
                 <View style={styles.focusMuscleRow}>
-                  {['back', 'arms', 'shoulders'].map((key) => {
-                    const group = MUSCLE_GROUP_MAPPING[key]
-                    const isSelected =
-                      group.slugs.every((s) => focusAreas.includes(s)) &&
-                      !isFullBody
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.focusMuscleButton,
-                          isSelected && styles.focusMuscleButtonSelected,
-                        ]}
-                        onPress={() => toggleArea(key)}
-                      >
-                        <Text
-                          style={[
-                            styles.focusMuscleButtonText,
-                            isSelected && styles.focusMuscleButtonTextSelected,
-                          ]}
-                        >
-                          {group.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-
-                {/* Row 2: Abs, Chest, Leg */}
-                <View style={styles.focusMuscleRow}>
-                  {['abs', 'chest', 'legs'].map((key) => {
-                    const group = MUSCLE_GROUP_MAPPING[key]
-                    const isSelected =
-                      group.slugs.every((s) => focusAreas.includes(s)) &&
-                      !isFullBody
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.focusMuscleButton,
-                          isSelected && styles.focusMuscleButtonSelected,
-                        ]}
-                        onPress={() => toggleArea(key)}
-                      >
-                        <Text
-                          style={[
-                            styles.focusMuscleButtonText,
-                            isSelected && styles.focusMuscleButtonTextSelected,
-                          ]}
-                        >
-                          {group.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-
-                {/* Row 3: Glutes, Full body */}
-                <View style={styles.focusMuscleRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.focusMuscleButton,
-                      MUSCLE_GROUP_MAPPING['butt'].slugs.every((s) =>
-                        focusAreas.includes(s),
-                      ) &&
-                        !isFullBody &&
-                        styles.focusMuscleButtonSelected,
-                    ]}
-                    onPress={() => toggleArea('butt')}
-                  >
-                    <Text
-                      style={[
-                        styles.focusMuscleButtonText,
-                        MUSCLE_GROUP_MAPPING['butt'].slugs.every((s) =>
-                          focusAreas.includes(s),
-                        ) &&
-                          !isFullBody &&
-                          styles.focusMuscleButtonTextSelected,
-                      ]}
-                    >
-                      Glutes
-                    </Text>
-                  </TouchableOpacity>
-
                   <TouchableOpacity
                     style={[
                       styles.focusMuscleButton,
@@ -3542,6 +3452,90 @@ export default function OnboardingScreen() {
                       Full body
                     </Text>
                   </TouchableOpacity>
+
+                  {['shoulders', 'chest'].map((key) => {
+                    const group = MUSCLE_GROUP_MAPPING[key]
+                    const isSelected =
+                      group.slugs.every((s) => focusAreas.includes(s)) &&
+                      !isFullBody
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.focusMuscleButton,
+                          isSelected && styles.focusMuscleButtonSelected,
+                        ]}
+                        onPress={() => toggleArea(key)}
+                      >
+                        <Text
+                          style={[
+                            styles.focusMuscleButtonText,
+                            isSelected && styles.focusMuscleButtonTextSelected,
+                          ]}
+                        >
+                          {group.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+
+                {/* Row 2: Back, Arms, Abs */}
+                <View style={styles.focusMuscleRow}>
+                  {['back', 'arms', 'abs'].map((key) => {
+                    const group = MUSCLE_GROUP_MAPPING[key]
+                    const isSelected =
+                      group.slugs.every((s) => focusAreas.includes(s)) &&
+                      !isFullBody
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.focusMuscleButton,
+                          isSelected && styles.focusMuscleButtonSelected,
+                        ]}
+                        onPress={() => toggleArea(key)}
+                      >
+                        <Text
+                          style={[
+                            styles.focusMuscleButtonText,
+                            isSelected && styles.focusMuscleButtonTextSelected,
+                          ]}
+                        >
+                          {group.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+
+                {/* Row 3: Glutes, Legs */}
+                <View style={styles.focusMuscleRow}>
+                  {['glutes', 'legs'].map((key) => {
+                    const group = MUSCLE_GROUP_MAPPING[key]
+                    const isSelected =
+                      group.slugs.every((s) => focusAreas.includes(s)) &&
+                      !isFullBody
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.focusMuscleButton,
+                          isSelected && styles.focusMuscleButtonSelected,
+                        ]}
+                        onPress={() => toggleArea(key)}
+                      >
+                        <Text
+                          style={[
+                            styles.focusMuscleButtonText,
+                            isSelected && styles.focusMuscleButtonTextSelected,
+                          ]}
+                        >
+                          {group.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
                 </View>
               </View>
             </View>
@@ -4366,17 +4360,16 @@ const createStyles = (
       gap: 2,
     },
     birthPickerColumnMonth: {
-      flex: 1.05,
-      minWidth: 96,
+      flex: 1,
+      minWidth: 90,
     },
     birthPickerColumnDay: {
-      flex: 0.72,
-      minWidth: 74,
-      paddingRight: 4,
+      flex: 0.9,
+      minWidth: 80,
     },
     birthPickerColumnYear: {
-      flex: 1.58,
-      minWidth: 132,
+      flex: 1.3,
+      minWidth: 110,
     },
     birthPicker: {
       width: '100%',

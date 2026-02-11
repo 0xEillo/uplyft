@@ -31,7 +31,6 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
@@ -145,7 +144,6 @@ export default function FeedScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
-  const { isProMember } = useSubscription()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
   const { updateWorkoutData } = useSuccessOverlay()
@@ -684,28 +682,17 @@ export default function FeedScreen() {
         <BaseNavbar
           leftContent={
             <View style={styles.headerTitleContainer}>
-              {isProMember ? (
-                <>
-                  {/* Small title — fades IN when scrolled */}
-                  <Animated.Text
-                    style={[
-                      styles.navbarSmallTitle,
-                      { opacity: smallTitleOpacity },
-                    ]}
-                    numberOfLines={1}
-                    onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
-                  >
-                    Home
-                  </Animated.Text>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={styles.proBadge}
-                  activeOpacity={1}
-                >
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </TouchableOpacity>
-              )}
+              {/* Small title — fades IN when scrolled */}
+              <Animated.Text
+                style={[
+                  styles.navbarSmallTitle,
+                  { opacity: smallTitleOpacity },
+                ]}
+                numberOfLines={1}
+                onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
+              >
+                Home
+              </Animated.Text>
               {currentStreak > 0 && (
                 <Animated.View style={{ transform: [{ translateX: streakSlideX }] }}>
                   <TouchableOpacity
@@ -731,16 +718,14 @@ export default function FeedScreen() {
             </View>
           }
           rightContent={
-            <View style={styles.headerActions}>
-              <NavbarIsland style={styles.circleActionIsland}>
+            <NavbarIsland style={styles.actionsIsland}>
+              <View style={styles.headerActions}>
                 <TouchableOpacity
                   onPress={() => router.push('/search')}
                   style={styles.iconButton}
                 >
                   <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
-              </NavbarIsland>
-              <NavbarIsland style={styles.circleActionIsland}>
                 <TouchableOpacity
                   onPress={() => router.push('/notifications')}
                   style={styles.notificationButton}
@@ -754,8 +739,8 @@ export default function FeedScreen() {
                   />
                   <NotificationBadge count={unreadCount} />
                 </TouchableOpacity>
-              </NavbarIsland>
-            </View>
+              </View>
+            </NavbarIsland>
           }
         />
       </BlurredHeader>
@@ -906,21 +891,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
       color: colors.textPrimary,
     },
-    proBadge: {
-      backgroundColor: colors.brandPrimary,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
-    },
-    proBadgeText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.onPrimary,
-    },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 2,
+    },
+    actionsIsland: {
+      height: 44,
+      borderRadius: 22,
+      paddingHorizontal: 10,
+      width: 'auto',
+      minWidth: 0,
     },
     iconButton: {
       width: 44,

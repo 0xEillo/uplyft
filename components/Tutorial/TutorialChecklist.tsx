@@ -8,13 +8,13 @@ import { useRouter } from 'expo-router'
 import { memo, useCallback, useMemo } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeOut,
-    interpolate,
-    useAnimatedStyle,
-    useDerivedValue,
-    withSpring,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  interpolate,
+  useAnimatedStyle,
+  useDerivedValue,
+  withSpring,
 } from 'react-native-reanimated'
 
 interface TutorialChecklistProps {
@@ -349,6 +349,19 @@ export const TutorialChecklist = memo(
           ))}
         </View>
 
+        {/* Hide Button - for active tutorial */}
+        {!isTutorialComplete && (
+          <TouchableOpacity
+            onPress={handleDismiss}
+            style={styles.hideButton}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.hideButtonText, { color: colors.textTertiary }]}>
+              Hide tutorial
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Dismiss Button - Only when complete */}
         {isTutorialComplete && (
           <Animated.View
@@ -542,5 +555,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  hideButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hideButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+    opacity: 0.8,
   },
 })

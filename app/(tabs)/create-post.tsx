@@ -1,8 +1,3 @@
-import {
-  CreatePostTutorialOverlay,
-  type CreatePostTutorialHighlightLayout,
-  type CreatePostTutorialStep,
-} from '@/components/create-post-tutorial-overlay'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
@@ -73,7 +68,6 @@ import {
   Easing,
   InteractionManager,
   Keyboard,
-  LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -120,45 +114,11 @@ function formatTimerDisplay(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-const EXAMPLE_WORKOUTS = [
+const NEW_USER_STRUCTURED_PREVIEW: StructuredExerciseDraft[] = [
   {
-    title: 'Push Day',
-    notes: `Felt strong today, hit a new PR on bench!
-
-Bench Press
-135 x 8
-155 x 6
-165 x 4
-
-Incline DB Press
-50 x 10
-55 x 8 x 3`,
-  },
-  {
-    title: 'Leg Day',
-    notes: `Squats: 185x5, 205x5, 225x3
-RDL's: 135 for 3 sets of 10
-Leg Press: 270x12, 290x10, 310x8
-
-Really focusing on form this week. Legs are getting stronger!`,
-  },
-  {
-    title: 'Pull',
-    notes: `Back day complete! 💪
-
-Pull-ups
-bodyweight x 8, 8, 7
-
-Barbell Rows
-135 lbs x 10 reps
-155 lbs x 8 reps x 3 sets`,
-  },
-  {
-    title: 'Upper Body',
-    notes: `Overhead Press 95x8, 105x6, 115x5
-Cable Flyes 30lbs x 12 x 3
-
-Finished with 10min cardio. Shoulder felt great today!`,
+    id: 'preview-bench-press',
+    name: 'Bench Press',
+    sets: [{ weight: '135', reps: '8' }],
   },
 ]
 
@@ -205,16 +165,13 @@ export default function CreatePostScreen() {
   // =============================================================================
   // UI STATE
   // =============================================================================
-  const [exampleWorkout, setExampleWorkout] = useState({ title: '', notes: '' })
   const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
-  const [showCreatePostTutorial, setShowCreatePostTutorial] = useState(false)
-  const [chatButtonLayout, setChatButtonLayout] =
-    useState<CreatePostTutorialHighlightLayout | null>(null)
+  const handleStructuredPreviewChange = useCallback(() => {}, [])
 
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
@@ -374,15 +331,6 @@ export default function CreatePostScreen() {
 
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
-  const titleRowRef = useRef<View>(null)
-  const chatButtonRef = useRef<View>(null)
-  const scanButtonRef = useRef<View>(null)
-  const micButtonRef = useRef<View>(null)
-  const timerButtonRef = useRef<View>(null)
-  const routineButtonRef = useRef<View>(null)
-  const searchButtonRef = useRef<View>(null)
-  const chatButtonLocalLayoutRef =
-    useRef<CreatePostTutorialHighlightLayout | null>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
@@ -402,6 +350,7 @@ export default function CreatePostScreen() {
   const skipPersistCountRef = useRef(0)
   const isHydratingRef = useRef(true)
   const isSubmittingRef = useRef(false)
+  const hadWorkoutDraftContentRef = useRef(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
@@ -416,92 +365,6 @@ export default function CreatePostScreen() {
     },
     [],
   )
-
-  const updateChatButtonLayout = useCallback(() => {
-    if (chatButtonRef.current) {
-      chatButtonRef.current.measureInWindow((x, y, width, height) => {
-        if (width > 0 && height > 0) {
-          setChatButtonLayout({ x, y, width, height })
-          return
-        }
-        if (!titleRowRef.current || !chatButtonLocalLayoutRef.current) return
-        titleRowRef.current.measureInWindow((rowX, rowY) => {
-          const local = chatButtonLocalLayoutRef.current
-          if (!local || local.width === 0 || local.height === 0) {
-            return
-          }
-          setChatButtonLayout({
-            x: rowX + local.x,
-            y: rowY + local.y,
-            width: local.width,
-            height: local.height,
-          })
-        })
-      })
-      return
-    }
-
-    if (!titleRowRef.current || !chatButtonLocalLayoutRef.current) return
-    titleRowRef.current.measureInWindow((rowX, rowY) => {
-      const local = chatButtonLocalLayoutRef.current
-      if (!local || local.width === 0 || local.height === 0) {
-        return
-      }
-      setChatButtonLayout({
-        x: rowX + local.x,
-        y: rowY + local.y,
-        width: local.width,
-        height: local.height,
-      })
-    })
-  }, [])
-
-  const handleChatButtonLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      chatButtonLocalLayoutRef.current = event.nativeEvent.layout
-      updateChatButtonLayout()
-    },
-    [updateChatButtonLayout],
-  )
-
-  const handleTitleRowLayout = useCallback(() => {
-    updateChatButtonLayout()
-  }, [updateChatButtonLayout])
-
-  useEffect(() => {
-    if (!showCreatePostTutorial) return
-    const shortTimeoutId = setTimeout(updateChatButtonLayout, 160)
-    const longTimeoutId = setTimeout(updateChatButtonLayout, 420)
-    const interactionHandle = InteractionManager.runAfterInteractions(() => {
-      updateChatButtonLayout()
-    })
-
-    return () => {
-      clearTimeout(shortTimeoutId)
-      clearTimeout(longTimeoutId)
-      interactionHandle.cancel?.()
-    }
-  }, [showCreatePostTutorial, updateChatButtonLayout])
-
-  const createPostTutorialStorageKey = useMemo(() => {
-    if (user?.id) {
-      return `@create_post_tutorial_seen_${user.id}`
-    }
-    return '@create_post_tutorial_seen'
-  }, [user?.id])
-
-  const markCreatePostTutorialSeen = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(createPostTutorialStorageKey, 'true')
-    } catch (error) {
-      console.error('[CreatePost] Error saving tutorial state:', error)
-    }
-  }, [createPostTutorialStorageKey])
-
-  const handleDismissCreatePostTutorial = useCallback(() => {
-    setShowCreatePostTutorial(false)
-    void markCreatePostTutorialSeen()
-  }, [markCreatePostTutorialSeen])
 
   const buildDraftMetrics = useCallback((data: StructuredExerciseDraft[]) => {
     let setsWithData = 0
@@ -657,20 +520,30 @@ export default function CreatePostScreen() {
   ])
 
   useEffect(() => {
-    if (isHydratingRef.current) {
+    if (isHydratingRef.current || !isScreenFocusedRef.current) {
       return
     }
 
-    // Start the workout timer as soon as content exists, but never auto-reset it
-    // from lifecycle/state transitions. Reset only from explicit user actions.
+    const hadWorkoutDraftContent = hadWorkoutDraftContentRef.current
+    hadWorkoutDraftContentRef.current = hasWorkoutDraftContent
+
     if (hasWorkoutDraftContent) {
       if (!isWorkoutTimerRunning) {
         startWorkoutTimer()
       }
+      return
+    }
+
+    // If the user manually clears all draft content, treat it like a cleared draft:
+    // reset timer state and remove persisted draft data.
+    if (hadWorkoutDraftContent) {
+      resetWorkoutTimer()
+      void clearWorkoutDraft('create-post-empty-input')
     }
   }, [
     hasWorkoutDraftContent,
     isWorkoutTimerRunning,
+    resetWorkoutTimer,
     startWorkoutTimer,
   ])
 
@@ -1208,9 +1081,6 @@ export default function CreatePostScreen() {
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
-      let isActive = true
-      let tutorialInteractionHandle: { cancel?: () => void } | null = null
-      let tutorialRafId: number | null = null
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
       isScreenFocusedRef.current = true
@@ -1236,10 +1106,6 @@ export default function CreatePostScreen() {
         blurInputs()
       })
 
-      const randomExample =
-        EXAMPLE_WORKOUTS[Math.floor(Math.random() * EXAMPLE_WORKOUTS.length)]
-      setExampleWorkout(randomExample)
-
       const loadWorkoutCount = async () => {
         try {
           if (user?.id) {
@@ -1257,42 +1123,10 @@ export default function CreatePostScreen() {
 
       loadRoutinesAndExercises()
 
-      const checkCreatePostTutorial = async () => {
-        try {
-          const hasSeen = await AsyncStorage.getItem(
-            createPostTutorialStorageKey,
-          )
-          if (!hasSeen && isActive) {
-            tutorialInteractionHandle = InteractionManager.runAfterInteractions(
-              () => {
-                if (!isActive) return
-                tutorialRafId = requestAnimationFrame(() => {
-                  if (!isActive) return
-                  setShowCreatePostTutorial(true)
-                })
-              },
-            )
-          }
-        } catch (error) {
-          console.error(
-            '[CreatePost] Error checking tutorial state:',
-            error,
-          )
-        }
-      }
-      void checkCreatePostTutorial()
-
       return () => {
-        isActive = false
         clearTimeout(timeoutId)
         if (interactionHandle) {
           interactionHandle.cancel?.()
-        }
-        if (tutorialInteractionHandle) {
-          tutorialInteractionHandle.cancel?.()
-        }
-        if (tutorialRafId !== null) {
-          cancelAnimationFrame(tutorialRafId)
         }
         persistDraft('blur')
         isScreenFocusedRef.current = false
@@ -1304,7 +1138,6 @@ export default function CreatePostScreen() {
       loadRoutinesAndExercises,
       hydrateDraft,
       persistDraft,
-      createPostTutorialStorageKey,
     ]),
   )
 
@@ -2475,78 +2308,6 @@ export default function CreatePostScreen() {
     ],
   )
 
-  const editorToolbarTutorialProps = useMemo(
-    () => ({
-      ...editorToolbarProps,
-      scanButtonRef,
-      micButtonRef,
-      timerButtonRef,
-      routineButtonRef,
-      searchButtonRef,
-    }),
-    [
-      editorToolbarProps,
-      scanButtonRef,
-      micButtonRef,
-      timerButtonRef,
-      routineButtonRef,
-      searchButtonRef,
-    ],
-  )
-
-  const createPostTutorialSteps = useMemo<CreatePostTutorialStep[]>(
-    () => [
-      {
-        id: 'coach_chat',
-        title: 'AI Coach Chat',
-        description:
-          'Ask your coach for ideas, tweaks, or to add exercises to your workout.',
-        ref: chatButtonRef,
-        layout: chatButtonLayout,
-      },
-      {
-        id: 'scan_workout',
-        title: 'Scan a Workout',
-        description:
-          'Snap a photo of a whiteboard or program and we will extract the exercises.',
-        ref: scanButtonRef,
-      },
-      {
-        id: 'voice_log',
-        title: 'Voice Log',
-        description: 'Log sets hands-free. Tap to start and stop recording.',
-        ref: micButtonRef,
-      },
-      {
-        id: 'rest_timer',
-        title: 'Rest Timer',
-        description: 'Start a rest timer and keep your workout on track.',
-        ref: timerButtonRef,
-      },
-      {
-        id: 'routines',
-        title: 'Routines',
-        description: 'Load a saved routine to pre-fill your workout.',
-        ref: routineButtonRef,
-      },
-      {
-        id: 'search_exercises',
-        title: 'Search Exercises',
-        description: 'Quickly find and add exercises to your workout.',
-        ref: searchButtonRef,
-      },
-    ],
-    [
-      chatButtonLayout,
-      chatButtonRef,
-      scanButtonRef,
-      micButtonRef,
-      timerButtonRef,
-      routineButtonRef,
-      searchButtonRef,
-    ],
-  )
-
   // Keyboard handling with Reanimated for perfect sync
   const keyboard = useAnimatedKeyboard()
   
@@ -2579,7 +2340,6 @@ export default function CreatePostScreen() {
         friction={14}
         shouldExit={shouldExit}
         onExitComplete={handleExitComplete}
-        enabled={!showCreatePostTutorial}
       >
         <Pressable style={styles.header} onPress={blurInputs}>
           <LiquidGlassSurface
@@ -2667,12 +2427,7 @@ export default function CreatePostScreen() {
             automaticallyAdjustContentInsets={false}
           >
             {/* Title Input */}
-            <View
-              style={styles.titleInputContainer}
-              ref={titleRowRef}
-              collapsable={false}
-              onLayout={handleTitleRowLayout}
-            >
+            <View style={styles.titleInputContainer}>
               <TextInput
                 ref={titleInputRef}
                 style={styles.titleInput}
@@ -2686,11 +2441,7 @@ export default function CreatePostScreen() {
                 cursorColor={colors.brandPrimary}
                 selectionColor={colors.brandPrimary}
               />
-              <View
-                ref={chatButtonRef}
-                collapsable={false}
-                onLayout={handleChatButtonLayout}
-              >
+              <View>
                 <TouchableOpacity
                   style={styles.chatButton}
                   onPress={() => {
@@ -2848,7 +2599,7 @@ export default function CreatePostScreen() {
 
           {/* Editor Toolbar */}
           {!isStructuredInputFocused || Platform.OS !== 'ios' ? (
-            <EditorToolbar {...editorToolbarTutorialProps} />
+            <EditorToolbar {...editorToolbarProps} />
           ) : null}
           <Reanimated.View style={spacerStyle} />
         </View>
@@ -2860,16 +2611,135 @@ export default function CreatePostScreen() {
           </View>
         )}
 
-        {/* Example Workout - shown when user has no workouts and inputs are empty */}
+        {/* New-user guide - shown when user has no workouts and inputs are empty */}
         {!notes.trim() && !workoutTitle.trim() && userWorkoutCount === 0 && (
-          <View style={styles.exampleContainer}>
-            <Text style={styles.exampleLabel}>Example:</Text>
-            <View style={styles.exampleCard}>
-              <Text style={styles.exampleTitle}>{exampleWorkout.title}</Text>
-              <View style={styles.exampleDivider} />
-              {/* Description removed per refactor */}
-              <Text style={styles.exampleText}>
-                {exampleWorkout.notes.split('\n\n')[1]}
+          <View style={styles.newUserGuideContainer} pointerEvents="none">
+            <View style={styles.newUserGuideCard}>
+              <Text style={styles.newUserGuideTitle}>
+                Log workouts how you like!
+              </Text>
+         
+
+              <View style={styles.newUserGuideOptionRow}>
+                <View style={styles.newUserGuideOptionBadge}>
+                  <Text style={styles.newUserGuideOptionBadgeText}>1</Text>
+                </View>
+                <View style={styles.newUserGuideOptionContent}>
+                  <Text style={styles.newUserGuideOptionTitle}>Notes</Text>
+                  <View style={styles.newUserGuideOptionHintRow}>
+                    <View style={styles.newUserGuideOptionHintIconWrap}>
+                      <Ionicons
+                        name="create-outline"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                    <Text style={styles.newUserGuideOptionHintText}>
+                      Log it like Apple Notes, free-form
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.newUserGuideOptionRow}>
+                <View style={styles.newUserGuideOptionBadge}>
+                  <Text style={styles.newUserGuideOptionBadgeText}>2</Text>
+                </View>
+                <View style={styles.newUserGuideOptionContent}>
+                  <Text style={styles.newUserGuideOptionTitle}>Structured</Text>
+                  <View style={styles.newUserGuideOptionHintRow}>
+                    <View style={styles.newUserGuideOptionHintIconWrap}>
+                      <Ionicons
+                        name="add-outline"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                    <Text style={styles.newUserGuideOptionHintText}>
+                      Type an exercise name and tap +
+                    </Text>
+                  </View>
+                  <View style={styles.newUserGuideStructuredPreview}>
+                    <View style={styles.newUserGuideStructuredPreviewContent}>
+                      <StructuredWorkoutInput
+                        initialExercises={NEW_USER_STRUCTURED_PREVIEW}
+                        compactPreview
+                        onDataChange={handleStructuredPreviewChange}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.newUserGuideOptionRow}>
+                <View style={styles.newUserGuideOptionBadge}>
+                  <Text style={styles.newUserGuideOptionBadgeText}>3</Text>
+                </View>
+                <View style={styles.newUserGuideOptionContent}>
+                  <Text style={styles.newUserGuideOptionTitle}>
+                    Search exercises
+                  </Text>
+                  <View style={styles.newUserGuideOptionHintRow}>
+                    <View style={styles.newUserGuideOptionHintIconWrap}>
+                      <Ionicons
+                        name="search-outline"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                    <Text style={styles.newUserGuideOptionHintText}>
+                      Tap search to see exercises and videos
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.newUserGuideOptionRow}>
+                <View style={styles.newUserGuideOptionBadge}>
+                  <Text style={styles.newUserGuideOptionBadgeText}>4</Text>
+                </View>
+                <View style={styles.newUserGuideOptionContent}>
+                  <Text style={styles.newUserGuideOptionTitle}>Voice log</Text>
+                  <View style={styles.newUserGuideOptionHintRow}>
+                    <View style={styles.newUserGuideOptionHintIconWrap}>
+                      <Ionicons
+                        name="mic-outline"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                    <Text style={styles.newUserGuideOptionHintText}>
+                      Tap mic and speak your workout
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.newUserGuideOptionRow}>
+                <View style={styles.newUserGuideOptionBadge}>
+                  <Text style={styles.newUserGuideOptionBadgeText}>5</Text>
+                </View>
+                <View style={styles.newUserGuideOptionContent}>
+                  <Text style={styles.newUserGuideOptionTitle}>
+                    Workout scan
+                  </Text>
+                  <View style={styles.newUserGuideOptionHintRow}>
+                    <View style={styles.newUserGuideOptionHintIconWrap}>
+                      <Ionicons
+                        name="camera-outline"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                    <Text style={styles.newUserGuideOptionHintText}>
+                      Tap camera to scan notes/programs
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={styles.newUserGuideFooter}>
+                No matter how you log, AI detects your exercises and turns it into a formatted workout post.
               </Text>
             </View>
           </View>
@@ -2929,13 +2799,6 @@ export default function CreatePostScreen() {
         onAddExercise={handleAddExerciseFromCoach}
         onReplaceExercise={handleReplaceExerciseFromCoach}
         isWorkoutEmpty={isWorkoutEmpty}
-      />
-
-      <CreatePostTutorialOverlay
-        visible={showCreatePostTutorial}
-        steps={createPostTutorialSteps}
-        onSkip={handleDismissCreatePostTutorial}
-        onDone={handleDismissCreatePostTutorial}
       />
     </SafeAreaView>
   )
@@ -3134,7 +2997,7 @@ const createStyles = (
       right: 0,
       bottom: 0,
     },
-    exampleContainer: {
+    newUserGuideContainer: {
       position: 'absolute',
       top: 68, // Header height (12px padding + 44px button + 12px padding)
       left: 0,
@@ -3142,40 +3005,106 @@ const createStyles = (
       bottom: 0,
       justifyContent: 'center',
       alignItems: 'center',
+      paddingHorizontal: 20,
       pointerEvents: 'none',
     },
-    exampleLabel: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.textTertiary,
-      marginBottom: 8,
-    },
-    exampleCard: {
+    newUserGuideCard: {
+      width: '100%',
+      maxWidth: 360,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
       borderWidth: 1,
       borderColor: colors.border,
-      borderStyle: 'dashed',
-      maxWidth: 280,
-      alignSelf: 'center',
+      gap: 4,
     },
-    exampleTitle: {
-      fontSize: 20,
+    newUserGuideTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+    newUserGuideSubtitle: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    newUserGuideOptionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      marginTop: 1,
+    },
+    newUserGuideOptionBadge: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.bg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 0,
+    },
+    newUserGuideOptionBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    newUserGuideOptionContent: {
+      flex: 1,
+      gap: 2,
+    },
+    newUserGuideOptionTitle: {
+      fontSize: 14,
       fontWeight: '600',
-      color: colors.textSecondary,
-      marginBottom: 8,
+      color: colors.textPrimary,
     },
-    exampleDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginBottom: 12,
+    newUserGuideOptionHintRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginTop: 1,
     },
-    exampleText: {
-      fontSize: 15,
-      lineHeight: 22,
+    newUserGuideOptionHintIconWrap: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.bg,
+    },
+    newUserGuideOptionHintText: {
+      fontSize: 12,
+      lineHeight: 15,
       color: colors.textSecondary,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+    newUserGuideStructuredPreview: {
+      backgroundColor: colors.bg,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingTop: 6,
+      paddingBottom: 4,
+      marginTop: 2,
+    },
+    // StructuredWorkoutInput keeps bottom spacing for full-page editing.
+    // Trim it in this read-only preview to keep the onboarding card compact.
+    newUserGuideStructuredPreviewContent: {
+      marginBottom: -4,
+    },
+    newUserGuideFooter: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: colors.textSecondary,
+      fontWeight: '500',
+      marginTop: 4,
     },
     attachedImageContainer: {
       paddingHorizontal: 20,

@@ -280,11 +280,15 @@ export function EditorToolbar({
           {shouldShowAdd && (
             <LiquidGlassSurface style={styles.iosAddGlass}>
               <TouchableOpacity
-                style={[styles.iosAddButton, styles.activeButton]}
+                style={styles.iosAddButton}
                 onPress={onAddExercise}
                 disabled={isDisabled}
               >
-                <Ionicons name="add" size={24} color={colors.surface} />
+                <Ionicons
+                  name="add-outline"
+                  size={23}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
             </LiquidGlassSurface>
           )}
@@ -429,14 +433,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 8,
     },
     iosAddGlass: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      borderColor: 'rgba(255,255,255,0.12)',
+      borderWidth: StyleSheet.hairlineWidth,
     },
     iosAddButton: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+      width: 46,
+      height: 46,
+      borderRadius: 23,
       justifyContent: 'center',
       alignItems: 'center',
     },

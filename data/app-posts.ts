@@ -37,10 +37,10 @@ export const APP_ACCOUNT = {
 
 export const APP_POSTS: AppPost[] = [
   {
-    id: 'schedule-workouts',
-    title: 'New: Schedule Your Workouts',
+    id: 'workout-calendar',
+    title: 'Track Your Training Consistency',
     body:
-      'Plan sessions directly in the app. Keep your routine organized, accountable, and easier to follow.',
+      'View all your past workouts in a clear calendar view. Stay on top of your routine and watch your consistency grow.',
     createdAt: '2026-02-02T16:00:00.000Z',
     preview: 'workout_calendar',
     ctaText: 'Open calendar',
