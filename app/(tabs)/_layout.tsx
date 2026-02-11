@@ -4,7 +4,10 @@ import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { useAuth } from '@/contexts/auth-context'
-import { LiveActivityProvider } from '@/contexts/live-activity-context'
+import {
+  LiveActivityProvider,
+  useLiveActivity,
+} from '@/contexts/live-activity-context'
 import {
   RatingPromptProvider,
   useRatingPrompt,
@@ -83,6 +86,7 @@ function TabLayoutContent() {
   const { isVisible: isRatingPromptVisible } = useRatingPrompt()
   const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
   const { isActive: isRestTimerActive, stop: stopRestTimer } = useRestTimerContext()
+  const { stopWorkoutActivity } = useLiveActivity()
   const { user } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
@@ -260,6 +264,7 @@ function TabLayoutContent() {
               }
               await clearWorkoutDraft('bottom-accessory-discard')
               stopRestTimer()
+              stopWorkoutActivity()
               setHasDraft(false)
               setWorkoutElapsedSeconds(0)
               if (DEBUG_LOGS && IS_DEV_RUNTIME) {
