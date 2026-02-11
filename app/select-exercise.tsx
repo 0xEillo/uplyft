@@ -18,15 +18,15 @@ import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Dimensions,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -164,7 +164,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
                   name="information-circle"
                   size={22}
                   color={
-                    exercise.created_by
+                    exercise.created_by || !exercise.gif_url
                       ? '#FFFFFF'
                       : 'rgba(0,0,0,0.6)'
                   }
