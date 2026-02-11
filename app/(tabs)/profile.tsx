@@ -436,29 +436,22 @@ export default function ProfileScreen() {
     extrapolate: 'clamp',
   })
 
-  // Scroll distance over which the title appears in the navbar
-  const TITLE_APPEAR_DISTANCE = 180
 
-  const titleOpacity = scrollY.interpolate({
-    inputRange: [TITLE_APPEAR_DISTANCE - 30, TITLE_APPEAR_DISTANCE],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  })
 
   return (
     <View style={styles.container}>
       <BlurredHeader style={styles.navbarContainer}>
         <BaseNavbar
           leftContent={
-            <Animated.Text
+            <Text
               style={[
                 styles.headerTitle,
-                { opacity: titleOpacity, marginLeft: 6 },
+                { marginLeft: 6 },
               ]}
               numberOfLines={1}
             >
               Profile
-            </Animated.Text>
+            </Text>
           }
           rightContent={
             <NavbarIsland>

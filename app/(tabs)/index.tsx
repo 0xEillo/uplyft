@@ -4,18 +4,18 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    FlatList,
-    LayoutAnimation,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  FlatList,
+  LayoutAnimation,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -153,22 +153,7 @@ export default function FeedScreen() {
   const scrollY = useRef(new Animated.Value(0)).current
 
   // --- Navigation Header Animations ---
-  // Scroll distance over which the title appears in the navbar
-  const TITLE_APPEAR_DISTANCE = 150
 
-  const smallTitleOpacity = scrollY.interpolate({
-    inputRange: [TITLE_APPEAR_DISTANCE - 30, TITLE_APPEAR_DISTANCE],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  })
-
-  // Slide streak button left when the small title is hidden
-  // ~62px for "Home" text width + 8px gap
-  const streakSlideX = scrollY.interpolate({
-    inputRange: [TITLE_APPEAR_DISTANCE - 30, TITLE_APPEAR_DISTANCE],
-    outputRange: [-70, 0],
-    extrapolate: 'clamp',
-  })
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -683,18 +668,15 @@ export default function FeedScreen() {
           leftContent={
             <View style={styles.headerTitleContainer}>
               {/* Small title — fades IN when scrolled */}
-              <Animated.Text
-                style={[
-                  styles.navbarSmallTitle,
-                  { opacity: smallTitleOpacity },
-                ]}
+              <Text
+                style={styles.navbarSmallTitle}
                 numberOfLines={1}
                 onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
               >
                 Home
-              </Animated.Text>
+              </Text>
               {currentStreak > 0 && (
-                <Animated.View style={{ transform: [{ translateX: streakSlideX }] }}>
+                <View>
                   <TouchableOpacity
                     onPress={() => router.push('/workout-calendar')}
                     activeOpacity={0.7}
@@ -713,7 +695,7 @@ export default function FeedScreen() {
                       <Text style={styles.streakBadgeText}>{currentStreak}</Text>
                     </View>
                   </TouchableOpacity>
-                </Animated.View>
+                </View>
               )}
             </View>
           }
