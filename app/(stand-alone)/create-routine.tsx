@@ -1,4 +1,4 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BaseNavbar } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { Paywall } from '@/components/paywall'
 import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
@@ -1053,11 +1053,9 @@ export default function CreateRoutineScreen() {
           }
           centerGlass={false}
           centerContent={
-            <NavbarIsland>
-              <Text style={styles.headerTitle}>
-                {isEditMode ? 'Edit Routine' : 'Create Routine'}
-              </Text>
-            </NavbarIsland>
+            <Text style={styles.headerTitle}>
+              {isEditMode ? 'Edit Routine' : 'Create Routine'}
+            </Text>
           }
           rightContent={
             <TouchableOpacity onPress={handleSave} disabled={isSaving}>

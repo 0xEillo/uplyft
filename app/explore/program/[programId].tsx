@@ -214,9 +214,7 @@ export default function ProgramDetailScreen() {
             }
             centerGlass={false}
             centerContent={
-              <NavbarIsland>
-                <Text style={styles.headerTitle}>Program</Text>
-              </NavbarIsland>
+              <Text style={styles.headerTitle}>Program</Text>
             }
             rightContent={<View style={{ width: 44 }} />}
           />
