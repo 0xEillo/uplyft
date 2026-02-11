@@ -136,7 +136,7 @@ export function LifterLevelsSheet({
             <View style={styles.centeredStack}>
               <LiquidGlassSurface style={styles.headerCopyShell} debugLabel="lifter-level-header-chip">
                 <View style={styles.headerCopy}>
-                  <Text style={styles.title}>Lifter Level Badges</Text>
+                  <Text style={styles.title}>Lifter Levels</Text>
                   <Text style={styles.subtitle}>
                     {unlockedCount} unlocked, {lockedCount} locked
                   </Text>
