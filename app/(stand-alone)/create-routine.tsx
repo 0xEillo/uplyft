@@ -13,8 +13,8 @@ import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    generateRandomTintColor,
-    getRoutineImageUrl,
+  generateRandomTintColor,
+  getRoutineImageUrl,
 } from '@/lib/utils/routine-images'
 import { Exercise, WorkoutRoutineExercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -22,28 +22,28 @@ import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    LayoutAnimation,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import Animated, {
-    Easing,
-    SharedValue,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  Easing,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -1206,21 +1206,6 @@ export default function CreateRoutineScreen() {
                 />
                 <Text style={styles.addExerciseText}>Add Exercise</Text>
               </TouchableOpacity>
-
-              {/* Empty State */}
-              {exercises.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Ionicons
-                    name="barbell-outline"
-                    size={48}
-                    color={colors.textPlaceholder}
-                  />
-                  <Text style={styles.emptyTitle}>No Exercises Yet</Text>
-                  <Text style={styles.emptyMessage}>
-                    Tap &quot;Add Exercise&quot; to build your routine
-                  </Text>
-                </View>
-              )}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
