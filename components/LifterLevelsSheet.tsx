@@ -192,7 +192,7 @@ export function LifterLevelsSheet({
               </LiquidGlassSurface>
 
               <View style={styles.gridHeader}>
-                <Text style={styles.gridTitle}>All badges</Text>
+                <Text style={styles.gridTitle}>All levels</Text>
                 <Text style={styles.gridSubtitle}>Unlocked and locked tiers</Text>
               </View>
 
