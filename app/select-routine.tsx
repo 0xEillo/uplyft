@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/EmptyState'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
@@ -209,17 +210,21 @@ export default function SelectRoutineScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-            <Ionicons name="close" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <LiquidGlassSurface style={styles.headerButtonGlass}>
+            <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
+              <Ionicons name="close" size={28} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
           
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Select Routine
           </Text>
           
-          <TouchableOpacity style={styles.headerButton} onPress={handleCreateRoutine}>
-            <Ionicons name="add" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <LiquidGlassSurface style={styles.headerButtonGlass}>
+            <TouchableOpacity style={styles.headerButton} onPress={handleCreateRoutine}>
+              <Ionicons name="add" size={28} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
         </View>
 
         {/* Content */}
@@ -269,6 +274,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerButton: {
       width: 40,
       height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerButtonGlass: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
     },

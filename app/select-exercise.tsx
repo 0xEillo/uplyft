@@ -1,5 +1,6 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -164,7 +165,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
                   size={22}
                   color={
                     exercise.created_by
-                      ? 'rgba(255,255,255,0.95)'
+                      ? '#FFFFFF'
                       : 'rgba(0,0,0,0.6)'
                   }
                 />
@@ -712,59 +713,69 @@ export default function SelectExerciseScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-            <Ionicons name="close" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <LiquidGlassSurface style={styles.headerButtonGlass}>
+            <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
+              <Ionicons name="close" size={28} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
 
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Add exercises
           </Text>
 
           <View style={styles.headerRightButtons}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={toggleSearch}
-            >
-              <Ionicons
-                name="search"
-                size={24}
-                color={isSearchVisible ? colors.brandPrimary : colors.textPrimary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={toggleFilters}
-            >
-              <Ionicons
-                name="filter"
-                size={24}
-                color={isFilterVisible ? colors.brandPrimary : colors.textPrimary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleCreateExercise}
-            >
-              <Ionicons name="add" size={28} color={colors.textPrimary} />
-            </TouchableOpacity>
+            <LiquidGlassSurface style={styles.headerButtonGlass}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={toggleSearch}
+              >
+                <Ionicons
+                  name="search"
+                  size={24}
+                  color={isSearchVisible ? colors.brandPrimary : colors.textPrimary}
+                />
+              </TouchableOpacity>
+            </LiquidGlassSurface>
+            <LiquidGlassSurface style={styles.headerButtonGlass}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={toggleFilters}
+              >
+                <Ionicons
+                  name="filter"
+                  size={24}
+                  color={isFilterVisible ? colors.brandPrimary : colors.textPrimary}
+                />
+              </TouchableOpacity>
+            </LiquidGlassSurface>
+            <LiquidGlassSurface style={styles.headerButtonGlass}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={handleCreateExercise}
+              >
+                <Ionicons name="add" size={28} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </LiquidGlassSurface>
           </View>
         </View>
 
         {/* Expandable Search Input */}
         {isSearchVisible && (
           <View style={styles.searchContainer}>
-            <TextInput
-              ref={searchInputRef}
-              style={[
-                styles.searchInput,
-                { backgroundColor: colors.surfaceSubtle, color: colors.textPrimary },
-              ]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search exercises..."
-              placeholderTextColor={colors.textPlaceholder}
-              autoCapitalize="words"
-            />
+            <LiquidGlassSurface style={styles.searchGlass}>
+              <TextInput
+                ref={searchInputRef}
+                style={[
+                  styles.searchInput,
+                  { color: colors.textPrimary },
+                ]}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search exercises..."
+                placeholderTextColor={colors.textPlaceholder}
+                autoCapitalize="words"
+              />
+            </LiquidGlassSurface>
           </View>
         )}
 
@@ -1005,6 +1016,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerButtonGlass: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -1015,6 +1033,7 @@ const styles = StyleSheet.create({
   headerRightButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1031,9 +1050,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 4,
   },
+  searchGlass: {
+    borderRadius: 10,
+  },
   searchInput: {
     padding: 12,
-    borderRadius: 8,
     fontSize: 16,
   },
   filtersWrapper: {

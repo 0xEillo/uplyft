@@ -2473,25 +2473,20 @@ export default function CreatePostScreen() {
                 <Ionicons name="trash-outline" size={22} color="#E53935" />
               </TouchableOpacity>
             )}
-            <LiquidGlassSurface
-              style={styles.headerIconShell}
-              debugLabel="create-post-submit-button"
+            <TouchableOpacity
+              onPress={handlePost}
+              style={[styles.headerButton, styles.submitButtonFilled]}
+              disabled={isLoading}
+              activeOpacity={0.8}
             >
-              <TouchableOpacity
-                onPress={handlePost}
-                style={styles.headerButton}
-                disabled={isLoading}
-                activeOpacity={0.8}
+              <Animated.View
+                style={{
+                  transform: [{ scale: buttonScaleAnim }],
+                }}
               >
-                <Animated.View
-                  style={{
-                    transform: [{ scale: buttonScaleAnim }],
-                  }}
-                >
-                  <Ionicons name="checkmark" size={24} color={colors.brandPrimary} />
-                </Animated.View>
-              </TouchableOpacity>
-            </LiquidGlassSurface>
+                <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+              </Animated.View>
+            </TouchableOpacity>
           </View>
         </Pressable>
 
@@ -2818,6 +2813,10 @@ const createStyles = (
       borderRadius: 22,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    submitButtonFilled: {
+      backgroundColor: colors.brandPrimary,
+      borderRadius: 22,
     },
     headerCenter: {
       position: 'absolute',
