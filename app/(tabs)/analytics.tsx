@@ -98,6 +98,7 @@ export default function AnalyticsScreen() {
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
   const headerTotalHeight = insets.top + NAVBAR_HEIGHT
+  const contentTopPadding = Math.max(0, headerTotalHeight - 36)
 
   return (
     <View
@@ -160,9 +161,12 @@ export default function AnalyticsScreen() {
       ) : (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingTop: headerTotalHeight }]}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: contentTopPadding }]}
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          automaticallyAdjustsScrollIndicatorInsets={false}
           showsVerticalScrollIndicator={false}
-          scrollIndicatorInsets={{ top: headerTotalHeight }}
+          scrollIndicatorInsets={{ top: contentTopPadding }}
         >
           {viewMode === 'recovery' ? (
             <RecoveryBodyView embedded />

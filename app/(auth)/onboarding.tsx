@@ -133,6 +133,20 @@ const STEP_NAMES: { [key: number]: string } = {
 // Total number of steps in the onboarding flow
 const TOTAL_STEPS = 25
 
+const GOAL_COLORS: Record<string, string> = {
+  gain_strength: '#EF4444', // Red
+  build_muscle: '#F59E0B',  // Amber
+  lose_fat: '#3B82F6',      // Blue
+  improve_cardio: '#EC4899', // Pink
+  become_flexible: '#8B5CF6', // Purple
+  general_fitness: '#10B981', // Green
+}
+
+const getGoalColor = (goal: string | undefined): string => {
+  if (!goal) return GOAL_COLORS.general_fitness
+  return GOAL_COLORS[goal] || GOAL_COLORS.general_fitness
+}
+
 const calculateAgeFromBirthDate = (
   birthYear: string,
   birthMonth: string,
@@ -603,12 +617,12 @@ const HabitReinforcementStepContent = ({
 
   const activeGoal = data.goal[0] || 'build_muscle'
   const habitGoalInfo: Record<string, { text: string; color: string }> = {
-    build_muscle: { text: 'GAIN MUSCLE', color: '#8B5CF6' },
-    lose_fat: { text: 'LOSE FAT', color: '#3B82F6' },
-    gain_strength: { text: 'GET STRONGER', color: '#F59E0B' },
-    improve_cardio: { text: 'IMPROVE CARDIO', color: '#3B82F6' },
-
-    general_fitness: { text: 'STAY FIT', color: '#6366F1' },
+    build_muscle: { text: 'GAIN MUSCLE', color: GOAL_COLORS.build_muscle },
+    lose_fat: { text: 'LOSE FAT', color: GOAL_COLORS.lose_fat },
+    gain_strength: { text: 'GET STRONGER', color: GOAL_COLORS.gain_strength },
+    improve_cardio: { text: 'IMPROVE CARDIO', color: GOAL_COLORS.improve_cardio },
+    become_flexible: { text: 'STAY FLEXIBLE', color: GOAL_COLORS.become_flexible },
+    general_fitness: { text: 'STAY FIT', color: GOAL_COLORS.general_fitness },
   }
   const currentHabitGoal =
     habitGoalInfo[activeGoal] || habitGoalInfo.build_muscle
@@ -774,7 +788,7 @@ const ProcessingStepContent = ({
           Tweaking your{' '}
           <Text
             style={{
-              color: '#A855F7',
+              color: getGoalColor(data.goal[0]),
               fontFamily: 'System',
               fontStyle: 'italic',
               fontWeight: '900',
@@ -794,7 +808,7 @@ const ProcessingStepContent = ({
           </View>
           <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.progressBarFill, { width: `${progress1}%` }]}
+              style={[styles.progressBarFill, { width: `${progress1}%`, backgroundColor: getGoalColor(data.goal[0]) }]}
             />
           </View>
         </View>
@@ -806,7 +820,7 @@ const ProcessingStepContent = ({
           </View>
           <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.progressBarFill, { width: `${progress2}%` }]}
+              style={[styles.progressBarFill, { width: `${progress2}%`, backgroundColor: getGoalColor(data.goal[0]) }]}
             />
           </View>
         </View>
@@ -820,7 +834,7 @@ const ProcessingStepContent = ({
           </View>
           <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.progressBarFill, { width: `${progress3}%` }]}
+              style={[styles.progressBarFill, { width: `${progress3}%`, backgroundColor: getGoalColor(data.goal[0]) }]}
             />
           </View>
         </View>
@@ -1458,7 +1472,14 @@ const FinalPlanStepContent = ({
           {stats.map((stat, i) => (
             <View key={i} style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>{stat.label}</Text>
-              <Text style={styles.summaryValue}>{stat.value}</Text>
+              <Text 
+                style={[
+                  styles.summaryValue, 
+                  stat.label === 'Goal' && { color: getGoalColor(data.goal[0]) }
+                ]}
+              >
+                {stat.value}
+              </Text>
             </View>
           ))}
         </View>
@@ -1474,7 +1495,7 @@ const FinalPlanStepContent = ({
             style={styles.planPreviewGradient}
           >
             <View style={styles.planPreviewContent}>
-              <Text style={styles.planPreviewName}>{mainGoal}</Text>
+              <Text style={[styles.planPreviewName, { color: getGoalColor(data.goal[0]) }]}>{mainGoal}</Text>
               <Text style={styles.planPreviewDesc}>
                 Achieve an aesthetic physique with a focus on strength and
                 hypertrophy.
@@ -2231,19 +2252,7 @@ export default function OnboardingScreen() {
                         <Ionicons
                           name={goal.icon}
                           size={24}
-                          color={
-                            goal.value === 'lose_fat'
-                              ? '#3B82F6' // Blue
-                              : goal.value === 'build_muscle'
-                              ? '#F59E0B' // Amber
-                              : goal.value === 'gain_strength'
-                              ? '#EF4444' // Red
-                              : goal.value === 'improve_cardio'
-                              ? '#EC4899' // Pink
-                              : goal.value === 'become_flexible'
-                              ? '#8B5CF6' // Purple
-                              : '#10B981' // Green
-                          }
+                          color={getGoalColor(goal.value)}
                         />
                       </View>
                       <Text style={styles.cardLabel}>{goal.label}</Text>
@@ -2276,32 +2285,32 @@ export default function OnboardingScreen() {
           gain_strength: {
             title: 'Building strength is the best investment you can make.',
             stat: '15%',
-            statLabel: 'average strength increase for Rep AI members in 8 weeks',
-            color: '#EF4444', // Red
+            statLabel: 'average strength increase for Rep AI users in 8 weeks',
+            color: GOAL_COLORS.gain_strength,
           },
           build_muscle: {
             title: "There's no better time to build lean muscle.",
             stat: '3.2 lbs',
-            statLabel: 'average muscle gain for Rep AI members in 12 weeks',
-            color: '#F59E0B', // Amber
+            statLabel: 'average muscle gain for Rep AI users in 12 weeks',
+            color: GOAL_COLORS.build_muscle,
           },
           lose_fat: {
             title: "Let's get you lean and feeling amazing.",
             stat: '8 lbs',
-            statLabel: 'average fat loss for Rep AI members in 8 weeks',
-            color: '#3B82F6', // Blue
+            statLabel: 'average fat loss for Rep AI users in 8 weeks',
+            color: GOAL_COLORS.lose_fat,
           },
           improve_cardio: {
             title: 'Heart health is the ultimate engine.',
             stat: '22%',
-            statLabel: 'average endurance boost for Rep AI members in 6 weeks',
-            color: '#EC4899', // Pink
+            statLabel: 'average endurance boost for Rep AI users in 6 weeks',
+            color: GOAL_COLORS.improve_cardio,
           },
           general_fitness: {
             title: 'A solid fitness routine changes everything.',
             stat: '3×',
-            statLabel: 'more consistent training for Rep AI members',
-            color: '#10B981', // Green
+            statLabel: 'more consistent training for Rep AI users',
+            color: GOAL_COLORS.general_fitness,
           },
         }
 
@@ -2487,7 +2496,7 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionIndex}>2</Text>
             <Text style={styles.sectionTitle}>Your Body</Text>
             <View style={styles.sectionProgressTrack}>
-              <View style={[styles.sectionProgressFill, { width: '66%' }]} />
+              <View style={[styles.sectionProgressFill, { width: '66%', backgroundColor: getGoalColor(data.goal[0]) }]} />
             </View>
             <Text style={styles.sectionSubtitle}>
               We&apos;ll set your stats and nutrition target.
@@ -3329,7 +3338,7 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionIndex}>3</Text>
             <Text style={styles.sectionTitle}>Your Plan</Text>
             <View style={styles.sectionProgressTrack}>
-              <View style={[styles.sectionProgressFill, { width: '100%' }]} />
+              <View style={[styles.sectionProgressFill, { width: '100%', backgroundColor: getGoalColor(data.goal[0]) }]} />
             </View>
             <Text style={styles.sectionSubtitle}>
               Finalizing your personalized plan and focus areas.
@@ -3411,7 +3420,7 @@ export default function OnboardingScreen() {
                     gender={data.gender === 'female' ? 'female' : 'male'}
                     side="front"
                     scale={0.65}
-                    colors={[colors.brandPrimary]}
+                    colors={[getGoalColor(data.goal[0])]}
                     onBodyPartPress={handleBodyPartPress}
                     border={colors.textPrimary}
                   />
@@ -3422,7 +3431,7 @@ export default function OnboardingScreen() {
                     gender={data.gender === 'female' ? 'female' : 'male'}
                     side="back"
                     scale={0.65}
-                    colors={[colors.brandPrimary]}
+                    colors={[getGoalColor(data.goal[0])]}
                     onBodyPartPress={handleBodyPartPress}
                     border={colors.textPrimary}
                   />
@@ -3436,7 +3445,8 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     style={[
                       styles.focusMuscleButton,
-                      isFullBody && styles.focusMuscleButtonSelected,
+                      styles.focusMuscleButtonSelected,
+                      isFullBody && { backgroundColor: getGoalColor(data.goal[0]) + '20', borderColor: getGoalColor(data.goal[0]) }
                     ]}
                     onPress={() => {
                       if (isFullBody) {
@@ -3449,7 +3459,8 @@ export default function OnboardingScreen() {
                     <Text
                       style={[
                         styles.focusMuscleButtonText,
-                        isFullBody && styles.focusMuscleButtonTextSelected,
+                        styles.focusMuscleButtonTextSelected,
+                        isFullBody && { color: getGoalColor(data.goal[0]) }
                       ]}
                     >
                       Full body
@@ -3474,6 +3485,7 @@ export default function OnboardingScreen() {
                           style={[
                             styles.focusMuscleButtonText,
                             isSelected && styles.focusMuscleButtonTextSelected,
+                            isSelected && { color: getGoalColor(data.goal[0]) }
                           ]}
                         >
                           {group.label}
@@ -3503,6 +3515,7 @@ export default function OnboardingScreen() {
                           style={[
                             styles.focusMuscleButtonText,
                             isSelected && styles.focusMuscleButtonTextSelected,
+                            isSelected && { color: getGoalColor(data.goal[0]) }
                           ]}
                         >
                           {group.label}
@@ -3525,6 +3538,7 @@ export default function OnboardingScreen() {
                         style={[
                           styles.focusMuscleButton,
                           isSelected && styles.focusMuscleButtonSelected,
+                          isSelected && { backgroundColor: getGoalColor(data.goal[0]) + '20', borderColor: getGoalColor(data.goal[0]) }
                         ]}
                         onPress={() => toggleArea(key)}
                       >
@@ -3532,6 +3546,7 @@ export default function OnboardingScreen() {
                           style={[
                             styles.focusMuscleButtonText,
                             isSelected && styles.focusMuscleButtonTextSelected,
+                            isSelected && { color: getGoalColor(data.goal[0]) }
                           ]}
                         >
                           {group.label}
@@ -3566,7 +3581,14 @@ export default function OnboardingScreen() {
               <Text style={styles.bodyScanTitle}>
                 Body Scan analyzes your lean muscle so you can accurately track
                 your{' '}
-                <Text style={{ color: '#8B5CF6', fontStyle: 'italic' }}>
+                <Text 
+                  style={{ 
+                    color: getGoalColor(data.goal[0]), 
+                    fontStyle: 'italic',
+                    fontWeight: '900',
+                    fontFamily: 'System',
+                  }}
+                >
                   {goalAction}
                 </Text>
                 !

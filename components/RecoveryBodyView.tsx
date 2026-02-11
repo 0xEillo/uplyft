@@ -335,7 +335,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     bodySection: {
       flex: 1,
       paddingHorizontal: 14,
-      marginTop: 24,
+      marginTop: -20,
     },
 
     // Gradient Legend

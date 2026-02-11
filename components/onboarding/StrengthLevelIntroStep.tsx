@@ -751,7 +751,7 @@ export function StrengthLevelIntroStep({
                       ranksGained === 1 ? "Reach peak performance." :
                       "Redefine your limits."
                       
-    const subtitleText = ranksGained >= 2 ? "On average, Rep AI members gain +2 strength ranks in their first 6 months." :
+    const subtitleText = ranksGained >= 2 ? "On average, Rep AI users gain +2 strength ranks in their first 6 months." :
                          ranksGained === 1 ? "You're almost at the top. We'll give you the roadmap to the 1%." :
                          "You're already elite. We'll help you squeeze out every last pound of progress."
 
