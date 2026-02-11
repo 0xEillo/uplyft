@@ -1,31 +1,31 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
-    memo,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactElement,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
 } from 'react'
 
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Image,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
-    type NativeScrollEvent,
-    type NativeSyntheticEvent,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
@@ -872,7 +872,7 @@ export const FeedCard = memo(function FeedCard({
                     ? 'volume-high'
                     : 'volume-mute'
                 }
-                size={18}
+                size={24}
                 color="#FFFFFF"
               />
             </View>
@@ -1144,9 +1144,10 @@ function createStyles(
     },
     titleRowContainer: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'stretch',
       justifyContent: 'space-between',
       gap: 16,
+      marginBottom: 12, // Moved from contents to ensure player matches height correctly
     },
     titleContent: {
       flex: 1,
@@ -1167,7 +1168,7 @@ function createStyles(
       fontSize: 14,
       color: colors.textPrimary,
       marginTop: 0,
-      marginBottom: 12,
+      marginBottom: 0, // Moved to container
       lineHeight: 20,
     },
     songPreviewWrapper: {
@@ -1390,9 +1391,8 @@ function createStyles(
       alignItems: 'center',
     },
     headerMusicIndicator: {
-      width: 41,
-      height: 41,
-      marginLeft: 8,
+      aspectRatio: 1,
+      minHeight: 41,
       borderRadius: 8,
       overflow: 'hidden',
       position: 'relative',
@@ -1567,7 +1567,7 @@ function createStyles(
       fontSize: 13,
       color: colors.textSecondary,
       marginTop: -8,
-      marginBottom: 12,
+      marginBottom: 0, // Moved to container
       fontWeight: '500',
     },
   })

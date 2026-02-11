@@ -1,4 +1,3 @@
-import { EditorToolbar } from '@/components/editor-toolbar'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
@@ -9,7 +8,6 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    InputAccessoryView,
     LayoutAnimation,
     Platform,
     StyleSheet,
@@ -61,7 +59,6 @@ interface StructuredWorkoutInputProps {
   onRestTimerStart?: (seconds: number) => void
   onInputFocus?: () => void
   onInputBlur?: () => void
-  editorToolbarProps?: Parameters<typeof EditorToolbar>[0]
   /**
    * Callback to fetch history data for a specific set when adding new sets.
    * Returns the last workout's weight/reps for the given exercise and set number.
@@ -86,7 +83,6 @@ export function StructuredWorkoutInput({
   onRestTimerStart,
   onInputFocus,
   onInputBlur,
-  editorToolbarProps,
   onFetchSetHistory,
   onExerciseNamePress,
 }: StructuredWorkoutInputProps) {
@@ -95,11 +91,6 @@ export function StructuredWorkoutInput({
   const styles = createStyles(colors, compactPreview)
   const isInitialMount = useRef(true)
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
-  const [focusedInput, setFocusedInput] = useState<{
-    exerciseIndex: number
-    setIndex: number
-    field: 'weight' | 'reps'
-  } | null>(null)
 
   // Ref to debounce blur callback - prevents double toolbar when focus transfers between inputs
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -378,54 +369,19 @@ export function StructuredWorkoutInput({
     onDataChange(newExercises)
   }
 
-  const focusNextInput = (
-    exerciseIndex: number,
-    setIndex: number,
-    field: 'weight' | 'reps',
-  ) => {
-    if (field === 'weight') {
-      // Move to reps field of the same set
-      const repsKey = `${exerciseIndex}-${setIndex}-reps`
-      inputRefs.current[repsKey]?.focus()
-    } else if (field === 'reps') {
-      // Move to weight field of next set
-      const nextSetIndex = setIndex + 1
-      if (nextSetIndex < exercises[exerciseIndex].sets.length) {
-        // Next set in same exercise
-        const weightKey = `${exerciseIndex}-${nextSetIndex}-weight`
-        inputRefs.current[weightKey]?.focus()
-      } else if (exerciseIndex + 1 < exercises.length) {
-        // First set of next exercise
-        const weightKey = `${exerciseIndex + 1}-0-weight`
-        inputRefs.current[weightKey]?.focus()
-      }
-    }
-  }
-
-  const handleManualNext = () => {
-    if (!focusedInput) return
-    focusNextInput(
-      focusedInput.exerciseIndex,
-      focusedInput.setIndex,
-      focusedInput.field,
-    )
-  }
-
   const handleFocus = useCallback(
-    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    (_exerciseIndex: number, _setIndex: number, _field: 'weight' | 'reps') => {
       // Cancel any pending blur callback - focus transferred within component
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current)
         blurTimeoutRef.current = null
       }
-      setFocusedInput({ exerciseIndex, setIndex, field })
       onInputFocus?.()
     },
     [onInputFocus],
   )
 
   const handleBlur = useCallback(() => {
-    setFocusedInput(null)
     // Debounce the blur callback to allow focus to transfer between inputs
     // This prevents the double toolbar glitch on iOS
     if (blurTimeoutRef.current) {
@@ -509,32 +465,8 @@ export function StructuredWorkoutInput({
     opacity: draggingOpacity.value,
   }))
 
-  const inputAccessoryViewID = 'structured-workout-accessory-view'
-
   return (
     <View style={styles.container}>
-      {/* Input Accessory View for toolbar above keyboard */}
-      {Platform.OS === 'ios' && (
-        <InputAccessoryView nativeID={inputAccessoryViewID}>
-          <View style={styles.accessoryContainer}>
-            <View style={styles.nextButtonContainer}>
-              <TouchableOpacity
-                onPress={handleManualNext}
-                style={styles.nextButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.nextButtonText}>Next</Text>
-              </TouchableOpacity>
-            </View>
-            {editorToolbarProps && (
-              <View style={styles.toolbarContainer}>
-                <EditorToolbar {...editorToolbarProps} accessoryMode />
-              </View>
-            )}
-          </View>
-        </InputAccessoryView>
-      )}
-
       {exercises.map((exercise, exerciseIndex) => {
         const isDragging = draggingIndex === exerciseIndex
 
@@ -679,17 +611,12 @@ export function StructuredWorkoutInput({
                           onChangeText={(value) =>
                             handleWeightChange(exerciseIndex, setIndex, value)
                           }
-                          onSubmitEditing={() =>
-                            focusNextInput(exerciseIndex, setIndex, 'weight')
-                          }
-                          returnKeyType="next"
                           cursorColor={colors.brandPrimary}
                           selectionColor={colors.brandPrimary}
                           onFocus={() =>
                             handleFocus(exerciseIndex, setIndex, 'weight')
                           }
                           onBlur={handleBlur}
-                          inputAccessoryViewID={inputAccessoryViewID}
                         />
                         <Text style={styles.setText}> {unitDisplay} x </Text>
                         <TextInput
@@ -712,15 +639,10 @@ export function StructuredWorkoutInput({
                           onChangeText={(value) =>
                             handleRepsChange(exerciseIndex, setIndex, value)
                           }
-                          onSubmitEditing={() =>
-                            focusNextInput(exerciseIndex, setIndex, 'reps')
-                          }
-                          returnKeyType="next"
                           cursorColor={colors.brandPrimary}
                           selectionColor={colors.brandPrimary}
                           onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
                           onBlur={handleBlur}
-                          inputAccessoryViewID={inputAccessoryViewID}
                         />
                         <Text style={styles.setText}> reps</Text>
                         {targetText && (
@@ -891,35 +813,6 @@ const createStyles = (
       color: colors.brandPrimary,
       marginLeft: 4,
       fontWeight: '500',
-    },
-    // Accessory View Styles
-    accessoryContainer: {
-      backgroundColor: colors.bg,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
-    nextButtonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-      backgroundColor: colors.surfaceSubtle,
-    },
-    nextButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      backgroundColor: colors.brandPrimary,
-      borderRadius: 16,
-    },
-    nextButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#FFF',
-    },
-    toolbarContainer: {
-      // The toolbar itself handles its own layout/styles, just wrapping it
     },
     // Drag and drop styles
     exerciseBlockDragging: {

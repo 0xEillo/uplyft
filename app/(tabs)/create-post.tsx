@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useLiveActivity } from '@/contexts/live-activity-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
+import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
@@ -56,11 +57,11 @@ import {
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useFocusEffect } from '@react-navigation/native'
+import { TabActions, useFocusEffect, useNavigation } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
@@ -125,6 +126,8 @@ const NEW_USER_STRUCTURED_PREVIEW: StructuredExerciseDraft[] = [
 export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
+  const { scrollToTop } = useScrollToTop()
+  const navigation = useNavigation()
   const { coachId } = useProfile()
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
@@ -636,9 +639,10 @@ export default function CreatePostScreen() {
   // Use image transcription hook
   const {
     isProcessing: isProcessingImage,
+    handleScanWithCamera,
+    handleScanWithLibrary,
     handleAttachWithCamera,
     handleAttachWithLibrary,
-    handleScanWorkout,
   } = useImageTranscription({
     onStructuredExtractionComplete: (data) => {
       if (DEBUG_LOGS) {
@@ -1368,46 +1372,43 @@ export default function CreatePostScreen() {
     await toggleRecording()
   }, [toggleRecording])
 
-  const handleScanWorkoutPress = useCallback(async () => {
+  const handleScanWorkoutPress = useCallback(() => {
     haptic('medium')
     blurInputs()
 
-    try {
-      const hasSeenPrompt = await AsyncStorage.getItem(
-        '@has_seen_scan_workout_prompt',
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Scan Workout',
+          options: ['Take Photo', 'Choose from Library', 'Cancel'],
+          cancelButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) {
+            handleScanWithCamera()
+          } else if (buttonIndex === 1) {
+            handleScanWithLibrary()
+          }
+        },
       )
-
-      if (hasSeenPrompt) {
-        handleScanWorkout()
-        return
-      }
-
-      Alert.alert(
-        'Scan Workout',
-        "Select a photo of a workout (e.g., whiteboard, program, or notes), and we'll extract the exercises for you.",
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Select Photo',
-            onPress: async () => {
-              await AsyncStorage.setItem(
-                '@has_seen_scan_workout_prompt',
-                'true',
-              )
-              handleScanWorkout()
-            },
-          },
-        ],
-      )
-    } catch (error) {
-      console.error('Error checking scan prompt status:', error)
-      // Fallback to opening directly if storage fails
-      handleScanWorkout()
+      return
     }
-  }, [blurInputs, handleScanWorkout])
+
+    Alert.alert('Scan Workout', 'Choose an option', [
+      {
+        text: 'Take Photo',
+        onPress: handleScanWithCamera,
+      },
+      {
+        text: 'Choose from Library',
+        onPress: handleScanWithLibrary,
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+    ])
+  }, [blurInputs, handleScanWithCamera, handleScanWithLibrary])
 
   const performSubmission = useCallback(
     async (
@@ -1518,7 +1519,12 @@ export default function CreatePostScreen() {
         previousStreak,
         workoutTitle: trimmedTitle || undefined,
       })
-      router.replace('/(tabs)')
+      navigation.dispatch(TabActions.jumpTo('index'))
+      InteractionManager.runAfterInteractions(() => {
+        requestAnimationFrame(() => {
+          scrollToTop('index')
+        })
+      })
 
       // NOTE: Rating prompt is now triggered from index.tsx handlePendingPost
       // to avoid duplicate triggers causing modal overlap and iOS freeze
@@ -1536,6 +1542,8 @@ export default function CreatePostScreen() {
       isStructuredMode,
       structuredData,
       selectedSong,
+      scrollToTop,
+      navigation,
     ],
   )
 
@@ -2265,10 +2273,6 @@ export default function CreatePostScreen() {
     previousStructuredDataLength.current = currentLength
   }, [structuredData, selectedRoutine])
 
-  const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
-    false,
-  )
-
   const editorToolbarProps = useMemo(
     () => ({
       onScanWorkout: handleScanWorkoutPress,
@@ -2314,19 +2318,6 @@ export default function CreatePostScreen() {
   const spacerStyle = useAnimatedStyle(() => ({
     height: keyboard.height.value,
   }))
-
-  // Ensure structured input focus state is reset when keyboard is dismissed
-  useEffect(() => {
-    const hideEvent =
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-    const subscription = Keyboard.addListener(hideEvent, () => {
-      setIsStructuredInputFocused(false)
-    })
-
-    return () => {
-      subscription.remove()
-    }
-  }, [])
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -2475,9 +2466,6 @@ export default function CreatePostScreen() {
                   }
                   onDataChange={handleStructuredDataChange}
                   onRestTimerStart={handleRestTimerStart}
-                  onInputFocus={() => setIsStructuredInputFocused(true)}
-                  onInputBlur={() => setIsStructuredInputFocused(false)}
-                  editorToolbarProps={editorToolbarProps}
                   onFetchSetHistory={fetchSetHistory}
                   onExerciseNamePress={handleExerciseNamePress}
                 />
@@ -2598,9 +2586,7 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          {!isStructuredInputFocused || Platform.OS !== 'ios' ? (
-            <EditorToolbar {...editorToolbarProps} />
-          ) : null}
+          <EditorToolbar {...editorToolbarProps} />
           <Reanimated.View style={spacerStyle} />
         </View>
 
