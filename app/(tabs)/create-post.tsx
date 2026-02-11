@@ -89,6 +89,11 @@ import Reanimated, {
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+const IS_DEV_RUNTIME =
+  typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
+    ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
+    : process.env.NODE_ENV !== 'production'
+
 function formatTimerDisplay(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
 
@@ -258,13 +263,21 @@ export default function CreatePostScreen() {
   }, [isStructuredMode, structuredData])
 
   const hasWorkoutDraftContent = useMemo(() => {
+    const hasStructuredSkeleton = structuredData.length > 0
     return (
       Boolean(notes.trim()) ||
       Boolean(workoutTitle.trim()) ||
-      hasStructuredEntries ||
-      Boolean(selectedRoutine)
+      hasStructuredSkeleton ||
+      Boolean(selectedRoutine) ||
+      Boolean(pendingDraftRoutineId)
     )
-  }, [hasStructuredEntries, notes, selectedRoutine, workoutTitle])
+  }, [
+    notes,
+    pendingDraftRoutineId,
+    selectedRoutine,
+    structuredData,
+    workoutTitle,
+  ])
 
   // Context for the AI coach sheet
   const workoutContext = useMemo(
@@ -381,6 +394,7 @@ export default function CreatePostScreen() {
   const lastDraftSavedAtRef = useRef(0)
   const lastRouteRoutineTokenRef = useRef<string | null>(null)
   const hasHydratedRef = useRef(false)
+  const isScreenFocusedRef = useRef(false)
   const suppressLocalEditTrackingRef = useRef(false)
   const suppressDraftToastRef = useRef(false)
   // Skip counter - decrements each time auto-save would run, skips while > 0
@@ -393,6 +407,14 @@ export default function CreatePostScreen() {
   const { completeStep } = useTutorial()
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
+
+  const logDraftDebug = useCallback(
+    (event: string, payload?: Record<string, unknown>) => {
+      if (!IS_DEV_RUNTIME) return
+      console.log(`[DraftDebug][CreatePost] ${event}`, payload ?? {})
+    },
+    [],
+  )
 
   const updateChatButtonLayout = useCallback(() => {
     if (chatButtonRef.current) {
@@ -498,10 +520,49 @@ export default function CreatePostScreen() {
 
   const persistDraft = useCallback(
     (source: 'unmount' | 'background' | 'blur') => {
+      // Never persist while hydration is in progress; this can overwrite a valid
+      // on-disk draft with initial empty state during app lifecycle transitions.
+      if (isHydratingRef.current || !hasHydratedRef.current) {
+        logDraftDebug('persist-skipped', {
+          source,
+          isHydrating: isHydratingRef.current,
+          hasHydrated: hasHydratedRef.current,
+        })
+        return
+      }
+
       const routineIdToSave =
         selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
       const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
       lastDraftSavedAtRef.current = updatedAt
+      const hasInMemoryDraftContent =
+        Boolean(notesRef.current.trim()) ||
+        Boolean(titleRef.current.trim()) ||
+        structuredDataRef.current.length > 0 ||
+        Boolean(routineIdToSave) ||
+        Boolean(workoutTimerStateRef.current.timerStartedAt) ||
+        (workoutTimerStateRef.current.timerElapsedSeconds ?? 0) > 0
+
+      // Do not compact empty in-memory state; this can clear a valid on-disk draft
+      // if a non-focused/preloaded instance unmounts.
+      if (!hasInMemoryDraftContent) {
+        logDraftDebug('persist-skipped-empty', {
+          source,
+          updatedAt,
+        })
+        return
+      }
+
+      logDraftDebug('persist-start', {
+        source,
+        updatedAt,
+        notesLength: notesRef.current.trim().length,
+        hasTitle: Boolean(titleRef.current.trim()),
+        structuredCount: structuredDataRef.current.length,
+        hasRoutine: Boolean(routineIdToSave),
+        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
+        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
+      })
 
       void compactWorkoutDraft({
         notes: notesRef.current,
@@ -514,6 +575,10 @@ export default function CreatePostScreen() {
         updatedAt,
       })
         .then(() => {
+          logDraftDebug('persist-success', {
+            source,
+            updatedAt,
+          })
           const metrics = buildDraftMetrics(structuredDataRef.current)
           trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
             action: 'compact',
@@ -526,6 +591,10 @@ export default function CreatePostScreen() {
         })
         .catch((error) => {
           console.error(`[Draft] ${source} compact failed:`, error)
+          logDraftDebug('persist-failed', {
+            source,
+            error: error instanceof Error ? error.message : String(error),
+          })
           trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
             action: 'fail',
             source,
@@ -538,7 +607,7 @@ export default function CreatePostScreen() {
           })
         })
     },
-    [buildDraftMetrics, trackEvent],
+    [buildDraftMetrics, logDraftDebug, trackEvent],
   )
 
   useEffect(() => {
@@ -591,19 +660,17 @@ export default function CreatePostScreen() {
       return
     }
 
+    // Start the workout timer as soon as content exists, but never auto-reset it
+    // from lifecycle/state transitions. Reset only from explicit user actions.
     if (hasWorkoutDraftContent) {
       if (!isWorkoutTimerRunning) {
         startWorkoutTimer()
       }
-    } else if (isWorkoutTimerRunning || workoutElapsedSeconds > 0) {
-      resetWorkoutTimer()
     }
   }, [
     hasWorkoutDraftContent,
     isWorkoutTimerRunning,
-    workoutElapsedSeconds,
     startWorkoutTimer,
-    resetWorkoutTimer,
   ])
 
   // Sync Live Activity with workout timer for Dynamic Island display
@@ -991,6 +1058,11 @@ export default function CreatePostScreen() {
       })
 
       if (plan.shouldSkip) {
+        logDraftDebug('hydrate-skip', {
+          reason: 'local_newer_than_disk',
+          draftUpdatedAt: plan.draftUpdatedAt,
+          lastLocalEditAt: lastLocalEditAtRef.current,
+        })
         const metrics = buildDraftMetrics(structuredDataRef.current)
         trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
           action: 'skip',
@@ -1007,6 +1079,14 @@ export default function CreatePostScreen() {
       if (plan.shouldApplyHydration) {
         suppressLocalEditTrackingRef.current = true
       }
+
+      logDraftDebug('hydrate-plan', {
+        shouldApplyHydration: plan.shouldApplyHydration,
+        shouldHydrateTimer: plan.shouldHydrateTimer,
+        hasNewRouteRoutine: plan.hasNewRouteRoutine,
+        effectiveRoutineId: plan.effectiveRoutineId,
+        draftUpdatedAt: plan.draftUpdatedAt,
+      })
 
       if (plan.notes !== undefined) {
         suppressDraftToastRef.current = true
@@ -1052,8 +1132,13 @@ export default function CreatePostScreen() {
     } finally {
       isHydratingRef.current = false
       hasHydratedRef.current = true
+      logDraftDebug('hydrate-finish', {
+        hasHydrated: hasHydratedRef.current,
+        isHydrating: isHydratingRef.current,
+      })
     }
   }, [
+    logDraftDebug,
     buildDraftMetrics,
     hydrateWorkoutTimer,
     resetWorkoutTimer,
@@ -1070,6 +1155,7 @@ export default function CreatePostScreen() {
       let tutorialRafId: number | null = null
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
+      isScreenFocusedRef.current = true
 
       haptic('light')
 
@@ -1151,6 +1237,7 @@ export default function CreatePostScreen() {
           cancelAnimationFrame(tutorialRafId)
         }
         persistDraft('blur')
+        isScreenFocusedRef.current = false
       }
     }, [
       blurInputs,
@@ -1167,12 +1254,19 @@ export default function CreatePostScreen() {
   useEffect(() => {
     return () => {
       blurInputs()
-      persistDraft('unmount')
+      if (isScreenFocusedRef.current) {
+        persistDraft('unmount')
+      } else {
+        logDraftDebug('persist-skipped-unmount-not-focused')
+      }
     }
-  }, [blurInputs, persistDraft])
+  }, [blurInputs, logDraftDebug, persistDraft])
 
   // Load saved draft on mount or when refresh param changes
   useEffect(() => {
+    if (!isScreenFocusedRef.current) {
+      return
+    }
     hydrateDraft()
   }, [hydrateDraft, refresh])
 
@@ -1183,6 +1277,10 @@ export default function CreatePostScreen() {
     }
 
     if (skipPersistCountRef.current > 0) {
+      logDraftDebug('autosave-skipped', {
+        reason: 'skip-persist-counter',
+        remaining: skipPersistCountRef.current,
+      })
       skipPersistCountRef.current--
       return
     }
@@ -1194,6 +1292,15 @@ export default function CreatePostScreen() {
     const timeoutId = setTimeout(() => {
       const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
       lastDraftSavedAtRef.current = updatedAt
+      logDraftDebug('autosave-start', {
+        updatedAt,
+        notesLength: notes.trim().length,
+        hasTitle: Boolean(workoutTitle.trim()),
+        structuredCount: structuredData.length,
+        hasRoutine: Boolean(routineIdToSave),
+        timerStartedAt: workoutTimerSerializableState.timerStartedAt,
+        timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
+      })
       void saveWorkoutDraftPatch({
         notes,
         title: workoutTitle,
@@ -1205,6 +1312,9 @@ export default function CreatePostScreen() {
         updatedAt,
       })
         .then(() => {
+          logDraftDebug('autosave-success', {
+            updatedAt,
+          })
           const metrics = buildDraftMetrics(structuredData)
           trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
             action: 'patch',
@@ -1217,6 +1327,9 @@ export default function CreatePostScreen() {
         })
         .catch((error) => {
           console.error('[Draft] Save failed:', error)
+          logDraftDebug('autosave-failed', {
+            error: error instanceof Error ? error.message : String(error),
+          })
           trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
             action: 'fail',
             source: 'autosave',
@@ -1232,6 +1345,7 @@ export default function CreatePostScreen() {
 
     return () => clearTimeout(timeoutId)
   }, [
+    logDraftDebug,
     notes,
     workoutTitle,
     structuredData,
@@ -1247,7 +1361,17 @@ export default function CreatePostScreen() {
   // Persist draft immediately when app backgrounds (timers may be paused)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
+      logDraftDebug('appstate-change', {
+        state,
+        isHydrating: isHydratingRef.current,
+        isFocused: isScreenFocusedRef.current,
+      })
       if (state === 'active' || isHydratingRef.current) {
+        return
+      }
+
+      if (!isScreenFocusedRef.current) {
+        logDraftDebug('persist-skipped-background-not-focused')
         return
       }
 
@@ -1257,7 +1381,7 @@ export default function CreatePostScreen() {
     return () => {
       subscription.remove()
     }
-  }, [persistDraft])
+  }, [logDraftDebug, persistDraft])
 
   // Show "Draft saved" indicator with debounce (UI only)
   useEffect(() => {
@@ -2434,6 +2558,7 @@ export default function CreatePostScreen() {
                 name="chevron-down"
                 size={24}
                 color={colors.textPrimary}
+                style={styles.headerBackChevron}
               />
             </TouchableOpacity>
           </LiquidGlassSurface>
@@ -2813,6 +2938,9 @@ const createStyles = (
       borderRadius: 22,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    headerBackChevron: {
+      transform: [{ translateY: 1 }],
     },
     submitButtonFilled: {
       backgroundColor: colors.brandPrimary,

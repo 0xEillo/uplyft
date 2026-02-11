@@ -89,8 +89,10 @@ export function FinalizeWorkoutOverlay({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle={Platform.OS === 'ios' ? 'formSheet' : 'fullScreen'}
+      allowSwipeDismissal={Platform.OS === 'ios'}
       onRequestClose={handleRequestClose}
+      onDismiss={onClose}
     >
       <View style={[styles.container, { backgroundColor: colors.surfaceSheet }]}>
         {/* Header */}
@@ -245,6 +247,27 @@ export function FinalizeWorkoutOverlay({
 
             {showSongPicker && (
               <View style={styles.songPickerContainer}>
+                <View style={styles.songPickerHeader}>
+                  <TouchableOpacity
+                    style={styles.songPickerBackButton}
+                    onPress={() => setShowSongPicker(false)}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={18}
+                      color={colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.songPickerBackText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Back
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 <WorkoutSongPicker
                   selectedSong={selectedSong}
                   onSelectSong={(song) => {
@@ -348,6 +371,21 @@ const styles = StyleSheet.create({
   },
   songPickerContainer: {
     marginBottom: 16,
+  },
+  songPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginBottom: 8,
+  },
+  songPickerBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+  songPickerBackText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   imagePreview: {
     width: '100%',

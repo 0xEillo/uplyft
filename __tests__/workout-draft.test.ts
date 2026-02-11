@@ -61,6 +61,14 @@ describe('workout draft persistence', () => {
         structuredData: makeStructuredSkeleton(),
       }),
     ).toBe(true)
+    expect(
+      draftHasContent({
+        notes: '',
+        title: '',
+        timerStartedAt: '2026-01-01T00:00:00.000Z',
+        timerElapsedSeconds: 5,
+      }),
+    ).toBe(true)
   })
 
   test('draftHasContent ignores whitespace-only notes/title', () => {
@@ -282,6 +290,23 @@ describe('workout draft persistence', () => {
     const draft = await loadDraft()
     expect(draft?.timerStartedAt).toBe('2025-02-02T10:00:00.000Z')
     expect(draft?.timerElapsedSeconds).toBe(900)
+  })
+
+  test('timer-only draft is preserved (not auto-cleared)', async () => {
+    await saveDraft({
+      notes: '',
+      title: '',
+      structuredData: [],
+      isStructuredMode: false,
+      selectedRoutineId: null,
+      timerStartedAt: '2026-02-02T10:00:00.000Z',
+      timerElapsedSeconds: 42,
+    })
+
+    const draft = await loadDraft()
+    expect(draft).not.toBeNull()
+    expect(draft?.timerStartedAt).toBe('2026-02-02T10:00:00.000Z')
+    expect(draft?.timerElapsedSeconds).toBe(42)
   })
 
   test('saveDraft normalizes invalid structuredData to empty array', async () => {

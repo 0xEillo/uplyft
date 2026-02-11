@@ -26,12 +26,42 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
-import { hasStoredDraft } from '@/lib/utils/workout-draft'
+import {
+  clearDraft as clearWorkoutDraft,
+  loadDraft as loadWorkoutDraft,
+} from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useSegments } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import React, { useEffect, useState } from 'react'
-import { Platform, StatusBar, Text, TouchableOpacity, View } from 'react-native'
+import {
+  Alert,
+  Platform,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+
+const IS_DEV_RUNTIME =
+  typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
+    ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
+    : process.env.NODE_ENV !== 'production'
+
+function formatAccessoryElapsed(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  if (safeSeconds < 60) return `${safeSeconds}s`
+
+  if (safeSeconds < 3600) {
+    const mins = Math.floor(safeSeconds / 60)
+    const secs = safeSeconds % 60
+    return secs === 0 ? `${mins}m` : `${mins}m ${secs}s`
+  }
+
+  const hours = Math.floor(safeSeconds / 3600)
+  const mins = Math.floor((safeSeconds % 3600) / 60)
+  return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`
+}
 
 function TabLayoutContent() {
   const colors = useThemedColors()
@@ -50,11 +80,13 @@ function TabLayoutContent() {
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
   const { isVisible: isRatingPromptVisible } = useRatingPrompt()
   const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
-  const { isActive: isRestTimerActive } = useRestTimerContext()
+  const { isActive: isRestTimerActive, stop: stopRestTimer } = useRestTimerContext()
   const { user } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
   const [hasDraft, setHasDraft] = useState(false)
+  const [workoutElapsedSeconds, setWorkoutElapsedSeconds] = useState(0)
+  const [isDraftCheckComplete, setIsDraftCheckComplete] = useState(false)
 
   // Check for unread welcome message
   useEffect(() => {
@@ -72,8 +104,30 @@ function TabLayoutContent() {
   // Keep create action state in sync with saved draft.
   useEffect(() => {
     const checkDraft = async () => {
-      const draftExists = await hasStoredDraft()
-      setHasDraft(draftExists)
+      const draft = await loadWorkoutDraft()
+      if (!draft) {
+        setHasDraft(false)
+        setWorkoutElapsedSeconds(0)
+        setIsDraftCheckComplete(true)
+        return
+      }
+
+      setHasDraft(true)
+
+      const baseSeconds =
+        typeof draft.timerElapsedSeconds === 'number'
+          ? draft.timerElapsedSeconds
+          : 0
+      const startedAtMs =
+        typeof draft.timerStartedAt === 'string'
+          ? Date.parse(draft.timerStartedAt)
+          : Number.NaN
+      const runningSeconds = Number.isNaN(startedAtMs)
+        ? 0
+        : Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
+
+      setWorkoutElapsedSeconds(Math.max(0, baseSeconds + runningSeconds))
+      setIsDraftCheckComplete(true)
     }
 
     checkDraft()
@@ -165,23 +219,58 @@ function TabLayoutContent() {
     Number.parseInt(String(Platform.Version).split('.')[0] ?? '0', 10) >= 26
   const showNativeBottomAccessory =
     isIOS26OrNewer && !isTabBarHidden && (isRestTimerActive || hasDraft)
-  const bottomAccessoryLabel = isRestTimerActive
-    ? 'Workout in progress'
-    : 'Continue draft'
-  const bottomAccessoryIconName = isRestTimerActive ? 'timer-outline' : 'document-text-outline'
+  const bottomAccessoryTitle = `Workout ${formatAccessoryElapsed(
+    workoutElapsedSeconds,
+  )}`
   const createActionColor =
     isRestTimerActive || hasDraft ? colors.statusError : colors.brandPrimary
-  const createActionSfSymbol = isRestTimerActive
-    ? 'timer'
-    : hasDraft
-    ? 'doc.text'
-    : 'plus.circle.fill'
-  const createActionMdSymbol = isRestTimerActive
-    ? 'timer'
-    : hasDraft
-    ? 'description'
-    : 'add_circle'
+  const createActionSfSymbol = 'plus.circle.fill'
+  const createActionMdSymbol = 'add_circle'
   const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
+  const handleDiscardWorkoutProgress = () => {
+    Alert.alert(
+      'Discard workout?',
+      'This will clear your current workout progress.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              await clearWorkoutDraft()
+              stopRestTimer()
+              setHasDraft(false)
+              setWorkoutElapsedSeconds(0)
+            })()
+          },
+        },
+      ],
+    )
+  }
+
+  useEffect(() => {
+    if (!IS_DEV_RUNTIME) return
+    console.log('[BottomAccessory] state', {
+      isIOS26OrNewer,
+      isTabBarHidden,
+      isRestTimerActive,
+      hasDraft,
+      isDraftCheckComplete,
+      showNativeBottomAccessory,
+      workoutElapsedSeconds,
+      currentTab,
+    })
+  }, [
+    currentTab,
+    hasDraft,
+    isDraftCheckComplete,
+    isIOS26OrNewer,
+    isRestTimerActive,
+    isTabBarHidden,
+    showNativeBottomAccessory,
+    workoutElapsedSeconds,
+  ])
 
   return (
     <>
@@ -258,7 +347,10 @@ function TabLayoutContent() {
           />
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger name="create-post" role="search">
+        <NativeTabs.Trigger
+          name="create-post"
+          role="search"
+        >
           <NativeTabs.Trigger.Label hidden />
           <NativeTabs.Trigger.Icon
             sf={{
@@ -273,12 +365,11 @@ function TabLayoutContent() {
         {showNativeBottomAccessory ? (
           <NativeTabs.BottomAccessory>
             <BottomAccessoryAction
-              isDark={isDark}
-              label={bottomAccessoryLabel}
-              iconName={bottomAccessoryIconName}
+              title={bottomAccessoryTitle}
               textPrimary={colors.textPrimary}
-              textSecondary={colors.textSecondary}
-              onPress={handleOpenCreatePost}
+              accentColor={colors.statusSuccess}
+              onOpen={handleOpenCreatePost}
+              onDiscard={handleDiscardWorkoutProgress}
             />
           </NativeTabs.BottomAccessory>
         ) : null}
@@ -313,65 +404,132 @@ function TabLayoutContent() {
 }
 
 function BottomAccessoryAction({
-  isDark,
-  label,
-  iconName,
+  title,
   textPrimary,
-  textSecondary,
-  onPress,
+  accentColor,
+  onOpen,
+  onDiscard,
 }: {
-  isDark: boolean
-  label: string
-  iconName: keyof typeof Ionicons.glyphMap
+  title: string
   textPrimary: string
-  textSecondary: string
-  onPress: () => void
+  accentColor: string
+  onOpen: () => void
+  onDiscard: () => void
 }) {
   const placement = NativeTabs.BottomAccessory.usePlacement()
   const isInline = placement === 'inline'
+  const sideSlotWidth = isInline ? 56 : 68
 
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      activeOpacity={0.85}
+    <View
       style={{
-        alignSelf: 'center',
-        marginTop: isInline ? 2 : 4,
-        marginBottom: isInline ? 4 : 8,
-        flexDirection: 'row',
+        width: '100%',
+        height: isInline ? 42 : 52,
+        paddingHorizontal: isInline ? 10 : 12,
+        paddingVertical: 0,
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: isInline ? 6 : 8,
-        paddingHorizontal: isInline ? 10 : 14,
-        paddingVertical: isInline ? 6 : 8,
-        borderRadius: isInline ? 14 : 18,
-        backgroundColor: isDark
-          ? 'rgba(20, 20, 22, 0.95)'
-          : 'rgba(255, 255, 255, 0.97)',
-        borderWidth: 1,
-        borderColor: isDark
-          ? 'rgba(255, 255, 255, 0.12)'
-          : 'rgba(0, 0, 0, 0.08)',
       }}
     >
-      <Ionicons
-        name={iconName}
-        size={isInline ? 14 : 15}
-        color={textSecondary}
-      />
-      <Text
-        numberOfLines={1}
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Resume workout"
+        activeOpacity={0.85}
+        onPress={onOpen}
         style={{
-          color: textPrimary,
-          fontSize: isInline ? 12 : 13,
-          fontWeight: '600',
-          letterSpacing: -0.1,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 1,
+          justifyContent: 'center',
+          transform: [{ translateY: -2 }],
         }}
       >
-        {label}
-      </Text>
-    </TouchableOpacity>
+        <View
+          style={{
+            width: '100%',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View
+            style={{
+              width: sideSlotWidth,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons
+              name="chevron-up"
+              size={isInline ? 16 : 22}
+              color={textPrimary}
+            />
+          </View>
+
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+            }}
+          >
+            <View
+              style={{
+                width: isInline ? 7 : 11,
+                height: isInline ? 7 : 11,
+                borderRadius: 999,
+                backgroundColor: accentColor,
+              }}
+            />
+            <Text
+              numberOfLines={1}
+              style={{
+                color: textPrimary,
+                fontSize: isInline ? 15 : 17,
+                lineHeight: isInline ? 18 : 21,
+                fontWeight: '700',
+                letterSpacing: -0.2,
+                textAlign: 'center',
+              }}
+            >
+              {title}
+            </Text>
+          </View>
+
+          <View style={{ width: sideSlotWidth }} />
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Discard workout"
+        activeOpacity={0.85}
+        onPress={onDiscard}
+        hitSlop={8}
+        style={{
+          position: 'absolute',
+          right: isInline ? 10 : 12,
+          top: 0,
+          bottom: 0,
+          zIndex: 3,
+          paddingHorizontal: 6,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ translateY: -2 }],
+        }}
+      >
+        <Ionicons
+          name="trash-outline"
+          size={isInline ? 16 : 22}
+          color="#ff5a5f"
+        />
+      </TouchableOpacity>
+    </View>
   )
 }
 

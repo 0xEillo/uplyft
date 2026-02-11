@@ -7,6 +7,16 @@ const WORKOUT_DRAFT_SNAPSHOT_KEY = '@workout_draft_snapshot'
 const WORKOUT_DRAFT_OPS_KEY = '@workout_draft_ops'
 
 const storage = new MMKV({ id: 'workout-draft' })
+const IS_DEV =
+  typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
+    ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
+    : process.env.NODE_ENV !== 'production'
+const DEBUG_DRAFT_LOGS = IS_DEV && process.env.NODE_ENV !== 'test'
+
+function logDraft(event: string, payload?: Record<string, unknown>) {
+  if (!DEBUG_DRAFT_LOGS) return
+  console.log(`[DraftStore] ${event}`, payload ?? {})
+}
 
 export type WeightUnit = 'kg' | 'lb'
 
@@ -147,25 +157,27 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
   const hasStructuredSkeleton =
     Array.isArray(draft.structuredData) && draft.structuredData.length > 0
 
-  // Stronger signal: user started entering set data
-  const hasStructuredContent =
-    hasStructuredSkeleton &&
-    (draft.structuredData?.some((exercise) =>
-      exercise.sets.some((set) => set.weight.trim() || set.reps.trim()),
-    ) ??
-      false)
+  // Treat timer state as meaningful draft state so active/in-progress workouts
+  // are never dropped across app restarts unless explicitly discarded.
+  const hasTimerState =
+    (typeof draft.timerStartedAt === 'string' &&
+      draft.timerStartedAt.trim().length > 0) ||
+    (typeof draft.timerElapsedSeconds === 'number' &&
+      draft.timerElapsedSeconds > 0)
 
   // Count as "draft" if there's:
   // - Text input (notes or title)
   // - A routine selected
   // - Exercises in the structured data (even with empty sets - user has actively added them)
+  // - Timer state (running or elapsed)
   // Note: hasStructuredSkeleton ensures we preserve exercises added manually before user
   // fills in any weight/reps. This prevents data loss on page refresh or app backgrounding.
   return (
     notesLength > 0 ||
     titleLength > 0 ||
     hasStructuredSkeleton ||
-    hasRoutineSelection
+    hasRoutineSelection ||
+    hasTimerState
   )
 }
 
@@ -212,6 +224,7 @@ export async function loadDraft(): Promise<WorkoutDraft | null> {
     return merged
   }
 
+  logDraft('load-empty')
   return null
 }
 
@@ -240,12 +253,24 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
   }
 
   if (!draftHasContent(normalized)) {
+    logDraft('save-clear-empty', {
+      updatedAt: normalized.updatedAt,
+    })
     await clearDraft()
     return
   }
 
   writeJson(WORKOUT_DRAFT_SNAPSHOT_KEY, normalized)
   removeKey(WORKOUT_DRAFT_OPS_KEY)
+  logDraft('save', {
+    notesLength: normalized.notes.trim().length,
+    hasTitle: Boolean(normalized.title.trim()),
+    structuredCount: normalized.structuredData?.length ?? 0,
+    hasRoutine: Boolean(normalized.selectedRoutineId),
+    timerStartedAt: normalized.timerStartedAt,
+    timerElapsedSeconds: normalized.timerElapsedSeconds,
+    updatedAt: normalized.updatedAt,
+  })
 }
 
 export async function saveDraftPatch(patch: DraftPatch): Promise<void> {
@@ -261,6 +286,16 @@ export async function saveDraftPatch(patch: DraftPatch): Promise<void> {
 
   ops.push(op)
   writeJson(WORKOUT_DRAFT_OPS_KEY, ops)
+  logDraft('patch', {
+    opsCount: ops.length,
+    hasNotes: typeof patch.notes === 'string',
+    hasTitle: typeof patch.title === 'string',
+    hasStructuredData: Array.isArray(patch.structuredData),
+    hasRoutine: 'selectedRoutineId' in patch,
+    hasTimerStartedAt: 'timerStartedAt' in patch,
+    hasTimerElapsed: 'timerElapsedSeconds' in patch,
+    updatedAt: op.ts,
+  })
 
   if (ops.length >= 50) {
     await compactDraft()
@@ -270,16 +305,21 @@ export async function saveDraftPatch(patch: DraftPatch): Promise<void> {
 export async function compactDraft(draft?: WorkoutDraft): Promise<void> {
   const hydrated = draft ?? (await loadDraft())
   if (!hydrated || !draftHasContent(hydrated)) {
+    logDraft('compact-clear-empty')
     await clearDraft()
     return
   }
 
   await saveDraft(hydrated)
+  logDraft('compact-save', {
+    updatedAt: hydrated.updatedAt ?? 0,
+  })
 }
 
 export async function clearDraft(): Promise<void> {
   removeKey(WORKOUT_DRAFT_SNAPSHOT_KEY)
   removeKey(WORKOUT_DRAFT_OPS_KEY)
+  logDraft('clear')
 }
 
 export async function loadPendingWorkout(): Promise<PendingWorkout | null> {
