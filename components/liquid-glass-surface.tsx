@@ -14,7 +14,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native'
-
+const LIQUID_GLASS_DEBUG = false
 interface LiquidGlassSurfaceProps {
   children?: ReactNode
   style?: StyleProp<ViewStyle>
@@ -70,7 +70,7 @@ export function LiquidGlassSurface({
         setAvailability(next)
       }
 
-      if (__DEV__ && debugLabel) {
+      if (__DEV__ && debugLabel && LIQUID_GLASS_DEBUG) {
         console.log('[liquid-glass][check]', {
           debugLabel,
           reason,
@@ -115,7 +115,7 @@ export function LiquidGlassSurface({
   )
 
   useEffect(() => {
-    if (!__DEV__ || !debugLabel) return
+    if (!__DEV__ || !debugLabel || !LIQUID_GLASS_DEBUG) return
     const mode: 'native' | 'fallback' = canUseNativeGlass ? 'native' : 'fallback'
     const prevMode = previousModeRef.current
     previousModeRef.current = mode

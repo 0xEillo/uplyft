@@ -47,6 +47,7 @@ const IS_DEV_RUNTIME =
   typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
     ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
     : process.env.NODE_ENV !== 'production'
+const DEBUG_LOGS = false
 
 function formatAccessoryElapsed(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -218,7 +219,10 @@ function TabLayoutContent() {
     Platform.OS === 'ios' &&
     Number.parseInt(String(Platform.Version).split('.')[0] ?? '0', 10) >= 26
   const showNativeBottomAccessory =
-    isIOS26OrNewer && !isTabBarHidden && (isRestTimerActive || hasDraft)
+    isIOS26OrNewer &&
+    !isTabBarHidden &&
+    currentTab !== 'chat' &&
+    (isRestTimerActive || hasDraft)
   const bottomAccessoryTitle = `Workout ${formatAccessoryElapsed(
     workoutElapsedSeconds,
   )}`
@@ -228,6 +232,13 @@ function TabLayoutContent() {
   const createActionMdSymbol = 'add_circle'
   const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
   const handleDiscardWorkoutProgress = () => {
+    if (DEBUG_LOGS && IS_DEV_RUNTIME) {
+      console.log('[BottomAccessory] discard-pressed', {
+        currentTab,
+        hasDraft,
+        isRestTimerActive,
+      })
+    }
     Alert.alert(
       'Discard workout?',
       'This will clear your current workout progress.',
@@ -238,10 +249,20 @@ function TabLayoutContent() {
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              await clearWorkoutDraft()
+              if (DEBUG_LOGS && IS_DEV_RUNTIME) {
+                console.log('[BottomAccessory] discard-confirmed')
+              }
+              await clearWorkoutDraft('bottom-accessory-discard')
               stopRestTimer()
               setHasDraft(false)
               setWorkoutElapsedSeconds(0)
+              if (DEBUG_LOGS && IS_DEV_RUNTIME) {
+                const remainingDraft = await loadWorkoutDraft()
+                console.log('[BottomAccessory] discard-finished', {
+                  draftRemaining: Boolean(remainingDraft),
+                  workoutElapsedSeconds: 0,
+                })
+              }
             })()
           },
         },
@@ -250,7 +271,7 @@ function TabLayoutContent() {
   }
 
   useEffect(() => {
-    if (!IS_DEV_RUNTIME) return
+    if (!DEBUG_LOGS || !IS_DEV_RUNTIME) return
     console.log('[BottomAccessory] state', {
       isIOS26OrNewer,
       isTabBarHidden,

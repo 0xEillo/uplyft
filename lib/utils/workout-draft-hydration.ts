@@ -18,6 +18,7 @@ export interface HydrationInput {
 
 export interface HydrationPlan {
   shouldSkip: boolean
+  shouldResetToEmpty: boolean
   hasNewRouteRoutine: boolean
   routeRoutineToken: string | null
   draftUpdatedAt: number
@@ -50,6 +51,9 @@ export function buildHydrationPlan({
     : null
   const hasNewRouteRoutine =
     Boolean(selectedRoutineId) && routeRoutineToken !== lastRouteRoutineToken
+  const hasStoredState = Boolean(draft) || Boolean(pending)
+  const shouldResetToEmpty =
+    hasHydrated && !hasStoredState && !hasNewRouteRoutine
 
   const routineIdFromDraft = draft?.selectedRoutineId ?? pending?.routineId ?? null
   const routineIdFromRoute = hasNewRouteRoutine ? selectedRoutineId ?? null : null
@@ -113,7 +117,8 @@ export function buildHydrationPlan({
   )
 
   return {
-    shouldSkip: hasLocalEdits && !hasNewRouteRoutine,
+    shouldSkip: hasLocalEdits && !hasNewRouteRoutine && !shouldResetToEmpty,
+    shouldResetToEmpty,
     hasNewRouteRoutine,
     routeRoutineToken,
     draftUpdatedAt,

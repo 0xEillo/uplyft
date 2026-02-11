@@ -1,5 +1,5 @@
-import { MMKV } from 'react-native-mmkv'
 import type { WorkoutSong } from '@/types/music'
+import { MMKV } from 'react-native-mmkv'
 
 export const PENDING_POST_KEY = '@pending_workout_post'
 export const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
@@ -11,7 +11,7 @@ const IS_DEV =
   typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
     ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
     : process.env.NODE_ENV !== 'production'
-const DEBUG_DRAFT_LOGS = IS_DEV && process.env.NODE_ENV !== 'test'
+const DEBUG_DRAFT_LOGS = false // IS_DEV && process.env.NODE_ENV !== 'test'
 
 function logDraft(event: string, payload?: Record<string, unknown>) {
   if (!DEBUG_DRAFT_LOGS) return
@@ -316,10 +316,12 @@ export async function compactDraft(draft?: WorkoutDraft): Promise<void> {
   })
 }
 
-export async function clearDraft(): Promise<void> {
+export async function clearDraft(reason?: string): Promise<void> {
   removeKey(WORKOUT_DRAFT_SNAPSHOT_KEY)
   removeKey(WORKOUT_DRAFT_OPS_KEY)
-  logDraft('clear')
+  logDraft('clear', {
+    reason: reason ?? 'unspecified',
+  })
 }
 
 export async function loadPendingWorkout(): Promise<PendingWorkout | null> {

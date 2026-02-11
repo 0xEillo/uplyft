@@ -273,4 +273,34 @@ describe('buildHydrationPlan', () => {
 
     expect(plan.shouldApplyHydration).toBe(false)
   })
+
+  test('resets to empty when hydrated local state exists but disk draft was cleared', () => {
+    const plan = buildHydrationPlan({
+      draft: null,
+      pending: null,
+      selectedRoutineId: null,
+      refresh: null,
+      lastRouteRoutineToken: null,
+      hasHydrated: true,
+      lastLocalEditAt: 500,
+    })
+
+    expect(plan.shouldResetToEmpty).toBe(true)
+    expect(plan.shouldSkip).toBe(false)
+  })
+
+  test('does not reset to empty when a new route routine arrives', () => {
+    const plan = buildHydrationPlan({
+      draft: null,
+      pending: null,
+      selectedRoutineId: 'route-1',
+      refresh: 'x',
+      lastRouteRoutineToken: null,
+      hasHydrated: true,
+      lastLocalEditAt: 500,
+    })
+
+    expect(plan.shouldResetToEmpty).toBe(false)
+    expect(plan.hasNewRouteRoutine).toBe(true)
+  })
 })

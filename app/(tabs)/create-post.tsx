@@ -1,7 +1,7 @@
 import {
-    CreatePostTutorialOverlay,
-    type CreatePostTutorialHighlightLayout,
-    type CreatePostTutorialStep,
+  CreatePostTutorialOverlay,
+  type CreatePostTutorialHighlightLayout,
+  type CreatePostTutorialStep,
 } from '@/components/create-post-tutorial-overlay'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
@@ -22,10 +22,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-    getExerciseSuggestion,
-    parseRepRange,
-    useExerciseAutocompleteGroup,
-    useShowConvertButton,
+  getExerciseSuggestion,
+  parseRepRange,
+  useExerciseAutocompleteGroup,
+  useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -42,22 +42,22 @@ import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    compactDraft as compactWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
-    saveDraftPatch as saveWorkoutDraftPatch,
+  clearDraft as clearWorkoutDraft,
+  compactDraft as compactWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
+  saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
@@ -66,26 +66,26 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    AppState,
-    Easing,
-    InteractionManager,
-    Keyboard,
-    LayoutChangeEvent,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  AppState,
+  Easing,
+  InteractionManager,
+  Keyboard,
+  LayoutChangeEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Reanimated, {
-    useAnimatedKeyboard,
-    useAnimatedStyle,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -93,6 +93,7 @@ const IS_DEV_RUNTIME =
   typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
     ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
     : process.env.NODE_ENV !== 'production'
+const DEBUG_LOGS = false
 
 function formatTimerDisplay(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -410,7 +411,7 @@ export default function CreatePostScreen() {
 
   const logDraftDebug = useCallback(
     (event: string, payload?: Record<string, unknown>) => {
-      if (!IS_DEV_RUNTIME) return
+      if (!DEBUG_LOGS || !IS_DEV_RUNTIME) return
       console.log(`[DraftDebug][CreatePost] ${event}`, payload ?? {})
     },
     [],
@@ -674,19 +675,21 @@ export default function CreatePostScreen() {
   ])
 
   // Sync Live Activity with workout timer for Dynamic Island display
+  const hasStartedActivityRef = useRef(false)
   useEffect(() => {
     if (isWorkoutTimerRunning && workoutElapsedSeconds > 0) {
-      // Start or update the Live Activity
-      if (workoutElapsedSeconds === 1) {
-        // Just started - create the activity
+      if (!hasStartedActivityRef.current) {
+        // First time seeing a running timer in this session - start the activity
         startWorkoutActivity()
+        hasStartedActivityRef.current = true
       } else {
-        // Update with elapsed time (limited by the context to every 5 seconds)
+        // Already started - just update
         updateWorkoutActivity(workoutElapsedSeconds)
       }
-    } else if (!isWorkoutTimerRunning && workoutElapsedSeconds === 0) {
-      // Workout ended/cleared - stop the activity
+    } else if (hasStartedActivityRef.current) {
+      // Timer stopped or cleared - stop the activity
       stopWorkoutActivity()
+      hasStartedActivityRef.current = false
     }
   }, [
     isWorkoutTimerRunning,
@@ -709,6 +712,42 @@ export default function CreatePostScreen() {
     Keyboard.dismiss()
   }, [])
 
+  const resetLocalWorkoutDraftState = useCallback(() => {
+    suppressLocalEditTrackingRef.current = true
+    suppressDraftToastRef.current = true
+    // Skip the next few autosaves while reset state propagates.
+    skipPersistCountRef.current = 3
+
+    // Update refs immediately so any lifecycle-triggered persist in the same
+    // tick sees cleared state and cannot recreate a discarded draft.
+    notesRef.current = ''
+    titleRef.current = ''
+    structuredDataRef.current = []
+    isStructuredModeRef.current = false
+    selectedRoutineIdRef.current = null
+    pendingDraftRoutineIdRef.current = null
+    workoutTimerStateRef.current = {
+      timerStartedAt: null,
+      timerElapsedSeconds: 0,
+    }
+
+    resetWorkoutTimer()
+    setNotes('')
+    setWorkoutTitle('')
+    setAttachedImageUri(null)
+    setIsStructuredMode(false)
+    setSelectedRoutine(null)
+    setPendingDraftRoutineId(null)
+    setPendingRoutineSource(null)
+    setStructuredData([])
+    setLastRoutineWorkout(null)
+    setFinalizeDescription('')
+    setSelectedSong(null)
+
+    lastDraftSavedAtRef.current = 0
+    lastLocalEditAtRef.current = 0
+  }, [resetWorkoutTimer])
+
   // Use audio transcription hook
   const {
     isRecording,
@@ -729,11 +768,13 @@ export default function CreatePostScreen() {
     handleScanWorkout,
   } = useImageTranscription({
     onStructuredExtractionComplete: (data) => {
-      console.log('[CreatePost] onStructuredExtractionComplete received:', {
-        title: data.title,
-        exercisesCount: data.exercises?.length,
-        firstExercise: data.exercises?.[0]?.name,
-      })
+      if (DEBUG_LOGS) {
+        console.log('[CreatePost] onStructuredExtractionComplete received:', {
+          title: data.title,
+          exercisesCount: data.exercises?.length,
+          firstExercise: data.exercises?.[0]?.name,
+        })
+      }
       // Set title if extracted
       if (data.title) {
         setWorkoutTitle(data.title)
@@ -764,19 +805,23 @@ export default function CreatePostScreen() {
       )
 
       // Set the structured data and enable structured mode
-      console.log(
-        '[CreatePost] Setting structured data:',
-        structuredExercises.length,
-        'exercises',
-      )
+      if (DEBUG_LOGS) {
+        console.log(
+          '[CreatePost] Setting structured data:',
+          structuredExercises.length,
+          'exercises',
+        )
+      }
       setStructuredData((prev) => [...prev, ...structuredExercises])
       setIsStructuredMode(true)
     },
     onExtractionComplete: (data) => {
-      console.log('[CreatePost] onExtractionComplete (fallback) received:', {
-        title: data.title,
-        workoutLength: data.workout?.length,
-      })
+      if (DEBUG_LOGS) {
+        console.log('[CreatePost] onExtractionComplete (fallback) received:', {
+          title: data.title,
+          workoutLength: data.workout?.length,
+        })
+      }
       // Fallback: if structured parsing fails, use the old text-based approach
       if (data.title) {
         setWorkoutTitle(data.title)
@@ -879,7 +924,7 @@ export default function CreatePostScreen() {
         pendingRoutineWaitingForLoad.current = true
       } else {
         // Routines loaded but routine not found - routine may have been deleted
-        console.warn('[Routine] Not found:', pendingDraftRoutineId)
+        if (DEBUG_LOGS) console.warn('[Routine] Not found:', pendingDraftRoutineId)
         pendingRoutineWaitingForLoad.current = false
         setPendingDraftRoutineId(null)
         setPendingRoutineSource(null)
@@ -887,12 +932,14 @@ export default function CreatePostScreen() {
       return
     }
 
-    console.log(
-      '[Routine] Applied:',
-      routine.name,
-      '| source:',
-      pendingRoutineSource,
-    )
+    if (DEBUG_LOGS) {
+      console.log(
+        '[Routine] Applied:',
+        routine.name,
+        '| source:',
+        pendingRoutineSource,
+      )
+    }
     pendingRoutineWaitingForLoad.current = false
 
     // Capture source before clearing to use in logic below
@@ -1076,6 +1123,15 @@ export default function CreatePostScreen() {
         return
       }
 
+      if (plan.shouldResetToEmpty) {
+        logDraftDebug('hydrate-reset-empty-storage', {
+          draftUpdatedAt: plan.draftUpdatedAt,
+          lastLocalEditAt: lastLocalEditAtRef.current,
+        })
+        resetLocalWorkoutDraftState()
+        return
+      }
+
       if (plan.shouldApplyHydration) {
         suppressLocalEditTrackingRef.current = true
       }
@@ -1084,6 +1140,7 @@ export default function CreatePostScreen() {
         shouldApplyHydration: plan.shouldApplyHydration,
         shouldHydrateTimer: plan.shouldHydrateTimer,
         hasNewRouteRoutine: plan.hasNewRouteRoutine,
+        shouldResetToEmpty: plan.shouldResetToEmpty,
         effectiveRoutineId: plan.effectiveRoutineId,
         draftUpdatedAt: plan.draftUpdatedAt,
       })
@@ -1141,6 +1198,7 @@ export default function CreatePostScreen() {
     logDraftDebug,
     buildDraftMetrics,
     hydrateWorkoutTimer,
+    resetLocalWorkoutDraftState,
     resetWorkoutTimer,
     refresh,
     selectedRoutineId,
@@ -1272,6 +1330,13 @@ export default function CreatePostScreen() {
 
   // Auto-save draft whenever inputs change
   useEffect(() => {
+    if (!isScreenFocusedRef.current) {
+      logDraftDebug('autosave-skipped', {
+        reason: 'not-focused',
+      })
+      return
+    }
+
     if (isHydratingRef.current) {
       return
     }
@@ -1326,7 +1391,7 @@ export default function CreatePostScreen() {
           })
         })
         .catch((error) => {
-          console.error('[Draft] Save failed:', error)
+          if (DEBUG_LOGS) console.error('[Draft] Save failed:', error)
           logDraftDebug('autosave-failed', {
             error: error instanceof Error ? error.message : String(error),
           })
@@ -1449,29 +1514,15 @@ export default function CreatePostScreen() {
           text: 'Discard',
           style: 'destructive',
           onPress: async () => {
-            skipPersistCountRef.current = 1
-            suppressDraftToastRef.current = true
-            await clearWorkoutDraft()
-            resetWorkoutTimer()
-
-            setNotes('')
-            setWorkoutTitle('')
-            setAttachedImageUri(null)
-            setIsStructuredMode(false)
-            setSelectedRoutine(null)
-            setPendingDraftRoutineId(null)
-            setPendingRoutineSource(null)
-            setStructuredData([])
-            setLastRoutineWorkout(null)
-            setFinalizeDescription('')
-            setSelectedSong(null)
+            await clearWorkoutDraft('create-post-discard-button')
+            resetLocalWorkoutDraftState()
 
             haptic('light')
           },
         },
       ],
     )
-  }, [blurInputs, resetWorkoutTimer])
+  }, [blurInputs, resetLocalWorkoutDraftState])
 
   const handleRemoveAttachedImage = async () => {
     haptic('light')
@@ -1620,23 +1671,9 @@ export default function CreatePostScreen() {
 
       hapticSuccess()
 
-      skipPersistCountRef.current = 1
-      suppressDraftToastRef.current = true
-      await clearWorkoutDraft()
+      await clearWorkoutDraft('create-post-submit-success')
       clearExerciseHistoryCache() // Clear cache so new workout data is available next time
-      resetWorkoutTimer()
-
-      setNotes('')
-      setWorkoutTitle('')
-      setAttachedImageUri(null)
-      setIsStructuredMode(false)
-      setSelectedRoutine(null)
-      setPendingDraftRoutineId(null)
-      setPendingRoutineSource(null)
-      setStructuredData([])
-      setLastRoutineWorkout(null)
-      setFinalizeDescription('')
-      setSelectedSong(null)
+      resetLocalWorkoutDraftState()
       blurInputs()
 
       // Show streak overlay only if the streak increased (e.g., 2 weeks -> 3 weeks)
@@ -1661,7 +1698,7 @@ export default function CreatePostScreen() {
       showStreakOverlay,
       refreshFreemiumLimits,
       getWorkoutElapsedSeconds,
-      resetWorkoutTimer,
+      resetLocalWorkoutDraftState,
       completeStep,
       isStructuredMode,
       structuredData,

@@ -1,10 +1,10 @@
 import { startActivity, stopActivity, updateActivity } from 'expo-live-activity'
 import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
 } from 'react'
 import { Platform } from 'react-native'
 
@@ -31,6 +31,7 @@ export function LiveActivityProvider({
 
   // Live Activities only work on iOS 16.2+
   const isActivitySupported = Platform.OS === 'ios'
+  const DEBUG_LOGS = false
 
   const formatElapsed = (totalSeconds: number) => {
     const safeSeconds = Math.max(0, Math.floor(totalSeconds))
@@ -46,6 +47,7 @@ export function LiveActivityProvider({
   }
 
   const logState = (label: string, state: any, config?: any) => {
+    if (!DEBUG_LOGS) return
     console.log(`[LiveActivity] ${label}`)
     console.log(`[LiveActivity]   State:`, JSON.stringify(state, null, 2))
     if (config) {
@@ -54,22 +56,26 @@ export function LiveActivityProvider({
   }
 
   const startWorkoutActivity = useCallback(() => {
-    console.log('[LiveActivity] ===== START startWorkoutActivity =====')
-    console.log('[LiveActivity] isActivitySupported:', isActivitySupported)
-    console.log('[LiveActivity] Platform.OS:', Platform.OS)
-    console.log('[LiveActivity] Current activityId:', activityIdRef.current)
+    if (DEBUG_LOGS) {
+      console.log('[LiveActivity] ===== START startWorkoutActivity =====')
+      console.log('[LiveActivity] isActivitySupported:', isActivitySupported)
+      console.log('[LiveActivity] Platform.OS:', Platform.OS)
+      console.log('[LiveActivity] Current activityId:', activityIdRef.current)
+    }
 
     if (!isActivitySupported) {
-      console.log('[LiveActivity] ❌ Not supported on this platform')
+      if (DEBUG_LOGS) console.log('[LiveActivity] ❌ Not supported on this platform')
       return
     }
 
     // Stop any existing activity first
     if (activityIdRef.current) {
-      console.log(
-        '[LiveActivity] Stopping existing activity:',
-        activityIdRef.current,
-      )
+      if (DEBUG_LOGS) {
+        console.log(
+          '[LiveActivity] Stopping existing activity:',
+          activityIdRef.current,
+        )
+      }
       try {
         const stopState = {
           title: 'Workout Ended',
@@ -77,12 +83,14 @@ export function LiveActivityProvider({
         }
         logState('stopActivity (existing)', stopState)
         stopActivity(activityIdRef.current, stopState)
-        console.log('[LiveActivity] ✅ Stopped existing activity')
-      } catch (error) {
-        console.log(
-          '[LiveActivity] ❌ Error stopping existing activity:',
-          error,
-        )
+        if (DEBUG_LOGS) console.log('[LiveActivity] ✅ Stopped existing activity')
+      } catch (e) {
+        if (DEBUG_LOGS) {
+          console.log(
+            '[LiveActivity] ❌ Error stopping existing activity:',
+            e,
+          )
+        }
       }
       activityIdRef.current = null
     }
@@ -93,11 +101,13 @@ export function LiveActivityProvider({
       lastUpdateAtRef.current = 0
       updateCountRef.current = 0
 
-      console.log('[LiveActivity] Workout start time:', workoutStartTime)
-      console.log(
-        '[LiveActivity] Workout start ISO:',
-        new Date(workoutStartTime).toISOString(),
-      )
+      if (DEBUG_LOGS) {
+        console.log('[LiveActivity] Workout start time:', workoutStartTime)
+        console.log(
+          '[LiveActivity] Workout start ISO:',
+          new Date(workoutStartTime).toISOString(),
+        )
+      }
 
       // subtitle format: "0:00 • Rep AI" - Swift extracts timer before " • "
       const state = {
@@ -121,32 +131,37 @@ export function LiveActivityProvider({
 
       if (activityId) {
         activityIdRef.current = activityId
-        console.log('[LiveActivity] ✅ Started activity with ID:', activityId)
-        console.log('[LiveActivity] Activity ID type:', typeof activityId)
-        console.log('[LiveActivity] Activity ID length:', activityId.length)
+        if (DEBUG_LOGS) {
+          console.log('[LiveActivity] ✅ Started activity with ID:', activityId)
+          console.log('[LiveActivity] Activity ID type:', typeof activityId)
+          console.log('[LiveActivity] Activity ID length:', activityId.length)
+        }
       } else {
-        console.log('[LiveActivity] ❌ startActivity returned null/undefined')
+        if (DEBUG_LOGS) console.log('[LiveActivity] ❌ startActivity returned null/undefined')
       }
-    } catch (error) {
-      console.log('[LiveActivity] ❌ Error starting activity:', error)
-      if (error instanceof Error) {
-        console.log('[LiveActivity] Error name:', error.name)
-        console.log('[LiveActivity] Error message:', error.message)
-        console.log('[LiveActivity] Error stack:', error.stack)
+    } catch (e) {
+      if (DEBUG_LOGS) {
+        console.log('[LiveActivity] ❌ Error starting activity:', e)
+        if (e instanceof Error) {
+          console.log('[LiveActivity] Error name:', e.name)
+          console.log('[LiveActivity] Error message:', e.message)
+          console.log('[LiveActivity] Error stack:', e.stack)
+        }
       }
     }
-    console.log('[LiveActivity] ===== END startWorkoutActivity =====')
+    if (DEBUG_LOGS) console.log('[LiveActivity] ===== END startWorkoutActivity =====')
   }, [isActivitySupported])
 
   const updateWorkoutActivity = useCallback(
     (elapsedSeconds: number) => {
       if (!isActivitySupported) {
-        console.log('[LiveActivity] ❌ updateWorkoutActivity: not supported')
+        if (DEBUG_LOGS) console.log('[LiveActivity] ❌ updateWorkoutActivity: not supported')
         return
       }
 
       if (!activityIdRef.current) {
-        console.log('[LiveActivity] ❌ updateWorkoutActivity: no activityId')
+        // Silently return if no activity is active. This can happen during hydration
+        // or immediately after a workout is cleared while state is settling.
         return
       }
 
@@ -155,7 +170,7 @@ export function LiveActivityProvider({
 
       // Throttle to once per second
       if (timeSinceLastUpdate < 1000) {
-        if (elapsedSeconds % 5 === 0) {
+        if (DEBUG_LOGS && elapsedSeconds % 5 === 0) {
           console.log(
             `[LiveActivity] ⏭️  Skipping update (throttled): elapsed=${elapsedSeconds}s, timeSinceLastUpdate=${timeSinceLastUpdate}ms`,
           )
@@ -168,9 +183,11 @@ export function LiveActivityProvider({
       if (!startTimeRef.current) {
         const calculatedStartTime = now - elapsedSeconds * 1000
         startTimeRef.current = calculatedStartTime
-        console.log(
-          `[LiveActivity] Calculated startTime: ${calculatedStartTime} (elapsed=${elapsedSeconds}s)`,
-        )
+        if (DEBUG_LOGS) {
+          console.log(
+            `[LiveActivity] Calculated startTime: ${calculatedStartTime} (elapsed=${elapsedSeconds}s)`,
+          )
+        }
       }
 
       try {
@@ -185,33 +202,39 @@ export function LiveActivityProvider({
         }
 
         // Log every update, but more detail every 5 seconds
-        if (elapsedSeconds % 5 === 0) {
-          console.log('[LiveActivity] ===== UPDATE =====')
-          console.log('[LiveActivity] elapsedSeconds:', elapsedSeconds)
-          console.log('[LiveActivity] formattedTime:', formattedTime)
-          console.log('[LiveActivity] subtitle:', subtitle)
-          console.log('[LiveActivity] activityId:', activityIdRef.current)
-          console.log('[LiveActivity] startTime:', startTimeRef.current)
-          console.log('[LiveActivity] now:', now)
-          console.log('[LiveActivity] updateCount:', updateCountRef.current)
-          logState('updateActivity', updateState)
-        } else {
-          // Light logging for other updates
-          console.log(
-            `[LiveActivity] Update ${updateCountRef.current}: ${formattedTime} (elapsed=${elapsedSeconds}s)`,
-          )
+        if (DEBUG_LOGS) {
+          if (elapsedSeconds % 5 === 0) {
+            console.log('[LiveActivity] ===== UPDATE =====')
+            console.log('[LiveActivity] elapsedSeconds:', elapsedSeconds)
+            console.log('[LiveActivity] formattedTime:', formattedTime)
+            console.log('[LiveActivity] subtitle:', subtitle)
+            console.log('[LiveActivity] activityId:', activityIdRef.current)
+            console.log('[LiveActivity] startTime:', startTimeRef.current)
+            console.log('[LiveActivity] now:', now)
+            console.log('[LiveActivity] updateCount:', updateCountRef.current)
+            logState('updateActivity', updateState)
+          } else {
+            // Light logging for other updates
+            console.log(
+              `[LiveActivity] Update ${updateCountRef.current}: ${formattedTime} (elapsed=${elapsedSeconds}s)`,
+            )
+          }
         }
 
         updateActivity(activityIdRef.current, updateState)
-        console.log(
-          `[LiveActivity] ✅ updateActivity called (count=${updateCountRef.current})`,
-        )
-      } catch (error) {
-        console.log('[LiveActivity] ❌ Error updating activity:', error)
-        if (error instanceof Error) {
-          console.log('[LiveActivity] Error name:', error.name)
-          console.log('[LiveActivity] Error message:', error.message)
-          console.log('[LiveActivity] Error stack:', error.stack)
+        if (DEBUG_LOGS) {
+          console.log(
+            `[LiveActivity] ✅ updateActivity called (count=${updateCountRef.current})`,
+          )
+        }
+      } catch (e) {
+        if (DEBUG_LOGS) {
+          console.log('[LiveActivity] ❌ Error updating activity:', e)
+          if (e instanceof Error) {
+            console.log('[LiveActivity] Error name:', e.name)
+            console.log('[LiveActivity] Error message:', e.message)
+            console.log('[LiveActivity] Error stack:', e.stack)
+          }
         }
       }
     },
@@ -219,17 +242,19 @@ export function LiveActivityProvider({
   )
 
   const stopWorkoutActivity = useCallback(() => {
-    console.log('[LiveActivity] ===== START stopWorkoutActivity =====')
-    console.log('[LiveActivity] isActivitySupported:', isActivitySupported)
-    console.log('[LiveActivity] activityId:', activityIdRef.current)
+    if (DEBUG_LOGS) {
+      console.log('[LiveActivity] ===== START stopWorkoutActivity =====')
+      console.log('[LiveActivity] isActivitySupported:', isActivitySupported)
+      console.log('[LiveActivity] activityId:', activityIdRef.current)
+    }
 
     if (!isActivitySupported) {
-      console.log('[LiveActivity] ❌ Not supported')
+      if (DEBUG_LOGS) console.log('[LiveActivity] ❌ Not supported')
       return
     }
 
     if (!activityIdRef.current) {
-      console.log('[LiveActivity] ❌ No activityId to stop')
+      // Silently return if no activity is active to stop.
       return
     }
 
@@ -240,38 +265,42 @@ export function LiveActivityProvider({
       }
       logState('stopActivity', stopState)
       stopActivity(activityIdRef.current, stopState)
-      console.log('[LiveActivity] ✅ Stopped successfully')
+      if (DEBUG_LOGS) console.log('[LiveActivity] ✅ Stopped successfully')
       activityIdRef.current = null
       startTimeRef.current = 0
       lastUpdateAtRef.current = 0
       updateCountRef.current = 0
-    } catch (error) {
-      console.log('[LiveActivity] ❌ Error stopping activity:', error)
-      if (error instanceof Error) {
-        console.log('[LiveActivity] Error name:', error.name)
-        console.log('[LiveActivity] Error message:', error.message)
-        console.log('[LiveActivity] Error stack:', error.stack)
+    } catch (e) {
+      if (DEBUG_LOGS) {
+        console.log('[LiveActivity] ❌ Error stopping activity:', e)
+        if (e instanceof Error) {
+          console.log('[LiveActivity] Error name:', e.name)
+          console.log('[LiveActivity] Error message:', e.message)
+          console.log('[LiveActivity] Error stack:', e.stack)
+        }
       }
     }
-    console.log('[LiveActivity] ===== END stopWorkoutActivity =====')
+    if (DEBUG_LOGS) console.log('[LiveActivity] ===== END stopWorkoutActivity =====')
   }, [isActivitySupported])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (activityIdRef.current) {
-        console.log(
-          '[LiveActivity] Cleanup on unmount, activityId:',
-          activityIdRef.current,
-        )
+        if (DEBUG_LOGS) {
+          console.log(
+            '[LiveActivity] Cleanup on unmount, activityId:',
+            activityIdRef.current,
+          )
+        }
         try {
           stopActivity(activityIdRef.current, {
             title: 'Rep AI',
             subtitle: 'Session Ended',
           })
-          console.log('[LiveActivity] ✅ Cleanup stopActivity called')
-        } catch (error) {
-          console.log('[LiveActivity] ❌ Cleanup error:', error)
+          if (DEBUG_LOGS) console.log('[LiveActivity] ✅ Cleanup stopActivity called')
+        } catch (e) {
+          if (DEBUG_LOGS) console.log('[LiveActivity] ❌ Cleanup error:', e)
         }
       }
     }
