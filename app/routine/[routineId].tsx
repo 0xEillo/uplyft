@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { Paywall } from '@/components/paywall'
 import { RoutineExerciseCard } from '@/components/RoutineExerciseCard'
 import { SlideInView } from '@/components/slide-in-view'
@@ -10,8 +11,8 @@ import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import {
-  ExploreRoutineWithExercises,
-  WorkoutRoutineWithDetails,
+    ExploreRoutineWithExercises,
+    WorkoutRoutineWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
@@ -19,13 +20,13 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -69,6 +70,7 @@ export default function RoutineDetailScreen() {
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
 
   const [routine, setRoutine] = useState<NormalizedRoutine | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -315,8 +317,10 @@ export default function RoutineDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color={colors.brandPrimary} />
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+        </View>
       </View>
     )
   }
@@ -331,46 +335,44 @@ export default function RoutineDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: colors.bg, paddingTop: insets.top },
-        ]}
-      >
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              Routine
-            </Text>
-          }
-          rightContent={
-            routine.isOwner ? (
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
               <NavbarIsland>
-                <TouchableOpacity
-                  onPress={handleDeleteRoutine}
-                  style={styles.actionButton}
-                >
-                  <Ionicons
-                    name="trash-outline"
-                    size={24}
-                    color={colors.statusError}
-                  />
+                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
               </NavbarIsland>
-            ) : undefined
-          }
-        />
+            }
+            centerContent={
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                Routine
+              </Text>
+            }
+            rightContent={
+              routine.isOwner ? (
+                <NavbarIsland>
+                  <TouchableOpacity
+                    onPress={handleDeleteRoutine}
+                    style={styles.actionButton}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={24}
+                      color={colors.statusError}
+                    />
+                  </TouchableOpacity>
+                </NavbarIsland>
+              ) : undefined
+            }
+          />
+        </BlurredHeader>
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: insets.top + NAVBAR_HEIGHT }}
+          scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
           showsVerticalScrollIndicator={false}
         >
           {/* Cover Image Section */}

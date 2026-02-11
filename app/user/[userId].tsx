@@ -1,5 +1,6 @@
 import { AsyncPrFeedCard } from '@/components/async-pr-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
@@ -445,49 +446,24 @@ export default function UserProfileScreen() {
       onExitComplete={handleExitComplete}
     >
       <View style={styles.container}>
-        <Animated.View
-          style={[
-            styles.navbarContainer,
-            {
-              paddingTop: insets.top,
-              backgroundColor: navbarBgColor,
-              borderBottomWidth: 0,
-              borderBottomColor: colors.border,
-            },
-          ]}
-        >
+        <BlurredHeader style={styles.navbarContainer}>
           <BaseNavbar
             leftContent={
               <NavbarIsland>
-                <View style={styles.navbarLeft}>
-                  <TouchableOpacity
-                    onPress={handleBack}
-                    style={styles.navbarBackAction}
-                  >
-                    <View style={styles.iconWrapper}>
-                      <Animated.View style={{ opacity: whiteOpacity }}>
-                        <Ionicons
-                          name="arrow-back"
-                          size={24}
-                          color={startColor}
-                        />
-                      </Animated.View>
-                      <Animated.View
-                        style={{ opacity: themedOpacity, position: 'absolute' }}
-                      >
-                        <Ionicons
-                          name="arrow-back"
-                          size={24}
-                          color={colors.textPrimary}
-                        />
-                      </Animated.View>
-                    </View>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.navbarBackButton}
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
               </NavbarIsland>
             }
           />
-        </Animated.View>
+        </BlurredHeader>
 
         {/* Scrollable Content */}
         <Animated.ScrollView
@@ -552,15 +528,13 @@ export default function UserProfileScreen() {
               {/* Avatar and Name Row */}
               <View style={styles.profileTop}>
                 {/* Avatar */}
-                <View style={styles.avatarWrapper}>
-                  {avatarUrl ? (
-                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={36} color={colors.surface} />
-                    </View>
-                  )}
-                </View>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Ionicons name="person" size={36} color={colors.surface} />
+                  </View>
+                )}
 
                 {/* Name and Stats */}
                 <View style={styles.nameContainer}>
@@ -912,26 +886,13 @@ const createStyles = (
       top: 0,
       left: 0,
       right: 0,
-      zIndex: 10,
+      zIndex: 100,
     },
-    navbarLeft: {
-      flexDirection: 'row',
+    navbarBackButton: {
+      width: 44,
+      height: 44,
       alignItems: 'center',
-    },
-    navbarBackAction: {
-      padding: 8,
-      marginLeft: -8, // Adjusted to compensate for BaseNavbar's paddingHorizontal: 14
-      marginRight: 4,
-    },
-    navbarIsland: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    iconWrapper: {
-      width: 24,
-      height: 24,
       justifyContent: 'center',
-      alignItems: 'center',
     },
     headerTitle: {
       fontSize: 20,
@@ -983,16 +944,6 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'flex-end',
       marginBottom: 16,
-    },
-    avatarWrapper: {
-      borderRadius: 50,
-      padding: 3,
-      backgroundColor: colors.bg,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 8,
     },
     avatar: {
       width: 90,

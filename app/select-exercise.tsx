@@ -14,7 +14,7 @@ import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Dimensions,
@@ -100,14 +100,12 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
   isCurrentExercise,
   isSelected,
   onSelect,
-  onInfo,
   colors,
 }: {
   exercise: Exercise
   isCurrentExercise: boolean
   isSelected: boolean
   onSelect: () => void
-  onInfo: () => void
   colors: ReturnType<typeof useThemedColors>
 }) {
   const { isDark } = useTheme()
@@ -146,20 +144,33 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
           ) : (
             <View style={styles.iconButtonSmall} />
           )}
-          <TouchableOpacity
-            style={styles.infoButton}
-            onPress={(e) => {
-              e.stopPropagation()
-              onInfo()
+          <Link
+            asChild
+            href={{
+              pathname: '/exercise/[exerciseId]',
+              params: { exerciseId: exercise.id },
             }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons
-              name="information-circle"
-              size={22}
-              color={exercise.created_by ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.6)"}
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.infoButton}
+              onPress={(e) => {
+                e.stopPropagation()
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Link.AppleZoom>
+                <Ionicons
+                  name="information-circle"
+                  size={22}
+                  color={
+                    exercise.created_by
+                      ? 'rgba(255,255,255,0.95)'
+                      : 'rgba(0,0,0,0.6)'
+                  }
+                />
+              </Link.AppleZoom>
+            </TouchableOpacity>
+          </Link>
         </View>
       </View>
 
@@ -196,83 +207,90 @@ const ExerciseListItem = memo(function ExerciseListItem({
   isCurrentExercise,
   isSelected,
   onSelect,
-  onInfo,
   colors,
 }: {
   exercise: Exercise
   isCurrentExercise: boolean
   isSelected: boolean
   onSelect: () => void
-  onInfo: () => void
   colors: ReturnType<typeof useThemedColors>
 }) {
   const { isDark } = useTheme()
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.exerciseListItem,
-        isDark && { backgroundColor: colors.rowTint },
-      ]}
-      onPress={onInfo}
+    <Link
+      asChild
+      href={{
+        pathname: '/exercise/[exerciseId]',
+        params: { exerciseId: exercise.id },
+      }}
     >
-      <ExerciseMediaThumbnail
-        gifUrl={exercise.gif_url}
-        style={styles.exerciseListItemThumbnail}
-        isCustom={!!exercise.created_by}
-      />
-      <View style={styles.exerciseListItemContent}>
-        <Text
-          style={[
-            styles.exerciseListItemText,
-            { color: colors.textPrimary },
-            (isCurrentExercise || isSelected) && {
-              fontWeight: '600',
-              color: colors.brandPrimary,
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {exercise.name}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {exercise.muscle_group && (
-            <Text
-              style={[
-                styles.exerciseListItemMuscle,
-                { color: colors.textSecondary },
-              ]}
-            >
-              {exercise.muscle_group}
-            </Text>
-          )}
-          {exercise.created_by && (
-            <View style={styles.customBadge}>
-              <Text style={styles.customBadgeText}>Custom</Text>
-            </View>
-          )}
-        </View>
-      </View>
       <TouchableOpacity
-        style={styles.listItemCheckbox}
-        onPress={(e) => {
-          e.stopPropagation()
-          onSelect()
-        }}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        disabled={isCurrentExercise}
+        style={[
+          styles.exerciseListItem,
+          isDark && { backgroundColor: colors.rowTint },
+        ]}
       >
-        <Ionicons
-          name={isCurrentExercise || isSelected ? 'checkbox' : 'square-outline'}
-          size={24}
-          color={
-            isCurrentExercise || isSelected
-              ? colors.brandPrimary
-              : colors.textTertiary
-          }
-        />
+        <Link.AppleZoom>
+          <ExerciseMediaThumbnail
+            gifUrl={exercise.gif_url}
+            style={styles.exerciseListItemThumbnail}
+            isCustom={!!exercise.created_by}
+          />
+        </Link.AppleZoom>
+        <View style={styles.exerciseListItemContent}>
+          <Text
+            style={[
+              styles.exerciseListItemText,
+              { color: colors.textPrimary },
+              (isCurrentExercise || isSelected) && {
+                fontWeight: '600',
+                color: colors.brandPrimary,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {exercise.name}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {exercise.muscle_group && (
+              <Text
+                style={[
+                  styles.exerciseListItemMuscle,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {exercise.muscle_group}
+              </Text>
+            )}
+            {exercise.created_by && (
+              <View style={styles.customBadge}>
+                <Text style={styles.customBadgeText}>Custom</Text>
+              </View>
+            )}
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.listItemCheckbox}
+          onPress={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          disabled={isCurrentExercise}
+        >
+          <Ionicons
+            name={isCurrentExercise || isSelected ? 'checkbox' : 'square-outline'}
+            size={24}
+            color={
+              isCurrentExercise || isSelected
+                ? colors.brandPrimary
+                : colors.textTertiary
+            }
+          />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
+    </Link>
   )
 })
 
@@ -508,16 +526,6 @@ export default function SelectExerciseScreen() {
     setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
   }, [])
 
-  const handleViewExercise = useCallback(
-    (exercise: Exercise) => {
-      router.push({
-        pathname: '/exercise/[exerciseId]',
-        params: { exerciseId: exercise.id },
-      })
-    },
-    [router],
-  )
-
   // FlashList render item
   const renderItem = useCallback(
     ({ item }: { item: Exercise }) => {
@@ -531,7 +539,6 @@ export default function SelectExerciseScreen() {
             isCurrentExercise={isCurrentExercise}
             isSelected={isSelected}
             onSelect={() => handleSelectExercise(item)}
-            onInfo={() => handleViewExercise(item)}
             colors={colors}
           />
         )
@@ -543,19 +550,11 @@ export default function SelectExerciseScreen() {
           isCurrentExercise={isCurrentExercise}
           isSelected={isSelected}
           onSelect={() => handleSelectExercise(item)}
-          onInfo={() => handleViewExercise(item)}
           colors={colors}
         />
       )
     },
-    [
-      currentExerciseName,
-      handleSelectExercise,
-      handleViewExercise,
-      colors,
-      viewMode,
-      selectedIds,
-    ],
+    [currentExerciseName, handleSelectExercise, colors, viewMode, selectedIds],
   )
 
   const keyExtractor = useCallback((item: Exercise) => item.id, [])
@@ -642,7 +641,6 @@ export default function SelectExerciseScreen() {
                 isCurrentExercise={isCurrentExercise}
                 isSelected={isSelected}
                 onSelect={() => handleSelectExercise(exercise)}
-                onInfo={() => handleViewExercise(exercise)}
                 colors={colors}
               />
             )
@@ -682,7 +680,6 @@ export default function SelectExerciseScreen() {
     currentExerciseName,
     selectedIds,
     handleSelectExercise,
-    handleViewExercise,
     viewMode,
     toggleViewMode,
     colors,

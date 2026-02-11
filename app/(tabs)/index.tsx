@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     FlatList,
     LayoutAnimation,
     Platform,
@@ -16,11 +17,12 @@ import {
     UIManager,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { AppPostCard } from '@/components/app-post-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { NotificationBadge } from '@/components/notification-badge'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
@@ -65,6 +67,9 @@ const FEED_APP_POST_FIRST_AFTER = 2
 const FEED_APP_POST_INTERVAL = 2
 const FEED_APP_POST_BASE_COUNT = 5
 const FEED_APP_POST_PER_WORKOUTS = 2
+
+// BaseNavbar min-height (60) + vertical padding (8 * 2) = ~76
+const NAVBAR_HEIGHT = 76
 
 const buildFeedItems = (
   workouts: WorkoutSessionWithDetails[],
@@ -134,6 +139,8 @@ const CardDeleteAnimation = {
   },
 }
 
+// --- Scroll Animations ---
+
 export default function FeedScreen() {
   const { user } = useAuth()
   const router = useRouter()
@@ -145,6 +152,25 @@ export default function FeedScreen() {
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlatList>(null)
+  const scrollY = useRef(new Animated.Value(0)).current
+
+  // --- Navigation Header Animations ---
+  // Scroll distance over which the title appears in the navbar
+  const TITLE_APPEAR_DISTANCE = 150
+
+  const smallTitleOpacity = scrollY.interpolate({
+    inputRange: [TITLE_APPEAR_DISTANCE - 30, TITLE_APPEAR_DISTANCE],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  })
+
+  // Slide streak button left when the small title is hidden
+  // ~62px for "Home" text width + 8px gap
+  const streakSlideX = scrollY.interpolate({
+    inputRange: [TITLE_APPEAR_DISTANCE - 30, TITLE_APPEAR_DISTANCE],
+    outputRange: [-70, 0],
+    extrapolate: 'clamp',
+  })
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -648,87 +674,99 @@ export default function FeedScreen() {
     )
   }, [isLoadingMore, colors.brandPrimary, styles.loadingMoreContainer])
 
+  const insets = useSafeAreaInsets()
+  const headerTotalHeight = insets.top + NAVBAR_HEIGHT
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <BaseNavbar
-        leftContent={
-          <View style={styles.headerTitleContainer}>
-            {isProMember ? (
-              <NavbarIsland glass={false} style={styles.homeTitleIsland}>
+    <View style={styles.container}>
+      {/* Blurred navbar overlay */}
+      <BlurredHeader>
+        <BaseNavbar
+          leftContent={
+            <View style={styles.headerTitleContainer}>
+              {isProMember ? (
+                <>
+                  {/* Small title — fades IN when scrolled */}
+                  <Animated.Text
+                    style={[
+                      styles.navbarSmallTitle,
+                      { opacity: smallTitleOpacity },
+                    ]}
+                    numberOfLines={1}
+                    onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
+                  >
+                    Home
+                  </Animated.Text>
+                </>
+              ) : (
                 <TouchableOpacity
-                  style={styles.repAiBadge}
-                  onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
-                  activeOpacity={0.7}
+                  style={styles.proBadge}
+                  activeOpacity={1}
                 >
-                  <Text style={styles.repAiBadgeText}>Home</Text>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </TouchableOpacity>
+              )}
+              {currentStreak > 0 && (
+                <Animated.View style={{ transform: [{ translateX: streakSlideX }] }}>
+                  <TouchableOpacity
+                    onPress={() => router.push('/workout-calendar')}
+                    activeOpacity={0.7}
+                  >
+                    <NavbarIsland style={styles.circleActionIsland}>
+                      <View style={styles.streakButton}>
+                        <Ionicons
+                          name="flame"
+                          size={24}
+                          color={colors.brandPrimary}
+                          style={{ marginTop: 2 }}
+                        />
+                      </View>
+                    </NavbarIsland>
+                    <View style={styles.streakBadge}>
+                      <Text style={styles.streakBadgeText}>{currentStreak}</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+            </View>
+          }
+          rightContent={
+            <View style={styles.headerActions}>
+              <NavbarIsland style={styles.circleActionIsland}>
+                <TouchableOpacity
+                  onPress={() => router.push('/search')}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
               </NavbarIsland>
-            ) : (
-              <TouchableOpacity
-                style={styles.proBadge}
-                activeOpacity={1}
-              >
-                <Text style={styles.proBadgeText}>PRO</Text>
-              </TouchableOpacity>
-            )}
-            {currentStreak > 0 && (
-              <TouchableOpacity
-                onPress={() => router.push('/workout-calendar')}
-                activeOpacity={0.7}
-              >
-                <NavbarIsland style={styles.circleActionIsland}>
-                  <View style={styles.streakButton}>
-                    <Ionicons
-                      name="flame"
-                      size={24}
-                      color={colors.brandPrimary}
-                      style={{ marginTop: 2 }} // Moved down by 2px (1px requested, but 2 looks better usually)
-                    />
-                  </View>
-                </NavbarIsland>
-                <View style={styles.streakBadge}>
-                  <Text style={styles.streakBadgeText}>{currentStreak}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-        }
-        rightContent={
-          <View style={styles.headerActions}>
-            <NavbarIsland style={styles.circleActionIsland}>
-              <TouchableOpacity
-                onPress={() => router.push('/search')}
-                style={styles.iconButton}
-              >
-                <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-            <NavbarIsland style={styles.circleActionIsland}>
-              <TouchableOpacity
-                onPress={() => router.push('/notifications')}
-                style={styles.notificationButton}
-              >
-                <Ionicons
-                  name={
-                    unreadCount > 0 ? 'notifications' : 'notifications-outline'
-                  }
-                  size={24}
-                  color={colors.textPrimary}
-                />
-                <NotificationBadge count={unreadCount} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          </View>
-        }
-      />
+              <NavbarIsland style={styles.circleActionIsland}>
+                <TouchableOpacity
+                  onPress={() => router.push('/notifications')}
+                  style={styles.notificationButton}
+                >
+                  <Ionicons
+                    name={
+                      unreadCount > 0 ? 'notifications' : 'notifications-outline'
+                    }
+                    size={24}
+                    color={colors.textPrimary}
+                  />
+                  <NotificationBadge count={unreadCount} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            </View>
+          }
+        />
+      </BlurredHeader>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
-        <FlatList
-          ref={flatListRef}
+        <Animated.FlatList
+          ref={flatListRef as any}
           data={feedItems}
           ItemSeparatorComponent={() => (
             <View
@@ -739,26 +777,36 @@ export default function FeedScreen() {
             />
           )}
           renderItem={renderFeedItem}
-          keyExtractor={(item) =>
+          keyExtractor={(item: FeedItem) =>
             item.type === 'workout'
               ? `workout-${item.workout.id}`
               : `app-post-${item.post.id}`
           }
           contentContainerStyle={[
             styles.feed,
+            { paddingTop: headerTotalHeight },
             feedItems.length === 0 && styles.emptyFeed,
           ]}
+          scrollIndicatorInsets={{ top: headerTotalHeight }}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true },
+          )}
+          scrollEventThrottle={16}
           ListHeaderComponent={
-            // Don't show tutorial when offline - show offline empty state instead
-            !isTutorialDismissed &&
-            !isTutorialLoading &&
-            !isOffline &&
-            workouts.length === 0 ? (
-              <TutorialChecklist />
-            ) : null
+            <>
+              {/* Tutorial checklist (existing) */}
+              {/* Tutorial checklist (existing) */}
+              {!isTutorialDismissed &&
+                !isTutorialLoading &&
+                !isOffline &&
+                workouts.length === 0 ? (
+                <TutorialChecklist />
+              ) : null}
+            </>
           }
           ListEmptyComponent={
             // Show empty state when:
@@ -791,11 +839,12 @@ export default function FeedScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
+              progressViewOffset={headerTotalHeight}
             />
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -809,6 +858,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+    },
+    navbarSmallTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginLeft: 2,
+    },
+    largeTitleContainer: {
+      paddingHorizontal: 20,
+      paddingTop: 6,
+      paddingBottom: 10,
+    },
+    largeTitleText: {
+      fontSize: 34,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: -0.5,
     },
     streakButton: {
       width: 44,
@@ -850,20 +916,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       fontWeight: '700',
       color: colors.onPrimary,
-    },
-    repAiBadge: {
-      paddingHorizontal: 0,
-      paddingVertical: 0,
-      marginLeft: 0,
-    },
-    homeTitleIsland: {
-      paddingHorizontal: 4,
-      borderRadius: 22,
-    },
-    repAiBadgeText: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.textPrimary,
     },
     headerActions: {
       flexDirection: 'row',

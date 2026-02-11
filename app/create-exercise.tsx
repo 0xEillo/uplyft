@@ -1,3 +1,4 @@
+import { BlurredHeader } from '@/components/blurred-header'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -75,6 +76,7 @@ export default function CreateExerciseScreen() {
   const [showEquipmentModal, setShowEquipmentModal] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
+  const HEADER_ROW_HEIGHT = 68
 
   const styles = createStyles(colors)
 
@@ -204,20 +206,24 @@ export default function CreateExerciseScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
         <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         {/* Header */}
-        <ScreenHeader
-          title="Create Exercise"
-          onLeftPress={handleBack}
-          leftIcon="chevron-back"
-        />
+        <BlurredHeader>
+          <ScreenHeader
+            title="Create Exercise"
+            onLeftPress={handleBack}
+            leftIcon="chevron-back"
+          />
+        </BlurredHeader>
 
         <ScrollView
           style={styles.content}
+          contentContainerStyle={{ paddingTop: insets.top + HEADER_ROW_HEIGHT }}
+          scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

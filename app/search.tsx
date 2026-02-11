@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -54,6 +55,7 @@ export default function SearchScreen() {
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
 
   // Block anonymous users from social features
   useEffect(() => {
@@ -304,25 +306,27 @@ export default function SearchScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity
-                onPress={handleBack}
-                style={styles.backButton}
-                activeOpacity={0.6}
-                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-              >
-                <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={<Text style={styles.headerTitle}>Search</Text>}
-        />
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.backButton}
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                  <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={<Text style={styles.headerTitle}>Search</Text>}
+          />
+        </BlurredHeader>
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.contentWrapper}>
+          <View style={[styles.contentWrapper, { paddingTop: insets.top + NAVBAR_HEIGHT }]}>
             {/* Search Input */}
             <View style={styles.searchContainer}>
               <Ionicons

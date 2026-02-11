@@ -1,3 +1,4 @@
+import { BlurredHeader } from '@/components/blurred-header'
 import { GlassIconButton } from '@/components/glass-icon-button'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -123,6 +124,7 @@ export default function ExerciseDetailScreen() {
   const [showEquipmentModal, setShowEquipmentModal] = useState(false)
 
   const insets = useSafeAreaInsets()
+  const STICKY_HEIGHT = 120
 
   // Check if current user owns this exercise
   const isOwner = exercise?.created_by === user?.id && user?.id
@@ -453,102 +455,104 @@ export default function ExerciseDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.innerContainer, { paddingTop: insets.top }]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {exercise?.name || 'Exercise Details'}
-            </Text>
-          </View>
-          <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
-          {isOwner ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <GlassIconButton
-                icon="ellipsis-horizontal"
-                onPress={handleOptionsPress}
-                color={colors.textPrimary}
-                disabled={isDeleting}
-              />
+      <View style={styles.innerContainer}>
+        <BlurredHeader style={styles.blurredHeader}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {exercise?.name || 'Exercise Details'}
+              </Text>
             </View>
-          ) : (
-            <View style={styles.headerRightSpacer} />
-          )}
-        </View>
+            <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
+            {isOwner ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <GlassIconButton
+                  icon="ellipsis-horizontal"
+                  onPress={handleOptionsPress}
+                  color={colors.textPrimary}
+                  disabled={isDeleting}
+                />
+              </View>
+            ) : (
+              <View style={styles.headerRightSpacer} />
+            )}
+          </View>
 
-        <View style={styles.tabsBorder}>
-          <View style={styles.tabsContent}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'records' && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('records')}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === 'records' && styles.activeTabText,
-                ]}
-              >
-                Stats
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'history' && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('history')}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === 'history' && styles.activeTabText,
-                ]}
-              >
-                History
-              </Text>
-            </TouchableOpacity>
-
-            {exerciseHasRankTracking && (
+          <View style={styles.tabsBorder}>
+            <View style={styles.tabsContent}>
               <TouchableOpacity
                 style={[
                   styles.tab,
-                  activeTab === 'level' && styles.activeTab,
+                  activeTab === 'records' && styles.activeTab,
                 ]}
-                onPress={() => setActiveTab('level')}
+                onPress={() => setActiveTab('records')}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    activeTab === 'level' && styles.activeTabText,
+                    activeTab === 'records' && styles.activeTabText,
                   ]}
                 >
-                  Rank
+                  Stats
                 </Text>
               </TouchableOpacity>
-            )}
 
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'how_to' && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('how_to')}
-            >
-              <Text
+              <TouchableOpacity
                 style={[
-                  styles.tabText,
-                  activeTab === 'how_to' && styles.activeTabText,
+                  styles.tab,
+                  activeTab === 'history' && styles.activeTab,
                 ]}
+                onPress={() => setActiveTab('history')}
               >
-                How to
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'history' && styles.activeTabText,
+                  ]}
+                >
+                  History
+                </Text>
+              </TouchableOpacity>
+
+              {exerciseHasRankTracking && (
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    activeTab === 'level' && styles.activeTab,
+                  ]}
+                  onPress={() => setActiveTab('level')}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === 'level' && styles.activeTabText,
+                    ]}
+                  >
+                    Rank
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'how_to' && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab('how_to')}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'how_to' && styles.activeTabText,
+                  ]}
+                >
+                  How to
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </BlurredHeader>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -557,13 +561,15 @@ export default function ExerciseDetailScreen() {
         ) : (
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + STICKY_HEIGHT }]}
+            scrollIndicatorInsets={{ top: insets.top + STICKY_HEIGHT }}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 colors={[colors.brandPrimary]}
                 tintColor={colors.brandPrimary}
+                progressViewOffset={insets.top + STICKY_HEIGHT}
               />
             }
           >
@@ -1300,13 +1306,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     androidModalOptionText: {
       fontSize: 16,
     },
+    blurredHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.bg,
     },
     headerBackButton: {
       padding: 4,
@@ -1338,7 +1350,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     tabsBorder: {
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      backgroundColor: colors.bg,
     },
     tabs: {
       flexGrow: 0,

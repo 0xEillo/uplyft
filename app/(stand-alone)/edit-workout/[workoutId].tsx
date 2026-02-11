@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -6,32 +7,32 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-  deleteWorkoutImage,
-  uploadWorkoutImage,
+    deleteWorkoutImage,
+    uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
-  DateTimePickerEvent,
+    DateTimePickerEvent,
 } from '@react-native-community/datetimepicker'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  KeyboardAvoidingView,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    KeyboardAvoidingView,
+    LayoutAnimation,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -642,11 +643,12 @@ export default function EditWorkoutScreen() {
   }
 
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
   const styles = createStyles(colors)
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
@@ -664,39 +666,43 @@ export default function EditWorkoutScreen() {
       onExitComplete={handleExitComplete}
       style={styles.container}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity
+                  onPress={() => handleExit()}
+                  style={styles.headerButton}
+                >
+                  <Ionicons name="close" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={<Text style={styles.headerTitle}>Edit Workout</Text>}
+            rightContent={
               <TouchableOpacity
-                onPress={() => handleExit()}
+                onPress={handleSave}
                 style={styles.headerButton}
+                disabled={isSaving}
               >
-                <Ionicons name="close" size={24} color={colors.textPrimary} />
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={colors.brandPrimary} />
+                ) : (
+                  <Text style={styles.saveText}>Save</Text>
+                )}
               </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={<Text style={styles.headerTitle}>Edit Workout</Text>}
-          rightContent={
-            <TouchableOpacity
-              onPress={handleSave}
-              style={styles.headerButton}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={colors.brandPrimary} />
-              ) : (
-                <Text style={styles.saveText}>Save</Text>
-              )}
-            </TouchableOpacity>
-          }
-        />
+            }
+          />
+        </BlurredHeader>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
           <ScrollView
             style={styles.content}
+            contentContainerStyle={{ paddingTop: insets.top + NAVBAR_HEIGHT }}
+            scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
             showsVerticalScrollIndicator={false}
           >
             {/* Title Section */}

@@ -1,3 +1,4 @@
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
@@ -28,6 +29,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
+
+// Height of the ScreenHeader row (paddingVertical 12 * 2 + icon 44) = 68
+const HEADER_ROW_HEIGHT = 68
 
 export default function RoutinesScreen() {
   const { user } = useAuth()
@@ -214,27 +218,35 @@ export default function RoutinesScreen() {
     [styles, router, colors, trackEvent],
   )
 
+  // Total height the header occupies (safe area inset + header row)
+  const headerTotalHeight = insets.top + HEADER_ROW_HEIGHT
+
   return (
     <SlideInView
       style={{ flex: 1 }}
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ScreenHeader
-          title="Routines"
-          onLeftPress={handleBack}
-          leftIcon="arrow-back"
-          rightIcon="add"
-          onRightPress={handleCreateRoutine}
-        />
+      <View style={styles.container}>
+        {/* Blurred header overlay — sits on top of scroll content */}
+        <BlurredHeader>
+          <ScreenHeader
+            title="Routines"
+            onLeftPress={handleBack}
+            leftIcon="arrow-back"
+            rightIcon="add"
+            onRightPress={handleCreateRoutine}
+          />
+        </BlurredHeader>
 
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
+            { paddingTop: headerTotalHeight },
             routines.length === 0 && !isLoading && { flexGrow: 1 },
           ]}
           showsVerticalScrollIndicator={false}
+          scrollIndicatorInsets={{ top: headerTotalHeight }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -243,6 +255,7 @@ export default function RoutinesScreen() {
                 loadData()
               }}
               tintColor={colors.brandPrimary}
+              progressViewOffset={headerTotalHeight}
             />
           }
         >
@@ -257,7 +270,7 @@ export default function RoutinesScreen() {
               description="Create a routine to quickly start your favorite workouts."
               buttonText="Create Your First Routine"
               onPress={handleCreateRoutine}
-              style={{ marginTop: -insets.top - 60 }} // Offset for header and section spacing
+              style={{ marginTop: -60 }}
             />
           ) : (
             <>

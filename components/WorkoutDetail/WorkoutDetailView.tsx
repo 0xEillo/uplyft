@@ -4,18 +4,19 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState, type ReactElement } from 'react'
 
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { getColors } from '@/constants/colors'
@@ -105,6 +106,7 @@ export function WorkoutDetailView({
   const router = useRouter()
   const params = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const normalizedReturnTo = useMemo(
@@ -173,35 +175,37 @@ export function WorkoutDetailView({
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.bg, paddingTop: insets.top },
+          { backgroundColor: colors.bg },
         ]}
       >
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                Workout
+              </Text>
+            }
+            rightContent={
+              <TouchableOpacity
+                onPress={() => setMenuVisible(!menuVisible)}
+                style={styles.menuButton}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={24}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              Workout
-            </Text>
-          }
-          rightContent={
-            <TouchableOpacity
-              onPress={() => setMenuVisible(!menuVisible)}
-              style={styles.menuButton}
-            >
-              <Ionicons
-                name="ellipsis-horizontal"
-                size={24}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-          }
-        />
+            }
+          />
+        </BlurredHeader>
 
         {/* Menu dropdown */}
         {menuVisible && (
@@ -255,7 +259,11 @@ export function WorkoutDetailView({
         )}
 
         {isLoading ? (
-          <ScrollView style={styles.scrollView}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={{ paddingTop: insets.top + NAVBAR_HEIGHT }}
+            scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
+          >
             <View
               style={[
                 styles.topCard,
@@ -315,7 +323,11 @@ export function WorkoutDetailView({
             </View>
           </ScrollView>
         ) : workout ? (
-          <ScrollView style={styles.scrollView}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={{ paddingTop: insets.top + NAVBAR_HEIGHT }}
+            scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
+          >
             {/* Top Card: Profile + Stats + Social Actions */}
             <View
               style={[

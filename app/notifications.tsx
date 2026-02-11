@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -184,6 +185,7 @@ export default function NotificationsScreen() {
   )
 
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
 
   return (
     <SlideInView
@@ -192,41 +194,45 @@ export default function NotificationsScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity
-                onPress={handleBackPress}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-                style={styles.backButton}
-              >
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={<Text style={styles.headerTitle}>Notifications</Text>}
-          rightContent={
-            unreadCount > 0 ? (
-              <TouchableOpacity
-                onPress={handleMarkAllAsRead}
-                style={styles.markAllButton}
-              >
-                <Text style={styles.markAllReadText}>Mark all</Text>
-              </TouchableOpacity>
-            ) : undefined
-          }
-        />
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity
+                  onPress={handleBackPress}
+                  accessibilityLabel="Go back"
+                  accessibilityRole="button"
+                  style={styles.backButton}
+                >
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={<Text style={styles.headerTitle}>Notifications</Text>}
+            rightContent={
+              unreadCount > 0 ? (
+                <TouchableOpacity
+                  onPress={handleMarkAllAsRead}
+                  style={styles.markAllButton}
+                >
+                  <Text style={styles.markAllReadText}>Mark all</Text>
+                </TouchableOpacity>
+              ) : undefined
+            }
+          />
+        </BlurredHeader>
 
         <ScrollView
           style={styles.content}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + NAVBAR_HEIGHT }]}
+          scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
+              progressViewOffset={insets.top + NAVBAR_HEIGHT}
             />
           }
         >

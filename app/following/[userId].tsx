@@ -1,3 +1,4 @@
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { GlassIconButton } from '@/components/glass-icon-button'
 import { UserListItem } from '@/components/UserListItem'
@@ -17,7 +18,7 @@ import {
     TextInput,
     View
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type FollowingItem = {
   followee: Pick<Profile, 'id' | 'display_name' | 'user_tag' | 'avatar_url'>
@@ -32,6 +33,7 @@ export default function FollowingScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const HEADER_HEIGHT = 120
   const styles = createStyles(colors)
 
   const [following, setFollowing] = useState<FollowingItem[]>([])
@@ -198,32 +200,32 @@ export default function FollowingScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Status bar background */}
-      <View style={[styles.statusBarBackground, { height: insets.top }]} />
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
-          <Text style={styles.headerTitle}>Following</Text>
-          <View style={styles.headerPlaceholder} />
+    <View style={styles.container}>
+      <BlurredHeader>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
+            <Text style={styles.headerTitle}>Following</Text>
+            <View style={styles.headerPlaceholder} />
+          </View>
+          <View style={styles.searchContainer}>
+            <Ionicons
+              name="search"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search following"
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+            />
+          </View>
         </View>
-        <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={colors.textSecondary}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search following"
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            clearButtonMode="while-editing"
-          />
-        </View>
-      </View>
+      </BlurredHeader>
 
       {isLoading && !isRefreshing ? (
         <View style={styles.loadingContainer}>
@@ -234,11 +236,13 @@ export default function FollowingScreen() {
           data={filteredFollowing}
           renderItem={renderItem}
           keyExtractor={(item) => item.followee.id}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + HEADER_HEIGHT }}
+          scrollIndicatorInsets={{ top: insets.top + HEADER_HEIGHT }}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
+              progressViewOffset={insets.top + HEADER_HEIGHT}
             />
           }
           ListEmptyComponent={
@@ -251,7 +255,7 @@ export default function FollowingScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -270,7 +274,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       zIndex: 0,
     },
     header: {
-      backgroundColor: colors.bg,
+      backgroundColor: 'transparent',
       paddingBottom: 12,
     },
     headerTop: {

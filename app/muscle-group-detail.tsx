@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
 import { SlideUpView } from '@/components/slide-up-view'
+import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor, type MuscleGroupData } from '@/hooks/useStrengthData'
@@ -260,19 +261,12 @@ export default function MuscleGroupDetailScreen() {
               <LevelBadge level={groupData.level} size="medium" variant="pill" />
             )}
           </View>
-          <TouchableOpacity
-            onPress={closeSheet}
-            style={styles.closeButton}
-            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          >
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
         <ScrollView
           style={styles.formSheetScroll}
           contentContainerStyle={[
             styles.formSheetScrollContent,
-            { paddingBottom: insets.bottom + 12 },
+            { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
           ]}
           contentInsetAdjustmentBehavior="never"
           showsVerticalScrollIndicator={false}
@@ -366,8 +360,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     formSheetContainer: {
       flex: 1,
       backgroundColor: colors.surfaceSheet,
-      paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
+      paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },
     header: {
       marginBottom: 20,
@@ -377,22 +371,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 12,
     },
     formSheetHeader: {
-      marginBottom: 20,
+      marginBottom: NATIVE_SHEET_LAYOUT.headerBottomSpacing,
       flexDirection: 'row',
       alignItems: 'flex-start',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       gap: 12,
     },
     formSheetScroll: {
       flex: 1,
     },
     formSheetScrollContent: {
-      paddingBottom: 20,
+      paddingBottom: NATIVE_SHEET_LAYOUT.contentBottomSpacing,
     },
     contentContainer: {
       flex: 1,
-      padding: 20,
-      paddingTop: 16,
+      padding: NATIVE_SHEET_LAYOUT.horizontalPadding,
+      paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },
     headerTitleGroup: {
       flexDirection: 'row',
@@ -402,18 +396,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexShrink: 1,
       flex: 1,
     },
-    closeButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceCard,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
     title: {
-      fontSize: 24,
+      fontSize: NATIVE_SHEET_LAYOUT.titleFontSize,
       fontWeight: '700',
       color: colors.textPrimary,
       flexShrink: 1,

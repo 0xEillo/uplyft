@@ -2261,6 +2261,10 @@ export function WorkoutChat({
                         ? handleNewChat
                         : () => {
                             haptic('light')
+                            if (Platform.OS === 'ios') {
+                              router.push('/chat-settings')
+                              return
+                            }
                             setIsCoachSheetVisible(true)
                           }
                     }

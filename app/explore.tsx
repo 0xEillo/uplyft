@@ -1,3 +1,4 @@
+import { BlurredHeader } from '@/components/blurred-header'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -15,20 +16,21 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
+const HEADER_ROW_HEIGHT = 52
 
 export default function ExploreScreen() {
   const router = useRouter()
@@ -257,16 +259,19 @@ export default function ExploreScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ScreenHeader
-          title="Explore"
-          onLeftPress={handleBack}
-          leftIcon="arrow-back"
-        />
+      <View style={styles.container}>
+        <BlurredHeader>
+          <ScreenHeader
+            title="Explore"
+            onLeftPress={handleBack}
+            leftIcon="arrow-back"
+          />
+        </BlurredHeader>
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + HEADER_ROW_HEIGHT }]}
           showsVerticalScrollIndicator={false}
+          scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -275,6 +280,7 @@ export default function ExploreScreen() {
                 loadData()
               }}
               tintColor={colors.brandPrimary}
+              progressViewOffset={insets.top + HEADER_ROW_HEIGHT}
             />
           }
         >

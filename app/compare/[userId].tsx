@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
@@ -13,13 +14,13 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -64,6 +65,7 @@ export default function CompareScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
 
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -730,7 +732,7 @@ export default function CompareScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
@@ -745,43 +747,45 @@ export default function CompareScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons
-                  name="arrow-back"
-                  size={24}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={
-            <View style={styles.headerRow}>
-              <Text style={styles.headerTitle}>Comparison</Text>
-              {isUpdating && (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.brandPrimary}
-                  style={{ marginLeft: 4 }}
-                />
-              )}
-              <TouchableOpacity
-                style={styles.timePicker}
-                onPress={() => setShowTimePicker(!showTimePicker)}
-              >
-                <Text style={styles.timePickerText}>{timePeriod}</Text>
-                <Ionicons
-                  name={showTimePicker ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-            </View>
-          }
-        />
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={
+              <View style={styles.headerRow}>
+                <Text style={styles.headerTitle}>Comparison</Text>
+                {isUpdating && (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.brandPrimary}
+                    style={{ marginLeft: 4 }}
+                  />
+                )}
+                <TouchableOpacity
+                  style={styles.timePicker}
+                  onPress={() => setShowTimePicker(!showTimePicker)}
+                >
+                  <Text style={styles.timePickerText}>{timePeriod}</Text>
+                  <Ionicons
+                    name={showTimePicker ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        </BlurredHeader>
 
         {/* Time Picker Dropdown */}
         {showTimePicker && (
@@ -832,7 +836,8 @@ export default function CompareScreen() {
         ) : (
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + NAVBAR_HEIGHT }]}
+            scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
             showsVerticalScrollIndicator={false}
           >
             {loadingExercise ? (

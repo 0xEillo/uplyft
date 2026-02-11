@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -25,7 +26,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function SettingsScreen() {
   const { user, signOut, isAnonymous } = useAuth()
@@ -41,6 +42,8 @@ export default function SettingsScreen() {
   const [isRestoring, setIsRestoring] = useState(false)
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
+  const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
   const resolvedReturnTo =
     Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
@@ -411,43 +414,48 @@ export default function SettingsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity
+                  onPress={handleGoBack}
+                  style={styles.backButton}
+                >
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={<Text style={styles.headerTitle}>Settings</Text>}
+          />
+        </BlurredHeader>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.container}>
+      <BlurredHeader>
         <BaseNavbar
           leftContent={
             <NavbarIsland>
-              <TouchableOpacity
-                onPress={handleGoBack}
-                style={styles.backButton}
-              >
+              <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
                 <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
           centerContent={<Text style={styles.headerTitle}>Settings</Text>}
         />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.brandPrimary} />
-        </View>
-      </SafeAreaView>
-    )
-  }
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <BaseNavbar
-        leftContent={
-          <NavbarIsland>
-            <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-          </NavbarIsland>
-        }
-        centerContent={<Text style={styles.headerTitle}>Settings</Text>}
-      />
+      </BlurredHeader>
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + NAVBAR_HEIGHT }]}
+        scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
         showsVerticalScrollIndicator={false}
       >
         {/* Guest Banner */}
@@ -894,7 +902,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }
 

@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { Paywall } from '@/components/paywall'
 import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
 import { SlideInView } from '@/components/slide-in-view'
@@ -12,8 +13,8 @@ import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-  generateRandomTintColor,
-  getRoutineImageUrl,
+    generateRandomTintColor,
+    getRoutineImageUrl,
 } from '@/lib/utils/routine-images'
 import { Exercise, WorkoutRoutineExercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -21,28 +22,28 @@ import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    LayoutAnimation,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import Animated, {
-  Easing,
-  SharedValue,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    Easing,
+    SharedValue,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -1023,11 +1024,12 @@ export default function CreateRoutineScreen() {
   }, [draggingScale, draggingOpacity])
 
   const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
   const styles = createStyles(colors)
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
@@ -1041,7 +1043,8 @@ export default function CreateRoutineScreen() {
       onExitComplete={handleExitComplete}
       style={styles.container}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
+      <BlurredHeader>
         <BaseNavbar
           leftContent={
             <TouchableOpacity onPress={handleCancel}>
@@ -1066,12 +1069,15 @@ export default function CreateRoutineScreen() {
             </TouchableOpacity>
           }
         />
+      </BlurredHeader>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.flex}
         >
           <ScrollView
             style={styles.content}
+            contentContainerStyle={{ paddingTop: insets.top + NAVBAR_HEIGHT }}
+            scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
             showsVerticalScrollIndicator={false}
           >
             {/* Cover Image */}

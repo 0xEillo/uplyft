@@ -1,5 +1,6 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -199,28 +200,34 @@ export default function ProgramDetailScreen() {
       <View
         style={[
           styles.container,
-          { backgroundColor: colors.bg, paddingTop: insets.top },
+          { backgroundColor: colors.bg },
         ]}
       >
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerGlass={false}
-          centerContent={
-            <NavbarIsland>
-              <Text style={styles.headerTitle}>Program</Text>
-            </NavbarIsland>
-          }
-          rightContent={<View style={{ width: 44 }} />}
-        />
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerGlass={false}
+            centerContent={
+              <NavbarIsland>
+                <Text style={styles.headerTitle}>Program</Text>
+              </NavbarIsland>
+            }
+            rightContent={<View style={{ width: 44 }} />}
+          />
+        </BlurredHeader>
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 100, paddingTop: insets.top + 76 }
+          ]}
+          scrollIndicatorInsets={{ top: insets.top + 76 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Header Card */}

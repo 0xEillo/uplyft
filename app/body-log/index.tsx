@@ -1,3 +1,4 @@
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
@@ -30,6 +31,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 const THUMB_SIZE = 72
 const PAGE_SIZE = 40
 const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
+const HEADER_ROW_HEIGHT = 52
+const LIST_TOP_GAP = 12
 
 function getLocalDateKey(dateString: string): string {
   const date = new Date(dateString)
@@ -384,14 +387,16 @@ export default function BodyLogScreen() {
       shouldExit={shouldExit}
       onExitComplete={() => router.back()}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ScreenHeader
-          title="Daily Log"
-          onLeftPress={() => setShouldExit(true)}
-          leftIcon="arrow-back"
-          rightIcon="add"
-          onRightPress={handleAdd}
-        />
+      <View style={styles.container}>
+        <BlurredHeader>
+          <ScreenHeader
+            title="Daily Log"
+            onLeftPress={() => setShouldExit(true)}
+            leftIcon="arrow-back"
+            rightIcon="add"
+            onRightPress={handleAdd}
+          />
+        </BlurredHeader>
 
         {isInitialLoading ? (
           <View style={styles.center}>
@@ -410,7 +415,8 @@ export default function BodyLogScreen() {
             data={entries}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <EntryRow entry={item} onPress={handleEntryOpen} />}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[styles.list, { paddingTop: insets.top + HEADER_ROW_HEIGHT + LIST_TOP_GAP }]}
+            scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT + LIST_TOP_GAP }}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews
             maxToRenderPerBatch={10}
@@ -430,6 +436,7 @@ export default function BodyLogScreen() {
                 refreshing={isRefreshing}
                 onRefresh={() => loadEntries(true)}
                 tintColor={colors.brandPrimary}
+                progressViewOffset={insets.top + HEADER_ROW_HEIGHT + LIST_TOP_GAP}
               />
             }
           />

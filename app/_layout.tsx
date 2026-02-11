@@ -306,6 +306,17 @@ function RootLayoutNav() {
             name="daily-macros-detail"
             options={getNativeFormSheetOptions([0.6, 0.95])}
           />
+          <Stack.Screen
+            name="chat-settings"
+            options={
+              Platform.OS === 'ios'
+                ? {
+                    ...getNativeFormSheetOptions([0.72, 0.95]),
+                    sheetInitialDetentIndex: 1,
+                  }
+                : transparentModalFallback
+            }
+          />
         </Stack>
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />

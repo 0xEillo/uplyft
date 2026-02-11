@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -16,13 +17,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function CoachSelectionScreen() {
   const { user } = useAuth()
   const { profile, isLoading, updateProfile } = useProfile()
   const router = useRouter()
   const colors = useThemedColors()
+  const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
   const [isUpdating, setIsUpdating] = useState(false)
 
   const handleSelectCoach = async (coachId: CoachId) => {
@@ -44,7 +47,31 @@ export default function CoachSelectionScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={
+              <Text style={styles.headerTitle}>AI Personal Trainer</Text>
+            }
+          />
+        </BlurredHeader>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.container}>
+      <BlurredHeader>
         <BaseNavbar
           leftContent={
             <NavbarIsland>
@@ -57,31 +84,12 @@ export default function CoachSelectionScreen() {
             <Text style={styles.headerTitle}>AI Personal Trainer</Text>
           }
         />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.brandPrimary} />
-        </View>
-      </SafeAreaView>
-    )
-  }
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <BaseNavbar
-        leftContent={
-          <NavbarIsland>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-          </NavbarIsland>
-        }
-        centerContent={
-          <Text style={styles.headerTitle}>AI Personal Trainer</Text>
-        }
-      />
+      </BlurredHeader>
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + NAVBAR_HEIGHT }]}
+        scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.sectionTitle}>Personal Trainer</Text>
@@ -129,7 +137,7 @@ export default function CoachSelectionScreen() {
           })}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }
 

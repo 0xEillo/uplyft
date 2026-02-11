@@ -1,5 +1,6 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProfileDashboard } from '@/components/Profile/ProfileDashboard'
@@ -435,43 +436,29 @@ export default function ProfileScreen() {
     extrapolate: 'clamp',
   })
 
+  // Scroll distance over which the title appears in the navbar
+  const TITLE_APPEAR_DISTANCE = 180
+
+  const titleOpacity = scrollY.interpolate({
+    inputRange: [TITLE_APPEAR_DISTANCE - 30, TITLE_APPEAR_DISTANCE],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  })
+
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.navbarContainer,
-          {
-            paddingTop: insets.top,
-            backgroundColor: navbarBgColor,
-            borderBottomWidth: 0,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
+      <BlurredHeader style={styles.navbarContainer}>
         <BaseNavbar
           leftContent={
-            <NavbarIsland glass={false} style={styles.navbarIsland}>
-              <Animated.Text
-                style={[
-                  styles.headerTitle,
-                  { color: startColor, opacity: whiteOpacity },
-                ]}
-              >
-                Profile
-              </Animated.Text>
-              <Animated.Text
-                style={[
-                  styles.headerTitle,
-                  {
-                    color: colors.textPrimary,
-                    opacity: themedOpacity,
-                    position: 'absolute',
-                  },
-                ]}
-              >
-                Profile
-              </Animated.Text>
-            </NavbarIsland>
+            <Animated.Text
+              style={[
+                styles.headerTitle,
+                { opacity: titleOpacity, marginLeft: 6 },
+              ]}
+              numberOfLines={1}
+            >
+              Profile
+            </Animated.Text>
           }
           rightContent={
             <NavbarIsland>
@@ -479,25 +466,16 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/account-settings')}
                 style={styles.navbarRightButton}
               >
-                <View style={styles.iconWrapper}>
-                  <Animated.View style={{ opacity: whiteOpacity }}>
-                    <Ionicons name="settings-sharp" size={24} color={startColor} />
-                  </Animated.View>
-                  <Animated.View
-                    style={{ opacity: themedOpacity, position: 'absolute' }}
-                  >
-                    <Ionicons
-                      name="settings-sharp"
-                      size={24}
-                      color={colors.textPrimary}
-                    />
-                  </Animated.View>
-                </View>
+                <Ionicons
+                  name="settings-outline"
+                  size={24}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
             </NavbarIsland>
           }
         />
-      </Animated.View>
+      </BlurredHeader>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -759,7 +737,7 @@ const createStyles = (
       top: 0,
       left: 0,
       right: 0,
-      zIndex: 10,
+      zIndex: 100,
     },
     navbarRightButton: {
       width: 44,
@@ -780,6 +758,7 @@ const createStyles = (
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
+      color: colors.textPrimary,
     },
     loadingContainer: {
       flex: 1,
@@ -830,7 +809,7 @@ const createStyles = (
     },
     profileSection: {
       paddingHorizontal: 14,
-      paddingTop: 150,
+      paddingTop: 100,
       paddingBottom: 12, // More compact gap to next section
     },
     profileTop: {

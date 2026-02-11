@@ -28,6 +28,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
 
+import { BlurredHeader } from '@/components/blurred-header'
 import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
 import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
 import { LockedResultsOverlay } from '@/components/LockedResultsOverlay'
@@ -64,6 +65,7 @@ import type { DailyLogMeal, DailyLogSummary } from '@/types/database.types'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.45
+const HEADER_ROW_HEIGHT = 68
 
 const getLocalDateKey = (dateString: string): string => {
   const date = new Date(dateString)
@@ -1325,25 +1327,28 @@ export default function BodyLogDetailScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
         <Stack.Screen options={{ headerShown: false }} />
         
-        <ScreenHeader
-          title={entry?.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Entry'}
-          onLeftPress={handleBack}
-          leftIcon="arrow-back"
-          rightIcon="trash-outline"
-          onRightPress={handleDelete}
-        />
+        <BlurredHeader>
+          <ScreenHeader
+            title={entry?.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Entry'}
+            onLeftPress={handleBack}
+            leftIcon="arrow-back"
+            rightIcon="trash-outline"
+            onRightPress={handleDelete}
+          />
+        </BlurredHeader>
 
         <Animated.ScrollView
           onScroll={scrollHandler}
           scrollEventThrottle={16}
           style={styles.container}
           showsVerticalScrollIndicator={false}
+          scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: 100, paddingTop: 16 }
+            { paddingBottom: 100, paddingTop: insets.top + HEADER_ROW_HEIGHT + 16 }
           ]}
         >
 

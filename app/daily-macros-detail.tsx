@@ -1,9 +1,10 @@
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
 
@@ -36,7 +37,6 @@ const DEFAULT_GOALS: DailyGoals = {
 const roundMacro = (value: number): number => Math.round(value)
 
 export default function DailyMacrosDetailScreen() {
-  const router = useRouter()
   const params = useLocalSearchParams<{
     totalsJson?: string
     goalsJson?: string
@@ -100,18 +100,14 @@ export default function DailyMacrosDetailScreen() {
   return (
     <View
       collapsable={false}
-      style={[styles.formSheetContainer, { paddingBottom: insets.bottom + 18 }]}
+      style={[
+        styles.formSheetContainer,
+        { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
+      ]}
     >
       <View collapsable={false} style={styles.headerSection}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Today&apos;s Nutrition</Text>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.closeButton}
-            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          >
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
         <View style={styles.mealCountBadge}>
           <Ionicons
@@ -365,31 +361,21 @@ const createStyles = (
     formSheetContainer: {
       flex: 1,
       backgroundColor: colors.surfaceSheet,
-      paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
+      paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },
     headerSection: {
-      marginBottom: 14,
+      marginBottom: NATIVE_SHEET_LAYOUT.headerBottomSpacing,
       gap: 12,
     },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       gap: 12,
     },
-    closeButton: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceCard,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
     title: {
-      fontSize: 24,
+      fontSize: NATIVE_SHEET_LAYOUT.titleFontSize,
       fontWeight: '700',
       color: colors.textPrimary,
       letterSpacing: -0.3,
@@ -413,7 +399,7 @@ const createStyles = (
       flex: 1,
     },
     formSheetScrollContent: {
-      paddingBottom: 20,
+      paddingBottom: NATIVE_SHEET_LAYOUT.contentBottomSpacing,
     },
     caloriesHero: {
       flexDirection: 'row',

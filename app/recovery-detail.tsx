@@ -7,6 +7,7 @@
  */
 
 import { SlideUpView } from '@/components/slide-up-view'
+import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import {
   getRecoveryColor,
   getRecoveryLabel,
@@ -184,20 +185,13 @@ export default function RecoveryDetailScreen() {
         style={[
           styles.formSheetContainer,
           {
-            paddingBottom: insets.bottom + 16,
+            paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding,
           },
         ]}
       >
         <View collapsable={false} style={styles.formSheetHeaderSection}>
           <View style={styles.formSheetHeaderRow}>
             <Text style={styles.title}>{muscleGroup}</Text>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.closeButton}
-              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-            >
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
             <Ionicons name={icon} size={16} color={statusColor} />
@@ -234,7 +228,12 @@ export default function RecoveryDetailScreen() {
         tension={50}
         friction={8}
       >
-        <View style={[styles.sheetContainer, { paddingBottom: insets.bottom + 16 }]}>
+        <View
+          style={[
+            styles.sheetContainer,
+            { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
+          ]}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>{muscleGroup}</Text>
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
@@ -272,50 +271,40 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       overflow: 'hidden',
-      padding: 20,
-      paddingTop: 16,
+      padding: NATIVE_SHEET_LAYOUT.horizontalPadding,
+      paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },
     formSheetContainer: {
       flex: 1,
       backgroundColor: colors.surfaceSheet,
-      paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
+      paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },
     formSheetHeaderSection: {
-      marginBottom: 12,
+      marginBottom: NATIVE_SHEET_LAYOUT.headerBottomSpacing,
       gap: 10,
     },
     formSheetHeaderRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       gap: 12,
     },
     formSheetScroll: {
       flex: 1,
     },
     formSheetScrollContent: {
-      paddingBottom: 4,
-    },
-    closeButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceCard,
-      borderWidth: 1,
-      borderColor: colors.border,
+      paddingBottom: NATIVE_SHEET_LAYOUT.contentBottomSpacing,
     },
     header: {
-      marginBottom: 12,
+      marginBottom: NATIVE_SHEET_LAYOUT.headerBottomSpacing,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-start',
       gap: 12,
     },
     title: {
-      fontSize: 24,
+      fontSize: NATIVE_SHEET_LAYOUT.titleFontSize,
       fontWeight: '700',
       color: colors.textPrimary,
       flexShrink: 1,

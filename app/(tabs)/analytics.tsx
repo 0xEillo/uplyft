@@ -1,4 +1,5 @@
 import { BaseNavbar } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RecoveryBodyView } from '@/components/RecoveryBodyView'
 import { StatsView } from '@/components/StatsView'
@@ -21,7 +22,9 @@ import {
     Text,
     View
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const NAVBAR_HEIGHT = 76
 
 type ViewMode = 'recovery' | 'strength' | 'stats'
 type BodyTab = 'strength' | 'recovery'
@@ -93,56 +96,60 @@ export default function AnalyticsScreen() {
   }, [bodyTab])
 
   const styles = createStyles(colors)
+  const insets = useSafeAreaInsets()
+  const headerTotalHeight = insets.top + NAVBAR_HEIGHT
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <BaseNavbar
-        leftContent={<View style={styles.navbarSpacer} />}
-        rightContent={<View style={styles.navbarSpacer} />}
-        centerGlass={false}
-        centerContent={
-          <View style={styles.segmentedWrapper}>
-            <View style={styles.segmentedControl}>
-              {/* Animated sliding background */}
-              <Animated.View
-                style={[
-                  styles.slideIndicator,
-                  {
-                    width: TAB_WIDTH - PILL_PADDING * 2,
-                    left: indicatorLeft,
-                  },
-                ]}>
-                <LiquidGlassSurface
-                  key={`analytics-pill-${glassInstanceKey}`}
-                  style={styles.activeTabBubble}
-                  debugLabel="analytics-slider-pill"
-                />
-              </Animated.View>
+    <View style={styles.container}>
+      <BlurredHeader>
+        <BaseNavbar
+          leftContent={<View style={styles.navbarSpacer} />}
+          rightContent={<View style={styles.navbarSpacer} />}
+          centerGlass={false}
+          centerContent={
+            <View style={styles.segmentedWrapper}>
+              <View style={styles.segmentedControl}>
+                {/* Animated sliding background */}
+                <Animated.View
+                  style={[
+                    styles.slideIndicator,
+                    {
+                      width: TAB_WIDTH - PILL_PADDING * 2,
+                      left: indicatorLeft,
+                    },
+                  ]}>
+                  <LiquidGlassSurface
+                    key={`analytics-pill-${glassInstanceKey}`}
+                    style={styles.activeTabBubble}
+                    debugLabel="analytics-slider-pill"
+                  />
+                </Animated.View>
 
-              {/* Tab buttons */}
-              {TABS.map((tab) => {
-                const isActive = bodyTab === tab.key
-                return (
-                  <Pressable
-                    key={tab.key}
-                    onPress={() => handleTabPress(tab.key)}
-                    style={styles.tabButton}
-                  >
-                    <Text
-                      style={[
-                        styles.tabLabel,
-                        isActive && styles.tabLabelActive,
-                      ]}
+                {/* Tab buttons */}
+                {TABS.map((tab) => {
+                  const isActive = bodyTab === tab.key
+                  return (
+                    <Pressable
+                      key={tab.key}
+                      onPress={() => handleTabPress(tab.key)}
+                      style={styles.tabButton}
                     >
-                      {tab.label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+                      <Text
+                        style={[
+                          styles.tabLabel,
+                          isActive && styles.tabLabelActive,
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
             </View>
-          </View>
-        }
-      />
+          }
+        />
+      </BlurredHeader>
 
       {/* Content - ScrollView at screen level for native tab minimize detection */}
       {viewMode === 'stats' ? (
@@ -150,10 +157,9 @@ export default function AnalyticsScreen() {
       ) : (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          contentInsetAdjustmentBehavior="automatic"
-          automaticallyAdjustContentInsets
+          contentContainerStyle={[styles.scrollContent, { paddingTop: headerTotalHeight }]}
           showsVerticalScrollIndicator={false}
+          scrollIndicatorInsets={{ top: headerTotalHeight }}
         >
           {viewMode === 'recovery' ? (
             <RecoveryBodyView embedded />
@@ -162,7 +168,7 @@ export default function AnalyticsScreen() {
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
