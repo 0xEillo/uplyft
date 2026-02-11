@@ -655,6 +655,7 @@ export default function ProfileScreen() {
                 weightUnit={weightUnit}
                 activity={weeklyActivity}
                 onPress={() => router.push('/workout-calendar')}
+                showChevron={false}
               />
 
               {/* Workouts Header */}
