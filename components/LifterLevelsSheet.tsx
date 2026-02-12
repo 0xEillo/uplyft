@@ -24,6 +24,9 @@ interface LifterLevelsSheetProps {
   onClose: () => void
   currentLevel: StrengthLevel
   progressToNext: number
+  title?: string
+  levelMilestoneLabels?: Partial<Record<StrengthLevel, string>>
+  showMilestones?: boolean
 }
 
 const LEVEL_ORDER: StrengthLevel[] = [
@@ -47,6 +50,9 @@ export function LifterLevelsSheet({
   onClose,
   currentLevel,
   progressToNext,
+  title,
+  levelMilestoneLabels,
+  showMilestones = false,
 }: LifterLevelsSheetProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -67,6 +73,14 @@ export function LifterLevelsSheet({
   const unlockedCount = currentLevelIndex + 1
   const lockedCount = Math.max(0, LEVEL_ORDER.length - unlockedCount)
   const safeProgress = Math.round(Math.max(0, Math.min(100, progressToNext)))
+  const normalizedMilestoneMap = useMemo(() => {
+    const normalized = new Map<string, string>()
+    Object.entries(levelMilestoneLabels ?? {}).forEach(([level, label]) => {
+      if (!label) return
+      normalized.set(level.toLowerCase().replace(/\s+/g, ''), label)
+    })
+    return normalized
+  }, [levelMilestoneLabels])
 
   useEffect(() => {
     if (isVisible) {
@@ -136,23 +150,24 @@ export function LifterLevelsSheet({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.centeredStack}>
-              <LiquidGlassSurface style={styles.headerCopyShell} debugLabel="lifter-level-header-chip">
-                <View style={styles.headerCopy}>
-                  <Text style={styles.title}>Lifter Levels</Text>
-                  <Text style={styles.subtitle}>
-                    {unlockedCount} unlocked, {lockedCount} locked
-                  </Text>
-                </View>
-              </LiquidGlassSurface>
+              <View style={[styles.headerCopy, { marginBottom: 16 }]}>
+                <Text style={styles.title}>{title || 'Lifter Levels'}</Text>
+                <Text style={styles.subtitle}>
+                  {unlockedCount} unlocked, {lockedCount} locked
+                </Text>
+              </View>
 
               <LiquidGlassSurface
-                style={styles.currentCard}
+                style={[
+                  styles.currentCard,
+                  { borderColor: LEVEL_COLORS[currentLevel], borderWidth: 2 },
+                ]}
                 debugLabel="lifter-level-current-card"
               >
                 <LinearGradient
                   colors={[
-                    `${LEVEL_COLORS[currentLevel]}40`,
-                    `${LEVEL_COLORS[currentLevel]}12`,
+                    `${LEVEL_COLORS[currentLevel]}15`,
+                    `${LEVEL_COLORS[currentLevel]}05`,
                   ]}
                   style={StyleSheet.absoluteFill}
                   start={{ x: 0, y: 0 }}
@@ -219,6 +234,12 @@ export function LifterLevelsSheet({
                       ? 'rgba(255,255,255,0.22)'
                       : 'rgba(0,0,0,0.10)'
                     : `${levelColor}33`
+                  const milestoneLabel =
+                    levelMilestoneLabels?.[level] ??
+                    normalizedMilestoneMap.get(
+                      level.toLowerCase().replace(/\s+/g, ''),
+                    )
+                  const shouldRenderMilestone = showMilestones || !!milestoneLabel
 
                   return (
                     <LiquidGlassSurface
@@ -226,11 +247,12 @@ export function LifterLevelsSheet({
                       style={[
                         styles.badgeTile,
                         isLocked && styles.badgeTileLocked,
-                        isCurrent && styles.badgeTileCurrent,
+                        !isLocked && styles.badgeTileCurrent,
+                        !isLocked && { borderColor: levelColor, borderWidth: 2 },
                       ]}
                       debugLabel={`lifter-level-${level.toLowerCase().replace(/\s+/g, '-')}`}
                     >
-                      {isCurrent && (
+                      {!isLocked && (
                         <LinearGradient
                           colors={[`${levelColor}36`, 'transparent']}
                           style={styles.currentTileGlow}
@@ -241,25 +263,41 @@ export function LifterLevelsSheet({
                       )}
 
                       <View style={styles.badgeVisualWrap}>
-                        <LevelBadge
-                          level={level}
-                          size="large"
-                          showTooltipOnPress={false}
-                          style={isLocked ? styles.lockedBadge : undefined}
-                        />
-                        {isLocked && (
-                          <View style={styles.lockIconBadge}>
-                            <Ionicons name="lock-closed" size={12} color="#FFFFFF" />
-                          </View>
-                        )}
+                          <LevelBadge
+                            level={level}
+                            size="large"
+                            showTooltipOnPress={false}
+                            style={isLocked ? styles.lockedBadge : undefined}
+                          />
+                          {isLocked && (
+                            <View style={styles.lockIconBadge}>
+                              <Ionicons name="lock-closed" size={12} color={colors.textPrimary} />
+                            </View>
+                          )}
                       </View>
 
-                      <Text
-                        style={[styles.badgeName, isLocked && styles.badgeNameLocked]}
-                        numberOfLines={2}
-                      >
-                        {level}
-                      </Text>
+                      <View style={styles.textStack}>
+                        <Text
+                          style={[styles.badgeName, isLocked && styles.badgeNameLocked]}
+                          numberOfLines={2}
+                        >
+                          {level}
+                        </Text>
+
+                        {shouldRenderMilestone ? (
+                          <Text
+                            style={[
+                              styles.badgeMilestone,
+                              isLocked && styles.badgeMilestoneLocked,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {milestoneLabel ?? '--'}
+                          </Text>
+                        ) : (
+                          <View style={styles.badgeMilestoneSpacer} />
+                        )}
+                      </View>
 
                       <View style={[styles.badgeStatusPill, { backgroundColor: tilePillBackground }]}>
                         <Ionicons
@@ -291,7 +329,7 @@ const createStyles = (
 ) => {
   const palette = isDark
     ? {
-      backdrop: 'rgba(8,10,14,0.90)',
+      backdrop: 'rgba(5,7,10,0.96)',
       closeShellBg: 'rgba(22,24,28,0.86)',
       closeShellBorder: 'rgba(255,255,255,0.20)',
       headerShellBg: 'rgba(24,26,30,0.84)',
@@ -309,16 +347,16 @@ const createStyles = (
       lockBadgeBorder: 'rgba(255,255,255,0.16)',
     }
     : {
-      backdrop: 'rgba(8,10,14,0.46)',
+      backdrop: 'rgba(8,10,14,0.72)',
       closeShellBg: 'rgba(255,255,255,0.86)',
       closeShellBorder: 'rgba(0,0,0,0.14)',
       headerShellBg: 'rgba(255,255,255,0.84)',
       headerShellBorder: 'rgba(0,0,0,0.12)',
-      contentScrim: 'rgba(255,255,255,0.14)',
-      currentCardBg: 'rgba(255,255,255,0.86)',
+      contentScrim: 'rgba(205, 209, 216, 0.98)',
+      currentCardBg: 'rgba(255,255,255,0.94)',
       currentCardBorder: 'rgba(0,0,0,0.13)',
       progressTrack: 'rgba(0,0,0,0.16)',
-      badgeTileBg: 'rgba(255,255,255,0.88)',
+      badgeTileBg: 'rgba(255,255,255,0.94)',
       badgeTileBorder: 'rgba(0,0,0,0.14)',
       badgeTileLockedBg: 'rgba(246,248,252,0.90)',
       badgeTileLockedBorder: 'rgba(0,0,0,0.10)',
@@ -380,15 +418,15 @@ const createStyles = (
       alignItems: 'center',
     },
     title: {
-      fontSize: 18,
+      fontSize: 26,
       fontWeight: '800',
       color: colors.textPrimary,
-      letterSpacing: -0.2,
+      letterSpacing: -0.4,
       textAlign: 'center',
     },
     subtitle: {
-      marginTop: 2,
-      fontSize: 13,
+      marginTop: 4,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.textSecondary,
       textAlign: 'center',
@@ -408,7 +446,7 @@ const createStyles = (
       flexGrow: 1,
       justifyContent: 'center',
       paddingTop: insets.top + 90,
-      paddingBottom: Math.max(insets.bottom + 24, 56),
+      paddingBottom: insets.bottom + 90,
     },
     currentCard: {
       borderRadius: 24,
@@ -485,13 +523,14 @@ const createStyles = (
     },
     badgeTile: {
       width: BADGE_TILE_SIZE,
-      minHeight: 154,
+      minHeight: 124,
       borderRadius: 18,
-      paddingHorizontal: 10,
-      paddingVertical: 12,
+      paddingHorizontal: 6,
+      paddingVertical: 10,
       overflow: 'hidden',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
+      gap: 8,
       backgroundColor: palette.badgeTileBg,
       borderColor: palette.badgeTileBorder,
       shadowColor: '#000',
@@ -516,16 +555,24 @@ const createStyles = (
       ...StyleSheet.absoluteFillObject,
     },
     badgeVisualWrap: {
-      marginTop: 4,
+      width: 48,
+      height: 48,
+      justifyContent: 'center',
       alignItems: 'center',
+      position: 'relative',
+    },
+    textStack: {
+      gap: 3,
+      alignItems: 'center',
+      width: '100%',
     },
     lockedBadge: {
       opacity: 0.35,
     },
     lockIconBadge: {
       position: 'absolute',
-      right: -3,
-      bottom: -2,
+      right: -4,
+      bottom: -4,
       width: 20,
       height: 20,
       borderRadius: 10,
@@ -534,18 +581,33 @@ const createStyles = (
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: palette.lockBadgeBorder,
+      zIndex: 10,
     },
     badgeName: {
-      marginTop: 8,
       fontSize: 13,
       lineHeight: 16,
       fontWeight: '700',
       color: colors.textPrimary,
       textAlign: 'center',
-      minHeight: 32,
+      includeFontPadding: false,
     },
     badgeNameLocked: {
       color: colors.textSecondary,
+    },
+    badgeMilestone: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      lineHeight: 14,
+      fontVariant: ['tabular-nums'],
+      includeFontPadding: false,
+    },
+    badgeMilestoneLocked: {
+      color: colors.textSecondary,
+    },
+    badgeMilestoneSpacer: {
+      height: 14,
     },
     badgeStatusPill: {
       flexDirection: 'row',
@@ -553,14 +615,14 @@ const createStyles = (
       justifyContent: 'center',
       borderRadius: 999,
       paddingHorizontal: 8,
-      paddingVertical: 5,
-      minWidth: 76,
+      paddingVertical: 3,
+      minWidth: 70,
     },
     badgeStatusIcon: {
       marginRight: 4,
     },
     badgeStatusText: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: '700',
     },
   })

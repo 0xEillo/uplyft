@@ -1,11 +1,21 @@
-import { useState, type ReactElement } from 'react'
+import { useMemo, useState, type ReactElement } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
+import { getLevelColor } from '@/hooks/useStrengthData'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
-import type { WorkoutExerciseWithDetails } from '@/types/database.types'
+import {
+  estimateOneRepMaxKg,
+  getProgressDeltaPoints,
+  getStrengthGender,
+} from '@/lib/strength-progress'
+import { getStrengthStandard, hasStrengthStandards } from '@/lib/strength-standards'
+import type {
+  Profile,
+  WorkoutExerciseWithDetails,
+} from '@/types/database.types'
 
 import { PrTooltip } from '../pr-tooltip'
 
@@ -28,6 +38,8 @@ export interface ExercisePRInfo {
 interface ExerciseDetailCardProps {
   workoutExercise: WorkoutExerciseWithDetails
   prInfo?: ExercisePRInfo
+  profile?: Profile
+  previousBest1RMKg?: number
   onExercisePress?: (exerciseId: string) => void
 }
 
@@ -58,17 +70,80 @@ function formatWeightRepsText(
 export function ExerciseDetailCard({
   workoutExercise,
   prInfo,
+  profile,
+  previousBest1RMKg,
   onExercisePress,
 }: ExerciseDetailCardProps): ReactElement | null {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
   const [tooltipVisible, setTooltipVisible] = useState(false)
+  const gainColor = getLevelColor('Intermediate')
 
   const exercise = workoutExercise.exercise
-  const sets = workoutExercise.sets || []
+  const sets = workoutExercise.sets
+  const hasValidExercise = Boolean(exercise && sets.length > 0)
 
-  if (!exercise || sets.length === 0) {
+  const strengthProgress = useMemo(() => {
+    if (!exercise || sets.length === 0) return null
+    const strengthGender = getStrengthGender(profile?.gender)
+    if (!profile?.weight_kg || !strengthGender) return null
+    if (!hasStrengthStandards(exercise.name)) return null
+
+    let sessionBest1RM = 0
+    sets.forEach((set) => {
+      if (set.is_warmup === true) return
+      if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) return
+
+      const estimated = estimateOneRepMaxKg(set.weight, set.reps)
+      if (estimated > sessionBest1RM) {
+        sessionBest1RM = estimated
+      }
+    })
+
+    const baselineBest1RM =
+      typeof previousBest1RMKg === 'number' && previousBest1RMKg > 0
+        ? previousBest1RMKg
+        : 0
+    const postWorkoutBest1RM = Math.max(sessionBest1RM, baselineBest1RM)
+    if (postWorkoutBest1RM <= 0) return null
+
+    const currentInfo = getStrengthStandard(
+      exercise.name,
+      strengthGender,
+      profile.weight_kg,
+      postWorkoutBest1RM,
+    )
+
+    if (!currentInfo) return null
+
+    const hasBaseline = typeof previousBest1RMKg === 'number'
+    const baselineInfo = hasBaseline
+      ? getStrengthStandard(
+          exercise.name,
+          strengthGender,
+          profile.weight_kg,
+          baselineBest1RM,
+        )
+      : null
+
+    let progressDelta: number | null = null
+    if (hasBaseline && baselineInfo) {
+      progressDelta = getProgressDeltaPoints(
+        { level: baselineInfo.level, progress: baselineInfo.progress },
+        { level: currentInfo.level, progress: currentInfo.progress },
+      )
+    }
+
+    return {
+      level: currentInfo.level,
+      progress: currentInfo.progress,
+      progressDelta,
+      accentColor: currentInfo.standard.color,
+    }
+  }, [exercise, previousBest1RMKg, profile?.gender, profile?.weight_kg, sets])
+
+  if (!hasValidExercise) {
     return null
   }
 
@@ -93,7 +168,9 @@ export function ExerciseDetailCard({
         key={set.id}
         style={[
           styles.setRow,
-          index % 2 === 0 && { backgroundColor: colors.surfaceSubtle },
+          index % 2 === 0 && {
+            backgroundColor: isDark ? colors.surfaceCard : colors.surfaceSubtle,
+          },
           setHasPr && { backgroundColor: colors.brandPrimarySoft },
         ]}
       >
@@ -164,9 +241,67 @@ export function ExerciseDetailCard({
           autoPlay={false}
           isCustom={!!exercise.created_by}
         />
-        <Text style={[styles.exerciseName, { color: colors.brandPrimary }]}>
-          {exercise.name}
-        </Text>
+        <View style={styles.exerciseHeaderContent}>
+          <View style={styles.titleSection}>
+            <Text style={[styles.exerciseName, { color: colors.textPrimary }]}>
+              {exercise.name}
+            </Text>
+          </View>
+          {strengthProgress && (
+            <View style={styles.progressSection}>
+              <View style={styles.progressTopRow}>
+                <View style={styles.progressMetaRow}>
+                  <Text
+                    style={[
+                      styles.progressLabel,
+                      { color: strengthProgress.accentColor },
+                    ]}
+                  >
+                    {strengthProgress.level}
+                  </Text>
+                  {strengthProgress.progressDelta !== null &&
+                    strengthProgress.progressDelta > 0 && (
+                    <View style={styles.progressGainChip}>
+                      <Text
+                        style={[
+                          styles.progressGainChipText,
+                          { color: gainColor },
+                        ]}
+                      >
+                        ▲ {strengthProgress.progressDelta}%
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.progressPercent,
+                    { color: strengthProgress.accentColor },
+                  ]}
+                >
+                  {Math.round(strengthProgress.progress)}%
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.progressBarTrack,
+                  { backgroundColor: colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: `${Math.max(0, Math.min(100, strengthProgress.progress))}%`,
+                      backgroundColor: strengthProgress.accentColor,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
 
       {/* Sets header */}
@@ -223,13 +358,66 @@ const styles = StyleSheet.create({
   },
   exerciseHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     marginBottom: 12,
+    gap: 10,
+  },
+  exerciseHeaderContent: {
+    flex: 1,
+    minHeight: 56,
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  titleSection: {
+    justifyContent: 'flex-start',
+  },
+  progressSection: {
+    justifyContent: 'flex-end',
+    gap: 4,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'left',
+  },
+  progressTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  progressBarTrack: {
+    height: 5,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  progressGainChip: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    minHeight: 18,
+    justifyContent: 'center',
+  },
+  progressGainChipText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   exerciseName: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 20,
   },
   tableHeader: {
     flexDirection: 'row',

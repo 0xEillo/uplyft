@@ -61,7 +61,11 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
               <View
                 style={[
                   styles.barContainer,
-                  { backgroundColor: colors.surfaceSubtle },
+                  {
+                    backgroundColor: isDark
+                      ? colors.surfaceCard
+                      : colors.surfaceSubtle,
+                  },
                 ]}
               >
                 <View

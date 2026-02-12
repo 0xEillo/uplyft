@@ -9,13 +9,18 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import {
-    getStandardsLadder,
-    getStrengthStandard,
-    hasStrengthStandards
+  getProgressDeltaPoints,
+  getStrengthGender,
+} from '@/lib/strength-progress'
+import {
+  getStandardsLadder,
+  getStrengthStandard,
+  hasStrengthStandards,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useEffect, useState } from 'react'
 import {
     ActivityIndicator,
@@ -55,22 +60,29 @@ export default function StrengthStatsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('standards')
+  const [best1RMSnapshotByExerciseId, setBest1RMSnapshotByExerciseId] =
+    useState<Record<string, { currentBest1RM: number; previousBest1RM: number }>>(
+      {},
+    )
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   )
   const [paywallVisible, setPaywallVisible] = useState(false)
   const [showInfoSheet, setShowInfoSheet] = useState(false)
+  const strengthGender = getStrengthGender(profile?.gender)
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
 
     try {
-      // Load profile data
-      const profileData = await database.profiles.getById(user.id)
+      const [profileData, data, bestSnapshot] = await Promise.all([
+        database.profiles.getById(user.id),
+        database.stats.getMajorCompoundLiftsData(user.id),
+        database.stats.getExerciseCurrentAndPreviousBest1RMs(user.id),
+      ])
       setProfile(profileData)
+      setBest1RMSnapshotByExerciseId(bestSnapshot)
 
-      // Load exercise data
-      const data = await database.stats.getMajorCompoundLiftsData(user.id)
       // Sort by max1RM descending
       const sorted = data.sort((a, b) => b.max1RM - a.max1RM)
       setExerciseData(sorted)
@@ -85,6 +97,12 @@ export default function StrengthStatsScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData]),
+  )
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -120,7 +138,7 @@ export default function StrengthStatsScreen() {
 
   const getStrengthInfo = useCallback(
     (exerciseName: string, max1RM: number) => {
-      if (!profile?.gender || !profile?.weight_kg) {
+      if (!strengthGender || !profile?.weight_kg) {
         return null
       }
 
@@ -130,12 +148,12 @@ export default function StrengthStatsScreen() {
 
       return getStrengthStandard(
         exerciseName,
-        profile.gender as 'male' | 'female',
+        strengthGender,
         profile.weight_kg,
         max1RM,
       )
     },
-    [profile?.gender, profile?.weight_kg],
+    [profile?.weight_kg, strengthGender],
   )
 
 
@@ -259,11 +277,36 @@ export default function StrengthStatsScreen() {
                 exercise.exerciseName,
                 exercise.max1RM,
               )
+              const previousBest1RM =
+                best1RMSnapshotByExerciseId[exercise.exerciseId]
+                  ?.previousBest1RM ?? 0
+              const previousStrengthInfo =
+                previousBest1RM > 0
+                  ? getStrengthInfo(exercise.exerciseName, previousBest1RM)
+                  : null
+              const progressDelta =
+                strengthInfo && previousStrengthInfo
+                  ? getProgressDeltaPoints(
+                      {
+                        level: previousStrengthInfo.level,
+                        progress: previousStrengthInfo.progress,
+                      },
+                      {
+                        level: strengthInfo.level,
+                        progress: strengthInfo.progress,
+                      },
+                    )
+                  : 0
+              const progressAccentColor = strengthInfo?.nextLevel?.color
+                ? strengthInfo.nextLevel.color
+                : strengthInfo
+                ? getLevelColor(strengthInfo.level)
+                : colors.brandPrimary
               const isExpanded = expandedExercises.has(exercise.exerciseId)
-              const allLevels = profile?.gender
+              const allLevels = strengthGender
                 ? getStandardsLadder(
                     exercise.exerciseName,
-                    profile.gender as 'male' | 'female',
+                    strengthGender,
                   )
                 : null
 
@@ -327,6 +370,60 @@ export default function StrengthStatsScreen() {
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
+
+                  {strengthInfo && isProMember && (
+                    <View
+                      style={[
+                        styles.levelProgressCard,
+                        { backgroundColor: colors.surfaceSubtle },
+                      ]}
+                    >
+                      <View style={styles.levelProgressHeader}>
+                        <Text style={styles.levelProgressLabel}>
+                          LEVEL PROGRESS
+                        </Text>
+                        <View style={styles.levelProgressValueRow}>
+                          <Text
+                            style={[
+                              styles.levelProgressPercent,
+                              { color: progressAccentColor },
+                            ]}
+                          >
+                            {Math.round(strengthInfo.progress)}%
+                          </Text>
+                          {progressDelta > 0 && (
+                            <Text
+                              style={[
+                                styles.levelProgressDelta,
+                                { color: colors.brandPrimary },
+                              ]}
+                            >
+                              +{progressDelta}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View
+                        style={[
+                          styles.levelProgressTrack,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.levelProgressFill,
+                            {
+                              width: `${Math.max(
+                                0,
+                                Math.min(100, strengthInfo.progress),
+                              )}%`,
+                              backgroundColor: progressAccentColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  )}
 
                   {/* Expanded: Show all levels */}
                   {isExpanded && allLevels && profile?.weight_kg && (
@@ -706,6 +803,51 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       paddingVertical: 14,
       paddingHorizontal: 16,
+    },
+    levelProgressCard: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 8,
+    },
+    levelProgressHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    levelProgressLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      letterSpacing: 0.7,
+    },
+    levelProgressValueRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 8,
+    },
+    levelProgressPercent: {
+      fontSize: 14,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+    },
+    levelProgressDelta: {
+      fontSize: 12,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+    },
+    levelProgressTrack: {
+      height: 6,
+      borderRadius: 999,
+      overflow: 'hidden',
+    },
+    levelProgressFill: {
+      height: '100%',
+      borderRadius: 999,
     },
     exerciseHeaderLeft: {
       flexDirection: 'row',

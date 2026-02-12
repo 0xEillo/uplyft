@@ -4,6 +4,7 @@ import type {
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
+import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
     DailyLogConfidence,
@@ -1945,7 +1946,7 @@ export const database = {
           we.sets?.forEach((set) => {
             if (set.weight && set.reps) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = set.weight * (1 + set.reps / 30)
+              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
               if (estimated1RM > runningMax) {
                 runningMax = estimated1RM
               }
@@ -1960,6 +1961,66 @@ export const database = {
       })
 
       return progressData || []
+    },
+
+    async getExerciseMax1RMsBeforeDate(
+      userId: string,
+      beforeCreatedAtISO: string,
+      excludeSessionId?: string,
+    ): Promise<Record<string, number>> {
+      let query = supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          workout_exercises!inner (
+            exercise_id,
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .lt('created_at', beforeCreatedAtISO)
+        .not('workout_exercises.sets.weight', 'is', null)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
+
+      if (excludeSessionId) {
+        query = query.neq('id', excludeSessionId)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+
+      interface ExerciseMax1RMBeforeRow {
+        workout_exercises?: {
+          exercise_id: string
+          sets?: {
+            reps: number | null
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      const max1RMByExerciseId: Record<string, number> = {}
+
+      ;(data as ExerciseMax1RMBeforeRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((workoutExercise) => {
+          workoutExercise.sets?.forEach((set) => {
+            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
+              return
+            }
+
+            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            const existing = max1RMByExerciseId[workoutExercise.exercise_id] || 0
+            if (estimated1RM > existing) {
+              max1RMByExerciseId[workoutExercise.exercise_id] = estimated1RM
+            }
+          })
+        })
+      })
+
+      return max1RMByExerciseId
     },
 
     async getTotalVolume(userId: string, dateFrom?: Date) {
@@ -2063,7 +2124,7 @@ export const database = {
           we.sets?.forEach((set) => {
             if (set.weight && set.reps) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = set.weight * (1 + set.reps / 30)
+              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
 
               const currentBest = allTimeBests.get(we.exercise_id) || 0
               if (estimated1RM > currentBest) {
@@ -2401,7 +2462,7 @@ export const database = {
           we.sets?.forEach((set) => {
             if (set.reps && set.weight) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = set.weight * (1 + set.reps / 30)
+              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
 
               const current = exerciseMax1RMs.get(we.exercise_id)
               if (!current || estimated1RM > current.max1RM) {
@@ -2426,6 +2487,71 @@ export const database = {
           gifUrl: data.gifUrl,
         }),
       )
+    },
+
+    async getExerciseCurrentAndPreviousBest1RMs(
+      userId: string,
+    ): Promise<Record<string, { currentBest1RM: number; previousBest1RM: number }>> {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          created_at,
+          workout_exercises!inner (
+            exercise_id,
+            sets!inner (reps, weight)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .not('workout_exercises.sets.weight', 'is', null)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      interface Best1RMSnapshotRow {
+        workout_exercises?: {
+          exercise_id: string
+          sets?: {
+            reps: number | null
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      const bestByExerciseId: Record<
+        string,
+        { currentBest1RM: number; previousBest1RM: number }
+      > = {}
+
+      ;(data as Best1RMSnapshotRow[])?.forEach((session) => {
+        session.workout_exercises?.forEach((workoutExercise) => {
+          if (!bestByExerciseId[workoutExercise.exercise_id]) {
+            bestByExerciseId[workoutExercise.exercise_id] = {
+              currentBest1RM: 0,
+              previousBest1RM: 0,
+            }
+          }
+
+          workoutExercise.sets?.forEach((set) => {
+            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
+              return
+            }
+
+            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            const current = bestByExerciseId[workoutExercise.exercise_id]
+
+            if (estimated1RM > current.currentBest1RM) {
+              current.previousBest1RM = current.currentBest1RM
+              current.currentBest1RM = estimated1RM
+            }
+          })
+        })
+      })
+
+      return bestByExerciseId
     },
 
     async getExerciseRecordsByWeight(userId: string, exerciseId: string) {
@@ -2475,7 +2601,7 @@ export const database = {
             if (set.weight && set.reps) {
               const weight = set.weight
               const reps = set.reps
-              const estimated1RM = weight * (1 + reps / 30)
+              const estimated1RM = estimateOneRepMaxKg(weight, reps)
 
               const existing = weightRecords.get(weight)
               if (!existing || reps > existing.maxReps) {
@@ -2502,33 +2628,128 @@ export const database = {
     },
 
     async getMajorCompoundLiftsData(userId: string) {
-      // Get all user's max 1RMs
-      const all1RMs = await this.getUserMax1RMs(userId)
-
-      // Filter to only major compound lifts (exercises with strength standards)
-      const compoundLifts = all1RMs.filter((exercise) =>
-        this.LEADERBOARD_EXERCISES.includes(exercise.exerciseName),
-      )
-
-      // For each compound lift, get detailed records
-      const detailedData = await Promise.all(
-        compoundLifts.map(async (lift) => {
-          const records = await this.getExerciseRecordsByWeight(
-            userId,
-            lift.exerciseId,
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          date,
+          created_at,
+          workout_exercises!inner (
+            exercise_id,
+            exercise:exercises!inner (id, name, muscle_group, gif_url),
+            sets!inner (reps, weight)
           )
-          return {
-            exerciseId: lift.exerciseId,
-            exerciseName: lift.exerciseName,
-            muscleGroup: lift.muscleGroup,
-            max1RM: lift.max1RM,
-            gifUrl: lift.gifUrl,
-            records,
-          }
-        }),
-      )
+        `,
+        )
+        .eq('user_id', userId)
+        .not('workout_exercises.sets.weight', 'is', null)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
+        .order('created_at', { ascending: true })
 
-      return detailedData
+      if (error) throw error
+
+      interface CompoundLiftSessionRow {
+        date: string
+        created_at: string
+        workout_exercises?: {
+          exercise_id: string
+          exercise?:
+            | {
+                id: string
+                name: string
+                muscle_group: string | null
+                gif_url: string | null
+              }
+            | {
+                id: string
+                name: string
+                muscle_group: string | null
+                gif_url: string | null
+              }[]
+          sets?: {
+            reps: number | null
+            weight: number | null
+          }[]
+        }[]
+      }
+
+      const exerciseMap = new Map<
+        string,
+        {
+          exerciseName: string
+          muscleGroup: string | null
+          gifUrl: string | null
+          max1RM: number
+          recordsByWeight: Map<
+            number,
+            { maxReps: number; date: string; estimated1RM: number }
+          >
+        }
+      >()
+
+      ;((data as unknown) as CompoundLiftSessionRow[]).forEach((session) => {
+        session.workout_exercises?.forEach((workoutExercise) => {
+          const exercise = Array.isArray(workoutExercise.exercise)
+            ? workoutExercise.exercise[0]
+            : workoutExercise.exercise
+          if (!exercise) return
+
+          if (!this.LEADERBOARD_EXERCISES.includes(exercise.name)) {
+            return
+          }
+
+          if (!exerciseMap.has(workoutExercise.exercise_id)) {
+            exerciseMap.set(workoutExercise.exercise_id, {
+              exerciseName: exercise.name,
+              muscleGroup: exercise.muscle_group,
+              gifUrl: exercise.gif_url,
+              max1RM: 0,
+              recordsByWeight: new Map(),
+            })
+          }
+
+          const current = exerciseMap.get(workoutExercise.exercise_id)
+          if (!current) return
+
+          workoutExercise.sets?.forEach((set) => {
+            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
+              return
+            }
+
+            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            const rounded1RM = Math.round(estimated1RM)
+            if (rounded1RM > current.max1RM) {
+              current.max1RM = rounded1RM
+            }
+
+            const existingRecord = current.recordsByWeight.get(set.weight)
+            if (!existingRecord || set.reps > existingRecord.maxReps) {
+              current.recordsByWeight.set(set.weight, {
+                maxReps: set.reps,
+                date: session.date || session.created_at,
+                estimated1RM: rounded1RM,
+              })
+            }
+          })
+        })
+      })
+
+      return Array.from(exerciseMap.entries()).map(([exerciseId, value]) => ({
+        exerciseId,
+        exerciseName: value.exerciseName,
+        muscleGroup: value.muscleGroup,
+        max1RM: value.max1RM,
+        gifUrl: value.gifUrl,
+        records: Array.from(value.recordsByWeight.entries())
+          .map(([weight, record]) => ({
+            weight,
+            maxReps: record.maxReps,
+            date: record.date,
+            estimated1RM: record.estimated1RM,
+          }))
+          .sort((a, b) => b.weight - a.weight),
+      }))
     },
 
     async getAllUsersMax1RMs(exerciseId: string) {
@@ -2566,7 +2787,7 @@ export const database = {
           we.sets?.forEach((set) => {
             if (set.reps && set.weight) {
               // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = set.weight * (1 + set.reps / 30)
+              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
 
               const currentMax = userMax1RMs.get(session.user_id) || 0
               if (estimated1RM > currentMax) {

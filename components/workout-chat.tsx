@@ -3773,6 +3773,7 @@ function createStyles(
     textInputGlass: {
       flex: 1,
       borderRadius: 24,
+      minHeight: 44,
     },
     textInputContainer: {
       flex: 1,
@@ -3782,7 +3783,8 @@ function createStyles(
       borderRadius: 24,
       paddingRight: 4,
       paddingLeft: 16,
-      paddingVertical: 5,
+      paddingVertical: 4,
+      minHeight: 44,
       borderWidth: 0,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
@@ -3792,15 +3794,16 @@ function createStyles(
     },
     input: {
       flex: 1,
-      paddingTop: 4,
-      paddingBottom: 4,
+      paddingTop: Platform.OS === 'ios' ? 2 : 4,
+      paddingBottom: Platform.OS === 'ios' ? 4 : 4,
       marginRight: 8,
       fontSize: 17,
       lineHeight: Platform.OS === 'ios' ? 26 : 23,
       color: colors.textPrimary,
+      minHeight: Platform.OS === 'ios' ? 24 : 22,
       maxHeight: 100,
       textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
-      transform: [{ translateY: Platform.OS === 'ios' ? -3 : 0 }],
+      transform: [{ translateY: Platform.OS === 'ios' ? -2 : 0 }],
     },
     sendButton: {
       width: 32,

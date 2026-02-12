@@ -2,12 +2,19 @@ import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
-    clampStrengthProgress,
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel
+  getProgressDeltaPoints,
+  getStrengthGender,
+  getLevelIntensity as getStrengthLevelIntensity,
+  scoreToLevelProgress,
+  toLevelScore,
+} from '@/lib/strength-progress'
+import {
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
+import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export interface ExerciseRecord {
@@ -26,6 +33,11 @@ export interface ExerciseData {
   records: ExerciseRecord[]
 }
 
+export interface ExerciseBest1RMSnapshot {
+  currentBest1RM: number
+  previousBest1RM: number
+}
+
 export interface MuscleGroupData {
   name: string
   level: StrengthLevel
@@ -38,6 +50,7 @@ export interface OverallLevelData {
   currentLevel: StrengthLevel
   nextLevel: StrengthLevel | null
   progress: number
+  progressDelta: number
   liftsTracked: number
   balancedLevel: StrengthLevel
   balancedNextLevel: StrengthLevel | null
@@ -53,30 +66,12 @@ export interface GroupLevelData {
   averageScore: number
   exercises: ExerciseData[]
 }
-
-const LEVEL_ORDER: StrengthLevel[] = [
-  'Untrained',
-  'Beginner',
-  'Novice',
-  'Intermediate',
-  'Advanced',
-  'Elite',
-  'World Class',
-]
-
-const LEVEL_SCORES: Record<StrengthLevel, number> = {
-  Untrained: 0,
-  Beginner: 1,
-  Novice: 2,
-  Intermediate: 3,
-  Advanced: 4,
-  Elite: 5,
-  'World Class': 6,
-}
 export function useStrengthData() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [exerciseData, setExerciseData] = useState<ExerciseData[]>([])
+  const [best1RMSnapshotByExerciseId, setBest1RMSnapshotByExerciseId] =
+    useState<Record<string, ExerciseBest1RMSnapshot>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -84,12 +79,14 @@ export function useStrengthData() {
     if (!user?.id) return
 
     try {
-      // Load profile data
-      const profileData = await database.profiles.getById(user.id)
+      const [profileData, data, snapshots] = await Promise.all([
+        database.profiles.getById(user.id),
+        database.stats.getMajorCompoundLiftsData(user.id),
+        database.stats.getExerciseCurrentAndPreviousBest1RMs(user.id),
+      ])
       setProfile(profileData)
+      setBest1RMSnapshotByExerciseId(snapshots)
 
-      // Load exercise data
-      const data = await database.stats.getMajorCompoundLiftsData(user.id)
       // Sort by max1RM descending
       const sorted = data.sort((a, b) => b.max1RM - a.max1RM)
       setExerciseData(sorted)
@@ -105,6 +102,12 @@ export function useStrengthData() {
     loadData()
   }, [loadData])
 
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData]),
+  )
+
   const onRefresh = useCallback(() => {
     setRefreshing(true)
     loadData()
@@ -112,7 +115,8 @@ export function useStrengthData() {
 
   const getStrengthInfo = useCallback(
     (exerciseName: string, max1RM: number) => {
-      if (!profile?.gender || !profile?.weight_kg) {
+      const strengthGender = getStrengthGender(profile?.gender)
+      if (!strengthGender || !profile?.weight_kg) {
         return null
       }
 
@@ -122,7 +126,7 @@ export function useStrengthData() {
 
       return getStrengthStandard(
         exerciseName,
-        profile.gender as 'male' | 'female',
+        strengthGender,
         profile.weight_kg,
         max1RM,
       )
@@ -133,8 +137,8 @@ export function useStrengthData() {
   // Calculate levels by exercise group (Push/Pull/Lower)
   const groupLevels = useMemo((): Map<ExerciseGroup, GroupLevelData> => {
     const result = new Map<ExerciseGroup, GroupLevelData>()
-    
-    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+
+    if (!profile?.weight_kg || exerciseData.length === 0) {
       return result
     }
 
@@ -157,21 +161,14 @@ export function useStrengthData() {
       exercises.forEach((exercise) => {
         const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
         if (info) {
-          const baseScore = LEVEL_SCORES[info.level]
-          const exactScore = baseScore + info.progress / 100
-          totalScore += exactScore
+          totalScore += toLevelScore(info.level, info.progress)
           count++
         }
       })
 
       if (count > 0) {
         const averageScore = totalScore / count
-        // LEVEL_SCORES now starts at 0 for Untrained, so levelIndex maps directly
-        const levelIndex = Math.floor(averageScore)
-        const level = LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
-        const progress = clampStrengthProgress(
-          averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
-        )
+        const { level, progress } = scoreToLevelProgress(averageScore)
 
         result.set(group, {
           group,
@@ -187,7 +184,7 @@ export function useStrengthData() {
   }, [exerciseData, profile, getStrengthInfo])
 
   const overallLevel = useMemo((): OverallLevelData | null => {
-    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+    if (!profile?.weight_kg || exerciseData.length === 0) {
       return null
     }
 
@@ -199,13 +196,34 @@ export function useStrengthData() {
       'Pull': { total: 0, count: 0 },
       'Lower': { total: 0, count: 0 },
     }
+    const baselineGroupTotals: Record<
+      ExerciseGroup | string,
+      { total: number; count: number }
+    > = {
+      Push: { total: 0, count: 0 },
+      Pull: { total: 0, count: 0 },
+      Lower: { total: 0, count: 0 },
+    }
+
+    const computeBalancedScore = (
+      totals: Record<ExerciseGroup | string, { total: number; count: number }>,
+    ): number => {
+      const validGroups = Object.entries(totals)
+        .filter(([_, data]) => data.count > 0)
+        .map(([_, data]) => data.total / data.count)
+
+      if (validGroups.length === 0) {
+        return 0
+      }
+
+      const denominator = validGroups.reduce((sum, average) => sum + 1 / average, 0)
+      return validGroups.length / denominator
+    }
 
     exerciseData.forEach((exercise) => {
       const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
       if (info) {
-        const baseScore = LEVEL_SCORES[info.level]
-        // progress is 0-100, we want 0-1 added to base score
-        const exactScore = baseScore + info.progress / 100
+        const exactScore = toLevelScore(info.level, info.progress)
         totalScore += exactScore
         count++
 
@@ -214,23 +232,30 @@ export function useStrengthData() {
           groupTotals[group].total += exactScore
           groupTotals[group].count++
         }
+
+        const previousBest1RM =
+          best1RMSnapshotByExerciseId[exercise.exerciseId]?.previousBest1RM ?? 0
+        const baseline1RM = previousBest1RM > 0 ? previousBest1RM : exercise.max1RM
+        const baselineInfo = getStrengthInfo(exercise.exerciseName, baseline1RM)
+        const baselineExactScore = baselineInfo
+          ? toLevelScore(baselineInfo.level, baselineInfo.progress)
+          : exactScore
+
+        if (group in baselineGroupTotals) {
+          baselineGroupTotals[group].total += baselineExactScore
+          baselineGroupTotals[group].count++
+        }
       }
     })
 
     if (count === 0) return null
 
     const averageScore = totalScore / count
-    // LEVEL_SCORES now starts at 0 for Untrained, so levelIndex maps directly
-    const levelIndex = Math.floor(averageScore)
-    const currentLevel =
-      LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
-    const nextLevel =
-      levelIndex < LEVEL_ORDER.length - 1 ? LEVEL_ORDER[levelIndex + 1] : null
-
-    // Calculate progress to next level (fractional part of averageScore)
-    const progress = clampStrengthProgress(
-      averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
-    )
+    const {
+      level: currentLevel,
+      nextLevel,
+      progress,
+    } = scoreToLevelProgress(averageScore)
 
     // Calculate Balanced Level (Harmonic Mean of group averages)
     const validGroups = Object.entries(groupTotals)
@@ -245,12 +270,7 @@ export function useStrengthData() {
     let weakestGroup: string | null = null
 
     if (validGroups.length > 0) {
-      // Harmonic mean: n / (1/x1 + 1/x2 + ... + 1/xn)
-      const denominator = validGroups.reduce(
-        (sum, g) => sum + 1 / g.average,
-        0,
-      )
-      balancedScore = validGroups.length / denominator
+      balancedScore = computeBalancedScore(groupTotals)
 
       // Find weakest group
       const weakest = validGroups.reduce(
@@ -268,24 +288,27 @@ export function useStrengthData() {
         weakestGroup = weakest.name
       }
 
-      // LEVEL_SCORES now starts at 0 for Untrained, so balancedIndex maps directly
-      const balancedIndex = Math.floor(balancedScore)
-      balancedLevel =
-        LEVEL_ORDER[Math.max(0, Math.min(balancedIndex, LEVEL_ORDER.length - 1))]
+      balancedLevel = scoreToLevelProgress(balancedScore).level
     }
 
-    const balancedProgress = clampStrengthProgress(
-      balancedScore >= 6 ? 100 : (balancedScore - Math.floor(balancedScore)) * 100
+    const { nextLevel: balancedNextLevel, progress: balancedProgress } =
+      scoreToLevelProgress(balancedScore)
+
+    const baselineBalancedScore = computeBalancedScore(baselineGroupTotals)
+    const {
+      level: baselineBalancedLevel,
+      progress: baselineBalancedProgress,
+    } = scoreToLevelProgress(baselineBalancedScore)
+    const progressDelta = getProgressDeltaPoints(
+      { level: baselineBalancedLevel, progress: baselineBalancedProgress },
+      { level: balancedLevel, progress: balancedProgress },
     )
-    
-    const balancedLevelIndex = LEVEL_ORDER.indexOf(balancedLevel)
-    const balancedNextLevel = 
-        balancedLevelIndex < LEVEL_ORDER.length - 1 ? LEVEL_ORDER[balancedLevelIndex + 1] : null
 
     return {
       currentLevel,
-      nextLevel: currentLevel === 'World Class' ? null : nextLevel,
+      nextLevel,
       progress,
+      progressDelta,
       liftsTracked: count,
       balancedLevel,
       balancedNextLevel,
@@ -293,11 +316,11 @@ export function useStrengthData() {
       balancedScore,
       weakestGroup,
     }
-  }, [exerciseData, profile, getStrengthInfo])
+  }, [best1RMSnapshotByExerciseId, exerciseData, profile, getStrengthInfo])
 
   // Calculate muscle groups data (for backward compatibility)
   const muscleGroups = useMemo((): MuscleGroupData[] => {
-    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+    if (!profile?.weight_kg || exerciseData.length === 0) {
       return []
     }
 
@@ -322,24 +345,15 @@ export function useStrengthData() {
       exercises.forEach((exercise) => {
         const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
         if (info) {
-          const baseScore = LEVEL_SCORES[info.level]
-          const exactScore = baseScore + info.progress / 100
-          totalScore += exactScore
+          totalScore += toLevelScore(info.level, info.progress)
           count++
         }
       })
 
       if (count > 0) {
         const averageScore = totalScore / count
-        // LEVEL_SCORES: Untrained=0, Beginner=1, Novice=2, etc.
-        // So levelIndex = floor(averageScore) directly maps to LEVEL_ORDER index
-        const levelIndex = Math.floor(averageScore)
-        const currentLevel =
-          LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
-        
-        const progress = clampStrengthProgress(
-          averageScore >= 6 ? 100 : (averageScore - Math.floor(averageScore)) * 100
-        )
+        const { level: currentLevel, progress } =
+          scoreToLevelProgress(averageScore)
 
         result.push({
           name,
@@ -365,6 +379,7 @@ export function useStrengthData() {
     overallLevel,
     muscleGroups,
     groupLevels,
+    best1RMSnapshotByExerciseId,
   }
 }
 
@@ -381,7 +396,7 @@ export function useStrengthData() {
 // Beginner -> Intensity 2 (for Index 1)
 // ...
 export function getLevelIntensity(level: StrengthLevel): number {
-  return LEVEL_SCORES[level] + 1
+  return getStrengthLevelIntensity(level)
 }
 
 export const LEVEL_COLORS: Record<StrengthLevel, string> = {

@@ -63,6 +63,7 @@ interface LevelBadgeProps {
   style?: StyleProp<ViewStyle>
   showTooltipOnPress?: boolean
   iconOnly?: boolean
+  onPress?: () => void
 }
 
 export function LevelBadge({
@@ -72,6 +73,7 @@ export function LevelBadge({
   style,
   showTooltipOnPress = false,
   iconOnly = false,
+  onPress,
 }: LevelBadgeProps) {
   const color = LEVEL_COLORS[level]
   const [showTooltip, setShowTooltip] = useState(false)
@@ -94,7 +96,7 @@ export function LevelBadge({
     }
   }, [])
 
-  const handlePress = useCallback(() => {
+  const handleTooltipPress = useCallback(() => {
     if (!showTooltipOnPress) return
 
     // Clear any existing timeout
@@ -116,8 +118,9 @@ export function LevelBadge({
     }, 2000)
   }, [showTooltipOnPress, fadeAnim])
 
+  // Pill variant rendering
   if (variant === 'pill') {
-    return (
+    const pillContent = (
       <View
         style={[
           styles.pillContainer,
@@ -144,8 +147,18 @@ export function LevelBadge({
         </Text>
       </View>
     )
+
+    if (onPress) {
+      return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+          {pillContent}
+        </TouchableOpacity>
+      )
+    }
+    return pillContent
   }
 
+  // Icon variant rendering
   const badge = iconOnly ? (
     <Image
       source={require('../assets/images/bicep-icon.png')}
@@ -206,50 +219,58 @@ export function LevelBadge({
     </View>
   )
 
-  if (!showTooltipOnPress) {
-    return badge
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.wrapper}>
+        {badge}
+      </TouchableOpacity>
+    )
   }
 
-  // Calculate approximate tooltip width for centering
-  const tooltipWidth = level.length * (dim.fontSize * 0.6) + 20
-  const tooltipOffset = (tooltipWidth - dim.container) / 2
+  if (showTooltipOnPress) {
+    // Calculate approximate tooltip width for centering
+    const tooltipWidth = level.length * (dim.fontSize * 0.6) + 20
+    const tooltipOffset = (tooltipWidth - dim.container) / 2
 
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      activeOpacity={0.7}
-      style={styles.wrapper}
-    >
-      {showTooltip && (
-        <Animated.View
-          style={[
-            styles.tooltip,
-            {
-              backgroundColor: color,
-              opacity: fadeAnim,
-              left: -tooltipOffset,
-              minWidth: tooltipWidth,
-              transform: [
-                {
-                  translateY: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [4, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <Text style={[styles.tooltipText, { fontSize: dim.fontSize }]}>
-            {level}
-          </Text>
-          <View style={[styles.tooltipArrow, { borderTopColor: color }]} />
-        </Animated.View>
-      )}
-      {badge}
-    </TouchableOpacity>
-  )
+    return (
+      <TouchableOpacity
+        onPress={handleTooltipPress}
+        activeOpacity={0.7}
+        style={styles.wrapper}
+      >
+        {showTooltip && (
+          <Animated.View
+            style={[
+              styles.tooltip,
+              {
+                backgroundColor: color,
+                opacity: fadeAnim,
+                left: -tooltipOffset,
+                minWidth: tooltipWidth,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [4, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={[styles.tooltipText, { fontSize: dim.fontSize }]}>
+              {level}
+            </Text>
+            <View style={[styles.tooltipArrow, { borderTopColor: color }]} />
+          </Animated.View>
+        )}
+        {badge}
+      </TouchableOpacity>
+    )
+  }
+
+  return badge
 }
 
 

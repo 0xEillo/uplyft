@@ -1,44 +1,32 @@
 import { database } from '@/lib/database'
 import {
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel,
+  getStrengthGender,
+  scoreToLevelProgress,
+  toLevelScore,
+} from '@/lib/strength-progress'
+import {
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel,
 } from '@/lib/strength-standards'
 import { useCallback, useEffect, useState } from 'react'
 
-const LEVEL_ORDER: StrengthLevel[] = [
-  'Untrained',
-  'Beginner',
-  'Novice',
-  'Intermediate',
-  'Advanced',
-  'Elite',
-  'World Class',
-]
-
-const LEVEL_SCORES: Record<StrengthLevel, number> = {
-  Untrained: 0,
-  Beginner: 1,
-  Novice: 2,
-  Intermediate: 3,
-  Advanced: 4,
-  Elite: 5,
-  'World Class': 6,
-}
-
 interface UseUserLevelResult {
   level: StrengthLevel | null
+  progress: number | null
   isLoading: boolean
   refresh: () => void
 }
 
 export function useUserLevel(userId: string | undefined): UseUserLevelResult {
   const [level, setLevel] = useState<StrengthLevel | null>(null)
+  const [progress, setProgress] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const loadLevel = useCallback(async () => {
     if (!userId) {
       setLevel(null)
+      setProgress(null)
       setIsLoading(false)
       return
     }
@@ -52,8 +40,10 @@ export function useUserLevel(userId: string | undefined): UseUserLevelResult {
         database.stats.getMajorCompoundLiftsData(userId),
       ])
 
-      if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+      const strengthGender = getStrengthGender(profile?.gender)
+      if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
         setLevel(null)
+        setProgress(null)
         setIsLoading(false)
         return
       }
@@ -67,34 +57,34 @@ export function useUserLevel(userId: string | undefined): UseUserLevelResult {
 
         const info = getStrengthStandard(
           exercise.exerciseName,
-          profile.gender as 'male' | 'female',
+          strengthGender,
           profile.weight_kg!,
           exercise.max1RM,
         )
 
         if (info) {
-          const baseScore = LEVEL_SCORES[info.level]
-          const exactScore = baseScore + info.progress / 100
-          totalScore += exactScore
+          totalScore += toLevelScore(info.level, info.progress)
           count++
         }
       })
 
       if (count === 0) {
         setLevel(null)
+        setProgress(null)
         setIsLoading(false)
         return
       }
 
       const averageScore = totalScore / count
-      const levelIndex = Math.floor(averageScore)
-      const currentLevel =
-        LEVEL_ORDER[Math.max(0, Math.min(levelIndex, LEVEL_ORDER.length - 1))]
+      const { level: currentLevel, progress: progressPct } =
+        scoreToLevelProgress(averageScore)
 
       setLevel(currentLevel)
+      setProgress(Math.round(progressPct))
     } catch (error) {
       console.error('Error calculating user level:', error)
       setLevel(null)
+      setProgress(null)
     } finally {
       setIsLoading(false)
     }
@@ -104,7 +94,6 @@ export function useUserLevel(userId: string | undefined): UseUserLevelResult {
     loadLevel()
   }, [loadLevel])
 
-  return { level, isLoading, refresh: loadLevel }
+  return { level, progress, isLoading, refresh: loadLevel }
 }
-
 

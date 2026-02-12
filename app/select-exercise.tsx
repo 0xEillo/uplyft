@@ -28,7 +28,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Mapping from database muscle group names to body part slugs for highlighting
@@ -793,55 +792,39 @@ export default function SelectExerciseScreen() {
             ) // Only show muscles that exist in data and have body mapping
               .map((group) => {
                 const isSelected = selectedMuscleGroups.includes(group)
-                const muscleMapping = MUSCLE_TO_BODY_PARTS[group]
-                const bodyData = [{ slug: muscleMapping.slug, intensity: 1 }]
 
                 return (
                   <TouchableOpacity
                     key={group}
                     style={[
-                      styles.muscleChip,
+                      styles.musclePill,
                       {
+                        backgroundColor: isSelected
+                          ? colors.brandPrimary
+                          : isDark
+                          ? 'rgba(255,255,255,0.06)'
+                          : 'rgba(0,0,0,0.04)',
                         borderColor: isSelected
                           ? colors.brandPrimary
-                          : 'transparent',
-                        backgroundColor: isSelected
-                          ? colors.brandPrimary + '15'
-                          : 'transparent',
+                          : colors.border,
                       },
                     ]}
                     onPress={() => toggleMuscleGroup(group)}
                     activeOpacity={0.7}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <View
-                      style={styles.muscleBodyContainer}
-                      pointerEvents="none"
+                    <Text
+                      style={[
+                        styles.musclePillText,
+                        {
+                          color: isSelected
+                            ? '#FFFFFF'
+                            : colors.textSecondary,
+                        },
+                      ]}
                     >
-                      <View
-                        style={[
-                          styles.muscleBodyWrapper,
-                          {
-                            transform: [
-                              {
-                                translateY:
-                                  BODY_HALF_CONFIG[muscleMapping.bodyHalf]
-                                    .offsetY,
-                              },
-                            ],
-                          },
-                        ]}
-                      >
-                        <Body
-                          data={bodyData}
-                          gender="male"
-                          side={muscleMapping.side}
-                          scale={BODY_HALF_CONFIG[muscleMapping.bodyHalf].scale}
-                          colors={['#EF4444']}
-                          border="#D1D5DB"
-                        />
-                      </View>
-                    </View>
+                      {group}
+                    </Text>
                   </TouchableOpacity>
                 )
               })}
@@ -1228,46 +1211,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, // Align first card with content below
     paddingBottom: 0,
   },
-  // Muscle Filter Body Diagram Styles
+  // Muscle Filter Pill Styles
   muscleFilterScrollView: {
-    maxHeight: 100,
+    maxHeight: 50,
     flexGrow: 0,
-    marginBottom: 0,
+    marginBottom: 8,
   },
   muscleFilterContainer: {
     paddingHorizontal: 14,
     paddingVertical: 4,
     alignItems: 'center',
-    gap: 2,
+    gap: 8,
   },
-  muscleChip: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 2,
+  musclePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 100,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
-  muscleBodyContainer: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  muscleBodyWrapper: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 120,
-    height: 240,
-    marginTop: -120,
-    marginLeft: -60,
-    alignItems: 'center',
-    justifyContent: 'center',
+  musclePillText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   customBadge: {
     backgroundColor: '#1C1C1E',

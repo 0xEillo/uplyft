@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
+import { getStrengthGender } from '@/lib/strength-progress'
 import {
     getStrengthStandard,
     hasStrengthStandards
@@ -64,7 +65,8 @@ export function MuscleGroupDetailSheet({
 
   const allMuscleExercises = useMemo(() => {
     const getStrengthInfo = (exerciseName: string, max1RM: number) => {
-      if (!profile?.gender || !profile?.weight_kg) {
+      const strengthGender = getStrengthGender(profile?.gender)
+      if (!strengthGender || !profile?.weight_kg) {
         return null
       }
 
@@ -74,7 +76,7 @@ export function MuscleGroupDetailSheet({
 
       return getStrengthStandard(
         exerciseName,
-        profile.gender as 'male' | 'female',
+        strengthGender,
         profile.weight_kg,
         max1RM,
       )
@@ -207,9 +209,7 @@ export function MuscleGroupDetailSheet({
                       style={[
                         styles.levelBadgeItem,
                         {
-                          backgroundColor: getLevelColor(
-                            exercise.strengthInfo.level as any,
-                          ),
+                          backgroundColor: getLevelColor(exercise.strengthInfo.level),
                         },
                       ]}
                     >

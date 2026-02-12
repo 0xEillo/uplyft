@@ -2,7 +2,6 @@ import { BodyHighlighterDual } from '@/components/BodyHighlighterDual'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
-import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import {
   getLevelColor,
@@ -11,17 +10,15 @@ import {
   type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
   BODY_PART_DISPLAY_NAMES,
   BODY_PART_TO_DATABASE_MUSCLE,
   type BodyPartSlug
 } from '@/lib/body-mapping'
+import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useIsFocused } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   RefreshControl,
@@ -32,70 +29,12 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle } from 'react-native-svg'
-
-const LIFTER_LEVEL_PROGRESS_KEY = '@lifter_level_progress_v1'
-const LIFTER_EXERCISE_PROGRESS_KEY = '@lifter_exercise_progress_v1'
-
-
-// Simple Progress Ring component for exercise cards
-function ProgressRing({
-  progress,
-  size,
-  strokeWidth,
-  color,
-  trackColor,
-  children,
-}: {
-  progress: number
-  size: number
-  strokeWidth: number
-  color: string
-  trackColor: string
-  children?: React.ReactNode
-}) {
-  const radius = (size - strokeWidth) / 2
-  const circumference = radius * 2 * Math.PI
-  const strokeDashoffset = circumference - (progress / 100) * circumference
-
-  return (
-    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-      <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
-        />
-      </Svg>
-      {children}
-    </View>
-  )
-}
 
 export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = {}) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { isDark } = useTheme()
-  const { user } = useAuth()
-  const isFocused = useIsFocused()
-  const { weightUnit, formatWeight } = useWeightUnits()
   const {
     profile,
     isLoading,
@@ -105,96 +44,14 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     muscleGroups,
     exerciseData,
     getStrengthInfo,
+    best1RMSnapshotByExerciseId,
   } = useStrengthData()
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
-  const [progressDelta, setProgressDelta] = useState<number | null>(null)
-  const [exerciseProgressDeltas, setExerciseProgressDeltas] = useState<Record<string, number>>({})
-
-  useEffect(() => {
-    if (!isFocused) {
-      setProgressDelta(null)
-      return
-    }
-    if (!user?.id || !overallLevel) return
-
-    let isActive = true
-
-    const syncProgressDelta = async () => {
-      const currentProgress = Math.round(overallLevel.balancedProgress)
-      const currentLevel = overallLevel.balancedLevel
-      const storageKey = `${LIFTER_LEVEL_PROGRESS_KEY}:${user.id}`
-
-      let nextDelta: number | null = null
-
-      try {
-        const storedValue = await AsyncStorage.getItem(storageKey)
-        if (!isActive) return
-
-        let previousProgress: number | null = null
-        let previousLevel: StrengthLevel | null = null
-
-        if (storedValue) {
-          try {
-            const parsed = JSON.parse(storedValue) as unknown
-            if (typeof parsed === 'number') {
-              previousProgress = parsed
-            } else if (parsed && typeof parsed === 'object') {
-              const data = parsed as { progress?: number; level?: string }
-              if (typeof data.progress === 'number') {
-                previousProgress = data.progress
-              }
-              if (typeof data.level === 'string') {
-                previousLevel = data.level as StrengthLevel
-              }
-            }
-          } catch (error) {
-            console.warn('[StrengthBodyView] Failed to parse progress cache:', error)
-          }
-        }
-
-        if (
-          overallLevel.balancedNextLevel &&
-          previousProgress !== null &&
-          (!previousLevel || previousLevel === currentLevel)
-        ) {
-          const delta = currentProgress - previousProgress
-          if (delta !== 0) {
-            nextDelta = delta
-          }
-        }
-
-        setProgressDelta(nextDelta)
-
-        await AsyncStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            progress: currentProgress,
-            level: currentLevel,
-            updatedAt: Date.now(),
-          }),
-        )
-      } catch (error) {
-        console.error('[StrengthBodyView] Failed to sync progress delta:', error)
-      }
-    }
-
-    syncProgressDelta()
-
-    return () => {
-      isActive = false
-    }
-  }, [
-    isFocused,
-    user?.id,
-    overallLevel?.balancedProgress,
-    overallLevel?.balancedLevel,
-    overallLevel?.balancedNextLevel,
-  ])
-
+  const strengthGender = getStrengthGender(profile?.gender)
   // Compute tracked exercises with their level-up progression info
   const trackedExercisesWithProgress = useMemo(() => {
-    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+    if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
       return []
     }
 
@@ -213,7 +70,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
       // Get the standards ladder for this exercise
       const ladder = getStandardsLadder(
         exercise.exerciseName,
-        profile.gender as 'male' | 'female'
+        strengthGender,
       )
       
       let targetWeight: number | null = null
@@ -225,12 +82,32 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
         }
       }
 
+      const previousBest1RM =
+        best1RMSnapshotByExerciseId[exercise.exerciseId]?.previousBest1RM ?? 0
+      const previousStrengthInfo =
+        previousBest1RM > 0
+          ? getStrengthInfo(exercise.exerciseName, previousBest1RM)
+          : null
+      const progressDelta = getProgressDeltaPoints(
+        previousStrengthInfo
+          ? {
+              level: previousStrengthInfo.level,
+              progress: previousStrengthInfo.progress,
+            }
+          : null,
+        {
+          level: strengthInfo.level,
+          progress: strengthInfo.progress,
+        },
+      )
+
       return {
         ...exercise,
         level: strengthInfo.level,
         progress: strengthInfo.progress,
         nextLevel: strengthInfo.nextLevel?.level || null,
         targetWeight,
+        progressDelta,
       }
     }).filter(e => e.level !== null)
       .sort((a, b) => {
@@ -241,7 +118,13 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
         }
         return b.progress - a.progress
       })
-  }, [exerciseData, profile, getStrengthInfo])
+  }, [
+    best1RMSnapshotByExerciseId,
+    exerciseData,
+    getStrengthInfo,
+    profile?.weight_kg,
+    strengthGender,
+  ])
 
   // Navigate to exercise detail
   const navigateToExercise = useCallback(
@@ -253,81 +136,6 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     },
     [router],
   )
-
-  useEffect(() => {
-    if (!isFocused) {
-      setExerciseProgressDeltas({})
-      return
-    }
-    if (!user?.id) return
-    if (trackedExercisesWithProgress.length === 0) {
-      setExerciseProgressDeltas({})
-      return
-    }
-
-    let isActive = true
-
-    const syncExerciseDeltas = async () => {
-      const storageKey = `${LIFTER_EXERCISE_PROGRESS_KEY}:${user.id}`
-      let previous: Record<string, { progress?: number; level?: StrengthLevel }> = {}
-
-      try {
-        const storedValue = await AsyncStorage.getItem(storageKey)
-        if (!isActive) return
-
-        if (storedValue) {
-          try {
-            const parsed = JSON.parse(storedValue) as unknown
-            if (parsed && typeof parsed === 'object') {
-              previous = parsed as Record<string, { progress?: number; level?: StrengthLevel }>
-            }
-          } catch (error) {
-            console.warn('[StrengthBodyView] Failed to parse exercise progress cache:', error)
-          }
-        }
-
-        const nextDeltas: Record<string, number> = {}
-
-        trackedExercisesWithProgress.forEach((exercise) => {
-          if (!exercise.nextLevel) return
-
-          const currentProgress = Math.round(exercise.progress)
-          const previousEntry = previous[exercise.exerciseId]
-
-          if (previousEntry && typeof previousEntry.progress === 'number') {
-            if (!previousEntry.level || previousEntry.level === exercise.level) {
-              const delta = currentProgress - previousEntry.progress
-              if (delta !== 0) {
-                nextDeltas[exercise.exerciseId] = delta
-              }
-            }
-          }
-        })
-
-        if (!isActive) return
-        setExerciseProgressDeltas(nextDeltas)
-
-        const snapshot: Record<string, { progress: number; level: StrengthLevel; updatedAt: number }> = {}
-        trackedExercisesWithProgress.forEach((exercise) => {
-          snapshot[exercise.exerciseId] = {
-            progress: Math.round(exercise.progress),
-            level: exercise.level as StrengthLevel,
-            updatedAt: Date.now(),
-          }
-        })
-
-        await AsyncStorage.setItem(storageKey, JSON.stringify(snapshot))
-      } catch (error) {
-        console.error('[StrengthBodyView] Failed to sync exercise progress delta:', error)
-      }
-    }
-
-    syncExerciseDeltas()
-
-    return () => {
-      isActive = false
-    }
-  }, [isFocused, user?.id, trackedExercisesWithProgress])
 
   // Custom colors for the body highlighter based on strength levels
   // ARCHITECTURE NOTE:
@@ -474,28 +282,6 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                             {Math.round(overallLevel.balancedProgress)}% to{' '}
                             {overallLevel.balancedNextLevel}
                           </Text>
-                          {progressDelta !== null && (
-                            <View
-                              style={[
-                                styles.progressDeltaPill,
-                                progressDelta > 0
-                                  ? styles.progressDeltaPillUp
-                                  : styles.progressDeltaPillDown,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.progressDeltaText,
-                                  progressDelta > 0
-                                    ? styles.progressDeltaTextUp
-                                    : styles.progressDeltaTextDown,
-                                ]}
-                              >
-                                {progressDelta > 0 ? '+' : ''}
-                                {progressDelta}%
-                              </Text>
-                            </View>
-                          )}
                         </View>
                       ) : (
                         <Text style={styles.levelCardProgress}>Max Level Reached</Text>
@@ -543,6 +329,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                 <View style={styles.exerciseCardsContainer}>
                   {trackedExercisesWithProgress.map((exercise) => {
                     const levelColor = getLevelColor(exercise.level!)
+                    const gainColor = getLevelColor('Intermediate')
                     return (
                       <TouchableOpacity
                         key={exercise.exerciseId}
@@ -550,76 +337,52 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                         onPress={() => navigateToExercise(exercise.exerciseId)}
                         activeOpacity={0.7}
                       >
-                        {/* Header: Thumbnail + Name + Badge */}
-                        <View style={styles.cardHeader}>
+                        <View style={styles.exerciseInlineHeader}>
                           <ExerciseMediaThumbnail
                             gifUrl={exercise.gifUrl}
                             style={styles.exerciseCardThumbnail}
                           />
-                          <View style={styles.cardHeaderContent}>
+                          <View style={styles.exerciseInlineHeaderContent}>
                             <Text style={styles.exerciseCardName} numberOfLines={1}>
                               {exercise.exerciseName}
                             </Text>
-                            <View style={styles.levelBadgeContainer}>
-                               <LevelBadge level={exercise.level!} size="small" variant="pill" />
+                            <View style={styles.exerciseInlineProgressWrap}>
+                              <View style={styles.exerciseInlineProgressTopRow}>
+                                <View style={styles.exerciseInlineMetaRow}>
+                                  <Text
+                                    style={[
+                                      styles.exerciseInlineLevelLabel,
+                                      { color: levelColor },
+                                    ]}
+                                  >
+                                    {exercise.level!}
+                                  </Text>
+                                  {exercise.progressDelta > 0 && (
+                                    <Text style={[styles.exerciseInlineGainText, { color: gainColor }]}>
+                                      ▲ {exercise.progressDelta}%
+                                    </Text>
+                                  )}
+                                </View>
+                                <View style={styles.exerciseInlineProgressValueRow}>
+                                  <Text style={[styles.exerciseInlineProgressPercent, { color: levelColor }]}>
+                                    {Math.round(exercise.progress)}%
+                                  </Text>
+                                </View>
+                              </View>
+                              <View style={styles.exerciseInlineBarTrack}>
+                                <View
+                                  style={[
+                                    styles.exerciseInlineBarFill,
+                                    {
+                                      width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
+                                      backgroundColor: levelColor,
+                                    },
+                                  ]}
+                                />
+                              </View>
                             </View>
                           </View>
                         </View>
-
-                        {/* Goal Bar Section */}
-                        {exercise.targetWeight && exercise.nextLevel ? (
-                          <View style={styles.goalSection}>
-                             <View style={styles.goalLabels}>
-                                <Text style={styles.currentWeightText}>
-                                  {formatWeight(exercise.max1RM, { maximumFractionDigits: 0 })}
-                                </Text>
-                                <View style={styles.goalRightMeta}>
-                                  <Text style={styles.targetWeightText}>
-                                    {formatWeight(exercise.targetWeight, { maximumFractionDigits: 0 })}
-                                  </Text>
-                                  {exerciseProgressDeltas[exercise.exerciseId] !== undefined && (
-                                    <View
-                                      style={[
-                                        styles.exerciseDeltaPill,
-                                        exerciseProgressDeltas[exercise.exerciseId] > 0
-                                          ? styles.exerciseDeltaPillUp
-                                          : styles.exerciseDeltaPillDown,
-                                      ]}
-                                    >
-                                      <Text
-                                        style={[
-                                          styles.exerciseDeltaText,
-                                          exerciseProgressDeltas[exercise.exerciseId] > 0
-                                            ? styles.exerciseDeltaTextUp
-                                            : styles.exerciseDeltaTextDown,
-                                        ]}
-                                      >
-                                        {exerciseProgressDeltas[exercise.exerciseId] > 0 ? '+' : ''}
-                                        {exerciseProgressDeltas[exercise.exerciseId]}%
-                                      </Text>
-                                    </View>
-                                  )}
-                                </View>
-                             </View>
-                             
-                             {/* The Bar */}
-                             <View style={styles.goalBarBg}>
-                                <View 
-                                  style={[
-                                    styles.goalBarFill, 
-                                    { 
-                                      width: `${Math.min(100, Math.max(5, exercise.progress))}%`,
-                                      backgroundColor: levelColor 
-                                    }
-                                  ]} 
-                                />
-                             </View>
-                            </View>
-                        ) : (
-                          <View style={styles.goalSection}>
-                            <Text style={styles.maxReachedText}>Max Standards Reached</Text>
-                          </View>
-                        )}
                       </TouchableOpacity>
                     )
                   })}
@@ -756,31 +519,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
       flexWrap: 'wrap',
     },
-    progressDeltaPill: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 999,
-      borderWidth: 1,
-    },
-    progressDeltaPillUp: {
-      backgroundColor: colors.statusSuccess + '20',
-      borderColor: colors.statusSuccess + '40',
-    },
-    progressDeltaPillDown: {
-      backgroundColor: colors.statusError + '20',
-      borderColor: colors.statusError + '40',
-    },
-    progressDeltaText: {
-      fontSize: 11,
-      fontWeight: '700',
-      fontVariant: ['tabular-nums'],
-    },
-    progressDeltaTextUp: {
-      color: colors.statusSuccess,
-    },
-    progressDeltaTextDown: {
-      color: colors.statusError,
-    },
     progressBarContainer: {
       marginTop: 16,
     },
@@ -881,117 +619,77 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       padding: 16,
-      gap: 16,
+      gap: 10,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
       shadowRadius: 8,
       elevation: 2,
     },
-    cardHeader: {
+    exerciseInlineHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
+      alignItems: 'stretch',
+      gap: 10,
     },
     exerciseCardThumbnail: {
-      width: 48,
-      height: 48,
-      borderRadius: 10,
+      width: 56,
+      height: 56,
+      borderRadius: 14,
       backgroundColor: colors.bg,
       overflow: 'hidden',
     },
-    cardHeaderContent: {
+    exerciseInlineHeaderContent: {
       flex: 1,
+      minHeight: 56,
+      justifyContent: 'space-between',
+      paddingVertical: 2,
+    },
+    exerciseInlineProgressWrap: {
       gap: 4,
     },
-    exerciseCardName: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      letterSpacing: -0.3,
-    },
-    levelBadgeContainer: {
-      alignSelf: 'flex-start',
-    },
-    
-    // Goal Bar Styles
-    goalSection: {
-      gap: 8,
-    },
-    goalLabels: {
+    exerciseInlineProgressTopRow: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      alignItems: 'flex-end',
     },
-    goalRightMeta: {
+    exerciseInlineMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+      flexShrink: 1,
     },
-    currentWeightText: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: colors.textPrimary,
-      fontVariant: ['tabular-nums'],
+    exerciseInlineLevelLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      textAlign: 'center',
     },
-    targetWeightText: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: colors.textPrimary,
-      fontVariant: ['tabular-nums'],
-    },
-    goalBarBg: {
-      height: 8,
-      backgroundColor: colors.border,
-      borderRadius: 4,
-      overflow: 'hidden',
-    },
-    goalBarFill: {
-      height: '100%',
-      borderRadius: 4,
-    },
-    exerciseDeltaPill: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 999,
-      borderWidth: 1,
-    },
-    exerciseDeltaPillUp: {
-      backgroundColor: colors.statusSuccess + '20',
-      borderColor: colors.statusSuccess + '40',
-    },
-    exerciseDeltaPillDown: {
-      backgroundColor: colors.statusError + '20',
-      borderColor: colors.statusError + '40',
-    },
-    exerciseDeltaText: {
+    exerciseInlineGainText: {
       fontSize: 10,
+      fontWeight: '700',
+    },
+    exerciseInlineProgressValueRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    exerciseInlineProgressPercent: {
+      fontSize: 14,
       fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },
-    exerciseDeltaTextUp: {
-      color: colors.statusSuccess,
+    exerciseInlineBarTrack: {
+      height: 5,
+      backgroundColor: colors.border,
+      borderRadius: 999,
+      overflow: 'hidden',
     },
-    exerciseDeltaTextDown: {
-      color: colors.statusError,
+    exerciseInlineBarFill: {
+      height: '100%',
+      borderRadius: 999,
     },
-    goalSubLabels: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    currentLabelText: {
-      fontSize: 11,
+    exerciseCardName: {
+      fontSize: 16,
       fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    targetLabelText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.brandPrimary,
-    },
-    maxReachedText: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontStyle: 'italic',
+      lineHeight: 20,
+      color: colors.textPrimary,
     },
   })

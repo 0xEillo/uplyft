@@ -8,15 +8,17 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
+import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SlideUpView } from '@/components/slide-up-view'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
-import { getLevelColor, type MuscleGroupData } from '@/hooks/useStrengthData'
+import { type MuscleGroupData } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
+import { getStrengthGender } from '@/lib/strength-progress'
 import {
   getStrengthStandard,
   hasStrengthStandards,
@@ -44,6 +46,7 @@ export default function MuscleGroupDetailScreen() {
   const { profile } = useProfile()
   const [shouldExit, setShouldExit] = useState(false)
   const isIOSFormSheet = Platform.OS === 'ios'
+  const [showLevelSheet, setShowLevelSheet] = useState(false)
 
   const params = useLocalSearchParams<{
     groupDisplayName: string
@@ -80,7 +83,8 @@ export default function MuscleGroupDetailScreen() {
 
   const allMuscleExercises = useMemo(() => {
     const getStrengthInfo = (exerciseName: string, max1RM: number) => {
-      if (!profile?.gender || !profile?.weight_kg) {
+      const strengthGender = getStrengthGender(profile?.gender)
+      if (!strengthGender || !profile?.weight_kg) {
         return null
       }
 
@@ -90,7 +94,7 @@ export default function MuscleGroupDetailScreen() {
 
       return getStrengthStandard(
         exerciseName,
-        profile.gender as 'male' | 'female',
+        strengthGender,
         profile.weight_kg,
         max1RM,
       )
@@ -216,18 +220,12 @@ export default function MuscleGroupDetailScreen() {
 
             <View style={styles.exerciseRight}>
               {exercise.strengthInfo && (
-                <View
-                  style={[
-                    styles.levelBadgeItem,
-                    {
-                      backgroundColor: getLevelColor(
-                        exercise.strengthInfo.level as any,
-                      ),
-                    },
-                  ]}
-                >
-                  <Text style={styles.levelText}>{exercise.strengthInfo.level}</Text>
-                </View>
+                <LevelBadge
+                  level={exercise.strengthInfo.level}
+                  variant="pill"
+                  size="small"
+                  showTooltipOnPress={false}
+                />
               )}
               <Ionicons
                 name="chevron-forward"
@@ -258,7 +256,12 @@ export default function MuscleGroupDetailScreen() {
           <View style={styles.headerTitleGroup}>
             <Text style={styles.title}>{groupDisplayName}</Text>
             {groupData && (
-              <LevelBadge level={groupData.level} size="medium" variant="pill" />
+              <LevelBadge 
+                level={groupData.level} 
+                size="medium" 
+                variant="pill" 
+                onPress={() => setShowLevelSheet(true)}
+              />
             )}
           </View>
         </View>
@@ -281,6 +284,13 @@ export default function MuscleGroupDetailScreen() {
             listContent
           )}
         </ScrollView>
+        <LifterLevelsSheet
+          isVisible={showLevelSheet}
+          onClose={() => setShowLevelSheet(false)}
+          currentLevel={groupData?.level || 'Beginner'}
+          progressToNext={groupData?.progress || 0}
+          title={groupDisplayName}
+        />
       </View>
     )
   }
@@ -296,7 +306,12 @@ export default function MuscleGroupDetailScreen() {
       <View style={styles.header}>
         <View style={styles.headerTitleGroup}>
           <Text style={styles.title}>{groupDisplayName}</Text>
-          <LevelBadge level={groupData.level} size="medium" variant="pill" />
+          <LevelBadge 
+            level={groupData.level} 
+            size="medium" 
+            variant="pill" 
+            onPress={() => setShowLevelSheet(true)}
+          />
         </View>
       </View>
       <ScrollView
@@ -330,6 +345,13 @@ export default function MuscleGroupDetailScreen() {
           {content}
         </View>
       </SlideUpView>
+      <LifterLevelsSheet
+        isVisible={showLevelSheet}
+        onClose={() => setShowLevelSheet(false)}
+        currentLevel={groupData?.level || 'Beginner'}
+        progressToNext={groupData?.progress || 0}
+        title={groupDisplayName}
+      />
     </View>
   )
 }
@@ -457,16 +479,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-    },
-    levelBadgeItem: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
-    },
-    levelText: {
-      color: '#FFF',
-      fontSize: 11,
-      fontWeight: '700',
     },
     untrackedCard: {
       backgroundColor: colors.bg,

@@ -3,6 +3,7 @@ import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
+import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { SlideInView } from '@/components/slide-in-view'
@@ -63,7 +64,8 @@ export default function UserProfileScreen() {
   const { weightUnit } = useWeightUnits()
   const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
   const insets = useSafeAreaInsets()
-  const { level: userLevel } = useUserLevel(userId)
+  const { level: userLevel, progress: userProgress } = useUserLevel(userId)
+  const [showLevelSheet, setShowLevelSheet] = useState(false)
 
   const scrollY = useRef(new Animated.Value(0)).current
   const [workouts, setWorkouts] = useState<WorkoutSessionWithDetails[]>([])
@@ -545,6 +547,7 @@ export default function UserProfileScreen() {
                         level={userLevel}
                         size="medium"
                         style={styles.levelBadge}
+                        onPress={() => setShowLevelSheet(true)}
                       />
                     )}
                   </View>
@@ -867,6 +870,12 @@ export default function UserProfileScreen() {
             </View>
           )}
         </Animated.ScrollView>
+        <LifterLevelsSheet
+          isVisible={showLevelSheet}
+          onClose={() => setShowLevelSheet(false)}
+          currentLevel={userLevel || 'Beginner'}
+          progressToNext={userProgress || 0}
+        />
       </View>
     </SlideInView>
   )

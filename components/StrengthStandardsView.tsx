@@ -3,24 +3,25 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SupportedExercisesSheet } from '@/components/SupportedExercisesSheet'
 import {
-  getLevelColor,
-  getLevelIntensity,
-  useStrengthData
+    getLevelColor,
+    getLevelIntensity,
+    useStrengthData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthStandard } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
@@ -128,6 +129,7 @@ export function StrengthStandardsView() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
   const [showSupportedSheet, setShowSupportedSheet] = useState(false)
+  const strengthGender = getStrengthGender(profile?.gender)
 
   const toggleGroup = useCallback((groupName: string) => {
     setExpandedGroups((prev) => {
@@ -153,7 +155,7 @@ export function StrengthStandardsView() {
 
   // Compute tracked exercises with their level-up progression info
   const trackedExercisesWithProgress = useMemo(() => {
-    if (!profile?.gender || !profile?.weight_kg || exerciseData.length === 0) {
+    if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
       return []
     }
 
@@ -172,7 +174,7 @@ export function StrengthStandardsView() {
       // Get the standards ladder for this exercise
       const ladder = getStandardsLadder(
         exercise.exerciseName,
-        profile.gender as 'male' | 'female'
+        strengthGender,
       )
       
       let targetWeight: number | null = null
@@ -201,7 +203,7 @@ export function StrengthStandardsView() {
         }
         return b.progress - a.progress
       })
-  }, [exerciseData, profile, getStrengthInfo])
+  }, [exerciseData, getStrengthInfo, profile?.weight_kg, strengthGender])
 
   const styles = createStyles(colors)
 
@@ -494,7 +496,7 @@ export function StrengthStandardsView() {
                                   <View
                                     style={[
                                       styles.exerciseLevelBadge,
-                                      { backgroundColor: getLevelColor(strengthInfo.level as any) },
+                                      { backgroundColor: getLevelColor(strengthInfo.level) },
                                     ]}
                                   >
                                     <Text

@@ -3,6 +3,7 @@ import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
+import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { ProfileDashboard } from '@/components/Profile/ProfileDashboard'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -47,8 +48,9 @@ export default function ProfileScreen() {
   const { weightUnit } = useWeightUnits()
   const { registerScrollRef } = useScrollToTop()
   const flatListRef = useRef<FlatList>(null)
-  const { level: userLevel } = useUserLevel(user?.id)
+  const { level: userLevel, progress: userProgress } = useUserLevel(user?.id)
   const insets = useSafeAreaInsets()
+  const [showLevelSheet, setShowLevelSheet] = useState(false)
   // const params = useLocalSearchParams() // Removed redundant param check
   // const [showPaywall, setShowPaywall] = useState(false)
   // const [isPaywallForced, setIsPaywallForced] = useState(false)
@@ -578,6 +580,7 @@ export default function ProfileScreen() {
                             level={userLevel}
                             size="medium"
                             style={styles.levelBadge}
+                            onPress={() => setShowLevelSheet(true)}
                           />
                         )}
                       </View>
@@ -716,6 +719,12 @@ export default function ProfileScreen() {
           scrollEventThrottle={16}
         />
       )}
+      <LifterLevelsSheet
+        isVisible={showLevelSheet}
+        onClose={() => setShowLevelSheet(false)}
+        currentLevel={userLevel || 'Beginner'}
+        progressToNext={userProgress || 0}
+      />
     </View>
   )
 }

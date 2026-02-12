@@ -48,6 +48,7 @@ export interface ExercisePRInfo {
 interface WorkoutDetailViewProps {
   workout: WorkoutSessionWithDetails | null
   prInfo?: ExercisePRInfo[]
+  previousMax1RMByExerciseId?: Record<string, number> | null
   // Social props
   likeCount?: number
   commentCount?: number
@@ -89,6 +90,7 @@ function normalizeReturnToParam(
 export function WorkoutDetailView({
   workout,
   prInfo = [],
+  previousMax1RMByExerciseId = null,
   likeCount = 0,
   commentCount = 0,
   isLiked = false,
@@ -512,6 +514,14 @@ export function WorkoutDetailView({
                       key={workoutExercise.id || index}
                       workoutExercise={workoutExercise}
                       prInfo={exercisePR}
+                      profile={workout.profile}
+                      previousBest1RMKg={
+                        previousMax1RMByExerciseId
+                          ? (previousMax1RMByExerciseId[
+                              workoutExercise.exercise_id
+                            ] ?? 0)
+                          : undefined
+                      }
                       onExercisePress={onExercisePress}
                     />
                   )

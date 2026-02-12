@@ -21,6 +21,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
   Dimensions,
+  Image,
   Keyboard,
   Platform,
   ScrollView,
@@ -31,6 +32,7 @@ import {
   View
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
+import Svg, { Ellipse, Path } from 'react-native-svg'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -66,6 +68,9 @@ interface StrengthLevelIntroStepProps {
   weightUnit: 'kg' | 'lb'
   onComplete: () => void
   colors: ReturnType<typeof useThemedColors>
+  onPhaseChange?: (
+    phase: 'select' | 'input' | 'result' | 'affirmation' | 'rating'
+  ) => void
 }
 
 interface ExerciseCardProps {
@@ -153,8 +158,9 @@ export function StrengthLevelIntroStep({
   weightUnit,
   onComplete,
   colors,
+  onPhaseChange,
 }: StrengthLevelIntroStepProps) {
-  const [phase, setPhase] = useState<'select' | 'input' | 'result' | 'affirmation'>('select')
+  const [phase, setPhase] = useState<'select' | 'input' | 'result' | 'affirmation' | 'rating'>('select')
   const [selectedExercise, setSelectedExercise] =
     useState<ExerciseStandardsConfig | null>(null)
   const [inputWeight, setInputWeight] = useState('')
@@ -169,6 +175,7 @@ export function StrengthLevelIntroStep({
   const { isDark } = useTheme()
   const { convertInputToKg } = useWeightUnits()
   const confettiRef = useRef<any>(null)
+  const hasRequestedReviewOnRatingRef = useRef(false)
   const fadeAnim = useRef(new Animated.Value(1)).current
   const slideAnim = useRef(new Animated.Value(0)).current
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
@@ -198,7 +205,7 @@ export function StrengthLevelIntroStep({
   }, [])
 
   const animateTransition = useCallback(
-    (nextPhase: 'select' | 'input' | 'result' | 'affirmation') => {
+    (nextPhase: 'select' | 'input' | 'result' | 'affirmation' | 'rating') => {
       // Fade out
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -270,18 +277,26 @@ export function StrengthLevelIntroStep({
   }, [selectedExercise])
 
   useEffect(() => {
-    if (phase === 'affirmation') {
-      const timer = setTimeout(async () => {
-        try {
-          await requestReview()
-          await markUserAsRated()
-        } catch (error) {
-          console.log('Error requesting review:', error)
-        }
-      }, 1000)
-      return () => clearTimeout(timer)
+    if (phase !== 'rating' || Platform.OS !== 'ios' || hasRequestedReviewOnRatingRef.current) {
+      return
     }
+
+    const timer = setTimeout(async () => {
+      hasRequestedReviewOnRatingRef.current = true
+      try {
+        await requestReview()
+        await markUserAsRated()
+      } catch (error) {
+        console.log('Error requesting review:', error)
+      }
+    }, 350)
+
+    return () => clearTimeout(timer)
   }, [phase])
+
+  useEffect(() => {
+    onPhaseChange?.(phase)
+  }, [onPhaseChange, phase])
 
   const handleCalculateLevel = useCallback(() => {
     if (!selectedExercise || !inputWeight || !inputReps || !gender) return
@@ -747,9 +762,9 @@ export function StrengthLevelIntroStep({
     const ranksGained = targetIndex - currentLevelIndex
     
     // Dynamic copy based on potential growth
-    const titleText = ranksGained >= 2 ? "Unlock your true potential." : 
-                      ranksGained === 1 ? "Reach peak performance." :
-                      "Redefine your limits."
+    const titleText = ranksGained >= 2 ? "Get stronger on your favorite lifts." : 
+                      ranksGained === 1 ? "Get stronger on your favorite lifts." :
+                      "Get stronger on your favorite lifts."
                       
     const subtitleText = ranksGained >= 2 ? "On average, Rep AI users gain +2 strength ranks in their first 6 months." :
                          ranksGained === 1 ? "You're almost at the top. We'll give you the roadmap to the 1%." :
@@ -842,11 +857,207 @@ export function StrengthLevelIntroStep({
               styles.primaryButton,
               { backgroundColor: colors.textPrimary, shadowColor: colors.textPrimary },
             ]}
-            onPress={onComplete}
+            onPress={() => animateTransition('rating')}
             hapticIntensity="medium"
           >
             <Text style={[styles.primaryButtonText, { color: colors.bg }]}>Let&rsquo;s do this</Text>
           </HapticButton>
+        </View>
+      </View>
+    )
+  }
+
+  const renderRatingPhase = () => {
+    const laurelColor = '#D99A62'
+
+    const renderLaurel = (side: 'left' | 'right') => (
+      <View
+        style={{
+          width: 44,
+          height: 64,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: side === 'right' ? [{ scaleX: -1 }] : undefined,
+        }}
+      >
+        <Svg width={44} height={64} viewBox="0 0 46 96">
+          <Path
+            d="M34 88 C20 76 12 61 11 45 C10 29 16 16 27 8"
+            stroke={laurelColor}
+            strokeWidth={4}
+            strokeLinecap="round"
+            fill="none"
+          />
+          <Ellipse cx={20} cy={14} rx={6.3} ry={4.2} fill={laurelColor} transform="rotate(-68 20 14)" />
+          <Ellipse cx={14} cy={25} rx={6.8} ry={4.6} fill={laurelColor} transform="rotate(-53 14 25)" />
+          <Ellipse cx={11} cy={36} rx={7.1} ry={4.9} fill={laurelColor} transform="rotate(-40 11 36)" />
+          <Ellipse cx={11} cy={48} rx={7.2} ry={5} fill={laurelColor} transform="rotate(-26 11 48)" />
+          <Ellipse cx={14} cy={60} rx={7.4} ry={5.1} fill={laurelColor} transform="rotate(-12 14 60)" />
+          <Ellipse cx={19} cy={72} rx={7.6} ry={5.2} fill={laurelColor} transform="rotate(2 19 72)" />
+          <Ellipse cx={25} cy={82} rx={7.7} ry={5.3} fill={laurelColor} transform="rotate(14 25 82)" />
+          <Ellipse cx={27} cy={20} rx={5.7} ry={4} fill={laurelColor} transform="rotate(38 27 20)" />
+          <Ellipse cx={23} cy={31} rx={6.1} ry={4.2} fill={laurelColor} transform="rotate(34 23 31)" />
+          <Ellipse cx={22} cy={42} rx={6.4} ry={4.4} fill={laurelColor} transform="rotate(28 22 42)" />
+          <Ellipse cx={24} cy={54} rx={6.7} ry={4.6} fill={laurelColor} transform="rotate(20 24 54)" />
+          <Ellipse cx={29} cy={66} rx={7} ry={4.8} fill={laurelColor} transform="rotate(12 29 66)" />
+        </Svg>
+      </View>
+    )
+
+    return (
+      <View style={styles.phaseContainer}>
+        <View style={styles.header}>
+            <View style={styles.titleContainer}>
+                <Text style={[styles.title, { color: colors.textPrimary }]}>
+                    Give us a rating
+                </Text>
+            </View>
+        </View>
+
+        <View>
+            {/* Rating Summary Card */}
+            <View style={{
+                backgroundColor: colors.surfaceCard,
+                borderRadius: 24,
+                padding: 24,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: colors.border,
+                marginBottom: 40,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+                elevation: 4,
+            }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    {renderLaurel('left')}
+                    <View style={{ alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                            <Text style={{ fontSize: 32, fontWeight: '800', color: colors.textPrimary }}>
+                                4.8
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 2 }}>
+                                {[1, 2, 3, 4, 5].map(i => (
+                                    <Ionicons key={i} name="star" size={20} color={laurelColor} />
+                                ))}
+                            </View>
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>
+                            Trusted by experienced lifters
+                        </Text>
+                    </View>
+                    {renderLaurel('right')}
+                </View>
+            </View>
+
+            {/* Social Proof Section */}
+            <View style={{ alignItems: 'center', marginBottom: 40 }}>
+                <Text style={{ 
+                    fontSize: 24, 
+                    fontWeight: '800', 
+                    textAlign: 'center', 
+                    color: colors.textPrimary,
+                    marginBottom: 20,
+                    lineHeight: 30
+                }}>
+                    Rep AI was made for{'\n'}people like you
+                </Text>
+
+                <View style={{ flexDirection: 'row', marginBottom: 12, height: 76, alignItems: 'center', justifyContent: 'center' }}>
+                    {[
+                        'https://unsplash.com/photos/vSKZ-vCSgf8/download?force=true&w=120&h=120',
+                        'https://unsplash.com/photos/2EdIqBs2LeI/download?force=true&w=120&h=120',
+                        'https://unsplash.com/photos/apUfSZDonPo/download?force=true&w=120&h=120'
+                    ].map((url, i) => (
+                        <Image
+                            key={i}
+                            source={{ uri: url }}
+                            style={{
+                                width: 72,
+                                height: 72,
+                                borderRadius: 36,
+                                borderWidth: 3,
+                                borderColor: colors.bg,
+                                marginLeft: i > 0 ? -20 : 0,
+                                zIndex: 3 - i
+                            }}
+                        />
+                    ))}
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textPrimary }}>
+                    Join others training with Rep AI
+                </Text>
+            </View>
+
+            {/* Testimonial Card */}
+            <View style={{
+                backgroundColor: colors.surfaceCard,
+                borderRadius: 20,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+                elevation: 4,
+            }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Image
+                            source={{ uri: 'https://unsplash.com/photos/CxFA1kTu9-k/download?force=true&w=120&h=120' }}
+                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                        />
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>
+                            Jake Sullivan
+                        </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <Ionicons key={i} name="star" size={14} color={laurelColor} />
+                        ))}
+                    </View>
+                </View>
+                <Text style={{ fontSize: 15, lineHeight: 22, color: colors.textSecondary }}>
+                    I added serious strength in 8 weeks and finally started progressive overload the right way. My lifts are up across the board.
+                </Text>
+            </View>
+
+            {/* Testimonial Card 2 */}
+            <View style={{
+                backgroundColor: colors.surfaceCard,
+                borderRadius: 20,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+                elevation: 4,
+                marginTop: 16,
+            }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Image
+                            source={{ uri: 'https://unsplash.com/photos/aHqe_NrxrUk/download?force=true&w=120&h=120' }}
+                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                        />
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>
+                            Sarah Jenkins
+                        </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <Ionicons key={i} name="star" size={14} color={laurelColor} />
+                        ))}
+                    </View>
+                </View>
+                <Text style={{ fontSize: 15, lineHeight: 22, color: colors.textSecondary }}>
+                    This is the first app that actually adjusts to my training. I have built more muscle, and my squat and press numbers keep climbing.
+                </Text>
+            </View>
         </View>
       </View>
     )
@@ -867,6 +1078,7 @@ export function StrengthLevelIntroStep({
         {phase === 'input' && renderInputPhase()}
         {phase === 'result' && renderResultPhase()}
         {phase === 'affirmation' && renderAffirmationPhase()}
+        {phase === 'rating' && renderRatingPhase()}
       </Animated.View>
     </View>
   )
@@ -875,12 +1087,15 @@ export function StrengthLevelIntroStep({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
   },
   animatedContainer: {
     flex: 1,
+    minHeight: 0,
   },
   phaseContainer: {
     flex: 1,
+    minHeight: 0,
   },
   header: {
     marginBottom: 24,

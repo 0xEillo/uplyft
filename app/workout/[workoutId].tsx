@@ -44,6 +44,8 @@ export default function WorkoutDetailScreen() {
   const [commentCount, setCommentCount] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
   const [prInfo, setPrInfo] = useState<ExercisePRInfo[]>([])
+  const [previousMax1RMByExerciseId, setPreviousMax1RMByExerciseId] =
+    useState<Record<string, number> | null>(null)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [workoutCount, setWorkoutCount] = useState(1)
 
@@ -128,6 +130,40 @@ export default function WorkoutDetailScreen() {
   useEffect(() => {
     loadSocialStats()
   }, [loadSocialStats])
+
+  // Baseline max 1RM values before this workout (used for +X% level progress deltas)
+  useEffect(() => {
+    if (!workout?.created_at || !workout?.id || !user?.id) {
+      setPreviousMax1RMByExerciseId(null)
+      return
+    }
+
+    let isMounted = true
+    setPreviousMax1RMByExerciseId(null)
+
+    const loadBaselineMax1RMs = async () => {
+      try {
+        const baseline = await database.stats.getExerciseMax1RMsBeforeDate(
+          user.id,
+          workout.created_at,
+          workout.id,
+        )
+        if (!isMounted) return
+        setPreviousMax1RMByExerciseId(baseline)
+      } catch (error) {
+        console.error('Error loading baseline max 1RMs:', error)
+        if (isMounted) {
+          setPreviousMax1RMByExerciseId({})
+        }
+      }
+    }
+
+    loadBaselineMax1RMs()
+
+    return () => {
+      isMounted = false
+    }
+  }, [workout?.created_at, workout?.id, user?.id])
 
   // Load workout count for the week
   useEffect(() => {
@@ -289,6 +325,7 @@ export default function WorkoutDetailScreen() {
         onDelete={isOwnWorkout ? handleDelete : undefined}
         onCreateRoutine={handleCreateRoutine}
         onExercisePress={handleExercisePress}
+        previousMax1RMByExerciseId={previousMax1RMByExerciseId}
         isLoading={isLoading}
       />
 
@@ -307,4 +344,3 @@ export default function WorkoutDetailScreen() {
     </>
   )
 }
-

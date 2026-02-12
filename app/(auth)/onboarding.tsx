@@ -97,6 +97,13 @@ interface FinalPlanStepProps extends StepContentProps {
   weightUnit: string
 }
 
+type StrengthIntroPhase =
+  | 'select'
+  | 'input'
+  | 'result'
+  | 'affirmation'
+  | 'rating'
+
 // Map step numbers to their human-readable names
 // Three section interstitials are inserted to group the onboarding flow.
 const STEP_NAMES: { [key: number]: string } = {
@@ -111,8 +118,8 @@ const STEP_NAMES: { [key: number]: string } = {
   9: 'commitment_level',
   10: 'habit_reinforcement',
   11: 'section_body_nutrition',
-  12: 'equipment_selection',
-  13: 'weight_entry',
+  12: 'weight_entry',
+  13: 'equipment_selection',
   // Strength level comes first so user gets their rank
   14: 'strength_level_intro',
   // Calorie tracking branch (steps 15-19)
@@ -1526,6 +1533,8 @@ export default function OnboardingScreen() {
   const { refreshProfile } = useProfile()
   const insets = useSafeAreaInsets()
   const [step, setStep] = useState(1)
+  const [strengthIntroPhase, setStrengthIntroPhase] =
+    useState<StrengthIntroPhase>('select')
   const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
@@ -1573,6 +1582,12 @@ export default function OnboardingScreen() {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
+
+  useEffect(() => {
+    if (step !== 14 && strengthIntroPhase !== 'select') {
+      setStrengthIntroPhase('select')
+    }
+  }, [step, strengthIntroPhase])
 
   // Preload coach images on mount
   useEffect(() => {
@@ -1706,11 +1721,11 @@ export default function OnboardingScreen() {
         stepMetadata.commitment = data.commitment
         break
       case 12:
-        stepMetadata.equipment = data.equipment
-        break
-      case 13:
         stepMetadata.weight = data.weight_kg
         stepMetadata.unit = weightUnit
+        break
+      case 13:
+        stepMetadata.equipment = data.equipment
         break
       case 15:
         stepMetadata.wants_calorie_tracking = data.wantsCalorieTracking
@@ -1778,7 +1793,7 @@ export default function OnboardingScreen() {
 
     // Save equipment preference to AsyncStorage when leaving equipment step
     // This will be used by the workout wizard to pre-fill the equipment setting
-    if (step === 12 && data.equipment.length > 0) {
+    if (step === 13 && data.equipment.length > 0) {
       let equipmentType = 'home_minimal'
 
       if (data.equipment.includes('full_gym')) {
@@ -1954,7 +1969,7 @@ export default function OnboardingScreen() {
   const hasAutoSwipe = () => {
     // Section pages auto-advance (5, 11, 20).
     // Step 8 (gender) auto-swipes when an option is selected.
-    // Step 14 (strength level) has its own flow and completion handler.
+    // Step 14 (strength level) has its own flow, except rating phase which uses the global fixed footer.
     // Step 15 (nutrition opt-in) auto-swipes on selection.
     // Step 23 (processing) auto-advances after bars fill.
     // Step 25 (commitment pledge) has its own custom footer/interaction.
@@ -1962,7 +1977,7 @@ export default function OnboardingScreen() {
       step === 5 ||
       step === 8 ||
       step === 11 ||
-      step === 14 ||
+      (step === 14 && strengthIntroPhase !== 'rating') ||
       step === 15 ||
       step === 20 ||
       step === 23 ||
@@ -2030,9 +2045,9 @@ export default function OnboardingScreen() {
       case 11:
         return false // Section interstitial
       case 12:
-        return data.equipment.length > 0 // Equipment selection
-      case 13:
         return true // Weight entry step - defaults are fine
+      case 13:
+        return data.equipment.length > 0 // Equipment selection
       case 14:
         return true // Strength level intro - handled by component
       case 15:
@@ -2496,7 +2511,7 @@ export default function OnboardingScreen() {
             </Text>
           </View>
         )
-      case 12:
+      case 13:
         // Equipment Selection Step
         const EQUIPMENT_OPTIONS = [
           { value: 'full_gym', label: 'Full gym' },
@@ -2586,7 +2601,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 13:
+      case 12:
         // Stats Entry Step (Redesigned)
         const weightRange =
           weightUnit === 'kg'
@@ -2716,7 +2731,7 @@ export default function OnboardingScreen() {
         )
       // ========== Strength Level Intro (Step 14) ==========
       case 14:
-        // Strength Level Intro - comes right after weight entry
+        // Strength Level Intro
         return (
           <StrengthLevelIntroStep
             gender={data.gender as 'male' | 'female' | null}
@@ -2728,6 +2743,7 @@ export default function OnboardingScreen() {
             weightUnit={weightUnit}
             onComplete={handleNext}
             colors={colors}
+            onPhaseChange={setStrengthIntroPhase}
           />
         )
 
@@ -3285,40 +3301,52 @@ export default function OnboardingScreen() {
         const tdee = calculateEstimatedTDEE()
         const targetCalories = data.calorieGoal ?? tdee
         const dailyDelta = targetCalories - tdee
+        const deltaRatio = tdee > 0 ? Math.abs(dailyDelta) / tdee : 0
         const weeklyLbs = Math.abs((dailyDelta * 7) / 3500)
         const weeklyKg = weeklyLbs * 0.453592
         const isMaintenance = Math.abs(dailyDelta) < 10
         const isCut = dailyDelta < 0
+        const isAggressiveCut = isCut && deltaRatio >= 0.2
         const weeklyRate = weightUnit === 'kg' ? weeklyKg : weeklyLbs
         const weeklyUnit = weightUnit === 'kg' ? 'kg/week' : 'lb/week'
-        const accentColor = isMaintenance
-          ? '#3B82F6'
-          : isCut
-          ? '#F97316'
-          : '#10B981'
         const weeklyRateText = `${weeklyRate.toFixed(1)} ${weeklyUnit}`
-        const headlinePrefix = isMaintenance
-          ? 'Maintain your weight'
-          : `${isCut ? 'Lose' : 'Gain'} `
-        const headlineSuffix = ` at ${targetCalories} kcal/day.`
+        const planType = isMaintenance
+          ? 'maintenance'
+          : isCut
+          ? isAggressiveCut
+            ? 'aggressive_cut'
+            : 'cut'
+          : 'bulk'
+
+        const affirmationCopy: Record<
+          'bulk' | 'maintenance' | 'cut' | 'aggressive_cut',
+          { title: string; description: string }
+        > = {
+          bulk: {
+            title: 'Strong choice. You are set up to build muscle and strength.',
+            description: `Your target is ${targetCalories} kcal/day, aiming for about ${weeklyRateText}. Stay consistent and your lifts will keep climbing.`,
+          },
+          maintenance: {
+            title: 'Smart call. Maintenance is perfect for body recomposition.',
+            description: `Your target is ${targetCalories} kcal/day. You can gain strength and improve definition without big swings on the scale.`,
+          },
+          cut: {
+            title: 'Great pick. This cut is balanced, sustainable, and effective.',
+            description: `Your target is ${targetCalories} kcal/day, aiming for about ${weeklyRateText}. You can lean out while keeping strong training momentum.`,
+          },
+          aggressive_cut: {
+            title: 'Locked in. You chose an aggressive cut with clear intent.',
+            description: `Your target is ${targetCalories} kcal/day, aiming for about ${weeklyRateText}. Stay disciplined and you can move fast while preserving muscle.`,
+          },
+        }
+        const selectedAffirmation = affirmationCopy[planType]
 
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>
-                Target locked in.
-                {'\n'}
-                <Text style={styles.stepTitleOutcome}>
-                  {headlinePrefix}
-                  {!isMaintenance && (
-                    <Text
-                      style={[styles.stepTitleOutcomeAccent, { color: accentColor }]}
-                    >
-                      {weeklyRateText}
-                    </Text>
-                  )}
-                  {headlineSuffix}
-                </Text>
+              <Text style={styles.stepTitle}>{selectedAffirmation.title}</Text>
+              <Text style={[styles.stepSubtitle, { marginTop: 10, fontSize: 16, lineHeight: 23 }]}>
+                {selectedAffirmation.description}
               </Text>
             </View>
           </View>
@@ -4056,6 +4084,8 @@ export default function OnboardingScreen() {
                     ? "Let's Go"
                     : step === 4
                     ? "Let's Get Started!"
+                    : step === 14 && strengthIntroPhase === 'rating'
+                    ? 'Continue'
                     : step === 24
                     ? 'Get Started'
                     : 'Next'}
