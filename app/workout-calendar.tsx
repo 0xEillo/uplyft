@@ -1,17 +1,21 @@
 import { CalendarShareScreen } from '@/components/calendar-share-screen'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { haptic } from '@/lib/haptics'
 import { database } from '@/lib/database'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     PanResponder,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -22,10 +26,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type ViewMode = 'month' | 'year' | 'multi-year'
 
+const VIEW_MODES: { key: ViewMode; label: string }[] = [
+  { key: 'month', label: 'Month' },
+  { key: 'year', label: 'Year' },
+  { key: 'multi-year', label: 'All' },
+]
+
+const CONTROL_WIDTH = 195
+const TAB_WIDTH = CONTROL_WIDTH / 3
+const PILL_PADDING = 3
+
 export default function WorkoutCalendarScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const [viewMode, setViewMode] = useState<ViewMode>('month')
+  const indicatorLeft = useRef(new Animated.Value(PILL_PADDING)).current
   const [isLoading, setIsLoading] = useState(true)
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
   const [currentDate, setCurrentDate] = useState(() => new Date())
@@ -64,6 +79,23 @@ export default function WorkoutCalendarScreen() {
   useEffect(() => {
     loadWorkoutDates()
   }, [loadWorkoutDates])
+
+  useEffect(() => {
+    const index = VIEW_MODES.findIndex((m) => m.key === viewMode)
+    const toValue = index >= 0 ? PILL_PADDING + index * TAB_WIDTH : PILL_PADDING
+    Animated.spring(indicatorLeft, {
+      toValue,
+      useNativeDriver: false,
+      tension: 300,
+      friction: 30,
+    }).start()
+  }, [viewMode, indicatorLeft])
+
+  const handleViewModePress = useCallback((mode: ViewMode) => {
+    if (mode === viewMode) return
+    haptic('light')
+    setViewMode(mode)
+  }, [viewMode])
 
   const handleBack = () => {
     router.back()
@@ -522,68 +554,56 @@ export default function WorkoutCalendarScreen() {
         }}
       />
       <View style={[styles.header, { paddingTop: isIOS ? insets.top + 6 : 12 }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <LiquidGlassSurface style={styles.iconShell}>
+          <TouchableOpacity onPress={handleBack} style={styles.iconButton}>
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </LiquidGlassSurface>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitleText}>Workout Calendar</Text>
         </View>
-        <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-          <Ionicons name="share-outline" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <LiquidGlassSurface style={styles.iconShell}>
+          <TouchableOpacity onPress={handleShare} style={styles.iconButton}>
+            <Ionicons name="share-outline" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </LiquidGlassSurface>
       </View>
 
       {/* View Mode Selector */}
       <View style={styles.viewModeSelectorContainer}>
-        <View style={styles.viewModeSelector}>
-          <TouchableOpacity
-            style={[
-              styles.viewModeButton,
-              viewMode === 'month' && styles.viewModeButtonActive,
-            ]}
-            onPress={() => setViewMode('month')}
-          >
-            <Text
+        <View style={styles.segmentedWrapper}>
+          <View style={styles.segmentedControl}>
+            <Animated.View
               style={[
-                styles.viewModeText,
-                viewMode === 'month' && styles.viewModeTextActive,
+                styles.slideIndicator,
+                {
+                  width: TAB_WIDTH - PILL_PADDING * 2,
+                  left: indicatorLeft,
+                },
               ]}
             >
-              Month
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.viewModeButton,
-              viewMode === 'year' && styles.viewModeButtonActive,
-            ]}
-            onPress={() => setViewMode('year')}
-          >
-            <Text
-              style={[
-                styles.viewModeText,
-                viewMode === 'year' && styles.viewModeTextActive,
-              ]}
-            >
-              Year
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.viewModeButton,
-              viewMode === 'multi-year' && styles.viewModeButtonActive,
-            ]}
-            onPress={() => setViewMode('multi-year')}
-          >
-            <Text
-              style={[
-                styles.viewModeText,
-                viewMode === 'multi-year' && styles.viewModeTextActive,
-              ]}
-            >
-              Multi-year
-            </Text>
-          </TouchableOpacity>
+              <LiquidGlassSurface style={styles.activeTabBubble} />
+            </Animated.View>
+            {VIEW_MODES.map((mode) => {
+              const isActive = viewMode === mode.key
+              return (
+                <Pressable
+                  key={mode.key}
+                  onPress={() => handleViewModePress(mode.key)}
+                  style={styles.tabButton}
+                >
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      isActive && styles.tabLabelActive,
+                    ]}
+                  >
+                    {mode.label}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
         </View>
       </View>
 
@@ -636,12 +656,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 12,
       backgroundColor: colors.bg,
     },
-    backButton: {
-      minWidth: 44,
-      minHeight: 44,
+    iconShell: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       alignItems: 'center',
       justifyContent: 'center',
-      marginLeft: -7,
+    },
+    iconButton: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     headerTitleContainer: {
       flex: 1,
@@ -653,13 +679,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       color: colors.textPrimary,
       textAlign: 'center',
-    },
-    shareButton: {
-      minWidth: 44,
-      minHeight: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: -7,
     },
     /* Streak Hero Styles */
     streakHeroContainer: {
@@ -702,27 +721,44 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 12,
       backgroundColor: colors.bg,
     },
-    viewModeSelector: {
+    segmentedWrapper: {
+      paddingHorizontal: 4,
+      paddingVertical: 4,
+    },
+    segmentedControl: {
       flexDirection: 'row',
-      backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
-      padding: 2,
+      backgroundColor: 'transparent',
+      position: 'relative',
+      width: CONTROL_WIDTH,
     },
-    viewModeButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-      borderRadius: 6,
+    slideIndicator: {
+      position: 'absolute',
+      top: PILL_PADDING,
+      bottom: PILL_PADDING,
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: 'transparent',
     },
-    viewModeButtonActive: {
-      backgroundColor: colors.surfaceCard,
+    activeTabBubble: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 20,
     },
-    viewModeText: {
-      fontSize: 14,
+    tabButton: {
+      flex: 1,
+      height: 38,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    tabLabel: {
+      fontSize: 15,
       fontWeight: '600',
       color: colors.textSecondary,
+      letterSpacing: -0.2,
     },
-    viewModeTextActive: {
+    tabLabelActive: {
       color: colors.textPrimary,
+      fontWeight: '700',
     },
     loadingContainer: {
       flex: 1,
