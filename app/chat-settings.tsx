@@ -224,7 +224,7 @@ export default function ChatSettingsScreen() {
               {recommendations.map((rec) => (
                 <TouchableOpacity
                   key={rec.label}
-                  style={[styles.recommendationCard, { borderColor: rec.color }]}
+                  style={styles.recommendationCard}
                   onPress={() => saveCalorieGoal(rec.calories)}
                 >
                   <Text style={[styles.recommendationLabel, { color: rec.color }]}>
@@ -382,6 +382,7 @@ const createStyles = (
       borderRadius: 16,
       padding: 12,
       borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
       alignItems: 'center',
     },
     recommendationLabel: {
@@ -389,6 +390,7 @@ const createStyles = (
       fontWeight: '700',
       textTransform: 'uppercase',
       marginBottom: 4,
+      color: colors.textSecondary,
     },
     recommendationValue: {
       fontSize: 18,

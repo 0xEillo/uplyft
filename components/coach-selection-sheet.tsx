@@ -199,7 +199,7 @@ export function CoachSelectionSheet({
                  {recommendations.map((rec) => (
                      <TouchableOpacity
                         key={rec.label}
-                        style={[styles.recommendationCard, { borderColor: rec.color }]}
+                        style={styles.recommendationCard}
                         onPress={() => applyRecommendation(rec.calories)}
                      >
                          <Text style={[styles.recommendationLabel, { color: rec.color }]}>{rec.label}</Text>
@@ -493,6 +493,7 @@ const createStyles = (colors: any, insets: any) =>
         borderRadius: 16,
         padding: 12,
         borderWidth: 1,
+        borderColor: colors.border,
         alignItems: 'center',
     },
     recommendationLabel: {
@@ -500,6 +501,7 @@ const createStyles = (colors: any, insets: any) =>
         fontWeight: '700',
         textTransform: 'uppercase',
         marginBottom: 4,
+        color: colors.textSecondary,
     },
     recommendationValue: {
         fontSize: 18,
