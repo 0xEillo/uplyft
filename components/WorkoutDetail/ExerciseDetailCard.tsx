@@ -241,7 +241,12 @@ export function ExerciseDetailCard({
           autoPlay={false}
           isCustom={!!exercise.created_by}
         />
-        <View style={styles.exerciseHeaderContent}>
+        <View
+          style={[
+            styles.exerciseHeaderContent,
+            !strengthProgress && styles.exerciseHeaderContentCentered,
+          ]}
+        >
           <View style={styles.titleSection}>
             <Text style={[styles.exerciseName, { color: colors.textPrimary }]}>
               {exercise.name}
@@ -367,6 +372,9 @@ const styles = StyleSheet.create({
     minHeight: 56,
     justifyContent: 'space-between',
     paddingVertical: 2,
+  },
+  exerciseHeaderContentCentered: {
+    justifyContent: 'center',
   },
   titleSection: {
     justifyContent: 'flex-start',
