@@ -460,8 +460,9 @@ export default function ExerciseDetailScreen() {
     if (!ladder) return undefined
 
     const labels: Partial<Record<StrengthLevel, string>> = {}
+    const weightKg = profile.weight_kg!
     ladder.forEach((standard) => {
-      const targetWeightKg = Math.ceil(profile.weight_kg * standard.multiplier)
+      const targetWeightKg = Math.ceil(weightKg * standard.multiplier)
       const compactWeight = formatWeight(targetWeightKg, {
         maximumFractionDigits: 0,
       }).replace(/\s+/g, '')

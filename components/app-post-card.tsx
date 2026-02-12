@@ -47,7 +47,7 @@ export function AppPostCard({
         console.error('Failed to open app post URL:', error)
       })
     }
-  }, [onCtaPress, post, post.ctaRoute, post.ctaUrl, router])
+  }, [onCtaPress, post, router])
 
   return (
     <View style={[styles.card, isFirst && { borderTopWidth: 0 }]}>

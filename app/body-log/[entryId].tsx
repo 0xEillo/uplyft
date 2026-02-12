@@ -100,7 +100,8 @@ const formatMealTime = (dateString: string): string =>
 // Helper for intensity (1-4)
 
 
-// Helper component for linear scale (Body Fat / BMI)
+// Helper component for linear scale (Body Fat / BMI) - kept for future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const LinearScale = ({ 
   value, 
   min = 0, 

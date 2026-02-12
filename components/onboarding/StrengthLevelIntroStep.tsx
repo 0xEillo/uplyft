@@ -4,7 +4,6 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
   EXERCISES_WITH_STANDARDS,
   type ExerciseStandardsConfig,
@@ -173,7 +172,6 @@ export function StrengthLevelIntroStep({
   } | null>(null)
 
   const { isDark } = useTheme()
-  const { convertInputToKg } = useWeightUnits()
   const confettiRef = useRef<any>(null)
   const hasRequestedReviewOnRatingRef = useRef(false)
   const fadeAnim = useRef(new Animated.Value(1)).current
@@ -641,7 +639,6 @@ export function StrengthLevelIntroStep({
             <View style={styles.levelsLadder}>
               {[...ladder].reverse().map((standard, idx) => {
                 const actualIndex = ladder.length - 1 - idx
-                const isAchieved = currentLevelIndex >= actualIndex
                 const isCurrent = currentLevelIndex === actualIndex
                 const isLocked = currentLevelIndex < actualIndex
                 const targetWeight = Math.ceil(weightKg * standard.multiplier)

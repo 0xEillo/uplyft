@@ -184,7 +184,7 @@ export const FeedCard = memo(function FeedCard({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  const { width: windowWidth } = useWindowDimensions()
   const playback = useMusicPreviewState()
 
   const displayRoutine = routine || workout?.routine
@@ -279,10 +279,6 @@ export const FeedCard = memo(function FeedCard({
   // Card padding is 14 horizontal
   const cardPadding = 14
   const carouselWidth = windowWidth - cardPadding * 2
-  // Max height for the image to prevent it from growing too large (infinity zoom effect)
-  const MAX_IMAGE_HEIGHT = Math.min(windowHeight * 0.32, 320)
-  const DESIRED_ASPECT_RATIO = 1.45 // Shorter Aspect Ratio
-  const baselineHeight = carouselWidth / DESIRED_ASPECT_RATIO
 
   const handleCarouselScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,

@@ -134,7 +134,7 @@ function WorkoutCalendarPreview() {
     [2, 6, 10, 14, 18, 22, 26].filter((day) => day <= daysInMonth),
   )
 
-  const days: Array<number | null> = []
+  const days: (number | null)[] = []
   for (let i = 0; i < startingDayOfWeek; i += 1) {
     days.push(null)
   }

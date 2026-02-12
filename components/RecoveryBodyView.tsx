@@ -56,7 +56,6 @@ export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = 
   const {
     profile,
     muscleRecoveryData,
-    recoveryOverview,
     isLoading,
     refreshing,
     onRefresh,
@@ -132,14 +131,6 @@ export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = 
   // Determine gender for body display
   const bodyGender = profile?.gender === 'female' ? 'female' : 'male'
 
-
-  // Format days since last workout
-  const formatDaysSince = (days: number | null) => {
-    if (days === null) return '—'
-    if (days === 0) return '0'
-    if (days === 1) return '1'
-    return `${days}`
-  }
 
   // When embedded, render content without ScrollView wrapper
   const content = (

@@ -492,7 +492,6 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
   // Large: iPhone Pro Max, Plus models (~926px+)
   const isSmallScreen = screenHeight < 750
   const isMediumScreen = screenHeight >= 750 && screenHeight < 900
-  const isLargeScreen = screenHeight >= 900
 
   // Dynamic hero image height - balanced for all screens
   // This gives a good proportion while leaving room for bottom content
@@ -515,7 +514,6 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
 
   // Dynamic card heights
   const planCardHeight = isSmallScreen ? 52 : isMediumScreen ? 56 : 64
-  const planCardSelectedHeight = isSmallScreen ? 58 : isMediumScreen ? 62 : 72
   const toggleHeight = isSmallScreen ? 42 : isMediumScreen ? 46 : 50
   const mainButtonHeight = isSmallScreen ? 46 : isMediumScreen ? 50 : 54
 

@@ -35,9 +35,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-
 
 export default function ProfileScreen() {
   const { user } = useAuth()
@@ -49,7 +46,6 @@ export default function ProfileScreen() {
   const { registerScrollRef } = useScrollToTop()
   const flatListRef = useRef<FlatList>(null)
   const { level: userLevel, progress: userProgress } = useUserLevel(user?.id)
-  const insets = useSafeAreaInsets()
   const [showLevelSheet, setShowLevelSheet] = useState(false)
   // const params = useLocalSearchParams() // Removed redundant param check
   // const [showPaywall, setShowPaywall] = useState(false)
@@ -397,27 +393,6 @@ export default function ProfileScreen() {
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
   }, [isLoading, colors, styles])
-
-  const navbarBgColor = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['transparent', colors.bg],
-    extrapolate: 'clamp',
-  })
-
-  const whiteOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  })
-
-  const themedOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  })
-
-  // Theme-aware starting color for navbar elements over the image
-  const startColor = isDark ? '#F5F5F5' : colors.textPrimary
 
   // Animation interpolations for the cover photo
   const coverTranslateY = scrollY.interpolate({

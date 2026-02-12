@@ -36,7 +36,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
 
@@ -63,7 +62,6 @@ export default function UserProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
-  const insets = useSafeAreaInsets()
   const { level: userLevel, progress: userProgress } = useUserLevel(userId)
   const [showLevelSheet, setShowLevelSheet] = useState(false)
 
@@ -400,26 +398,6 @@ export default function UserProfileScreen() {
       </TouchableOpacity>
     )
   }
-
-  const navbarBgColor = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['transparent', colors.bg],
-    extrapolate: 'clamp',
-  })
-
-  const whiteOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  })
-
-  const themedOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  })
-
-  const startColor = isDark ? '#F5F5F5' : colors.textPrimary
 
   // Animation interpolations for the cover photo
   const coverTranslateY = scrollY.interpolate({

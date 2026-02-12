@@ -7,6 +7,13 @@ import Body from 'react-native-body-highlighter'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
+const HIDDEN_SLUGS: BodyPartSlug[] = ['hands', 'feet', 'ankles']
+const ALL_DISPLAYABLE_SLUGS: BodyPartSlug[] = [
+  'trapezius', 'triceps', 'forearm', 'adductors', 'calves', 'hair', 'neck',
+  'deltoids', 'head', 'tibialis', 'obliques', 'chest', 'biceps', 'abs',
+  'quadriceps', 'knees', 'upper-back', 'lower-back', 'hamstring', 'gluteal'
+]
+
 interface BodyData {
   slug: BodyPartSlug
   intensity: number
@@ -45,17 +52,6 @@ export function BodyHighlighterDual({
   // Calculate scale to fit both bodies side by side
   const bodyScale = Math.min((SCREEN_WIDTH - 40) / 380, 1.0)
 
-  // Slugs to hide (make them match the background)
-  const HIDDEN_SLUGS: BodyPartSlug[] = ['hands', 'feet', 'ankles']
-  
-  // All displayable body part slugs that should show as "unranked" when no data exists
-  // This ensures the head, hair, and other parts get the dark "no rank" color
-  const ALL_DISPLAYABLE_SLUGS: BodyPartSlug[] = [
-    'trapezius', 'triceps', 'forearm', 'adductors', 'calves', 'hair', 'neck',
-    'deltoids', 'head', 'tibialis', 'obliques', 'chest', 'biceps', 'abs',
-    'quadriceps', 'knees', 'upper-back', 'lower-back', 'hamstring', 'gluteal'
-  ]
-  
   // We augment the colors array with the background color at the end
   // to allow mapping "hidden" parts to it.
   const augmentedColors = [...highlightColors, colors.bg]

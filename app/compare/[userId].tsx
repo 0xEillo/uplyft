@@ -294,6 +294,7 @@ export default function CompareScreen() {
     }
   }, [
     isGlobalExercise,
+    myProfile,
     user?.id,
     userId,
     timePeriod,

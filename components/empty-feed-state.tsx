@@ -25,7 +25,7 @@ export function EmptyFeedState() {
         useNativeDriver: true,
       }),
     ]).start()
-  }, [])
+  }, [fadeAnim, translateY])
 
   const styles = createStyles(colors)
 
