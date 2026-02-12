@@ -365,9 +365,9 @@ export function StrengthLevelIntroStep({
         <View style={styles.gridWrapper}>
           {featuredExercises.map((item) => (
             <ExerciseCard
-              key={item.id}
+              key={item.name}
               exercise={item}
-              isSelected={selectedExercise?.id === item.id}
+              isSelected={selectedExercise?.name === item.name}
               onSelect={() => handleExerciseSelect(item)}
               colors={colors}
             />

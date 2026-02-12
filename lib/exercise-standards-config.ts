@@ -2275,10 +2275,11 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
-  // Barbell Shrug
+  // Machine Shrug
   {
     id: 'de0aeeaa-8bd0-4c4b-8602-986025dfdc17',
     name: 'Shrug (Machine)',
+    aliases: ['Shrug', 'Machine Shrug'],
     gifUrl: 'ZZKbeMw.gif',
     male: [
       {
@@ -2352,6 +2353,89 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 2.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+  // Dumbbell Shrug
+  {
+    id: '0c92879c-8d2f-47e5-a998-94e079786c7e',
+    name: 'Shrug (Dumbbell)',
+    aliases: ['DB Shrug', 'Dumbbell Shrugs', 'Dumbbell Shrug'],
+    gifUrl: 'NJzBsGJ.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.9,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.2,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.65,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.95,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.2,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -3811,6 +3895,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Traps
   'Shrug (Machine)': 'Traps',
+  'Shrug (Dumbbell)': 'Traps',
 
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
@@ -3887,6 +3972,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Seated Row (Machine)': 'Pull',
   'Face Pull (Cable)': 'Pull',
   'Shrug (Machine)': 'Pull',
+  'Shrug (Dumbbell)': 'Pull',
   'Rope Hammer Curl (Cable)': 'Pull',
   'Wrist Curl (Barbell)': 'Pull',
 

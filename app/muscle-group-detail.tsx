@@ -168,7 +168,7 @@ export default function MuscleGroupDetailScreen() {
       <>
         {allMuscleExercises.map((exercise, index) => (
           <TouchableOpacity
-            key={exercise.exerciseId || exercise.exerciseName}
+            key={exercise.exerciseName}
             style={[
               styles.exerciseCard,
               isDark && exercise.isDone && { backgroundColor: colors.rowTint },

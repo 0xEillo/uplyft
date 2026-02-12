@@ -16,7 +16,15 @@ import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Dimensions,
   Keyboard,
@@ -28,6 +36,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Mapping from database muscle group names to body part slugs for highlighting
@@ -93,6 +102,31 @@ const SCREEN_WIDTH = Dimensions.get('window').width
 const GAP = 12
 const COLUMN_COUNT = 2
 const ITEM_WIDTH = (SCREEN_WIDTH - 28 - GAP) / COLUMN_COUNT
+const MUSCLE_HIGHLIGHT_COLORS = ['#EF4444']
+const MUSCLE_BORDER_COLOR = '#D1D5DB'
+
+interface MuscleChipRenderData {
+  group: string
+  bodyData: { slug: BodyPartSlug; intensity: number }[]
+  side: 'front' | 'back'
+  scale: number
+  offsetY: number
+}
+
+const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = MUSCLE_GROUP_ORDER.map(
+  (group) => {
+    const mapping = MUSCLE_TO_BODY_PARTS[group]
+    if (!mapping) return null
+
+    return {
+      group,
+      bodyData: [{ slug: mapping.slug, intensity: 1 }],
+      side: mapping.side,
+      scale: BODY_HALF_CONFIG[mapping.bodyHalf].scale,
+      offsetY: BODY_HALF_CONFIG[mapping.bodyHalf].offsetY,
+    }
+  },
+).filter((chip): chip is MuscleChipRenderData => chip !== null)
 
 // Memoized exercise card for grid layout
 const ExerciseGridItem = memo(function ExerciseGridItem({
@@ -294,6 +328,55 @@ const ExerciseListItem = memo(function ExerciseListItem({
   )
 })
 
+const MuscleFilterChip = memo(function MuscleFilterChip({
+  chipData,
+  isSelected,
+  onToggle,
+  brandPrimary,
+}: {
+  chipData: MuscleChipRenderData
+  isSelected: boolean
+  onToggle: (group: string) => void
+  brandPrimary: string
+}) {
+  const handlePress = useCallback(() => {
+    onToggle(chipData.group)
+  }, [chipData.group, onToggle])
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.muscleChip,
+        {
+          borderColor: isSelected ? brandPrimary : 'transparent',
+          backgroundColor: isSelected ? `${brandPrimary}15` : 'transparent',
+        },
+      ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <View style={styles.muscleBodyContainer} pointerEvents="none">
+        <View
+          style={[
+            styles.muscleBodyWrapper,
+            { transform: [{ translateY: chipData.offsetY }] },
+          ]}
+        >
+          <Body
+            data={chipData.bodyData}
+            gender="male"
+            side={chipData.side}
+            scale={chipData.scale}
+            colors={MUSCLE_HIGHLIGHT_COLORS}
+            border={MUSCLE_BORDER_COLOR}
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+})
+
 export default function SelectExerciseScreen() {
   const colors = useThemedColors()
   const router = useRouter()
@@ -350,54 +433,79 @@ export default function SelectExerciseScreen() {
   )
 
   const trimmedQuery = searchQuery.trim()
-  const hasMuscleFilter = selectedMuscleGroups.length > 0
-  const hasEquipmentFilter = selectedEquipment.length > 0
-  const hasFilters = hasMuscleFilter || hasEquipmentFilter || showOnlyMine
+  const deferredTrimmedQuery = useDeferredValue(trimmedQuery)
+  const deferredSelectedMuscleGroups = useDeferredValue(selectedMuscleGroups)
+  const deferredSelectedEquipment = useDeferredValue(selectedEquipment)
+  const deferredShowOnlyMine = useDeferredValue(showOnlyMine)
+  const hasDeferredMuscleFilter = deferredSelectedMuscleGroups.length > 0
+  const hasDeferredEquipmentFilter = deferredSelectedEquipment.length > 0
+  const hasFilters =
+    hasDeferredMuscleFilter ||
+    hasDeferredEquipmentFilter ||
+    deferredShowOnlyMine
+
+  const selectedMuscleGroupSet = useMemo(
+    () => new Set(selectedMuscleGroups),
+    [selectedMuscleGroups],
+  )
+  const deferredSelectedMuscleSet = useMemo(
+    () => new Set(deferredSelectedMuscleGroups),
+    [deferredSelectedMuscleGroups],
+  )
+  const deferredSelectedEquipmentSet = useMemo(
+    () => new Set(deferredSelectedEquipment),
+    [deferredSelectedEquipment],
+  )
+  const visibleMuscleChips = useMemo(() => {
+    const availableMuscleGroups = new Set(muscleGroups)
+    return MUSCLE_CHIP_RENDER_DATA.filter((chip) =>
+      availableMuscleGroups.has(chip.group),
+    )
+  }, [muscleGroups])
 
   // Debounced filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
     let result = exercises
 
     // Apply fuzzy search filter (handles typos, plurals, word order)
-    if (trimmedQuery) {
-      result = fuzzySearchExercises(result, trimmedQuery)
+    if (deferredTrimmedQuery) {
+      result = fuzzySearchExercises(result, deferredTrimmedQuery)
     }
 
     // Apply muscle group filter
-    if (hasMuscleFilter) {
-      const selectedSet = new Set(selectedMuscleGroups)
+    if (hasDeferredMuscleFilter) {
       result = result.filter(
-        (e) => e.muscle_group && selectedSet.has(e.muscle_group),
+        (e) => e.muscle_group && deferredSelectedMuscleSet.has(e.muscle_group),
       )
     }
 
     // Apply equipment filter
-    if (hasEquipmentFilter) {
-      // ... same logic
-      const selectedSet = new Set(selectedEquipment)
+    if (hasDeferredEquipmentFilter) {
       result = result.filter((e) => {
-        if (e.equipment && selectedSet.has(e.equipment)) return true
+        if (e.equipment && deferredSelectedEquipmentSet.has(e.equipment)) {
+          return true
+        }
         if (e.equipments && Array.isArray(e.equipments)) {
-          return e.equipments.some((eq) => selectedSet.has(eq))
+          return e.equipments.some((eq) => deferredSelectedEquipmentSet.has(eq))
         }
         return false
       })
     }
 
     // Apply "Yours" filter - show only exercises created by current user
-    if (showOnlyMine && user?.id) {
+    if (deferredShowOnlyMine && user?.id) {
       result = result.filter((e) => e.created_by === user.id)
     }
 
     return result
   }, [
     exercises,
-    trimmedQuery,
-    hasMuscleFilter,
-    selectedMuscleGroups,
-    hasEquipmentFilter,
-    selectedEquipment,
-    showOnlyMine,
+    deferredTrimmedQuery,
+    hasDeferredMuscleFilter,
+    deferredSelectedMuscleSet,
+    hasDeferredEquipmentFilter,
+    deferredSelectedEquipmentSet,
+    deferredShowOnlyMine,
     user?.id,
   ])
 
@@ -405,24 +513,24 @@ export default function SelectExerciseScreen() {
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
   }, [
-    trimmedQuery,
-    selectedMuscleGroups,
-    selectedEquipment,
-    showOnlyMine,
+    deferredTrimmedQuery,
+    deferredSelectedMuscleGroups,
+    deferredSelectedEquipment,
+    deferredShowOnlyMine,
     filteredExercises.length,
   ])
 
   const emptyStateText = useMemo(() => {
-    if (trimmedQuery) {
+    if (deferredTrimmedQuery) {
       return hasFilters
-        ? `No exercises found for "${trimmedQuery}" with selected filters`
-        : `No exercises found for "${trimmedQuery}"`
+        ? `No exercises found for "${deferredTrimmedQuery}" with selected filters`
+        : `No exercises found for "${deferredTrimmedQuery}"`
     }
     if (hasFilters) {
       return 'No exercises match the selected filters'
     }
     return 'Start typing to search'
-  }, [trimmedQuery, hasFilters])
+  }, [deferredTrimmedQuery, hasFilters])
 
   // Handle keyboard events
   useEffect(() => {
@@ -564,44 +672,44 @@ export default function SelectExerciseScreen() {
     let result = recentExercises
 
     // Apply fuzzy search filter
-    if (trimmedQuery) {
-      result = fuzzySearchExercises(result, trimmedQuery)
+    if (deferredTrimmedQuery) {
+      result = fuzzySearchExercises(result, deferredTrimmedQuery)
     }
 
     // Apply muscle group filter
-    if (hasMuscleFilter) {
-      const selectedSet = new Set(selectedMuscleGroups)
+    if (hasDeferredMuscleFilter) {
       result = result.filter(
-        (e) => e.muscle_group && selectedSet.has(e.muscle_group),
+        (e) => e.muscle_group && deferredSelectedMuscleSet.has(e.muscle_group),
       )
     }
 
     // Apply equipment filter
-    if (hasEquipmentFilter) {
-      const selectedSet = new Set(selectedEquipment)
+    if (hasDeferredEquipmentFilter) {
       result = result.filter((e) => {
-        if (e.equipment && selectedSet.has(e.equipment)) return true
+        if (e.equipment && deferredSelectedEquipmentSet.has(e.equipment)) {
+          return true
+        }
         if (e.equipments && Array.isArray(e.equipments)) {
-          return e.equipments.some((eq) => selectedSet.has(eq))
+          return e.equipments.some((eq) => deferredSelectedEquipmentSet.has(eq))
         }
         return false
       })
     }
 
     // Apply "Yours" filter
-    if (showOnlyMine && user?.id) {
+    if (deferredShowOnlyMine && user?.id) {
       result = result.filter((e) => e.created_by === user.id)
     }
 
     return result
   }, [
     recentExercises,
-    trimmedQuery,
-    hasMuscleFilter,
-    selectedMuscleGroups,
-    hasEquipmentFilter,
-    selectedEquipment,
-    showOnlyMine,
+    deferredTrimmedQuery,
+    hasDeferredMuscleFilter,
+    deferredSelectedMuscleSet,
+    hasDeferredEquipmentFilter,
+    deferredSelectedEquipmentSet,
+    deferredShowOnlyMine,
     user?.id,
   ])
 
@@ -698,6 +806,14 @@ export default function SelectExerciseScreen() {
     )
   }, [isLoading, emptyStateText])
 
+  const listContentContainerStyle = useMemo(
+    () => ({
+      paddingBottom: keyboardHeight + 100,
+      paddingHorizontal: 14,
+    }),
+    [keyboardHeight],
+  )
+
   return (
     <SlideInView
       style={{ flex: 1 }}
@@ -779,55 +895,22 @@ export default function SelectExerciseScreen() {
         )}
 
         {/* Muscle Filter with Body Diagrams - Always visible */}
-        {muscleGroups.length > 0 && (
+        {visibleMuscleChips.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.muscleFilterScrollView}
             contentContainerStyle={styles.muscleFilterContainer}
           >
-            {MUSCLE_GROUP_ORDER.filter(
-              (group) =>
-                muscleGroups.includes(group) && MUSCLE_TO_BODY_PARTS[group],
-            ) // Only show muscles that exist in data and have body mapping
-              .map((group) => {
-                const isSelected = selectedMuscleGroups.includes(group)
-
-                return (
-                  <TouchableOpacity
-                    key={group}
-                    style={[
-                      styles.musclePill,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.brandPrimary
-                          : isDark
-                          ? 'rgba(255,255,255,0.06)'
-                          : 'rgba(0,0,0,0.04)',
-                        borderColor: isSelected
-                          ? colors.brandPrimary
-                          : colors.border,
-                      },
-                    ]}
-                    onPress={() => toggleMuscleGroup(group)}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text
-                      style={[
-                        styles.musclePillText,
-                        {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {group}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
+            {visibleMuscleChips.map((chipData) => (
+              <MuscleFilterChip
+                key={chipData.group}
+                chipData={chipData}
+                isSelected={selectedMuscleGroupSet.has(chipData.group)}
+                onToggle={toggleMuscleGroup}
+                brandPrimary={colors.brandPrimary}
+              />
+            ))}
           </ScrollView>
         )}
 
@@ -924,16 +1007,9 @@ export default function SelectExerciseScreen() {
         <View style={styles.listContainer}>
           <FlashList<Exercise>
             ref={listRef}
-            key={`${viewMode}-${hasMuscleFilter}-${hasEquipmentFilter}`}
+            key={viewMode}
             data={filteredExercises}
-            extraData={[
-              searchQuery,
-              selectedIds.size,
-              isLoading,
-              selectedMuscleGroups,
-              selectedEquipment,
-              showOnlyMine,
-            ]}
+            extraData={selectedIds}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             numColumns={viewMode === 'grid' ? 2 : 1}
@@ -942,10 +1018,7 @@ export default function SelectExerciseScreen() {
             ListEmptyComponent={ListEmpty}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            contentContainerStyle={{
-              paddingBottom: keyboardHeight + 100,
-              paddingHorizontal: 14,
-            }}
+            contentContainerStyle={listContentContainerStyle}
           />
         </View>
 
@@ -1211,30 +1284,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, // Align first card with content below
     paddingBottom: 0,
   },
-  // Muscle Filter Pill Styles
+  // Muscle Filter Body Diagram Styles
   muscleFilterScrollView: {
-    maxHeight: 50,
+    maxHeight: 100,
     flexGrow: 0,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   muscleFilterContainer: {
     paddingHorizontal: 14,
     paddingVertical: 4,
     alignItems: 'center',
-    gap: 8,
+    gap: 2,
   },
-  musclePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 100,
-    borderWidth: 1.5,
+  muscleChip: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  musclePillText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+  muscleBodyContainer: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  muscleBodyWrapper: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 120,
+    height: 240,
+    marginTop: -120,
+    marginLeft: -60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   customBadge: {
     backgroundColor: '#1C1C1E',
