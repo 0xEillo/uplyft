@@ -36,6 +36,7 @@ export interface ExerciseData {
 export interface ExerciseBest1RMSnapshot {
   currentBest1RM: number
   previousBest1RM: number
+  lastIncreaseAt: string | null
 }
 
 export interface MuscleGroupData {

@@ -102,9 +102,18 @@ export default function NotificationsScreen() {
           notification.type === 'follow_request_declined'
         ) {
           router.push('/follow-requests')
-        } else if (notification.type === 'workout_comment') {
+        } else if (
+          notification.type === 'workout_comment' &&
+          notification.workout_id
+        ) {
           // Navigate to the comments view for the workout
-          router.push(`/workout-comments/${notification.workout_id}`)
+          router.push({
+            pathname: '/workout-comments/[workoutId]',
+            params: {
+              workoutId: notification.workout_id,
+              returnTo: pathname,
+            },
+          })
         } else if (
           notification.type === 'workout_like' &&
           notification.workout_id

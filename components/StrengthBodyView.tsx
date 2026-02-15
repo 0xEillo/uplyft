@@ -30,6 +30,8 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+const PROGRESS_DELTA_VISIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000
+
 export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = {}) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -54,6 +56,8 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
       return []
     }
+
+    const now = Date.now()
 
     return exerciseData.map((exercise) => {
       const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
@@ -82,8 +86,8 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
         }
       }
 
-      const previousBest1RM =
-        best1RMSnapshotByExerciseId[exercise.exerciseId]?.previousBest1RM ?? 0
+      const snapshot = best1RMSnapshotByExerciseId[exercise.exerciseId]
+      const previousBest1RM = snapshot?.previousBest1RM ?? 0
       const previousStrengthInfo =
         previousBest1RM > 0
           ? getStrengthInfo(exercise.exerciseName, previousBest1RM)
@@ -100,6 +104,12 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
           progress: strengthInfo.progress,
         },
       )
+      const lastIncreaseAt = snapshot?.lastIncreaseAt
+      const lastIncreaseTime = lastIncreaseAt ? new Date(lastIncreaseAt).getTime() : NaN
+      const showRecentProgressDelta =
+        progressDelta > 0 &&
+        Number.isFinite(lastIncreaseTime) &&
+        now - lastIncreaseTime <= PROGRESS_DELTA_VISIBILITY_WINDOW_MS
 
       return {
         ...exercise,
@@ -108,6 +118,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
         nextLevel: strengthInfo.nextLevel?.level || null,
         targetWeight,
         progressDelta,
+        showRecentProgressDelta,
       }
     }).filter(e => e.level !== null)
       .sort((a, b) => {
@@ -357,7 +368,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                                   >
                                     {exercise.level!}
                                   </Text>
-                                  {exercise.progressDelta > 0 && (
+                                  {exercise.showRecentProgressDelta && (
                                     <Text style={[styles.exerciseInlineGainText, { color: gainColor }]}>
                                       ▲ {exercise.progressDelta}%
                                     </Text>

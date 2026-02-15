@@ -571,7 +571,7 @@ export default function ProfileScreen() {
                     {/* Stats Row - title above number, all on one line */}
                     <View style={styles.statsRow}>
                       <View style={styles.stat}>
-                        <Text style={styles.statLabel}>workouts</Text>
+                        <Text style={styles.statLabel}>Workouts</Text>
                         <Text style={styles.statNumber}>{workoutCount}</Text>
                       </View>
                       <View style={styles.statSeparator} />
@@ -586,7 +586,7 @@ export default function ProfileScreen() {
                           }
                         }}
                       >
-                        <Text style={styles.statLabel}>followers</Text>
+                        <Text style={styles.statLabel}>Followers</Text>
                         <Text style={styles.statNumber}>{followerCount}</Text>
                       </TouchableOpacity>
                       <View style={styles.statSeparator} />
@@ -601,7 +601,7 @@ export default function ProfileScreen() {
                           }
                         }}
                       >
-                        <Text style={styles.statLabel}>following</Text>
+                        <Text style={styles.statLabel}>Following</Text>
                         <Text style={styles.statNumber}>{followingCount}</Text>
                       </TouchableOpacity>
                     </View>
@@ -858,6 +858,7 @@ const createStyles = (
       flexDirection: 'column',
       alignItems: 'center',
       gap: 2,
+      paddingHorizontal: 2,
     },
     statSeparator: {
       width: 3,
@@ -871,7 +872,8 @@ const createStyles = (
       fontSize: 12,
       color: colors.textSecondary,
       fontWeight: '400',
-      textTransform: 'lowercase',
+      lineHeight: 15,
+      paddingBottom: 1,
     },
     statNumber: {
       fontSize: 15,

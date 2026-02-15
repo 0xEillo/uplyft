@@ -1,4 +1,5 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -7,8 +8,14 @@ import { supabase } from '@/lib/supabase'
 import { formatTimeAgo } from '@/lib/utils/formatters'
 import { Profile, WorkoutComment } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useNavigation } from '@react-navigation/native'
+import {
+  useLocalSearchParams,
+  usePathname,
+  useRouter,
+  useSegments,
+} from 'expo-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
@@ -29,13 +36,55 @@ interface CommentWithProfile extends WorkoutComment {
   profile?: Profile
 }
 
+const DEBUG_NAV = true
+
+function logNav(
+  event: string,
+  details?: Record<string, unknown>,
+) {
+  if (!DEBUG_NAV) return
+  const timestamp = new Date().toISOString()
+  if (details) {
+    console.log(`[CommentsNav][${timestamp}] ${event}`, details)
+  } else {
+    console.log(`[CommentsNav][${timestamp}] ${event}`)
+  }
+}
+
+function normalizeReturnToParam(
+  rawReturnTo: string | string[] | undefined,
+): string | undefined {
+  if (!rawReturnTo) return undefined
+
+  const value = Array.isArray(rawReturnTo) ? rawReturnTo[0] : rawReturnTo
+  if (!value) return undefined
+
+  try {
+    const decoded = decodeURIComponent(value)
+    if (!decoded.startsWith('/')) return undefined
+    if (decoded.startsWith('/workout-comments/')) return undefined
+    return decoded
+  } catch {
+    return undefined
+  }
+}
+
 export default function WorkoutCommentsScreen() {
-  const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
+  const { workoutId, returnTo } = useLocalSearchParams<{
+    workoutId: string
+    returnTo?: string | string[]
+  }>()
   const { user, isAnonymous } = useAuth()
   const { profile } = useProfile()
   const router = useRouter()
+  const pathname = usePathname()
+  const segments = useSegments()
+  const navigation = useNavigation()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const normalizedReturnTo = normalizeReturnToParam(returnTo)
+  const backAttemptRef = useRef(0)
+
 
   const [comments, setComments] = useState<CommentWithProfile[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -48,23 +97,94 @@ export default function WorkoutCommentsScreen() {
   // Block anonymous users from social features
   useEffect(() => {
     if (isAnonymous) {
+      logNav('Anonymous user redirecting to create-account', {
+        pathname,
+        segments: segments.join('/'),
+      })
       router.replace('/(auth)/create-account')
     }
-  }, [isAnonymous, router])
+  }, [isAnonymous, pathname, router, segments])
 
   useEffect(() => {
-    const keyboardWillShow = Keyboard.addListener(
+    logNav('Mounted comments screen', {
+      workoutId,
+      returnTo,
+      normalizedReturnTo,
+      pathname,
+      segments: segments.join('/'),
+      canGoBack: router.canGoBack(),
+    })
+    return () => {
+      logNav('Unmounted comments screen', {
+        workoutId,
+        pathname,
+      })
+    }
+  }, [normalizedReturnTo, pathname, returnTo, router, segments, workoutId])
+
+  useEffect(() => {
+    logNav('Route changed while comments mounted', {
+      pathname,
+      segments: segments.join('/'),
+      canGoBack: router.canGoBack(),
+    })
+  }, [pathname, router, segments])
+
+  useEffect(() => {
+    const unsubscribeState = navigation.addListener('state', () => {
+      const navState = navigation.getState()
+      const activeRoute = navState.routes[navState.index]
+      logNav('Navigation state event', {
+        activeRouteName: activeRoute?.name,
+        activeRouteKey: activeRoute?.key,
+        index: navState.index,
+        routeCount: navState.routes.length,
+        routeNames: navState.routes.map((route) => route.name),
+      })
+    })
+    const unsubscribeBeforeRemove = navigation.addListener(
+      'beforeRemove',
+      (event) => {
+        logNav('beforeRemove event', {
+          actionType: event.data.action.type,
+          target: event.target,
+        })
+      },
+    )
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      logNav('focus event', {
+        pathname,
+        segments: segments.join('/'),
+      })
+    })
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      logNav('blur event', {
+        pathname,
+        segments: segments.join('/'),
+      })
+    })
+
+    return () => {
+      unsubscribeState()
+      unsubscribeBeforeRemove()
+      unsubscribeFocus()
+      unsubscribeBlur()
+    }
+  }, [navigation, pathname, segments])
+
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       () => setIsKeyboardVisible(true),
     )
-    const keyboardWillHide = Keyboard.addListener(
+    const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => setIsKeyboardVisible(false),
     )
 
     return () => {
-      keyboardWillShow.remove()
-      keyboardWillHide.remove()
+      keyboardWillShowListener.remove()
+      keyboardWillHideListener.remove()
     }
   }, [])
 
@@ -74,6 +194,9 @@ export default function WorkoutCommentsScreen() {
 
     const fetchComments = async () => {
       try {
+        logNav('Fetching comments start', {
+          workoutId,
+        })
         setIsLoading(true)
         const commentsData = await database.workoutComments.listByWorkout(
           workoutId,
@@ -94,7 +217,16 @@ export default function WorkoutCommentsScreen() {
         }))
 
         setComments(commentsWithProfiles)
+        logNav('Fetching comments success', {
+          workoutId,
+          commentCount: commentsWithProfiles.length,
+          uniqueAuthors: uniqueUserIds.length,
+        })
       } catch (error) {
+        logNav('Fetching comments failed', {
+          workoutId,
+          error: error instanceof Error ? error.message : String(error),
+        })
         console.error('Error fetching comments:', error)
         Alert.alert('Error', 'Failed to load comments')
       } finally {
@@ -198,6 +330,74 @@ export default function WorkoutCommentsScreen() {
     [user, profile, styles],
   )
 
+  const handleBack = useCallback(() => {
+    backAttemptRef.current += 1
+    const attempt = backAttemptRef.current
+    const canGoBack = router.canGoBack()
+    const target = normalizedReturnTo ?? '/(tabs)'
+    const navState = navigation.getState()
+    const activeRoute = navState.routes[navState.index]
+    logNav('Back pressed', {
+      attempt,
+      workoutId,
+      returnTo,
+      normalizedReturnTo,
+      pathname,
+      segments: segments.join('/'),
+      routerCanGoBack: canGoBack,
+      navIndex: navState.index,
+      navRouteCount: navState.routes.length,
+      navRouteNames: navState.routes.map((route) => route.name),
+      activeRouteName: activeRoute?.name,
+      activeRouteKey: activeRoute?.key,
+      resolvedTarget: target,
+    })
+
+    Keyboard.dismiss()
+    if (canGoBack) {
+      logNav('Back attempt using router.back()', {
+        attempt,
+      })
+      requestAnimationFrame(() => {
+        router.back()
+        setTimeout(() => {
+          logNav('Post-router.back check', {
+            attempt,
+            pathname,
+            segments: segments.join('/'),
+            routerCanGoBack: router.canGoBack(),
+          })
+        }, 300)
+      })
+      return
+    }
+
+    logNav('Back attempt using replace fallback', {
+      attempt,
+      target,
+    })
+    requestAnimationFrame(() => {
+      router.replace(target as Parameters<typeof router.replace>[0])
+      setTimeout(() => {
+        logNav('Post-replace check', {
+          attempt,
+          target,
+          pathname,
+          segments: segments.join('/'),
+          routerCanGoBack: router.canGoBack(),
+        })
+      }, 300)
+    })
+  }, [
+    navigation,
+    normalizedReturnTo,
+    pathname,
+    returnTo,
+    router,
+    segments,
+    workoutId,
+  ])
+
   // Early return for anonymous users (after all hooks)
   if (isAnonymous) return null
 
@@ -213,12 +413,17 @@ export default function WorkoutCommentsScreen() {
           <BaseNavbar
             leftContent={
               <NavbarIsland>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-                  <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.backButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name="chevron-back"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
               </NavbarIsland>
             }
             centerContent={<Text style={styles.headerTitle}>Comments</Text>}
@@ -241,47 +446,56 @@ export default function WorkoutCommentsScreen() {
             />
           )}
 
-          {/* Input Section */}
           <View
             style={[
               styles.inputContainer,
               {
                 paddingBottom: isKeyboardVisible
-                  ? 8
-                  : Math.max(insets.bottom, 8),
+                  ? 6
+                  : Math.max(insets.bottom, 14),
               },
             ]}
           >
-            <TextInput
-              style={styles.input}
-              value={commentText}
-              onChangeText={setCommentText}
-              placeholder="Add a comment..."
-              placeholderTextColor={colors.textPlaceholder}
-              multiline
-              maxLength={500}
-              editable={!isPosting}
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!commentText.trim() || isPosting) && styles.sendButtonDisabled,
-              ]}
-              onPress={handlePostComment}
-              disabled={!commentText.trim() || isPosting}
-            >
-              {isPosting ? (
-                <ActivityIndicator size="small" color={colors.surface} />
-              ) : (
-                <Ionicons
-                  name="arrow-up"
-                  size={20}
-                  color={
-                    commentText.trim() ? colors.surface : colors.textPlaceholder
-                  }
-                />
-              )}
-            </TouchableOpacity>
+            <View style={styles.inputWrapper}>
+              <LiquidGlassSurface
+                style={styles.textInputGlass}
+                debugLabel="comments-input"
+              >
+                <View style={styles.textInputContainer}>
+                  <TextInput
+                    style={styles.inputField}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    placeholder="Add a comment..."
+                    placeholderTextColor={colors.textPlaceholder}
+                    multiline
+                    maxLength={500}
+                    returnKeyType="send"
+                    onSubmitEditing={handlePostComment}
+                    blurOnSubmit={false}
+                    editable={!isPosting}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (!commentText.trim() || isPosting) &&
+                        styles.sendButtonDisabled,
+                    ]}
+                    onPress={handlePostComment}
+                    disabled={!commentText.trim() || isPosting}
+                  >
+                    {isPosting ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.textPlaceholder}
+                      />
+                    ) : (
+                      <Ionicons name="arrow-up" size={20} color={colors.surface} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </LiquidGlassSurface>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -379,35 +593,62 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     inputContainer: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
+      backgroundColor: 'transparent',
+      borderTopWidth: 0,
       paddingHorizontal: 16,
       paddingTop: 8,
-      backgroundColor: colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      gap: 12,
     },
-    input: {
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+    },
+    textInputGlass: {
       flex: 1,
-      backgroundColor: colors.surfaceSubtle,
-      borderRadius: 20,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      fontSize: 15,
+      borderRadius: 24,
+      minHeight: 44,
+    },
+    textInputContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+      borderRadius: 24,
+      paddingRight: 4,
+      paddingLeft: 16,
+      paddingVertical: 4,
+      minHeight: 44,
+      borderWidth: 0,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    inputField: {
+      flex: 1,
+      paddingTop: Platform.OS === 'ios' ? 2 : 4,
+      paddingBottom: Platform.OS === 'ios' ? 4 : 4,
+      marginRight: 8,
+      fontSize: 17,
+      lineHeight: Platform.OS === 'ios' ? 26 : 23,
       color: colors.textPrimary,
+      minHeight: Platform.OS === 'ios' ? 24 : 22,
       maxHeight: 100,
+      textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
+      transform: [{ translateY: Platform.OS === 'ios' ? -2 : 0 }],
     },
     sendButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 2,
+      marginTop: 1,
     },
     sendButtonDisabled: {
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: colors.textPlaceholder,
+      opacity: 0.5,
     },
   })

@@ -36,12 +36,11 @@ export function usePushNotifications() {
     // Listen for user tapping on notification
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const { workoutId, notificationId, type, requestId } =
+        const { workoutId, notificationId, type } =
           response.notification.request.content.data as {
             workoutId?: string
             notificationId?: string
             type?: string
-            requestId?: string
           }
 
         // Mark notification as read
@@ -68,7 +67,13 @@ export function usePushNotifications() {
         ) {
           router.push('/follow-requests')
         } else if (type === 'workout_comment' && workoutId) {
-          router.push(`/workout-comments/${workoutId}` as any)
+          router.push({
+            pathname: '/workout-comments/[workoutId]',
+            params: {
+              workoutId,
+              returnTo: lastPathnameRef.current,
+            },
+          } as any)
         } else if (type === 'workout_like' && workoutId) {
           router.push(buildWorkoutHref(workoutId) as any)
         } else if (workoutId) {

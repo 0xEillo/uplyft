@@ -22,7 +22,6 @@ import type {
     FollowRequest,
     ParsedWorkout,
     Profile,
-    Set,
     WorkoutComment,
     WorkoutLike,
     WorkoutRoutine,
@@ -30,7 +29,7 @@ import type {
     WorkoutRoutineWithDetails,
     WorkoutSession,
     WorkoutSessionWithDetails,
-    WorkoutSocialStats,
+    WorkoutSocialStats
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -667,6 +666,27 @@ export const database = {
 
       if (error) throw error
       return count ?? 0
+    },
+
+    async getRecentLikers(workoutId: string, limit = 3) {
+      const { data, error } = await supabase
+        .from('workout_likes')
+        .select(`
+          profile:profiles (
+            id,
+            user_tag,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('workout_id', workoutId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      if (error) throw error
+      return (data || [])
+        .map((row: any) => row.profile)
+        .filter(Boolean) as Partial<Profile>[]
     },
   },
 
@@ -2491,7 +2511,16 @@ export const database = {
 
     async getExerciseCurrentAndPreviousBest1RMs(
       userId: string,
-    ): Promise<Record<string, { currentBest1RM: number; previousBest1RM: number }>> {
+    ): Promise<
+      Record<
+        string,
+        {
+          currentBest1RM: number
+          previousBest1RM: number
+          lastIncreaseAt: string | null
+        }
+      >
+    > {
       const { data, error } = await supabase
         .from('workout_sessions')
         .select(
@@ -2512,6 +2541,7 @@ export const database = {
       if (error) throw error
 
       interface Best1RMSnapshotRow {
+        created_at: string
         workout_exercises?: {
           exercise_id: string
           sets?: {
@@ -2523,7 +2553,11 @@ export const database = {
 
       const bestByExerciseId: Record<
         string,
-        { currentBest1RM: number; previousBest1RM: number }
+        {
+          currentBest1RM: number
+          previousBest1RM: number
+          lastIncreaseAt: string | null
+        }
       > = {}
 
       ;(data as Best1RMSnapshotRow[])?.forEach((session) => {
@@ -2532,6 +2566,7 @@ export const database = {
             bestByExerciseId[workoutExercise.exercise_id] = {
               currentBest1RM: 0,
               previousBest1RM: 0,
+              lastIncreaseAt: null,
             }
           }
 
@@ -2546,6 +2581,7 @@ export const database = {
             if (estimated1RM > current.currentBest1RM) {
               current.previousBest1RM = current.currentBest1RM
               current.currentBest1RM = estimated1RM
+              current.lastIncreaseAt = session.created_at
             }
           })
         })

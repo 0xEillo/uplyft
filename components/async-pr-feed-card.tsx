@@ -5,7 +5,7 @@ import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
-import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
@@ -80,6 +80,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const [likeCount, setLikeCount] = useState(0)
   const [commentCount, setCommentCount] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
+  const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>([])
 
   // Fetch social stats
   useEffect(() => {
@@ -92,15 +93,18 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           likeCountResult,
           hasLikedResult,
           commentCountResult,
+          recentLikersResult,
         ] = await Promise.all([
           database.workoutLikes.getCount(workout.id),
           database.workoutLikes.hasLiked(workout.id, user.id),
           database.workoutComments.getCount(workout.id),
+          database.workoutLikes.getRecentLikers(workout.id),
         ])
 
         setLikeCount(likeCountResult)
         setIsLiked(hasLikedResult)
         setCommentCount(commentCountResult)
+        setRecentLikers(recentLikersResult)
       } catch (error) {
         console.error('Error fetching social stats:', error)
       }
@@ -136,8 +140,14 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 
   // Handle comment - navigate to comments screen
   const handleComment = useCallback(() => {
-    router.push(`/workout-comments/${workout.id}`)
-  }, [workout.id, router])
+    router.push({
+      pathname: '/workout-comments/[workoutId]',
+      params: {
+        workoutId: workout.id,
+        returnTo: pathname,
+      },
+    })
+  }, [workout.id, pathname, router])
 
   useEffect(() => {
     if (!computeContext) return
@@ -222,7 +232,10 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   }, [workout.id, onDelete])
 
   const handleCreateRoutine = useCallback(() => {
-    router.push(`/create-routine?from=${workout.id}`)
+    router.push({
+      pathname: '/create-routine',
+      params: { from: workout.id },
+    })
   }, [workout.id, router])
 
   const handleCardPress = useCallback(() => {
@@ -292,6 +305,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       onLike={handleLike}
       onComment={handleComment}
       isFirst={isFirst}
+      recentLikers={recentLikers}
     />
   )
 })

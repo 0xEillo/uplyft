@@ -258,7 +258,8 @@ function RootLayoutNav() {
             name="workout-comments/[workoutId]"
             options={{
               headerShown: false,
-              presentation: 'fullScreenModal',
+              presentation: 'card',
+              animation: 'default',
             }}
           />
           <Stack.Screen

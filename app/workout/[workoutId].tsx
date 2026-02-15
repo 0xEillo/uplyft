@@ -9,7 +9,7 @@ import { PrService } from '@/lib/pr'
 import { markWorkoutAsDeleted } from '@/lib/utils/deleted-workouts'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, View } from 'react-native'
 
@@ -33,6 +33,7 @@ export default function WorkoutDetailScreen() {
   const params = useLocalSearchParams<{ workoutId: string; returnTo?: string }>()
   const { workoutId } = params
   const router = useRouter()
+  const pathname = usePathname()
   const { user } = useAuth()
   useTheme() // for theme context subscription
   const { shareWorkoutWidget } = useWorkoutShare()
@@ -246,8 +247,16 @@ export default function WorkoutDetailScreen() {
 
   // Handle comment - navigate to comments screen
   const handleComment = useCallback(() => {
-    router.push(`/workout-comments/${workoutId}`)
-  }, [workoutId, router])
+    if (!workoutId) return
+
+    router.push({
+      pathname: '/workout-comments/[workoutId]',
+      params: {
+        workoutId,
+        returnTo: pathname,
+      },
+    })
+  }, [pathname, workoutId, router])
 
   // Handle share
   const handleShare = useCallback(() => {

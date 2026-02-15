@@ -36,7 +36,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
 import { toggleMusicPreview } from '@/lib/music-preview-player'
-import type { WorkoutSessionWithDetails } from '@/types/database.types'
+import type { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
@@ -114,6 +114,14 @@ export interface ExercisePRInfo {
   hasCurrentPR: boolean // true if at least one PR is still current
 }
 
+export interface CommentPreview {
+  id: string
+  username: string
+  userAvatar?: string | null
+  text: string
+  timeAgo: string
+}
+
 export interface FeedCardProps {
   userName: string
   userAvatar: string
@@ -144,6 +152,8 @@ export interface FeedCardProps {
   onCreateRoutine?: () => void
   routine?: { id: string; name: string } | null
   onRoutinePress?: () => void
+  recentLikers?: Partial<Profile>[]
+  latestComment?: CommentPreview | null
 }
 
 /**
@@ -179,6 +189,8 @@ export const FeedCard = memo(function FeedCard({
   onCreateRoutine,
   routine,
   onRoutinePress,
+  recentLikers = [],
+  latestComment,
 }: FeedCardProps): ReactElement {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -206,6 +218,10 @@ export const FeedCard = memo(function FeedCard({
     selectedExercisePR,
     setSelectedExercisePR,
   ] = useState<ExercisePRInfo | null>(null)
+  const [descriptionTruncated, setDescriptionTruncated] = useState(false)
+  useEffect(() => {
+    setDescriptionTruncated(false)
+  }, [workoutDescription])
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
   const [infoHeight, setInfoHeight] = useState(0)
@@ -314,7 +330,7 @@ export const FeedCard = memo(function FeedCard({
     { length: PREVIEW_LIMIT },
     (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
   )
-  const ROW_HEIGHT = 65 // 48 (thumb) + 16 (padding) + 1 (border)
+  const ROW_HEIGHT = 60 // 48 (thumb) + 12 (padding)
   const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
   const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
@@ -484,40 +500,19 @@ export const FeedCard = memo(function FeedCard({
           style={styles.statsContainer}
         >
           <View style={styles.statItem}>
-            <View style={styles.statLabelContainer}>
-              <Ionicons
-                name="time-outline"
-                size={14}
-                color={colors.statusSuccess}
-              />
-              <Text style={styles.statLabel}>Duration</Text>
-            </View>
+            <Text style={styles.statLabel}>Time</Text>
             <Text style={styles.statValue}>
               {formatDurationCompact(stats.durationSeconds || 0)}
             </Text>
           </View>
           <View style={styles.statItem}>
-            <View style={styles.statLabelContainer}>
-              <Ionicons
-                name="barbell-outline"
-                size={14}
-                color={colors.statusInfo}
-              />
-              <Text style={styles.statLabel}>Volume</Text>
-            </View>
+            <Text style={styles.statLabel}>Volume</Text>
             <Text style={styles.statValue}>
               {formatVolumeCompact(stats.volume || 0, weightUnit)}
             </Text>
           </View>
           <View style={styles.statItem}>
-            <View style={styles.statLabelContainer}>
-              <Ionicons
-                name="trophy-outline"
-                size={14}
-                color={colors.brandPrimary}
-              />
-              <Text style={styles.statLabel}>Records</Text>
-            </View>
+            <Text style={styles.statLabel}>Records</Text>
             <Text style={styles.statValue}>{stats.prs}</Text>
           </View>
         </Pressable>
@@ -528,16 +523,12 @@ export const FeedCard = memo(function FeedCard({
       onCardPress,
       styles.statsContainer,
       styles.statItem,
-      styles.statLabelContainer,
-      colors.statusSuccess,
       styles.statLabel,
+      styles.statValue,
       stats.durationSeconds,
-      colors.statusInfo,
       stats.volume,
       weightUnit,
-      colors.brandPrimary,
       stats.prs,
-      styles.statValue,
     ],
   )
 
@@ -591,14 +582,7 @@ export const FeedCard = memo(function FeedCard({
             <Animated.View style={{ opacity: exercisesFadeAnim }}>
               {displayedExercises.map((exercise, index) => {
                 return (
-                  <View
-                    key={index}
-                    style={[
-                      styles.exerciseRow,
-                      index === displayedExercises.length - 1 &&
-                        styles.lastExerciseRow,
-                    ]}
-                  >
+                  <View key={index} style={styles.exerciseRow}>
                     <View style={styles.exerciseNameContainer}>
                       <ExerciseMediaThumbnail
                         gifUrl={exercise.gifUrl}
@@ -684,14 +668,7 @@ export const FeedCard = memo(function FeedCard({
   const mediaSlide = coverImageUrl ? (
     <View style={{ width: carouselWidth }}>
       <TouchableOpacity
-        style={[
-          styles.workoutImageContainer,
-          infoHeight > 0 && {
-            height: infoHeight,
-            aspectRatio: undefined,
-            maxHeight: undefined,
-          },
-        ]}
+        style={styles.workoutImageContainer}
         onPress={() => setImageModalVisible(true)}
         activeOpacity={0.9}
       >
@@ -763,26 +740,37 @@ export const FeedCard = memo(function FeedCard({
                 {userName}
               </Text>
             </View>
-            {displayRoutine ? (
-              <View style={styles.routineContainer}>
-                <Text style={styles.actionText} numberOfLines={1}>
-                  finished{' '}
-                </Text>
-                <Text
-                  style={[styles.routineLink, { flexShrink: 1 }]}
-                  numberOfLines={1}
-                  onPress={onRoutinePress}
-                >
-                  {displayRoutine.name} ›
-                </Text>
-                <Text style={styles.timeAgo} numberOfLines={1}>
-                  • {timeAgo}
-                </Text>
+            {(displayRoutine || (workoutSong && !isPending)) && (
+              <View style={styles.headerSubtitle}>
+                {displayRoutine && (
+                  <Text
+                    style={styles.routineLink}
+                    numberOfLines={1}
+                    onPress={onRoutinePress}
+                  >
+                    {displayRoutine.name} ›
+                  </Text>
+                )}
+                {displayRoutine && workoutSong && !isPending && (
+                  <Text style={styles.subtitleSeparator}> • </Text>
+                )}
+                {workoutSong && !isPending && (
+                  <TouchableOpacity
+                    style={styles.headerMusicContainer}
+                    onPress={() => toggleMusicPreview(workoutSong)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="musical-note"
+                      size={12}
+                      color={colors.textPrimary}
+                    />
+                    <Text style={styles.headerMusicText} numberOfLines={1}>
+                      {workoutSong.artistName} • {workoutSong.trackName}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            ) : (
-              <Text style={styles.timeAgo} numberOfLines={1}>
-                {timeAgo}
-              </Text>
             )}
           </View>
         </TouchableOpacity>
@@ -839,41 +827,28 @@ export const FeedCard = memo(function FeedCard({
                 style={styles.workoutDescription}
                 numberOfLines={2}
                 ellipsizeMode="tail"
+                onTextLayout={(e) => {
+                  const { lines } = e.nativeEvent
+                  if (lines.length === 0) return
+                  const lastLine = lines[lines.length - 1]
+                  const lastLineText = lastLine?.text ?? ''
+                  const endsWithEllipsis =
+                    lastLineText.endsWith('...') || lastLineText.endsWith('…')
+                  const renderedText = lines.map((l) => l.text).join('')
+                  const wasTruncated =
+                    endsWithEllipsis ||
+                    renderedText.length < workoutDescription.length - 3
+                  setDescriptionTruncated(wasTruncated)
+                }}
               >
                 {workoutDescription}
               </Text>
-              {workoutDescription.length > 85 && (
+              {descriptionTruncated && (
                 <Text style={styles.readMore}>Read more...</Text>
               )}
             </>
           )}
         </View>
-
-        {workoutSong && !isPending && (
-          <TouchableOpacity
-            style={styles.headerMusicIndicator}
-            onPress={() => toggleMusicPreview(workoutSong)}
-            activeOpacity={0.8}
-          >
-            {workoutSong.artworkUrl100 && (
-              <Image
-                source={{ uri: workoutSong.artworkUrl100 }}
-                style={styles.headerArtwork}
-              />
-            )}
-            <View style={styles.headerMusicIconOverlay}>
-              <Ionicons
-                name={
-                  isThisSongPlaying || isThisSongBuffering
-                    ? 'volume-high'
-                    : 'volume-mute'
-                }
-                size={24}
-                color="#FFFFFF"
-              />
-            </View>
-          </TouchableOpacity>
-        )}
 
         {workoutSong && !coverImageUrl && !workoutSong.artworkUrl100 && (
           <View style={styles.songPreviewWrapper}>
@@ -882,8 +857,13 @@ export const FeedCard = memo(function FeedCard({
         )}
       </Pressable>
 
-      {/* Stats Summary - Fixed */}
-      {statsContent}
+      {/* Stats + Music row */}
+      {(statsContent || (workoutSong && !isPending && workoutSong.artworkUrl100)) && (
+      <View style={styles.statsRowWrapper}>
+        {statsContent}
+
+      </View>
+      )}
 
       {/* Carousel or Exercises */}
       {coverImageUrl ? (
@@ -932,66 +912,161 @@ export const FeedCard = memo(function FeedCard({
 
       {/* Social Actions Bar */}
       {!isPending && (
-        <View style={styles.socialActionsBar}>
-          {/* Like Button */}
-          <TouchableOpacity
-            style={styles.socialActionButton}
-            onPress={onLike}
-            disabled={!onLike}
-          >
-            <Ionicons
-              name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
-              size={22}
-              color={isLiked ? colors.brandPrimary : colors.textSecondary}
-              style={{
-                textShadowColor: isLiked ? colors.brandPrimary : colors.textSecondary,
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 0.5,
-              }}
-            />
-            {likeCount > 0 && (
-              <Text style={styles.socialActionCount}>{likeCount}</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Comment Button */}
-          <TouchableOpacity
-            style={styles.socialActionButton}
-            onPress={onComment}
-            disabled={!onComment}
-          >
-            <Ionicons
-              name="chatbubble-outline"
-              size={22}
-              color={colors.textSecondary}
-              style={{
-                textShadowColor: colors.textSecondary,
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 0.5,
-              }}
-            />
-            {commentCount > 0 && (
-              <Text style={styles.socialActionCount}>{commentCount}</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Share Button */}
-          {workout && (
+        <View>
+          <View style={styles.socialActionsBar}>
+            {/* Like Button */}
             <TouchableOpacity
               style={styles.socialActionButton}
-              onPress={() => setShowShareScreen(true)}
+              onPress={onLike}
+              disabled={!onLike}
             >
               <Ionicons
-                name="share-outline"
+                name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
                 size={22}
-                color={colors.textSecondary}
+                color={isLiked ? colors.brandPrimary : colors.textPrimary}
+                style={{
+                  textShadowColor: isLiked
+                    ? colors.brandPrimary
+                    : colors.textSecondary,
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 0.5,
+                }}
+              />
+              {likeCount > 0 && (
+                <Text style={styles.socialActionCount}>{likeCount}</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Comment Button */}
+            <TouchableOpacity
+              style={styles.socialActionButton}
+              onPress={onComment}
+              disabled={!onComment}
+            >
+              <Ionicons
+                name="chatbubble-outline"
+                size={22}
+                color={colors.textPrimary}
                 style={{
                   textShadowColor: colors.textSecondary,
                   textShadowOffset: { width: 0, height: 0 },
                   textShadowRadius: 0.5,
                 }}
               />
+              {commentCount > 0 && (
+                <Text style={styles.socialActionCount}>{commentCount}</Text>
+              )}
             </TouchableOpacity>
+
+            {/* Share Button */}
+            {workout && (
+              <TouchableOpacity
+                style={styles.socialActionButton}
+                onPress={() => setShowShareScreen(true)}
+              >
+                <Ionicons
+                  name="share-outline"
+                  size={22}
+                  color={colors.textPrimary}
+                  style={{
+                    textShadowColor: colors.textSecondary,
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 0.5,
+                  }}
+                />
+              </TouchableOpacity>
+            )}
+
+            <View style={{ flex: 1 }} />
+            <Text style={styles.bottomTimeAgo}>{timeAgo}</Text>
+          </View>
+
+          {/* Liked By Section */}
+          {recentLikers.length > 0 && (
+            <View style={styles.likedByContainer}>
+              <View style={styles.likedByAvatars}>
+                {recentLikers.slice(0, 3).map((liker, index) => (
+                  <View
+                    key={liker.id}
+                    style={[
+                      styles.likedByAvatarContainer,
+                      {
+                        zIndex: 3 - index,
+                        marginLeft: index > 0 ? -10 : 0,
+                        borderColor: colors.bg,
+                      },
+                    ]}
+                  >
+                    {liker.avatar_url ? (
+                      <Image
+                        source={{ uri: liker.avatar_url }}
+                        style={styles.likedByAvatar}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.likedByAvatar,
+                          {
+                            backgroundColor: colors.surfaceSubtle,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          },
+                        ]}
+                      >
+                        <Text style={styles.likedByAvatarFallback}>
+                          {liker.display_name?.[0] || liker.user_tag?.[0] || '?'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.likedByText} numberOfLines={1}>
+                Liked by{' '}
+                <Text style={styles.likedByBold}>
+                  {recentLikers[0].display_name || recentLikers[0].user_tag}
+                </Text>
+                {likeCount > 1
+                  ? ' and others'
+                  : ''}
+              </Text>
+            </View>
+          )}
+
+          {/* Comment Preview Section */}
+          {latestComment && (
+            <View style={styles.commentPreviewContainer}>
+              {latestComment.userAvatar ? (
+                <Image
+                  source={{ uri: latestComment.userAvatar }}
+                  style={styles.commentAvatar}
+                />
+              ) : (
+                <View style={styles.commentAvatarPlaceholder}>
+                  <Text style={styles.commentAvatarPlaceholderText}>
+                    {latestComment.username[0]}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.commentContent}>
+                <View style={styles.commentHeader}>
+                  <Text style={styles.commentUsername}>
+                    {latestComment.username}
+                  </Text>
+                  <Text style={styles.commentTime}>{latestComment.timeAgo}</Text>
+                </View>
+                <Text style={styles.commentText} numberOfLines={2}>
+                  {latestComment.text}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.commentLikeButton}>
+                <Ionicons
+                  name="heart-outline"
+                  size={14}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       )}
@@ -1124,6 +1199,33 @@ function createStyles(
       color: colors.textTertiary,
       marginTop: 2,
     },
+    bottomTimeAgo: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontWeight: '400',
+    },
+    headerMusicContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 1,
+    },
+    headerSubtitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+      flexWrap: 'nowrap',
+    },
+    subtitleSeparator: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginHorizontal: 2,
+    },
+    headerMusicText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
     routineContainer: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1158,14 +1260,14 @@ function createStyles(
       fontSize: 22,
       fontWeight: '600',
       color: colors.textPrimary,
-      marginBottom: 2,
+      marginBottom: 6,
     },
     workoutDescription: {
-      fontSize: 14,
+      fontSize: 15,
       color: colors.textPrimary,
       marginTop: 0,
-      marginBottom: 0, // Moved to container
-      lineHeight: 20,
+      marginBottom: 0,
+      lineHeight: 21,
     },
     songPreviewWrapper: {
       marginBottom: 12,
@@ -1347,7 +1449,7 @@ function createStyles(
     },
     workoutImageContainer: {
       width: '100%',
-      aspectRatio: 1.45,
+      aspectRatio: 1,
       marginBottom: 12,
       borderRadius: 8,
       overflow: 'hidden',
@@ -1422,13 +1524,8 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 8,
+      paddingVertical: 6,
       paddingHorizontal: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    lastExerciseRow: {
-      borderBottomWidth: 0,
     },
     exerciseNameContainer: {
       flex: 1,
@@ -1461,8 +1558,6 @@ function createStyles(
       gap: 6,
       paddingVertical: 8,
       backgroundColor: colors.bg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
     },
     seeMoreText: {
       fontSize: 14,
@@ -1470,36 +1565,43 @@ function createStyles(
       color: colors.brandPrimary,
       letterSpacing: -0.2,
     },
+    statsRowWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 2,
+      marginBottom: 10,
+    },
     statsContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-around',
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      marginTop: 8,
-      marginBottom: 14,
-      borderRadius: 12,
-      backgroundColor: colors.bg,
-      borderWidth: 1,
-      borderColor: colors.border,
+      justifyContent: 'flex-start',
+      alignItems: 'flex-start',
+      gap: 28,
+      paddingVertical: 10,
+      paddingHorizontal: 0,
+    },
+    statsRowMusic: {
+      width: 52,
+      height: 52,
+      borderRadius: 8,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    statsRowArtwork: {
+      width: '100%',
+      height: '100%',
     },
     statItem: {
-      alignItems: 'center',
-      gap: 4,
-    },
-    statLabelContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 4,
     },
     statLabel: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      fontSize: 11,
+      fontWeight: '500',
+      color: colors.textTertiary,
     },
     statValue: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.textPrimary,
     },
@@ -1525,13 +1627,6 @@ function createStyles(
       color: colors.textSecondary,
       fontStyle: 'italic',
     },
-    socialActionsBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingVertical: 10,
-      marginTop: 4,
-    },
     socialActionButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1541,7 +1636,7 @@ function createStyles(
     },
     socialActionCount: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: colors.textPrimary,
       fontWeight: '500',
     },
     pagination: {
@@ -1550,6 +1645,104 @@ function createStyles(
       marginTop: 4,
       marginBottom: 4, // reduced margin as social bar has top margin
       gap: 6,
+    },
+    socialActionsBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      marginTop: 4,
+    },
+    commentPreviewContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingHorizontal: 4,
+      marginTop: 8,
+      marginBottom: 4,
+      gap: 10,
+    },
+    commentAvatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    commentAvatarPlaceholder: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceSubtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    commentAvatarPlaceholderText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    commentContent: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    commentHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 2,
+    },
+    commentUsername: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    commentTime: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    commentText: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      lineHeight: 18,
+    },
+    commentLikeButton: {
+      padding: 4,
+    },
+    likedByContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 0,
+      marginBottom: 12,
+      paddingHorizontal: 8,
+    },
+    likedByAvatars: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+    likedByAvatarContainer: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      overflow: 'hidden',
+    },
+    likedByAvatar: {
+      width: '100%',
+      height: '100%',
+    },
+    likedByAvatarFallback: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    likedByText: {
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+    likedByBold: {
+      fontWeight: '600',
     },
     menuButton: {
       padding: 4,
@@ -1562,8 +1755,7 @@ function createStyles(
     readMore: {
       fontSize: 13,
       color: colors.textSecondary,
-      marginTop: -8,
-      marginBottom: 0, // Moved to container
+      marginTop: 6,
       fontWeight: '500',
     },
   })
