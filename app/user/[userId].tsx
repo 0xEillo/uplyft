@@ -17,8 +17,8 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, PrivacyError } from '@/lib/database'
 import { calculateTotalVolume, formatVolume } from '@/lib/utils/workout-stats'
 import {
-    FollowRelationshipStatus,
-    WorkoutSessionWithDetails,
+  FollowRelationshipStatus,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -26,20 +26,18 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Dimensions,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 
 const { width } = Dimensions.get('window')
-
-
 
 let skipNextProfileEntryAnimation = false
 
@@ -459,16 +457,16 @@ export default function UserProfileScreen() {
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             {/* Cover Photo Section */}
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.coverContainer,
                 {
                   transform: [
                     { translateY: coverTranslateY },
-                    { scale: coverScale }
+                    { scale: coverScale },
                   ],
-                  opacity: coverOpacity
-                }
+                  opacity: coverOpacity,
+                },
               ]}
             >
               {avatarUrl ? (
@@ -531,11 +529,11 @@ export default function UserProfileScreen() {
                   </View>
                   {userTag && <Text style={styles.userTag}>@{userTag}</Text>}
 
-                  {/* Stats Row - Compact inline style */}
+                  {/* Stats Row - title above number, all on one line */}
                   <View style={styles.statsRow}>
                     <View style={styles.stat}>
-                      <Text style={styles.statNumber}>{workouts.length}</Text>
                       <Text style={styles.statLabel}>workouts</Text>
+                      <Text style={styles.statNumber}>{workouts.length}</Text>
                     </View>
                     <View style={styles.statSeparator} />
                     <TouchableOpacity
@@ -547,8 +545,8 @@ export default function UserProfileScreen() {
                         })
                       }
                     >
-                      <Text style={styles.statNumber}>{followerCount}</Text>
                       <Text style={styles.statLabel}>followers</Text>
+                      <Text style={styles.statNumber}>{followerCount}</Text>
                     </TouchableOpacity>
                     <View style={styles.statSeparator} />
                     <TouchableOpacity
@@ -560,8 +558,8 @@ export default function UserProfileScreen() {
                         })
                       }
                     >
-                      <Text style={styles.statNumber}>{followingCount}</Text>
                       <Text style={styles.statLabel}>following</Text>
+                      <Text style={styles.statNumber}>{followingCount}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -891,7 +889,7 @@ const createStyles = (
       minHeight: 280,
     },
     coverContainer: {
-      height: 240,
+      height: 260,
       width: '100%',
       position: 'absolute',
       top: 0,
@@ -924,13 +922,13 @@ const createStyles = (
     },
     profileSection: {
       paddingHorizontal: 14,
-      paddingTop: 150,
+      paddingTop: 115,
       paddingBottom: 12,
     },
     profileTop: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      marginBottom: 16,
+      marginBottom: 12,
     },
     avatar: {
       width: 90,
@@ -974,12 +972,12 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       marginTop: 6,
-      flexWrap: 'wrap',
+      flexWrap: 'nowrap',
     },
     stat: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 3,
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 2,
     },
     statSeparator: {
       width: 3,
@@ -989,16 +987,16 @@ const createStyles = (
       marginHorizontal: 10,
       opacity: 0.4,
     },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '400',
+      textTransform: 'lowercase',
+    },
     statNumber: {
       fontSize: 15,
       fontWeight: '700',
       color: colors.textPrimary,
-    },
-    statLabel: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: '400',
-      textTransform: 'lowercase',
     },
     profileDescription: {
       fontSize: 14,

@@ -47,9 +47,8 @@ export const WeeklyStatsCard = ({
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.card}
-        onPress={showChevron ? onPress : undefined}
-        activeOpacity={showChevron ? 0.9 : 1}
-        disabled={!showChevron}
+        onPress={onPress}
+        activeOpacity={0.9}
       >
         {/* Stats Row */}
         <View style={styles.statsRow}>

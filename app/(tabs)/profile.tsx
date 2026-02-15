@@ -413,38 +413,42 @@ export default function ProfileScreen() {
     extrapolate: 'clamp',
   })
 
-
-
   return (
-    <View
-      collapsable={false}
-      style={styles.container}
-    >
+    <View collapsable={false} style={styles.container}>
       <BlurredHeader style={styles.navbarContainer}>
         <BaseNavbar
           leftContent={
             <Text
-              style={[
-                styles.headerTitle,
-                { marginLeft: 6 },
-              ]}
+              style={[styles.headerTitle, { marginLeft: 6 }]}
               numberOfLines={1}
             >
               Profile
             </Text>
           }
           rightContent={
-            <NavbarIsland>
-              <TouchableOpacity
-                onPress={() => router.push('/account-settings')}
-                style={styles.navbarRightButton}
-              >
-                <Ionicons
-                  name="settings-outline"
-                  size={24}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
+            <NavbarIsland style={styles.actionsIsland}>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  onPress={() => router.push('/edit-profile')}
+                  style={styles.iconButton}
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push('/account-settings')}
+                  style={styles.iconButton}
+                >
+                  <Ionicons
+                    name="settings-outline"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+              </View>
             </NavbarIsland>
           }
         />
@@ -473,16 +477,16 @@ export default function ProfileScreen() {
           ListHeaderComponent={
             <View style={styles.profileHeader}>
               {/* Cover Photo Section */}
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.coverContainer,
                   {
                     transform: [
                       { translateY: coverTranslateY },
-                      { scale: coverScale }
+                      { scale: coverScale },
                     ],
-                    opacity: coverOpacity
-                  }
+                    opacity: coverOpacity,
+                  },
                 ]}
               >
                 {profile?.avatar_url ? (
@@ -564,11 +568,11 @@ export default function ProfileScreen() {
                       )}
                     </TouchableOpacity>
 
-                    {/* Stats Row - Compact inline style */}
+                    {/* Stats Row - title above number, all on one line */}
                     <View style={styles.statsRow}>
                       <View style={styles.stat}>
-                        <Text style={styles.statNumber}>{workoutCount}</Text>
                         <Text style={styles.statLabel}>workouts</Text>
+                        <Text style={styles.statNumber}>{workoutCount}</Text>
                       </View>
                       <View style={styles.statSeparator} />
                       <TouchableOpacity
@@ -582,8 +586,8 @@ export default function ProfileScreen() {
                           }
                         }}
                       >
-                        <Text style={styles.statNumber}>{followerCount}</Text>
                         <Text style={styles.statLabel}>followers</Text>
+                        <Text style={styles.statNumber}>{followerCount}</Text>
                       </TouchableOpacity>
                       <View style={styles.statSeparator} />
                       <TouchableOpacity
@@ -597,8 +601,8 @@ export default function ProfileScreen() {
                           }
                         }}
                       >
-                        <Text style={styles.statNumber}>{followingCount}</Text>
                         <Text style={styles.statLabel}>following</Text>
+                        <Text style={styles.statNumber}>{followingCount}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -720,15 +724,23 @@ const createStyles = (
       right: 0,
       zIndex: 100,
     },
-    navbarRightButton: {
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    actionsIsland: {
+      height: 44,
+      borderRadius: 22,
+      paddingHorizontal: 10,
+      width: 'auto',
+      minWidth: 0,
+    },
+    iconButton: {
       width: 44,
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    navbarIsland: {
-      flexDirection: 'row',
-      alignItems: 'center',
     },
     iconWrapper: {
       width: 24,
@@ -757,7 +769,7 @@ const createStyles = (
       minHeight: 280,
     },
     coverContainer: {
-      height: 240, // Reduced height as requested
+      height: 260,
       width: '100%',
       position: 'absolute',
       top: 0,
@@ -790,13 +802,13 @@ const createStyles = (
     },
     profileSection: {
       paddingHorizontal: 14,
-      paddingTop: 100,
-      paddingBottom: 12, // More compact gap to next section
+      paddingTop: 75,
+      paddingBottom: 12,
     },
     profileTop: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      marginBottom: 16,
+      marginBottom: 12,
     },
     avatar: {
       width: 90,
@@ -840,12 +852,12 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       marginTop: 6,
-      flexWrap: 'wrap',
+      flexWrap: 'nowrap',
     },
     stat: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 3,
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 2,
     },
     statSeparator: {
       width: 3,
@@ -855,16 +867,16 @@ const createStyles = (
       marginHorizontal: 10,
       opacity: 0.4,
     },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '400',
+      textTransform: 'lowercase',
+    },
     statNumber: {
       fontSize: 15,
       fontWeight: '700',
       color: colors.textPrimary,
-    },
-    statLabel: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: '400',
-      textTransform: 'lowercase',
     },
     profileDescription: {
       fontSize: 14,
@@ -877,7 +889,7 @@ const createStyles = (
     },
     dashboardSection: {
       paddingHorizontal: 14,
-      marginBottom: 12,
+      marginBottom: 8,
     },
     dashboardCards: {
       flexDirection: 'row',
