@@ -273,9 +273,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
             {/* Overall Level Card */}
             {overallLevel && (
               <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionHeaderText}>Lifter Level</Text>
-                </View>
+              
                 
                 <TouchableOpacity
                   style={styles.levelCard}
@@ -558,7 +556,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.statusWarning,
     },
 
-    // Body Section
+    // Body Section - consistent 14px horizontal padding
     bodySection: {
       flex: 1,
       paddingHorizontal: 14,
@@ -568,6 +566,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Legend
     integratedLegend: {
       marginTop: 8,
+      marginBottom: 16,
       paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
