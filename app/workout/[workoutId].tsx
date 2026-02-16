@@ -69,6 +69,7 @@ export default function WorkoutDetailScreen() {
       sessionId: workout.id,
       userId: user.id,
       createdAt: workout.created_at,
+      date: workout.date,
       exercises: (workout.workout_exercises || []).map((we) => ({
         exerciseId: we.exercise_id,
         exerciseName: we.exercise?.name || 'Exercise',
@@ -137,39 +138,57 @@ export default function WorkoutDetailScreen() {
     loadSocialStats()
   }, [loadSocialStats])
 
-  // Baseline max 1RM values before this workout (used for +X% level progress deltas)
+  // Compute PRs and Baseline Max 1RMs
   useEffect(() => {
-    if (!workout?.created_at || !workout?.id || !user?.id) {
-      setPreviousMax1RMByExerciseId(null)
-      return
-    }
+    if (!computeContext) return
 
     let isMounted = true
     setPreviousMax1RMByExerciseId(null)
 
-    const loadBaselineMax1RMs = async () => {
+    const compute = async () => {
       try {
-        const baseline = await database.stats.getExerciseMax1RMsBeforeDate(
-          user.id,
-          workout.created_at,
-          workout.id,
-        )
+        const result = await PrService.computePrsForSession(computeContext)
         if (!isMounted) return
-        setPreviousMax1RMByExerciseId(baseline)
+
+        // 1. Process PR Info (for badges)
+        const prData = result.perExercise.map((exPr) => ({
+          exerciseName: exPr.exerciseName,
+          prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
+          prLabels: exPr.prs.map((pr) => pr.label),
+          prDetails: exPr.prs.map((pr) => ({
+            label: pr.label,
+            weight: pr.weight,
+            previousReps: pr.previousReps,
+            currentReps: pr.currentReps,
+            isCurrent: pr.isCurrent,
+          })),
+          hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
+        }))
+        setPrInfo(prData)
+
+        // 2. Process Baseline 1RMs (for green triangle progress)
+        const baselineMap: Record<string, number> = {}
+        result.perExercise.forEach((ex) => {
+          if (ex.baseline1RM > 0) {
+            baselineMap[ex.exerciseId] = ex.baseline1RM
+          }
+        })
+        setPreviousMax1RMByExerciseId(baselineMap)
       } catch (error) {
-        console.error('Error loading baseline max 1RMs:', error)
+        console.error('Error computing PRs and stats:', error)
         if (isMounted) {
+          setPrInfo([])
           setPreviousMax1RMByExerciseId({})
         }
       }
     }
 
-    loadBaselineMax1RMs()
+    compute()
 
     return () => {
       isMounted = false
     }
-  }, [workout?.created_at, workout?.id, user?.id])
+  }, [computeContext])
 
   // Load workout count for the week
   useEffect(() => {
@@ -191,45 +210,7 @@ export default function WorkoutDetailScreen() {
     fetchCount()
   }, [workout?.date, workout?.id, user?.id])
 
-  // Compute PRs
-  useEffect(() => {
-    if (!computeContext) return
 
-    let isMounted = true
-
-    const compute = async () => {
-      try {
-        const result = await PrService.computePrsForSession(computeContext)
-        if (!isMounted) return
-
-        const prData = result.perExercise.map((exPr) => ({
-          exerciseName: exPr.exerciseName,
-          prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
-          prLabels: exPr.prs.map((pr) => pr.label),
-          prDetails: exPr.prs.map((pr) => ({
-            label: pr.label,
-            weight: pr.weight,
-            previousReps: pr.previousReps,
-            currentReps: pr.currentReps,
-            isCurrent: pr.isCurrent,
-          })),
-          hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
-        }))
-        setPrInfo(prData)
-      } catch (error) {
-        console.error('Error computing PRs:', error)
-        if (isMounted) {
-          setPrInfo([])
-        }
-      }
-    }
-
-    compute()
-
-    return () => {
-      isMounted = false
-    }
-  }, [computeContext])
 
   // Handle like toggle
   const handleLike = useCallback(async () => {

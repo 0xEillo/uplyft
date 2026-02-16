@@ -1,35 +1,35 @@
 import type {
-  BodyLogEntryWithImages,
-  BodyLogImage,
+    BodyLogEntryWithImages,
+    BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  DailyLogConfidence,
-  DailyLogEntry,
-  DailyLogMeal,
-  DailyLogMealSource,
-  DailyLogSummary,
-  Exercise,
-  ExploreProgram,
-  ExploreProgramRoutine,
-  ExploreRoutine,
-  ExploreRoutineExercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  WorkoutComment,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineExercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    DailyLogConfidence,
+    DailyLogEntry,
+    DailyLogMeal,
+    DailyLogMealSource,
+    DailyLogSummary,
+    Exercise,
+    ExploreProgram,
+    ExploreProgramRoutine,
+    ExploreRoutine,
+    ExploreRoutineExercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    WorkoutComment,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineExercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -1959,6 +1959,7 @@ export const database = {
     async getExerciseMax1RMsBeforeDate(
       userId: string,
       beforeCreatedAtISO: string,
+      beforeDate: string,
       excludeSessionId?: string,
     ): Promise<Record<string, number>> {
       let query = supabase
@@ -1973,7 +1974,9 @@ export const database = {
         `,
         )
         .eq('user_id', userId)
-        .lt('created_at', beforeCreatedAtISO)
+        .or(
+          `date.lt.${beforeDate},and(date.eq.${beforeDate},created_at.lt.${beforeCreatedAtISO})`,
+        )
         .not('workout_exercises.sets.weight', 'is', null)
         .not('workout_exercises.sets.reps', 'is', null)
         .gt('workout_exercises.sets.reps', 0)
@@ -2500,6 +2503,7 @@ export const database = {
         .select(
           `
           created_at,
+          date,
           workout_exercises!inner (
             exercise_id,
             sets!inner (reps, weight)
@@ -2510,12 +2514,14 @@ export const database = {
         .not('workout_exercises.sets.weight', 'is', null)
         .not('workout_exercises.sets.reps', 'is', null)
         .gt('workout_exercises.sets.reps', 0)
+        .order('date', { ascending: true })
         .order('created_at', { ascending: true })
 
       if (error) throw error
 
       interface Best1RMSnapshotRow {
         created_at: string
+        date: string
         workout_exercises?: {
           exercise_id: string
           sets?: {
@@ -2535,29 +2541,42 @@ export const database = {
       > = {}
 
       ;(data as Best1RMSnapshotRow[])?.forEach((session) => {
+        // First, calculate the max 1RM achieved IN THIS SESSION for each exercise
+        const sessionMaxByExercise: Record<string, number> = {}
+
         session.workout_exercises?.forEach((workoutExercise) => {
-          if (!bestByExerciseId[workoutExercise.exercise_id]) {
-            bestByExerciseId[workoutExercise.exercise_id] = {
+          workoutExercise.sets?.forEach((set) => {
+            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
+              return
+            }
+            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            const currentSessionMax =
+              sessionMaxByExercise[workoutExercise.exercise_id] || 0
+            if (estimated1RM > currentSessionMax) {
+              sessionMaxByExercise[workoutExercise.exercise_id] = estimated1RM
+            }
+          })
+        })
+
+        // Now update the global bests based on session bests
+        Object.entries(sessionMaxByExercise).forEach(([exerciseId, sessionBest]) => {
+          if (!bestByExerciseId[exerciseId]) {
+            bestByExerciseId[exerciseId] = {
               currentBest1RM: 0,
               previousBest1RM: 0,
               lastIncreaseAt: null,
             }
           }
 
-          workoutExercise.sets?.forEach((set) => {
-            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
-              return
-            }
+          const current = bestByExerciseId[exerciseId]
 
-            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
-            const current = bestByExerciseId[workoutExercise.exercise_id]
-
-            if (estimated1RM > current.currentBest1RM) {
-              current.previousBest1RM = current.currentBest1RM
-              current.currentBest1RM = estimated1RM
-              current.lastIncreaseAt = session.created_at
-            }
-          })
+          // Use >= to capture the most recent occurrence of a tie as the "last increase" (if we wanted to track last performance)
+          // But strict > ensures we only track Personal Records
+          if (sessionBest > current.currentBest1RM) {
+            current.previousBest1RM = current.currentBest1RM
+            current.currentBest1RM = sessionBest
+            current.lastIncreaseAt = session.created_at
+          }
         })
       })
 

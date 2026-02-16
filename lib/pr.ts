@@ -1,3 +1,4 @@
+import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { supabase } from '@/lib/supabase'
 
 // Types kept local to avoid circular deps; align with database.types.ts
@@ -18,6 +19,7 @@ export interface SessionContext {
   sessionId: UUID
   userId: UUID
   createdAt: string
+  date: string
   exercises: PrContextExercise[]
 }
 
@@ -37,6 +39,7 @@ export interface PrResult {
     exerciseId: UUID
     exerciseName: string
     prs: PrDetail[]
+    baseline1RM: number
   }[]
 }
 
@@ -45,20 +48,22 @@ export class PrService {
     const perExerciseResults: PrResult['perExercise'] = []
 
     for (const exercise of ctx.exercises) {
-      const { prs } = await this.computePrsForExercise(
+      const { prs, baseline1RM } = await this.computePrsForExercise(
         ctx.userId,
         exercise.exerciseId,
         exercise.exerciseName,
         ctx.createdAt,
+        ctx.date,
         exercise.sets,
       )
-      if (prs.length > 0) {
-        perExerciseResults.push({
-          exerciseId: exercise.exerciseId,
-          exerciseName: exercise.exerciseName,
-          prs,
-        })
-      }
+      // Always include the exercise in the result to provide baseline stats,
+      // even if no PRs were achieved.
+      perExerciseResults.push({
+        exerciseId: exercise.exerciseId,
+        exerciseName: exercise.exerciseName,
+        prs,
+        baseline1RM,
+      })
     }
 
     const totalPrs = perExerciseResults.reduce(
@@ -74,17 +79,38 @@ export class PrService {
     userId: UUID,
     exerciseId: UUID,
     exerciseName: string,
-    beforeDateISO: string,
+    beforeCreatedAtISO: string,
+    logDate: string,
     currentSets: PrContextSet[],
-  ): Promise<{ prs: PrResult['perExercise'][number]['prs'] }> {
+  ): Promise<{
+    prs: PrResult['perExercise'][number]['prs']
+    baseline1RM: number
+  }> {
     const historic = await this.fetchHistoricSets(
       userId,
       exerciseId,
-      beforeDateISO,
+      beforeCreatedAtISO,
+      logDate,
     )
 
     // Fetch future sets to determine if PRs are still current
-    const future = await this.fetchFutureSets(userId, exerciseId, beforeDateISO)
+    const future = await this.fetchFutureSets(
+      userId,
+      exerciseId,
+      beforeCreatedAtISO,
+      logDate,
+    )
+
+    // Calculate Baseline Estimated 1RM from historic sets
+    let baseline1RM = 0
+    historic.forEach((s) => {
+      if (s.weight && s.reps) {
+        const e1rm = estimateOneRepMaxKg(s.weight, s.reps)
+        if (e1rm > baseline1RM) {
+          baseline1RM = e1rm
+        }
+      }
+    })
 
     const prs: PrDetail[] = []
 
@@ -151,19 +177,21 @@ export class PrService {
       }
     }
 
-    return { prs }
+    return { prs, baseline1RM }
   }
 
   private static async fetchHistoricSets(
     userId: UUID,
     exerciseId: UUID,
-    beforeDateISO: string,
+    beforeCreatedAtISO: string,
+    logDate: string,
   ): Promise<PrContextSet[]> {
     const { data, error } = await supabase
       .from('workout_sessions')
       .select(
         `
         created_at,
+        date,
         workout_exercises!inner (
           exercise_id,
           sets!inner (reps, weight)
@@ -172,7 +200,10 @@ export class PrService {
       )
       .eq('user_id', userId)
       .eq('workout_exercises.exercise_id', exerciseId)
-      .lt('created_at', beforeDateISO)
+      // Logic: Date is strictly before OR (Date is same AND created_at is strictly before)
+      .or(
+        `date.lt.${logDate},and(date.eq.${logDate},created_at.lt.${beforeCreatedAtISO})`,
+      )
 
     if (error) throw error
 
@@ -202,13 +233,15 @@ export class PrService {
   private static async fetchFutureSets(
     userId: UUID,
     exerciseId: UUID,
-    afterDateISO: string,
+    afterCreatedAtISO: string,
+    logDate: string,
   ): Promise<PrContextSet[]> {
     const { data, error } = await supabase
       .from('workout_sessions')
       .select(
         `
         created_at,
+        date,
         workout_exercises!inner (
           exercise_id,
           sets!inner (reps, weight)
@@ -217,7 +250,10 @@ export class PrService {
       )
       .eq('user_id', userId)
       .eq('workout_exercises.exercise_id', exerciseId)
-      .gt('created_at', afterDateISO)
+      // Logic: Date is strictly after OR (Date is same AND created_at is strictly after)
+      .or(
+        `date.gt.${logDate},and(date.eq.${logDate},created_at.gt.${afterCreatedAtISO})`,
+      )
 
     if (error) throw error
 
