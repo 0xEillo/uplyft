@@ -303,7 +303,8 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
             </View>
 
             {/* Overall Level Card - Gamified Rank */}
-            {overallLevel && (
+            {/* Overall Level Card - Gamified Rank */}
+            {overallLevel ? (
               <>
                 <View style={styles.sectionHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -362,11 +363,46 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                     />
                   </View>
                 </TouchableOpacity>
-            </>
+              </>
+            ) : (
+              <>
+                 <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.sectionHeaderText}>Lifter Level</Text>
+                    <TouchableOpacity 
+                      onPress={() => router.push('/lifter-level-info')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.levelCard}
+                  activeOpacity={0.9}
+                  onPress={() => setShowLevelsSheet(true)}
+                >
+                  <View style={styles.levelCardContent}>
+                    <View style={styles.levelCardLeft}>
+                      <Text style={[styles.levelCardValue, { color: colors.textSecondary }]}>
+                        Unranked
+                      </Text>
+                      <View style={styles.levelCardMetaRow}>
+                        <Text style={styles.pointsTotal}>
+                          Tap to see lifter levels
+                        </Text>
+                      </View>
+                    </View>
+                    <LevelBadge level="Untrained" size="hero" />
+                  </View>
+                </TouchableOpacity>
+              </>
             )}
 
             {/* Your Exercises Section - Gamified Exercise Progress */}
-            {trackedExercisesWithProgress.length > 0 && (
+            {/* Your Exercises Section - Gamified Exercise Progress */}
+            {trackedExercisesWithProgress.length > 0 ? (
               <>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionHeaderText}>Your Exercises</Text>
@@ -434,6 +470,48 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                   })}
                 </View>
               </>
+            ) : (
+              <>
+                 <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionHeaderText}>Your Exercises</Text>
+                </View>
+
+                <View style={styles.exerciseCardsContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.exerciseCard,
+                      {
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingVertical: 32,
+                        backgroundColor: colors.surfaceCard,
+                      }
+                    ]}
+                    onPress={() => router.push('/(tabs)/create-post')}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 28,
+                        backgroundColor: colors.brandPrimarySoft,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 16,
+                      }}
+                    >
+                      <Ionicons name="add" size={32} color={colors.brandPrimary} />
+                    </View>
+                    <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 }}>
+                      Start Tracking
+                    </Text>
+                    <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 20, lineHeight: 20 }}>
+                      Log your sets and reps to see your strength stats and levels here.
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
           </View>
     </>
@@ -442,14 +520,12 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
   const modals = (
     <>
       {/* Lifter Levels Sheet */}
-      {overallLevel && (
-        <LifterLevelsSheet
-          isVisible={showLevelsSheet}
-          onClose={() => setShowLevelsSheet(false)}
-          currentLevel={overallLevel.balancedLevel}
-          score={overallLevel.score}
-        />
-      )}
+      <LifterLevelsSheet
+        isVisible={showLevelsSheet}
+        onClose={() => setShowLevelsSheet(false)}
+        currentLevel={overallLevel?.balancedLevel || 'Untrained'}
+        score={overallLevel?.score || 0}
+      />
     </>
   )
 

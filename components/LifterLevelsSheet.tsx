@@ -9,14 +9,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { useEffect, useMemo, useRef } from 'react'
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -63,12 +63,12 @@ export function LifterLevelsSheet({
   const slideAnim = useRef(new Animated.Value(24)).current
 
   const currentLevelIndex = useMemo(() => {
-    const levelIndex = LEVEL_ORDER.indexOf(currentLevel)
-    return levelIndex >= 0 ? levelIndex : 0
+    return LEVEL_ORDER.indexOf(currentLevel)
   }, [currentLevel])
 
-  const unlockedCount = currentLevelIndex + 1
-  const lockedCount = Math.max(0, LEVEL_ORDER.length - unlockedCount)
+  const isUnranked = currentLevel === 'Untrained'
+  const unlockedCount = isUnranked ? 0 : currentLevelIndex + 1
+  const lockedCount = LEVEL_ORDER.length - unlockedCount
   const normalizedMilestoneMap = useMemo(() => {
     const normalized = new Map<string, string>()
     Object.entries(levelMilestoneLabels ?? {}).forEach(([level, label]) => {
@@ -174,7 +174,9 @@ export function LifterLevelsSheet({
                 <View style={styles.currentCardTopRow}>
                   <View style={styles.currentCopy}>
                     <Text style={styles.currentLabel}>Current Level</Text>
-                    <Text style={styles.currentLevelName}>{currentLevel}</Text>
+                    <Text style={styles.currentLevelName}>
+                      {isUnranked ? 'Unranked' : currentLevel}
+                    </Text>
                     {score != null && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.currentScoreGray}>{score} pts</Text>
@@ -195,13 +197,12 @@ export function LifterLevelsSheet({
 
               <View style={styles.gridHeader}>
                 <Text style={styles.gridTitle}>All levels</Text>
-                <Text style={styles.gridSubtitle}>Unlocked and locked tiers</Text>
               </View>
 
               <View style={styles.grid}>
                 {LEVEL_ORDER.map((level, index) => {
-                  const isLocked = index > currentLevelIndex
-                  const isCurrent = index === currentLevelIndex
+                  const isLocked = isUnranked || index > currentLevelIndex
+                  const isCurrent = !isUnranked && index === currentLevelIndex
                   const levelColor = LEVEL_COLORS[level]
                   const tileStatusLabel = isCurrent
                     ? 'Current'
