@@ -1,35 +1,35 @@
 import type {
-    BodyLogEntryWithImages,
-    BodyLogImage,
+  BodyLogEntryWithImages,
+  BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-    DailyLogConfidence,
-    DailyLogEntry,
-    DailyLogMeal,
-    DailyLogMealSource,
-    DailyLogSummary,
-    Exercise,
-    ExploreProgram,
-    ExploreProgramRoutine,
-    ExploreRoutine,
-    ExploreRoutineExercise,
-    Follow,
-    FollowRelationshipStatus,
-    FollowRequest,
-    ParsedWorkout,
-    Profile,
-    WorkoutComment,
-    WorkoutLike,
-    WorkoutRoutine,
-    WorkoutRoutineExercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSession,
-    WorkoutSessionWithDetails,
-    WorkoutSocialStats,
+  DailyLogConfidence,
+  DailyLogEntry,
+  DailyLogMeal,
+  DailyLogMealSource,
+  DailyLogSummary,
+  Exercise,
+  ExploreProgram,
+  ExploreProgramRoutine,
+  ExploreRoutine,
+  ExploreRoutineExercise,
+  Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
+  ParsedWorkout,
+  Profile,
+  WorkoutComment,
+  WorkoutLike,
+  WorkoutRoutine,
+  WorkoutRoutineExercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSession,
+  WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -1065,13 +1065,26 @@ export const database = {
       const searchName = normalizedName.toLowerCase()
 
       // Try to find existing exercise by exact name match (case-insensitive)
-      const { data: exactMatch } = await supabase
+      // We fetch all matches and filter in memory to ensure we strictly respect ownership
+      const { data: nameMatches } = await supabase
         .from('exercises')
         .select('*')
         .ilike('name', normalizedName)
-        .single()
 
-      if (exactMatch) return exactMatch as Exercise
+      if (nameMatches && nameMatches.length > 0) {
+        // Filter matches: either system (null) or owned by current user
+        const validMatches = nameMatches.filter(
+          (e) => e.created_by === null || e.created_by === userId,
+        )
+
+        // 1. Prefer System Exercise
+        const systemMatch = validMatches.find((e) => e.created_by === null)
+        if (systemMatch) return systemMatch as Exercise
+
+        // 2. Fallback to User's Own Exercise
+        const userMatch = validMatches.find((e) => e.created_by === userId)
+        if (userMatch) return userMatch as Exercise
+      }
 
       // Try to find by alias match
       const { data: aliasMatches } = await supabase
@@ -1080,8 +1093,18 @@ export const database = {
         .contains('aliases', [searchName])
 
       if (aliasMatches && aliasMatches.length > 0) {
-        // Return first match (system exercises are prioritized in seed order)
-        return aliasMatches[0] as Exercise
+        // Filter matches: either system (null) or owned by current user
+        const validMatches = aliasMatches.filter(
+          (e) => e.created_by === null || e.created_by === userId,
+        )
+
+        // 1. Prefer System Exercise
+        const systemMatch = validMatches.find((e) => e.created_by === null)
+        if (systemMatch) return systemMatch as Exercise
+
+        // 2. Fallback to User's Own Exercise
+        const userMatch = validMatches.find((e) => e.created_by === userId)
+        if (userMatch) return userMatch as Exercise
       }
 
       // No match found - create new exercise with AI-generated metadata

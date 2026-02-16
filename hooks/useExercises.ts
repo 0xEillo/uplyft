@@ -37,14 +37,25 @@ export function useExercises(options: UseExercisesOptions = {}) {
   const isMounted = useRef(true)
 
   const loadExercises = useCallback(async (force = false) => {
+    // Helper to filter exercises based on visibility
+    const filterVisibleExercises = (
+      allExercises: Exercise[],
+      currentUserId?: string,
+    ) => {
+      return allExercises.filter(
+        (e) => !e.created_by || (currentUserId && e.created_by === currentUserId),
+      )
+    }
+
     // Check cache validity
     const now = Date.now()
     if (!force && globalCache && now - globalCache.lastFetched < CACHE_TTL) {
-      setExercises(globalCache.exercises)
+      const filtered = filterVisibleExercises(globalCache.exercises, userId)
+      setExercises(filtered)
       setMuscleGroups(globalCache.muscleGroups)
       setEquipmentTypes(globalCache.equipmentTypes)
       setIsLoading(false)
-      return globalCache.exercises
+      return filtered
     }
 
     try {
@@ -69,7 +80,7 @@ export function useExercises(options: UseExercisesOptions = {}) {
       allExercises.forEach((e) => {
         if (e.equipment) equipmentSet.add(e.equipment)
         if (e.equipments && Array.isArray(e.equipments)) {
-          e.equipments.forEach((eq) => equipmentSet.add(eq))
+          e.equipments.forEach((eq) => equipmentSet.add(eq) as unknown)
         }
       })
       // Custom order: most common equipment first
@@ -103,11 +114,12 @@ export function useExercises(options: UseExercisesOptions = {}) {
         lastFetched: now,
       }
 
-      setExercises(allExercises)
+      const filtered = filterVisibleExercises(allExercises, userId)
+      setExercises(filtered)
       setMuscleGroups(muscles)
       setEquipmentTypes(equipment)
 
-      return allExercises
+      return filtered
     } catch (err) {
       if (!isMounted.current) return []
       setError(
@@ -119,7 +131,7 @@ export function useExercises(options: UseExercisesOptions = {}) {
         setIsLoading(false)
       }
     }
-  }, [])
+  }, [userId])
 
   const loadRecentExercises = useCallback(async () => {
     if (!userId) return []
