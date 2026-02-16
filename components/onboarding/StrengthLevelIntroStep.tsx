@@ -1,8 +1,9 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import { LevelBadge } from '@/components/LevelBadge'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
-import { getLevelColor } from '@/hooks/useStrengthData'
+import { getLevelColor, LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
   EXERCISES_WITH_STANDARDS,
@@ -16,6 +17,7 @@ import {
   type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
@@ -784,68 +786,74 @@ export function StrengthLevelIntroStep({
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
-            <View style={{
-                backgroundColor: colors.surfaceCard,
-                borderRadius: 24,
-                padding: 24,
-                borderWidth: 1,
-                borderColor: colors.border,
-                width: '100%',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.05,
-                shadowRadius: 16,
-                elevation: 4,
-            }}>
-                <Text style={{
-                    fontSize: 13,
-                    fontWeight: '700',
-                    color: colors.textTertiary,
-                    marginBottom: 20,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1
-                }}>
-                    {selectedExercise.name}
-                </Text>
-                
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-                    <LevelBadge level={targetLevel.level as any} size="hero" />
-                    
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                        <Text 
-                            style={{
-                                fontSize: 32,
-                                fontWeight: '900',
-                                color: targetLevel.color,
-                                letterSpacing: -1,
-                                lineHeight: 36,
-                                marginBottom: 4
-                            }}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                        >
-                            {targetLevel.level}
-                        </Text>
-                        
-                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                             <Text style={{
-                                fontSize: 24,
-                                fontWeight: '800',
-                                color: colors.textPrimary,
-                            }}>
-                                {displayWeight} {weightUnit}
-                            </Text>
-                            <Text style={{
-                                fontSize: 13,
-                                fontWeight: '600',
-                                color: colors.textTertiary,
-                            }}>
-                                (Est. 1RM)
-                            </Text>
-                        </View>
-                    </View>
+            <LiquidGlassSurface
+              style={[
+                affirmationCardStyles.card,
+                {
+                  borderColor: LEVEL_COLORS[targetLevel.level],
+                  borderWidth: 2,
+                  backgroundColor: isDark
+                    ? 'rgba(26,28,32,0.82)'
+                    : 'rgba(255,255,255,0.94)',
+                },
+              ]}
+              debugLabel="strength-intro-affirmation-card"
+            >
+              <LinearGradient
+                colors={[
+                  `${LEVEL_COLORS[targetLevel.level]}15`,
+                  `${LEVEL_COLORS[targetLevel.level]}05`,
+                ]}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                pointerEvents="none"
+              />
+
+              <View style={affirmationCardStyles.topRow}>
+                <View style={affirmationCardStyles.copy}>
+                  <Text style={[affirmationCardStyles.label, { color: colors.textSecondary }]}>
+                    {selectedExercise.name.toUpperCase()}
+                  </Text>
+                  <Text
+                    style={[
+                      affirmationCardStyles.levelName,
+                      { color: colors.textPrimary },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {targetLevel.level}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text
+                      style={[
+                        affirmationCardStyles.weight,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
+                      {displayWeight} {weightUnit}
+                    </Text>
+                    <Text
+                      style={[
+                        affirmationCardStyles.weightLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      (Est. 1RM)
+                    </Text>
+                  </View>
                 </View>
-            </View>
+
+                <View style={affirmationCardStyles.badgeWrap}>
+                  <LevelBadge
+                    level={targetLevel.level as any}
+                    size="hero"
+                    showTooltipOnPress={false}
+                  />
+                </View>
+              </View>
+            </LiquidGlassSurface>
         </View>
 
         <View style={styles.footer}>
@@ -1410,5 +1418,51 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+})
+
+// Matches LifterLevelsSheet current card format
+const affirmationCardStyles = StyleSheet.create({
+  card: {
+    borderRadius: 24,
+    padding: 18,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  copy: {
+    flex: 1,
+    marginRight: 12,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  levelName: {
+    fontSize: 30,
+    fontWeight: '900',
+    letterSpacing: -0.7,
+    marginBottom: 6,
+  },
+  weight: {
+    fontSize: 24,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'] as const,
+  },
+  weightLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  badgeWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 96,
   },
 })
