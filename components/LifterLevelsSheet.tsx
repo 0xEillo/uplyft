@@ -25,7 +25,6 @@ interface LifterLevelsSheetProps {
   onClose: () => void
   currentLevel: StrengthLevel
   score?: number | null
-  scoreDelta?: number
   title?: string
   levelMilestoneLabels?: Partial<Record<StrengthLevel, string>>
   showMilestones?: boolean
@@ -52,7 +51,6 @@ export function LifterLevelsSheet({
   onClose,
   currentLevel,
   score,
-  scoreDelta = 0,
   title,
   levelMilestoneLabels,
   showMilestones = false,
@@ -180,11 +178,6 @@ export function LifterLevelsSheet({
                     {score != null && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.currentScoreGray}>{score} pts</Text>
-                        {scoreDelta > 0 && (
-                          <Text style={styles.scoreDeltaText}>
-                            ▲ {scoreDelta}
-                          </Text>
-                        )}
                       </View>
                     )}
                   </View>

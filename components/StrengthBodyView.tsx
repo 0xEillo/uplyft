@@ -439,7 +439,6 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
           onClose={() => setShowLevelsSheet(false)}
           currentLevel={overallLevel.balancedLevel}
           score={overallLevel.score}
-          scoreDelta={overallLevel.progressDelta}
         />
       )}
     </>

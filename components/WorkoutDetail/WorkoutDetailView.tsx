@@ -25,6 +25,8 @@ import { formatTimeAgo } from '@/lib/utils/formatters'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import type { WorkoutSessionWithDetails } from '@/types/database.types'
 
+import { LevelBadge } from '@/components/LevelBadge'
+import { useUserLevel } from '@/hooks/useUserLevel'
 import { ExerciseDetailCard } from './ExerciseDetailCard'
 import { MuscleSplitChart } from './MuscleSplitChart'
 import { WorkoutStatsGrid } from './WorkoutStatsGrid'
@@ -111,6 +113,9 @@ export function WorkoutDetailView({
   const NAVBAR_HEIGHT = 76
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
+
+  // Fetch user level for badge
+  const { level: userLevel, isLoading: isLevelLoading } = useUserLevel(workout?.user_id ?? undefined)
   const normalizedReturnTo = useMemo(
     () => normalizeReturnToParam(params.returnTo),
     [params.returnTo],
@@ -371,6 +376,14 @@ export function WorkoutDetailView({
                     <Text style={[styles.userName, { color: colors.textPrimary }]}>
                       {profile?.display_name || 'User'}
                     </Text>
+                    {userLevel && !isLevelLoading && (
+                      <LevelBadge
+                        level={userLevel}
+                        size="xs"
+                        showTooltipOnPress
+                        style={styles.lifterBadge}
+                      />
+                    )}
                   </View>
                   <Text
                     style={[styles.timeAgo, { color: colors.textSecondary }]}
@@ -608,7 +621,9 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
+  },
+  lifterBadge: {
+    marginLeft: 2,
   },
   timeAgo: {
     fontSize: 13,
