@@ -726,10 +726,8 @@ export default function CreateRoutineScreen() {
       // Consume trial or complete tutorial step for Saving a Routine
       if (!isEditMode) {
         if (!isProMember) {
-          console.log('[CreateRoutine] Saving new routine. Consuming create_routine trial.')
           consumeTrial('create_routine')
         } else {
-          console.log('[CreateRoutine] Saving new routine. Completing create_routine tutorial step.')
           completeStep('create_routine')
         }
       }
@@ -954,7 +952,6 @@ export default function CreateRoutineScreen() {
   // Handle long press to start dragging
   const handleLongPress = useCallback(
     (index: number) => {
-      console.log(`[Drag] LONG PRESS activated on exercise ${index}`)
       setDraggingIndex(index)
       draggingScale.value = withSpring(1.02, {
         damping: 15,
@@ -970,12 +967,8 @@ export default function CreateRoutineScreen() {
 
   // Handle moving an exercise up
   const handleMoveUp = useCallback((index: number) => {
-    if (index <= 0) {
-      console.log(`[Drag] Already at top, cannot move up`)
-      return
-    }
+    if (index <= 0) return
     const newIndex = index - 1
-    console.log(`[Drag] MOVE UP: exercise ${index} -> ${newIndex}`)
     setExercises((prev) => {
       const updated = [...prev]
       ;[updated[index - 1], updated[index]] = [
@@ -990,12 +983,8 @@ export default function CreateRoutineScreen() {
   // Handle moving an exercise down
   const handleMoveDown = useCallback(
     (index: number) => {
-      if (index >= exercises.length - 1) {
-        console.log(`[Drag] Already at bottom, cannot move down`)
-        return
-      }
+      if (index >= exercises.length - 1) return
       const newIndex = index + 1
-      console.log(`[Drag] MOVE DOWN: exercise ${index} -> ${newIndex}`)
       setExercises((prev) => {
         const updated = [...prev]
         ;[updated[index + 1], updated[index]] = [
@@ -1011,7 +1000,6 @@ export default function CreateRoutineScreen() {
 
   // Handle dropping/releasing
   const handleDropExercise = useCallback(() => {
-    console.log(`[Drag] DROP completed`)
     draggingScale.value = withSpring(1, {
       damping: 10,
       stiffness: 100,

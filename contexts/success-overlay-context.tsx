@@ -1,5 +1,6 @@
+import type { StrengthLevel } from '@/lib/strength-standards'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useCallback, useContext, useState } from 'react'
 
 interface SuccessOverlayData {
   message: string
@@ -10,6 +11,16 @@ interface SuccessOverlayData {
   streakMilestone?: boolean // True when streak increased (e.g., 2 weeks -> 3 weeks)
   workout?: WorkoutSessionWithDetails
   workoutTitle?: string
+}
+
+export interface StrengthScoreData {
+  previousScore: number
+  currentScore: number
+  pointsGained: number
+  previousLevel: StrengthLevel
+  currentLevel: StrengthLevel
+  nextLevel: StrengthLevel | null
+  progress: number // 0-100
 }
 
 interface SuccessOverlayContextType {
@@ -23,6 +34,11 @@ interface SuccessOverlayContextType {
   data: SuccessOverlayData
   showShareScreen: boolean
   setShowShareScreen: (show: boolean) => void
+  // Points gain overlay
+  showPointsGainOverlay: (scoreData: StrengthScoreData) => void
+  hidePointsOverlay: () => void
+  isPointsOverlayVisible: boolean
+  pointsData: StrengthScoreData | null
 }
 
 const SuccessOverlayContext = createContext<
@@ -43,6 +59,8 @@ export function SuccessOverlayProvider({
     workoutNumber: 1,
     weeklyTarget: 3,
   })
+  const [isPointsOverlayVisible, setIsPointsOverlayVisible] = useState(false)
+  const [pointsData, setPointsData] = useState<StrengthScoreData | null>(null)
 
   const showOverlay = (overlayData: SuccessOverlayData) => {
     setData(overlayData)
@@ -94,6 +112,16 @@ export function SuccessOverlayProvider({
     setWorkoutPosted(true)
   }
 
+  const showPointsGainOverlay = useCallback((scoreData: StrengthScoreData) => {
+    if (scoreData.pointsGained <= 0) return
+    setPointsData(scoreData)
+    setIsPointsOverlayVisible(true)
+  }, [])
+
+  const hidePointsOverlay = useCallback(() => {
+    setIsPointsOverlayVisible(false)
+  }, [])
+
   return (
     <SuccessOverlayContext.Provider
       value={{
@@ -107,6 +135,10 @@ export function SuccessOverlayProvider({
         data,
         showShareScreen,
         setShowShareScreen,
+        showPointsGainOverlay,
+        hidePointsOverlay,
+        isPointsOverlayVisible,
+        pointsData,
       }}
     >
       {children}

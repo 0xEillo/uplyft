@@ -3,19 +3,20 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
 import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
 import { StrengthLevel } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { useEffect, useMemo, useRef } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -23,7 +24,8 @@ interface LifterLevelsSheetProps {
   isVisible: boolean
   onClose: () => void
   currentLevel: StrengthLevel
-  progressToNext: number
+  score?: number | null
+  scoreDelta?: number
   title?: string
   levelMilestoneLabels?: Partial<Record<StrengthLevel, string>>
   showMilestones?: boolean
@@ -49,7 +51,8 @@ export function LifterLevelsSheet({
   isVisible,
   onClose,
   currentLevel,
-  progressToNext,
+  score,
+  scoreDelta = 0,
   title,
   levelMilestoneLabels,
   showMilestones = false,
@@ -66,13 +69,8 @@ export function LifterLevelsSheet({
     return levelIndex >= 0 ? levelIndex : 0
   }, [currentLevel])
 
-  const nextLevel =
-    currentLevelIndex < LEVEL_ORDER.length - 1
-      ? LEVEL_ORDER[currentLevelIndex + 1]
-      : null
   const unlockedCount = currentLevelIndex + 1
   const lockedCount = Math.max(0, LEVEL_ORDER.length - unlockedCount)
-  const safeProgress = Math.round(Math.max(0, Math.min(100, progressToNext)))
   const normalizedMilestoneMap = useMemo(() => {
     const normalized = new Map<string, string>()
     Object.entries(levelMilestoneLabels ?? {}).forEach(([level, label]) => {
@@ -179,9 +177,16 @@ export function LifterLevelsSheet({
                   <View style={styles.currentCopy}>
                     <Text style={styles.currentLabel}>Current Level</Text>
                     <Text style={styles.currentLevelName}>{currentLevel}</Text>
-                    <Text style={styles.currentMeta}>
-                      {nextLevel ? `${safeProgress}% to ${nextLevel}` : 'Max level reached'}
-                    </Text>
+                    {score != null && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.currentScoreGray}>{score} pts</Text>
+                        {scoreDelta > 0 && (
+                          <Text style={styles.scoreDeltaText}>
+                            ▲ {scoreDelta}
+                          </Text>
+                        )}
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.currentBadgeWrap}>
@@ -193,19 +198,6 @@ export function LifterLevelsSheet({
                   </View>
                 </View>
 
-                {nextLevel && (
-                  <View style={styles.progressBarTrack}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${safeProgress}%`,
-                          backgroundColor: LEVEL_COLORS[currentLevel],
-                        },
-                      ]}
-                    />
-                  </View>
-                )}
               </LiquidGlassSurface>
 
               <View style={styles.gridHeader}>
@@ -282,6 +274,16 @@ export function LifterLevelsSheet({
                           numberOfLines={2}
                         >
                           {level}
+                        </Text>
+
+                        <Text
+                          style={[
+                            styles.badgePoints,
+                            isLocked && styles.badgePointsLocked,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {LEVEL_POINT_ANCHORS[level]} pts
                         </Text>
 
                         {shouldRenderMilestone ? (
@@ -480,26 +482,22 @@ const createStyles = (
       letterSpacing: -0.7,
       marginBottom: 6,
     },
-    currentMeta: {
-      fontSize: 14,
-      fontWeight: '600',
+    currentScoreGray: {
+      fontSize: 15,
+      fontWeight: '700',
       color: colors.textSecondary,
+      fontVariant: ['tabular-nums'] as const,
+    },
+    scoreDeltaText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#10B981',
+      fontVariant: ['tabular-nums'] as any,
     },
     currentBadgeWrap: {
       alignItems: 'center',
       justifyContent: 'center',
       minWidth: 96,
-    },
-    progressBarTrack: {
-      marginTop: 16,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: palette.progressTrack,
-      overflow: 'hidden',
-    },
-    progressBarFill: {
-      height: '100%',
-      borderRadius: 4,
     },
     gridHeader: {
       marginBottom: 10,
@@ -593,6 +591,18 @@ const createStyles = (
     },
     badgeNameLocked: {
       color: colors.textSecondary,
+    },
+    badgePoints: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 13,
+      fontVariant: ['tabular-nums'],
+      includeFontPadding: false,
+    },
+    badgePointsLocked: {
+      color: colors.textTertiary,
     },
     badgeMilestone: {
       fontSize: 11,

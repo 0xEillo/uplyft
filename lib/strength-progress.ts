@@ -36,7 +36,8 @@ export function getStrengthGender(
 }
 
 export function toLevelScore(level: StrengthLevel, progress: number): number {
-  return STRENGTH_LEVEL_SCORES[level] + clampStrengthProgress(progress) / 100
+  const clamped = clampStrengthProgress(progress)
+  return STRENGTH_LEVEL_SCORES[level] + clamped / 100
 }
 
 export function scoreToLevelProgress(score: number): {
@@ -47,16 +48,16 @@ export function scoreToLevelProgress(score: number): {
   const safeScore = Number.isFinite(score) ? Math.max(0, score) : 0
   const levelIndex = Math.min(MAX_LEVEL_INDEX, Math.floor(safeScore))
   const level = STRENGTH_LEVEL_ORDER[levelIndex]
-
+  const progress = clampStrengthProgress(
+    safeScore >= MAX_LEVEL_INDEX
+      ? 100
+      : (safeScore - Math.floor(safeScore)) * 100,
+  )
   return {
     level,
     nextLevel:
       levelIndex < MAX_LEVEL_INDEX ? STRENGTH_LEVEL_ORDER[levelIndex + 1] : null,
-    progress: clampStrengthProgress(
-      safeScore >= MAX_LEVEL_INDEX
-        ? 100
-        : (safeScore - Math.floor(safeScore)) * 100,
-    ),
+    progress,
   }
 }
 

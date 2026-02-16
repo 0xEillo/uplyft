@@ -5,10 +5,10 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { memo } from 'react'
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 interface ProfileDashboardProps {
@@ -113,7 +113,7 @@ export const ProfileDashboard = memo(
           <DashboardButton
             title="Daily Log"
             icon="body-outline"
-            onPress={() => router.push('/body-log')}
+            onPress={() => router.push('/body-log/' as any)}
           />
         </View>
       </View>

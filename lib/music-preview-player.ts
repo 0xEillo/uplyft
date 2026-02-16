@@ -85,20 +85,23 @@ export async function playMusicPreview(song: WorkoutSong): Promise<void> {
     }
 
     player = nextPlayer
-    statusSubscription = nextPlayer.addListener('playbackStatusUpdate', (status) => {
-      if (token !== activeToken) return
+    statusSubscription = nextPlayer.addListener(
+      'playbackStatusUpdate',
+      (status) => {
+        if (token !== activeToken) return
 
-      if (status.didJustFinish) {
-        void stopMusicPreview()
-        return
-      }
+        if (status.didJustFinish) {
+          void stopMusicPreview()
+          return
+        }
 
-      setState({
-        trackId: song.trackId,
-        isPlaying: status.playing,
-        isBuffering: status.isBuffering,
-      })
-    })
+        setState({
+          trackId: song.trackId,
+          isPlaying: status.playing,
+          isBuffering: status.isBuffering,
+        })
+      },
+    )
 
     nextPlayer.play()
     setState({ trackId: song.trackId, isPlaying: true, isBuffering: false })

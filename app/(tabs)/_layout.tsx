@@ -1,4 +1,5 @@
 import { Paywall } from '@/components/paywall'
+import { PointsGainOverlay } from '@/components/points-gain-overlay'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
@@ -8,10 +9,7 @@ import {
   LiveActivityProvider,
   useLiveActivity,
 } from '@/contexts/live-activity-context'
-import {
-  RatingPromptProvider,
-  useRatingPrompt,
-} from '@/contexts/rating-prompt-context'
+import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
   RestTimerProvider,
   useRestTimerContext,
@@ -46,11 +44,6 @@ import {
   View,
 } from 'react-native'
 
-const IS_DEV_RUNTIME =
-  typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
-    ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
-    : process.env.NODE_ENV !== 'production'
-const DEBUG_LOGS = false
 const MINIMIZE_ON_SCROLL_TABS = new Set(['index', 'analytics', 'profile'])
 
 function formatAccessoryElapsed(seconds: number): string {
@@ -80,12 +73,17 @@ function TabLayoutContent() {
     hideOverlay,
     showShareScreen,
     setShowShareScreen,
+    isPointsOverlayVisible,
+    pointsData,
+    hidePointsOverlay,
   } = useSuccessOverlay()
   const { weightUnit } = useWeightUnits()
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
-  const { isVisible: isRatingPromptVisible } = useRatingPrompt()
   const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
-  const { isActive: isRestTimerActive, stop: stopRestTimer } = useRestTimerContext()
+  const {
+    isActive: isRestTimerActive,
+    stop: stopRestTimer,
+  } = useRestTimerContext()
   const { stopWorkoutActivity } = useLiveActivity()
   const { user } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
@@ -156,33 +154,6 @@ function TabLayoutContent() {
   // Use the delayed state to allow the user to see the app briefly
   const showGlobalPaywall = delayedShowPaywall && !isProMember
 
-  // Track if we've already shown the share screen for this workout
-  const shownWorkoutIdRef = React.useRef<string | null>(null)
-
-  // Watch for workout data updates and show share screen when workout is ready
-  // IMPORTANT: Don't show share screen while rating prompt is visible to avoid dual-modal freeze
-  React.useEffect(() => {
-    // If we have workout data and overlay is not visible (animation completed), show share screen
-    // Only show once per workout ID
-    // CRITICAL: Wait for rating prompt to close first to prevent iOS modal freeze
-    if (
-      data.workout &&
-      !isVisible &&
-      !showShareScreen &&
-      !isRatingPromptVisible &&
-      shownWorkoutIdRef.current !== data.workout.id
-    ) {
-      shownWorkoutIdRef.current = data.workout.id
-      setShowShareScreen(true)
-    }
-  }, [
-    data.workout,
-    isVisible,
-    showShareScreen,
-    setShowShareScreen,
-    isRatingPromptVisible,
-  ])
-
   const handleAnimationComplete = () => {
     hideOverlay()
     // Note: Share screen will be shown by the useEffect above when workout data arrives
@@ -242,13 +213,6 @@ function TabLayoutContent() {
   const createActionMdSymbol = 'add_circle'
   const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
   const handleDiscardWorkoutProgress = () => {
-    if (DEBUG_LOGS && IS_DEV_RUNTIME) {
-      console.log('[BottomAccessory] discard-pressed', {
-        currentTab,
-        hasDraft,
-        isRestTimerActive,
-      })
-    }
     Alert.alert(
       'Discard workout?',
       'This will clear your current workout progress.',
@@ -259,50 +223,17 @@ function TabLayoutContent() {
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              if (DEBUG_LOGS && IS_DEV_RUNTIME) {
-                console.log('[BottomAccessory] discard-confirmed')
-              }
               await clearWorkoutDraft('bottom-accessory-discard')
               stopRestTimer()
               stopWorkoutActivity()
               setHasDraft(false)
               setWorkoutElapsedSeconds(0)
-              if (DEBUG_LOGS && IS_DEV_RUNTIME) {
-                const remainingDraft = await loadWorkoutDraft()
-                console.log('[BottomAccessory] discard-finished', {
-                  draftRemaining: Boolean(remainingDraft),
-                  workoutElapsedSeconds: 0,
-                })
-              }
             })()
           },
         },
       ],
     )
   }
-
-  useEffect(() => {
-    if (!DEBUG_LOGS || !IS_DEV_RUNTIME) return
-    console.log('[BottomAccessory] state', {
-      isIOS26OrNewer,
-      isTabBarHidden,
-      isRestTimerActive,
-      hasDraft,
-      isDraftCheckComplete,
-      showNativeBottomAccessory,
-      workoutElapsedSeconds,
-      currentTab,
-    })
-  }, [
-    currentTab,
-    hasDraft,
-    isDraftCheckComplete,
-    isIOS26OrNewer,
-    isRestTimerActive,
-    isTabBarHidden,
-    showNativeBottomAccessory,
-    workoutElapsedSeconds,
-  ])
 
   return (
     <>
@@ -317,7 +248,9 @@ function TabLayoutContent() {
           isDark ? 'rgba(17, 17, 17, 0.38)' : 'rgba(255, 255, 255, 0.56)'
         }
         blurEffect={
-          isDark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'
+          isDark
+            ? 'systemUltraThinMaterialDark'
+            : 'systemUltraThinMaterialLight'
         }
         labelStyle={{
           color: colors.textSecondary,
@@ -379,10 +312,7 @@ function TabLayoutContent() {
           />
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger
-          name="create-post"
-          role="search"
-        >
+        <NativeTabs.Trigger name="create-post" role="search">
           <NativeTabs.Trigger.Label hidden />
           <NativeTabs.Trigger.Icon
             sf={{
@@ -412,6 +342,19 @@ function TabLayoutContent() {
         currentStreak={data.currentStreak}
         previousStreak={data.previousStreak}
       />
+      {pointsData && (
+        <PointsGainOverlay
+          visible={isPointsOverlayVisible}
+          onAnimationComplete={hidePointsOverlay}
+          previousScore={pointsData.previousScore}
+          currentScore={pointsData.currentScore}
+          previousLevel={pointsData.previousLevel}
+          currentLevel={pointsData.currentLevel}
+          nextLevel={pointsData.nextLevel}
+          progress={pointsData.progress}
+          pointsGained={pointsData.pointsGained}
+        />
+      )}
       {data.workout && (
         <WorkoutShareScreen
           visible={showShareScreen}

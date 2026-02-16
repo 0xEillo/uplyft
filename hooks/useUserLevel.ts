@@ -1,19 +1,19 @@
 import { database } from '@/lib/database'
 import {
-  getStrengthGender,
-  scoreToLevelProgress,
-  toLevelScore,
-} from '@/lib/strength-progress'
+    calculateOverallStrengthScore,
+    scoreToOverallLevelProgress,
+} from '@/lib/overall-strength-score'
 import {
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel,
-} from '@/lib/strength-standards'
+    getStrengthGender,
+} from '@/lib/strength-progress'
+import { type StrengthLevel } from '@/lib/strength-standards'
 import { useCallback, useEffect, useState } from 'react'
 
 interface UseUserLevelResult {
   level: StrengthLevel | null
   progress: number | null
+  score: number | null
+  scoreDelta: number
   isLoading: boolean
   refresh: () => void
 }
@@ -21,12 +21,16 @@ interface UseUserLevelResult {
 export function useUserLevel(userId: string | undefined): UseUserLevelResult {
   const [level, setLevel] = useState<StrengthLevel | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
+  const [score, setScore] = useState<number | null>(null)
+  const [scoreDelta, setScoreDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
   const loadLevel = useCallback(async () => {
     if (!userId) {
       setLevel(null)
       setProgress(null)
+      setScore(null)
+      setScoreDelta(0)
       setIsLoading(false)
       return
     }
@@ -34,57 +38,75 @@ export function useUserLevel(userId: string | undefined): UseUserLevelResult {
     try {
       setIsLoading(true)
 
-      // Load profile and exercise data in parallel
-      const [profile, exerciseData] = await Promise.all([
+      // Load profile, exercise data, and best 1RM snapshots in parallel
+      const [profile, exerciseData, best1RMSnapshots] = await Promise.all([
         database.profiles.getByIdOrNull(userId),
         database.stats.getMajorCompoundLiftsData(userId),
+        database.stats.getExerciseCurrentAndPreviousBest1RMs(userId),
       ])
 
       const strengthGender = getStrengthGender(profile?.gender)
       if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
         setLevel(null)
         setProgress(null)
+        setScore(null)
+        setScoreDelta(0)
         setIsLoading(false)
         return
       }
 
-      // Calculate overall level (same logic as StrengthStandardsView)
-      let totalScore = 0
-      let count = 0
+      // 1. Calculate current overall score
+      const currentOverall = calculateOverallStrengthScore({
+        gender: strengthGender,
+        bodyweightKg: profile.weight_kg,
+        exercises: exerciseData,
+      })
 
-      exerciseData.forEach((exercise) => {
-        if (!hasStrengthStandards(exercise.exerciseName)) return
+      if (currentOverall.liftsTracked === 0) {
+        setLevel(null)
+        setProgress(null)
+        setScore(null)
+        setScoreDelta(0)
+        setIsLoading(false)
+        return
+      }
 
-        const info = getStrengthStandard(
-          exercise.exerciseName,
-          strengthGender,
-          profile.weight_kg!,
-          exercise.max1RM,
-        )
+      // 2. Calculate baseline overall score (using previous PRs)
+      const baselineExercises = exerciseData.map((exercise) => {
+        const previousBest1RM =
+          best1RMSnapshots[exercise.exerciseId]?.previousBest1RM ?? 0
+        const baseline1RM = previousBest1RM > 0 ? previousBest1RM : exercise.max1RM
 
-        if (info) {
-          totalScore += toLevelScore(info.level, info.progress)
-          count++
+        return {
+          ...exercise,
+          max1RM: baseline1RM,
         }
       })
 
-      if (count === 0) {
-        setLevel(null)
-        setProgress(null)
-        setIsLoading(false)
-        return
-      }
+      const baselineOverall = calculateOverallStrengthScore({
+        gender: strengthGender,
+        bodyweightKg: profile.weight_kg,
+        exercises: baselineExercises,
+      })
 
-      const averageScore = totalScore / count
+      const delta = Math.max(
+        0,
+        Math.round(currentOverall.score - baselineOverall.score),
+      )
+
       const { level: currentLevel, progress: progressPct } =
-        scoreToLevelProgress(averageScore)
+        scoreToOverallLevelProgress(currentOverall.score)
 
       setLevel(currentLevel)
       setProgress(Math.round(progressPct))
+      setScore(currentOverall.score)
+      setScoreDelta(delta)
     } catch (error) {
       console.error('Error calculating user level:', error)
       setLevel(null)
       setProgress(null)
+      setScore(null)
+      setScoreDelta(0)
     } finally {
       setIsLoading(false)
     }
@@ -94,6 +116,5 @@ export function useUserLevel(userId: string | undefined): UseUserLevelResult {
     loadLevel()
   }, [loadLevel])
 
-  return { level, progress, isLoading, refresh: loadLevel }
+  return { level, progress, score, scoreDelta, isLoading, refresh: loadLevel }
 }
-

@@ -17,18 +17,18 @@ import {
 } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -36,19 +36,10 @@ interface CommentWithProfile extends WorkoutComment {
   profile?: Profile
 }
 
-const DEBUG_NAV = true
+const DEBUG_NAV = false
 
-function logNav(
-  event: string,
-  details?: Record<string, unknown>,
-) {
+function logNav(_event: string, _details?: Record<string, unknown>) {
   if (!DEBUG_NAV) return
-  const timestamp = new Date().toISOString()
-  if (details) {
-    console.log(`[CommentsNav][${timestamp}] ${event}`, details)
-  } else {
-    console.log(`[CommentsNav][${timestamp}] ${event}`)
-  }
 }
 
 function normalizeReturnToParam(
@@ -84,7 +75,6 @@ export default function WorkoutCommentsScreen() {
   const insets = useSafeAreaInsets()
   const normalizedReturnTo = normalizeReturnToParam(returnTo)
   const backAttemptRef = useRef(0)
-
 
   const [comments, setComments] = useState<CommentWithProfile[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -133,13 +123,14 @@ export default function WorkoutCommentsScreen() {
   useEffect(() => {
     const unsubscribeState = navigation.addListener('state', () => {
       const navState = navigation.getState()
+      if (!navState || !navState.routes) return
       const activeRoute = navState.routes[navState.index]
       logNav('Navigation state event', {
-        activeRouteName: activeRoute?.name,
-        activeRouteKey: activeRoute?.key,
+        activeRouteName: (activeRoute as any)?.name,
+        activeRouteKey: (activeRoute as any)?.key,
         index: navState.index,
         routeCount: navState.routes.length,
-        routeNames: navState.routes.map((route) => route.name),
+        routeNames: navState.routes.map((route: any) => route.name),
       })
     })
     const unsubscribeBeforeRemove = navigation.addListener(
@@ -336,7 +327,9 @@ export default function WorkoutCommentsScreen() {
     const canGoBack = router.canGoBack()
     const target = normalizedReturnTo ?? '/(tabs)'
     const navState = navigation.getState()
-    const activeRoute = navState.routes[navState.index]
+    const activeRoute = navState?.routes
+      ? navState.routes[navState.index]
+      : null
     logNav('Back pressed', {
       attempt,
       workoutId,
@@ -345,11 +338,11 @@ export default function WorkoutCommentsScreen() {
       pathname,
       segments: segments.join('/'),
       routerCanGoBack: canGoBack,
-      navIndex: navState.index,
-      navRouteCount: navState.routes.length,
-      navRouteNames: navState.routes.map((route) => route.name),
-      activeRouteName: activeRoute?.name,
-      activeRouteKey: activeRoute?.key,
+      navIndex: navState?.index,
+      navRouteCount: navState?.routes?.length,
+      navRouteNames: navState?.routes?.map((route: any) => route.name),
+      activeRouteName: (activeRoute as any)?.name,
+      activeRouteKey: (activeRoute as any)?.key,
       resolvedTarget: target,
     })
 
@@ -490,7 +483,11 @@ export default function WorkoutCommentsScreen() {
                         color={colors.textPlaceholder}
                       />
                     ) : (
-                      <Ionicons name="arrow-up" size={20} color={colors.surface} />
+                      <Ionicons
+                        name="arrow-up"
+                        size={20}
+                        color={colors.surface}
+                      />
                     )}
                   </TouchableOpacity>
                 </View>

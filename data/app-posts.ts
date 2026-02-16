@@ -26,7 +26,7 @@ export type AppPost = {
   preview?: AppPostPreviewType
   badge?: string
   ctaText?: string
-  ctaRoute?: Href
+  ctaRoute?: Href<string>
   ctaUrl?: string
 }
 
@@ -154,7 +154,7 @@ export const APP_POSTS: AppPost[] = [
     preview: 'body_log',
     badge: 'TRACK',
     ctaText: 'Open body log',
-    ctaRoute: '/body-log',
+    ctaRoute: '/body-log/',
   },
   {
     id: 'routine-library',

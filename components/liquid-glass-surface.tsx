@@ -5,7 +5,7 @@ import {
   isGlassEffectAPIAvailable,
   isLiquidGlassAvailable,
 } from 'expo-glass-effect'
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   AppState,
   Platform,
@@ -14,7 +14,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native'
-const LIQUID_GLASS_DEBUG = false
+
 interface LiquidGlassSurfaceProps {
   children?: ReactNode
   style?: StyleProp<ViewStyle>
@@ -55,7 +55,6 @@ export function LiquidGlassSurface({
   const { isDark } = useTheme()
   const [availability, setAvailability] = useState(readGlassAvailability)
   const [themeRenderKey, setThemeRenderKey] = useState(0)
-  const previousModeRef = useRef<'native' | 'fallback' | null>(null)
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return
@@ -68,19 +67,6 @@ export function LiquidGlassSurface({
       const next = readGlassAvailability()
       if (!cancelled) {
         setAvailability(next)
-      }
-
-      if (__DEV__ && debugLabel && LIQUID_GLASS_DEBUG) {
-        console.log('[liquid-glass][check]', {
-          debugLabel,
-          reason,
-          attempt: attempts,
-          isDark,
-          platform: Platform.OS,
-          liquidGlassAvailable: next.liquidGlassAvailable,
-          glassApiAvailable: next.glassApiAvailable,
-          mode: next.canUseNativeGlass ? 'native' : 'fallback',
-        })
       }
 
       // During theme/app transitions iOS can transiently report unavailable; retry for a short window.
@@ -108,35 +94,11 @@ export function LiquidGlassSurface({
     }
   }, [debugLabel, isDark])
 
-  const { liquidGlassAvailable, glassApiAvailable, canUseNativeGlass } = availability
+  const { canUseNativeGlass } = availability
   const glassKey = useMemo(
     () => `glass-${isDark ? 'dark' : 'light'}-${themeRenderKey}`,
     [isDark, themeRenderKey],
   )
-
-  useEffect(() => {
-    if (!__DEV__ || !debugLabel || !LIQUID_GLASS_DEBUG) return
-    const mode: 'native' | 'fallback' = canUseNativeGlass ? 'native' : 'fallback'
-    const prevMode = previousModeRef.current
-    previousModeRef.current = mode
-
-    console.log('[liquid-glass]', {
-      debugLabel,
-      mode,
-      prevMode,
-      changed: prevMode !== null ? prevMode !== mode : false,
-      isDark,
-      platform: Platform.OS,
-      liquidGlassAvailable,
-      glassApiAvailable,
-    })
-  }, [
-    canUseNativeGlass,
-    debugLabel,
-    glassApiAvailable,
-    isDark,
-    liquidGlassAvailable,
-  ])
 
   if (canUseNativeGlass) {
     return (

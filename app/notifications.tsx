@@ -9,9 +9,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-    formatNotificationText,
-    getNotificationIcon,
-    getNotificationIconColor,
+  formatNotificationText,
+  getNotificationIcon,
+  getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -19,15 +19,15 @@ import { useFocusEffect } from '@react-navigation/native'
 import { router, usePathname } from 'expo-router'
 import { useCallback, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -214,11 +214,17 @@ export default function NotificationsScreen() {
                   accessibilityRole="button"
                   style={styles.backButton}
                 >
-                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </NavbarIsland>
             }
-            centerContent={<Text style={styles.headerTitle}>Notifications</Text>}
+            centerContent={
+              <Text style={styles.headerTitle}>Notifications</Text>
+            }
             rightContent={
               unreadCount > 0 ? (
                 <TouchableOpacity
@@ -234,7 +240,10 @@ export default function NotificationsScreen() {
 
         <ScrollView
           style={styles.content}
-          contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + NAVBAR_HEIGHT }]}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingTop: insets.top + NAVBAR_HEIGHT },
+          ]}
           scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -329,10 +338,14 @@ export default function NotificationsScreen() {
                           style={[
                             styles.avatar,
                             styles.avatarPlaceholder,
-                            { backgroundColor: colors.brandPrimary }
+                            { backgroundColor: colors.brandPrimary },
                           ]}
                         >
-                          <Ionicons name="time" size={18} color={colors.surface} />
+                          <Ionicons
+                            name="time"
+                            size={18}
+                            color={colors.surface}
+                          />
                         </View>
                       ) : (
                         // User notifications - show actor avatars
@@ -359,7 +372,8 @@ export default function NotificationsScreen() {
                                   ]}
                                 >
                                   <Text style={styles.avatarText}>
-                                    {actor.display_name[0]?.toUpperCase() || '?'}
+                                    {actor.display_name[0]?.toUpperCase() ||
+                                      '?'}
                                   </Text>
                                 </View>
                               )}

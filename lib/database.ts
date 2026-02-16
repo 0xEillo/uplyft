@@ -1,35 +1,35 @@
 import type {
-    BodyLogEntryWithImages,
-    BodyLogImage,
+  BodyLogEntryWithImages,
+  BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-    DailyLogConfidence,
-    DailyLogEntry,
-    DailyLogMeal,
-    DailyLogMealSource,
-    DailyLogSummary,
-    Exercise,
-    ExploreProgram,
-    ExploreProgramRoutine,
-    ExploreRoutine,
-    ExploreRoutineExercise,
-    Follow,
-    FollowRelationshipStatus,
-    FollowRequest,
-    ParsedWorkout,
-    Profile,
-    WorkoutComment,
-    WorkoutLike,
-    WorkoutRoutine,
-    WorkoutRoutineExercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSession,
-    WorkoutSessionWithDetails,
-    WorkoutSocialStats
+  DailyLogConfidence,
+  DailyLogEntry,
+  DailyLogMeal,
+  DailyLogMealSource,
+  DailyLogSummary,
+  Exercise,
+  ExploreProgram,
+  ExploreProgramRoutine,
+  ExploreRoutine,
+  ExploreRoutineExercise,
+  Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
+  ParsedWorkout,
+  Profile,
+  WorkoutComment,
+  WorkoutLike,
+  WorkoutRoutine,
+  WorkoutRoutineExercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSession,
+  WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -671,14 +671,16 @@ export const database = {
     async getRecentLikers(workoutId: string, limit = 3) {
       const { data, error } = await supabase
         .from('workout_likes')
-        .select(`
+        .select(
+          `
           profile:profiles (
             id,
             user_tag,
             display_name,
             avatar_url
           )
-        `)
+        `,
+        )
         .eq('workout_id', workoutId)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -1111,12 +1113,6 @@ export const database = {
         equipment: string
       },
     ) {
-      console.log('[database.exercises.createWithMetadata] Called', {
-        name,
-        userId,
-        metadata,
-      })
-
       // Validate and sanitize name
       if (!name || typeof name !== 'string') {
         console.error(
@@ -1154,15 +1150,7 @@ export const database = {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
 
-      console.log(
-        '[database.exercises.createWithMetadata] Normalized name',
-        normalizedName,
-      )
-
       // Check if exercise already exists
-      console.log(
-        '[database.exercises.createWithMetadata] Checking for existing exercise',
-      )
       const { data: existing, error: existingError } = await supabase
         .from('exercises')
         .select('id')
@@ -1179,10 +1167,6 @@ export const database = {
       }
 
       if (existing) {
-        console.log(
-          '[database.exercises.createWithMetadata] Exercise already exists',
-          existing.id,
-        )
         const { data } = await supabase
           .from('exercises')
           .select('*')
@@ -1192,9 +1176,6 @@ export const database = {
       }
 
       // Create new exercise with provided metadata
-      console.log(
-        '[database.exercises.createWithMetadata] Creating new exercise with metadata',
-      )
       const { data, error } = await supabase
         .from('exercises')
         .insert({
@@ -1215,10 +1196,6 @@ export const database = {
         throw error
       }
 
-      console.log(
-        '[database.exercises.createWithMetadata] Exercise created successfully',
-        data,
-      )
       return data as Exercise
     },
 
@@ -1250,13 +1227,13 @@ export const database = {
       if (updates.name) {
         const trimmed = updates.name.trim()
         if (!trimmed) throw new Error('Exercise name cannot be empty')
-        
+
         // Normalize
         finalUpdates.name = trimmed
-            .toLowerCase()
-            .split(' ')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ')
+          .toLowerCase()
+          .split(' ')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
       }
 
       const { data, error } = await supabase
@@ -1310,10 +1287,6 @@ export const database = {
         throw deleteError
       }
 
-      console.log(
-        '[database.exercises.delete] Exercise deleted successfully:',
-        exerciseId,
-      )
       return true
     },
   },
@@ -2032,7 +2005,8 @@ export const database = {
             }
 
             const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
-            const existing = max1RMByExerciseId[workoutExercise.exercise_id] || 0
+            const existing =
+              max1RMByExerciseId[workoutExercise.exercise_id] || 0
             if (estimated1RM > existing) {
               max1RMByExerciseId[workoutExercise.exercise_id] = estimated1RM
             }
@@ -2717,6 +2691,7 @@ export const database = {
           muscleGroup: string | null
           gifUrl: string | null
           max1RM: number
+          lastTrainedAt: string | null
           recordsByWeight: Map<
             number,
             { maxReps: number; date: string; estimated1RM: number }
@@ -2741,12 +2716,21 @@ export const database = {
               muscleGroup: exercise.muscle_group,
               gifUrl: exercise.gif_url,
               max1RM: 0,
+              lastTrainedAt: session.created_at,
               recordsByWeight: new Map(),
             })
           }
 
           const current = exerciseMap.get(workoutExercise.exercise_id)
           if (!current) return
+
+          if (
+            !current.lastTrainedAt ||
+            new Date(session.created_at).getTime() >
+              new Date(current.lastTrainedAt).getTime()
+          ) {
+            current.lastTrainedAt = session.created_at
+          }
 
           workoutExercise.sets?.forEach((set) => {
             if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
@@ -2776,6 +2760,7 @@ export const database = {
         exerciseName: value.exerciseName,
         muscleGroup: value.muscleGroup,
         max1RM: value.max1RM,
+        lastTrainedAt: value.lastTrainedAt,
         gifUrl: value.gifUrl,
         records: Array.from(value.recordsByWeight.entries())
           .map(([weight, record]) => ({
@@ -3386,10 +3371,6 @@ export const database = {
      */
     async ensureEntry(userId: string, logDate?: string) {
       const normalizedDate = normalizeDailyLogDate(logDate)
-      console.log('[DailyLogDB] ensureEntry called:', {
-        userId,
-        logDate: normalizedDate,
-      })
       const { data, error } = await supabase
         .from('daily_log_entries')
         .upsert(
@@ -3411,11 +3392,6 @@ export const database = {
         throw error
       }
 
-      console.log('[DailyLogDB] ensureEntry success:', {
-        entryId: data.id,
-        userId: data.user_id,
-        logDate: data.log_date,
-      })
       return data as DailyLogEntry
     },
 
@@ -3438,9 +3414,7 @@ export const database = {
         .from('daily_log_entries')
         .update({
           weight_kg:
-            payload.weightKg === undefined
-              ? entry.weight_kg
-              : payload.weightKg,
+            payload.weightKg === undefined ? entry.weight_kg : payload.weightKg,
           calorie_goal:
             payload.calorieGoal === undefined
               ? entry.calorie_goal
@@ -3456,13 +3430,6 @@ export const database = {
         .single()
 
       if (error) throw error
-      console.log('[DailyLogDB] updateDay success:', {
-        entryId: data.id,
-        logDate: data.log_date,
-        calorie_goal: data.calorie_goal,
-        protein_goal_g: data.protein_goal_g,
-        weight_kg: data.weight_kg,
-      })
       return data as DailyLogEntry
     },
 
@@ -3520,16 +3487,6 @@ export const database = {
         throw error
       }
 
-      console.log('[DailyLogDB] logMeal success:', {
-        mealId: data.id,
-        entryId: data.daily_log_entry_id,
-        logDate: normalizedDate,
-        calories: data.calories,
-        protein_g: data.protein_g,
-        carbs_g: data.carbs_g,
-        fat_g: data.fat_g,
-        source: data.source,
-      })
       return data as DailyLogMeal
     },
 
@@ -3571,8 +3528,10 @@ export const database = {
         updates.fat_g = toNonNegativeNumber(payload.fat_g)
       }
       if (payload.source) updates.source = payload.source
-      if (payload.confidence !== undefined) updates.confidence = payload.confidence
-      if (payload.metadata !== undefined) updates.metadata = payload.metadata ?? {}
+      if (payload.confidence !== undefined)
+        updates.confidence = payload.confidence
+      if (payload.metadata !== undefined)
+        updates.metadata = payload.metadata ?? {}
 
       if (payload.logDate) {
         const targetDate = normalizeDailyLogDate(payload.logDate)
@@ -3593,22 +3552,16 @@ export const database = {
         .single()
 
       if (error) throw error
-      console.log('[DailyLogDB] updateMeal success:', {
-        mealId: data.id,
-        entryId: data.daily_log_entry_id,
-        calories: data.calories,
-        protein_g: data.protein_g,
-        carbs_g: data.carbs_g,
-        fat_g: data.fat_g,
-        source: data.source,
-      })
       return data as DailyLogMeal
     },
 
     /**
      * Fetch one day summary with macro totals.
      */
-    async getDaySummary(userId: string, logDate?: string): Promise<DailyLogSummary> {
+    async getDaySummary(
+      userId: string,
+      logDate?: string,
+    ): Promise<DailyLogSummary> {
       const normalizedDate = normalizeDailyLogDate(logDate)
 
       const { data: entry, error: entryError } = await supabase
@@ -3621,10 +3574,6 @@ export const database = {
       if (entryError) throw entryError
 
       if (!entry) {
-        console.log('[DailyLogDB] getDaySummary empty day:', {
-          userId,
-          logDate: normalizedDate,
-        })
         return {
           logDate: normalizedDate,
           entryId: null,
@@ -3724,7 +3673,10 @@ export const database = {
     /**
      * Get meal rows for a specific day.
      */
-    async getMealsForDay(userId: string, logDate?: string): Promise<DailyLogMeal[]> {
+    async getMealsForDay(
+      userId: string,
+      logDate?: string,
+    ): Promise<DailyLogMeal[]> {
       const normalizedDate = normalizeDailyLogDate(logDate)
       const { data: entry, error: entryError } = await supabase
         .from('daily_log_entries')
@@ -3830,7 +3782,6 @@ export const database = {
         .in('daily_log_entry_id', entryIds)
 
       if (mealsError) throw mealsError
-
       ;(meals || []).forEach((meal) => {
         const dateKey = dateByEntryId.get(meal.daily_log_entry_id)
         if (!dateKey) return
@@ -3879,11 +3830,6 @@ export const database = {
         .maybeSingle()
 
       if (error) throw error
-      console.log('[DailyLogDB] getLatestMeal result:', {
-        userId,
-        logDate: normalizedDate,
-        mealId: data?.id ?? null,
-      })
       return (data as DailyLogMeal | null) ?? null
     },
   },

@@ -362,9 +362,8 @@ export default function CreatePostScreen() {
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
 
   const logDraftDebug = useCallback(
-    (event: string, payload?: Record<string, unknown>) => {
+    (_event: string, _payload?: Record<string, unknown>) => {
       if (!DEBUG_LOGS || !IS_DEV_RUNTIME) return
-      console.log(`[DraftDebug][CreatePost] ${event}`, payload ?? {})
     },
     [],
   )
@@ -645,13 +644,6 @@ export default function CreatePostScreen() {
     handleAttachWithLibrary,
   } = useImageTranscription({
     onStructuredExtractionComplete: (data) => {
-      if (DEBUG_LOGS) {
-        console.log('[CreatePost] onStructuredExtractionComplete received:', {
-          title: data.title,
-          exercisesCount: data.exercises?.length,
-          firstExercise: data.exercises?.[0]?.name,
-        })
-      }
       // Set title if extracted
       if (data.title) {
         setWorkoutTitle(data.title)
@@ -682,23 +674,10 @@ export default function CreatePostScreen() {
       )
 
       // Set the structured data and enable structured mode
-      if (DEBUG_LOGS) {
-        console.log(
-          '[CreatePost] Setting structured data:',
-          structuredExercises.length,
-          'exercises',
-        )
-      }
       setStructuredData((prev) => [...prev, ...structuredExercises])
       setIsStructuredMode(true)
     },
     onExtractionComplete: (data) => {
-      if (DEBUG_LOGS) {
-        console.log('[CreatePost] onExtractionComplete (fallback) received:', {
-          title: data.title,
-          workoutLength: data.workout?.length,
-        })
-      }
       // Fallback: if structured parsing fails, use the old text-based approach
       if (data.title) {
         setWorkoutTitle(data.title)
@@ -801,7 +780,6 @@ export default function CreatePostScreen() {
         pendingRoutineWaitingForLoad.current = true
       } else {
         // Routines loaded but routine not found - routine may have been deleted
-        if (DEBUG_LOGS) console.warn('[Routine] Not found:', pendingDraftRoutineId)
         pendingRoutineWaitingForLoad.current = false
         setPendingDraftRoutineId(null)
         setPendingRoutineSource(null)
@@ -809,14 +787,6 @@ export default function CreatePostScreen() {
       return
     }
 
-    if (DEBUG_LOGS) {
-      console.log(
-        '[Routine] Applied:',
-        routine.name,
-        '| source:',
-        pendingRoutineSource,
-      )
-    }
     pendingRoutineWaitingForLoad.current = false
 
     // Capture source before clearing to use in logic below
@@ -1447,9 +1417,6 @@ export default function CreatePostScreen() {
       refreshFreemiumLimits()
 
       // Complete tutorial step for logging first workout
-      console.log(
-        '[CreatePost] Successful workout submission. Completing log_workout tutorial step.',
-      )
       completeStep('log_workout')
 
       trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {

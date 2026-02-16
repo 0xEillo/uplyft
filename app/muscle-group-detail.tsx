@@ -20,20 +20,20 @@ import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
-  getStrengthStandard,
-  hasStrengthStandards,
+    getStrengthStandard,
+    hasStrengthStandards,
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -288,7 +288,6 @@ export default function MuscleGroupDetailScreen() {
           isVisible={showLevelSheet}
           onClose={() => setShowLevelSheet(false)}
           currentLevel={groupData?.level || 'Beginner'}
-          progressToNext={groupData?.progress || 0}
           title={groupDisplayName}
         />
       </View>
@@ -349,7 +348,6 @@ export default function MuscleGroupDetailScreen() {
         isVisible={showLevelSheet}
         onClose={() => setShowLevelSheet(false)}
         currentLevel={groupData?.level || 'Beginner'}
-        progressToNext={groupData?.progress || 0}
         title={groupDisplayName}
       />
     </View>

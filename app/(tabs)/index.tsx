@@ -4,18 +4,18 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  FlatList,
-  LayoutAnimation,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList,
+    LayoutAnimation,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -31,6 +31,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
+import type { StrengthScoreData } from '@/contexts/success-overlay-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
@@ -38,6 +39,8 @@ import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { calculateOverallStrengthScore, scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
+import { getStrengthGender } from '@/lib/strength-progress'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -146,7 +149,7 @@ export default function FeedScreen() {
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
-  const { updateWorkoutData } = useSuccessOverlay()
+  const { updateWorkoutData, showPointsGainOverlay } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlatList>(null)
@@ -387,10 +390,6 @@ export default function FeedScreen() {
       if (result.status === 'success') {
         let { workout } = result
 
-        // IMPORTANT: Immediately remove placeholder from state to prevent
-        // briefly showing "Queued" before the feed reloads
-        setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
-
         // Ensure workout has profile attached for share screen
         if (!workout.profile && user) {
           try {
@@ -404,14 +403,79 @@ export default function FeedScreen() {
         // Update success overlay context with workout data for share screen
         updateWorkoutData(workout)
 
+        // Compute strength score delta for points gain overlay
+        try {
+          const prof = workout.profile ?? await database.profiles.getById(user.id)
+          const strengthGender = getStrengthGender(prof.gender)
+
+          if (strengthGender && prof.weight_kg) {
+            // Get current exercise data (after this workout) and snapshots
+            const [exerciseData, snapshots] = await Promise.all([
+              database.stats.getMajorCompoundLiftsData(user.id),
+              database.stats.getExerciseCurrentAndPreviousBest1RMs(user.id),
+            ])
+
+            if (exerciseData.length > 0) {
+              // Current score (with new workout PRs)
+              const currentResult = calculateOverallStrengthScore({
+                gender: strengthGender,
+                bodyweightKg: prof.weight_kg,
+                exercises: exerciseData,
+              })
+
+              // Baseline score (using previous best 1RMs where available)
+              const baselineExercises = exerciseData.map((ex) => {
+                const prev = snapshots[ex.exerciseId]?.previousBest1RM ?? 0
+                return {
+                  ...ex,
+                  max1RM: prev > 0 ? prev : ex.max1RM,
+                }
+              })
+
+              const baselineResult = calculateOverallStrengthScore({
+                gender: strengthGender,
+                bodyweightKg: prof.weight_kg,
+                exercises: baselineExercises,
+              })
+
+              const pointsGained = Math.max(0, Math.round(currentResult.score - baselineResult.score))
+
+              if (pointsGained > 0 && currentResult.liftsTracked > 0) {
+                const levelProgress = scoreToOverallLevelProgress(currentResult.score)
+                const baselineLevelProgress = scoreToOverallLevelProgress(baselineResult.score)
+                const scoreData: StrengthScoreData = {
+                  previousScore: baselineResult.score,
+                  currentScore: currentResult.score,
+                  pointsGained,
+                  previousLevel: baselineLevelProgress.level,
+                  currentLevel: levelProgress.level,
+                  nextLevel: levelProgress.nextLevel,
+                  progress: levelProgress.progress,
+                }
+                // Delay to show after streak overlay fades
+                setTimeout(() => showPointsGainOverlay(scoreData), 800)
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Feed] Error computing strength score delta:', err)
+        }
+
         setNewWorkoutId(workout.id)
         LayoutAnimation.configureNext(CustomSlideAnimation)
 
-        // Reload the feed from scratch to ensure consistency with pagination
-        // Reset pagination state
-        setOffset(0)
-        setHasMore(true)
-        loadWorkouts(false, false)
+        // Optimistically prepend the new workout instead of reloading the
+        // entire feed.  This avoids a full visual refresh / flash because
+        // only the new card is inserted; existing cards stay untouched.
+        setWorkouts((prev) => {
+          // Remove any pending placeholder first
+          const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
+          // Avoid duplicates in case of race conditions
+          if (filtered.some((w) => w.id === workout.id)) return filtered
+          return [workout, ...filtered]
+        })
+        // Bump the pagination offset so the next "load more" page is correct
+        setOffset((prev) => prev + 1)
 
         // Check if this is the first workout and prompt for push notifications
         try {
@@ -489,6 +553,7 @@ export default function FeedScreen() {
     processPendingWorkout,
     router,
     updateWorkoutData,
+    showPointsGainOverlay,
   ])
 
   const handleRefresh = useCallback(async () => {

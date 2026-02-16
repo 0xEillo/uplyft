@@ -30,7 +30,6 @@ import {
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { useTheme } from '@/contexts/theme-context'
-import { useMusicPreviewState } from '@/hooks/useMusicPreviewState'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
@@ -39,7 +38,9 @@ import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 
+import type { StrengthLevel } from '@/lib/strength-standards'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
+import { LevelBadge } from './LevelBadge'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
 
@@ -125,6 +126,7 @@ export interface CommentPreview {
 export interface FeedCardProps {
   userName: string
   userAvatar: string
+  userLevel?: StrengthLevel | null
   timeAgo: string
   workoutTitle: string
   workoutDescription?: string | null
@@ -163,6 +165,7 @@ export interface FeedCardProps {
 export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
+  userLevel,
   timeAgo,
   workoutTitle,
   workoutDescription,
@@ -197,13 +200,9 @@ export const FeedCard = memo(function FeedCard({
   const { weightUnit } = useWeightUnits()
   const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth } = useWindowDimensions()
-  const playback = useMusicPreviewState()
 
   const displayRoutine = routine || workout?.routine
   const workoutSong = workoutSongProp ?? workout?.song ?? null
-
-  const isThisSongPlaying = playback.trackId === workoutSong?.trackId && playback.isPlaying
-  const isThisSongBuffering = playback.trackId === workoutSong?.trackId && playback.isBuffering
 
   const coverImageUrl =
     workoutImageUrl ||
@@ -739,6 +738,14 @@ export const FeedCard = memo(function FeedCard({
               <Text style={styles.userName} numberOfLines={1}>
                 {userName}
               </Text>
+              {userLevel && !isPending && (
+                <LevelBadge
+                  level={userLevel}
+                  size="xs"
+                  showTooltipOnPress
+                  style={styles.lifterBadge}
+                />
+              )}
             </View>
             {(displayRoutine || (workoutSong && !isPending)) && (
               <View style={styles.headerSubtitle}>
@@ -812,12 +819,19 @@ export const FeedCard = memo(function FeedCard({
         disabled={!onCardPress || isPending}
         style={({ pressed }) => [
           styles.titleRowContainer,
+          !workoutDescription && styles.titleRowContainerNoDescription,
           pressed && onCardPress && styles.titleContainerPressed,
         ]}
       >
         <View style={styles.titleContent}>
           {workoutTitle && (
-            <Text style={styles.workoutTitle} numberOfLines={2}>
+            <Text
+              style={[
+                styles.workoutTitle,
+                !workoutDescription && styles.workoutTitleNoDescription,
+              ]}
+              numberOfLines={2}
+            >
               {workoutTitle}
             </Text>
           )}
@@ -1187,7 +1201,10 @@ function createStyles(
     userNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
+      gap: 4,
+    },
+    lifterBadge: {
+      marginLeft: 2,
     },
     userName: {
       fontSize: 16,
@@ -1247,6 +1264,9 @@ function createStyles(
       gap: 16,
       marginBottom: 12, // Moved from contents to ensure player matches height correctly
     },
+    titleRowContainerNoDescription: {
+      marginBottom: 4,
+    },
     titleContent: {
       flex: 1,
     },
@@ -1261,6 +1281,9 @@ function createStyles(
       fontWeight: '600',
       color: colors.textPrimary,
       marginBottom: 6,
+    },
+    workoutTitleNoDescription: {
+      marginBottom: 0,
     },
     workoutDescription: {
       fontSize: 15,

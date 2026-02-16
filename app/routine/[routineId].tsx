@@ -11,22 +11,22 @@ import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import {
-    ExploreRoutineWithExercises,
-    WorkoutRoutineWithDetails,
+  ExploreRoutineWithExercises,
+  WorkoutRoutineWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { Href, useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -223,7 +223,9 @@ export default function RoutineDetailScreen() {
 
   const handleEditRoutine = () => {
     if (!routine?.userRoutineId) return
-    router.push(`/create-routine?routineId=${routine.userRoutineId}`)
+    router.push(
+      `/create-routine?routineId=${routine.userRoutineId}` as Href<string>,
+    )
   }
 
   const handleDeleteRoutine = async () => {
@@ -340,8 +342,15 @@ export default function RoutineDetailScreen() {
           <BaseNavbar
             leftContent={
               <NavbarIsland>
-                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.backButton}
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </NavbarIsland>
             }
@@ -371,7 +380,10 @@ export default function RoutineDetailScreen() {
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: insets.top + NAVBAR_HEIGHT }}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 20,
+            paddingTop: insets.top + NAVBAR_HEIGHT,
+          }}
           scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
           showsVerticalScrollIndicator={false}
         >
@@ -532,7 +544,10 @@ export default function RoutineDetailScreen() {
               {routine.isOwner && (
                 <TouchableOpacity onPress={handleEditRoutine}>
                   <Text
-                    style={[styles.editButtonText, { color: colors.brandPrimary }]}
+                    style={[
+                      styles.editButtonText,
+                      { color: colors.brandPrimary },
+                    ]}
                   >
                     Edit Routine
                   </Text>

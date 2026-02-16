@@ -5,25 +5,25 @@ import * as ImagePicker from 'expo-image-picker'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    LayoutAnimation,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import Animated, {
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
@@ -42,24 +42,24 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  getBMIExplanation,
-  getBMIStatus,
-  getBodyFatExplanation,
-  getBodyFatStatus,
-  getWeightExplanation,
-  type BMIRange,
-  type BodyFatRange,
-  type Gender
+    getBMIExplanation,
+    getBMIStatus,
+    getBodyFatExplanation,
+    getBodyFatStatus,
+    getWeightExplanation,
+    type BMIRange,
+    type BodyFatRange,
+    type Gender
 } from '@/lib/body-log/composition-analysis'
 import {
-  type BodyLogEntryWithImages,
-  type BodyLogImage,
+    type BodyLogEntryWithImages,
+    type BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
-  getBodyLogImageUrls,
-  prefetchBodyLogImages,
+    getBodyLogImageUrls,
+    prefetchBodyLogImages,
 } from '@/lib/utils/body-log-storage'
 import type { DailyLogMeal, DailyLogSummary } from '@/types/database.types'
 
@@ -1014,7 +1014,7 @@ export default function BodyLogDetailScreen() {
                   if (navigation.canGoBack()) {
                     router.back()
                   } else {
-                    router.replace('/body-log')
+                    router.replace('/body-log/' as any)
                   }
                   return
                 }
@@ -1265,7 +1265,7 @@ export default function BodyLogDetailScreen() {
             if (navigation.canGoBack()) {
               router.back()
             } else {
-              router.replace('/body-log')
+              router.replace('/body-log/' as any)
             }
           } catch (error) {
             console.error('Error deleting body log entry:', error)

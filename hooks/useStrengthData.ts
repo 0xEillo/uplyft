@@ -1,17 +1,17 @@
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
-import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
+import { EXERCISE_MUSCLE_MAPPING, getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
+import { calculateOverallStrengthScore } from '@/lib/overall-strength-score'
 import {
-  getProgressDeltaPoints,
-  getStrengthGender,
-  getLevelIntensity as getStrengthLevelIntensity,
-  scoreToLevelProgress,
-  toLevelScore,
+    getStrengthGender,
+    getLevelIntensity as getStrengthLevelIntensity,
+    scoreToLevelProgress,
+    toLevelScore,
 } from '@/lib/strength-progress'
 import {
-  getStrengthStandard,
-  hasStrengthStandards,
-  type StrengthLevel,
+    getStrengthStandard,
+    hasStrengthStandards,
+    type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { useFocusEffect } from '@react-navigation/native'
@@ -29,6 +29,7 @@ export interface ExerciseData {
   exerciseName: string
   muscleGroup: string | null
   max1RM: number
+  lastTrainedAt?: string | null
   gifUrl?: string | null
   records: ExerciseRecord[]
 }
@@ -57,6 +58,7 @@ export interface OverallLevelData {
   balancedNextLevel: StrengthLevel | null
   balancedProgress: number
   balancedScore: number
+  score: number
   weakestGroup: string | null
 }
 
@@ -189,135 +191,57 @@ export function useStrengthData() {
       return null
     }
 
-    let totalScore = 0
-    let count = 0
-
-    const groupTotals: Record<ExerciseGroup | string, { total: number; count: number }> = {
-      'Push': { total: 0, count: 0 },
-      'Pull': { total: 0, count: 0 },
-      'Lower': { total: 0, count: 0 },
-    }
-    const baselineGroupTotals: Record<
-      ExerciseGroup | string,
-      { total: number; count: number }
-    > = {
-      Push: { total: 0, count: 0 },
-      Pull: { total: 0, count: 0 },
-      Lower: { total: 0, count: 0 },
+    const strengthGender = getStrengthGender(profile.gender)
+    if (!strengthGender) {
+      return null
     }
 
-    const computeBalancedScore = (
-      totals: Record<ExerciseGroup | string, { total: number; count: number }>,
-    ): number => {
-      const validGroups = Object.entries(totals)
-        .filter(([_, data]) => data.count > 0)
-        .map(([_, data]) => data.total / data.count)
+    const currentOverall = calculateOverallStrengthScore({
+      gender: strengthGender,
+      bodyweightKg: profile.weight_kg,
+      exercises: exerciseData,
+    })
 
-      if (validGroups.length === 0) {
-        return 0
-      }
-
-      const denominator = validGroups.reduce((sum, average) => sum + 1 / average, 0)
-      return validGroups.length / denominator
+    if (currentOverall.liftsTracked === 0) {
+      return null
     }
 
-    exerciseData.forEach((exercise) => {
-      const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-      if (info) {
-        const exactScore = toLevelScore(info.level, info.progress)
-        totalScore += exactScore
-        count++
+    const baselineExercises = exerciseData.map((exercise) => {
+      const previousBest1RM =
+        best1RMSnapshotByExerciseId[exercise.exerciseId]?.previousBest1RM ?? 0
+      const baseline1RM = previousBest1RM > 0 ? previousBest1RM : exercise.max1RM
 
-        const group = getExerciseGroup(exercise.exerciseName)
-        if (group in groupTotals) {
-          groupTotals[group].total += exactScore
-          groupTotals[group].count++
-        }
-
-        const previousBest1RM =
-          best1RMSnapshotByExerciseId[exercise.exerciseId]?.previousBest1RM ?? 0
-        const baseline1RM = previousBest1RM > 0 ? previousBest1RM : exercise.max1RM
-        const baselineInfo = getStrengthInfo(exercise.exerciseName, baseline1RM)
-        const baselineExactScore = baselineInfo
-          ? toLevelScore(baselineInfo.level, baselineInfo.progress)
-          : exactScore
-
-        if (group in baselineGroupTotals) {
-          baselineGroupTotals[group].total += baselineExactScore
-          baselineGroupTotals[group].count++
-        }
+      return {
+        ...exercise,
+        max1RM: baseline1RM,
       }
     })
 
-    if (count === 0) return null
+    const baselineOverall = calculateOverallStrengthScore({
+      gender: strengthGender,
+      bodyweightKg: profile.weight_kg,
+      exercises: baselineExercises,
+    })
 
-    const averageScore = totalScore / count
-    const {
-      level: currentLevel,
-      nextLevel,
-      progress,
-    } = scoreToLevelProgress(averageScore)
-
-    // Calculate Balanced Level (Harmonic Mean of group averages)
-    const validGroups = Object.entries(groupTotals)
-      .filter(([_, data]) => data.count > 0)
-      .map(([name, data]) => ({
-        name,
-        average: data.total / data.count,
-      }))
-
-    let balancedScore = 0
-    let balancedLevel: StrengthLevel = currentLevel
-    let weakestGroup: string | null = null
-
-    if (validGroups.length > 0) {
-      balancedScore = computeBalancedScore(groupTotals)
-
-      // Find weakest group
-      const weakest = validGroups.reduce(
-        (min, g) => (g.average < min.average ? g : min),
-        validGroups[0],
-      )
-      
-      const strongest = validGroups.reduce(
-        (max, g) => (g.average > max.average ? g : max),
-        validGroups[0],
-      )
-
-      // Only flag as weak if it's significantly dragging down the score (>= 1 full level difference)
-      if (strongest.average - weakest.average >= 1.0) {
-        weakestGroup = weakest.name
-      }
-
-      balancedLevel = scoreToLevelProgress(balancedScore).level
-    }
-
-    const { nextLevel: balancedNextLevel, progress: balancedProgress } =
-      scoreToLevelProgress(balancedScore)
-
-    const baselineBalancedScore = computeBalancedScore(baselineGroupTotals)
-    const {
-      level: baselineBalancedLevel,
-      progress: baselineBalancedProgress,
-    } = scoreToLevelProgress(baselineBalancedScore)
-    const progressDelta = getProgressDeltaPoints(
-      { level: baselineBalancedLevel, progress: baselineBalancedProgress },
-      { level: balancedLevel, progress: balancedProgress },
+    const progressDelta = Math.max(
+      0,
+      Math.round(currentOverall.score - baselineOverall.score),
     )
 
     return {
-      currentLevel,
-      nextLevel,
-      progress,
+      currentLevel: currentOverall.level,
+      nextLevel: currentOverall.nextLevel,
+      progress: currentOverall.progress,
       progressDelta,
-      liftsTracked: count,
-      balancedLevel,
-      balancedNextLevel,
-      balancedProgress,
-      balancedScore,
-      weakestGroup,
+      liftsTracked: currentOverall.liftsTracked,
+      balancedLevel: currentOverall.level,
+      balancedNextLevel: currentOverall.nextLevel,
+      balancedProgress: currentOverall.progress,
+      balancedScore: currentOverall.score,
+      score: currentOverall.score,
+      weakestGroup: currentOverall.weakestGroup,
     }
-  }, [best1RMSnapshotByExerciseId, exerciseData, profile, getStrengthInfo])
+  }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])
 
   // Calculate muscle groups data (for backward compatibility)
   const muscleGroups = useMemo((): MuscleGroupData[] => {
@@ -329,7 +253,8 @@ export function useStrengthData() {
     
     // Group exercises
     exerciseData.forEach((exercise) => {
-      const groupName = exercise.muscleGroup || 'Other'
+      // Prioritize our canonical mapping, then fallback to database value
+      const groupName = EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] || exercise.muscleGroup || 'Other'
       if (!groups.has(groupName)) {
         groups.set(groupName, [])
       }

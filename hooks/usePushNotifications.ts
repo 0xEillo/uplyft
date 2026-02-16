@@ -1,12 +1,12 @@
-import * as Notifications from 'expo-notifications'
-import * as Device from 'expo-device'
-import Constants from 'expo-constants'
-import { Platform } from 'react-native'
-import { useEffect, useRef } from 'react'
-import { usePathname, useRouter } from 'expo-router'
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
+import Constants from 'expo-constants'
+import * as Device from 'expo-device'
+import * as Notifications from 'expo-notifications'
+import { usePathname, useRouter } from 'expo-router'
+import { useEffect, useRef } from 'react'
+import { Platform } from 'react-native'
 
 /**
  * Hook to handle notification responses
@@ -16,8 +16,12 @@ export function usePushNotifications() {
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined)
-  const responseListener = useRef<Notifications.Subscription | undefined>(undefined)
+  const notificationListener = useRef<Notifications.Subscription | undefined>(
+    undefined,
+  )
+  const responseListener = useRef<Notifications.Subscription | undefined>(
+    undefined,
+  )
   const lastPathnameRef = useRef(pathname || '/(tabs)')
 
   useEffect(() => {
@@ -28,20 +32,21 @@ export function usePushNotifications() {
     if (!user) return
 
     // Listen for notifications received while app is in foreground
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener((_notification) => {
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (_notification) => {
         // You could show an in-app toast here
-      })
+      },
+    )
 
     // Listen for user tapping on notification
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        const { workoutId, notificationId, type } =
-          response.notification.request.content.data as {
-            workoutId?: string
-            notificationId?: string
-            type?: string
-          }
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const { workoutId, notificationId, type } = response.notification
+          .request.content.data as {
+          workoutId?: string
+          notificationId?: string
+          type?: string
+        }
 
         // Mark notification as read
         if (notificationId) {
@@ -80,7 +85,8 @@ export function usePushNotifications() {
           // Fallback to workout detail for any other workout-related notifications
           router.push(buildWorkoutHref(workoutId) as any)
         }
-      })
+      },
+    )
 
     return () => {
       if (notificationListener.current) {
@@ -104,8 +110,7 @@ export async function registerForPushNotifications() {
 
   try {
     // Check existing permissions
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync()
+    const { status: existingStatus } = await Notifications.getPermissionsAsync()
     let finalStatus = existingStatus
 
     // Request permission if not granted

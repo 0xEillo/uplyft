@@ -13,9 +13,8 @@ const IS_DEV =
     : process.env.NODE_ENV !== 'production'
 const DEBUG_DRAFT_LOGS = false // IS_DEV && process.env.NODE_ENV !== 'test'
 
-function logDraft(event: string, payload?: Record<string, unknown>) {
+function logDraft(_event: string, _payload?: Record<string, unknown>) {
   if (!DEBUG_DRAFT_LOGS) return
-  console.log(`[DraftStore] ${event}`, payload ?? {})
 }
 
 export type WeightUnit = 'kg' | 'lb'
@@ -89,7 +88,8 @@ function applyPatch(base: WorkoutDraft, patch: DraftPatch): WorkoutDraft {
         ? patch.isStructuredMode
         : base.isStructuredMode ?? false,
     selectedRoutineId:
-      typeof patch.selectedRoutineId === 'string' || patch.selectedRoutineId === null
+      typeof patch.selectedRoutineId === 'string' ||
+      patch.selectedRoutineId === null
         ? patch.selectedRoutineId ?? null
         : base.selectedRoutineId ?? null,
     timerStartedAt:
@@ -209,7 +209,8 @@ export async function loadDraft(): Promise<WorkoutDraft | null> {
       typeof snapshot?.timerElapsedSeconds === 'number'
         ? snapshot?.timerElapsedSeconds
         : 0,
-    updatedAt: typeof snapshot?.updatedAt === 'number' ? snapshot?.updatedAt : 0,
+    updatedAt:
+      typeof snapshot?.updatedAt === 'number' ? snapshot?.updatedAt : 0,
   }
 
   if (Array.isArray(ops)) {

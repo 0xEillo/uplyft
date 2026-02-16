@@ -17,24 +17,24 @@ import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import {
-  memo,
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    memo,
+    useCallback,
+    useDeferredValue,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from 'react'
 import {
-  Dimensions,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Body from 'react-native-body-highlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -192,7 +192,6 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
               }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Link.AppleZoom>
                 <Ionicons
                   name="information-circle"
                   size={22}
@@ -202,7 +201,6 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
                       : 'rgba(0,0,0,0.6)'
                   }
                 />
-              </Link.AppleZoom>
             </TouchableOpacity>
           </Link>
         </View>
@@ -265,13 +263,11 @@ const ExerciseListItem = memo(function ExerciseListItem({
           isDark && { backgroundColor: colors.rowTint },
         ]}
       >
-        <Link.AppleZoom>
           <ExerciseMediaThumbnail
             gifUrl={exercise.gif_url}
             style={styles.exerciseListItemThumbnail}
             isCustom={!!exercise.created_by}
           />
-        </Link.AppleZoom>
         <View style={styles.exerciseListItemContent}>
           <Text
             style={[

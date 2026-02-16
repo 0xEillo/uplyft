@@ -1,5 +1,6 @@
 import { FeedCard } from '@/components/feed-card'
 import { useAuth } from '@/contexts/auth-context'
+import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
@@ -48,6 +49,9 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
+  const { level: userLevel, isLoading: isLevelLoading } = useUserLevel(
+    workout.user_id ?? undefined,
+  )
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
   const computeContext = useMemo(() => {
@@ -264,6 +268,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     <FeedCard
       userName={userName}
       userAvatar={avatarUrl || ''}
+      userLevel={isLevelLoading ? null : userLevel}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
         isPending

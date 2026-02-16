@@ -4,29 +4,33 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { useTheme } from '@/contexts/theme-context'
 import {
-  getLevelColor,
-  getLevelIntensity,
-  useStrengthData,
-  type MuscleGroupData
+    getLevelColor,
+    getLevelIntensity,
+    useStrengthData,
+    type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_DATABASE_MUSCLE,
-  type BodyPartSlug
+    BODY_PART_DISPLAY_NAMES,
+    BODY_PART_TO_DATABASE_MUSCLE,
+    type BodyPartSlug
 } from '@/lib/body-mapping'
+import {
+    LEVEL_POINT_ANCHORS,
+    OVERALL_STRENGTH_SCORE_CAP,
+} from '@/lib/overall-strength-score'
 import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -184,7 +188,23 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
 
     // Iterate over all supported body part slugs
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(([slug, dbMuscleName]) => {
-      const mgData = muscleMap.get(dbMuscleName)
+      let mgData = muscleMap.get(dbMuscleName)
+
+      // Smart fallbacks for posterior chain and legs to ensure the chart looks "complete"
+      // based on the most relevant data available
+      if (!mgData) {
+        if (slug === 'gluteal' || slug === 'hamstring') {
+          // If no specific Glute/Hamstring data, fallback to Lower Back (Deadlifts) or Quads (Squats)
+          mgData = muscleMap.get('Lower Back') || muscleMap.get('Quads')
+        } else if (slug === 'lower-back') {
+          // If no Lower Back specific data, fallback to Back (Rows) or Glutes (Deadlifts/Squats)
+          mgData = muscleMap.get('Back') || muscleMap.get('Glutes')
+        } else if (slug === 'upper-back') {
+          // If no Upper Back data, fallback to Traps or Lower Back
+          mgData = muscleMap.get('Traps') || muscleMap.get('Lower Back')
+        }
+      }
+
       if (mgData) {
         data.push({
           slug: slug as BodyPartSlug,
@@ -273,8 +293,10 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
             {/* Overall Level Card */}
             {overallLevel && (
               <>
-              
-                
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionHeaderText}>Lifter Level</Text>
+                </View>
+
                 <TouchableOpacity
                   style={styles.levelCard}
                   activeOpacity={0.9}
@@ -282,19 +304,16 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                 >
                   <View style={styles.levelCardContent}>
                     <View style={styles.levelCardLeft}>
-                      <Text style={styles.levelCardValue}>
-                        {overallLevel.balancedLevel}
-                      </Text>
-                      {overallLevel.balancedNextLevel ? (
-                        <View style={styles.levelCardProgressRow}>
-                          <Text style={styles.levelCardProgress}>
-                            {Math.round(overallLevel.balancedProgress)}% to{' '}
-                            {overallLevel.balancedNextLevel}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.levelCardValue}>
+                          {overallLevel.balancedLevel}
+                        </Text>
+                        {overallLevel.progressDelta > 0 && (
+                          <Text style={styles.scoreDeltaText}>
+                            ▲ {overallLevel.progressDelta}
                           </Text>
-                        </View>
-                      ) : (
-                        <Text style={styles.levelCardProgress}>Max Level Reached</Text>
-                      )}
+                        )}
+                      </View>
                     </View>
                     <LevelBadge
                       level={overallLevel.balancedLevel}
@@ -303,22 +322,36 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                     />
                   </View>
 
-                {/* Progress Bar */}
-                {overallLevel.balancedNextLevel && (
-                  <View style={styles.progressBarContainer}>
-                    <View style={styles.progressBarBackground}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: `${overallLevel.balancedProgress}%`,
-                            backgroundColor: getLevelColor(overallLevel.balancedLevel),
-                          },
-                        ]}
-                      />
-                    </View>
+                {/* Progress Bar and Points */}
+                <View style={styles.progressBarContainer}>
+                  <Text style={styles.levelCardProgress}>
+                    {Math.round(overallLevel.score)} pts
+                  </Text>
+                  
+                  <View style={styles.progressBarBackground}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${overallLevel.balancedProgress}%`,
+                          backgroundColor: getLevelColor(overallLevel.balancedLevel),
+                        },
+                      ]}
+                    />
                   </View>
-                )}
+
+                  {/* Progress Bar Legend - Point Anchors */}
+                  <View style={styles.progressBarLegend}>
+                    <Text style={styles.progressBarAnchorText}>
+                      {LEVEL_POINT_ANCHORS[overallLevel.balancedLevel]}
+                    </Text>
+                    <Text style={styles.progressBarAnchorText}>
+                      {overallLevel.balancedNextLevel 
+                        ? LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]
+                        : OVERALL_STRENGTH_SCORE_CAP}
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             </>
             )}
@@ -410,7 +443,8 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
           isVisible={showLevelsSheet}
           onClose={() => setShowLevelsSheet(false)}
           currentLevel={overallLevel.balancedLevel}
-          progressToNext={overallLevel.balancedProgress}
+          score={overallLevel.score}
+          scoreDelta={overallLevel.progressDelta}
         />
       )}
     </>
@@ -515,12 +549,25 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '800',
       color: colors.textPrimary,
       letterSpacing: -0.5,
+    },
+    scoreDeltaText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#10B981',
+      marginLeft: 2,
+      fontVariant: ['tabular-nums'] as any,
+    },
+    levelCardScore: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.brandPrimary,
       marginBottom: 4,
     },
     levelCardProgress: {
-      fontSize: 13,
-      fontWeight: '500',
+      fontSize: 14,
+      fontWeight: '600',
       color: colors.textSecondary,
+      marginBottom: 2,
     },
     levelCardProgressRow: {
       flexDirection: 'row',
@@ -529,7 +576,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexWrap: 'wrap',
     },
     progressBarContainer: {
-      marginTop: 16,
+      marginTop: 0,
     },
     progressBarBackground: {
       height: 6,
@@ -540,6 +587,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     progressBarFill: {
       height: '100%',
       borderRadius: 3,
+    },
+    progressBarLegend: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 4,
+    },
+    progressBarAnchorText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      opacity: 0.6,
     },
     weakPointContainer: {
       flexDirection: 'row',

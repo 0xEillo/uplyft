@@ -5,9 +5,9 @@ import {
   ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
-import * as SystemUI from 'expo-system-ui'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import * as SystemUI from 'expo-system-ui'
 import { PostHogProvider } from 'posthog-react-native'
 import { useEffect, useRef } from 'react'
 import { Appearance, AppState, Platform, UIManager } from 'react-native'
@@ -27,8 +27,8 @@ import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
-import { stopMusicPreview } from '@/lib/music-preview-player'
 import { initializeFacebookSDK } from '@/lib/facebook-sdk'
+import { stopMusicPreview } from '@/lib/music-preview-player'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
 // Set global refresh control tint color for iOS
@@ -72,7 +72,9 @@ function RootLayoutNav() {
   usePushNotifications()
 
   const formSheetContentStyle = {
-    backgroundColor: isDark ? getColors(true).surfaceSheet : getColors(false).surfaceSheet,
+    backgroundColor: isDark
+      ? getColors(true).surfaceSheet
+      : getColors(false).surfaceSheet,
   }
   const navigationBackground = isDark
     ? CustomDarkTheme.colors.background

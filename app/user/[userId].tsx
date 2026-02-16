@@ -60,7 +60,9 @@ export default function UserProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
-  const { level: userLevel, progress: userProgress } = useUserLevel(userId)
+  const { level: userLevel, score: userScore, scoreDelta } = useUserLevel(
+    userId,
+  )
   const [showLevelSheet, setShowLevelSheet] = useState(false)
 
   const scrollY = useRef(new Animated.Value(0)).current
@@ -850,7 +852,8 @@ export default function UserProfileScreen() {
           isVisible={showLevelSheet}
           onClose={() => setShowLevelSheet(false)}
           currentLevel={userLevel || 'Beginner'}
-          progressToNext={userProgress || 0}
+          score={userScore}
+          scoreDelta={scoreDelta}
         />
       </View>
     </SlideInView>
@@ -922,8 +925,9 @@ const createStyles = (
     },
     profileSection: {
       paddingHorizontal: 14,
-      paddingTop: 115,
+      paddingTop: 140,
       paddingBottom: 12,
+      zIndex: 1,
     },
     profileTop: {
       flexDirection: 'row',
@@ -971,29 +975,29 @@ const createStyles = (
     statsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 6,
+      marginTop: 4,
       flexWrap: 'nowrap',
     },
     stat: {
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 2,
-      paddingHorizontal: 2,
+      gap: 1,
+      paddingHorizontal: 0,
     },
     statSeparator: {
       width: 3,
       height: 3,
       borderRadius: 1.5,
       backgroundColor: colors.textSecondary,
-      marginHorizontal: 10,
+      marginHorizontal: 7,
       opacity: 0.4,
     },
     statLabel: {
       fontSize: 12,
       color: colors.textSecondary,
       fontWeight: '400',
-      lineHeight: 15,
-      paddingBottom: 1,
+      lineHeight: 14,
+      paddingBottom: 0,
     },
     statNumber: {
       fontSize: 15,

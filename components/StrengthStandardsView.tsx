@@ -529,7 +529,7 @@ export function StrengthStandardsView() {
           isVisible={showLevelsSheet}
           onClose={() => setShowLevelsSheet(false)}
           currentLevel={overallLevel.balancedLevel}
-          progressToNext={overallLevel.balancedProgress}
+          score={overallLevel.score}
         />
       )}
 
@@ -628,6 +628,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '800',
       color: colors.textPrimary,
       letterSpacing: -0.5,
+      marginBottom: 2,
+    },
+    heroScoreText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.brandPrimary,
       marginBottom: 8,
     },
     heroNextLevelContainer: {

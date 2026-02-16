@@ -3888,7 +3888,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Lat Pulldown (Cable)': 'Back',
   'Weighted Pull-Up': 'Back',
   'Weighted Pull Up': 'Back',
-  'Deadlift (Barbell)': 'Back',
+  'Deadlift (Barbell)': 'Lower Back',
   'Bent Over Row (Dumbbell)': 'Back',
   'Seated Row (Machine)': 'Back',
   'T Bar Row (Machine)': 'Back',

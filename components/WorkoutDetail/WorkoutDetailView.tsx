@@ -137,7 +137,7 @@ export function WorkoutDetailView({
 
     // If there's no stack history (deep link, notification, etc), fall back to the provided target
     if (normalizedReturnTo) {
-      router.replace(normalizedReturnTo as Href)
+      router.replace(normalizedReturnTo as Href<string>)
       return
     }
 

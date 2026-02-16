@@ -45,7 +45,9 @@ export default function ProfileScreen() {
   const { weightUnit } = useWeightUnits()
   const { registerScrollRef } = useScrollToTop()
   const flatListRef = useRef<FlatList>(null)
-  const { level: userLevel, progress: userProgress } = useUserLevel(user?.id)
+  const { level: userLevel, score: userScore, scoreDelta } = useUserLevel(
+    user?.id,
+  )
   const [showLevelSheet, setShowLevelSheet] = useState(false)
   // const params = useLocalSearchParams() // Removed redundant param check
   // const [showPaywall, setShowPaywall] = useState(false)
@@ -702,7 +704,8 @@ export default function ProfileScreen() {
         isVisible={showLevelSheet}
         onClose={() => setShowLevelSheet(false)}
         currentLevel={userLevel || 'Beginner'}
-        progressToNext={userProgress || 0}
+        score={userScore}
+        scoreDelta={scoreDelta}
       />
     </View>
   )
@@ -851,29 +854,29 @@ const createStyles = (
     statsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 6,
+      marginTop: 4,
       flexWrap: 'nowrap',
     },
     stat: {
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 2,
-      paddingHorizontal: 2,
+      gap: 1,
+      paddingHorizontal: 0,
     },
     statSeparator: {
       width: 3,
       height: 3,
       borderRadius: 1.5,
       backgroundColor: colors.textSecondary,
-      marginHorizontal: 10,
+      marginHorizontal: 7,
       opacity: 0.4,
     },
     statLabel: {
       fontSize: 12,
       color: colors.textSecondary,
       fontWeight: '400',
-      lineHeight: 15,
-      paddingBottom: 1,
+      lineHeight: 14,
+      paddingBottom: 0,
     },
     statNumber: {
       fontSize: 15,

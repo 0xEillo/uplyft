@@ -144,7 +144,6 @@ export default function ExerciseDetailScreen() {
 
       // Load exercise details
       const exerciseData = await database.exercises.getById(exerciseId)
-      console.log('Loaded exercise:', exerciseData?.name, 'GIF:', exerciseData?.gif_url)
       setExercise(exerciseData)
 
       // Load max 1RM
@@ -620,15 +619,7 @@ export default function ExerciseDetailScreen() {
                             Next Level ({strengthInfo.nextLevel.level})
                           </Text>
                           <Text style={styles.statValue}>
-                            {['Pull-Up', 'Dips'].includes(exercise?.name || '')
-                              ? `${Math.ceil(strengthInfo.nextLevel.multiplier)} reps`
-                              : formatWeight(
-                                  Math.ceil(
-                                    (profile?.weight_kg || 0) *
-                                      strengthInfo.nextLevel.multiplier,
-                                  ),
-                                  { maximumFractionDigits: 0 },
-                                )}
+                            {Math.round(strengthInfo.progress || 0)}%
                           </Text>
                         </View>
                         <View style={styles.separator} />
@@ -1055,7 +1046,6 @@ export default function ExerciseDetailScreen() {
         isVisible={showLevelSheet}
         onClose={() => setShowLevelSheet(false)}
         currentLevel={strengthInfo?.level || 'Beginner'}
-        progressToNext={strengthInfo?.progress || 0}
         title={exercise?.name}
         levelMilestoneLabels={exerciseLevelMilestoneLabels}
         showMilestones

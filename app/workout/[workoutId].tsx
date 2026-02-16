@@ -30,7 +30,10 @@ export interface ExercisePRInfo {
 }
 
 export default function WorkoutDetailScreen() {
-  const params = useLocalSearchParams<{ workoutId: string; returnTo?: string }>()
+  const params = useLocalSearchParams<{
+    workoutId: string
+    returnTo?: string
+  }>()
   const { workoutId } = params
   const router = useRouter()
   const pathname = usePathname()
@@ -45,8 +48,10 @@ export default function WorkoutDetailScreen() {
   const [commentCount, setCommentCount] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
   const [prInfo, setPrInfo] = useState<ExercisePRInfo[]>([])
-  const [previousMax1RMByExerciseId, setPreviousMax1RMByExerciseId] =
-    useState<Record<string, number> | null>(null)
+  const [
+    previousMax1RMByExerciseId,
+    setPreviousMax1RMByExerciseId,
+  ] = useState<Record<string, number> | null>(null)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [workoutCount, setWorkoutCount] = useState(1)
 
@@ -309,9 +314,12 @@ export default function WorkoutDetailScreen() {
   }, [workoutId, router])
 
   // Handle exercise press - navigate to exercise detail
-  const handleExercisePress = useCallback((exerciseId: string) => {
-    router.push(`/exercise/${exerciseId}`)
-  }, [router])
+  const handleExercisePress = useCallback(
+    (exerciseId: string) => {
+      router.push(`/exercise/${exerciseId}`)
+    },
+    [router],
+  )
 
   // Only show edit/delete/create routine for own workouts
   const isOwnWorkout = workout ? user?.id === workout.user_id : false

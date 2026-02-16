@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Image,
-    StyleProp,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    ViewStyle
+  Animated,
+  Image,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native'
 import Svg, {
-    Circle,
-    Defs,
-    Stop,
-    LinearGradient as SvgLinearGradient,
+  Circle,
+  Defs,
+  Stop,
+  LinearGradient as SvgLinearGradient,
 } from 'react-native-svg'
 
 // Helper to lighten a hex color
@@ -47,18 +47,18 @@ type StrengthLevel =
   | 'World Class'
 
 const LEVEL_COLORS: Record<StrengthLevel, string> = {
-  Untrained: '#6B7280',   // Darker Gray
-  Beginner: '#9CA3AF',    // Gray
-  Novice: '#3B82F6',      // Blue
+  Untrained: '#6B7280', // Darker Gray
+  Beginner: '#9CA3AF', // Gray
+  Novice: '#3B82F6', // Blue
   Intermediate: '#10B981', // Green
-  Advanced: '#8B5CF6',    // Purple
-  Elite: '#F59E0B',       // Orange
+  Advanced: '#8B5CF6', // Purple
+  Elite: '#F59E0B', // Orange
   'World Class': '#EF4444', // Red
 }
 
 interface LevelBadgeProps {
   level: StrengthLevel
-  size?: 'small' | 'medium' | 'large' | 'xl' | 'hero'
+  size?: 'xs' | 'small' | 'medium' | 'large' | 'xl' | 'hero'
   variant?: 'icon' | 'pill'
   style?: StyleProp<ViewStyle>
   showTooltipOnPress?: boolean
@@ -81,11 +81,54 @@ export function LevelBadge({
   const timeoutRef = useRef<any>(null)
 
   const dimensions = {
-    small: { container: 26, icon: 16, border: 1, fontSize: 10, paddingH: 8, paddingV: 3 },
-    medium: { container: 34, icon: 20, border: 1.5, fontSize: 11, paddingH: 10, paddingV: 4 },
-    large: { container: 48, icon: 28, border: 2, fontSize: 13, paddingH: 14, paddingV: 6 },
-    hero: { container: 80, icon: 48, border: 3, fontSize: 16, paddingH: 20, paddingV: 8 },
-    xl: { container: 120, icon: 84, border: 4, fontSize: 24, paddingH: 24, paddingV: 12 },
+    xs: {
+      container: 18,
+      icon: 12,
+      border: 1,
+      fontSize: 8,
+      paddingH: 6,
+      paddingV: 2,
+    },
+    small: {
+      container: 26,
+      icon: 16,
+      border: 1,
+      fontSize: 10,
+      paddingH: 8,
+      paddingV: 3,
+    },
+    medium: {
+      container: 34,
+      icon: 20,
+      border: 1.5,
+      fontSize: 11,
+      paddingH: 10,
+      paddingV: 4,
+    },
+    large: {
+      container: 48,
+      icon: 28,
+      border: 2,
+      fontSize: 13,
+      paddingH: 14,
+      paddingV: 6,
+    },
+    hero: {
+      container: 80,
+      icon: 48,
+      border: 3,
+      fontSize: 16,
+      paddingH: 20,
+      paddingV: 8,
+    },
+    xl: {
+      container: 120,
+      icon: 84,
+      border: 4,
+      fontSize: 24,
+      paddingH: 24,
+      paddingV: 12,
+    },
   }
 
   const dim = dimensions[size]
@@ -221,7 +264,11 @@ export function LevelBadge({
 
   if (onPress) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.wrapper}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={styles.wrapper}
+      >
         {badge}
       </TouchableOpacity>
     )
@@ -273,7 +320,6 @@ export function LevelBadge({
   return badge
 }
 
-
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
@@ -320,4 +366,3 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
   },
 })
-

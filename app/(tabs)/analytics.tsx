@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import { isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -59,17 +58,6 @@ export default function AnalyticsScreen() {
       // Force remount on focus to recover native glass if iOS drops it after transitions.
       setGlassInstanceKey((prev) => prev + 1)
 
-      if (__DEV__) {
-        const liquidAvailable =
-          Platform.OS === 'ios' ? isLiquidGlassAvailable() : false
-        const apiAvailable =
-          Platform.OS === 'ios' ? isGlassEffectAPIAvailable() : false
-        console.log('[analytics-slider] focus', {
-          platform: Platform.OS,
-          liquidAvailable,
-          apiAvailable,
-        })
-      }
     }, [trackEvent]),
   )
 
