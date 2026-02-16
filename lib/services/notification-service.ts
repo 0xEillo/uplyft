@@ -30,7 +30,7 @@ export async function scheduleTrialExpirationNotification(
         body:
           'Your 7-day free trial of Rep AI ends in 24 hours. Continue tracking your fitness journey!',
         data: {
-          type: 'trial_expiration',
+          type: 'trial_reminder',
           userId,
           trialStartDate: trialStartDate.toISOString(),
         },

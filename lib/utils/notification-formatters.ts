@@ -45,6 +45,14 @@ export function formatNotificationText(
       title: 'Request Declined',
       body: `${firstActor} declined your follow request`,
     }
+  } else if (type === 'follow_received') {
+    return {
+      title: 'New Follower',
+      body:
+        actorCount === 1
+          ? `${firstActor} started following you`
+          : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} started following you`,
+    }
   } else if (type === 'trial_reminder') {
     return {
       title: 'Trial Ending Soon',
@@ -76,6 +84,8 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'checkmark-circle'
     case 'follow_request_declined':
       return 'close-circle'
+    case 'follow_received':
+      return 'person'
     case 'trial_reminder':
       return 'time'
     default:

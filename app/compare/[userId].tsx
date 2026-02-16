@@ -101,6 +101,8 @@ export default function CompareScreen() {
     [],
   )
 
+  const isDataLoadedRef = useRef(false)
+
   useFocusEffect(
     useCallback(() => {
       if (shouldSkipNextEntryRef.current) {
@@ -123,6 +125,7 @@ export default function CompareScreen() {
     return () => {
       shouldSkipNextEntryRef.current = false
       isInitialFocusRef.current = true
+      isDataLoadedRef.current = false
     }
   }, [userId])
 
@@ -132,7 +135,7 @@ export default function CompareScreen() {
     if (!user?.id || !userId) return
 
     let pendingRequest = false
-    if (!myProfile) {
+    if (!isDataLoadedRef.current) {
       setIsLoading(true)
     } else {
       setIsUpdating(true)
@@ -173,6 +176,7 @@ export default function CompareScreen() {
 
       setMyProfile(myProfileData)
       setTheirProfile(theirProfileData)
+      isDataLoadedRef.current = true
 
       // Calculate date filter based on time period
       let dateFilter: Date | null = null
@@ -294,7 +298,6 @@ export default function CompareScreen() {
     }
   }, [
     isGlobalExercise,
-    myProfile,
     user?.id,
     userId,
     timePeriod,

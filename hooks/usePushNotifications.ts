@@ -81,6 +81,8 @@ export function usePushNotifications() {
           } as any)
         } else if (type === 'workout_like' && workoutId) {
           router.push(buildWorkoutHref(workoutId) as any)
+        } else if (type === 'trial_reminder') {
+          router.push('/(tabs)/profile')
         } else if (workoutId) {
           // Fallback to workout detail for any other workout-related notifications
           router.push(buildWorkoutHref(workoutId) as any)

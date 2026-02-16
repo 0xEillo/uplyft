@@ -298,6 +298,7 @@ export type NotificationType =
   | 'follow_request_received'
   | 'follow_request_approved'
   | 'follow_request_declined'
+  | 'follow_received'
   | 'trial_reminder'
 
 export interface Notification {
