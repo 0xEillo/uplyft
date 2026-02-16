@@ -202,20 +202,8 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(([slug, dbMuscleName]) => {
       let mgData = muscleMap.get(dbMuscleName)
 
-      // Smart fallbacks for posterior chain and legs to ensure the chart looks "complete"
-      // based on the most relevant data available
-      if (!mgData) {
-        if (slug === 'gluteal' || slug === 'hamstring') {
-          // If no specific Glute/Hamstring data, fallback to Lower Back (Deadlifts) or Quads (Squats)
-          mgData = muscleMap.get('Lower Back') || muscleMap.get('Quads')
-        } else if (slug === 'lower-back') {
-          // If no Lower Back specific data, fallback to Back (Rows) or Glutes (Deadlifts/Squats)
-          mgData = muscleMap.get('Back') || muscleMap.get('Glutes')
-        } else if (slug === 'upper-back') {
-          // If no Upper Back data, fallback to Traps or Lower Back
-          mgData = muscleMap.get('Traps') || muscleMap.get('Lower Back')
-        }
-      }
+      // With secondary muscle mapping in place (e.g. Squat -> Glutes), we no longer
+      // need complex fallbacks here. We trust the data in muscleGroups.
 
       if (mgData) {
         data.push({

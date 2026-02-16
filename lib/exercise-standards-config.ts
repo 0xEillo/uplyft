@@ -3,6 +3,8 @@
  * Single source of truth for exercises that have strength standards and percentile tracking
  */
 
+import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from './exercise-standards-config-secondary'
+
 export type StrengthLevel =
   | 'Untrained'
   | 'Beginner'
@@ -4044,12 +4046,18 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
 export function getTrackableExercisesForMuscle(
   muscleName: string,
 ): ExerciseStandardsConfig[] {
-  const exerciseNames = Object.entries(EXERCISE_MUSCLE_MAPPING)
+  const primaryExerciseNames = Object.entries(EXERCISE_MUSCLE_MAPPING)
     .filter(([_, muscle]) => muscle === muscleName)
     .map(([exercise, _]) => exercise)
 
+  const secondaryExerciseNames = Object.entries(SECONDARY_EXERCISE_MUSCLE_MAPPING)
+    .filter(([_, muscle]) => muscle === muscleName)
+    .map(([exercise, _]) => exercise)
+    
+  const allExerciseNames = Array.from(new Set([...primaryExerciseNames, ...secondaryExerciseNames]))
+
   return EXERCISES_WITH_STANDARDS.filter((ex) =>
-    exerciseNames.includes(ex.name),
+    allExerciseNames.includes(ex.name),
   )
 }
 

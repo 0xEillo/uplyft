@@ -71,15 +71,11 @@ export default function MuscleGroupDetailScreen() {
 
   const filteredExercises = useMemo(() => {
     if (!groupData) return []
-    if (!bodyPartSlug) return groupData.exercises
-
-    const targetMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
-    if (!targetMuscle) return groupData.exercises
-
-    return groupData.exercises.filter((exercise) => {
-      return exercise.muscleGroup === targetMuscle
-    })
-  }, [groupData, bodyPartSlug])
+    // The groupData is already filtered by muscle group in useStrengthData using the canonical mapping.
+    // We shouldn't filter again based on exercise.muscleGroup because the raw database value might 
+    // differ from the canonical group (e.g. DB says 'Legs' but we mapped it to 'Quads').
+    return groupData.exercises
+  }, [groupData])
 
   const allMuscleExercises = useMemo(() => {
     const getStrengthInfo = (exerciseName: string, max1RM: number) => {

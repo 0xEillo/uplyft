@@ -425,10 +425,27 @@ export default function FeedScreen() {
 
               // Baseline score (using previous best 1RMs where available)
               const baselineExercises = exerciseData.map((ex) => {
-                const prev = snapshots[ex.exerciseId]?.previousBest1RM ?? 0
+                const snapshot = snapshots[ex.exerciseId]
+                // If lastIncreaseAt equals this workout's creation time, it means we set a PR
+                // in this specific workout. In that case, use the previous best.
+                // Otherwise, use the CURRENT max (because we didn't improve today).
+                const isNewPR =
+                  snapshot?.lastIncreaseAt &&
+                  new Date(snapshot.lastIncreaseAt).getTime() ===
+                    new Date(workout.created_at).getTime()
+
+                if (isNewPR) {
+                  // Use previous best (which might be 0 if first time)
+                  return {
+                    ...ex,
+                    max1RM: snapshot.previousBest1RM,
+                  }
+                }
+
+                // Default: use current max as baseline (no improvement today)
                 return {
                   ...ex,
-                  max1RM: prev > 0 ? prev : ex.max1RM,
+                  max1RM: ex.max1RM,
                 }
               })
 

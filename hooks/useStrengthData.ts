@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { EXERCISE_MUSCLE_MAPPING, getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
+import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from '@/lib/exercise-standards-config-secondary'
 import { calculateOverallStrengthScore } from '@/lib/overall-strength-score'
 import {
     getStrengthGender,
@@ -261,11 +262,20 @@ export function useStrengthData() {
     // Group exercises
     exerciseData.forEach((exercise) => {
       // Prioritize our canonical mapping, then fallback to database value
-      const groupName = EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] || exercise.muscleGroup || 'Other'
-      if (!groups.has(groupName)) {
-        groups.set(groupName, [])
+      const primaryGroup = EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] || exercise.muscleGroup || 'Other'
+      if (!groups.has(primaryGroup)) {
+        groups.set(primaryGroup, [])
       }
-      groups.get(groupName)?.push(exercise)
+      groups.get(primaryGroup)?.push(exercise)
+
+      // Secondary muscle group mapping (e.g. Squat -> Glutes)
+      const secondaryGroup = SECONDARY_EXERCISE_MUSCLE_MAPPING[exercise.exerciseName]
+      if (secondaryGroup && secondaryGroup !== primaryGroup) {
+        if (!groups.has(secondaryGroup)) {
+          groups.set(secondaryGroup, [])
+        }
+        groups.get(secondaryGroup)?.push(exercise)
+      }
     })
 
     // Calculate stats for each group
