@@ -1,8 +1,8 @@
 import {
-  OVERALL_STRENGTH_SCORE_CAP,
-  calculateExerciseStrengthPoints,
-  calculateOverallStrengthScore,
-  scoreToOverallLevelProgress,
+    OVERALL_STRENGTH_SCORE_CAP,
+    calculateExerciseStrengthPoints,
+    calculateOverallStrengthScore,
+    scoreToOverallLevelProgress,
 } from '../lib/overall-strength-score'
 
 describe('overall strength score', () => {
@@ -128,7 +128,7 @@ describe('overall strength score', () => {
         back * 0.25 +
         chestBest * 0.2 +
         shoulders * 0.2 +
-        arms * 0.1,
+        arms * 0.1, // Tier 1 (Bicep Curl is now Tier 1)
     )
 
     const overall = calculateOverallStrengthScore({

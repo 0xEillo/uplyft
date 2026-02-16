@@ -26,6 +26,7 @@ export interface ExerciseStandardsConfig {
   gifUrl?: string | null
   male: StrengthStandard[]
   female: StrengthStandard[]
+  tier?: 1 | 2
 }
 
 /**
@@ -37,6 +38,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'a1a9f5cd-1e9f-47b1-b7cd-162d2de80ddb',
     name: 'Bench Press (Barbell)',
+    tier: 1,
     gifUrl: 'EIeI8Vf.gif',
     male: [
       {
@@ -120,6 +122,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'd5b6efa3-2ebe-4eec-9e59-7a2b5ad4aa12',
     name: 'Incline Bench Press (Barbell)',
+    tier: 1,
     gifUrl: '3TZduzM.gif',
     male: [
       {
@@ -203,6 +206,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '7927cf04-6d4b-4f01-9cd2-441ad398f214',
     name: 'Bench Press (Dumbbell)',
+    tier: 1,
     gifUrl: 'SpYC0Kp.gif',
     male: [
       {
@@ -286,6 +290,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f0d9f5c0-0da6-493b-a7d5-64cf793dbdca',
     name: 'Incline Bench Press (Dumbbell)',
+    tier: 1,
     gifUrl: 'ns0SIbU.gif',
     male: [
       {
@@ -369,6 +374,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'ec791278-a90a-446a-a853-94e68646416b',
     name: 'Squat (Barbell)',
+    tier: 1,
     gifUrl: 'qXTaZnJ.gif',
     male: [
       {
@@ -452,6 +458,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '50c3ce34-9b80-4f8b-92c4-365183476959',
     name: 'Front Squat (Barbell)',
+    tier: 1,
     gifUrl: 'zG0zs85.gif',
     male: [
       {
@@ -535,6 +542,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'cbd8a5d7-e51a-4691-8731-65d4dab19db2',
     name: 'Deadlift (Barbell)',
+    tier: 1,
     gifUrl: 'GUT8I22.gif',
     male: [
       {
@@ -618,6 +626,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'c216a0a7-c3a6-458b-b691-a5c6afca0662',
     name: 'Romanian Deadlift (Barbell)',
+    tier: 1,
     gifUrl: 'wQ2c4XD.gif',
     male: [
       {
@@ -701,6 +710,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'baf05047-e528-47da-adf2-9be58d124278',
     name: 'Shoulder Press (Barbell)',
+    tier: 1,
     gifUrl: 'wdRZISl.gif',
     male: [
       {
@@ -784,6 +794,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '25050a20-cd9d-4193-b681-dd7c1af27348',
     name: 'Shoulder Press (Machine)',
+    tier: 2,
     gifUrl: 'CggQhII.gif',
     male: [
       {
@@ -867,6 +878,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '674beec1-ce86-401d-980d-8ae5949ec707',
     name: 'Seated Shoulder Press (Dumbbell)',
+    tier: 1,
     gifUrl: 'znQUdHY.gif',
     male: [
       {
@@ -950,6 +962,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f87f37bd-dfb9-4f88-a178-82423ab0e6a0',
     name: 'Bent Over Row (Barbell)',
+    tier: 1,
     gifUrl: 'X3cqyXz.gif',
     male: [
       {
@@ -1033,6 +1046,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '62de3610-8941-4c87-aff2-31d5da85f82f',
     name: 'Lat Pulldown (Cable)',
+    tier: 2,
     gifUrl: 'eYnzaCm.gif',
     male: [
       {
@@ -1117,6 +1131,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '8416f9f6-5500-4412-9cbe-e779f0314511',
     name: 'Weighted Pull-Up',
     aliases: ['Weighted Pull Up', 'Weighted Pull-Ups', 'Weighted Pullups'],
+    tier: 1,
     gifUrl: 'HMzLjXx.gif',
     male: [
       {
@@ -1200,6 +1215,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f18faaa7-0cb5-4d5f-9474-a1f822c4ed84',
     name: 'Weighted Dip',
+    tier: 1,
     gifUrl: 'MU9HnE7.gif',
     male: [
       {
@@ -1283,6 +1299,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '66076631-fbf3-4240-9358-99563893ff90',
     name: 'Bicep Curl (Dumbbell)',
+    tier: 1,
     gifUrl: 'NbVPDMW.gif',
     male: [
       {
@@ -1366,6 +1383,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '82081200-5fb6-4bf4-9341-d2f4b96ecfb6',
     name: 'Hammer Curl (Dumbbell)',
+    tier: 2,
     gifUrl: 'slDvUAU.gif',
     male: [
       {
@@ -1449,6 +1467,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '715479a2-4676-4ae1-a94e-b469d7c387e0',
     name: 'Bicep Curl (Barbell)',
+    tier: 1,
     gifUrl: 'Yza7XrQ.gif',
     male: [
       {
@@ -1532,6 +1551,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f270f1b1-4769-4fa0-babb-39dfa1296dcd',
     name: 'Leg Press (Machine)',
+    tier: 2,
     gifUrl: '10Z2DXU.gif',
     male: [
       {
@@ -1615,6 +1635,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f709f0a1-f934-4b25-8b30-115035bf53a3',
     name: 'Bulgarian Split Squat (Dumbbell)',
+    tier: 1,
     gifUrl: 'SpYC0Kp.gif',
     male: [
       {
@@ -1698,6 +1719,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '8e8ea45f-2a9e-47d5-8b99-410549aab166',
     name: 'Glute Bridge (Barbell)',
+    tier: 1,
     gifUrl: 'qKBpF7I.gif',
     male: [
       {
@@ -1781,6 +1803,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '288281a7-e9bc-4902-896e-1df4c892cd20',
     name: 'Bent Over Row (Dumbbell)',
+    tier: 1,
     gifUrl: 'BJ0Hz5L.gif',
     male: [
       {
@@ -1864,6 +1887,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '2bdfb2da-20f2-439d-8e4d-8b5e928a97ba',
     name: 'Seated Row',
+    tier: 2,
     gifUrl: 'X3cqyXz.gif',
     male: [
       {
@@ -1947,6 +1971,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '4f70d4fe-7eee-4c95-9da7-1c35a78de5c2',
     name: 'Close Grip Bench Press (Barbell)',
+    tier: 1,
     gifUrl: 'J6Dx1Mu.gif',
     male: [
       {
@@ -2030,6 +2055,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '37b7c704-b4c1-4745-8ae7-e2cbd9432508',
     name: 'Pushdown (Cable)',
+    tier: 2,
     gifUrl: '3ZflifB.gif',
     male: [
       {
@@ -2114,6 +2140,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '591af367-e71d-4ad5-9754-1c3f39a9b434',
     name: 'Rope Pushdown (Cable)',
     aliases: ['Cable Pushdown (Rope)', 'Rope Pushdown', 'Tricep Rope Pushdown'],
+    tier: 2,
     gifUrl: 'dU605di.gif',
     male: [
       {
@@ -2197,6 +2224,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '51f08b8b-34d3-4e8b-bf9d-5d28c071c4ae',
     name: 'Standing Calf Raise (Machine)',
+    tier: 2,
     gifUrl: 'ykUOVze.gif',
     male: [
       {
@@ -2280,6 +2308,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'de0aeeaa-8bd0-4c4b-8602-986025dfdc17',
     name: 'Shrug (Machine)',
     aliases: ['Shrug', 'Machine Shrug'],
+    tier: 2,
     gifUrl: 'ZZKbeMw.gif',
     male: [
       {
@@ -2363,6 +2392,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '0c92879c-8d2f-47e5-a998-94e079786c7e',
     name: 'Shrug (Dumbbell)',
     aliases: ['DB Shrug', 'Dumbbell Shrugs', 'Dumbbell Shrug'],
+    tier: 2,
     gifUrl: 'NJzBsGJ.gif',
     male: [
       {
@@ -2445,6 +2475,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '00fbaaa6-b29b-4e7c-982e-78978d2f1d3d',
     name: 'Hanging Leg Raise',
+    tier: 2,
     gifUrl: 'I3tsCnC.gif',
     male: [
       {
@@ -2527,6 +2558,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '4502ba9e-c0bc-4ab4-8a8f-9773f64479c8',
     name: 'Back Extension (Machine)',
+    tier: 2,
     gifUrl: 'rUXfn3R.gif',
     male: [
       {
@@ -2609,6 +2641,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '0f69ada8-ed3f-446d-a837-221c501ca826',
     name: 'Leg Extension (Machine)',
+    tier: 2,
     gifUrl: 'my33uHU.gif',
     male: [
       {
@@ -2691,6 +2724,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '595e8458-ceab-4608-955b-ebad4c02210d',
     name: 'Face Pull (Cable)',
+    tier: 2,
     gifUrl: 'G61cXLk.gif',
     male: [
       {
@@ -2773,6 +2807,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'a97d866b-b29e-4b25-914a-ada0d59be96b',
     name: 'Seated Lateral Raise (Dumbbell)',
+    tier: 1,
     gifUrl: 'hxyTtWj.gif',
     male: [
       {
@@ -2855,6 +2890,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'ce77ea3f-772d-435c-b1ca-05b1e9d6c6fe',
     name: 'Wrist Curl (Barbell)',
+    tier: 2,
     gifUrl: '82LxxkW.gif',
     male: [
       {
@@ -2937,6 +2973,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'aaa729ff-5681-4241-bda4-dd848afab3ef',
     name: 'Rope Hammer Curl (Cable)',
+    tier: 2,
     gifUrl: 'HPlPoQA.gif',
     male: [
       {
@@ -3019,6 +3056,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '97ab3978-17bf-4c48-ae37-1683355e694c',
     name: 'Seated Leg Curl (Machine)',
+    tier: 2,
     gifUrl: 'Zg3XY7P.gif',
     male: [
       {
@@ -3101,6 +3139,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '41571546-3273-4913-b1c8-4717088c8f44',
     name: 'Seated Calf Raise (Machine)',
+    tier: 2,
     gifUrl: 'bOOdeyc.gif',
     male: [
       {
@@ -3183,6 +3222,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '5de336b5-00af-4b0a-b2e9-79a2b11d6b28',
     name: 'Triceps Extension (Machine)',
+    tier: 2,
     gifUrl: 'Ser9eQp.gif',
     male: [
       {
@@ -3265,6 +3305,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'cdd2929b-ccc0-4d9f-bea4-6b47d08dca64',
     name: 'Lying Leg Curl (Machine)',
+    tier: 2,
     gifUrl: '17lJ1kr.gif',
     male: [
       {
@@ -3349,6 +3390,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '4075e4c0-aeb6-460d-9de7-98064e5fde4c',
     name: 'Hack Squat (Machine)',
     aliases: ['Hack Squat', 'Sled Hack Squat', 'Machine Hack Squat'],
+    tier: 2,
     gifUrl: 'Qa55kX1.gif',
     male: [
       {
@@ -3433,6 +3475,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '49f4eca5-609a-4c85-a482-57a5db72bd33',
     name: 'Lateral Raise (Dumbbell)',
     aliases: ['Lateral Raise', 'Dumbbell Lateral Raise', 'Side Raise', 'Side Lateral Raise'],
+    tier: 1,
     gifUrl: 'DsgkuIt.gif',
     male: [
       {
@@ -3517,6 +3560,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '10d290b0-ada9-44f9-b52f-dfe13e224bd3',
     name: 'T Bar Row (Machine)',
     aliases: ['T Bar Row', 'T-Bar Row', 'Landmine Row'],
+    tier: 2,
     gifUrl: 'aaXr7ld.gif',
     male: [
       {
@@ -3601,6 +3645,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'e47e46c4-4e66-4b6d-b808-074c922428bb',
     name: 'Preacher Curl (Barbell)',
     aliases: ['Preacher Curl', 'Barbell Preacher Curl', 'EZ Bar Preacher Curl'],
+    tier: 1,
     gifUrl: 'qOgPVf6.gif',
     male: [
       {
@@ -3685,6 +3730,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '67f335db-9176-491f-ad48-bf8c3f8cec4b',
     name: 'Overhead Cable Extension (Cable)',
     aliases: ['Cable Overhead Tricep Extension', 'Cable High Pulley Overhead Tricep Extension', 'Overhead Cable Extension'],
+    tier: 2,
     gifUrl: '1xHyxys.gif',
     male: [
       {
@@ -3769,6 +3815,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'f59ce0f6-5118-421e-9010-0074247c9d9f',
     name: 'Cable Crunch (Cable)',
     aliases: ['Cable Crunch', 'Kneeling Cable Crunch', 'Cable Crunches'],
+    tier: 2,
     gifUrl: null,
     male: [
       {

@@ -278,10 +278,15 @@ export function calculateOverallStrengthScore(input: {
 
     liftsTracked += 1
 
+    const config = exerciseNameMap.get(exercise.exerciseName)
+    const tier = config?.tier || 2
+    const tierWeight = tier === 1 ? 1.0 : 0.2
+    const weightedPoints = points * tierWeight
+
     const state = groupState[overallGroup]
     state.trackedExerciseCount += 1
-    if (points > state.topExerciseScore) {
-      state.topExerciseScore = points
+    if (weightedPoints > state.topExerciseScore) {
+      state.topExerciseScore = weightedPoints
     }
 
     const currentLast = asDateOrNull(state.lastTrainedAt)
