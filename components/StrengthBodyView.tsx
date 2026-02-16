@@ -4,33 +4,30 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { useTheme } from '@/contexts/theme-context'
 import {
-    getLevelColor,
-    getLevelIntensity,
-    useStrengthData,
-    type MuscleGroupData
+  getLevelColor,
+  getLevelIntensity,
+  useStrengthData,
+  type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-    BODY_PART_DISPLAY_NAMES,
-    BODY_PART_TO_DATABASE_MUSCLE,
-    type BodyPartSlug
+  BODY_PART_DISPLAY_NAMES,
+  BODY_PART_TO_DATABASE_MUSCLE,
+  type BodyPartSlug
 } from '@/lib/body-mapping'
-import {
-    LEVEL_POINT_ANCHORS,
-    OVERALL_STRENGTH_SCORE_CAP,
-} from '@/lib/overall-strength-score'
+import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
 import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -140,6 +137,20 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     profile?.weight_kg,
     strengthGender,
   ])
+
+  const showOverallProgressDelta = useMemo(() => {
+    if (!overallLevel) return false
+    const now = Date.now()
+    const lastIncreaseTime = overallLevel.lastIncreaseAt 
+      ? new Date(overallLevel.lastIncreaseAt).getTime() 
+      : NaN
+    
+    return (
+      overallLevel.progressDelta > 0 &&
+      Number.isFinite(lastIncreaseTime) &&
+      now - lastIncreaseTime <= PROGRESS_DELTA_VISIBILITY_WINDOW_MS
+    )
+  }, [overallLevel])
 
   // Navigate to exercise detail
   const navigateToExercise = useCallback(
@@ -290,7 +301,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
               </View>
             </View>
 
-            {/* Overall Level Card */}
+            {/* Overall Level Card - Gamified Rank */}
             {overallLevel && (
               <>
                 <View style={styles.sectionHeader}>
@@ -304,11 +315,31 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                 >
                   <View style={styles.levelCardContent}>
                     <View style={styles.levelCardLeft}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.levelCardValue}>
-                          {overallLevel.balancedLevel}
-                        </Text>
-                        {overallLevel.progressDelta > 0 && (
+                      <Text style={styles.levelCardValue}>
+                        {overallLevel.balancedLevel}
+                      </Text>
+                      <View style={styles.levelCardMetaRow}>
+                        <View style={styles.pointsDisplay}>
+                          <Text
+                            style={[
+                              styles.pointsCurrent,
+                              { color: getLevelColor(overallLevel.balancedLevel) },
+                            ]}
+                          >
+                            {Math.round(overallLevel.score)}
+                          </Text>
+                          {overallLevel.balancedNextLevel ? (
+                            <>
+                              <Text style={styles.pointsSlash}>/</Text>
+                              <Text style={styles.pointsTotal}>
+                                {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]}
+                              </Text>
+                            </>
+                          ) : (
+                            <Text style={styles.pointsTotal}> pts</Text>
+                          )}
+                        </View>
+                        {showOverallProgressDelta && (
                           <Text style={styles.scoreDeltaText}>
                             ▲ {overallLevel.progressDelta}
                           </Text>
@@ -317,42 +348,11 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                     </View>
                     <LevelBadge
                       level={overallLevel.balancedLevel}
-                      size="large"
+                      size="hero"
                       showTooltipOnPress={false}
                     />
                   </View>
-
-                {/* Progress Bar and Points */}
-                <View style={styles.progressBarContainer}>
-                  <Text style={styles.levelCardProgress}>
-                    {Math.round(overallLevel.score)} pts
-                  </Text>
-                  
-                  <View style={styles.progressBarBackground}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${overallLevel.balancedProgress}%`,
-                          backgroundColor: getLevelColor(overallLevel.balancedLevel),
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  {/* Progress Bar Legend - Point Anchors */}
-                  <View style={styles.progressBarLegend}>
-                    <Text style={styles.progressBarAnchorText}>
-                      {LEVEL_POINT_ANCHORS[overallLevel.balancedLevel]}
-                    </Text>
-                    <Text style={styles.progressBarAnchorText}>
-                      {overallLevel.balancedNextLevel 
-                        ? LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]
-                        : OVERALL_STRENGTH_SCORE_CAP}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
             </>
             )}
 
@@ -361,11 +361,6 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
               <>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionHeaderText}>Your Exercises</Text>
-                  <View style={styles.exerciseCountBadge}>
-                    <Text style={styles.exerciseCountText}>
-                      {trackedExercisesWithProgress.length}
-                    </Text>
-                  </View>
                 </View>
 
                 <View style={styles.exerciseCardsContainer}>
@@ -528,8 +523,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
       paddingHorizontal: 20,
-      paddingTop: 16,
-      paddingBottom: 20,
+      paddingVertical: 20,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08,
@@ -543,61 +537,46 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     levelCardLeft: {
       flex: 1,
+      justifyContent: 'center',
     },
     levelCardValue: {
       fontSize: 28,
       fontWeight: '800',
       color: colors.textPrimary,
       letterSpacing: -0.5,
-    },
-    scoreDeltaText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: '#10B981',
-      marginLeft: 2,
-      fontVariant: ['tabular-nums'] as any,
-    },
-    levelCardScore: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.brandPrimary,
       marginBottom: 4,
     },
-    levelCardProgress: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      marginBottom: 2,
-    },
-    levelCardProgressRow: {
+    levelCardMetaRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'baseline',
       gap: 8,
-      flexWrap: 'wrap',
     },
-    progressBarContainer: {
-      marginTop: 0,
-    },
-    progressBarBackground: {
-      height: 6,
-      backgroundColor: colors.border,
-      borderRadius: 3,
-      overflow: 'hidden',
-    },
-    progressBarFill: {
-      height: '100%',
-      borderRadius: 3,
-    },
-    progressBarLegend: {
+    pointsDisplay: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: 4,
+      alignItems: 'baseline',
     },
-    progressBarAnchorText: {
-      fontSize: 10,
+    pointsCurrent: {
+      fontSize: 24,
+      fontWeight: '800',
+      fontVariant: ['tabular-nums'] as any,
+    },
+    pointsSlash: {
+      fontSize: 18,
       fontWeight: '600',
       color: colors.textSecondary,
-      opacity: 0.6,
+      marginLeft: 2,
+    },
+    pointsTotal: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'] as any,
+    },
+    scoreDeltaText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#10B981',
+      fontVariant: ['tabular-nums'] as any,
     },
     weakPointContainer: {
       flexDirection: 'row',
@@ -624,7 +603,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Legend
     integratedLegend: {
       marginTop: 8,
-      marginBottom: 16,
+      marginBottom: 0,
       paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
@@ -657,7 +636,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 24,
+      marginTop: 32,
       marginBottom: 8,
       paddingHorizontal: 2,
     },
@@ -669,17 +648,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
 
     // Exercise Cards Section
-    exerciseCountBadge: {
-      backgroundColor: colors.brandPrimary + '20',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    exerciseCountText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.brandPrimary,
-    },
     exerciseCardsContainer: {
       gap: 12,
     },

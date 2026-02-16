@@ -60,6 +60,7 @@ export interface OverallLevelData {
   balancedScore: number
   score: number
   weakestGroup: string | null
+  lastIncreaseAt: string | null
 }
 
 export interface GroupLevelData {
@@ -228,6 +229,11 @@ export function useStrengthData() {
       Math.round(currentOverall.score - baselineOverall.score),
     )
 
+    const lastIncreaseAt = exerciseData
+      .map((e) => best1RMSnapshotByExerciseId[e.exerciseId]?.lastIncreaseAt)
+      .filter((date): date is string => !!date)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
+
     return {
       currentLevel: currentOverall.level,
       nextLevel: currentOverall.nextLevel,
@@ -240,6 +246,7 @@ export function useStrengthData() {
       balancedScore: currentOverall.score,
       score: currentOverall.score,
       weakestGroup: currentOverall.weakestGroup,
+      lastIncreaseAt,
     }
   }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])
 
