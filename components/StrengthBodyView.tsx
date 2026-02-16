@@ -18,6 +18,7 @@ import {
 import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
 import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
+import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
@@ -305,7 +306,15 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
             {overallLevel && (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionHeaderText}>Lifter Level</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.sectionHeaderText}>Lifter Level</Text>
+                    <TouchableOpacity 
+                      onPress={() => router.push('/lifter-level-info')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <TouchableOpacity

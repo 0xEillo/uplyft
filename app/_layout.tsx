@@ -1,8 +1,8 @@
 import { getColors } from '@/constants/colors'
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -300,6 +300,10 @@ function RootLayoutNav() {
           <Stack.Screen
             name="recovery-detail"
             options={getNativeFormSheetOptions([0.72, 0.95])}
+          />
+          <Stack.Screen
+            name="lifter-level-info"
+            options={getNativeFormSheetOptions([0.5, 0.75])}
           />
           <Stack.Screen
             name="muscle-group-detail"
