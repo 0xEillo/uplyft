@@ -6,14 +6,8 @@ import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
 import { RefObject, useCallback, useState } from 'react'
-import {
-    Alert,
-    InteractionManager,
-    Linking,
-    Platform,
-    Share,
-    View,
-} from 'react-native'
+import { Alert, Linking, Platform, Share, View } from 'react-native'
+import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 
 // Type for view refs that can be captured (supports both RefObject and View directly)
 type CaptureableViewRef = RefObject<View> | View
@@ -107,7 +101,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         // Ensure layout/animations settle before capturing
         await new Promise<void>((resolve) =>
-          InteractionManager.runAfterInteractions(() => resolve()),
+          runAfterInteractions(() => resolve()),
         )
         // Give extra time for images to load
         await new Promise<void>((resolve) => setTimeout(resolve, 300))
@@ -249,7 +243,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         // Ensure layout/animations settle before capturing
         await new Promise<void>((resolve) =>
-          InteractionManager.runAfterInteractions(() => resolve()),
+          runAfterInteractions(() => resolve()),
         )
         // Give extra time for images to load
         await new Promise<void>((resolve) => setTimeout(resolve, 300))
@@ -409,7 +403,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         // Ensure layout/animations settle before capturing
         await new Promise<void>((resolve) =>
-          InteractionManager.runAfterInteractions(() => resolve()),
+          runAfterInteractions(() => resolve()),
         )
         await new Promise<void>((resolve) => setTimeout(resolve, 300))
 

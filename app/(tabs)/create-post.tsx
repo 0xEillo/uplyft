@@ -45,6 +45,7 @@ import {
   saveDraft as saveWorkoutDraft,
   saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
+import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
   generateWorkoutMessage,
@@ -67,7 +68,6 @@ import {
   Animated,
   AppState,
   Easing,
-  InteractionManager,
   Keyboard,
   Platform,
   Pressable,
@@ -1076,7 +1076,7 @@ export default function CreatePostScreen() {
         blurInputs()
       }, 0)
 
-      const interactionHandle = InteractionManager.runAfterInteractions(() => {
+      const interactionHandle = runAfterInteractions(() => {
         blurInputs()
       })
 
@@ -1487,7 +1487,7 @@ export default function CreatePostScreen() {
         workoutTitle: trimmedTitle || undefined,
       })
       navigation.dispatch(TabActions.jumpTo('index'))
-      InteractionManager.runAfterInteractions(() => {
+      runAfterInteractions(() => {
         requestAnimationFrame(() => {
           scrollToTop('index')
         })
