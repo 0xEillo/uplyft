@@ -887,7 +887,7 @@ async function buildUserContext(
     }),
     searchExercises: tool({
       description:
-        'Search the exercise database to get a pool of exercises. Fetch at least 10-15 exercises per muscle group to have options to choose from. Returns exercise name, type (compound/isolation), equipment, and muscle info.',
+        'Search the SYSTEM exercise database (non-custom only) to get a pool of exercises. Fetch at least 10-15 exercises per muscle group to have options to choose from. Returns exercise name, type (compound/isolation), equipment, and muscle info.',
       inputSchema: z
         .object({
           query: z
@@ -1005,6 +1005,7 @@ async function buildUserContext(
           .select(
             'id, name, muscle_group, target_muscles, body_parts, equipment, equipments, type, gif_url',
           )
+          .is('created_by', null)
           .limit(limit)
           .order('name', { ascending: true })
 
@@ -1132,10 +1133,11 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
     `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
     'CRITICAL: EXERCISE SELECTION & NAMING:',
-    'You DO NOT natively know which exercises exist in our database. You MUST use the `searchExercises` tool to find valid exercises before creating a workout.',
+    'You DO NOT natively know which exercises exist in our database. You MUST use the `searchExercises` tool to find valid exercises before creating a workout OR suggesting/replacing exercises.',
+    'Never use custom/user-created exercises (anything with created_by not null). Only system exercises are allowed.',
     '',
     'EXERCISE SELECTION STRATEGY:',
-    '1. When creating a workout, call `searchExercises` with the target muscle group and limit=15-20 to get a POOL of options.',
+    '1. When creating a workout OR suggesting/replacing exercises, call `searchExercises` with the target muscle group and limit=15-20 to get a POOL of options.',
     '2. Review ALL returned exercises and intelligently SELECT the best ones based on:',
     "   - User's available equipment and preferences",
     "   - Exercise variety (don't pick 3 bench press variations - pick different movement patterns)",
@@ -1154,6 +1156,7 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     'VALID EQUIPMENT: barbell, bodyweight, cable, dumbbell, kettlebell, machine, resistance band',
     '',
     'EXERCISE SUGGESTIONS FORMAT:',
+    'Before suggesting/recommending/replacing specific exercises, call `searchExercises` and use only exercise names returned by that tool.',
     'Whenever you suggest, recommend, or mention specific exercises (whether adding to a workout, replacing an exercise, or just discussing options), ALWAYS include a JSON array at the END of your response with the exercise details.',
     'Format: [{"name": "Exercise Name", "sets": 2, "reps": "6-8"}, ...]',
     'Use sets=2 for most exercises; sets=3 only when needed (typically compounds), never 4.',

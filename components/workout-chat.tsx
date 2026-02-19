@@ -2083,6 +2083,7 @@ export function WorkoutChat({
         .from('exercises')
         .select('id, name')
         .in('name', exerciseNames)
+        .is('created_by', null)
 
       if (resolveError) {
         throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
