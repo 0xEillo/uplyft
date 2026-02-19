@@ -52,6 +52,7 @@ import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Clipboard,
   FlatList,
   Image,
   Keyboard,
@@ -86,6 +87,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   images?: string[] // Image URIs for display
+  status?: 'sending' | 'sent' | 'failed'
 }
 
 type FoodLogAction = 'log' | 'update_last'
@@ -471,6 +473,15 @@ const stripFoodLogBlock = (content: string): string =>
     .replace(/<food_log>[\s\S]*$/i, '')
     .trim()
 
+const getVisibleAssistantMessageText = (content: string): string =>
+  stripFoodLogBlock(content)
+    .replace(JSON_BLOCK_REGEX, '')
+    .replace(/```(?:json|).*/gs, '')
+    .replace(/\[\s*\{.*/gs, '')
+    .replace(/\{\s*"exercises".*/gs, '')
+    .replace(/\{\s*"title".*/gs, '')
+    .trim()
+
 const parseFoodLogPayload = (content: string): FoodLogPayload | null => {
   const match = content.match(FOOD_LOG_BLOCK_REGEX)
   if (!match?.[1]) return null
@@ -562,6 +573,10 @@ export function WorkoutChat({
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -645,6 +660,14 @@ export function WorkoutChat({
     scrollView: 0,
     inputContainer: 0,
   })
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current) {
+        clearTimeout(copyResetTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const logLayout = (
     label: 'root' | 'scrollView' | 'inputContainer',
@@ -1376,9 +1399,37 @@ export function WorkoutChat({
     }
   }
 
-  const handleSendMessage = async (hiddenPrompt?: string) => {
-    const hasImages = selectedImages.length > 0
-    const typedInput = input.trim()
+  const handleCopyMessage = (messageId: string, text: string) => {
+    const copyText = text.trim()
+    if (!copyText) return
+
+    Clipboard.setString(copyText)
+    haptic('light')
+    setCopiedMessageId(messageId)
+
+    if (copyResetTimeoutRef.current) {
+      clearTimeout(copyResetTimeoutRef.current)
+    }
+    copyResetTimeoutRef.current = setTimeout(() => {
+      setCopiedMessageId((prev) => (prev === messageId ? null : prev))
+    }, 1500)
+  }
+
+  const handleSendMessage = async (
+    hiddenPrompt?: string,
+    options?: {
+      existingUserMessageId?: string
+      existingUserContent?: string
+      existingUserImages?: string[]
+    },
+  ) => {
+    const isResend = Boolean(options?.existingUserMessageId)
+    const hasImages = isResend
+      ? (options?.existingUserImages?.length || 0) > 0
+      : selectedImages.length > 0
+    const typedInput = isResend
+      ? options?.existingUserContent?.trim() || ''
+      : input.trim()
     const messageContent =
       hiddenPrompt || typedInput || (hasImages ? 'Please log this meal.' : '')
     if ((!messageContent && !hasImages) || isLoading) return
@@ -1398,26 +1449,45 @@ export function WorkoutChat({
     // This allows users to chat/explore before using their free workout generation
 
     // Store input and images before clearing
-    const imagesToSend = [...selectedImages]
+    const imagesToSend = isResend
+      ? [...(options?.existingUserImages || [])]
+      : [...selectedImages]
 
     // Clear input immediately after validation if not hidden prompt
-    if (!hiddenPrompt) {
+    if (!hiddenPrompt && !isResend) {
       setInput('')
       setSelectedImages([])
       inputRef.current?.clear()
       Keyboard.dismiss()
     }
 
+    const userMessageId = options?.existingUserMessageId || Date.now().toString()
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: userMessageId,
       role: 'user',
       content: messageContent,
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
+      status: hiddenPrompt ? undefined : 'sending',
     }
 
-    // Only show user message if not a hidden prompt
+    // Show or update user message only for visible user sends
     if (!hiddenPrompt) {
-      setMessages((prev) => [...prev, userMessage])
+      if (isResend) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === userMessage.id
+              ? {
+                  ...m,
+                  content: userMessage.content,
+                  images: userMessage.images,
+                  status: 'sending',
+                }
+              : m,
+          ),
+        )
+      } else {
+        setMessages((prev) => [...prev, userMessage])
+      }
     }
 
     let hiddenPromptContent: string | undefined
@@ -1451,12 +1521,23 @@ export function WorkoutChat({
         content: getCoach(coachId).systemPrompt,
       }
 
-      const formattedMessages = [systemMessage, ...messages, userMessage].map(
-        (m) => ({
-          role: m.role,
-          content: m.content,
-        }),
-      )
+      const requestMessages = isResend
+        ? messages.map((m) =>
+            m.id === userMessage.id
+              ? {
+                  ...m,
+                  content: userMessage.content,
+                  images: userMessage.images,
+                  status: 'sending',
+                }
+              : m,
+          )
+        : [...messages, userMessage]
+
+      const formattedMessages = [systemMessage, ...requestMessages].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
 
       // Check if we have a hidden prompt content from the planning flows
       if (typeof hiddenPromptContent !== 'undefined') {
@@ -1563,6 +1644,14 @@ export function WorkoutChat({
         )
       }
 
+      if (!hiddenPrompt) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === userMessage.id ? { ...m, status: 'sent' } : m,
+          ),
+        )
+      }
+
       const assistantMessageId = (Date.now() + 1).toString()
       // create placeholder assistant message for streaming
       setMessages((prev) => [
@@ -1591,14 +1680,22 @@ export function WorkoutChat({
       }
     } catch (error) {
       console.error('Chat error:', error)
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: "Sorry, I couldn't process that request. Please try again.",
-        },
-      ])
+      setMessages((prev) => {
+        const withUserStatus = hiddenPrompt
+          ? prev
+          : prev.map((m) =>
+              m.id === userMessage.id ? { ...m, status: 'failed' } : m,
+            )
+
+        return [
+          ...withUserStatus,
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: "Sorry, I couldn't process that request. Please try again.",
+          },
+        ]
+      })
     } finally {
       setIsLoading(false)
       // Note: We don't automatically set generatedPlanContent here for normal chat messages
@@ -1614,6 +1711,26 @@ export function WorkoutChat({
         // They stay visible because generatedPlanContent is state.
       }
     }
+  }
+
+  const handleResendMessage = (messageId: string) => {
+    if (isLoading) return
+
+    const failedMessage = messages.find(
+      (message) =>
+        message.id === messageId &&
+        message.role === 'user' &&
+        message.status === 'failed',
+    )
+
+    if (!failedMessage) return
+
+    haptic('light')
+    handleSendMessage(undefined, {
+      existingUserMessageId: failedMessage.id,
+      existingUserContent: failedMessage.content,
+      existingUserImages: failedMessage.images,
+    })
   }
 
   const handleNewChat = () => {
@@ -2409,9 +2526,87 @@ export function WorkoutChat({
                                 ))}
                               </View>
                             )}
-                            <Text style={styles.userMessageText}>
-                              {message.content}
-                            </Text>
+                            <TouchableOpacity
+                              activeOpacity={0.9}
+                              onLongPress={() =>
+                                handleCopyMessage(message.id, message.content)
+                              }
+                              delayLongPress={220}
+                            >
+                              <Text style={styles.userMessageText}>
+                                {message.content}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          <View style={styles.userMessageMetaRow}>
+                            <TouchableOpacity
+                              style={styles.messageMetaActionButton}
+                              onPress={() =>
+                                handleCopyMessage(message.id, message.content)
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons
+                                name={
+                                  copiedMessageId === message.id
+                                    ? 'checkmark'
+                                    : 'copy-outline'
+                                }
+                                size={13}
+                                color={
+                                  copiedMessageId === message.id
+                                    ? colors.statusSuccess
+                                    : colors.textTertiary
+                                }
+                              />
+                              <Text style={styles.messageMetaActionText}>
+                                {copiedMessageId === message.id
+                                  ? 'Copied'
+                                  : 'Copy'}
+                              </Text>
+                            </TouchableOpacity>
+
+                            {message.status === 'sending' && (
+                              <Text style={styles.messageMetaStatusText}>
+                                Sending...
+                              </Text>
+                            )}
+
+                            {message.status === 'failed' && (
+                              <>
+                                <Text
+                                  style={[
+                                    styles.messageMetaStatusText,
+                                    styles.messageMetaStatusErrorText,
+                                  ]}
+                                >
+                                  Failed to send
+                                </Text>
+                                <TouchableOpacity
+                                  style={styles.messageMetaActionButton}
+                                  onPress={() =>
+                                    handleResendMessage(message.id)
+                                  }
+                                  disabled={isLoading}
+                                  activeOpacity={0.7}
+                                >
+                                  <Ionicons
+                                    name="refresh"
+                                    size={13}
+                                    color={colors.statusError}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.messageMetaActionText,
+                                      styles.messageMetaActionErrorText,
+                                    ]}
+                                  >
+                                    Resend
+                                  </Text>
+                                </TouchableOpacity>
+                              </>
+                            )}
                           </View>
                         </View>
                       ) : (
@@ -2492,15 +2687,9 @@ export function WorkoutChat({
 
                             const calCircumference = 28 * 2 * Math.PI
                             const smallCircumference = 16 * 2 * Math.PI
-                            const displayContent = stripFoodLogBlock(
+                            const displayContent = getVisibleAssistantMessageText(
                               message.content,
                             )
-                              .replace(JSON_BLOCK_REGEX, '')
-                              .replace(/```(?:json|).*/gs, '') // Strip partial code blocks
-                              .replace(/\[\s*\{.*/gs, '')      // Strip partial JSON arrays
-                              .replace(/\{\s*"exercises".*/gs, '') // Strip partial workout objects
-                              .replace(/\{\s*"title".*/gs, '')     // Strip partial workout objects
-                              .trim()
                             
                             const exerciseSuggestions = parseExerciseSuggestions(
                               message.content,
@@ -2640,6 +2829,37 @@ export function WorkoutChat({
                                           >
                                             {displayContent}
                                           </Markdown>
+                                        </View>
+                                        <View style={styles.assistantMessageMetaRow}>
+                                          <TouchableOpacity
+                                            style={styles.messageMetaActionButton}
+                                            onPress={() =>
+                                              handleCopyMessage(
+                                                message.id,
+                                                displayContent,
+                                              )
+                                            }
+                                            activeOpacity={0.7}
+                                          >
+                                            <Ionicons
+                                              name={
+                                                copiedMessageId === message.id
+                                                  ? 'checkmark'
+                                                  : 'copy-outline'
+                                              }
+                                              size={13}
+                                              color={
+                                                copiedMessageId === message.id
+                                                  ? colors.statusSuccess
+                                                  : colors.textTertiary
+                                              }
+                                            />
+                                            <Text style={styles.messageMetaActionText}>
+                                              {copiedMessageId === message.id
+                                                ? 'Copied'
+                                                : 'Copy'}
+                                            </Text>
+                                          </TouchableOpacity>
                                         </View>
                                       </View>
                                     </View>
@@ -3573,6 +3793,15 @@ function createStyles(
       lineHeight: 22,
       color: isDark ? colors.bg : colors.surface,
     },
+    userMessageMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 6,
+      paddingRight: 2,
+    },
     assistantMessageContent: {
       width: '100%',
       paddingVertical: 0,
@@ -3584,6 +3813,36 @@ function createStyles(
     },
     assistantCoachBubbleWrap: {
       maxWidth: '85%',
+    },
+    assistantMessageMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 6,
+      paddingLeft: 2,
+    },
+    messageMetaActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 2,
+      paddingHorizontal: 4,
+      borderRadius: 10,
+    },
+    messageMetaActionText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontWeight: '500',
+    },
+    messageMetaActionErrorText: {
+      color: colors.statusError,
+    },
+    messageMetaStatusText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontWeight: '500',
+    },
+    messageMetaStatusErrorText: {
+      color: colors.statusError,
     },
     workoutCardContainer: {
       flex: 1,
