@@ -306,7 +306,6 @@ export function StrengthLevelIntroStep({
     if (isNaN(weight) || isNaN(reps) || reps <= 0 || weight <= 0) return
 
     haptic('medium')
-    Keyboard.dismiss()
 
     // Convert weight to kg for calculation
     const weightInKg =
