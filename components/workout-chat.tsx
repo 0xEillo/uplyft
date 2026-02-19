@@ -65,6 +65,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   TextStyle,
   TouchableOpacity,
   View,
@@ -573,10 +574,6 @@ export function WorkoutChat({
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
-  const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  )
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -660,14 +657,6 @@ export function WorkoutChat({
     scrollView: 0,
     inputContainer: 0,
   })
-
-  useEffect(() => {
-    return () => {
-      if (copyResetTimeoutRef.current) {
-        clearTimeout(copyResetTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const logLayout = (
     label: 'root' | 'scrollView' | 'inputContainer',
@@ -1399,20 +1388,15 @@ export function WorkoutChat({
     }
   }
 
-  const handleCopyMessage = (messageId: string, text: string) => {
+  const handleCopyMessage = (text: string) => {
     const copyText = text.trim()
     if (!copyText) return
 
     Clipboard.setString(copyText)
     haptic('light')
-    setCopiedMessageId(messageId)
-
-    if (copyResetTimeoutRef.current) {
-      clearTimeout(copyResetTimeoutRef.current)
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Copied to clipboard', ToastAndroid.SHORT)
     }
-    copyResetTimeoutRef.current = setTimeout(() => {
-      setCopiedMessageId((prev) => (prev === messageId ? null : prev))
-    }, 1500)
   }
 
   const handleSendMessage = async (
@@ -2528,9 +2512,7 @@ export function WorkoutChat({
                             )}
                             <TouchableOpacity
                               activeOpacity={0.9}
-                              onLongPress={() =>
-                                handleCopyMessage(message.id, message.content)
-                              }
+                              onLongPress={() => handleCopyMessage(message.content)}
                               delayLongPress={220}
                             >
                               <Text style={styles.userMessageText}>
@@ -2539,75 +2521,51 @@ export function WorkoutChat({
                             </TouchableOpacity>
                           </View>
 
-                          <View style={styles.userMessageMetaRow}>
-                            <TouchableOpacity
-                              style={styles.messageMetaActionButton}
-                              onPress={() =>
-                                handleCopyMessage(message.id, message.content)
-                              }
-                              activeOpacity={0.7}
-                            >
-                              <Ionicons
-                                name={
-                                  copiedMessageId === message.id
-                                    ? 'checkmark'
-                                    : 'copy-outline'
-                                }
-                                size={13}
-                                color={
-                                  copiedMessageId === message.id
-                                    ? colors.statusSuccess
-                                    : colors.textTertiary
-                                }
-                              />
-                              <Text style={styles.messageMetaActionText}>
-                                {copiedMessageId === message.id
-                                  ? 'Copied'
-                                  : 'Copy'}
-                              </Text>
-                            </TouchableOpacity>
-
-                            {message.status === 'sending' && (
-                              <Text style={styles.messageMetaStatusText}>
-                                Sending...
-                              </Text>
-                            )}
-
-                            {message.status === 'failed' && (
-                              <>
-                                <Text
-                                  style={[
-                                    styles.messageMetaStatusText,
-                                    styles.messageMetaStatusErrorText,
-                                  ]}
-                                >
-                                  Failed to send
+                          {(message.status === 'sending' ||
+                            message.status === 'failed') && (
+                            <View style={styles.userMessageMetaRow}>
+                              {message.status === 'sending' && (
+                                <Text style={styles.messageMetaStatusText}>
+                                  Sending...
                                 </Text>
-                                <TouchableOpacity
-                                  style={styles.messageMetaActionButton}
-                                  onPress={() =>
-                                    handleResendMessage(message.id)
-                                  }
-                                  disabled={isLoading}
-                                  activeOpacity={0.7}
-                                >
-                                  <Ionicons
-                                    name="refresh"
-                                    size={13}
-                                    color={colors.statusError}
-                                  />
+                              )}
+
+                              {message.status === 'failed' && (
+                                <>
                                   <Text
                                     style={[
-                                      styles.messageMetaActionText,
-                                      styles.messageMetaActionErrorText,
+                                      styles.messageMetaStatusText,
+                                      styles.messageMetaStatusErrorText,
                                     ]}
                                   >
-                                    Resend
+                                    Failed to send
                                   </Text>
-                                </TouchableOpacity>
-                              </>
-                            )}
-                          </View>
+                                  <TouchableOpacity
+                                    style={styles.messageMetaActionButton}
+                                    onPress={() =>
+                                      handleResendMessage(message.id)
+                                    }
+                                    disabled={isLoading}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Ionicons
+                                      name="refresh"
+                                      size={13}
+                                      color={colors.statusError}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.messageMetaActionText,
+                                        styles.messageMetaActionErrorText,
+                                      ]}
+                                    >
+                                      Resend
+                                    </Text>
+                                  </TouchableOpacity>
+                                </>
+                              )}
+                            </View>
+                          )}
                         </View>
                       ) : (
                         <>
@@ -2716,9 +2674,16 @@ export function WorkoutChat({
                                         />
                                       </View>
                                       <View style={styles.assistantCoachBubbleWrap}>
-                                        <View style={styles.assistantMessageBubble}>
-                                          <Markdown
-                                            style={{
+                                        <TouchableOpacity
+                                          activeOpacity={1}
+                                          onLongPress={() =>
+                                            handleCopyMessage(displayContent)
+                                          }
+                                          delayLongPress={220}
+                                        >
+                                          <View style={styles.assistantMessageBubble}>
+                                            <Markdown
+                                              style={{
                                               body: {
                                                 fontSize: 16,
                                                 lineHeight: 23,
@@ -2825,42 +2790,12 @@ export function WorkoutChat({
                                                 color: colors.brandPrimary,
                                                 textDecorationLine: 'underline',
                                               },
-                                            }}
-                                          >
-                                            {displayContent}
-                                          </Markdown>
-                                        </View>
-                                        <View style={styles.assistantMessageMetaRow}>
-                                          <TouchableOpacity
-                                            style={styles.messageMetaActionButton}
-                                            onPress={() =>
-                                              handleCopyMessage(
-                                                message.id,
-                                                displayContent,
-                                              )
-                                            }
-                                            activeOpacity={0.7}
-                                          >
-                                            <Ionicons
-                                              name={
-                                                copiedMessageId === message.id
-                                                  ? 'checkmark'
-                                                  : 'copy-outline'
-                                              }
-                                              size={13}
-                                              color={
-                                                copiedMessageId === message.id
-                                                  ? colors.statusSuccess
-                                                  : colors.textTertiary
-                                              }
-                                            />
-                                            <Text style={styles.messageMetaActionText}>
-                                              {copiedMessageId === message.id
-                                                ? 'Copied'
-                                                : 'Copy'}
-                                            </Text>
-                                          </TouchableOpacity>
-                                        </View>
+                                              }}
+                                            >
+                                              {displayContent}
+                                            </Markdown>
+                                          </View>
+                                        </TouchableOpacity>
                                       </View>
                                     </View>
                                   )}
