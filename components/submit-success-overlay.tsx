@@ -243,15 +243,6 @@ function StreakOverlayComponent({
         {/* Streak Label */}
         <Text style={styles.streakLabel}>STREAK!</Text>
 
-        {/* Previous → Current */}
-        {previousStreak > 0 && (
-          <View style={styles.progressRow}>
-            <Text style={styles.progressText}>
-              {previousStreak} → {currentStreak} weeks
-            </Text>
-          </View>
-        )}
-
         {/* Motivational Message */}
         <Animated.View
           style={[
@@ -358,21 +349,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       letterSpacing: 3,
       marginTop: 4,
       marginBottom: 12,
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceSubtle,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 12,
-      marginBottom: 16,
-    },
-    progressText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textSecondary,
     },
     messageContainer: {
       marginTop: 4,
