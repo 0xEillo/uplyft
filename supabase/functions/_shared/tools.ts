@@ -2,7 +2,7 @@
 import { z } from 'https://esm.sh/zod@3.25.76'
 // @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai'
-import { openrouter, GEMINI_MODEL } from './openrouter.ts'
+import { GEMINI_MODEL, openrouter } from './openrouter.ts'
 
 import { createServiceClient } from './supabase.ts'
 
@@ -241,8 +241,29 @@ export async function handleSearchExercises(
     console.warn('[Tool: searchExercises] Trigram search failed:', error)
   }
 
+  const queryLower = args.query.toLowerCase().trim()
+
   const candidates = Array.from(candidateMap.values())
-    .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0))
+    .sort((a, b) => {
+      // 1. Prioritize exact name match
+      const aExactName = a.name.toLowerCase() === queryLower
+      const bExactName = b.name.toLowerCase() === queryLower
+      if (aExactName && !bExactName) return -1
+      if (!aExactName && bExactName) return 1
+
+      // 2. Prioritize exact alias match
+      const aExactAlias = a.aliases?.some((alias: string) => alias.toLowerCase() === queryLower)
+      const bExactAlias = b.aliases?.some((alias: string) => alias.toLowerCase() === queryLower)
+      if (aExactAlias && !bExactAlias) return -1
+      if (!aExactAlias && bExactAlias) return 1
+
+      // 3. Sort by similarity
+      const diff = (b.similarity ?? 0) - (a.similarity ?? 0)
+      if (diff !== 0) return diff
+
+      // 4. Tie-breaker: Prefer shorter names (tighter matches)
+      return a.name.length - b.name.length
+    })
     .slice(0, limit)
 
   if (candidates.length > 0) {
