@@ -280,7 +280,7 @@ export function calculateOverallStrengthScore(input: {
 
     const config = exerciseNameMap.get(exercise.exerciseName)
     const tier = config?.tier || 2
-    const tierWeight = tier === 1 ? 1.0 : 0.2
+    const tierWeight = tier === 1 ? 1.0 : 0.5
     const weightedPoints = points * tierWeight
 
     const state = groupState[overallGroup]

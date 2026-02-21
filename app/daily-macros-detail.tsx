@@ -1,6 +1,6 @@
+import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
 import { useMemo } from 'react'
@@ -110,7 +110,7 @@ export default function DailyMacrosDetailScreen() {
           <Text style={styles.title}>Today&apos;s Nutrition</Text>
           <View style={styles.mealCountBadge}>
             <Ionicons
-              name="restaurant-outline"
+              name="nutrition"
               size={13}
               color={colors.textSecondary}
             />

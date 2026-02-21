@@ -106,7 +106,7 @@ export function DailyMacrosSheet({
             <Text style={styles.title}>Today&apos;s Nutrition</Text>
             <View style={styles.mealCountBadge}>
               <Ionicons
-                name="restaurant-outline"
+                name="nutrition"
                 size={13}
                 color={colors.textSecondary}
               />
@@ -116,7 +116,7 @@ export function DailyMacrosSheet({
             </View>
           </View>
 
-          {/* Calories Hero — Cal AI style: big number left, ring right */}
+          {/* Calories Hero — Rep AI style: big number left, ring right */}
           <View style={styles.caloriesHero}>
             <View style={styles.caloriesTextColumn}>
               <Text
@@ -169,7 +169,7 @@ export function DailyMacrosSheet({
             </View>
           </View>
 
-          {/* Macros Grid — Cal AI style: value + "left" label on top, ring below */}
+          {/* Macros Grid — Rep AI style: value + "left" label on top, ring below */}
           <View style={styles.macroGrid}>
             {/* Protein */}
             <View style={styles.macroCard}>

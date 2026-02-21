@@ -1,6 +1,7 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { DailyMacrosSheet } from '@/components/daily-macros-sheet'
+import { FoodScannerModal } from '@/components/food-scanner'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
@@ -611,6 +612,7 @@ export function WorkoutChat({
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(false)
+  const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
   const [navGlassKey, setNavGlassKey] = useState(0)
   const [composerGlassKey, setComposerGlassKey] = useState(0)
   const hasRunInitialComposerRecoveryRef = useRef(false)
@@ -1102,12 +1104,12 @@ export function WorkoutChat({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          options: ['Cancel', 'Scan Food', 'Choose from Library'],
           cancelButtonIndex: 0,
         },
         (buttonIndex: number) => {
           if (buttonIndex === 1) {
-            launchCamera()
+            setIsFoodScannerVisible(true)
           } else if (buttonIndex === 2) {
             launchLibrary()
           }
@@ -1117,7 +1119,7 @@ export function WorkoutChat({
       // Android fallback using Alert
       Alert.alert('Add Image', 'Choose an option', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Take Photo', onPress: launchCamera },
+        { text: 'Scan Food', onPress: () => setIsFoodScannerVisible(true) },
         { text: 'Choose from Library', onPress: launchLibrary },
       ])
     }
@@ -2395,7 +2397,7 @@ export function WorkoutChat({
                       activeOpacity={0.7}
                     >
                       <Ionicons
-                        name="restaurant-outline"
+                        name="nutrition"
                         size={24}
                         color={colors.brandPrimary}
                       />
@@ -3531,6 +3533,57 @@ export function WorkoutChat({
           message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
         />
       </KeyboardAvoidingView>
+
+      <FoodScannerModal
+        visible={isFoodScannerVisible}
+        onClose={() => setIsFoodScannerVisible(false)}
+        onScanFood={(imageUri) => {
+          setIsFoodScannerVisible(false)
+          if (selectedImages.length < MAX_IMAGES) {
+            setSelectedImages((prev) => [...prev, imageUri])
+          } else {
+            Alert.alert(
+              'Maximum Images Reached',
+              `You can only add up to ${MAX_IMAGES} images per message.`
+            )
+          }
+        }}
+        onScanBarcode={(productData) => {
+          setIsFoodScannerVisible(false)
+          if (productData.error || productData.not_found) {
+            Alert.alert(
+              'Barcode Not Found',
+              "We couldn't find food data for this barcode."
+            )
+            return
+          }
+
+          const name = productData.product_name || 'Item'
+          const brand = productData.brands ? ` (${productData.brands})` : ''
+          const serving = productData.serving_size || '1 serving'
+
+          const cals =
+            productData.nutriments?.['energy-kcal'] ||
+            productData.nutriments?.['energy-kcal_100g'] ||
+            0
+          const protein =
+            productData.nutriments?.proteins ||
+            productData.nutriments?.proteins_value ||
+            0
+          const carbs =
+            productData.nutriments?.carbohydrates ||
+            productData.nutriments?.carbohydrates_value ||
+            0
+          const fat =
+            productData.nutriments?.fat ||
+            productData.nutriments?.fat_value ||
+            0
+
+          setInput(`Log ${serving} of ${name}${brand} (${cals} kcal, ${protein}p, ${carbs}c, ${fat}f)`)
+          setTimeout(() => inputRef.current?.focus(), 500)
+        }}
+      />
+
       <CoachSelectionSheet
         visible={isCoachSheetVisible}
         onClose={() => setIsCoachSheetVisible(false)}
