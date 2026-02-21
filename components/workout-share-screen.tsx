@@ -69,10 +69,17 @@ export function WorkoutShareScreen({
 
     const computePRs = async () => {
       try {
+        if (!workout.created_at || !workout.date) {
+          setPrData([])
+          setHasPRs(false)
+          return
+        }
+
         const ctx = {
           sessionId: workout.id,
           userId: user.id,
           createdAt: workout.created_at,
+          date: workout.date,
           exercises: (workout.workout_exercises || []).map((we) => ({
             exerciseId: we.exercise_id,
             exerciseName: we.exercise?.name || 'Exercise',

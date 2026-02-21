@@ -64,7 +64,7 @@ export default function WorkoutDetailScreen() {
 
   // Compute context for PR calculation
   const computeContext = useMemo(() => {
-    if (!user || !workout) return null
+    if (!user || !workout || !workout.created_at || !workout.date) return null
     return {
       sessionId: workout.id,
       userId: user.id,

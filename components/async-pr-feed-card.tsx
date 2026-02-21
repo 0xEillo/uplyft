@@ -55,11 +55,12 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
   const computeContext = useMemo(() => {
-    if (!user) return null
+    if (!user || workout.isPending || !workout.created_at || !workout.date) return null
     return {
       sessionId: workout.id,
       userId: user.id,
       createdAt: workout.created_at,
+      date: workout.date,
       exercises: (workout.workout_exercises || []).map((we) => ({
         exerciseId: we.exercise_id,
         exerciseName: we.exercise?.name || 'Exercise',

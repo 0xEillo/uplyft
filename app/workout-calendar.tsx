@@ -1,10 +1,11 @@
+import { AnimatedFire } from '@/components/animated-fire'
 import { CalendarShareScreen } from '@/components/calendar-share-screen'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
-import { haptic } from '@/lib/haptics'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, Stack } from 'expo-router'
@@ -531,10 +532,10 @@ export default function WorkoutCalendarScreen() {
             <Text style={styles.streakBigNumber}>{streakValue}</Text>
             <Text style={styles.streakLabel}>Week streak!</Text>
           </View>
-          <Ionicons
-            name="flame"
+          <AnimatedFire
             size={64}
-            color={isActive ? '#FF5500' : colors.textSecondary + '40'} // Strava-like orange
+            isActive={isActive}
+            inactiveColor={colors.textSecondary + '40'}
             style={styles.streakHeroIcon}
           />
         </View>
@@ -708,10 +709,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     streakHeroIcon: {
       marginTop: 8,
-      // Add a subtle shadow for the "premium" feel
-      textShadowColor: 'rgba(255, 85, 0, 0.3)',
-      textShadowOffset: { width: 0, height: 4 },
-      textShadowRadius: 10,
     },
     /* End Streak Hero Styles */
     viewModeSelectorContainer: {
