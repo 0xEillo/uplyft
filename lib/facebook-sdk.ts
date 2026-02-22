@@ -147,7 +147,7 @@ export const FacebookEvents = {
   logStartTrial: (trialType?: string, currency = 'USD', value = 0) => {
     if (!AppEventsLogger) return
     try {
-      AppEventsLogger!.logEvent('StartTrial', value, {
+      AppEventsLogger!.logEvent('fb_mobile_start_trial', value, {
         fb_currency: currency,
         fb_content_type: trialType ?? 'subscription',
       })
