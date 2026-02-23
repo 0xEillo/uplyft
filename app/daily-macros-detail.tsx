@@ -104,13 +104,13 @@ export default function DailyMacrosDetailScreen() {
     <TouchableOpacity
       activeOpacity={0.95}
       onPress={() => {
-        if (params.entryId) {
-          router.replace(`/body-log/${params.entryId}`)
-        } else if (params.logDate) {
+        if (params.logDate) {
           router.replace({
             pathname: '/body-log/[entryId]',
             params: { entryId: 'new', logDate: params.logDate },
           })
+        } else if (params.entryId) {
+          router.replace(`/body-log/${params.entryId}`)
         } else {
           router.replace('/body-log/new')
         }

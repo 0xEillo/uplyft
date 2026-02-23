@@ -2811,9 +2811,7 @@ export function WorkoutChat({
                                     <TouchableOpacity
                                       activeOpacity={0.9}
                                       onPress={() => {
-                                        if (dailyLogSummary?.entryId) {
-                                          router.push(`/body-log/${dailyLogSummary.entryId}`)
-                                        } else if (dailyLogSummary?.logDate) {
+                                        if (dailyLogSummary?.logDate) {
                                           router.push({
                                             pathname: '/body-log/[entryId]',
                                             params: { entryId: 'new', logDate: dailyLogSummary.logDate }
@@ -3619,9 +3617,7 @@ export function WorkoutChat({
           goals={dailyLogSummary.goals}
           onPressContent={() => {
             setIsDailyMacrosSheetVisible(false)
-            if (dailyLogSummary.entryId) {
-              router.push(`/body-log/${dailyLogSummary.entryId}`)
-            } else if (dailyLogSummary.logDate) {
+            if (dailyLogSummary.logDate) {
               router.push({
                 pathname: '/body-log/[entryId]',
                 params: { entryId: 'new', logDate: dailyLogSummary.logDate },

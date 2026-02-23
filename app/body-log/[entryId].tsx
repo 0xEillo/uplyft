@@ -315,6 +315,14 @@ export default function BodyLogDetailScreen() {
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
 
+  const handleBack = () => {
+    setShouldExit(true)
+  }
+
+  const handleExitComplete = () => {
+    router.back()
+  }
+
   // Animation for the bottom dock
   const isDockHidden = useSharedValue(0)
   const lastScrollY = useSharedValue(0)
@@ -1305,14 +1313,6 @@ export default function BodyLogDetailScreen() {
   }
 
   const imageCount = imageUrls.length
-
-  const handleBack = () => {
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = () => {
-    router.back()
-  }
 
   const nutritionTotals = dailySummary?.totals ?? {
     calories: 0,
