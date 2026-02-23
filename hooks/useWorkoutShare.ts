@@ -1,6 +1,5 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { useAuth } from '@/contexts/auth-context'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import * as Device from 'expo-device'
@@ -64,7 +63,6 @@ export interface UseWorkoutShareResult {
 export function useWorkoutShare(): UseWorkoutShareResult {
   const [isSharing, setIsSharing] = useState(false)
   const { trackEvent } = useAnalytics()
-  const { user } = useAuth()
   const { weightUnit } = useWeightUnits()
 
   const shareWorkout = useCallback(
@@ -151,9 +149,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
         }
 
         // Share the image with message and link
-        // Share the image with message and link
-        const shareLink = `https://rep-ai.deeplinknow.com/invite${user ? `?ref=${user.id}` : ''}`
-        const shareMessage = `Check out my workout on Rep AI! ${shareLink}`
+        const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
 
         const shareOptions = {
           url: Platform.OS === 'ios' ? uri : `file://${uri}`,
@@ -311,9 +307,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         if (!canOpen) {
           // Fallback to regular share if Instagram not installed
-          // Fallback to regular share if Instagram not installed
-          const shareLink = `https://rep-ai.deeplinknow.com/invite${user ? `?ref=${user.id}` : ''}`
-          const shareMessage = `Check out my workout on Rep AI! ${shareLink}`
+          const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
           const shareOptions = {
             url: Platform.OS === 'ios' ? uri : `file://${uri}`,
             message: shareMessage,
@@ -469,9 +463,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           if (!canOpen) {
             // Fallback to regular share
-            // Fallback to regular share
-            const shareLink = `https://rep-ai.deeplinknow.com/invite${user ? `?ref=${user.id}` : ''}`
-            const shareMessage = `Check out my workout on Rep AI! ${shareLink}`
+            const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
             const shareOptions = {
               url: Platform.OS === 'ios' ? uri : `file://${uri}`,
               message: shareMessage,
@@ -545,9 +537,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
             )
           } else {
             // Fallback to React Native Share if expo-sharing is not available
-            // Fallback to React Native Share if expo-sharing is not available
-            const shareLink = `https://rep-ai.deeplinknow.com/invite${user ? `?ref=${user.id}` : ''}`
-            const shareMessage = `Check out my workout on Rep AI! ${shareLink}`
+            const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
             const shareOptions = {
               url: Platform.OS === 'ios' ? uri : `file://${uri}`,
               message: shareMessage,

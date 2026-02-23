@@ -30,7 +30,6 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { initializeFacebookSDK } from '@/lib/facebook-sdk'
 import { stopMusicPreview } from '@/lib/music-preview-player'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
-import DeepLinkNow from '@deeplinknow/react-native'
 
 // Set global refresh control tint color for iOS
 if (Platform.OS === 'ios') {
@@ -114,55 +113,6 @@ function RootLayoutNav() {
       console.warn('[RootLayout] Failed to initialize exercise lookup:', err)
     })
   }, [])
-
-  // Initialize DeepLinkNow
-  useEffect(() => {
-    const initializeDeepLinking = async () => {
-      try {
-        const apiKey = process.env.EXPO_PUBLIC_DEEPLINKNOW_API_KEY || 'YOUR_API_KEY_HERE';
-        // Step 1: Initialize
-        await DeepLinkNow.initialize(apiKey);
-
-        const navigateToDeepLink = (url: string) => {
-          const parsed = DeepLinkNow.parseDeepLink(url);
-          if (parsed) {
-            console.log('DeepLinkNow Path:', parsed.path);
-            console.log('DeepLinkNow Params:', parsed.parameters);
-            
-            // Navigate based on path
-            // e.g., if (parsed.path === '/explore') router.push('/explore')
-            if (parsed.path) {
-              // Optionally router.push(parsed.path as any)
-              // We'll leave the direct routing up to user implementation based on their specific schema
-            }
-          }
-        };
-
-        // Step 2: Check for deferred deep links
-        if (Platform.OS === 'android') {
-          // Android: Try referrer method first
-          const deferred = await DeepLinkNow.checkDeferredDeepLink();
-          if (deferred) {
-            navigateToDeepLink(deferred.targetUrl);
-            return;
-          }
-        }
-
-        // iOS or Android fallback: Use fingerprint matching
-        const matchResponse = await DeepLinkNow.findDeferredUser();
-        if (matchResponse?.matches?.[0]) {
-          const match = matchResponse.matches[0];
-          if (match.confidence_score >= 80 && match.deeplink) {
-            navigateToDeepLink(match.deeplink.target_url);
-          }
-        }
-      } catch (error) {
-        console.warn('[DeepLinkNow] initialization error:', error);
-      }
-    };
-
-    initializeDeepLinking();
-  }, [router]);
 
   // ATT permission is now requested early in onboarding (before registration/subscription)
   // See app/(auth)/onboarding.tsx - this ensures high-value events are properly attributed
