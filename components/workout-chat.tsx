@@ -6,8 +6,8 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-    WorkoutPlanningData,
-    WorkoutPlanningWizard,
+  WorkoutPlanningData,
+  WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -19,17 +19,17 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-    AiWorkoutConversionResult,
-    convertAiPlanToRoutine,
-    convertAiPlanToWorkout,
+  AiWorkoutConversionResult,
+  convertAiPlanToRoutine,
+  convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-    ParsedWorkoutDisplay,
-    parseWorkoutForDisplay,
+  ParsedWorkoutDisplay,
+  parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-    buildWorkoutCreationPrompt,
-    buildWorkoutModificationSuffix,
+  buildWorkoutCreationPrompt,
+  buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -39,8 +39,8 @@ import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
-    loadDraft as loadWorkoutDraft,
-    saveDraft,
+  loadDraft as loadWorkoutDraft,
+  saveDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -50,36 +50,36 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Clipboard,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleProp,
-    StyleSheet,
-    Text,
-    TextInput,
-    TextStyle,
-    ToastAndroid,
-    TouchableOpacity,
-    View,
-    ViewStyle
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Clipboard,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextStyle,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+  ViewStyle
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSpring,
-    withTiming,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
@@ -389,16 +389,16 @@ export async function hasUnreadWelcomeMessage(
 
 // Get personalized welcome message based on coach personality
 function getWelcomeMessage(coachId: string, userName?: string): string {
-  const greeting = userName ? `Hey ${userName}!` : 'Hey there!'
+  const name = userName ? ` ${userName}` : ''
 
   switch (coachId) {
     case 'kino':
-      return `${greeting} Glad you made it in. Now the real work begins. I've got your stats from onboarding. We're skipping the fluff and focusing on pure strength. Ready to get your first session on the books?`
+      return `Hey${name}. This is your training hub — no fluff, just results. Ask me to build your workout, swap exercises, or coach your technique. Log meals and I'll track your calories and macros in real time. Tap ⚡ Generate Workout, or tell me what you're training today.`
     case 'maya':
-      return `${greeting} Yay, you're officially here! 🎉 I've been so looking forward to this. We're going to build such incredible momentum together. Let's start this journey off right, want me to put together your first workout?`
+      return `Hey${name}! ✨ Think of this as your personal fitness co-pilot. I can build your workouts, log your meals, track your calories and macros, and answer any training or nutrition question — just ask! Hit ⚡ Generate Workout to kick things off, or type anything to get started.`
     case 'ross':
     default:
-      return `${greeting} Glad you made it inside! I've already started processing your goals from onboarding. I'm ready to help you train smarter and optimize every set. Shall we generate your first science-based plan?`
+      return `Hey${name}. I'm here to make every session count. Ask me to generate a workout plan, log a meal, track your daily calories and macros, break down your form, or anything fitness-related. Use the quick buttons below, or just type — I'm ready when you are.`
   }
 }
 
@@ -3217,30 +3217,6 @@ export function WorkoutChat({
                     </View>
                   ))}
 
-                  {/* Welcome hint - shown after welcome message */}
-                  {messages.length === 1 &&
-                    messages[0]?.id === 'welcome-message' &&
-                    !isLoading && (
-                      <View style={styles.welcomeHintContainer}>
-                        <View style={styles.welcomeHintRow}>
-                          <Text style={styles.welcomeHintText}>Tap </Text>
-                          <View style={styles.welcomeHintButton}>
-                            <Ionicons
-                              name="flash"
-                              size={13}
-                              color={colors.brandPrimary}
-                            />
-                            <Text style={styles.welcomeHintButtonText}>
-                              Generate Workout
-                            </Text>
-                          </View>
-                          <Text style={styles.welcomeHintText}>
-                            {' '}
-                            below to get started
-                          </Text>
-                        </View>
-                      </View>
-                    )}
 
                   {isLoading && (
                     <View style={styles.loadingMessageContainer}>
