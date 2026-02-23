@@ -11,13 +11,18 @@ import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import {
+  clearDraft as clearWorkoutDraft,
+  hasStoredDraft,
+  saveDraft as saveWorkoutDraft,
+} from '@/lib/utils/workout-draft'
+import {
   ExploreRoutineWithExercises,
   WorkoutRoutineWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Href, useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -197,35 +202,77 @@ export default function RoutineDetailScreen() {
     router.back()
   }
 
-  const handleStartRoutine = () => {
+  const handleStartRoutine = async () => {
     if (!routine?.userRoutineId) return
 
-    // 1. Reset everything: Clear the modal stack (RoutineDetail -> Routines -> Explore)
-    // This returns us to the root tab navigator level.
-    router.dismissAll()
-
-    // 2. Perform the "cleansing" jump to Profile, then to the logger.
-    // We use small delays to ensure the navigator state settles between transitions.
-    setTimeout(() => {
-      router.navigate('/(tabs)/profile')
-
-      setTimeout(() => {
-        router.navigate({
-          pathname: '/(tabs)/create-post',
-          params: {
-            selectedRoutineId: routine.userRoutineId,
-            refresh: Date.now().toString(),
-          },
+    const applyRoutine = async () => {
+      try {
+        // Clear any existing draft to ensure we start fresh
+        await clearWorkoutDraft('start-routine')
+        
+        // Save the new routine to the draft before navigating
+        await saveWorkoutDraft({
+          notes: '',
+          title: routine.name,
+          selectedRoutineId: routine.userRoutineId,
+          isStructuredMode: true,
+          updatedAt: Date.now(),
         })
-      }, 50)
-    }, 100)
+      } catch (e) {
+        console.error('Failed to pre-seed draft', e)
+      }
+
+      // 1. Reset everything: Clear the modal stack (RoutineDetail -> Routines -> Explore)
+      // This returns us to the root tab navigator level.
+      router.dismissAll()
+
+      // 2. Perform the "cleansing" jump to Profile, then to the logger.
+      // We use small delays to ensure the navigator state settles between transitions.
+      setTimeout(() => {
+        router.navigate('/(tabs)/profile')
+
+        setTimeout(() => {
+          router.navigate({
+            pathname: '/(tabs)/create-post',
+            params: {
+              selectedRoutineId: routine.userRoutineId,
+              refresh: Date.now().toString(),
+            },
+          })
+        }, 50)
+      }, 100)
+    }
+
+    try {
+      const hasDraft = await hasStoredDraft()
+      if (hasDraft) {
+        Alert.alert(
+          'Existing Workout',
+          'Starting this routine will clear your current workout in progress. Do you want to continue?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Continue',
+              style: 'destructive',
+              onPress: applyRoutine,
+            },
+          ],
+        )
+      } else {
+        await applyRoutine()
+      }
+    } catch (e) {
+      console.error('Error checking draft status', e)
+      await applyRoutine()
+    }
   }
 
   const handleEditRoutine = () => {
     if (!routine?.userRoutineId) return
-    router.push(
-      `/create-routine?routineId=${routine.userRoutineId}` as Href<string>,
-    )
+    router.push({
+      pathname: '/create-routine',
+      params: { routineId: routine.userRoutineId },
+    })
   }
 
   const handleDeleteRoutine = async () => {
