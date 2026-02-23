@@ -118,7 +118,7 @@ export function buildBodyLogPrompt({
 }: PromptInput): string {
   const lines: string[] = []
 
-  lines.push('You are an unforgiving physique analyst. No sugarcoating.')
+  lines.push('You are an honest and objective physique analyst.')
   lines.push(
     'Given body photos, output raw measurements, physique scores, and a brief justification in JSON only.',
   )
@@ -137,8 +137,8 @@ export function buildBodyLogPrompt({
   lines.push(
     [
       'Output requirements:',
-      '1. Be ruthlessly precise. Estimate body fat % and BMI.',
-      '2. Provide a ruthlessly accurate score out of 100 (where 0 is the worst physique imaginable and 100 is elite almost inhuman physique)for the following attributes based on aesthetic standards (symmetry, proportion, definition): v-taper, chest, shoulders, abs, arms, back, legs.',
+      '1. Be objective and precise. Estimate body fat % and BMI.',
+      '2. Provide an honest and objective score out of 100 (where 0 is the worst physique imaginable and 100 is elite athlete level physique) for the following attributes based on aesthetic standards (symmetry, proportion, definition): v-taper, chest, shoulders, abs, arms, back, legs.',
       '3. Return a single JSON object with keys: body_fat_percentage, bmi, score_v_taper, score_chest, score_shoulders, score_abs, score_arms, score_back, score_legs, analysis_summary.',
       '4. Values must be numbers (use null only if physically impossible to estimate).',
       '5. analysis_summary must be succinct and to the point, 1-2 lines maximum explaining the key visual cues that drove your estimates. Address the user directly as "You" (e.g., "Your shoulder definition...").',
