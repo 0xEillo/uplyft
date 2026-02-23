@@ -82,6 +82,9 @@ module.exports = {
     ios: {
       supportsTablet: false,
       usesAppleSignIn: true,
+      associatedDomains: [
+        'applinks:rep-ai.deeplinknow.com'
+      ],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription:
@@ -139,6 +142,7 @@ module.exports = {
       'expo-audio',
       'expo-font',
       'expo-image',
+      '@deeplinknow/react-native',
       [
         'expo-updates',
         {

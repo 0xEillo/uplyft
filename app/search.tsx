@@ -237,15 +237,14 @@ export default function SearchScreen() {
     try {
       haptic('light')
 
-      const appStoreLink =
-        'https://apps.apple.com/app/rep-ai-workout-tracker/id6753986473'
-      const message = `Join me on Rep AI! Track your workouts, share your progress, and connect with the fitness community.\n\n${appStoreLink}`
+      const shareLink = `https://rep-ai.deeplinknow.com/invite${user ? `?ref=${user.id}` : ''}`
+      const message = `Join me on Rep AI! Track your workouts, share your progress, and connect with the fitness community.\n\n${shareLink}`
 
       const result = await Share.share(
         Platform.OS === 'ios'
           ? {
               message: `Join me on Rep AI! Track your workouts, share your progress, and connect with the fitness community.`,
-              url: appStoreLink,
+              url: shareLink,
             }
           : {
               message,
