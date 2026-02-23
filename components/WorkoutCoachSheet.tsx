@@ -4,35 +4,35 @@ import { getCoach } from '@/lib/coaches'
 import { haptic } from '@/lib/haptics'
 import { useEffect, useState } from 'react'
 import {
-    Dimensions,
-    Image,
-    Keyboard,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View
+  Dimensions,
+  Image,
+  Keyboard,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native'
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import Animated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
-    ExerciseSuggestion,
-    SuggestionsConfig,
-    WorkoutChat,
-    WorkoutContext,
+  ExerciseSuggestion,
+  SuggestionsConfig,
+  WorkoutChat,
+  WorkoutContext,
 } from './workout-chat'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -229,8 +229,8 @@ export function WorkoutCoachSheet({
               <View style={styles.header}>
                 <View style={styles.coachInfo}>
                   <Image source={coach.image} style={styles.coachAvatar} />
-                  <Text style={styles.headerTitle}>
-                    Ask {coach.name.split(' ')[1] || coach.name}...
+                  <Text style={styles.headerDescription}>
+                    Create personalized workouts, log meals, and track macros
                   </Text>
                 </View>
               </View>
@@ -311,10 +311,10 @@ const createStyles = (
       borderWidth: 2,
       borderColor: colors.surfaceSheet,
     },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.textPrimary,
+    headerDescription: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.textSecondary,
     },
     closeButton: {
       width: 36,

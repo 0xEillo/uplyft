@@ -6,8 +6,8 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
-  WorkoutPlanningData,
-  WorkoutPlanningWizard,
+    WorkoutPlanningData,
+    WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -19,17 +19,17 @@ import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
-  AiWorkoutConversionResult,
-  convertAiPlanToRoutine,
-  convertAiPlanToWorkout,
+    AiWorkoutConversionResult,
+    convertAiPlanToRoutine,
+    convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
 import {
-  ParsedWorkoutDisplay,
-  parseWorkoutForDisplay,
+    ParsedWorkoutDisplay,
+    parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
-  buildWorkoutCreationPrompt,
-  buildWorkoutModificationSuffix,
+    buildWorkoutCreationPrompt,
+    buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -39,8 +39,8 @@ import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
-  loadDraft as loadWorkoutDraft,
-  saveDraft,
+    loadDraft as loadWorkoutDraft,
+    saveDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -50,36 +50,36 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Clipboard,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleProp,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextStyle,
-  ToastAndroid,
-  TouchableOpacity,
-  View,
-  ViewStyle
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Clipboard,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleProp,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextStyle,
+    ToastAndroid,
+    TouchableOpacity,
+    View,
+    ViewStyle
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
@@ -323,6 +323,11 @@ const DEFAULT_SUGGESTIONS: SuggestionsConfig = {
       id: 'plan_workout',
       text: 'Generate Workout',
       icon: 'flash-outline',
+    },
+    {
+      id: 'log_meal',
+      text: 'Log Meal',
+      icon: 'nutrition',
     },
     {
       id: 'tell_me_about',
@@ -1775,6 +1780,12 @@ export function WorkoutChat({
         return
       }
 
+      if (item.id === 'log_meal') {
+        haptic('light')
+        setIsFoodScannerVisible(true)
+        return
+      }
+
       if (item.id === 'back_to_main') {
         setSuggestionMode('main')
         return
@@ -2471,11 +2482,9 @@ export function WorkoutChat({
                           resizeMode="cover"
                         />
                       </View>
-                      <Text style={styles.welcomeText}>
-                        Ask{' '}
-                        {getCoach(coachId).name.split(' ')[1] ||
-                          getCoach(coachId).name}
-                        ...
+                      <Text style={styles.welcomeDescription}>
+                        Create personalized workouts, log meals, and track
+                        macros
                       </Text>
                     </View>
                   )}
@@ -3300,12 +3309,19 @@ export function WorkoutChat({
                               styles.planWorkoutText,
                           ]}
                           icon={
-                            item.id === 'plan_workout' ||
-                            item.id === 'adjust_workout' ? (
+                            item.icon ? (
                               <Ionicons
-                                name="flash"
-                                size={14}
-                                color={colors.brandPrimary}
+                                name={
+                                  (item.id === 'plan_workout' || item.id === 'adjust_workout')
+                                    ? 'flash'
+                                    : (item.icon as any)
+                                }
+                                size={16}
+                                color={
+                                  (item.id === 'plan_workout' || item.id === 'adjust_workout')
+                                    ? colors.brandPrimary
+                                    : colors.textPrimary
+                                }
                                 style={{ marginRight: 6 }}
                               />
                             ) : null
@@ -3740,13 +3756,12 @@ function createStyles(
       alignItems: 'center',
       justifyContent: 'center',
     },
-    welcomeText: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.textPrimary,
+    welcomeDescription: {
+      fontSize: 15,
+      color: colors.textSecondary,
       textAlign: 'center',
       marginTop: 16,
-      opacity: 0.8,
+      paddingHorizontal: 24,
     },
     coachWelcomeContainer: {
       shadowColor: colors.shadow,
@@ -4126,35 +4141,32 @@ function createStyles(
     suggestionBubble: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : colors.surfaceSubtle,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: colors.border,
+      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : '#f4f4f5',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 24,
+      borderWidth: 0,
     },
     planWorkoutBubble: {
-      borderColor: colors.brandPrimary,
-      backgroundColor: `${colors.brandPrimary}08`,
+      backgroundColor: `${colors.brandPrimary}15`,
     },
     planWorkoutText: {
       color: colors.brandPrimary,
       fontWeight: '600',
     },
     suggestionBackBubble: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : colors.surfaceSubtle,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : '#f4f4f5',
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderWidth: 0,
     },
     suggestionText: {
       fontSize: 15,
       color: colors.textPrimary,
-      fontWeight: '500',
+      fontWeight: '600',
     },
     // Image preview in input area
     imagePreviewContainer: {

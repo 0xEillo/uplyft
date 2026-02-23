@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -34,6 +34,7 @@ export function FoodScannerModal({
 }: FoodScannerProps) {
   const themedColors = useThemedColors()
   const { isDark } = useTheme()
+  const insets = useSafeAreaInsets()
   const colors = {
     ...themedColors,
     // Provide explicit transparent grays for camera overlays
@@ -130,7 +131,7 @@ export function FoodScannerModal({
   if (!cameraPermission?.granted) {
     return (
       <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-        <SafeAreaView style={styles.permissionContainer}>
+        <View style={[styles.permissionContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <Text style={styles.permissionText}>We need your permission to show the camera.</Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
             <Text style={styles.permissionButtonText}>Grant Permission</Text>
@@ -138,7 +139,7 @@ export function FoodScannerModal({
           <TouchableOpacity style={styles.closeButtonCenter} onPress={onClose}>
             <Text style={styles.permissionButtonText}>Cancel</Text>
           </TouchableOpacity>
-        </SafeAreaView>
+        </View>
       </Modal>
     )
   }
@@ -157,7 +158,13 @@ export function FoodScannerModal({
           onBarcodeScanned={activeMode === 'barcode' ? handleBarcodeScanned : undefined}
         >
           {/* Top Bar Overlay */}
-          <SafeAreaView style={styles.safeArea}>
+          <View style={[
+            styles.safeArea, 
+            { 
+              paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 40) : Math.max(insets.top, 20),
+              paddingBottom: Math.max(insets.bottom, 20)
+            }
+          ]}>
             <View style={styles.topBar}>
               <TouchableOpacity onPress={onClose} style={styles.iconButton}>
                 <Ionicons name="close" size={24} color={colors.overlayText} />
@@ -241,7 +248,7 @@ export function FoodScannerModal({
                 </TouchableOpacity>
               </View>
             </View>
-          </SafeAreaView>
+          </View>
         </CameraView>
       </View>
     </Modal>
@@ -292,7 +299,7 @@ const createStyles = (colors: any) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingTop: Platform.OS === 'android' ? 40 : 10,
+      paddingTop: 10,
     },
     iconButton: {
       width: 44,
@@ -350,7 +357,6 @@ const createStyles = (colors: any) =>
     cornerBL: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 12 },
     cornerBR: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 12 },
     bottomControls: {
-      paddingBottom: 40,
       paddingHorizontal: 20,
       alignItems: 'center',
       gap: 30,
