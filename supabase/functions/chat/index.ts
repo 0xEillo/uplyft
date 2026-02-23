@@ -85,6 +85,7 @@ const requestSchema = z.object({
   images: z.array(imageSchema).optional(),
   workoutContext: workoutContextSchema,
   dailyLogSummary: dailyLogSummarySchema,
+  scanMode: z.enum(['food_label']).optional(), // hint for specialised routing
 })
 
 type WorkoutSessionWithDetails = {
@@ -208,13 +209,21 @@ serve(async (req) => {
       includesImageParts: Boolean(payload.images && payload.images.length > 0),
     })
 
-    // Use OpenAI vision model if images are present, otherwise use Gemini via OpenRouter
-    const modelToUse =
-      payload.images && payload.images.length > 0
-        ? openai('gpt-4o')
-        : openrouter.chat(GEMINI_MODEL)
+    // Route to Gemini for food label scans (better OCR for dense printed text),
+    // GPT-4o for other image messages, Gemini for text-only
+    const isFoodLabelScan = payload.scanMode === 'food_label'
+    const hasImages = Boolean(payload.images && payload.images.length > 0)
+    const modelToUse = isFoodLabelScan
+      ? openrouter.chat(GEMINI_MODEL)         // Gemini: superior OCR on nutrition label text
+      : hasImages
+      ? openai('gpt-4o')                      // GPT-4o: general food photo understanding
+      : openrouter.chat(GEMINI_MODEL)         // Gemini: text-only chat
     console.log('[chat-edge] Model selected:', {
-      model: payload.images && payload.images.length > 0 ? 'openai:gpt-4o' : `openrouter:${GEMINI_MODEL}`,
+      model: isFoodLabelScan
+        ? `openrouter:${GEMINI_MODEL} (food_label OCR)`
+        : hasImages
+        ? 'openai:gpt-4o'
+        : `openrouter:${GEMINI_MODEL}`,
     })
 
     const latestUserMessage = [...filteredMessages]

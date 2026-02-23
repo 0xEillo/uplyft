@@ -1412,12 +1412,13 @@ export function WorkoutChat({
       existingUserMessageId?: string
       existingUserContent?: string
       existingUserImages?: string[]
+      forceImages?: string[] // bypass selectedImages state for immediate sends
+      scanMode?: 'food_label'  // routes request to Gemini OCR instead of GPT-4o
     },
   ) => {
     const isResend = Boolean(options?.existingUserMessageId)
-    const hasImages = isResend
-      ? (options?.existingUserImages?.length || 0) > 0
-      : selectedImages.length > 0
+    const effectiveImages = options?.forceImages ?? (isResend ? (options?.existingUserImages ?? []) : selectedImages)
+    const hasImages = effectiveImages.length > 0
     const typedInput = isResend
       ? options?.existingUserContent?.trim() || ''
       : input.trim()
@@ -1440,7 +1441,9 @@ export function WorkoutChat({
     // This allows users to chat/explore before using their free workout generation
 
     // Store input and images before clearing
-    const imagesToSend = isResend
+    const imagesToSend = options?.forceImages
+      ? [...options.forceImages]
+      : isResend
       ? [...(options?.existingUserImages || [])]
       : [...selectedImages]
 
@@ -1572,6 +1575,7 @@ export function WorkoutChat({
           }
         }
         images?: { type: string; image_url: { url: string } }[]
+        scanMode?: 'food_label'
       }
       const requestBody: ChatRequestBody = {
         messages: formattedMessages,
@@ -1593,6 +1597,7 @@ export function WorkoutChat({
               exercises: effectiveWorkoutContext.exercises,
             }
           : undefined,
+        ...(options?.scanMode ? { scanMode: options.scanMode } : {}),
       }
       console.log('[FoodLog] Sending chat request context:', {
         hasDailyLogSummary: Boolean(requestBody.dailyLogSummary),
@@ -3558,6 +3563,11 @@ export function WorkoutChat({
               `You can only add up to ${MAX_IMAGES} images per message.`
             )
           }
+        }}
+        onScanFoodLabel={(imageUri) => {
+          setIsFoodScannerVisible(false)
+          const prompt = `I've scanned a nutrition label. Please read the label in this image and tell me: the product name, the serving size, and the macros per serving (calories, protein, carbs, fat). Then ask me how many servings I had so you can log the correct amount. Do NOT output a <food_log> block yet — wait for me to tell you the quantity first.`
+          handleSendMessage(prompt, { forceImages: [imageUri], scanMode: 'food_label' })
         }}
         onScanBarcode={(productData) => {
           setIsFoodScannerVisible(false)
