@@ -3466,7 +3466,7 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     style={[
                       styles.focusMuscleButton,
-                      styles.focusMuscleButtonSelected,
+                      isFullBody && styles.focusMuscleButtonSelected,
                       isFullBody && { backgroundColor: getGoalColor(data.goal[0]) + '20', borderColor: getGoalColor(data.goal[0]) }
                     ]}
                     onPress={() => {
@@ -3480,7 +3480,7 @@ export default function OnboardingScreen() {
                     <Text
                       style={[
                         styles.focusMuscleButtonText,
-                        styles.focusMuscleButtonTextSelected,
+                        isFullBody && styles.focusMuscleButtonTextSelected,
                         isFullBody && { color: getGoalColor(data.goal[0]) }
                       ]}
                     >
