@@ -1,35 +1,35 @@
 import type {
-  BodyLogEntryWithImages,
-  BodyLogImage,
+    BodyLogEntryWithImages,
+    BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  DailyLogConfidence,
-  DailyLogEntry,
-  DailyLogMeal,
-  DailyLogMealSource,
-  DailyLogSummary,
-  Exercise,
-  ExploreProgram,
-  ExploreProgramRoutine,
-  ExploreRoutine,
-  ExploreRoutineExercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  WorkoutComment,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineExercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    DailyLogConfidence,
+    DailyLogEntry,
+    DailyLogMeal,
+    DailyLogMealSource,
+    DailyLogSummary,
+    Exercise,
+    ExploreProgram,
+    ExploreProgramRoutine,
+    ExploreRoutine,
+    ExploreRoutineExercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    WorkoutComment,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineExercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -3413,17 +3413,43 @@ export const database = {
      */
     async ensureEntry(userId: string, logDate?: string) {
       const normalizedDate = normalizeDailyLogDate(logDate)
+
+      // 1. Try to get existing entry first to avoid overriding local goals and unnecessary writes
+      const { data: existing } = await supabase
+        .from('daily_log_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('log_date', normalizedDate)
+        .maybeSingle()
+
+      if (existing) {
+        return existing as DailyLogEntry
+      }
+
+      // 2. Fetch the most recent past entry to carry over goals
+      const { data: previous } = await supabase
+        .from('daily_log_entries')
+        .select('calorie_goal, protein_goal_g')
+        .eq('user_id', userId)
+        .lt('log_date', normalizedDate)
+        .order('log_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      // 3. Upsert with ignoreDuplicates so concurrent calls don't overwrite each other
       const { data, error } = await supabase
         .from('daily_log_entries')
         .upsert(
           {
             user_id: userId,
             log_date: normalizedDate,
+            calorie_goal: previous?.calorie_goal ?? null,
+            protein_goal_g: previous?.protein_goal_g ?? null,
           },
-          { onConflict: 'user_id,log_date' },
+          { onConflict: 'user_id,log_date', ignoreDuplicates: true }
         )
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error('[DailyLogDB] ensureEntry failed:', {
@@ -3434,7 +3460,23 @@ export const database = {
         throw error
       }
 
-      return data as DailyLogEntry
+      if (data) {
+        return data as DailyLogEntry
+      }
+
+      // 4. If ignored because of a concurrent insert, fetch the newly created entry
+      const { data: newlyExisting, error: fetchError } = await supabase
+        .from('daily_log_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('log_date', normalizedDate)
+        .single()
+
+      if (fetchError) {
+        throw fetchError
+      }
+
+      return newlyExisting as DailyLogEntry
     },
 
     /**

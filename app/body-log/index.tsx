@@ -135,14 +135,14 @@ const EntryRow = memo(
 
         {/* Info */}
         <View style={styles.info}>
-          <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
-          <Text style={styles.weight}>
+          <Text style={styles.primaryText}>
             {[
               hasWeight && formatWeight(entry.weight_kg),
               entry.body_fat_percentage !== null && formatBodyFat(entry.body_fat_percentage),
               hasNutrition && `${Math.round(nutritionTotals?.calories ?? 0)} cal`
-            ].filter(Boolean).join('  •  ')}
+            ].filter(Boolean).join('  •  ') || (entry.images.length > 0 ? 'Progress Photo' : 'Daily Log')}
           </Text>
+          <Text style={styles.secondaryText}>{formatDate(entry.created_at)}</Text>
         </View>
 
         {/* Chevron */}
@@ -491,13 +491,13 @@ const createRowStyles = (colors: ReturnType<typeof useThemedColors>) =>
     info: {
       flex: 1,
     },
-    date: {
+    primaryText: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.textPrimary,
       marginBottom: 2,
     },
-    weight: {
+    secondaryText: {
       fontSize: 15,
       color: colors.textSecondary,
     },

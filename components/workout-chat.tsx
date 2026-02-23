@@ -2386,6 +2386,8 @@ export function WorkoutChat({
                           router.push({
                             pathname: '/daily-macros-detail',
                             params: {
+                              logDate: dailyLogSummary.logDate,
+                              entryId: dailyLogSummary.entryId || undefined,
                               totalsJson: JSON.stringify(dailyLogSummary.totals),
                               goalsJson: JSON.stringify(dailyLogSummary.goals),
                             },
@@ -2792,7 +2794,20 @@ export function WorkoutChat({
                                   )}
 
                                   {foodLogPayload && (
-                                    <View
+                                    <TouchableOpacity
+                                      activeOpacity={0.9}
+                                      onPress={() => {
+                                        if (dailyLogSummary?.entryId) {
+                                          router.push(`/body-log/${dailyLogSummary.entryId}`)
+                                        } else if (dailyLogSummary?.logDate) {
+                                          router.push({
+                                            pathname: '/body-log/[entryId]',
+                                            params: { entryId: 'new', logDate: dailyLogSummary.logDate }
+                                          })
+                                        } else {
+                                          router.push('/body-log/new')
+                                        }
+                                      }}
                                       style={[
                                         styles.foodLogCard,
                                         !displayContent && styles.foodLogCardStandalone,
@@ -2999,8 +3014,12 @@ export function WorkoutChat({
                                           foodActionState[message.id] || 'idle'
                                         const isSaving = state === 'saving'
                                         const isSaved = state === 'saved'
+                                        
+                                        // Only show 'Update' if the LLM thinks it's an update AND there's actually a meal we can update
+                                        // (either logged via this specific message before, or a previous one)
+                                        const canActuallyUpdate = !!(loggedMealIdByMessage[message.id] || latestLoggedMealId)
                                         const isUpdateAction =
-                                          foodLogPayload.action === 'update_last'
+                                          foodLogPayload.action === 'update_last' && canActuallyUpdate
                                         
                                         const buttonLabel = isSaved
                                           ? 'Logged'
@@ -3034,7 +3053,7 @@ export function WorkoutChat({
                                           </TouchableOpacity>
                                         )
                                       })()}
-                                    </View>
+                                    </TouchableOpacity>
                                   )}
 
                                   {exerciseSuggestions.length > 0 && (
@@ -3596,6 +3615,19 @@ export function WorkoutChat({
           onClose={() => setIsDailyMacrosSheetVisible(false)}
           totals={dailyLogSummary.totals}
           goals={dailyLogSummary.goals}
+          onPressContent={() => {
+            setIsDailyMacrosSheetVisible(false)
+            if (dailyLogSummary.entryId) {
+              router.push(`/body-log/${dailyLogSummary.entryId}`)
+            } else if (dailyLogSummary.logDate) {
+              router.push({
+                pathname: '/body-log/[entryId]',
+                params: { entryId: 'new', logDate: dailyLogSummary.logDate },
+              })
+            } else {
+              router.push('/body-log/new')
+            }
+          }}
         />
       )}
     </>

@@ -26,6 +26,7 @@ interface DailyMacrosSheetProps {
     calorie_goal: number | null
     protein_goal_g: number | null
   }
+  onPressContent?: () => void
 }
 
 const roundMacro = (value: number): number => Math.round(value)
@@ -35,6 +36,7 @@ export function DailyMacrosSheet({
   onClose,
   totals,
   goals,
+  onPressContent,
 }: DailyMacrosSheetProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -92,9 +94,10 @@ export function DailyMacrosSheet({
         activeOpacity={1}
         onPress={onClose}
       >
-        <View
+        <TouchableOpacity
           style={styles.sheetContainer}
-          onStartShouldSetResponder={() => true}
+          activeOpacity={0.95}
+          onPress={onPressContent}
         >
           {/* Handle bar */}
           <View style={styles.header}>
@@ -366,7 +369,7 @@ export function DailyMacrosSheet({
               </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   )

@@ -2,9 +2,9 @@ import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
 
@@ -40,7 +40,10 @@ export default function DailyMacrosDetailScreen() {
   const params = useLocalSearchParams<{
     totalsJson?: string
     goalsJson?: string
+    entryId?: string
+    logDate?: string
   }>()
+  const router = useRouter()
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
@@ -98,8 +101,20 @@ export default function DailyMacrosDetailScreen() {
   const macroCircumference = macroRadius * 2 * Math.PI
 
   return (
-    <View
-      collapsable={false}
+    <TouchableOpacity
+      activeOpacity={0.95}
+      onPress={() => {
+        if (params.entryId) {
+          router.replace(`/body-log/${params.entryId}`)
+        } else if (params.logDate) {
+          router.replace({
+            pathname: '/body-log/[entryId]',
+            params: { entryId: 'new', logDate: params.logDate },
+          })
+        } else {
+          router.replace('/body-log/new')
+        }
+      }}
       style={[
         styles.formSheetContainer,
         { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
@@ -349,7 +364,7 @@ export default function DailyMacrosDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </TouchableOpacity>
   )
 }
 
