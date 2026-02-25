@@ -2722,12 +2722,12 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
-  // Face Pulls
+  // Rope Face Pulls
   {
-    id: '595e8458-ceab-4608-955b-ebad4c02210d',
-    name: 'Face Pull (Cable)',
+    id: '9bc822c6-6f3d-45bb-b5fa-994c29eaa5ac',
+    name: 'Rope Face Pulls (Cable)',
     tier: 2,
-    gifUrl: 'G61cXLk.gif',
+    gifUrl: 'ZfyAGhK.gif',
     male: [
       {
         level: 'Beginner',
@@ -3930,7 +3930,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Seated Shoulder Press (Dumbbell)': 'Shoulders',
   'Seated Lateral Raise (Dumbbell)': 'Shoulders',
   'Lateral Raise (Dumbbell)': 'Shoulders',
-  'Face Pull (Cable)': 'Shoulders',
+  'Rope Face Pulls (Cable)': 'Shoulders',
 
   // Back
   'Bent Over Row (Barbell)': 'Back',
@@ -4019,7 +4019,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Bicep Curl (Barbell)': 'Pull',
   'Bent Over Row (Dumbbell)': 'Pull',
   'Seated Row (Machine)': 'Pull',
-  'Face Pull (Cable)': 'Pull',
+  'Rope Face Pulls (Cable)': 'Pull',
   'Shrug (Machine)': 'Pull',
   'Shrug (Dumbbell)': 'Pull',
   'Rope Hammer Curl (Cable)': 'Pull',

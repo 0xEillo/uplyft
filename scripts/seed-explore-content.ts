@@ -141,7 +141,7 @@ const PPL_ROUTINES = [
       { name: 'Lat Pulldown (Cable)', sets: 3, reps_min: 6, reps_max: 8 },
       { name: 'Bent Over Row (Barbell)', sets: 2, reps_min: 6, reps_max: 8 },
       { name: 'Low Seated Row (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
-      { name: 'Face Pull', sets: 2, reps_min: 10, reps_max: 15 },
+      { name: 'Rope Face Pulls (Cable)', sets: 2, reps_min: 10, reps_max: 15 },
       { name: 'Bicep Curl (Barbell)', sets: 2, reps_min: 8, reps_max: 12 },
       { name: 'Hammer Curl (Dumbbell)', sets: 2, reps_min: 8, reps_max: 12 },
     ],
@@ -291,7 +291,7 @@ const FB_ROUTINES = [
       },
       { name: 'Lat Pulldown (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
       { name: 'Lateral Raise (Dumbbell)', sets: 2, reps_min: 8, reps_max: 12 },
-      { name: 'Face Pull', sets: 2, reps_min: 8, reps_max: 12 },
+      { name: 'Rope Face Pulls (Cable)', sets: 2, reps_min: 8, reps_max: 12 },
     ],
   },
   {
