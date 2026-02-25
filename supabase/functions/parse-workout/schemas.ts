@@ -52,6 +52,8 @@ export const requestSchema = z.object({
   userId: z.string().optional(),
   workoutTitle: z.string().optional(),
   description: z.string().optional(),
+  parserNotes: z.string().optional(),
+  includeCreatedWorkoutDetails: z.boolean().optional(),
   imageUrl: z.string().nullable().optional(),
   song: songSchema.nullable().optional(),
   routineId: z.string().nullable().optional(),

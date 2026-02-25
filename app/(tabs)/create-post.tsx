@@ -1417,6 +1417,7 @@ export default function CreatePostScreen() {
       imageUriValue: string | null,
       routineIdValue: string | null,
       descriptionValue?: string,
+      parserNotesValue?: string,
     ) => {
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
@@ -1438,6 +1439,7 @@ export default function CreatePostScreen() {
         routineId: routineIdValue,
         durationSeconds,
         description: descriptionValue?.trim() || undefined,
+        parserNotes: parserNotesValue,
         song: selectedSong,
         structuredData: isStructuredMode ? structuredData : undefined,
         isStructuredMode,
@@ -1461,35 +1463,35 @@ export default function CreatePostScreen() {
       let previousStreak = 0
 
       try {
-        const profile = await database.profiles.getById(user.id)
-
         const now = new Date()
         const startOfWeek = new Date(now)
         startOfWeek.setDate(now.getDate() - now.getDay())
         startOfWeek.setHours(0, 0, 0, 0)
 
-        const workoutsThisWeek = await database.workoutSessions.getThisWeekCount(
-          user.id,
-          startOfWeek,
-        )
-        workoutNumber = workoutsThisWeek + 1
+        // Fetch profile and week count in parallel (no dependency between them)
+        const [profile, workoutsThisWeek] = await Promise.all([
+          database.profiles.getById(user.id),
+          database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
+        ])
 
+        workoutNumber = workoutsThisWeek + 1
         weeklyTarget = parseCommitment(profile.commitment?.[0] ?? null)
 
-        // Get previous streak (before this workout - NOT including current week)
-        const previousStreakResult = await database.stats.calculateStreak(
-          user.id,
-          weeklyTarget,
-          false, // Don't include current week - this is the streak before submission
-        )
-        previousStreak = previousStreakResult.currentStreak ?? 0
+        // Both streak calculations can also run in parallel
+        const [previousStreakResult, currentStreakResult] = await Promise.all([
+          database.stats.calculateStreak(
+            user.id,
+            weeklyTarget,
+            false, // Don't include current week - this is the streak before submission
+          ),
+          database.stats.calculateStreak(
+            user.id,
+            weeklyTarget,
+            true, // Include current week since workout is being submitted
+          ),
+        ])
 
-        // Get current streak (after this workout - including current week)
-        const currentStreakResult = await database.stats.calculateStreak(
-          user.id,
-          weeklyTarget,
-          true, // Include current week since workout is being submitted
-        )
+        previousStreak = previousStreakResult.currentStreak ?? 0
         currentStreak = currentStreakResult.currentStreak ?? 0
 
         message = generateWorkoutMessage({
@@ -1561,12 +1563,16 @@ export default function CreatePostScreen() {
 
     // Combine structured data with free-form notes
     let workoutNotes = notes
+    let parserNotes = notes
     // We no longer prepend caption to notes, as it's handled separately
 
     if (isStructuredMode && structuredData.length > 0) {
       const structuredText = convertStructuredDataToText(structuredData)
       // Add structured workout first, then notes
       workoutNotes = structuredText + (notes.trim() ? '\n\n' + notes : '')
+      // Only parse the user's actual free-form notes, not the synthetic
+      // structured text we generate for raw storage/debugging.
+      parserNotes = notes
     }
 
     try {
@@ -1576,6 +1582,7 @@ export default function CreatePostScreen() {
         attachedImageUri,
         selectedRoutine?.id ?? null,
         caption, // Pass caption as description
+        parserNotes,
       )
       // Success - reset loading state
       isSubmittingRef.current = false
@@ -1611,6 +1618,7 @@ export default function CreatePostScreen() {
                     null,
                     selectedRoutine?.id ?? null,
                     caption,
+                    parserNotes,
                   )
                 } catch (retryError) {
                   console.error('Error saving pending post:', retryError)

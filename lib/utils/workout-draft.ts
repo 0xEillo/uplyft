@@ -117,6 +117,8 @@ export interface PendingWorkout {
   routineId?: string | null
   durationSeconds?: number | null
   description?: string
+  /** Optional free-form notes to parse (excludes synthetic structured text). */
+  parserNotes?: string
   song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean

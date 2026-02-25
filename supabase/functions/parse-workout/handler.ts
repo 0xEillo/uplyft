@@ -16,6 +16,9 @@ import {
 } from './schemas.ts'
 import { normalizeWorkout } from './transform.ts'
 
+const DEBUG_STRUCTURED_PARSE_LOGS =
+  Deno.env.get('DEBUG_STRUCTURED_PARSE_LOGS') === '1'
+
 export async function handleRequest(req: Request): Promise<Response> {
   const cors = handleCors(req)
   if (cors) return cors
@@ -65,7 +68,13 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const structuredParsed = buildStructuredParsedWorkout(payload)
-    const hasNotes = Boolean(payload.notes?.trim())
+    const notesToParse =
+      !structuredParsed && typeof payload.parserNotes === 'string'
+        ? payload.notes
+        : typeof payload.parserNotes === 'string'
+          ? payload.parserNotes
+          : payload.notes
+    const hasNotes = Boolean(notesToParse.trim())
 
     let parsedWorkout: ParsedWorkout
 
@@ -78,7 +87,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       let notesParsed: ParsedWorkout | null = null
       try {
-        notesParsed = await parseWorkoutNotes(payload, correlationId)
+        notesParsed = await parseWorkoutNotes(payload, correlationId, notesToParse)
         console.log(
           `[ParseWorkout][${correlationId}] AI parsed ${notesParsed.exercises?.length ?? 0} exercises from notes`,
         )
@@ -110,7 +119,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         )
       }
       console.log(`[ParseWorkout][${correlationId}] Calling AI parser...`)
-      parsedWorkout = await parseWorkoutNotes(payload, correlationId)
+      parsedWorkout = await parseWorkoutNotes(payload, correlationId, notesToParse)
       console.log(
         `[ParseWorkout][${correlationId}] AI parsing complete, exercises: ${
           parsedWorkout.exercises?.length ?? 0
@@ -182,6 +191,18 @@ export async function handleRequest(req: Request): Promise<Response> {
         payload.performedAt, // client timestamp for offline support
         correlationId,
       )
+
+      if (payload.includeCreatedWorkoutDetails === false) {
+        return jsonResponse({
+          workout: finalWorkout,
+          createdWorkout: {
+            ...session,
+            workout_exercises: [],
+          },
+          _metrics: metrics,
+          correlationId,
+        })
+      }
 
       const { data: createdWorkout, error: fetchError } = await userClient
         .from('workout_sessions')
@@ -263,24 +284,30 @@ function buildStructuredParsedWorkout(
     return null
   }
 
-  // DEBUG: Log the raw structured data as received from the client
-  console.log('[buildStructuredParsedWorkout] Raw structured data received:', {
-    exerciseCount: exercisesInput.length,
-    exercises: exercisesInput.map((ex: StructuredExerciseInput, exIdx: number) => ({
-      index: exIdx,
-      name: ex.name,
-      setsCount: ex.sets?.length ?? 0,
-      sets: (ex.sets ?? []).map((set, setIdx: number) => ({
-        setIndex: setIdx,
-        weight: set.weight,
-        weightType: typeof set.weight,
-        weightCharCodes: typeof set.weight === 'string' ? set.weight.split('').map((c: string) => c.charCodeAt(0)) : null,
-        reps: set.reps,
-        repsType: typeof set.reps,
-        isWarmup: set.isWarmup,
-      })),
-    })),
-  })
+  if (DEBUG_STRUCTURED_PARSE_LOGS) {
+    console.log('[buildStructuredParsedWorkout] Raw structured data received:', {
+      exerciseCount: exercisesInput.length,
+      exercises: exercisesInput.map(
+        (ex: StructuredExerciseInput, exIdx: number) => ({
+          index: exIdx,
+          name: ex.name,
+          setsCount: ex.sets?.length ?? 0,
+          sets: (ex.sets ?? []).map((set, setIdx: number) => ({
+            setIndex: setIdx,
+            weight: set.weight,
+            weightType: typeof set.weight,
+            weightCharCodes:
+              typeof set.weight === 'string'
+                ? set.weight.split('').map((c: string) => c.charCodeAt(0))
+                : null,
+            reps: set.reps,
+            repsType: typeof set.reps,
+            isWarmup: set.isWarmup,
+          })),
+        }),
+      ),
+    })
+  }
 
   const exercises = exercisesInput
     .map((exercise: StructuredExerciseInput, exerciseIndex: number) => {
@@ -305,15 +332,19 @@ function buildStructuredParsedWorkout(
             is_warmup: set.isWarmup === true,
           }
           
-          // DEBUG: Log each set's weight value as we build the parsed workout
-          console.log(`[buildStructuredParsedWorkout] Building set for ${name}:`, {
-            setNumber: result.set_number,
-            rawWeight: set.weight,
-            rawReps: set.reps,
-            weightType: typeof set.weight,
-            builtWeight: result.weight,
-            builtReps: result.reps,
-          })
+          if (DEBUG_STRUCTURED_PARSE_LOGS) {
+            console.log(
+              `[buildStructuredParsedWorkout] Building set for ${name}:`,
+              {
+                setNumber: result.set_number,
+                rawWeight: set.weight,
+                rawReps: set.reps,
+                weightType: typeof set.weight,
+                builtWeight: result.weight,
+                builtReps: result.reps,
+              },
+            )
+          }
           
           return result
         })

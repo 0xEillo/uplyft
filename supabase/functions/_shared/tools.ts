@@ -160,6 +160,80 @@ export const createExerciseTool = {
 // Helper Functions
 // ============================================================================
 
+type ExerciseMetadataShape = {
+  muscle_group: string | null
+  type: string | null
+  equipment: string | null
+}
+
+const DEFAULT_EXERCISE_METADATA: Required<ExerciseMetadataShape> = {
+  muscle_group: 'Full Body',
+  type: 'compound',
+  equipment: 'Other',
+}
+
+function queueExerciseMetadataEnrichment(
+  exerciseId: string,
+  exerciseName: string,
+  userId: string,
+  providedMetadata: ExerciseMetadataShape,
+) {
+  const task = (async () => {
+    const generated = await generateExerciseMetadata(exerciseName)
+
+    const updates: Record<string, string> = {}
+    if (!providedMetadata.muscle_group) {
+      updates.muscle_group = generated.muscle_group
+    }
+    if (!providedMetadata.type) {
+      updates.type = generated.type
+    }
+    if (!providedMetadata.equipment) {
+      updates.equipment = generated.equipment
+    }
+
+    if (Object.keys(updates).length === 0) return
+
+    const supabase = createServiceClient()
+    const { error } = await supabase
+      .from('exercises')
+      .update(updates)
+      .eq('id', exerciseId)
+      .or(`created_by.is.null,created_by.eq.${userId}`)
+
+    if (error) {
+      console.warn(
+        `[Tool: createExercise] Background metadata enrichment failed for ${exerciseId}:`,
+        error,
+      )
+      return
+    }
+
+    console.log(
+      `[Tool: createExercise] Background metadata enrichment completed for ${exerciseId}`,
+    )
+  })().catch((error) => {
+    console.warn(
+      `[Tool: createExercise] Background metadata enrichment error for ${exerciseId}:`,
+      error,
+    )
+  })
+
+  try {
+    const edgeRuntime = (globalThis as {
+      EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void }
+    }).EdgeRuntime
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(task)
+      return
+    }
+  } catch {
+    // Ignore runtime-specific errors and fall back to fire-and-forget.
+  }
+
+  void task
+}
+
 // ============================================================================
 // Tool Handler Functions
 // ============================================================================
@@ -365,21 +439,25 @@ export async function handleCreateExercise(
     return { id: aliasMatch.id, name: aliasMatch.name }
   }
 
-  // Generate metadata if not provided
-  let metadata = {
+  // Capture any provided metadata. Missing metadata will be filled asynchronously
+  // after insert so new exercise creation doesn't block on an LLM call.
+  const providedMetadata: ExerciseMetadataShape = {
     muscle_group: args.muscle_group || null,
     type: args.type || null,
     equipment: args.equipment || null,
   }
 
-  // If any metadata is missing, use AI to fill it in
-  if (!metadata.muscle_group || !metadata.type || !metadata.equipment) {
-    const generated = await generateExerciseMetadata(normalizedName)
-    metadata = {
-      muscle_group: args.muscle_group || generated.muscle_group,
-      type: args.type || generated.type,
-      equipment: args.equipment || generated.equipment,
-    }
+  const needsMetadataEnrichment =
+    !providedMetadata.muscle_group ||
+    !providedMetadata.type ||
+    !providedMetadata.equipment
+
+  const insertMetadata = {
+    muscle_group:
+      providedMetadata.muscle_group ?? DEFAULT_EXERCISE_METADATA.muscle_group,
+    type: providedMetadata.type ?? DEFAULT_EXERCISE_METADATA.type,
+    equipment:
+      providedMetadata.equipment ?? DEFAULT_EXERCISE_METADATA.equipment,
   }
 
   // Insert new exercise
@@ -388,9 +466,9 @@ export async function handleCreateExercise(
     .insert({
       name: normalizedName,
       created_by: userId,
-      muscle_group: metadata.muscle_group,
-      type: metadata.type,
-      equipment: metadata.equipment,
+      muscle_group: insertMetadata.muscle_group,
+      type: insertMetadata.type,
+      equipment: insertMetadata.equipment,
     })
     .select('id, name')
     .single()
@@ -399,6 +477,15 @@ export async function handleCreateExercise(
   if (!data) throw new Error('Failed to create exercise')
 
   console.log(`[Tool: createExercise] Created new exercise: ${data.id}`)
+
+  if (needsMetadataEnrichment) {
+    queueExerciseMetadataEnrichment(
+      data.id,
+      normalizedName,
+      userId,
+      providedMetadata,
+    )
+  }
 
   return { id: data.id, name: data.name }
 }
@@ -473,7 +560,7 @@ Return the metadata as JSON.`,
     return {
       muscle_group: 'Full Body',
       type: 'compound',
-      equipment: 'other',
+      equipment: 'Other',
     }
   }
 }

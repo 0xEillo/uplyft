@@ -13,6 +13,10 @@ export interface WorkoutRequest {
   userId?: string
   workoutTitle?: string
   description?: string
+  /** Optional notes to send to the parser (can differ from raw notes persisted). */
+  parserNotes?: string
+  /** If false, returns a lightweight createdWorkout payload without nested relations. */
+  includeCreatedWorkoutDetails?: boolean
   imageUrl?: string | null
   song?: WorkoutSong | null
   idempotencyKey?: string

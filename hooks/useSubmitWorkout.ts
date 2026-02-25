@@ -31,6 +31,7 @@ interface SubmitWorkoutArgs {
   routineId?: string | null
   durationSeconds?: number
   description?: string
+  parserNotes?: string
   song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
@@ -161,6 +162,7 @@ export function useSubmitWorkout() {
       routineId,
       durationSeconds,
       description,
+      parserNotes,
       song,
       structuredData,
       isStructuredMode,
@@ -216,6 +218,7 @@ export function useSubmitWorkout() {
         durationSeconds:
           typeof durationSeconds === 'number' ? durationSeconds : null,
         description,
+        parserNotes,
         song: song ?? null,
         structuredData:
           Array.isArray(structuredData) && structuredData.length > 0
@@ -329,6 +332,8 @@ export function useSubmitWorkout() {
           routineId: pending.routineId,
           durationSeconds: pending.durationSeconds ?? undefined,
           description: pending.description,
+          parserNotes: pending.parserNotes ?? undefined,
+          includeCreatedWorkoutDetails: false,
           song: pending.song ?? undefined,
           structuredData: pending.structuredData,
           isStructuredMode: pending.isStructuredMode,

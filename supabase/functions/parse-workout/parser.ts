@@ -55,17 +55,20 @@ async function tryGenerateWithModel(
 export async function parseWorkoutNotes(
   payload: WorkoutRequest,
   correlationId: string,
+  notesOverride?: string,
 ): Promise<ParsedWorkout> {
-  const prompt = buildParsePrompt(payload.notes, payload.weightUnit ?? 'kg')
+  const notesToParse =
+    typeof notesOverride === 'string' ? notesOverride : payload.notes
+  const prompt = buildParsePrompt(notesToParse, payload.weightUnit ?? 'kg')
 
   console.log(
-    `[ParseWorkout][${correlationId}] Prompt length: ${prompt.length} chars, notes length: ${payload.notes.length} chars`,
+    `[ParseWorkout][${correlationId}] Prompt length: ${prompt.length} chars, notes length: ${notesToParse.length} chars`,
   )
   console.log(
-    `[ParseWorkout][${correlationId}] Notes preview: "${payload.notes.slice(
+    `[ParseWorkout][${correlationId}] Notes preview: "${notesToParse.slice(
       0,
       200,
-    )}${payload.notes.length > 200 ? '...' : ''}"`,
+    )}${notesToParse.length > 200 ? '...' : ''}"`,
   )
 
   // Try primary model first

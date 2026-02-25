@@ -389,15 +389,62 @@ export default function FeedScreen() {
 
       if (result.status === 'success') {
         let { workout } = result
+        let cachedProfile = workout.profile ?? null
 
-        // Ensure workout has profile attached for share screen
-        if (!workout.profile && user) {
-          try {
-            const profile = await database.profiles.getById(user.id)
-            workout = { ...workout, profile }
-          } catch (error) {
-            console.error('Error fetching profile for new workout:', error)
+        setNewWorkoutId(workout.id)
+        LayoutAnimation.configureNext(CustomSlideAnimation)
+
+        // Optimistically prepend immediately so the feed updates as soon as the
+        // server confirms creation. Hydration/profile work continues afterward.
+        setWorkouts((prev) => {
+          const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
+          if (filtered.some((w) => w.id === workout.id)) return filtered
+          return [workout, ...filtered]
+        })
+        setOffset((prev) => prev + 1)
+
+        // Hydrate full workout details if the server returned a lightweight
+        // payload (workout_exercises omitted for faster parse-workout response).
+        try {
+          const needsWorkoutHydration =
+            !Array.isArray(workout.workout_exercises) ||
+            workout.workout_exercises.length === 0
+
+          const [hydratedWorkout, fetchedProfile] = await Promise.all([
+            needsWorkoutHydration
+              ? database.workoutSessions.getById(workout.id).catch((error) => {
+                  console.error('Error hydrating new workout details:', error)
+                  return null
+                })
+              : Promise.resolve(null),
+            cachedProfile
+              ? Promise.resolve(cachedProfile)
+              : database.profiles.getById(user.id).catch((error) => {
+                  console.error('Error fetching profile for new workout:', error)
+                  return null
+                }),
+          ])
+
+          if (fetchedProfile) {
+            cachedProfile = fetchedProfile
           }
+
+          if (hydratedWorkout) {
+            workout = {
+              ...hydratedWorkout,
+              profile: hydratedWorkout.profile ?? cachedProfile ?? undefined,
+            }
+          } else if (cachedProfile && !workout.profile) {
+            workout = { ...workout, profile: cachedProfile }
+          }
+
+          if (hydratedWorkout || fetchedProfile) {
+            setWorkouts((prev) =>
+              prev.map((item) => (item.id === workout.id ? workout : item)),
+            )
+          }
+        } catch (error) {
+          console.error('Error hydrating newly posted workout:', error)
         }
 
         // Update success overlay context with workout data for share screen
@@ -405,7 +452,13 @@ export default function FeedScreen() {
 
         // Compute strength score delta for points gain overlay
         try {
-          const prof = workout.profile ?? await database.profiles.getById(user.id)
+          const prof =
+            cachedProfile ??
+            workout.profile ??
+            await database.profiles.getById(user.id)
+          if (prof && !cachedProfile) {
+            cachedProfile = prof
+          }
           const strengthGender = getStrengthGender(prof.gender)
 
           if (strengthGender && prof.weight_kg) {
@@ -478,28 +531,17 @@ export default function FeedScreen() {
           console.error('[Feed] Error computing strength score delta:', err)
         }
 
-        setNewWorkoutId(workout.id)
-        LayoutAnimation.configureNext(CustomSlideAnimation)
-
-        // Optimistically prepend the new workout instead of reloading the
-        // entire feed.  This avoids a full visual refresh / flash because
-        // only the new card is inserted; existing cards stay untouched.
-        setWorkouts((prev) => {
-          // Remove any pending placeholder first
-          const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
-          // Avoid duplicates in case of race conditions
-          if (filtered.some((w) => w.id === workout.id)) return filtered
-          return [workout, ...filtered]
-        })
-        // Bump the pagination offset so the next "load more" page is correct
-        setOffset((prev) => prev + 1)
-
         // Check if this is the first workout and prompt for push notifications
         try {
-          const profile = await database.profiles.getById(user.id)
-          const workoutCount = await database.workoutSessions.getCountByUserId(
-            user.id,
-          )
+          const [profile, workoutCount] = await Promise.all([
+            cachedProfile
+              ? Promise.resolve(cachedProfile)
+              : database.profiles.getById(user.id),
+            database.workoutSessions.getCountByUserId(user.id),
+          ])
+          if (profile && !cachedProfile) {
+            cachedProfile = profile
+          }
           setUserWorkoutCount(workoutCount)
 
           // Only prompt if this is the first workout and we haven't asked before

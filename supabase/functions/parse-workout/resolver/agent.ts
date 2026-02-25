@@ -2,7 +2,8 @@
 import { generateObject } from 'npm:ai'
 // @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
-import { openrouter, GEMINI_MODEL } from '../../_shared/openrouter.ts'
+import { GEMINI_MODEL, openrouter } from '../../_shared/openrouter.ts'
+import { createServiceClient } from '../../_shared/supabase.ts'
 
 import {
     handleCreateExercise,
@@ -23,6 +24,20 @@ interface CandidateForAI {
   name: string
   similarity: number
   aliases?: string[]
+}
+
+interface ResolverSearchResult {
+  name: string
+  searchResult: { candidates: CandidateForAI[] } | null
+  error: unknown | null
+}
+
+interface BatchSearchRpcRow {
+  search_query?: string | null
+  id: string
+  name: string
+  aliases?: string[] | null
+  best_similarity?: number | null
 }
 
 const aiResolutionSchema = z.object({
@@ -53,48 +68,84 @@ export async function resolveExercises(
   )
 
   const resolutions = new Map<string, ExerciseResolution>()
+  const uniqueExerciseNames = Array.from(new Set(exerciseNames))
+
+  // Phase 1: Batch trigram search to reduce DB round-trips (with safe fallback
+  // to the legacy per-exercise RPC path if the batch RPC isn't deployed yet).
+  const searchResults = await batchSearchExercisesForResolver(
+    uniqueExerciseNames,
+    userId,
+    correlationId,
+  )
+
   const needsAIResolution: Array<{
     name: string
     candidates: CandidateForAI[]
   }> = []
 
-  for (const name of exerciseNames) {
-    try {
-      const searchResult = await handleSearchExercises(
-        { query: name, limit: 10 },
-        userId,
-      )
-
-      const bestMatch = searchResult.candidates[0]
-
-      if (bestMatch && bestMatch.similarity >= TRIGRAM_CONFIDENCE_THRESHOLD) {
-        resolutions.set(name, {
-          exerciseId: bestMatch.id,
-          exerciseName: bestMatch.name,
-          wasCreated: false,
-        })
-      } else {
-        needsAIResolution.push({
-          name,
-          candidates: searchResult.candidates.slice(0, 15).map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            similarity: c.similarity,
-            aliases: c.aliases,
-          })),
-        })
-      }
-    } catch (error) {
+  for (const { name, searchResult, error } of searchResults) {
+    if (error || !searchResult) {
       needsAIResolution.push({ name, candidates: [] })
+      continue
+    }
+
+    const bestMatch = searchResult.candidates[0]
+    const normalizedName = name.toLowerCase().trim()
+    const bestMatchName =
+      typeof bestMatch?.name === 'string'
+        ? bestMatch.name.toLowerCase().trim()
+        : null
+    const bestMatchAliases = Array.isArray(bestMatch?.aliases)
+      ? bestMatch.aliases
+      : []
+    const isExactTopCandidateMatch = Boolean(
+      bestMatch &&
+      (bestMatchName === normalizedName ||
+        bestMatchAliases.some(
+          (alias: string) => alias.toLowerCase().trim() === normalizedName,
+        )),
+    )
+
+    if (
+      bestMatch &&
+      (isExactTopCandidateMatch ||
+        bestMatch.similarity >= TRIGRAM_CONFIDENCE_THRESHOLD)
+    ) {
+      resolutions.set(name, {
+        exerciseId: bestMatch.id,
+        exerciseName: bestMatch.name,
+        wasCreated: false,
+      })
+    } else {
+      needsAIResolution.push({
+        name,
+        candidates: searchResult.candidates.slice(0, 15).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          similarity: c.similarity,
+          aliases: c.aliases,
+        })),
+      })
     }
   }
 
+  // Phase 2: Run AI decisions in parallel, but apply side effects (create/match)
+  // afterward to avoid duplicate creation races within a single invocation.
   if (needsAIResolution.length > 0) {
-    for (const { name, candidates } of needsAIResolution) {
-      try {
-        const resolution = await resolveWithAI(name, candidates, correlationId)
+    const aiResults = await Promise.all(
+      needsAIResolution.map(async ({ name, candidates }) => {
+        try {
+          const resolution = await resolveWithAI(name, candidates, correlationId)
+          return { name, candidates, resolution }
+        } catch {
+          return { name, candidates, resolution: null }
+        }
+      }),
+    )
 
-        if (resolution.decision === 'match' && resolution.matchedExerciseId) {
+    for (const { name, candidates, resolution } of aiResults) {
+      try {
+        if (resolution?.decision === 'match' && resolution.matchedExerciseId) {
           const matchedCandidate = candidates.find(
             (c) => c.id === resolution.matchedExerciseId,
           )
@@ -103,16 +154,17 @@ export async function resolveExercises(
             exerciseName: matchedCandidate?.name ?? name,
             wasCreated: false,
           })
-        } else {
-          const newName = resolution.newExerciseName || name
-          const created = await handleCreateExercise({ name: newName }, userId)
-          resolutions.set(name, {
-            exerciseId: created.id,
-            exerciseName: created.name,
-            wasCreated: true,
-          })
+          continue
         }
-      } catch (error) {
+
+        const newName = resolution?.newExerciseName || name
+        const created = await handleCreateExercise({ name: newName }, userId)
+        resolutions.set(name, {
+          exerciseId: created.id,
+          exerciseName: created.name,
+          wasCreated: true,
+        })
+      } catch {
         const created = await handleCreateExercise({ name }, userId)
         resolutions.set(name, {
           exerciseId: created.id,
@@ -130,6 +182,110 @@ export async function resolveExercises(
   }
 
   return resolutions
+}
+
+function rankCandidatesForResolver(
+  query: string,
+  rows: BatchSearchRpcRow[],
+  limit = 10,
+): CandidateForAI[] {
+  const queryLower = query.toLowerCase().trim()
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      similarity:
+        typeof row.best_similarity === 'number' ? row.best_similarity : 0,
+      aliases: Array.isArray(row.aliases) ? row.aliases : [],
+    }))
+    .sort((a, b) => {
+      const aExactName = a.name.toLowerCase() === queryLower
+      const bExactName = b.name.toLowerCase() === queryLower
+      if (aExactName && !bExactName) return -1
+      if (!aExactName && bExactName) return 1
+
+      const aExactAlias = a.aliases?.some(
+        (alias: string) => alias.toLowerCase() === queryLower,
+      )
+      const bExactAlias = b.aliases?.some(
+        (alias: string) => alias.toLowerCase() === queryLower,
+      )
+      if (aExactAlias && !bExactAlias) return -1
+      if (!aExactAlias && bExactAlias) return 1
+
+      const diff = (b.similarity ?? 0) - (a.similarity ?? 0)
+      if (diff !== 0) return diff
+
+      return a.name.length - b.name.length
+    })
+    .slice(0, limit)
+}
+
+async function batchSearchExercisesForResolver(
+  exerciseNames: string[],
+  userId: string,
+  correlationId: string,
+): Promise<ResolverSearchResult[]> {
+  if (exerciseNames.length === 0) return []
+
+  try {
+    const supabase = createServiceClient()
+    const { data, error } = await supabase.rpc('match_exercises_trgm_batch', {
+      search_queries: exerciseNames,
+      requesting_user_id: userId,
+      match_count: 10,
+      similarity_threshold: 0.35,
+    })
+
+    if (error) throw error
+
+    const rows = (Array.isArray(data) ? data : []) as BatchSearchRpcRow[]
+    const rowsByQuery = new Map<string, BatchSearchRpcRow[]>()
+
+    for (const row of rows) {
+      const searchQuery =
+        typeof row.search_query === 'string' ? row.search_query : null
+      if (!searchQuery) continue
+
+      const existing = rowsByQuery.get(searchQuery)
+      if (existing) {
+        existing.push(row)
+      } else {
+        rowsByQuery.set(searchQuery, [row])
+      }
+    }
+
+    return exerciseNames.map((name) => ({
+      name,
+      searchResult: {
+        candidates: rankCandidatesForResolver(name, rowsByQuery.get(name) ?? []),
+      },
+      error: null,
+    }))
+  } catch (error) {
+    logWithCorrelation(
+      correlationId,
+      'Batch trigram search unavailable; falling back to per-exercise RPC',
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    )
+
+    return Promise.all(
+      exerciseNames.map(async (name) => {
+        try {
+          const searchResult = await handleSearchExercises(
+            { query: name, limit: 10 },
+            userId,
+          )
+          return { name, searchResult, error: null }
+        } catch (searchError) {
+          return { name, searchResult: null, error: searchError }
+        }
+      }),
+    )
+  }
 }
 
 async function resolveWithAI(
