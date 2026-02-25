@@ -297,10 +297,10 @@ function normalizeExerciseName(name: string): string {
       if (word.includes('-')) {
         return word
           .split('-')
-          .map((part) => part.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase()))
+          .map((part) => part.toLowerCase().replace(/\p{L}/u, (c) => c.toUpperCase()))
           .join('-')
       }
-      return word.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase())
+      return word.toLowerCase().replace(/\p{L}/u, (c) => c.toUpperCase())
     })
     .join(' ')
 }

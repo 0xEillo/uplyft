@@ -1370,7 +1370,7 @@ export const database = {
       // Normalize the name
       const normalizedName = trimmedName
         .split(/\s+/)
-        .map((word) => word.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase()))
+        .map((word) => word.toLowerCase().replace(/\p{L}/u, (c) => c.toUpperCase()))
         .join(' ')
 
       // Check if exercise already exists
@@ -1455,7 +1455,7 @@ export const database = {
         // Normalize
         finalUpdates.name = trimmed
           .split(/\s+/)
-          .map((word) => word.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase()))
+          .map((word) => word.toLowerCase().replace(/\p{L}/u, (c) => c.toUpperCase()))
           .join(' ')
       }
 
