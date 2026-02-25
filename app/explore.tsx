@@ -1,4 +1,5 @@
 import { BlurredHeader } from '@/components/blurred-header'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -45,6 +46,7 @@ export default function ExploreScreen() {
   const [programs, setPrograms] = useState<(ExploreProgramWithRoutines & { routine_count: number })[]>([])
   const [routines, setRoutines] = useState<ExploreRoutine[]>([])
   const [savingRoutineId, setSavingRoutineId] = useState<string | null>(null)
+  const [savingProgramId, setSavingProgramId] = useState<string | null>(null)
   const [shouldExit, setShouldExit] = useState(false)
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
@@ -104,8 +106,34 @@ export default function ExploreScreen() {
     [user],
   )
 
+  const handleSaveProgram = useCallback(
+    async (programId: string) => {
+      if (!user) {
+        Alert.alert(
+          'Sign In Required',
+          'Please create an account to save programs.',
+        )
+        return
+      }
+
+      try {
+        setSavingProgramId(programId)
+        await database.explore.saveProgramToUser(programId, user.id)
+        hapticSuccess()
+        Alert.alert('Success', 'Program saved to your workouts!')
+      } catch (error) {
+        console.error('Error saving program:', error)
+        Alert.alert('Error', 'Failed to save program. Please try again.')
+      } finally {
+        setSavingProgramId(null)
+      }
+    },
+    [user],
+  )
+
   const renderProgramCard = useCallback(
     ({ item }: { item: ExploreProgramWithRoutines & { routine_count: number } }) => {
+      const isSaving = savingProgramId === item.id
       const GRADIENTS = [
         ['#2563EB', '#3B82F6'], // Blue
         ['#7C3AED', '#8B5CF6'], // Purple
@@ -160,18 +188,31 @@ export default function ExploreScreen() {
                 <Text style={styles.programCount}>
                   {item.routine_count} routines
                 </Text>
-                <Ionicons
-                  name="arrow-forward"
-                  size={16}
-                  color="rgba(255,255,255,0.8)"
-                />
               </View>
             </View>
           </LinearGradient>
+
+          <TouchableOpacity
+            style={styles.programAddButton}
+            onPress={(e) => {
+              e.stopPropagation?.()
+              handleSaveProgram(item.id)
+            }}
+            disabled={isSaving}
+            activeOpacity={0.9}
+          >
+            <LiquidGlassSurface style={styles.programAddButtonGlass}>
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.textPrimary} />
+              ) : (
+                <Ionicons name="add" size={18} color={colors.textPrimary} />
+              )}
+            </LiquidGlassSurface>
+          </TouchableOpacity>
         </TouchableOpacity>
       )
     },
-    [styles, router, trackEvent],
+    [styles, router, trackEvent, handleSaveProgram, savingProgramId, colors],
   )
 
   const renderRoutineItem = useCallback(
@@ -237,15 +278,18 @@ export default function ExploreScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonLoading]}
+            style={styles.saveButton}
             onPress={() => handleSaveRoutine(item.id)}
             disabled={isSaving}
+            activeOpacity={0.9}
           >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Ionicons name="add" size={18} color="#FFF" />
-            )}
+            <LiquidGlassSurface style={styles.saveButtonGlass}>
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.textPrimary} />
+              ) : (
+                <Ionicons name="add" size={18} color={colors.textPrimary} />
+              )}
+            </LiquidGlassSurface>
           </TouchableOpacity>
         </TouchableOpacity>
       )
@@ -387,6 +431,18 @@ const createStyles = (
       shadowRadius: 8,
       elevation: 5,
     },
+    programAddButton: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+    },
+    programAddButtonGlass: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     programGradient: {
       flex: 1,
       padding: 20,
@@ -479,15 +535,13 @@ const createStyles = (
       position: 'absolute',
       top: 12,
       right: 12,
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    saveButtonGlass: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    saveButtonLoading: {
-      backgroundColor: 'rgba(255,255,255,0.4)',
     },
     emptyState: {
       width: '100%',

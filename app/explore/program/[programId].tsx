@@ -1,6 +1,7 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -360,24 +361,26 @@ export default function ProgramDetailScreen() {
                       <Text style={styles.dayNumber}>{index + 1}</Text>
                     </View>
                     {/* Bookmark Button - Save individual routine */}
-                    <TouchableOpacity 
-                      style={[
-                        styles.bookmarkButton,
-                        savedRoutineIds.has(routine.id) && styles.bookmarkButtonSaved
-                      ]} 
-                      activeOpacity={0.7}
+                    <TouchableOpacity
+                      style={styles.bookmarkButton}
+                      activeOpacity={0.9}
                       onPress={() => handleSaveRoutine(routine.id, routine.name)}
                       disabled={savingRoutineId === routine.id}
                     >
-                      {savingRoutineId === routine.id ? (
-                        <ActivityIndicator size="small" color="#FFF" />
-                      ) : (
-                        <Ionicons 
-                          name={savedRoutineIds.has(routine.id) ? "bookmark" : "bookmark-outline"} 
-                          size={22} 
-                          color="#FFF" 
-                        />
-                      )}
+                      <LiquidGlassSurface
+                        style={styles.bookmarkButtonGlass}
+                        tintColor={savedRoutineIds.has(routine.id) ? colors.brandPrimary : undefined}
+                      >
+                        {savingRoutineId === routine.id ? (
+                          <ActivityIndicator size="small" color={colors.textPrimary} />
+                        ) : (
+                          <Ionicons
+                            name={savedRoutineIds.has(routine.id) ? "bookmark" : "bookmark-outline"}
+                            size={18}
+                            color={colors.textPrimary}
+                          />
+                        )}
+                      </LiquidGlassSurface>
                     </TouchableOpacity>
                   </View>
 
@@ -667,15 +670,13 @@ const createStyles = (
       position: 'absolute',
       top: 12,
       right: 12,
+    },
+    bookmarkButtonGlass: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: 'rgba(0,0,0,0.4)',
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    bookmarkButtonSaved: {
-      backgroundColor: colors.brandPrimary,
     },
     carouselRoutineTitle: {
       fontSize: 18,

@@ -187,7 +187,7 @@ export default function RoutinesScreen() {
             <LiquidGlassSurface style={styles.startButtonGlass}>
               <Ionicons
                 name="play"
-                size={16}
+                size={18}
                 color={colors.textPrimary}
                 style={{ marginLeft: 2 }}
               />
@@ -369,8 +369,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     startButton: {
       position: 'absolute',
-      top: 10,
-      right: 10,
+      top: 12,
+      right: 12,
     },
     startButtonGlass: {
       width: 36,
