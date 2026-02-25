@@ -10,6 +10,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
+import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
 import {
   clearDraft as clearWorkoutDraft,
   hasStoredDraft,
@@ -80,6 +81,7 @@ export default function RoutineDetailScreen() {
   const [routine, setRoutine] = useState<NormalizedRoutine | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isStartingRoutine, setIsStartingRoutine] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
 
@@ -203,44 +205,58 @@ export default function RoutineDetailScreen() {
   }
 
   const handleStartRoutine = async () => {
-    if (!routine?.userRoutineId) return
+    if (!routine?.userRoutineId || isStartingRoutine) return
 
     const applyRoutine = async () => {
+      setIsStartingRoutine(true)
       try {
+        const structuredData = buildStructuredDraftFromRoutineTemplate(
+          routine.exercises.map((exercise) => ({
+            id: exercise.id,
+            name: exercise.name,
+            orderIndex: exercise.orderIndex,
+            sets: exercise.sets.map((set) => ({
+              setNumber: set.setNumber,
+              repsMin: set.repsMin,
+              repsMax: set.repsMax,
+              restSeconds: set.restSeconds,
+            })),
+          })),
+        )
+
         // Clear any existing draft to ensure we start fresh
         await clearWorkoutDraft('start-routine')
-        
+
         // Save the new routine to the draft before navigating
         await saveWorkoutDraft({
           notes: '',
           title: routine.name,
-          selectedRoutineId: routine.userRoutineId,
+          structuredData,
           isStructuredMode: true,
+          // Only keep a routine id link when it is resolvable in the current user's library.
+          // Shared routines from another user should still start with full exercise structure.
+          selectedRoutineId: routine.isOwner ? routine.userRoutineId : null,
           updatedAt: Date.now(),
+        })
+
+        router.replace({
+          pathname: '/(tabs)/create-post',
+          params: {
+            refresh: Date.now().toString(),
+            ...(routine.isOwner
+              ? { selectedRoutineId: routine.userRoutineId }
+              : {}),
+          },
         })
       } catch (e) {
         console.error('Failed to pre-seed draft', e)
+        Alert.alert(
+          'Error',
+          'Failed to start routine. Please try again.',
+        )
+      } finally {
+        setIsStartingRoutine(false)
       }
-
-      // 1. Reset everything: Clear the modal stack (RoutineDetail -> Routines -> Explore)
-      // This returns us to the root tab navigator level.
-      router.dismissAll()
-
-      // 2. Perform the "cleansing" jump to Profile, then to the logger.
-      // We use small delays to ensure the navigator state settles between transitions.
-      setTimeout(() => {
-        router.navigate('/(tabs)/profile')
-
-        setTimeout(() => {
-          router.navigate({
-            pathname: '/(tabs)/create-post',
-            params: {
-              selectedRoutineId: routine.userRoutineId,
-              refresh: Date.now().toString(),
-            },
-          })
-        }, 50)
-      }, 100)
     }
 
     try {
@@ -254,7 +270,9 @@ export default function RoutineDetailScreen() {
             {
               text: 'Continue',
               style: 'destructive',
-              onPress: applyRoutine,
+              onPress: () => {
+                void applyRoutine()
+              },
             },
           ],
         )
@@ -540,10 +558,16 @@ export default function RoutineDetailScreen() {
                 style={[
                   styles.primaryButton,
                   { backgroundColor: colors.brandPrimary },
+                  isStartingRoutine && { opacity: 0.7 },
                 ]}
                 onPress={handleStartRoutine}
+                disabled={isStartingRoutine}
               >
-                <Text style={styles.primaryButtonText}>Start Routine</Text>
+                {isStartingRoutine ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Start Routine</Text>
+                )}
               </TouchableOpacity>
             ) : routine.source === 'explore' && !isProMember ? (
               <TouchableOpacity

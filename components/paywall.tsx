@@ -526,12 +526,12 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
   const isMediumScreen = screenHeight >= 750 && screenHeight < 900
 
   // Dynamic hero image height - balanced for all screens
-  // This gives a good proportion while leaving room for bottom content
+  // Slightly taller to reduce gap below review section
   const heroImageHeight = isSmallScreen 
-    ? screenHeight * 0.32 
+    ? screenHeight * 0.35 
     : isMediumScreen 
-      ? screenHeight * 0.36 
-      : screenHeight * 0.38
+      ? screenHeight * 0.39 
+      : screenHeight * 0.41
 
   // Dynamic spacing
   const heroSectionPaddingTop = isSmallScreen ? 12 : isMediumScreen ? 16 : 24

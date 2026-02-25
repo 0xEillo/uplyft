@@ -154,6 +154,32 @@ describe('buildHydrationPlan', () => {
     expect(plan.isStructuredMode).toBe(false)
   })
 
+  test('shared routine draft hydrates from structured data without routine id', () => {
+    const plan = buildHydrationPlan({
+      draft: {
+        ...baseDraft,
+        title: 'Friend Routine',
+        selectedRoutineId: null,
+        structuredData: [
+          { id: 'ex-1', name: 'Bench', sets: [{ weight: '', reps: '' }] },
+        ],
+        isStructuredMode: true,
+      },
+      pending: null,
+      selectedRoutineId: null,
+      refresh: 'share-1',
+      lastRouteRoutineToken: null,
+      hasHydrated: false,
+      lastLocalEditAt: 0,
+    })
+
+    expect(plan.shouldApplyHydration).toBe(true)
+    expect(plan.title).toBe('Friend Routine')
+    expect(plan.structuredData).toHaveLength(1)
+    expect(plan.effectiveRoutineId).toBeNull()
+    expect(plan.routineSource).toBeNull()
+  })
+
   test('structured mode can be set even without structured data', () => {
     const plan = buildHydrationPlan({
       draft: { ...baseDraft, isStructuredMode: true },
