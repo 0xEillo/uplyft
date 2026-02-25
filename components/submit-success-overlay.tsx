@@ -166,9 +166,7 @@ function StreakOverlayComponent({
         styles.overlay,
         {
           opacity: fadeAnim,
-          backgroundColor: isDark
-            ? 'rgba(18, 18, 18, 0.97)'
-            : 'rgba(255, 255, 255, 0.97)',
+          backgroundColor: isDark ? '#121212' : '#ffffff',
         },
       ]}
       pointerEvents="box-none"

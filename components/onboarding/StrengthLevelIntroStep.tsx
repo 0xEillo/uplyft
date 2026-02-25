@@ -1,7 +1,6 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import { LevelBadge } from '@/components/LevelBadge'
-import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor, LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -17,7 +16,6 @@ import {
   type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
-import { LinearGradient } from 'expo-linear-gradient'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
@@ -33,7 +31,7 @@ import {
   View
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
-import Svg, { Ellipse, Path } from 'react-native-svg'
+import Svg, { Circle, Defs, Ellipse, Line, Path, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -747,124 +745,123 @@ export function StrengthLevelIntroStep({
 
     const currentLevelIndex = ladder.findIndex((s: any) => s.level === calculatedLevel.level)
     
-    // Target a +2 level jump to "sell the dream", falling back to max level if needed
-    let targetIndex = currentLevelIndex + 2
+    // Target a +1 level jump for short-term excitement, falling back to max level if needed
+    let targetIndex = currentLevelIndex + 1
     if (targetIndex >= ladder.length) targetIndex = ladder.length - 1
-    
-    // Ensure we at least show the next level if possible, else current (for World Class users)
-    if (targetIndex === currentLevelIndex && currentLevelIndex < ladder.length - 1) {
-        targetIndex = currentLevelIndex + 1
-    }
 
     const targetLevel = ladder[targetIndex]
-    const ranksGained = targetIndex - currentLevelIndex
-    
-    // Dynamic copy based on potential growth
-    const titleText = ranksGained >= 2 ? "Get stronger on your favorite lifts." : 
-                      ranksGained === 1 ? "Get stronger on your favorite lifts." :
-                      "Get stronger on your favorite lifts."
-                      
-    const subtitleText = ranksGained >= 2 ? "On average, Rep AI users gain +2 strength ranks in their first 6 months." :
-                         ranksGained === 1 ? "You're almost at the top. We'll give you the roadmap to the 1%." :
-                         "You're already elite. We'll help you squeeze out every last pound of progress."
 
-    
-    // Target weight calculation
-    const targetWeightKg = Math.ceil(weightKg * targetLevel.multiplier)
-    const displayWeight = Math.round(weightUnit === 'lb' ? targetWeightKg * 2.20462 : targetWeightKg)
+    // Calculate target date (6 weeks from now)
+    const targetDate = new Date()
+    targetDate.setDate(targetDate.getDate() + 42)
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    // e.g. "Apr 25"
+    const targetDateString = `${monthNames[targetDate.getMonth()]} ${targetDate.getDate()}`
+
+    const GRAPH_HEIGHT = 200
+    const GRAPH_WIDTH = SCREEN_WIDTH
+    const startX = 60
+    const endX = GRAPH_WIDTH - 60
+    const startY = GRAPH_HEIGHT - 30 // bottom
+    const endY = 80 // top
+
+    // Smooth bezier curve points
+    const controlPoint1X = startX + (endX - startX) * 0.4
+    const controlPoint1Y = startY
+    const controlPoint2X = startX + (endX - startX) * 0.6
+    const controlPoint2Y = endY
+
+    const pathData = `M ${startX},${startY} C ${controlPoint1X},${controlPoint1Y} ${controlPoint2X},${controlPoint2Y} ${endX},${endY}`
+
+    const startColor = LEVEL_COLORS[calculatedLevel.level] || colors.brandPrimary
+    const endColor = LEVEL_COLORS[targetLevel.level] || colors.brandPrimary
 
     return (
       <View style={styles.phaseContainer}>
+        {/* Header Section - Standard Onboarding Title Position */}
         <View style={styles.header}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-                {titleText}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {subtitleText}
+                We predict you can reach <Text style={{ color: endColor, textTransform: 'uppercase' }}>{targetLevel.level}</Text> by <Text style={{ color: endColor }}>{targetDateString}</Text>
             </Text>
         </View>
 
-        <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
-            <LiquidGlassSurface
-              style={[
-                affirmationCardStyles.card,
-                {
-                  borderColor: LEVEL_COLORS[targetLevel.level],
-                  borderWidth: 2,
-                  backgroundColor: isDark
-                    ? 'rgba(26,28,32,0.82)'
-                    : 'rgba(255,255,255,0.94)',
-                },
-              ]}
-              debugLabel="strength-intro-affirmation-card"
-            >
-              <LinearGradient
-                colors={[
-                  `${LEVEL_COLORS[targetLevel.level]}15`,
-                  `${LEVEL_COLORS[targetLevel.level]}05`,
-                ]}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                pointerEvents="none"
+        {/* Graph Section */}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: GRAPH_WIDTH, height: GRAPH_HEIGHT + 40, position: 'relative' }}>
+            
+            <Svg width={GRAPH_WIDTH} height={GRAPH_HEIGHT} style={{ position: 'absolute', left: 0, top: 0 }}>
+              <Defs>
+                <SvgLinearGradient id="graphGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <Stop offset="0%" stopColor={startColor} />
+                  <Stop offset="100%" stopColor={endColor} />
+                </SvgLinearGradient>
+              </Defs>
+              
+              {/* Dotted lines down to axis */}
+              <Line 
+                x1={startX} y1={startY} x2={startX} y2={GRAPH_HEIGHT} 
+                stroke={startColor} strokeWidth={2} strokeDasharray="4,4" opacity={0.6} 
+              />
+              <Line 
+                x1={endX} y1={endY} x2={endX} y2={GRAPH_HEIGHT} 
+                stroke={endColor} strokeWidth={2} strokeDasharray="4,4" opacity={0.6} 
               />
 
-              <View style={affirmationCardStyles.topRow}>
-                <View style={affirmationCardStyles.copy}>
-                  <Text style={[affirmationCardStyles.label, { color: colors.textSecondary }]}>
-                    {selectedExercise.name.toUpperCase()}
-                  </Text>
-                  <Text
-                    style={[
-                      affirmationCardStyles.levelName,
-                      { color: colors.textPrimary },
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {targetLevel.level}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text
-                      style={[
-                        affirmationCardStyles.weight,
-                        { color: colors.textPrimary },
-                      ]}
-                    >
-                      {displayWeight} {weightUnit}
-                    </Text>
-                    <Text
-                      style={[
-                        affirmationCardStyles.weightLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      (Est. 1RM)
-                    </Text>
-                  </View>
-                </View>
+              {/* Curve */}
+              <Path d={pathData} stroke="url(#graphGrad)" strokeWidth={4} fill="none" strokeLinecap="round" />
 
-                <View style={affirmationCardStyles.badgeWrap}>
-                  <LevelBadge
-                    level={targetLevel.level as any}
-                    size="hero"
-                    showTooltipOnPress={false}
-                  />
-                </View>
-              </View>
-            </LiquidGlassSurface>
+              {/* Start Node */}
+              <Circle cx={startX} cy={startY} r={6} fill={startColor} />
+
+              {/* End Node */}
+              <Circle cx={endX} cy={endY} r={6} fill={endColor} />
+            </Svg>
+
+            {/* Badges Absolute Positioning (Rendered ON TOP of SVG) */}
+            {/* Start Badge: hoisted above start node */}
+            <View style={{ position: 'absolute', left: startX - 24, top: startY - 56, alignItems: 'center', zIndex: 10 }}>
+                <LevelBadge level={calculatedLevel.level as any} size="large" showTooltipOnPress={false} />
+            </View>
+
+            {/* Target Badge: hoisted above target node */}
+            <View style={{ position: 'absolute', left: endX - 24, top: endY - 56, alignItems: 'center', zIndex: 10 }}>
+                <LevelBadge level={targetLevel.level as any} size="large" showTooltipOnPress={false} />
+            </View>
+            
+            {/* Axis Labels */}
+            <View style={{ position: 'absolute', left: startX - 25, top: GRAPH_HEIGHT + 10, width: 50, alignItems: 'center' }}>
+              <Text style={{ color: startColor, fontSize: 13, fontWeight: '700' }}>Today</Text>
+            </View>
+            <View style={{ position: 'absolute', left: endX - 35, top: GRAPH_HEIGHT + 10, width: 70, alignItems: 'center' }}>
+              <Text style={{ color: endColor, fontSize: 13, fontWeight: '700' }}>{targetDateString}*</Text>
+            </View>
+          </View>
         </View>
 
+        {/* Motivational Text */}
+        <View style={{ alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 }}>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: endColor, marginBottom: 8 }}>
+            You&apos;re incredible!
+          </Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, textAlign: 'center', lineHeight: 24 }}>
+            You have what it takes to be the best. Keep it up!
+          </Text>
+        </View>
+
+        {/* Footer */}
         <View style={styles.footer}>
-           <HapticButton
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
+            *This prediction is based on lifters at your level.
+          </Text>
+          <HapticButton
             style={[
               styles.primaryButton,
-              { backgroundColor: colors.textPrimary, shadowColor: colors.textPrimary },
+              { backgroundColor: colors.textPrimary, shadowColor: colors.textPrimary, width: '100%' },
             ]}
             onPress={() => animateTransition('rating')}
             hapticIntensity="medium"
           >
-            <Text style={[styles.primaryButtonText, { color: colors.bg }]}>Let&rsquo;s do this</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.bg }]}>CONTINUE</Text>
           </HapticButton>
         </View>
       </View>
@@ -1102,17 +1099,17 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 8,
   },
   titleContainer: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
 
   title: {
     fontSize: 32,
     fontWeight: '800',
     letterSpacing: -0.5,
-    marginBottom: 8,
+    marginBottom: 0,
     textAlign: 'left',
   },
   subtitle: {
@@ -1121,7 +1118,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   gridContainer: {
-    marginVertical: 12,
+    marginTop: 8,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 14,
@@ -1353,20 +1351,20 @@ const styles = StyleSheet.create({
   levelLadderItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 13,
     paddingHorizontal: 4,
   },
   levelLadderItemCurrent: {
     borderRadius: 16,
     borderWidth: 2,
-    paddingHorizontal: 12,
-    marginVertical: 4,
+    paddingHorizontal: 11,
+    marginVertical: 3,
   },
   levelLadderBadgeColumn: {
-    width: 48,
+    width: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
     position: 'relative',
   },
   levelLadderBadgeCurrent: {
@@ -1392,7 +1390,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   levelLadderWeight: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
   },
   levelLadderWeightLabel: {
@@ -1411,57 +1409,14 @@ const styles = StyleSheet.create({
   },
   resultFooter: {
     position: 'absolute',
-    bottom: -40, // Offset to compensate for the ScrollView paddingBottom in onboarding.tsx
+    bottom: -20, // Offset to compensate for the ScrollView paddingBottom in onboarding.tsx
     left: -24,   // Offset to compensate for the paddingHorizontal in onboarding.tsx
     right: -24,  // Offset to compensate for the paddingHorizontal in onboarding.tsx
     paddingTop: 16,
     paddingHorizontal: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
 })
 
 // Matches LifterLevelsSheet current card format
-const affirmationCardStyles = StyleSheet.create({
-  card: {
-    borderRadius: 24,
-    padding: 18,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  copy: {
-    flex: 1,
-    marginRight: 12,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  levelName: {
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: -0.7,
-    marginBottom: 6,
-  },
-  weight: {
-    fontSize: 24,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'] as const,
-  },
-  weightLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  badgeWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 96,
-  },
-})
+

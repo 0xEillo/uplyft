@@ -2,7 +2,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { GlassIconButton } from '@/components/glass-icon-button'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActionSheetIOS,
     ActivityIndicator,
@@ -55,6 +55,23 @@ interface WorkoutSessionRecord {
   }[]
 }
 
+interface ExercisePerformanceSummary {
+  heaviestWeight: number
+  best1RM: number
+  bestSetVolume: { weight: number; reps: number; volume: number } | null
+  bestSessionVolume: number
+}
+
+const createEmptyExercisePerformanceSummary = (): ExercisePerformanceSummary => ({
+  heaviestWeight: 0,
+  best1RM: 0,
+  bestSetVolume: null,
+  bestSessionVolume: 0,
+})
+
+const getSingleRouteParam = (value?: string | string[]) =>
+  Array.isArray(value) ? value[0] : value
+
 
 type TabType = 'records' | 'history' | 'how_to'
 
@@ -88,27 +105,26 @@ const EQUIPMENT_OPTIONS = [
 ] as const
 
 export default function ExerciseDetailScreen() {
-  const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>()
+  const params = useLocalSearchParams<{
+    exerciseId: string | string[]
+    statsUserId?: string | string[]
+  }>()
+  const exerciseId = getSingleRouteParam(params.exerciseId)
+  const routeStatsUserId = getSingleRouteParam(params.statsUserId)
   const { user } = useAuth()
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const router = useRouter()
 
+  const statsUserId = routeStatsUserId || user?.id || null
+  const isViewingOwnStats = !!user?.id && statsUserId === user.id
+
   const [profile, setProfile] = useState<Profile | null>(null)
   const [exercise, setExercise] = useState<Exercise | null>(null)
   const [max1RM, setMax1RM] = useState<number>(0)
-  const [personalRecords, setPersonalRecords] = useState<{
-    heaviestWeight: number
-    best1RM: number
-    bestSetVolume: { weight: number; reps: number; volume: number } | null
-    bestSessionVolume: number
-  }>({
-    heaviestWeight: 0,
-    best1RM: 0,
-    bestSetVolume: null,
-    bestSessionVolume: 0,
-  })
+  const [exercisePerformance, setExercisePerformance] =
+    useState<ExercisePerformanceSummary>(createEmptyExercisePerformanceSummary)
   const [recordsList, setRecordsList] = useState<ExerciseRecord[]>([])
   const [history, setHistory] = useState<WorkoutSessionRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -128,102 +144,158 @@ export default function ExerciseDetailScreen() {
 
   const insets = useSafeAreaInsets()
   const STICKY_HEIGHT = 120
+  const loadRequestIdRef = useRef(0)
 
   // Check if current user owns this exercise
   const isOwner = exercise?.created_by === user?.id && user?.id
 
 
 
-  const loadData = useCallback(async () => {
-    if (!user?.id || !exerciseId) return
+  const resetExerciseData = useCallback(() => {
+    setProfile(null)
+    setExercise(null)
+    setMax1RM(0)
+    setExercisePerformance(createEmptyExercisePerformanceSummary())
+    setRecordsList([])
+    setHistory([])
+  }, [])
 
-    try {
-      // Load profile
-      const profileData = await database.profiles.getById(user.id)
-      setProfile(profileData)
-
-      // Load exercise details
-      const exerciseData = await database.exercises.getById(exerciseId)
-      setExercise(exerciseData)
-
-      // Load max 1RM
-      const records = await database.stats.getExerciseRecordsByWeight(
-        user.id,
-        exerciseId,
-      )
-      if (records.length > 0) {
-        setRecordsList(records)
-        const best1RM = Math.max(...records.map((r) => r.estimated1RM))
-        const heaviestWeight = Math.max(...records.map((r) => r.weight))
-        setMax1RM(best1RM)
-        
-        // Calculate other PRs
-        // Best Set Volume
-        let bestSetVol = { weight: 0, reps: 0, volume: 0 }
-        records.forEach(r => {
-            const vol = r.weight * r.maxReps
-            if(vol > bestSetVol.volume) {
-                bestSetVol = { weight: r.weight, reps: r.maxReps, volume: vol }
-            }
-        })
-
-        setPersonalRecords(prev => ({
-            ...prev,
-            heaviestWeight,
-            best1RM,
-            bestSetVolume: bestSetVol.volume > 0 ? bestSetVol : null
-        }))
+  const loadData = useCallback(
+    async ({ isRefresh = false }: { isRefresh?: boolean } = {}) => {
+      if (!statsUserId || !exerciseId) {
+        resetExerciseData()
+        setIsLoading(false)
+        setRefreshing(false)
+        return
       }
 
-      // Load History (Sessions)
-      if (exerciseData && exerciseData.name) {
-        const historyData = await database.stats.getExerciseHistory(
-          user.id,
-          exerciseData.name,
-        )
-        
-        // Calculate Best Session Volume from history
-        let maxSessionVol = 0
-        type HistorySession = {
-          date: string
-          workout_exercises?: {
-            exercise: { name: string }
-            sets: { weight: number | null; reps: number | null; is_warmup: boolean }[]
-          }[]
+      const requestId = ++loadRequestIdRef.current
+
+      if (!isRefresh) {
+        setIsLoading(true)
+        resetExerciseData()
+      }
+
+      try {
+        const [profileData, exerciseData, records] = await Promise.all([
+          database.profiles.getById(statsUserId),
+          database.exercises.getById(exerciseId),
+          database.stats.getExerciseRecordsByWeight(statsUserId, exerciseId),
+        ])
+
+        if (loadRequestIdRef.current !== requestId) return
+
+        let nextMax1RM = 0
+        const nextRecordsList = records
+        const nextExercisePerformance = createEmptyExercisePerformanceSummary()
+
+        if (records.length > 0) {
+          nextMax1RM = Math.max(...records.map((record) => record.estimated1RM))
+          nextExercisePerformance.best1RM = nextMax1RM
+          nextExercisePerformance.heaviestWeight = Math.max(
+            ...records.map((record) => record.weight),
+          )
+
+          let bestSetVolume = { weight: 0, reps: 0, volume: 0 }
+          records.forEach((record) => {
+            const volume = record.weight * record.maxReps
+            if (volume > bestSetVolume.volume) {
+              bestSetVolume = {
+                weight: record.weight,
+                reps: record.maxReps,
+                volume,
+              }
+            }
+          })
+
+          nextExercisePerformance.bestSetVolume =
+            bestSetVolume.volume > 0 ? bestSetVolume : null
         }
-        const formattedHistory = (historyData as unknown as HistorySession[]).map((session) => {
-            let sessionVol = 0
-            const sessionSets: { weight: number | null; reps: number | null; is_warmup: boolean }[] = []
-            
-            session.workout_exercises?.forEach((we) => {
-                we.sets?.forEach((set) => {
-                    sessionSets.push({ weight: set.weight, reps: set.reps, is_warmup: set.is_warmup === true })
-                    if(set.weight && set.reps) {
-                        sessionVol += (set.weight * set.reps)
-                    }
+
+        let nextHistory: WorkoutSessionRecord[] = []
+        if (exerciseData?.name) {
+          const historyData = await database.stats.getExerciseHistory(
+            statsUserId,
+            exerciseData.name,
+          )
+
+          if (loadRequestIdRef.current !== requestId) return
+
+          let maxSessionVolume = 0
+          type HistorySession = {
+            date: string
+            workout_exercises?: {
+              exercise: { name: string }
+              sets: {
+                weight: number | null
+                reps: number | null
+                is_warmup: boolean
+              }[]
+            }[]
+          }
+
+          nextHistory = (historyData as unknown as HistorySession[])
+            .map((session) => {
+              let sessionVolume = 0
+              const sessionSets: {
+                weight: number | null
+                reps: number | null
+                is_warmup: boolean
+              }[] = []
+
+              session.workout_exercises?.forEach((workoutExercise) => {
+                workoutExercise.sets?.forEach((set) => {
+                  sessionSets.push({
+                    weight: set.weight,
+                    reps: set.reps,
+                    is_warmup: set.is_warmup === true,
+                  })
+
+                  if (set.weight && set.reps) {
+                    sessionVolume += set.weight * set.reps
+                  }
                 })
-            })
+              })
 
-            if(sessionVol > maxSessionVol) maxSessionVol = sessionVol
+              if (sessionVolume > maxSessionVolume) {
+                maxSessionVolume = sessionVolume
+              }
 
-            return {
+              return {
                 date: session.date,
-                sets: sessionSets
-            }
-        }).reverse() // Newest first
+                sets: sessionSets,
+              }
+            })
+            .reverse()
 
-        setHistory(formattedHistory)
-        setPersonalRecords(prev => ({ ...prev, bestSessionVolume: maxSessionVol }))
+          nextExercisePerformance.bestSessionVolume = maxSessionVolume
+        }
+
+        if (loadRequestIdRef.current !== requestId) return
+
+        setProfile(profileData)
+        setExercise(exerciseData)
+        setMax1RM(nextMax1RM)
+        setExercisePerformance(nextExercisePerformance)
+        setRecordsList(nextRecordsList)
+        setHistory(nextHistory)
+      } catch (error) {
+        if (loadRequestIdRef.current !== requestId) return
+        console.error('Error loading exercise details:', error)
+      } finally {
+        if (loadRequestIdRef.current !== requestId) return
+        setIsLoading(false)
+        setRefreshing(false)
       }
+    },
+    [exerciseId, resetExerciseData, statsUserId],
+  )
 
-
-    } catch (error) {
-      console.error('Error loading exercise details:', error)
-    } finally {
-      setIsLoading(false)
-      setRefreshing(false)
+  useEffect(() => {
+    return () => {
+      loadRequestIdRef.current += 1
     }
-  }, [user?.id, exerciseId])
+  }, [])
 
   useEffect(() => {
     loadData()
@@ -231,7 +303,7 @@ export default function ExerciseDetailScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
-    loadData()
+    loadData({ isRefresh: true })
   }, [loadData])
 
   const getStrengthInfo = useCallback(() => {
@@ -593,7 +665,9 @@ export default function ExerciseDetailScreen() {
 
               {/* Stats Section */}
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Stats</Text>
+                <Text style={styles.sectionTitle}>
+                  {isViewingOwnStats ? 'Stats' : 'Performance Stats'}
+                </Text>
               </View>
 
               <View style={styles.statsGrid}>
@@ -631,7 +705,9 @@ export default function ExerciseDetailScreen() {
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>1RM</Text>
                   <Text style={styles.statValue}>
-                    {formatWeight(personalRecords.best1RM, { maximumFractionDigits: 1 })}
+                    {formatWeight(exercisePerformance.best1RM, {
+                      maximumFractionDigits: 1,
+                    })}
                   </Text>
                 </View>
                 <View style={styles.separator} />
@@ -639,7 +715,9 @@ export default function ExerciseDetailScreen() {
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Heaviest Weight</Text>
                   <Text style={styles.statValue}>
-                    {formatWeight(personalRecords.heaviestWeight, { maximumFractionDigits: 1 })}
+                    {formatWeight(exercisePerformance.heaviestWeight, {
+                      maximumFractionDigits: 1,
+                    })}
                   </Text>
                 </View>
                 <View style={styles.separator} />
@@ -647,8 +725,8 @@ export default function ExerciseDetailScreen() {
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Best Set</Text>
                   <Text style={styles.statValue}>
-                    {personalRecords.bestSetVolume 
-                        ? `${formatWeight(personalRecords.bestSetVolume.weight, { maximumFractionDigits: 0 })} x ${personalRecords.bestSetVolume.reps}` 
+                    {exercisePerformance.bestSetVolume 
+                        ? `${formatWeight(exercisePerformance.bestSetVolume.weight, { maximumFractionDigits: 0 })} x ${exercisePerformance.bestSetVolume.reps}` 
                         : '-'}
                   </Text>
                 </View>
@@ -656,12 +734,12 @@ export default function ExerciseDetailScreen() {
 
               {/* All Records Section */}
               <View style={[styles.sectionHeader, { marginTop: 8 }]}>
-                <Text style={styles.sectionTitle}>All Records</Text>
+                <Text style={styles.sectionTitle}>Best Sets by Weight</Text>
               </View>
 
               <View style={styles.recordsList}>
                 {recordsList.length === 0 ? (
-                  <Text style={styles.emptyText}>No records tracked yet</Text>
+                  <Text style={styles.emptyText}>No records found for this exercise yet.</Text>
                 ) : (
                   recordsList.map((record, index) => (
                     <View key={index} style={styles.recordRow}>

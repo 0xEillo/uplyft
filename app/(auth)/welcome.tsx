@@ -120,7 +120,9 @@ export default function WelcomeScreen() {
           {/* Bottom Actions */}
           <View style={styles.actions}>
             <View style={styles.textContainer}>
-              <Text style={styles.title}>Your AI personal trainer.</Text>
+              <Text style={styles.title}>
+                Train hard.{'\n'}Get Stronger.
+              </Text>
               <Text style={styles.subtitle}>
                 Champions aren&apos;t born. They&apos;re trained.
               </Text>

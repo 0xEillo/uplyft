@@ -4,20 +4,18 @@ import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
 import type { StrengthLevel } from '@/lib/strength-standards'
-import { Ionicons } from '@expo/vector-icons'
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Dimensions,
+    Easing,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
-const BAR_HORIZONTAL_PADDING = 48
+const BAR_HORIZONTAL_PADDING = 32
 
 interface PointsGainOverlayProps {
   visible: boolean
@@ -192,6 +190,27 @@ function PointsGainOverlayComponent({
     timeoutsRef.current.push(setTimeout(fn, ms))
   }, [])
 
+  const handleClose = useCallback(() => {
+    clearAllTimeouts()
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(contentScale, {
+        toValue: 0.85,
+        duration: 350,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      onAnimationComplete?.()
+    })
+  }, [fadeAnim, contentScale, onAnimationComplete, clearAllTimeouts])
+
   // Reset everything
   const resetAnims = useCallback(() => {
     fadeAnim.setValue(0)
@@ -365,6 +384,8 @@ function PointsGainOverlayComponent({
             useNativeDriver: false, // Shared view with progressAnim (left)
           }).start()
         }, 3800)
+
+        schedule(() => handleClose(), 5800)
       }
     } else {
       // ===== NORMAL FLOW (no level-up) =====
@@ -388,6 +409,8 @@ function PointsGainOverlayComponent({
           useNativeDriver: false, // Shared view with progressAnim (left)
         }).start()
       }, 1600)
+
+      schedule(() => handleClose(), 3600)
     }
   }, [
     visible,
@@ -411,6 +434,7 @@ function PointsGainOverlayComponent({
     clearAllTimeouts,
     resetAnims,
     schedule,
+    handleClose,
   ])
 
   useEffect(() => {
@@ -422,27 +446,6 @@ function PointsGainOverlayComponent({
       clearAllTimeouts()
     }
   }, [fadeAnim, clearAllTimeouts])
-
-  const handleClose = useCallback(() => {
-    clearAllTimeouts()
-
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 350,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: false,
-      }),
-      Animated.timing(contentScale, {
-        toValue: 0.85,
-        duration: 350,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: false,
-      }),
-    ]).start(() => {
-      onAnimationComplete?.()
-    })
-  }, [fadeAnim, contentScale, onAnimationComplete, clearAllTimeouts])
 
   // Regular confetti (initial)
   const confettiParticles = useMemo(() => {
@@ -504,19 +507,10 @@ function PointsGainOverlayComponent({
         />
       ))}
 
-      <Pressable style={styles.pressArea} onPress={handleClose}>
+      <View style={styles.pressArea}>
         <Animated.View
           style={[styles.card, { transform: [{ scale: contentScale }] }]}
         >
-          {/* Close */}
-          <Pressable
-            style={styles.closeButton}
-            onPress={handleClose}
-            hitSlop={12}
-          >
-            <Ionicons name="close" size={20} color={colors.textTertiary} />
-          </Pressable>
-
           {/* Badge area */}
           <View style={styles.badgeArea}>
             {/* Old badge (shrinks on level-up) */}
@@ -621,7 +615,7 @@ function PointsGainOverlayComponent({
                         transform: [
                           { translateX: -50 }, // Center offset (half of 100px width)
                           { scale: gainBadgeScale },
-                          { translateY: -28 }, // Move up above bar (lowered from -40)
+                          { translateY: -38 }, // Move up above bar (lowered from -40)
                         ],
                       },
                     ]}
@@ -676,7 +670,7 @@ function PointsGainOverlayComponent({
                       transform: [
                         { translateX: -50 },
                         { scale: gainBadgeScale },
-                        { translateY: -28 },
+                        { translateY: -38 },
                       ],
                     },
                   ]}
@@ -690,7 +684,7 @@ function PointsGainOverlayComponent({
             </Animated.View>
           )}
         </Animated.View>
-      </Pressable>
+      </View>
     </Animated.View>
   )
 }
@@ -712,9 +706,7 @@ const createStyles = (
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 9999,
-      backgroundColor: isDark
-        ? 'rgba(0, 0, 0, 0.92)'
-        : 'rgba(255, 255, 255, 0.95)',
+      backgroundColor: isDark ? '#121212' : '#ffffff',
     },
     pressArea: {
       flex: 1,
@@ -727,43 +719,32 @@ const createStyles = (
       width: '100%',
       paddingHorizontal: BAR_HORIZONTAL_PADDING,
     },
-    closeButton: {
-      position: 'absolute',
-      top: -60,
-      right: BAR_HORIZONTAL_PADDING,
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     badgeArea: {
-      height: 100,
+      minHeight: 180,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 16,
     },
     badgeWrapper: {},
     levelName: {
-      fontSize: 18,
-      fontWeight: '800',
+      fontSize: 28,
+      fontWeight: '900',
       letterSpacing: 1,
-      marginBottom: 32,
+      marginBottom: 48,
     },
     levelUpLabel: {
-      fontSize: 14,
+      fontSize: 20,
       fontWeight: '900',
-      letterSpacing: 4,
+      letterSpacing: 5,
       textAlign: 'center',
       marginBottom: 4,
     },
     newLevelName: {
-      fontSize: 28,
+      fontSize: 42,
       fontWeight: '900',
       letterSpacing: 1,
       textAlign: 'center',
-      marginBottom: 32,
+      marginBottom: 48,
     },
     progressSection: {
       width: '100%',
@@ -772,19 +753,19 @@ const createStyles = (
     },
     progressTrack: {
       width: '100%',
-      height: 14,
-      borderRadius: 7,
+      height: 24,
+      borderRadius: 12,
       backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
       overflow: 'visible', // Allow badge to stick out if needed
     },
     progressFill: {
       height: '100%',
-      borderRadius: 7,
+      borderRadius: 12,
     },
     progressFlash: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: '#fff',
-      borderRadius: 7,
+      borderRadius: 12,
     },
     progressLabelRow: {
       flexDirection: 'row',
@@ -814,10 +795,10 @@ const createStyles = (
       width: 100,
     },
     floatingBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      minWidth: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      minWidth: 50,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -829,7 +810,7 @@ const createStyles = (
     },
     floatingBadgeText: {
       color: '#fff', 
-      fontSize: 10,
+      fontSize: 14,
       fontWeight: '900',
     },
     floatingBadgeTriangle: {
@@ -837,9 +818,9 @@ const createStyles = (
       height: 0,
       backgroundColor: 'transparent',
       borderStyle: 'solid',
-      borderLeftWidth: 6,
-      borderRightWidth: 6,
-      borderTopWidth: 6, 
+      borderLeftWidth: 8,
+      borderRightWidth: 8,
+      borderTopWidth: 8, 
       borderLeftColor: 'transparent',
       borderRightColor: 'transparent',
       transform: [{ translateY: -1 }], // Small overlap to hide seam

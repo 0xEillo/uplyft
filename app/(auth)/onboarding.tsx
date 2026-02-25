@@ -119,16 +119,16 @@ const STEP_NAMES: { [key: number]: string } = {
   10: 'habit_reinforcement',
   11: 'section_body_nutrition',
   12: 'weight_entry',
-  13: 'equipment_selection',
+  20: 'equipment_selection',
   // Strength level comes first so user gets their rank
-  14: 'strength_level_intro',
+  13: 'strength_level_intro',
   // Calorie tracking branch (steps 15-19)
-  15: 'nutrition_opt_in',
-  16: 'height_entry',
-  17: 'age_entry',
-  18: 'calorie_goal_selection',
-  19: 'nutrition_target_summary',
-  20: 'section_plan',
+  14: 'nutrition_opt_in',
+  15: 'height_entry',
+  16: 'age_entry',
+  17: 'calorie_goal_selection',
+  18: 'nutrition_target_summary',
+  19: 'section_plan',
   // Continuation of main flow
   21: 'focus_areas',
   22: 'body_scan_feature',
@@ -1687,7 +1687,7 @@ export default function OnboardingScreen() {
     const SECTION_STEP_TRANSITIONS: Record<number, number> = {
       5: 6,
       11: 12,
-      20: 21,
+  19: 21,
     }
 
     const nextStep = SECTION_STEP_TRANSITIONS[step]
@@ -1724,22 +1724,22 @@ export default function OnboardingScreen() {
         stepMetadata.weight = data.weight_kg
         stepMetadata.unit = weightUnit
         break
-      case 13:
-        stepMetadata.equipment = data.equipment
-        break
-      case 15:
+      case 14:
         stepMetadata.wants_calorie_tracking = data.wantsCalorieTracking
         break
-      case 16:
+      case 15:
         stepMetadata.height_cm = data.height_cm
         stepMetadata.height_feet = data.height_feet
         stepMetadata.height_inches = data.height_inches
         break
-      case 17:
+      case 16:
         stepMetadata.age = data.birth_year
         break
-      case 18:
+      case 17:
         stepMetadata.calorie_goal = data.calorieGoal
+        break
+      case 20:
+        stepMetadata.equipment = data.equipment
         break
       case 21:
         stepMetadata.focus_areas = focusAreas
@@ -1793,7 +1793,7 @@ export default function OnboardingScreen() {
 
     // Save equipment preference to AsyncStorage when leaving equipment step
     // This will be used by the workout wizard to pre-fill the equipment setting
-    if (step === 13 && data.equipment.length > 0) {
+    if (step === 20 && data.equipment.length > 0) {
       let equipmentType = 'home_minimal'
 
       if (data.equipment.includes('full_gym')) {
@@ -1977,9 +1977,9 @@ export default function OnboardingScreen() {
       step === 5 ||
       step === 8 ||
       step === 11 ||
-      (step === 14 && strengthIntroPhase !== 'rating') ||
-      step === 15 ||
-      step === 20 ||
+      (step === 13 && strengthIntroPhase !== 'rating') ||
+      step === 14 ||
+      step === 19 ||
       step === 23 ||
       step === 25
     )
@@ -2047,21 +2047,21 @@ export default function OnboardingScreen() {
       case 12:
         return true // Weight entry step - defaults are fine
       case 13:
-        return data.equipment.length > 0 // Equipment selection
-      case 14:
         return true // Strength level intro - handled by component
-      case 15:
+      case 14:
         return false // Nutrition opt-in - auto-swipes
-      case 16:
+      case 15:
         return true // Height entry - defaults are fine
-      case 17:
+      case 16:
         return true // Age entry - defaults are fine
-      case 18:
+      case 17:
         return data.calorieGoal !== null // Calorie goal selection
-      case 19:
+      case 18:
         return true // Calorie target summary
-      case 20:
+      case 19:
         return false // Section interstitial
+      case 20:
+        return data.equipment.length > 0 // Equipment selection
       case 21:
         return true // Focus areas (optional)
       case 22:
@@ -2511,7 +2511,7 @@ export default function OnboardingScreen() {
             </Text>
           </View>
         )
-      case 13:
+      case 20:
         // Equipment Selection Step
         const EQUIPMENT_OPTIONS = [
           { value: 'full_gym', label: 'Full gym' },
@@ -2730,7 +2730,7 @@ export default function OnboardingScreen() {
           </View>
         )
       // ========== Strength Level Intro (Step 14) ==========
-      case 14:
+      case 13:
         // Strength Level Intro
         return (
           <StrengthLevelIntroStep
@@ -2748,7 +2748,7 @@ export default function OnboardingScreen() {
         )
 
       // ========== Calorie Tracking Branch (Steps 15-19) ==========
-      case 15: {
+      case 14: {
         // Nutrition Opt-In Step
         return (
           <View style={styles.stepContainer}>
@@ -2825,7 +2825,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 16: {
+      case 15: {
         // Height Entry Step (stable non-Picker UI)
         const MIN_CM = 120
         const MAX_CM = 240
@@ -3040,7 +3040,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 17: {
+      case 16: {
         // Age/Birthday Entry Step
         const currentYear = new Date().getFullYear()
         const years = Array.from({ length: 82 }, (_, i) => (currentYear - 16 - i).toString()) // Ages 16-97
@@ -3218,7 +3218,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 18: {
+      case 17: {
         // Calorie Goal Selection Step
         const tdee = calculateEstimatedTDEE()
 
@@ -3297,7 +3297,7 @@ export default function OnboardingScreen() {
       }
       // ========== End Calorie Tracking Branch ==========
 
-      case 19: {
+      case 18: {
         const tdee = calculateEstimatedTDEE()
         const targetCalories = data.calorieGoal ?? tdee
         const dailyDelta = targetCalories - tdee
@@ -3353,7 +3353,7 @@ export default function OnboardingScreen() {
         )
       }
 
-      case 20:
+      case 19:
         return (
           <View style={styles.sectionScreen}>
             <Text style={styles.sectionIndex}>3</Text>
@@ -4168,7 +4168,7 @@ const createStyles = (
     contentContainer: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingBottom: 40,
+      paddingBottom: 20,
     },
     contentWrapper: {
       flex: 1,
@@ -4603,7 +4603,7 @@ const createStyles = (
     footer: {
       paddingHorizontal: 24,
       paddingVertical: 16,
-      paddingBottom: 40,
+      paddingBottom: 20,
     },
     nextButton: {
       height: 64,

@@ -9,22 +9,20 @@ import { haptic } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { BlurView } from 'expo-blur'
+import { useFocusEffect } from '@react-navigation/native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Dimensions,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
-import { useFocusEffect } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -38,11 +36,11 @@ export default function SelectRoutineScreen() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const { callCallback } = useRoutineSelection()
-  
+
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [shouldExit, setShouldExit] = useState(false)
-  
+
   const styles = useMemo(() => createStyles(colors), [colors])
 
   const loadRoutines = useCallback(async () => {
@@ -108,9 +106,13 @@ export default function SelectRoutineScreen() {
     router.back()
   }, [router])
 
-  const renderRoutineCard = (routine: WorkoutRoutineWithDetails, index: number) => {
+  const renderRoutineCard = (
+    routine: WorkoutRoutineWithDetails,
+    index: number,
+  ) => {
     const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
-    const tintColor = routine.tint_color || tintColors[index % tintColors.length]
+    const tintColor =
+      routine.tint_color || tintColors[index % tintColors.length]
 
     const getRoutineImage = () => {
       const imagePath = routine.image_path || `${routine.name}.png`
@@ -129,7 +131,11 @@ export default function SelectRoutineScreen() {
           {imageSource ? (
             <>
               <Image
-                source={typeof imageSource === 'string' ? { uri: imageSource } : imageSource}
+                source={
+                  typeof imageSource === 'string'
+                    ? { uri: imageSource }
+                    : imageSource
+                }
                 style={styles.routineImage}
                 contentFit="cover"
                 cachePolicy="memory-disk"
@@ -178,18 +184,14 @@ export default function SelectRoutineScreen() {
             }}
             activeOpacity={0.9}
           >
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 60 : 100}
-              tint="dark"
-              style={styles.startButtonBlur}
-            >
+            <LiquidGlassSurface style={styles.startButtonGlass}>
               <Ionicons
                 name="play"
                 size={16}
-                color="#FFF"
+                color={colors.textPrimary}
                 style={{ marginLeft: 2 }}
               />
-            </BlurView>
+            </LiquidGlassSurface>
           </TouchableOpacity>
         </TouchableOpacity>
       </View>
@@ -215,13 +217,16 @@ export default function SelectRoutineScreen() {
               <Ionicons name="close" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
           </LiquidGlassSurface>
-          
+
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Select Routine
           </Text>
-          
+
           <LiquidGlassSurface style={styles.headerButtonGlass}>
-            <TouchableOpacity style={styles.headerButton} onPress={handleCreateRoutine}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleCreateRoutine}
+            >
               <Ionicons name="add" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
           </LiquidGlassSurface>
@@ -250,7 +255,9 @@ export default function SelectRoutineScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.routinesGrid}>
-              {routines.map((routine, index) => renderRoutineCard(routine, index))}
+              {routines.map((routine, index) =>
+                renderRoutineCard(routine, index),
+              )}
             </View>
           </ScrollView>
         )}
@@ -364,21 +371,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       top: 10,
       right: 10,
-      // Use shadow on the container, but move clipping to the BlurView for smoother edges
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 3,
     },
-    startButtonBlur: {
+    startButtonGlass: {
       width: 36,
       height: 36,
       borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
-      overflow: 'hidden',
-      borderWidth: 1, // Slightly thicker but more predictable than hairlineWidth
-      borderColor: 'rgba(255, 255, 255, 0.15)',
     },
   })
