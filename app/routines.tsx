@@ -1,87 +1,104 @@
-import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
-import { ScreenHeader } from '@/components/screen-header'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideInView } from '@/components/slide-in-view'
-import { AnalyticsEvents } from '@/constants/analytics-events'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
-import { useTheme } from '@/contexts/theme-context'
+import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect } from '@react-navigation/native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useFocusEffect, useRouter } from 'expo-router'
-import React, { useCallback, useMemo, useState } from 'react'
+import { useRouter } from 'expo-router'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const { width } = Dimensions.get('window')
-
-// Height of the ScreenHeader row (paddingVertical 12 * 2 + icon 44) = 68
-const HEADER_ROW_HEIGHT = 68
+const SCREEN_WIDTH = Dimensions.get('window').width
+const GAP = 12
+const COLUMN_COUNT = 2
+const CARD_WIDTH = (SCREEN_WIDTH - 32 - GAP) / COLUMN_COUNT
 
 export default function RoutinesScreen() {
-  const { user } = useAuth()
-  const { isDark } = useTheme()
   const colors = useThemedColors()
-  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const { user } = useAuth()
+  const { callCallback } = useRoutineSelection()
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [shouldExit, setShouldExit] = useState(false)
 
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
+  const styles = useMemo(() => createStyles(colors), [colors])
 
-  const loadData = useCallback(async () => {
-    if (!user?.id) return
+  const loadRoutines = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
 
+    setIsLoading(true)
     try {
-      const routinesData = await database.workoutRoutines.getAll(user.id)
-      const activeRoutines = routinesData.filter((r) => !r.is_archived)
-      setRoutines(activeRoutines)
-
-      // Preload routine images for faster display
-      const imageUrls = activeRoutines
-        .map((r) => (r.image_path ? getRoutineImageUrl(r.image_path) : null))
-        .filter((url): url is string => url !== null)
-      if (imageUrls.length > 0) {
-        Image.prefetch(imageUrls)
-      }
+      const data = await database.workoutRoutines.getAll(user.id)
+      setRoutines(data)
     } catch (error) {
       console.error('Error loading routines:', error)
-      Alert.alert('Error', 'Failed to load routines')
     } finally {
       setIsLoading(false)
-      setRefreshing(false)
     }
-  }, [user?.id])
+  }, [user])
 
+  // Load routines
+  useEffect(() => {
+    loadRoutines()
+  }, [loadRoutines])
+
+  // Refresh routines when returning to this screen
   useFocusEffect(
     useCallback(() => {
-      trackEvent(AnalyticsEvents.ROUTINE_VIEWED, {
-        source: 'routines_screen',
-      })
-      loadData()
-    }, [loadData, trackEvent]),
+      loadRoutines()
+    }, [loadRoutines]),
   )
 
+  const handleSelectRoutine = useCallback(
+    (routine: WorkoutRoutineWithDetails) => {
+      haptic('light')
+      callCallback(routine)
+      router.back()
+    },
+    [callCallback, router],
+  )
+
+  const handleViewRoutine = useCallback(
+    (routine: WorkoutRoutineWithDetails) => {
+      haptic('light')
+      router.push({
+        pathname: '/routine/[routineId]',
+        params: { routineId: routine.id },
+      })
+    },
+    [router],
+  )
+
+  const handleCreateRoutine = useCallback(() => {
+    haptic('light')
+    router.push('/create-routine')
+  }, [router])
+
   const handleBack = useCallback(() => {
+    haptic('light')
     setShouldExit(true)
   }, [])
 
@@ -89,47 +106,27 @@ export default function RoutinesScreen() {
     router.back()
   }, [router])
 
-  const handleCreateRoutine = useCallback(() => {
-    router.push('/create-routine')
-  }, [router])
+  const renderRoutineCard = (
+    routine: WorkoutRoutineWithDetails,
+    index: number,
+  ) => {
+    const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
+    const tintColor =
+      routine.tint_color || tintColors[index % tintColors.length]
 
-  const renderRoutineItem = useCallback(
-    ({ item, index }: { item: WorkoutRoutineWithDetails; index: number }) => {
-      // Use stored tint color or fallback to index-based color
-      const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
-      const tintColor = item.tint_color || tintColors[index % tintColors.length]
+    const getRoutineImage = () => {
+      const imagePath = routine.image_path || `${routine.name}.png`
+      return getRoutineImageUrl(imagePath)
+    }
 
-      const exerciseCount = item.workout_routine_exercises?.length || 0
-      const setCount =
-        item.workout_routine_exercises?.reduce(
-          (sum, ex) => sum + (ex.sets?.length || 0),
-          0,
-        ) || 0
+    const imageSource = getRoutineImage()
 
-      // Get image source from storage bucket based on item's name or image_path
-      const getRoutineImage = () => {
-        const imagePath = item.image_path || `${item.name}.png`
-        return getRoutineImageUrl(imagePath)
-      }
-
-      const imageSource = getRoutineImage()
-
-      return (
+    return (
+      <View key={routine.id} style={styles.routineCardWrapper}>
         <TouchableOpacity
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           style={styles.routineCard}
-          onPress={() => {
-            trackEvent(AnalyticsEvents.ROUTINE_SELECTED, {
-              routine_id: item.id,
-              routine_name: item.name,
-              exercise_count: exerciseCount,
-              source: 'routines_screen',
-            })
-            router.push({
-              pathname: '/routine/[routineId]',
-              params: { routineId: item.id },
-            })
-          }}
+          onPress={() => handleViewRoutine(routine)}
         >
           {imageSource ? (
             <>
@@ -146,13 +143,13 @@ export default function RoutinesScreen() {
                 transition={200}
               />
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
+                colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.85)']}
                 style={styles.routineOverlay}
               />
               <View
                 style={[
                   styles.colorTint,
-                  { backgroundColor: tintColor, opacity: 0.25 },
+                  { backgroundColor: tintColor, opacity: 0.2 },
                 ]}
               />
             </>
@@ -165,6 +162,7 @@ export default function RoutinesScreen() {
             />
           )}
 
+          {/* Card Content */}
           <View style={styles.routineContent}>
             <Text
               style={[
@@ -173,53 +171,32 @@ export default function RoutinesScreen() {
               ]}
               numberOfLines={2}
             >
-              {item.name}
+              {routine.name}
             </Text>
-            <View style={styles.routineStats}>
-              <View style={styles.routineStatItem}>
-                <Ionicons
-                  name="barbell-outline"
-                  size={12}
-                  color={
-                    imageSource ? 'rgba(255,255,255,0.8)' : colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.routineStatText,
-                    !imageSource && { color: colors.textSecondary },
-                  ]}
-                >
-                  {exerciseCount} exercises
-                </Text>
-              </View>
-              <View style={styles.routineStatItem}>
-                <Ionicons
-                  name="layers-outline"
-                  size={12}
-                  color={
-                    imageSource ? 'rgba(255,255,255,0.8)' : colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.routineStatText,
-                    !imageSource && { color: colors.textSecondary },
-                  ]}
-                >
-                  {setCount} sets
-                </Text>
-              </View>
-            </View>
           </View>
-        </TouchableOpacity>
-      )
-    },
-    [styles, router, colors, trackEvent],
-  )
 
-  // Total height the header occupies (safe area inset + header row)
-  const headerTotalHeight = insets.top + HEADER_ROW_HEIGHT
+          {/* Start Button - Overlay on card */}
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={(e) => {
+              e.stopPropagation?.()
+              handleSelectRoutine(routine)
+            }}
+            activeOpacity={0.9}
+          >
+            <LiquidGlassSurface style={styles.startButtonGlass}>
+              <Ionicons
+                name="play"
+                size={16}
+                color={colors.textPrimary}
+                style={{ marginLeft: 2 }}
+              />
+            </LiquidGlassSurface>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <SlideInView
@@ -227,127 +204,125 @@ export default function RoutinesScreen() {
       shouldExit={shouldExit}
       onExitComplete={handleExitComplete}
     >
-      <View style={styles.container}>
-        {/* Blurred header overlay — sits on top of scroll content */}
-        <BlurredHeader>
-          <ScreenHeader
-            title="Routines"
-            onLeftPress={handleBack}
-            leftIcon="arrow-back"
-            rightIcon="add"
-            onRightPress={handleCreateRoutine}
-          />
-        </BlurredHeader>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.bg, paddingTop: insets.top },
+        ]}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <LiquidGlassSurface style={styles.headerButtonGlass}>
+            <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
+              <Ionicons name="close" size={28} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
 
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingTop: headerTotalHeight },
-            routines.length === 0 && !isLoading && { flexGrow: 1 },
-          ]}
-          showsVerticalScrollIndicator={false}
-          scrollIndicatorInsets={{ top: headerTotalHeight }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true)
-                loadData()
-              }}
-              tintColor={colors.brandPrimary}
-              progressViewOffset={headerTotalHeight}
-            />
-          }
-        >
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.brandPrimary} />
-            </View>
-          ) : routines.length === 0 ? (
-            <EmptyState
-              icon="barbell-outline"
-              title="No routines found"
-              description="Create a routine to quickly start your favorite workouts."
-              buttonText="Create Your First Routine"
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+            My Routines
+          </Text>
+
+          <LiquidGlassSurface style={styles.headerButtonGlass}>
+            <TouchableOpacity
+              style={styles.headerButton}
               onPress={handleCreateRoutine}
-              style={{ marginTop: -60 }}
-            />
-          ) : (
-            <>
-              {/* My Routines Section */}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>My Routines</Text>
-                <Text style={styles.routineCount}>
-                  {routines.length} routine
-                  {routines.length !== 1 ? 's' : ''}
-                </Text>
-              </View>
+            >
+              <Ionicons name="add" size={28} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
+        </View>
 
-              {/* Routines Grid */}
-              <View style={styles.routinesGrid}>
-                {routines.map((routine, index) => (
-                  <View key={routine.id} style={styles.routineWrapper}>
-                    {renderRoutineItem({ item: routine, index })}
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-        </ScrollView>
+        {/* Content */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
+          </View>
+        ) : routines.length === 0 ? (
+          <EmptyState
+            icon="albums-outline"
+            title="No Routines Yet"
+            description="Create your first routine to quickly start structured workouts"
+            buttonText="Create New Routine"
+            onPress={handleCreateRoutine}
+          />
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + 100 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.routinesGrid}>
+              {routines.map((routine, index) =>
+                renderRoutineCard(routine, index),
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
     </SlideInView>
   )
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useThemedColors>,
-  isDark: boolean,
-) =>
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.bg,
     },
-    scrollContent: {
-      paddingBottom: 100,
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    headerButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerButtonGlass: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    subtitle: {
+      fontSize: 15,
+      paddingHorizontal: 20,
+      marginBottom: 16,
     },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      minHeight: 200,
     },
-    sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      marginBottom: 16,
-      marginTop: 24,
+
+    scrollView: {
+      flex: 1,
     },
-    sectionTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
-    routineCount: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textSecondary,
+    scrollContent: {
+      paddingHorizontal: 16,
     },
     routinesGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: 20,
-      gap: 16,
-      paddingTop: 12,
+      gap: GAP,
     },
-    routineWrapper: {
-      width: (width - 56) / 2,
-      marginBottom: 8,
+    routineCardWrapper: {
+      width: CARD_WIDTH,
     },
     routineCard: {
-      height: 200,
+      height: 160,
       borderRadius: 16,
       overflow: 'hidden',
       backgroundColor: colors.surfaceCard,
@@ -369,28 +344,39 @@ const createStyles = (
     routineContent: {
       flex: 1,
       justifyContent: 'flex-end',
-      padding: 16,
+      padding: 12,
       paddingBottom: 16,
     },
     routineTitle: {
       color: '#FFF',
-      fontSize: 20,
-      fontWeight: '800',
-      marginBottom: 6,
-      letterSpacing: -0.5,
+      fontSize: 17,
+      fontWeight: '700',
+      letterSpacing: -0.3,
     },
     routineStats: {
       flexDirection: 'row',
-      gap: 12,
+      gap: 10,
     },
     routineStatItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 3,
     },
     routineStatText: {
       color: 'rgba(255,255,255,0.8)',
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
+    },
+    startButton: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+    },
+    startButtonGlass: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   })

@@ -35,12 +35,14 @@ export const ProfileDashboard = memo(
       onPress,
       color,
       isFullWidth = false,
+      compact = false,
     }: {
       title: string
-      icon: keyof typeof Ionicons.glyphMap
+      icon?: keyof typeof Ionicons.glyphMap
       onPress: () => void
       color?: string
       isFullWidth?: boolean
+      compact?: boolean
     }) => (
       <TouchableOpacity
         onPress={() => {
@@ -50,16 +52,33 @@ export const ProfileDashboard = memo(
         activeOpacity={0.7}
         style={[
           styles.button,
+          compact && styles.buttonCompact,
           {
             backgroundColor: colors.surfaceCard,
-            width: isFullWidth ? '100%' : '48.5%',
+            flex: isFullWidth ? undefined : 1,
+            width: isFullWidth ? '100%' : undefined,
+            justifyContent: 'center',
           },
         ]}
       >
-        <View style={styles.buttonIconContainer}>
-          <Ionicons name={icon} size={24} color={color || colors.textSecondary} />
-        </View>
-        <Text style={[styles.buttonTitle, { color: colors.textPrimary }]}>{title}</Text>
+        {icon ? (
+          <Ionicons
+            name={icon}
+            size={compact ? 18 : 24}
+            color={color || colors.textSecondary}
+          />
+        ) : null}
+        <Text
+          style={[
+            styles.buttonTitle,
+            compact && styles.buttonTitleCompact,
+            { color: colors.textPrimary, flexShrink: 1 },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {title}
+        </Text>
       </TouchableOpacity>
     )
 
@@ -104,17 +123,26 @@ export const ProfileDashboard = memo(
       <View style={styles.container}>
         <View style={styles.grid}>
           {isTrialActive && <TrialButton />}
-          
-          <DashboardButton
-            title="Explore"
-            icon="compass-outline"
-            onPress={() => router.push('/explore')}
-          />
-          <DashboardButton
-            title="Daily Log"
-            icon="body-outline"
-            onPress={() => router.push('/body-log/' as any)}
-          />
+          <View style={styles.tabsRow}>
+            <DashboardButton
+              title="Routines"
+              icon="albums-outline"
+              onPress={() => router.push('/routines')}
+              compact
+            />
+            <DashboardButton
+              title="Explore"
+              icon="compass-outline"
+              onPress={() => router.push('/explore')}
+              compact
+            />
+            <DashboardButton
+              title="Log"
+              icon="body-outline"
+              onPress={() => router.push('/body-log/' as any)}
+              compact
+            />
+          </View>
         </View>
       </View>
     )
@@ -129,16 +157,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   grid: {
+    gap: 10,
+  },
+  tabsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 10,
   },
   button: {
-    height: 64,
+    height: 56,
     borderRadius: 14,
     borderWidth: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -151,6 +180,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  buttonCompact: {
+    paddingHorizontal: 10,
+    gap: 10,
+  },
   buttonIconContainer: {
     width: 36,
     height: 36,
@@ -158,10 +191,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  buttonIconCompact: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+  },
   buttonTitle: {
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.2,
+  },
+  buttonTitleCompact: {
+    fontSize: 14,
+  },
+  tabTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   stepsBadge: {
     paddingHorizontal: 10,
