@@ -114,8 +114,8 @@ function RootLayoutNav() {
     })
   }, [])
 
-  // ATT permission is now requested early in onboarding (before registration/subscription)
-  // See app/(auth)/onboarding.tsx - this ensures high-value events are properly attributed
+  // ATT permission is requested during the onboarding plan-preparation loading step
+  // See app/(auth)/onboarding.tsx - this keeps attribution setup before signup/purchase events
 
   const hasTrackedAppOpen = useRef(false)
 

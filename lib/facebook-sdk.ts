@@ -27,6 +27,15 @@ if (isNative) {
 
 type Params = Record<string, string | number>
 
+export type TrackingPermissionResult = {
+  platform: 'ios' | 'android'
+  granted: boolean
+  promptShown: boolean
+  initialStatus: string
+  finalStatus: string
+  sdkAvailable: boolean
+}
+
 /**
  * Initialize Facebook SDK (called early, but NO tracking until ATT consent)
  * Since isAutoInitEnabled=false, we must manually initialize.
@@ -67,15 +76,29 @@ export async function initializeFacebookSDK() {
  * Call this AFTER showing the user some context (e.g., after onboarding).
  * Returns true if tracking was enabled, false otherwise.
  */
-export async function requestTrackingPermission(): Promise<boolean> {
+export async function requestTrackingPermissionDetailed(): Promise<TrackingPermissionResult> {
   if (Platform.OS !== 'ios') {
     // Android doesn't need ATT - already enabled in initializeFacebookSDK
-    return true
+    return {
+      platform: 'android',
+      granted: true,
+      promptShown: false,
+      initialStatus: 'not_applicable',
+      finalStatus: 'not_applicable',
+      sdkAvailable: Boolean(Settings),
+    }
   }
 
   if (!Settings) {
     if (__DEV__ && DEBUG_SDK_LOGS) console.log('[FacebookSDK] SDK not available for ATT')
-    return false
+    return {
+      platform: 'ios',
+      granted: false,
+      promptShown: false,
+      initialStatus: 'sdk_unavailable',
+      finalStatus: 'sdk_unavailable',
+      sdkAvailable: false,
+    }
   }
 
   try {
@@ -88,14 +111,28 @@ export async function requestTrackingPermission(): Promise<boolean> {
       await Settings!.setAdvertiserIDCollectionEnabled(true)
       if (__DEV__ && DEBUG_SDK_LOGS)
         console.log('[FacebookSDK] Tracking already granted, enabled')
-      return true
+      return {
+        platform: 'ios',
+        granted: true,
+        promptShown: false,
+        initialStatus: currentStatus,
+        finalStatus: currentStatus,
+        sdkAvailable: true,
+      }
     }
 
     if (currentStatus === 'denied') {
       // Already denied - respect the decision
       await Settings!.setAdvertiserTrackingEnabled(false)
       if (__DEV__ && DEBUG_SDK_LOGS) console.log('[FacebookSDK] Tracking previously denied')
-      return false
+      return {
+        platform: 'ios',
+        granted: false,
+        promptShown: false,
+        initialStatus: currentStatus,
+        finalStatus: currentStatus,
+        sdkAvailable: true,
+      }
     }
 
     // Status is 'undetermined' - show the ATT popup
@@ -112,13 +149,32 @@ export async function requestTrackingPermission(): Promise<boolean> {
       console.log(`[FacebookSDK] ATT result: ${status}, tracking: ${granted}`)
     }
 
-    return granted
+    return {
+      platform: 'ios',
+      granted,
+      promptShown: true,
+      initialStatus: currentStatus,
+      finalStatus: status,
+      sdkAvailable: true,
+    }
   } catch (error) {
     if (__DEV__ && DEBUG_SDK_LOGS) {
       console.error('[FacebookSDK] ATT request error:', error)
     }
-    return false
+    return {
+      platform: 'ios',
+      granted: false,
+      promptShown: false,
+      initialStatus: 'error',
+      finalStatus: 'error',
+      sdkAvailable: true,
+    }
   }
+}
+
+export async function requestTrackingPermission(): Promise<boolean> {
+  const result = await requestTrackingPermissionDetailed()
+  return result.granted
 }
 
 /**

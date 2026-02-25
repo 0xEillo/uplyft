@@ -43,6 +43,7 @@ export const AnalyticsEvents = {
   TRIAL_OFFER_ACCEPTED: 'Trial Offer Accepted',
   TRIAL_OFFER_DISMISSED: 'Trial Offer Dismissed',
   TRIAL_OFFER_SKIPPED: 'Trial Offer Skipped',
+  ATT_PERMISSION_RESULT: 'ATT Permission Result',
 
   // Feed & Navigation
   FEED_VIEWED: 'Feed Viewed',

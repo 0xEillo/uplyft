@@ -121,7 +121,7 @@ export default function WelcomeScreen() {
           <View style={styles.actions}>
             <View style={styles.textContainer}>
               <Text style={styles.title}>
-                Train hard.{'\n'}Get Stronger.
+                Train hard.{'\n'}Get stronger.
               </Text>
               <Text style={styles.subtitle}>
                 Champions aren&apos;t born. They&apos;re trained.

@@ -702,14 +702,21 @@ export function StrengthLevelIntroStep({
                           isCurrent && { color: standard.color },
                           isLocked && { color: colors.textSecondary },
                         ]}
+                        numberOfLines={1}
                       >
                         {Math.round(
                           weightUnit === 'lb' ? displayWeight * 2.20462 : displayWeight,
-                        )}
+                        )}{' '}
+                        {weightUnit}
                       </Text>
-                      <Text style={[styles.levelLadderWeightLabel, { color: colors.textSecondary }]}>
-                        {isCurrent ? 'Est. 1RM' : weightUnit}
-                      </Text>
+                      {isCurrent && (
+                        <Text
+                          style={[styles.levelLadderWeightLabel, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          Your 1RM
+                        </Text>
+                      )}
                     </View>
                   </View>
                 )
@@ -861,7 +868,7 @@ export function StrengthLevelIntroStep({
             onPress={() => animateTransition('rating')}
             hapticIntensity="medium"
           >
-            <Text style={[styles.primaryButtonText, { color: colors.bg }]}>CONTINUE</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.bg }]}>Continue</Text>
           </HapticButton>
         </View>
       </View>
@@ -1388,15 +1395,18 @@ const styles = StyleSheet.create({
   },
   levelLadderTarget: {
     alignItems: 'flex-end',
+    flexShrink: 0,
+    minWidth: 72,
   },
   levelLadderWeight: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '600',
   },
   levelLadderWeightLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    opacity: 0.6,
+    fontWeight: '600',
+    opacity: 0.7,
+    marginTop: 2,
   },
   explanationContainer: {
     marginTop: 32,

@@ -19,7 +19,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BodyPartSlug } from '@/lib/body-mapping'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
-import { requestTrackingPermission } from '@/lib/facebook-sdk'
+import { requestTrackingPermissionDetailed } from '@/lib/facebook-sdk'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
@@ -115,20 +115,20 @@ const STEP_NAMES: { [key: number]: string } = {
   6: 'goals_selection',
   7: 'tailored_preview',
   8: 'gender_selection',
-  9: 'commitment_level',
-  10: 'habit_reinforcement',
-  11: 'section_body_nutrition',
-  12: 'weight_entry',
-  20: 'equipment_selection',
+  9: 'section_body_nutrition',
+  10: 'weight_entry',
   // Strength level comes first so user gets their rank
-  13: 'strength_level_intro',
-  // Calorie tracking branch (steps 15-19)
-  14: 'nutrition_opt_in',
-  15: 'height_entry',
-  16: 'age_entry',
-  17: 'calorie_goal_selection',
-  18: 'nutrition_target_summary',
-  19: 'section_plan',
+  11: 'strength_level_intro',
+  // Calorie tracking branch
+  12: 'nutrition_opt_in',
+  13: 'height_entry',
+  14: 'age_entry',
+  15: 'calorie_goal_selection',
+  16: 'nutrition_target_summary',
+  17: 'section_plan',
+  18: 'commitment_level',
+  19: 'habit_reinforcement',
+  20: 'equipment_selection',
   // Continuation of main flow
   21: 'focus_areas',
   22: 'body_scan_feature',
@@ -1575,6 +1575,7 @@ export default function OnboardingScreen() {
   ).current
 
   const scrollViewRef = useRef<ScrollView>(null)
+  const hasRequestedAttPermissionRef = useRef(false)
 
   // Reset scroll position for specific steps
   useEffect(() => {
@@ -1584,7 +1585,7 @@ export default function OnboardingScreen() {
   }, [step])
 
   useEffect(() => {
-    if (step !== 14 && strengthIntroPhase !== 'select') {
+    if (step !== 11 && strengthIntroPhase !== 'select') {
       setStrengthIntroPhase('select')
     }
   }, [step, strengthIntroPhase])
@@ -1600,15 +1601,30 @@ export default function OnboardingScreen() {
     preloadImages()
   }, [])
 
-  // Request ATT permission early in onboarding (before registration/subscription)
-  // This ensures high-value events like registration and purchase are properly attributed
+  // Request ATT permission during the "preparing your plan" loading screen.
+  // This keeps it in an engaged moment while still happening before signup/purchase events.
   useEffect(() => {
-    // Small delay so it doesn't feel jarring right as the screen loads
+    if (step !== 23) return
+    if (hasRequestedAttPermissionRef.current) return
+    hasRequestedAttPermissionRef.current = true
+
+    // Small delay so the loading UI renders before the ATT prompt appears
     const timer = setTimeout(() => {
-      requestTrackingPermission()
+      void (async () => {
+        const attResult = await requestTrackingPermissionDetailed()
+        await trackEvent(AnalyticsEvents.ATT_PERMISSION_RESULT, {
+          context: 'onboarding',
+          granted: attResult.granted,
+          prompt_shown: attResult.promptShown,
+          initial_status: attResult.initialStatus,
+          final_status: attResult.finalStatus,
+          sdk_available: attResult.sdkAvailable,
+          platform: attResult.platform,
+        })
+      })()
     }, 800)
     return () => clearTimeout(timer)
-  }, [])
+  }, [step, trackEvent])
 
   // Animate step transitions
   useEffect(() => {
@@ -1686,8 +1702,8 @@ export default function OnboardingScreen() {
   useEffect(() => {
     const SECTION_STEP_TRANSITIONS: Record<number, number> = {
       5: 6,
-      11: 12,
-  19: 21,
+      9: 10,
+      17: 18,
     }
 
     const nextStep = SECTION_STEP_TRANSITIONS[step]
@@ -1717,25 +1733,25 @@ export default function OnboardingScreen() {
       case 8:
         stepMetadata.gender = data.gender
         break
-      case 9:
+      case 18:
         stepMetadata.commitment = data.commitment
         break
-      case 12:
+      case 10:
         stepMetadata.weight = data.weight_kg
         stepMetadata.unit = weightUnit
         break
-      case 14:
+      case 12:
         stepMetadata.wants_calorie_tracking = data.wantsCalorieTracking
         break
-      case 15:
+      case 13:
         stepMetadata.height_cm = data.height_cm
         stepMetadata.height_feet = data.height_feet
         stepMetadata.height_inches = data.height_inches
         break
-      case 16:
+      case 14:
         stepMetadata.age = data.birth_year
         break
-      case 17:
+      case 15:
         stepMetadata.calorie_goal = data.calorieGoal
         break
       case 20:
@@ -1823,11 +1839,11 @@ export default function OnboardingScreen() {
     // Initialize target weight logic removed as step is gone
 
     // Handle calorie tracking branch navigation
-    // Step 15: User chose whether to track calories
-    // If they said no (wantsCalorieTracking === false), skip to step 20 (plan section interstitial)
-    // If they said yes, continue to step 16 (height entry)
-    if (step === 15 && data.wantsCalorieTracking === false) {
-      setStep(20) // Skip to plan section
+    // Step 13: User chose whether to track calories
+    // If they said no (wantsCalorieTracking === false), skip to step 17 (plan section interstitial)
+    // If they said yes, continue to step 14 (height entry)
+    if (step === 13 && data.wantsCalorieTracking === false) {
+      setStep(17) // Skip to plan section
       return
     }
 
@@ -1955,9 +1971,9 @@ export default function OnboardingScreen() {
 
     if (step > 1) {
       // Handle calorie tracking branch when going back
-      // If user skipped calorie tracking (step 20) and goes back, return to step 15
-      if (step === 20 && data.wantsCalorieTracking === false) {
-        setStep(15) // Return to nutrition opt-in
+      // If user skipped calorie tracking (step 17) and goes back, return to step 12
+      if (step === 17 && data.wantsCalorieTracking === false) {
+        setStep(12) // Return to nutrition opt-in
       } else {
         setStep(step - 1)
       }
@@ -1969,17 +1985,17 @@ export default function OnboardingScreen() {
   const hasAutoSwipe = () => {
     // Section pages auto-advance (5, 11, 20).
     // Step 8 (gender) auto-swipes when an option is selected.
-    // Step 14 (strength level) has its own flow, except rating phase which uses the global fixed footer.
+    // Step 11 (strength level) has its own flow, except rating phase which uses the global fixed footer.
     // Step 15 (nutrition opt-in) auto-swipes on selection.
     // Step 23 (processing) auto-advances after bars fill.
     // Step 25 (commitment pledge) has its own custom footer/interaction.
     return (
       step === 5 ||
       step === 8 ||
-      step === 11 ||
-      (step === 13 && strengthIntroPhase !== 'rating') ||
-      step === 14 ||
-      step === 19 ||
+      step === 9 ||
+      (step === 11 && strengthIntroPhase !== 'rating') ||
+      step === 12 ||
+      step === 17 ||
       step === 23 ||
       step === 25
     )
@@ -2039,27 +2055,27 @@ export default function OnboardingScreen() {
       case 8:
         return data.gender !== null
       case 9:
-        return data.commitment.length > 0
+        return false // Section interstitial
       case 10:
-        return true // Habit reinforcement
-      case 11:
-        return false // Section interstitial
-      case 12:
         return true // Weight entry step - defaults are fine
-      case 13:
+      case 11:
         return true // Strength level intro - handled by component
-      case 14:
+      case 12:
         return false // Nutrition opt-in - auto-swipes
-      case 15:
+      case 13:
         return true // Height entry - defaults are fine
-      case 16:
+      case 14:
         return true // Age entry - defaults are fine
-      case 17:
+      case 15:
         return data.calorieGoal !== null // Calorie goal selection
-      case 18:
+      case 16:
         return true // Calorie target summary
-      case 19:
+      case 17:
         return false // Section interstitial
+      case 18:
+        return data.commitment.length > 0
+      case 19:
+        return true // Habit reinforcement
       case 20:
         return data.equipment.length > 0 // Equipment selection
       case 21:
@@ -2429,7 +2445,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 9:
+      case 18:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -2490,7 +2506,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 10:
+      case 19:
         return (
           <HabitReinforcementStepContent
             data={data}
@@ -2498,7 +2514,7 @@ export default function OnboardingScreen() {
             styles={styles}
           />
         )
-      case 11:
+      case 9:
         return (
           <View style={styles.sectionScreen}>
             <Text style={styles.sectionIndex}>2</Text>
@@ -2601,7 +2617,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      case 12:
+      case 10:
         // Stats Entry Step (Redesigned)
         const weightRange =
           weightUnit === 'kg'
@@ -2729,8 +2745,8 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )
-      // ========== Strength Level Intro (Step 14) ==========
-      case 13:
+      // ========== Strength Level Intro (Step 11) ==========
+      case 11:
         // Strength Level Intro
         return (
           <StrengthLevelIntroStep
@@ -2748,7 +2764,7 @@ export default function OnboardingScreen() {
         )
 
       // ========== Calorie Tracking Branch (Steps 15-19) ==========
-      case 14: {
+      case 12: {
         // Nutrition Opt-In Step
         return (
           <View style={styles.stepContainer}>
@@ -2799,7 +2815,7 @@ export default function OnboardingScreen() {
                   ]}
                   onPress={() => {
                     setData({ ...data, wantsCalorieTracking: false })
-                    setTimeout(() => setStep(20), 400) // Skip to plan section
+                    setTimeout(() => setStep(17), 400) // Skip to plan section
                   }}
                   hapticIntensity="light"
                 >
@@ -2825,7 +2841,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 15: {
+      case 13: {
         // Height Entry Step (stable non-Picker UI)
         const MIN_CM = 120
         const MAX_CM = 240
@@ -3040,7 +3056,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 16: {
+      case 14: {
         // Age/Birthday Entry Step
         const currentYear = new Date().getFullYear()
         const years = Array.from({ length: 82 }, (_, i) => (currentYear - 16 - i).toString()) // Ages 16-97
@@ -3218,7 +3234,7 @@ export default function OnboardingScreen() {
           </View>
         )
       }
-      case 17: {
+      case 15: {
         // Calorie Goal Selection Step
         const tdee = calculateEstimatedTDEE()
 
@@ -3297,7 +3313,7 @@ export default function OnboardingScreen() {
       }
       // ========== End Calorie Tracking Branch ==========
 
-      case 18: {
+      case 16: {
         const tdee = calculateEstimatedTDEE()
         const targetCalories = data.calorieGoal ?? tdee
         const dailyDelta = targetCalories - tdee
@@ -3353,7 +3369,7 @@ export default function OnboardingScreen() {
         )
       }
 
-      case 19:
+      case 17:
         return (
           <View style={styles.sectionScreen}>
             <Text style={styles.sectionIndex}>3</Text>
@@ -4084,7 +4100,7 @@ export default function OnboardingScreen() {
                     ? "Let's Go"
                     : step === 4
                     ? "Let's Get Started!"
-                    : step === 14 && strengthIntroPhase === 'rating'
+                    : step === 11 && strengthIntroPhase === 'rating'
                     ? 'Continue'
                     : step === 24
                     ? 'Get Started'
