@@ -811,13 +811,6 @@ const createStyles = (
       borderWidth: 0.5,
       borderColor: colors.border,
     },
-    exercisePlaceholder: {
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.bg,
-    },
     exerciseInfo: {
       flex: 1,
     },
