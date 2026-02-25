@@ -3054,13 +3054,20 @@ export function WorkoutChat({
                                             disabled={isSaving || isSaved}
                                             activeOpacity={0.85}
                                           >
-                                            <Ionicons
-                                              name={isSaved ? "checkmark-circle" : "add-circle"}
-                                              size={24}
-                                              color={colors.bg}
-                                            />
+                                            {isSaving ? (
+                                              <ActivityIndicator
+                                                size="small"
+                                                color={colors.bg}
+                                              />
+                                            ) : (
+                                              <Ionicons
+                                                name={isSaved ? "checkmark-circle" : "add-circle"}
+                                                size={24}
+                                                color={colors.bg}
+                                              />
+                                            )}
                                             <Text style={styles.foodLogActionButtonText}>
-                                              {buttonLabel}
+                                              {isSaving ? 'Logging...' : buttonLabel}
                                             </Text>
                                           </TouchableOpacity>
                                         )

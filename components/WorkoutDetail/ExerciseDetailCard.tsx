@@ -4,8 +4,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
-import { getLevelColor } from '@/hooks/useStrengthData'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
+import { getLevelColor } from '@/hooks/useStrengthData'
 import {
   estimateOneRepMaxKg,
   getProgressDeltaPoints,
@@ -82,7 +82,13 @@ export function ExerciseDetailCard({
 
   const exercise = workoutExercise.exercise
   const sets = workoutExercise.sets
-  const hasValidExercise = Boolean(exercise && sets.length > 0)
+  const hasValidSets = sets.length > 0
+  const fallbackExerciseName =
+    typeof workoutExercise.exercise_name === 'string'
+      ? workoutExercise.exercise_name
+      : 'Custom Exercise'
+  const exerciseName = exercise?.name || fallbackExerciseName
+  const exercisePressId = exercise?.id || workoutExercise.exercise_id || null
 
   const strengthProgress = useMemo(() => {
     if (!exercise || sets.length === 0) return null
@@ -143,7 +149,7 @@ export function ExerciseDetailCard({
     }
   }, [exercise, previousBest1RMKg, profile?.gender, profile?.weight_kg, sets])
 
-  if (!hasValidExercise) {
+  if (!hasValidSets) {
     return null
   }
 
@@ -230,16 +236,19 @@ export function ExerciseDetailCard({
       {/* Exercise name */}
       <TouchableOpacity
         style={styles.exerciseHeader}
-        onPress={() => onExercisePress?.(exercise.id)}
-        disabled={!onExercisePress}
+        onPress={() => {
+          if (!exercisePressId) return
+          onExercisePress?.(exercisePressId)
+        }}
+        disabled={!onExercisePress || !exercisePressId}
         activeOpacity={0.7}
       >
         <ExerciseMedia
-          gifUrl={exercise.gif_url}
+          gifUrl={exercise?.gif_url}
           mode="thumbnail"
           style={{ width: 56, height: 56, borderRadius: 14 }}
           autoPlay={false}
-          isCustom={!!exercise.created_by}
+          isCustom={exercise ? !!exercise.created_by : true}
         />
         <View
           style={[
@@ -249,7 +258,7 @@ export function ExerciseDetailCard({
         >
           <View style={styles.titleSection}>
             <Text style={[styles.exerciseName, { color: colors.textPrimary }]}>
-              {exercise.name}
+              {exerciseName}
             </Text>
           </View>
           {strengthProgress && (

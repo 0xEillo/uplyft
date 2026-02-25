@@ -1,25 +1,27 @@
 import { BlurredHeader } from '@/components/blurred-header'
 import { GlassIconButton } from '@/components/glass-icon-button'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
@@ -32,12 +34,15 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
-    getStandardsLadder,
-    getStrengthStandard,
-    hasStrengthStandards,
-    type StrengthLevel,
+  getStandardsLadder,
+  getStrengthStandard,
+  hasStrengthStandards,
+  type StrengthLevel,
 } from '@/lib/strength-standards'
+import { uploadExerciseImage } from '@/lib/utils/exercise-image-upload'
 import { Exercise, Profile } from '@/types/database.types'
+import { Image as ExpoImage } from 'expo-image'
+
 
 interface ExerciseRecord {
   weight: number
@@ -137,6 +142,8 @@ export default function ExerciseDetailScreen() {
   const [editMuscleGroup, setEditMuscleGroup] = useState('')
   const [editType, setEditType] = useState('')
   const [editEquipment, setEditEquipment] = useState('')
+  const [editImageUri, setEditImageUri] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [showMuscleGroupModal, setShowMuscleGroupModal] = useState(false)
   const [showTypeModal, setShowTypeModal] = useState(false)
   const [showEquipmentModal, setShowEquipmentModal] = useState(false)
@@ -213,10 +220,10 @@ export default function ExerciseDetailScreen() {
         }
 
         let nextHistory: WorkoutSessionRecord[] = []
-        if (exerciseData?.name) {
-          const historyData = await database.stats.getExerciseHistory(
+        if (exerciseId) {
+          const historyData = await database.stats.getExerciseHistoryById(
             statsUserId,
-            exerciseData.name,
+            exerciseId,
           )
 
           if (loadRequestIdRef.current !== requestId) return
@@ -225,7 +232,7 @@ export default function ExerciseDetailScreen() {
           type HistorySession = {
             date: string
             workout_exercises?: {
-              exercise: { name: string }
+              exercise_id: string
               sets: {
                 weight: number | null
                 reps: number | null
@@ -425,6 +432,7 @@ export default function ExerciseDetailScreen() {
     setEditMuscleGroup(exercise.muscle_group || '')
     setEditType(exercise.type || '')
     setEditEquipment(exercise.equipment || '')
+    setEditImageUri(null) // reset; current image shown from exercise.gif_url
     setIsEditing(true)
   }
 
@@ -437,6 +445,18 @@ export default function ExerciseDetailScreen() {
     }
 
     try {
+      let newGifUrl: string | undefined = undefined
+
+      // Upload new image if the user picked one
+      if (editImageUri) {
+        setIsUploadingImage(true)
+        try {
+          newGifUrl = await uploadExerciseImage(editImageUri, user.id, exerciseId)
+        } finally {
+          setIsUploadingImage(false)
+        }
+      }
+
       const updatedExercise = await database.exercises.update(
         exerciseId,
         user.id,
@@ -445,10 +465,12 @@ export default function ExerciseDetailScreen() {
           muscle_group: editMuscleGroup || undefined,
           type: editType || undefined,
           equipment: editEquipment || undefined,
+          ...(newGifUrl !== undefined ? { gif_url: newGifUrl } : {}),
         }
       )
-      
+
       setExercise(updatedExercise)
+      setEditImageUri(null)
       setIsEditing(false)
       Alert.alert('Success', 'Exercise updated successfully')
     } catch (error) {
@@ -457,6 +479,28 @@ export default function ExerciseDetailScreen() {
         'Error',
         error instanceof Error ? error.message : 'Failed to update exercise'
       )
+    }
+  }
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your photo library to upload an exercise image.',
+      )
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+
+    if (!result.canceled && result.assets.length > 0) {
+      setEditImageUri(result.assets[0].uri)
     }
   }
 
@@ -992,6 +1036,61 @@ export default function ExerciseDetailScreen() {
                   </Text>
                    <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
+              </View>
+
+              {/* Exercise Photo */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Exercise Photo</Text>
+                <TouchableOpacity
+                  onPress={handlePickImage}
+                  activeOpacity={0.8}
+                  style={styles.imagePickerContainer}
+                >
+                  {editImageUri ? (
+                    <ExpoImage
+                      source={{ uri: editImageUri }}
+                      style={styles.imagePickerPreview}
+                      contentFit="cover"
+                    />
+                  ) : exercise?.gif_url ? (
+                    <ExerciseMedia
+                      gifUrl={exercise.gif_url}
+                      mode="thumbnail"
+                      style={styles.imagePickerPreview}
+                      contentFit="cover"
+                      autoPlay={false}
+                    />
+                  ) : (
+                    <View style={[styles.imagePickerPlaceholder, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <Ionicons name="image-outline" size={36} color={colors.textTertiary} />
+                      <Text style={[styles.imagePickerPlaceholderText, { color: colors.textTertiary }]}>
+                        No photo yet
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.imagePickerOverlay}>
+                    <View style={styles.imagePickerCameraButton}>
+                      <Ionicons name="camera" size={18} color="#ffffff" />
+                      <Text style={styles.imagePickerCameraText}>
+                        {editImageUri || exercise?.gif_url ? 'Change Photo' : 'Add Photo'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {isUploadingImage && (
+                  <View style={styles.imageUploadingRow}>
+                    <ActivityIndicator size="small" color={colors.brandPrimary} />
+                    <Text style={[styles.imageUploadingText, { color: colors.textSecondary }]}>
+                      Uploading photo...
+                    </Text>
+                  </View>
+                )}
+
+                <Text style={[styles.imagePickerHint, { color: colors.textTertiary }]}>
+                  Tap to choose a photo from your library
+                </Text>
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -1640,5 +1739,67 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         color: '#FFF',
         fontSize: 12,
         fontWeight: '700',
+    },
+
+    // Image picker styles
+    imagePickerContainer: {
+      width: '100%',
+      height: 180,
+      borderRadius: 12,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    imagePickerPreview: {
+      width: '100%',
+      height: '100%',
+    },
+    imagePickerPlaceholder: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderStyle: 'dashed' as const,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
+    imagePickerPlaceholderText: {
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    imagePickerOverlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    imagePickerCameraButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    imagePickerCameraText: {
+      color: '#ffffff',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    imageUploadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+    },
+    imageUploadingText: {
+      fontSize: 13,
+    },
+    imagePickerHint: {
+      fontSize: 12,
+      marginTop: 6,
+      lineHeight: 16,
     },
   })

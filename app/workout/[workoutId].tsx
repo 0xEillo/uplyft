@@ -64,10 +64,12 @@ export default function WorkoutDetailScreen() {
 
   // Compute context for PR calculation
   const computeContext = useMemo(() => {
-    if (!user || !workout || !workout.created_at || !workout.date) return null
+    if (!workout || !workout.created_at || !workout.date) return null
+    const prUserId = workout.user_id ?? user?.id
+    if (!prUserId) return null
     return {
       sessionId: workout.id,
-      userId: user.id,
+      userId: prUserId,
       createdAt: workout.created_at,
       date: workout.date,
       exercises: (workout.workout_exercises || []).map((we) => ({

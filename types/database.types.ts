@@ -87,6 +87,7 @@ export interface WorkoutExercise {
   exercise_id: string
   order_index: number
   notes: string | null
+  exercise_name?: string | null
   created_at: string
 }
 

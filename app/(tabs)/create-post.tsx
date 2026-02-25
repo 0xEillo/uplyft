@@ -18,10 +18,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-  getExerciseSuggestion,
-  parseRepRange,
-  useExerciseAutocompleteGroup,
-  useShowConvertButton,
+    getExerciseSuggestion,
+    parseRepRange,
+    useExerciseAutocompleteGroup,
+    useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -36,25 +36,25 @@ import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
+import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearDraft as clearWorkoutDraft,
-  compactDraft as compactWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
-  saveDraftPatch as saveWorkoutDraftPatch,
+    clearDraft as clearWorkoutDraft,
+    compactDraft as compactWorkoutDraft,
+    loadPendingWorkout,
+    loadDraft as loadWorkoutDraft,
+    saveDraft as saveWorkoutDraft,
+    saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
-import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
-  generateWorkoutMessage,
-  parseCommitment,
+    generateWorkoutMessage,
+    parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-  Exercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    Exercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
@@ -62,25 +62,25 @@ import { TabActions, useFocusEffect, useNavigation } from '@react-navigation/nat
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Animated,
-  AppState,
-  Easing,
-  Keyboard,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    AppState,
+    Easing,
+    Keyboard,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import Reanimated, {
-  useAnimatedKeyboard,
-  useAnimatedStyle,
+    useAnimatedKeyboard,
+    useAnimatedStyle,
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -630,7 +630,37 @@ export default function CreatePostScreen() {
     toggleRecording,
     stopRecording,
   } = useAudioTranscription({
+    weightUnit,
+    onStructuredTranscriptionComplete: (data) => {
+      // Set title if extracted and not already set
+      if (data.title && !workoutTitle.trim()) {
+        setWorkoutTitle(data.title)
+      }
+
+      // Convert parsed exercises to StructuredExerciseDraft format
+      const structuredExercises: StructuredExerciseDraft[] = data.exercises.map(
+        (exercise) => ({
+          id: exercise.id,
+          name: exercise.name,
+          sets: exercise.sets.map((set) => ({
+            weight: set.weight,
+            reps: set.reps,
+            isWarmup: false,
+            lastWorkoutWeight: null,
+            lastWorkoutReps: null,
+            targetRepsMin: null,
+            targetRepsMax: null,
+            targetRestSeconds: null,
+          })),
+        }),
+      )
+
+      // Append structured exercises and enable structured mode
+      setStructuredData((prev) => [...prev, ...structuredExercises])
+      setIsStructuredMode(true)
+    },
     onTranscriptionComplete: (text) => {
+      // Fallback: if structured parsing fails, append raw text to notes
       setNotes((prev) => (prev ? `${prev}\n${text}` : text))
     },
   })

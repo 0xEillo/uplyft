@@ -100,7 +100,7 @@ type RecoverySessionResult = {
 /**
  * Map to normalize secondary muscle names to match primary muscle_group format
  * Secondary muscles in the database are lowercase and may use different naming
- * Primary muscle_group values are: Back, Biceps, Calves, Cardio, Chest, Core, Forearms, Full Body, Glutes, Hamstrings, Quads, Shoulders, Triceps
+ * Primary muscle_group values are: Back, Biceps, Calves, Cardio, Chest, Core, Forearms, Full Body, Glutes, Hamstrings, Quads, Shoulders, Traps, Triceps
  */
 const SECONDARY_MUSCLE_MAP: Record<string, string> = {
   // Direct mappings (lowercase to capitalized)
@@ -124,12 +124,18 @@ const SECONDARY_MUSCLE_MAP: Record<string, string> = {
   'rear deltoids': 'Shoulders',
   'front deltoids': 'Shoulders',
 
-  // Back variations
+  // Trap variations — must map to 'Traps' to match BODY_PART_TO_DATABASE_MUSCLE['trapezius']
+  'trapezius': 'Traps',
+  'traps': 'Traps',
+  'levator scapulae': 'Traps', // anatomically in the trap/neck region
+
+  // Lower back — must map to 'Lower Back' to match BODY_PART_TO_DATABASE_MUSCLE['lower-back']
+  'lower back': 'Lower Back',
+  'erector spinae': 'Lower Back', // common secondary muscle name for the same region
+
+  // Back variations (general upper/mid back, excluding lower back and traps)
   'lats': 'Back',
   'rhomboids': 'Back',
-  'trapezius': 'Back',
-  'traps': 'Back',
-  'lower back': 'Back',
   'upper back': 'Back',
 }
 

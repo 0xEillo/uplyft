@@ -6,6 +6,18 @@ import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
 const STORAGE_BUCKET_URL =
   'https://nsgezkxrgwtmnshulijs.supabase.co/storage/v1/object/public/exercise-gifs/'
 
+/**
+ * Resolves the full URL for an exercise media asset.
+ * Custom-uploaded images are stored as full URLs (https://...).
+ * System exercise GIFs are stored as relative paths and need the base URL prepended.
+ */
+function resolveExerciseMediaUrl(gifUrl: string): string {
+  if (gifUrl.startsWith('http://') || gifUrl.startsWith('https://')) {
+    return gifUrl
+  }
+  return `${STORAGE_BUCKET_URL}${gifUrl}`
+}
+
 type ExerciseMediaContentFit =
   | 'contain'
   | 'cover'
@@ -36,7 +48,7 @@ export const ExerciseMedia = memo(function ExerciseMedia({
   // Memoize the full URL to avoid recalculation
   const fullUrl = useMemo(() => {
     if (!gifUrl) return null
-    return `${STORAGE_BUCKET_URL}${gifUrl}`
+    return resolveExerciseMediaUrl(gifUrl)
   }, [gifUrl])
 
   if (!fullUrl || hasError) {
@@ -86,7 +98,7 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
 }) {
   const fullUrl = useMemo(() => {
     if (!gifUrl) return null
-    return `${STORAGE_BUCKET_URL}${gifUrl}`
+    return resolveExerciseMediaUrl(gifUrl)
   }, [gifUrl])
 
   if (!fullUrl) {

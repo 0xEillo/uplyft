@@ -65,67 +65,74 @@ export function formatWorkoutForDisplay(
 
   // Sort by order_index to preserve the original exercise order from the notepad
   const sortedExercises = [...workout.workout_exercises]
-    .filter((we) => we.exercise !== null)
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
 
   return sortedExercises.map((we) => {
-      const exercise = we.exercise!
-      const sets = we.sets || []
+    const exercise = we.exercise
+    const sets = we.sets || []
+    const fallbackName =
+      typeof we.exercise_name === 'string'
+        ? we.exercise_name
+        : 'Custom Exercise'
+    const exerciseName = exercise?.name || fallbackName
+    const exerciseId = exercise?.id || we.exercise_id || we.id
+    const exerciseGifUrl = exercise?.gif_url || null
+    const isCustomExercise = exercise ? !!exercise.created_by : true
 
-      if (sets.length === 0) {
-        return {
-          id: exercise.id,
-          name: exercise.name,
-          gifUrl: exercise.gif_url,
-          sets: 0,
-          reps: '-',
-          weight: '-',
-          hasVariedSets: false,
-          isCustom: !!exercise.created_by,
-        }
-      }
-
-      // Check if sets are varied (different reps or weights)
-      const allSameReps = sets.every((s) => s.reps === sets[0].reps)
-      const weights = sets
-        .map((s) => s.weight)
-        .filter((w): w is number => w !== null)
-      const allSameWeight =
-        weights.length === 0 || weights.every((w) => w === weights[0])
-      const hasVariedSets = !allSameReps || !allSameWeight
-
-      // Format reps
-      let repsDisplay: string
-      if (allSameReps) {
-        repsDisplay = sets[0].reps != null ? `${sets[0].reps}` : '--'
-      } else {
-        repsDisplay = sets.some((s) => s.reps == null) ? '--' : '...'
-      }
-
-      // Format weight
-      let weightDisplay: string
-      if (weights.length === 0) {
-        weightDisplay = 'BW' // Bodyweight
-      } else if (allSameWeight) {
-        const converted = kgToPreferred(weights[0], unit)
-        weightDisplay = `${converted.toFixed(unit === 'kg' ? 1 : 0)}`
-      } else {
-        weightDisplay = '...'
-      }
-
+    if (sets.length === 0) {
       return {
-        id: exercise.id,
-        name: exercise.name,
-        gifUrl: exercise.gif_url,
-        sets: sets.length,
-        reps: repsDisplay,
-        weight: weightDisplay,
-        hasVariedSets,
-        isCustom: !!exercise.created_by,
-        setDetails: sets.map((s) => ({
-          reps: s.reps,
-          weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
-        })),
+        id: exerciseId,
+        name: exerciseName,
+        gifUrl: exerciseGifUrl,
+        sets: 0,
+        reps: '-',
+        weight: '-',
+        hasVariedSets: false,
+        isCustom: isCustomExercise,
       }
-    })
+    }
+
+    // Check if sets are varied (different reps or weights)
+    const allSameReps = sets.every((s) => s.reps === sets[0].reps)
+    const weights = sets
+      .map((s) => s.weight)
+      .filter((w): w is number => w !== null)
+    const allSameWeight =
+      weights.length === 0 || weights.every((w) => w === weights[0])
+    const hasVariedSets = !allSameReps || !allSameWeight
+
+    // Format reps
+    let repsDisplay: string
+    if (allSameReps) {
+      repsDisplay = sets[0].reps != null ? `${sets[0].reps}` : '--'
+    } else {
+      repsDisplay = sets.some((s) => s.reps == null) ? '--' : '...'
+    }
+
+    // Format weight
+    let weightDisplay: string
+    if (weights.length === 0) {
+      weightDisplay = 'BW' // Bodyweight
+    } else if (allSameWeight) {
+      const converted = kgToPreferred(weights[0], unit)
+      weightDisplay = `${converted.toFixed(unit === 'kg' ? 1 : 0)}`
+    } else {
+      weightDisplay = '...'
+    }
+
+    return {
+      id: exerciseId,
+      name: exerciseName,
+      gifUrl: exerciseGifUrl,
+      sets: sets.length,
+      reps: repsDisplay,
+      weight: weightDisplay,
+      hasVariedSets,
+      isCustom: isCustomExercise,
+      setDetails: sets.map((s) => ({
+        reps: s.reps,
+        weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
+      })),
+    }
+  })
 }

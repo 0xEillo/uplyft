@@ -54,6 +54,58 @@ type ExploreRoutineQueryResult = ExploreRoutine & {
   })[]
 }
 
+type VisibleWorkoutExerciseExerciseDetailsRow = {
+  workout_exercise_id: string
+  id: string
+  name: string
+  muscle_group: Exercise['muscle_group']
+  type: string | null
+  equipment: string | null
+  created_by: string | null
+  created_at: string
+  aliases?: string[] | null
+  exercise_id?: string | null
+  gif_url?: string | null
+  target_muscles?: string[] | null
+  body_parts?: string[] | null
+  equipments?: string[] | null
+  secondary_muscles?: string[] | null
+  instructions?: string[] | null
+}
+
+type WorkoutWithNullableExerciseRelations = {
+  workout_exercises?: Array<{
+    id: string
+    exercise?: Exercise | null
+  }> | null
+}
+
+type VisibleWorkoutRoutineExerciseExerciseDetailsRow = {
+  workout_routine_exercise_id: string
+  id: string
+  name: string
+  muscle_group: Exercise['muscle_group']
+  type: string | null
+  equipment: string | null
+  created_by: string | null
+  created_at: string
+  aliases?: string[] | null
+  exercise_id?: string | null
+  gif_url?: string | null
+  target_muscles?: string[] | null
+  body_parts?: string[] | null
+  equipments?: string[] | null
+  secondary_muscles?: string[] | null
+  instructions?: string[] | null
+}
+
+type RoutineWithNullableExerciseRelations = {
+  workout_routine_exercises?: Array<{
+    id: string
+    exercise?: Exercise | null
+  }> | null
+}
+
 // Body log entry from Supabase before transformation
 type BodyLogEntryQueryResult = {
   id: string
@@ -156,6 +208,130 @@ const toNullableInteger = (value: number | null | undefined): number | null => {
   if (value === null || value === undefined) return null
   if (!Number.isFinite(value)) return null
   return Math.max(0, Math.round(value))
+}
+
+const hydrateMissingWorkoutExerciseRelations = async <
+  T extends WorkoutWithNullableExerciseRelations,
+>(
+  workouts: T[],
+): Promise<T[]> => {
+  if (!workouts.length) return workouts
+
+  const missingWorkoutExerciseIds = Array.from(
+    new Set(
+      workouts.flatMap((workout) =>
+        (workout.workout_exercises || [])
+          .filter((workoutExercise) => !workoutExercise.exercise)
+          .map((workoutExercise) => workoutExercise.id),
+      ),
+    ),
+  )
+
+  if (missingWorkoutExerciseIds.length === 0) {
+    return workouts
+  }
+
+  const { data, error } = await supabase.rpc(
+    'get_visible_workout_exercise_exercise_details',
+    {
+      p_workout_exercise_ids: missingWorkoutExerciseIds,
+    },
+  )
+
+  if (error) {
+    console.warn(
+      '[database] Failed to hydrate missing workout exercise relations:',
+      error,
+    )
+    return workouts
+  }
+
+  const rows = (data || []) as VisibleWorkoutExerciseExerciseDetailsRow[]
+  if (rows.length === 0) {
+    return workouts
+  }
+
+  const exerciseByWorkoutExerciseId = new Map(
+    rows.map((row) => {
+      const { workout_exercise_id, ...exercise } = row
+      return [workout_exercise_id, exercise as Exercise] as const
+    }),
+  )
+
+  for (const workout of workouts) {
+    for (const workoutExercise of workout.workout_exercises || []) {
+      if (workoutExercise.exercise) continue
+
+      const exercise = exerciseByWorkoutExerciseId.get(workoutExercise.id)
+      if (!exercise) continue
+
+      workoutExercise.exercise = exercise
+    }
+  }
+
+  return workouts
+}
+
+const hydrateMissingWorkoutRoutineExerciseRelations = async <
+  T extends RoutineWithNullableExerciseRelations,
+>(
+  routines: T[],
+): Promise<T[]> => {
+  if (!routines.length) return routines
+
+  const missingRoutineExerciseIds = Array.from(
+    new Set(
+      routines.flatMap((routine) =>
+        (routine.workout_routine_exercises || [])
+          .filter((routineExercise) => !routineExercise.exercise)
+          .map((routineExercise) => routineExercise.id),
+      ),
+    ),
+  )
+
+  if (missingRoutineExerciseIds.length === 0) {
+    return routines
+  }
+
+  const { data, error } = await supabase.rpc(
+    'get_visible_workout_routine_exercise_exercise_details',
+    {
+      p_workout_routine_exercise_ids: missingRoutineExerciseIds,
+    },
+  )
+
+  if (error) {
+    console.warn(
+      '[database] Failed to hydrate missing workout routine exercise relations:',
+      error,
+    )
+    return routines
+  }
+
+  const rows = (data || []) as VisibleWorkoutRoutineExerciseExerciseDetailsRow[]
+  if (rows.length === 0) {
+    return routines
+  }
+
+  const exerciseByRoutineExerciseId = new Map(
+    rows.map((row) => {
+      const { workout_routine_exercise_id, ...exercise } = row
+      return [workout_routine_exercise_id, exercise as Exercise] as const
+    }),
+  )
+
+  for (const routine of routines) {
+    for (const routineExercise of routine.workout_routine_exercises || []) {
+      if (routineExercise.exercise) continue
+
+      const exercise = exerciseByRoutineExerciseId.get(routineExercise.id)
+      if (!exercise) continue
+
+      routineExercise.exercise = exercise
+    }
+  }
+
+  return routines
 }
 
 export const database = {
@@ -827,8 +1003,33 @@ export const database = {
         .eq('id', id)
         .single()
 
-      if (error) throw error
-      return data as Exercise
+      if (!error && data) {
+        return data as Exercise
+      }
+
+      const shouldTryViewFallback =
+        error?.code === 'PGRST116' || isPrivacyViolation(error)
+
+      if (!shouldTryViewFallback) {
+        throw error
+      }
+
+      const { data: fallbackData, error: fallbackError } = await supabase.rpc(
+        'get_viewable_exercise_by_id',
+        { p_exercise_id: id },
+      )
+
+      if (fallbackError) throw fallbackError
+
+      const fallbackExercise = Array.isArray(fallbackData)
+        ? fallbackData[0]
+        : fallbackData
+
+      if (!fallbackExercise) {
+        throw error || new Error('Exercise not found')
+      }
+
+      return fallbackExercise as Exercise
     },
 
     async findByNames(names: string[]) {
@@ -1230,6 +1431,7 @@ export const database = {
         muscle_group?: string
         type?: string
         equipment?: string
+        gif_url?: string | null
       },
     ) {
       // First, verify the user owns this exercise
@@ -1426,6 +1628,8 @@ export const database = {
         return []
       }
 
+      await hydrateMissingWorkoutExerciseRelations(data)
+
       // Fetch profile for the user to display avatar/name
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -1485,6 +1689,8 @@ export const database = {
       if (!workouts || workouts.length === 0) {
         return []
       }
+
+      await hydrateMissingWorkoutExerciseRelations(workouts)
 
       // Fetch profiles for all unique user IDs in the workouts
       const uniqueUserIds = [...new Set(workouts.map((w) => w.user_id))]
@@ -1617,6 +1823,9 @@ export const database = {
       if (error) {
         throwIfPrivacyViolation(error)
       }
+      if (data) {
+        await hydrateMissingWorkoutExerciseRelations([data])
+      }
       return data as WorkoutSessionWithDetails
     },
 
@@ -1686,6 +1895,10 @@ export const database = {
           message: error.message,
         })
         throw error
+      }
+
+      if (data) {
+        await hydrateMissingWorkoutExerciseRelations([data])
       }
 
       return data as WorkoutSessionWithDetails
@@ -1902,6 +2115,26 @@ export const database = {
         )
         .eq('user_id', userId)
         .eq('workout_exercises.exercise.name', exerciseName)
+        .order('date', { ascending: true })
+
+      if (error) throw error
+      return data
+    },
+
+    async getExerciseHistoryById(userId: string, exerciseId: string) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          date,
+          workout_exercises!inner (
+            exercise_id,
+            sets (*)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .eq('workout_exercises.exercise_id', exerciseId)
         .order('date', { ascending: true })
 
       if (error) throw error
@@ -4069,6 +4302,9 @@ export const database = {
         .single()
 
       if (error) throw error
+      if (data) {
+        await hydrateMissingWorkoutRoutineExerciseRelations([data])
+      }
       return data as WorkoutRoutineWithDetails
     },
 
@@ -4093,6 +4329,9 @@ export const database = {
         .order('updated_at', { ascending: false })
 
       if (error) throw error
+      if (data?.length) {
+        await hydrateMissingWorkoutRoutineExerciseRelations(data)
+      }
       return data as WorkoutRoutineWithDetails[]
     },
 

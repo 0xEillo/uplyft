@@ -87,8 +87,10 @@ export function EditorToolbar({
     }),
   ).current
 
+  const isProcessing = isProcessingImage || isTranscribing
+
   useEffect(() => {
-    if (isProcessingImage) {
+    if (isProcessing) {
       spinValue.setValue(0)
       spinAnimation.current = Animated.loop(
         Animated.timing(spinValue, {
@@ -107,7 +109,7 @@ export function EditorToolbar({
     return () => {
       spinAnimation.current?.stop()
     }
-  }, [isProcessingImage, spinValue])
+  }, [isProcessing, spinValue])
 
   useEffect(() => {
     if (isIOSAccessory) return
@@ -209,15 +211,28 @@ export function EditorToolbar({
               {/* Microphone */}
               <View ref={micButtonRef} collapsable={false}>
                 <TouchableOpacity
-                  style={[styles.iosButton, isRecording && styles.activeButton]}
+                  style={[
+                    styles.iosButton,
+                    (isRecording || isTranscribing) && styles.activeButton,
+                  ]}
                   onPress={onMicPress}
                   disabled={isDisabled}
                 >
-                  <Ionicons
-                    name={isRecording ? 'stop' : 'mic-outline'}
-                    size={23}
-                    color={isRecording ? colors.surface : colors.textPrimary}
-                  />
+                  {isTranscribing ? (
+                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                      <Ionicons
+                        name="sync"
+                        size={23}
+                        color={colors.surface}
+                      />
+                    </Animated.View>
+                  ) : (
+                    <Ionicons
+                      name={isRecording ? 'stop' : 'mic-outline'}
+                      size={23}
+                      color={isRecording ? colors.surface : colors.textPrimary}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -315,15 +330,24 @@ export function EditorToolbar({
           {/* Microphone */}
           <View ref={micButtonRef} collapsable={false}>
             <TouchableOpacity
-              style={[styles.button, isRecording && styles.activeButton]}
+              style={[
+                styles.button,
+                (isRecording || isTranscribing) && styles.activeButton,
+              ]}
               onPress={onMicPress}
               disabled={isDisabled}
             >
-              <Ionicons
-                name={isRecording ? 'stop' : 'mic-outline'}
-                size={24}
-                color={isRecording ? colors.surface : colors.textPrimary}
-              />
+              {isTranscribing ? (
+                <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                  <Ionicons name="sync" size={24} color={colors.surface} />
+                </Animated.View>
+              ) : (
+                <Ionicons
+                  name={isRecording ? 'stop' : 'mic-outline'}
+                  size={24}
+                  color={isRecording ? colors.surface : colors.textPrimary}
+                />
+              )}
             </TouchableOpacity>
           </View>
 
