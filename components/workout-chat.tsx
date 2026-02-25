@@ -2417,7 +2417,7 @@ export function WorkoutChat({
                   debugLabel="plan-actions-group"
                   style={[
                     styles.headerActionGroupGlass,
-                    { top: Math.max(insets.top - 38, 0) },
+                    { top: 8 },
                   ]}
                 >
                   <View style={styles.headerActionGroup}>
@@ -2858,11 +2858,20 @@ export function WorkoutChat({
                                             {foodCardLabel}
                                           </Text>
                                         </View>
-                                        <View
+                                        <TouchableOpacity
+                                          activeOpacity={0.7}
                                           style={[
                                             styles.foodConfidenceBadge,
-                                            { backgroundColor: foodConfidenceBadgeBg },
+                                            { backgroundColor: foodConfidenceBadgeBg, flexDirection: 'row', alignItems: 'center', gap: 4 },
                                           ]}
+                                          onPress={() => {
+                                            haptic('light')
+                                            Alert.alert(
+                                              'AI Confidence',
+                                              'This indicates how certain the AI is about its nutritional estimate based on your input: \n\n• High: Very certain (e.g., clear photo, exact description). \n• Medium: Good estimate, standard portion assumption.\n• Low: Best guess, details unclear.',
+                                              [{ text: 'Got it' }]
+                                            )
+                                          }}
                                         >
                                           <Text
                                             style={[
@@ -2872,7 +2881,8 @@ export function WorkoutChat({
                                           >
                                             {foodConfidenceLabel}
                                           </Text>
-                                        </View>
+                                          <Ionicons name="information-circle-outline" size={14} color={foodConfidenceColor} />
+                                        </TouchableOpacity>
                                       </View>
 
                                       {/* Calories Row (Full Width) */}
