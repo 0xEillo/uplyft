@@ -10,15 +10,16 @@ import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -71,8 +72,9 @@ export function Paywall({
 
   // Plans array matching trial-offer layout
   const plans = useMemo(() => {
-    const monthlyPrice = monthlyPackage?.product.priceString || 'US$5.99'
-    const yearlyPrice = yearlyPackage?.product.priceString || 'US$24.99'
+    const cleanPrice = (price?: string) => price?.replace(/^US(?=\$)/, '')
+    const monthlyPrice = cleanPrice(monthlyPackage?.product.priceString) || '$5.99'
+    const yearlyPrice = cleanPrice(yearlyPackage?.product.priceString) || '$24.99'
 
     // Calculate per month price for yearly plan
     const extractPrice = (priceStr: string) => {
@@ -99,7 +101,9 @@ export function Paywall({
         package: monthlyPackage,
         label: 'Monthly',
         subtitle: null,
+        pricePrefix: null,
         price: `${monthlyPrice} / mo.`,
+        monthlyPrice: monthlyPrice,
         popular: false,
         bestValue: false,
       },
@@ -107,16 +111,20 @@ export function Paywall({
         type: 'yearly',
         package: yearlyPackage,
         label: 'Yearly',
-        subtitle: `${yearlyPrice} / yr.`,
+        subtitle: null,
+        pricePrefix: null,
         price: `${perMonthFormatted}.`,
+        yearlyPrice: yearlyPrice,
+        perMonthPrice: perMonthFormatted,
         popular: false,
         bestValue: true,
-        badge: '70% OFF Limited Time Offer',
+        badge: '7 DAYS FREE',
       },
     ]
   }, [yearlyPackage, monthlyPackage])
 
   const selectedPackage = plans[selectedPlanIndex].package
+  const isYearlySelected = plans[selectedPlanIndex].type === 'yearly'
 
   // Get hero image based on user gender (if available)
   const getHeroImage = () => {
@@ -124,8 +132,8 @@ export function Paywall({
     return require('../assets/images/onboarding/male_muscle_flex.png')
   }
 
-  // Button text - always show "Start Free Trial" since trial is default
-  const buttonText = 'Try 7 days free'
+  // Button text based on the presence of a trial
+  const buttonText = isYearlySelected ? 'Try 7 days free' : 'Continue'
 
   const handleReminderToggle = async (value: boolean) => {
     if (value) {
@@ -163,9 +171,9 @@ export function Paywall({
         price_string: selectedPackage.product.priceString,
         price: selectedPackage.product.price,
         currency: selectedPackage.product.currencyCode,
-        trial_enabled: true,
-        trial_duration_days: 7,
-        reminder_enabled: isReminderEnabled,
+        trial_enabled: isYearlySelected,
+        trial_duration_days: isYearlySelected ? 7 : 0,
+        reminder_enabled: isYearlySelected ? isReminderEnabled : false,
         source_screen: 'paywall',
         subscription_action: 'started',
       })
@@ -206,9 +214,9 @@ export function Paywall({
           price_string: selectedPackage.product.priceString,
           price: selectedPackage.product.price,
           currency: selectedPackage.product.currencyCode,
-          trial_enabled: true,
-          trial_duration_days: 7,
-          reminder_enabled: isReminderEnabled,
+          trial_enabled: isYearlySelected,
+          trial_duration_days: isYearlySelected ? 7 : 0,
+          reminder_enabled: isYearlySelected ? isReminderEnabled : false,
           source_screen: 'paywall',
           subscription_action: 'completed',
           entitlement_granted: true,
@@ -336,22 +344,43 @@ export function Paywall({
               <View />
             )}
 
-            <TouchableOpacity
-              style={styles.restoreButton}
-              onPress={handleRestore}
-              disabled={isRestoring || isPurchasing}
-            >
-              {isRestoring ? (
-                <ActivityIndicator size="small" color={colors.textPrimary} />
-              ) : (
-                <Text style={styles.restoreButtonText}>Restore</Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.headerRightButtons}>
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://www.repaifit.app/terms')}
+                style={styles.headerTextButton}
+              >
+                <Text style={styles.headerTextButtonText}>Terms</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://www.repaifit.app/legal/privacy')}
+                style={styles.headerTextButton}
+              >
+                <Text style={styles.headerTextButtonText}>Privacy</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.headerTextButton}
+                onPress={handleRestore}
+                disabled={isRestoring || isPurchasing}
+              >
+                {isRestoring ? (
+                  <ActivityIndicator size="small" color={colors.textPrimary} />
+                ) : (
+                  <Text style={styles.headerTextButtonText}>Restore</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
         {/* Content Section */}
-        <View style={styles.whiteSection}>
+        <ScrollView 
+          style={styles.whiteSection}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           {/* Title */}
           <View style={styles.heroSection}>
             <Animated.Text
@@ -385,24 +414,7 @@ export function Paywall({
           <View style={styles.flexSpacer} />
 
           {/* Bottom Section - All grouped together */}
-          <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-            {/* Reminder Toggle */}
-            <View style={styles.trialToggleContainer}>
-              <View style={styles.reminderTextContainer}>
-                <Text style={styles.trialToggleText}>
-                  Remind me before my trial ends
-                </Text>
-              </View>
-              <View style={styles.switchContainer}>
-                <Switch
-                  value={isReminderEnabled}
-                  onValueChange={handleReminderToggle}
-                  trackColor={{ false: colors.border, true: colors.textPrimary }}
-                  thumbColor={colors.surface}
-                  ios_backgroundColor={colors.border}
-                />
-              </View>
-            </View>
+          <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom + 16, 40) }]}>
 
             {/* Plan Selection Cards */}
             <View style={styles.plansContainer}>
@@ -451,6 +463,9 @@ export function Paywall({
                             isSelected && styles.planPriceSelected,
                           ]}
                         >
+                          {plan.pricePrefix && (
+                            <Text style={styles.planPricePrefix}>{plan.pricePrefix}</Text>
+                          )}
                           {plan.price}
                         </Text>
                       </View>
@@ -458,6 +473,14 @@ export function Paywall({
                   </TouchableOpacity>
                 )
               })}
+            </View>
+
+            {/* Reassurance Text */}
+            <View style={styles.reassuranceContainer}>
+              <Ionicons name="checkmark" size={18} color={colors.textPrimary} style={{ marginTop: 1 }} />
+              <Text style={styles.reassuranceText}>
+                {isYearlySelected ? 'No Payment Due Now' : 'Cancel anytime'}
+              </Text>
             </View>
 
             {/* CTA Button */}
@@ -474,12 +497,17 @@ export function Paywall({
               )}
             </TouchableOpacity>
 
-            <View style={styles.noPaymentContainer}>
-              <Ionicons name="checkmark" size={16} color={colors.textSecondary} />
-              <Text style={styles.noPaymentText}>No payment due now</Text>
+            <View style={styles.autoRenewContainer}>
+              <Text style={styles.autoRenewText}>
+                {isYearlySelected ? (
+                  <>7 days free, then <Text style={styles.autoRenewTextBold}>{plans[1].yearlyPrice} per year</Text> ({plans[1].perMonthPrice})</>
+                ) : (
+                  <>just <Text style={styles.autoRenewTextBold}>{plans[0].monthlyPrice} per month</Text></>
+                )}
+              </Text>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   )
@@ -496,10 +524,10 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
   // Dynamic hero image height - balanced for all screens
   // This gives a good proportion while leaving room for bottom content
   const heroImageHeight = isSmallScreen 
-    ? screenHeight * 0.34 
+    ? screenHeight * 0.32 
     : isMediumScreen 
-      ? screenHeight * 0.40 
-      : screenHeight * 0.42
+      ? screenHeight * 0.36 
+      : screenHeight * 0.38
 
   // Dynamic spacing
   const heroSectionPaddingTop = isSmallScreen ? 12 : isMediumScreen ? 16 : 24
@@ -559,15 +587,19 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 4 },
     },
-    restoreButton: {
-      backgroundColor: colors.surfaceSubtle,
-      paddingHorizontal: isSmallScreen ? 14 : 20,
-      paddingVertical: isSmallScreen ? 8 : 10,
-      borderRadius: isSmallScreen ? 18 : 22,
+    headerRightButtons: {
+      flexDirection: 'row',
+      gap: 8,
     },
-    restoreButtonText: {
-      fontSize: isSmallScreen ? 13 : 15,
-      fontWeight: '700',
+    headerTextButton: {
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+      paddingHorizontal: isSmallScreen ? 10 : 12,
+      paddingVertical: isSmallScreen ? 6 : 8,
+      borderRadius: isSmallScreen ? 16 : 18,
+    },
+    headerTextButtonText: {
+      fontSize: isSmallScreen ? 11 : 12,
+      fontWeight: '600',
       color: colors.textPrimary,
     },
     whiteSection: {
@@ -710,13 +742,16 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       fontWeight: '700',
     },
     planPrice: {
-      fontSize: isSmallScreen ? 15 : 17,
+      fontSize: isSmallScreen ? 13 : 15,
       fontWeight: '600',
       color: colors.textSecondary,
     },
     planPriceSelected: {
       color: colors.textPrimary,
       fontWeight: '700',
+    },
+    planPricePrefix: {
+      fontSize: isSmallScreen ? 11 : 13,
     },
     planSubtitle: {
       fontSize: isSmallScreen ? 11 : 13,
@@ -772,17 +807,28 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       color: colors.bg,
       letterSpacing: 0.3,
     },
-    noPaymentContainer: {
+    reassuranceContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: isSmallScreen ? 12 : 16,
-      gap: 4,
+      marginBottom: isSmallScreen ? 10 : 14,
+      gap: 6,
     },
-    noPaymentText: {
-      fontSize: isSmallScreen ? 12 : 13,
+    reassuranceText: {
+      fontSize: isSmallScreen ? 13 : 14,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: colors.textPrimary,
+    },
+    autoRenewContainer: {
+      alignItems: 'center',
+      marginTop: isSmallScreen ? 12 : 16,
+    },
+    autoRenewText: {
+      fontSize: isSmallScreen ? 11 : 12,
+      color: colors.textPrimary,
+    },
+    autoRenewTextBold: {
+      fontWeight: '700',
     },
   })
 }
