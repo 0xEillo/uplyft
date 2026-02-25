@@ -16,6 +16,7 @@ import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useTutorial } from '@/contexts/tutorial-context'
+import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
@@ -581,6 +582,7 @@ export function WorkoutChat({
   const inputRef = useRef<TextInput>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [inputHeight, setInputHeight] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [selectedImages, setSelectedImages] = useState<string[]>([])
@@ -644,6 +646,28 @@ export function WorkoutChat({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+
+  const {
+    isRecording,
+    isTranscribing,
+    toggleRecording,
+    stopRecording,
+  } = useAudioTranscription({
+    weightUnit,
+    onTranscriptionComplete: (text) => {
+      const transcribedText = text.trim()
+      if (transcribedText) {
+        // Send directly to chat
+        const combinedText = input.trim() 
+          ? `${input.trim()} ${transcribedText}`
+          : transcribedText
+        
+        setInput('')
+        setInputHeight(0)
+        handleSendMessage(undefined, { overrideInput: combinedText })
+      }
+    },
+  })
   const bottomSafeInset =
     Platform.OS === 'ios' ? Math.min(insets.bottom, 34) : insets.bottom
   // Native tab bar height (49pt on iOS) — not part of RN layout, so we must account for it manually
@@ -1413,15 +1437,16 @@ export function WorkoutChat({
       existingUserContent?: string
       existingUserImages?: string[]
       forceImages?: string[] // bypass selectedImages state for immediate sends
+      overrideInput?: string // bypass input state for immediate sends
       scanMode?: 'food_label'  // routes request to Gemini OCR instead of GPT-4o
     },
   ) => {
     const isResend = Boolean(options?.existingUserMessageId)
     const effectiveImages = options?.forceImages ?? (isResend ? (options?.existingUserImages ?? []) : selectedImages)
     const hasImages = effectiveImages.length > 0
-    const typedInput = isResend
+    const typedInput = options?.overrideInput?.trim() || (isResend
       ? options?.existingUserContent?.trim() || ''
-      : input.trim()
+      : input.trim())
     const messageContent =
       hiddenPrompt || typedInput || (hasImages ? 'Please log this meal.' : '')
     if ((!messageContent && !hasImages) || isLoading) return
@@ -1447,9 +1472,10 @@ export function WorkoutChat({
       ? [...(options?.existingUserImages || [])]
       : [...selectedImages]
 
-    // Clear input immediately after validation if not hidden prompt
-    if (!hiddenPrompt && !isResend) {
+    // Clear input immediately after validation if not hidden prompt and not overriding
+    if (!hiddenPrompt && !isResend && !options?.overrideInput) {
       setInput('')
+      setInputHeight(0)
       setSelectedImages([])
       inputRef.current?.clear()
       Keyboard.dismiss()
@@ -1733,6 +1759,7 @@ export function WorkoutChat({
     haptic('light')
     setMessages([])
     setInput('')
+    setInputHeight(0)
     setSelectedImages([])
     setFoodActionState({})
     setLoggedMealIdByMessage({})
@@ -3251,7 +3278,7 @@ export function WorkoutChat({
             </ScrollView>
 
             {/* Suggestions Row */}
-            {!generatedPlanContent && !planningState.isActive && !messages.some(m => m.role === 'user') && (
+            {!generatedPlanContent && !planningState.isActive && !messages.some(m => m.role === 'user') && !input.trim() && (
               <View style={styles.suggestionsContainer}>
                 <ScrollView
                   horizontal
@@ -3419,10 +3446,24 @@ export function WorkoutChat({
                 </ScrollView>
               )}
 
-              {/* Input Row */}
+                {/* Input Row */}
               <View style={styles.inputWrapper}>
-                {/* Add Image Button - hidden when hideImagePicker is true */}
-                {!hideImagePicker && (
+                {/* Left button: cancel during recording or image picker otherwise */}
+                {isRecording || isTranscribing ? (
+                  <LiquidGlassSurface
+                    key={`plan-cancel-glass-${composerGlassKey}`}
+                    style={styles.addImageButtonGlass}
+                    debugLabel="plan-cancel-button"
+                  >
+                    <TouchableOpacity
+                      style={styles.addImageButton}
+                      onPress={stopRecording}
+                      disabled={isTranscribing}
+                    >
+                      <Ionicons name="square" size={14} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </LiquidGlassSurface>
+                ) : !hideImagePicker && (
                   <LiquidGlassSurface
                     key={`plan-image-button-glass-${composerGlassKey}`}
                     style={styles.addImageButtonGlass}
@@ -3442,52 +3483,95 @@ export function WorkoutChat({
                   </LiquidGlassSurface>
                 )}
 
+                {/* Main input pill — always LiquidGlassSurface */}
                 <LiquidGlassSurface
                   key={`plan-chat-input-glass-${composerGlassKey}`}
                   style={styles.textInputGlass}
                   debugLabel="plan-chat-input"
                 >
                   <View style={styles.textInputContainer}>
-                    <TextInput
-                      ref={inputRef}
-                      style={styles.input}
-                      placeholder={
-                        generatedPlanContent
-                          ? 'Make changes to your plan...'
-                          : `Chat with ${coachName}...`
-                      }
-                      placeholderTextColor={colors.textPlaceholder}
-                      value={input}
-                      onChangeText={setInput}
-                      multiline
-                      maxLength={500}
-                      returnKeyType="send"
-                      onSubmitEditing={() => handleSendMessage()}
-                      blurOnSubmit={false}
-                      editable={!isLoading}
-                    />
-
-                    <TouchableOpacity
-                      style={[
-                        styles.sendButton,
-                        ((!input.trim() && selectedImages.length === 0) ||
-                          isLoading) &&
-                          styles.sendButtonDisabled,
-                      ]}
-                      onPress={() => handleSendMessage()}
-                      disabled={
-                        (!input.trim() && selectedImages.length === 0) || isLoading
-                      }
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.textPlaceholder}
+                    {/* Content area: visualizer OR text input */}
+                    {isRecording ? (
+                      /* Waveform visualizer — smooth bell-curve, no spike */
+                      <View style={styles.visualizerContainer}>
+                        {Array.from({ length: 40 }).map((_, i) => {
+                          // Normalised position 0→1 across the bar array
+                          const t = i / 39
+                          // Bell curve: tall at centre (~0.75), short at edges
+                          const bell = Math.exp(-Math.pow((t - 0.75) * 4, 2))
+                          const h = 4 + bell * 20          // range: 4 – 24 pt
+                          const opacity = 0.12 + bell * 0.75 // range: 0.12 – 0.87
+                          return (
+                            <View
+                              key={`bar-${i}`}
+                              style={[styles.visualizerBar, { height: h, opacity }]}
+                            />
+                          )
+                        })}
+                      </View>
+                    ) : (
+                      <View style={styles.inputInnerWrapper}>
+                        <TextInput
+                          ref={inputRef}
+                          style={styles.input}
+                          placeholder={
+                            generatedPlanContent
+                              ? 'Make changes to your plan...'
+                              : 'Ask anything'
+                          }
+                          placeholderTextColor={colors.textPlaceholder}
+                          value={input}
+                          onChangeText={setInput}
+                          multiline
+                          maxLength={500}
+                          returnKeyType="send"
+                          onSubmitEditing={() => handleSendMessage()}
+                          blurOnSubmit={false}
+                          editable={!isLoading && !isTranscribing}
+                          onContentSizeChange={(e) => {
+                            const h = e.nativeEvent.contentSize.height
+                            setInputHeight(Math.min(Math.max(h, 22), 120))
+                          }}
+                          scrollEnabled={inputHeight >= 120}
                         />
-                      ) : (
-                        <Ionicons name="arrow-up" size={20} color={colors.surface} />
-                      )}
-                    </TouchableOpacity>
+                        {/* Mic icon — visible only when input is empty */}
+                        {!input.trim() && (
+                          <TouchableOpacity
+                            style={styles.micButtonInside}
+                            onPress={toggleRecording}
+                            disabled={isLoading}
+                          >
+                            <Ionicons name="mic-outline" size={19} color={colors.textPlaceholder} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Right action button */}
+                    {isRecording || isTranscribing ? (
+                      <TouchableOpacity
+                        style={[styles.sendButton, { backgroundColor: colors.textPrimary }]}
+                        onPress={toggleRecording}
+                        disabled={isTranscribing}
+                      >
+                        {isTranscribing
+                          ? <ActivityIndicator size="small" color={colors.surface} />
+                          : <Ionicons name="arrow-up" size={17} color={colors.surface} />}
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[
+                          styles.sendButton,
+                          ((!input.trim() && selectedImages.length === 0) || isLoading) && styles.sendButtonDisabled,
+                        ]}
+                        onPress={() => handleSendMessage()}
+                        disabled={(!input.trim() && selectedImages.length === 0) || isLoading}
+                      >
+                        {isLoading
+                          ? <ActivityIndicator size="small" color={colors.surface} />
+                          : <Ionicons name="arrow-up" size={17} color={colors.surface} />}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </LiquidGlassSurface>
               </View>
@@ -4045,51 +4129,70 @@ function createStyles(
     },
     textInputGlass: {
       flex: 1,
-      borderRadius: 24,
-      minHeight: 44,
+      borderRadius: 20,
     },
     textInputContainer: {
-      flex: 1,
       flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'transparent',
-      borderRadius: 24,
+      alignItems: 'flex-end',
+      paddingLeft: 14,
       paddingRight: 4,
-      paddingLeft: 16,
-      paddingVertical: 4,
-      minHeight: 44,
-      borderWidth: 0,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      paddingBottom: 4,
+      paddingTop: 4,
+      minHeight: 40,
     },
     input: {
       flex: 1,
-      paddingTop: Platform.OS === 'ios' ? 2 : 4,
-      paddingBottom: Platform.OS === 'ios' ? 4 : 4,
-      marginRight: 8,
-      fontSize: 17,
-      lineHeight: Platform.OS === 'ios' ? 26 : 23,
+      fontSize: 16,
+      lineHeight: 22,
       color: colors.textPrimary,
-      minHeight: Platform.OS === 'ios' ? 24 : 22,
-      maxHeight: 100,
-      textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
-      transform: [{ translateY: Platform.OS === 'ios' ? -2 : 0 }],
+      minHeight: 32,
+      maxHeight: 120,
+      textAlignVertical: 'top',
+      paddingTop: Platform.OS === 'ios' ? 5 : 0,
+      paddingBottom: Platform.OS === 'ios' ? 5 : 0,
+      marginRight: 6,
+    },
+    inputInnerWrapper: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+    },
+    visualizerContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 4,
+      overflow: 'hidden',
+      gap: 3,
+    },
+    recordingText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginRight: 6,
+    },
+    visualizerBar: {
+      width: 2.5,
+      borderRadius: 2,
+      backgroundColor: colors.textSecondary,
+      height: 8,
+    },
+    micButtonInside: {
+      padding: 6,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     sendButton: {
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.brandPrimary,
+      backgroundColor: colors.textPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 1,
+      flexShrink: 0,
     },
     sendButtonDisabled: {
       backgroundColor: colors.textPlaceholder,
-      opacity: 0.5,
+      opacity: 0.4,
     },
     loadingMessageContainer: {
       flexDirection: 'row',
