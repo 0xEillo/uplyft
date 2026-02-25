@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 0,
+    paddingBottom: 8,
   },
   headerButton: {
     width: 40,
