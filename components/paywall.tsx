@@ -353,7 +353,7 @@ export function Paywall({
               </TouchableOpacity>
               
               <TouchableOpacity
-                onPress={() => Linking.openURL('https://www.repaifit.app/legal/privacy')}
+                onPress={() => Linking.openURL('https://www.repaifit.app/privacy')}
                 style={styles.headerTextButton}
               >
                 <Text style={styles.headerTextButtonText}>Privacy</Text>
