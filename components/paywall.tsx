@@ -60,6 +60,10 @@ export function Paywall({
     yearly: yearlyPackage,
   } = useRevenueCatPackages(offerings)
 
+  // Remote toggle: RevenueCat Offering metadata "displayYearlyPrice" (default true for app review)
+  const displayYearlyPrice =
+    (offerings?.metadata?.['displayYearlyPrice'] as boolean | undefined) !== false
+
   // Track paywall shown when modal becomes visible
   useEffect(() => {
     if (visible) {
@@ -113,7 +117,7 @@ export function Paywall({
         label: 'Yearly',
         subtitle: null,
         pricePrefix: null,
-        price: `${perMonthFormatted}.`,
+        price: displayYearlyPrice ? `${yearlyPrice} / yr.` : `${perMonthFormatted}.`,
         yearlyPrice: yearlyPrice,
         perMonthPrice: perMonthFormatted,
         popular: false,
@@ -121,7 +125,7 @@ export function Paywall({
         badge: '7 DAYS FREE',
       },
     ]
-  }, [yearlyPackage, monthlyPackage])
+  }, [yearlyPackage, monthlyPackage, displayYearlyPrice])
 
   const selectedPackage = plans[selectedPlanIndex].package
   const isYearlySelected = plans[selectedPlanIndex].type === 'yearly'

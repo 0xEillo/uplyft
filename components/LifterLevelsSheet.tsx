@@ -129,7 +129,10 @@ export function LifterLevelsSheet({
           <View style={styles.contentScrim} pointerEvents="none" />
 
           <View style={styles.closeFloating}>
-            <LiquidGlassSurface style={styles.closeShell} debugLabel="lifter-level-close">
+            <LiquidGlassSurface
+              style={styles.closeShell}
+              debugLabel="lifter-level-close"
+            >
               <TouchableOpacity
                 onPress={onClose}
                 style={styles.closeButton}
@@ -178,7 +181,13 @@ export function LifterLevelsSheet({
                       {isUnranked ? 'Unranked' : currentLevel}
                     </Text>
                     {score != null && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
                         <Text style={styles.currentScoreGray}>{score} pts</Text>
                       </View>
                     )}
@@ -192,7 +201,6 @@ export function LifterLevelsSheet({
                     />
                   </View>
                 </View>
-
               </LiquidGlassSurface>
 
               <View style={styles.gridHeader}>
@@ -207,14 +215,16 @@ export function LifterLevelsSheet({
                   const tileStatusLabel = isCurrent
                     ? 'Current'
                     : isLocked
-                      ? 'Locked'
-                      : 'Unlocked'
+                    ? 'Locked'
+                    : 'Unlocked'
                   const tileStatusIcon: keyof typeof Ionicons.glyphMap = isCurrent
                     ? 'star'
                     : isLocked
-                      ? 'lock-closed'
-                      : 'checkmark-circle'
-                  const tileStatusColor = isLocked ? colors.textTertiary : levelColor
+                    ? 'lock-closed'
+                    : 'checkmark-circle'
+                  const tileStatusColor = isLocked
+                    ? colors.textTertiary
+                    : levelColor
                   const tilePillBackground = isLocked
                     ? isDark
                       ? 'rgba(255,255,255,0.22)'
@@ -225,7 +235,8 @@ export function LifterLevelsSheet({
                     normalizedMilestoneMap.get(
                       level.toLowerCase().replace(/\s+/g, ''),
                     )
-                  const shouldRenderMilestone = showMilestones || !!milestoneLabel
+                  const shouldRenderMilestone =
+                    showMilestones || !!milestoneLabel
 
                   return (
                     <LiquidGlassSurface
@@ -234,9 +245,14 @@ export function LifterLevelsSheet({
                         styles.badgeTile,
                         isLocked && styles.badgeTileLocked,
                         !isLocked && styles.badgeTileCurrent,
-                        !isLocked && { borderColor: levelColor, borderWidth: 2 },
+                        !isLocked && {
+                          borderColor: levelColor,
+                          borderWidth: 2,
+                        },
                       ]}
-                      debugLabel={`lifter-level-${level.toLowerCase().replace(/\s+/g, '-')}`}
+                      debugLabel={`lifter-level-${level
+                        .toLowerCase()
+                        .replace(/\s+/g, '-')}`}
                     >
                       {!isLocked && (
                         <LinearGradient
@@ -249,22 +265,29 @@ export function LifterLevelsSheet({
                       )}
 
                       <View style={styles.badgeVisualWrap}>
-                          <LevelBadge
-                            level={level}
-                            size="large"
-                            showTooltipOnPress={false}
-                            style={isLocked ? styles.lockedBadge : undefined}
-                          />
-                          {isLocked && (
-                            <View style={styles.lockIconBadge}>
-                              <Ionicons name="lock-closed" size={12} color={colors.textPrimary} />
-                            </View>
-                          )}
+                        <LevelBadge
+                          level={level}
+                          size="large"
+                          showTooltipOnPress={false}
+                          style={isLocked ? styles.lockedBadge : undefined}
+                        />
+                        {isLocked && (
+                          <View style={styles.lockIconBadge}>
+                            <Ionicons
+                              name="lock-closed"
+                              size={12}
+                              color={colors.textPrimary}
+                            />
+                          </View>
+                        )}
                       </View>
 
                       <View style={styles.textStack}>
                         <Text
-                          style={[styles.badgeName, isLocked && styles.badgeNameLocked]}
+                          style={[
+                            styles.badgeName,
+                            isLocked && styles.badgeNameLocked,
+                          ]}
                           numberOfLines={2}
                         >
                           {level}
@@ -295,14 +318,24 @@ export function LifterLevelsSheet({
                         )}
                       </View>
 
-                      <View style={[styles.badgeStatusPill, { backgroundColor: tilePillBackground }]}>
+                      <View
+                        style={[
+                          styles.badgeStatusPill,
+                          { backgroundColor: tilePillBackground },
+                        ]}
+                      >
                         <Ionicons
                           name={tileStatusIcon}
                           size={12}
                           color={tileStatusColor}
                           style={styles.badgeStatusIcon}
                         />
-                        <Text style={[styles.badgeStatusText, { color: tileStatusColor }]}>
+                        <Text
+                          style={[
+                            styles.badgeStatusText,
+                            { color: tileStatusColor },
+                          ]}
+                        >
                           {tileStatusLabel}
                         </Text>
                       </View>
@@ -325,41 +358,41 @@ const createStyles = (
 ) => {
   const palette = isDark
     ? {
-      backdrop: 'rgba(5,7,10,0.96)',
-      closeShellBg: 'rgba(22,24,28,0.86)',
-      closeShellBorder: 'rgba(255,255,255,0.20)',
-      headerShellBg: 'rgba(24,26,30,0.84)',
-      headerShellBorder: 'rgba(255,255,255,0.16)',
-      contentScrim: 'rgba(14,16,20,0.20)',
-      currentCardBg: 'rgba(26,28,32,0.82)',
-      currentCardBorder: 'rgba(255,255,255,0.18)',
-      progressTrack: 'rgba(255,255,255,0.30)',
-      badgeTileBg: 'rgba(34,37,43,0.86)',
-      badgeTileBorder: 'rgba(255,255,255,0.24)',
-      badgeTileLockedBg: 'rgba(18,20,24,0.90)',
-      badgeTileLockedBorder: 'rgba(255,255,255,0.14)',
-      badgeTileCurrentBorder: 'rgba(255,255,255,0.60)',
-      lockBadgeBg: 'rgba(26,28,32,0.84)',
-      lockBadgeBorder: 'rgba(255,255,255,0.16)',
-    }
+        backdrop: 'rgba(5,7,10,0.96)',
+        closeShellBg: 'rgba(22,24,28,0.86)',
+        closeShellBorder: 'rgba(255,255,255,0.20)',
+        headerShellBg: 'rgba(24,26,30,0.84)',
+        headerShellBorder: 'rgba(255,255,255,0.16)',
+        contentScrim: 'rgba(14,16,20,0.20)',
+        currentCardBg: 'rgba(26,28,32,0.82)',
+        currentCardBorder: 'rgba(255,255,255,0.18)',
+        progressTrack: 'rgba(255,255,255,0.30)',
+        badgeTileBg: 'rgba(34,37,43,0.86)',
+        badgeTileBorder: 'rgba(255,255,255,0.24)',
+        badgeTileLockedBg: 'rgba(18,20,24,0.90)',
+        badgeTileLockedBorder: 'rgba(255,255,255,0.14)',
+        badgeTileCurrentBorder: 'rgba(255,255,255,0.60)',
+        lockBadgeBg: 'rgba(26,28,32,0.84)',
+        lockBadgeBorder: 'rgba(255,255,255,0.16)',
+      }
     : {
-      backdrop: 'rgba(8,10,14,0.72)',
-      closeShellBg: 'rgba(255,255,255,0.86)',
-      closeShellBorder: 'rgba(0,0,0,0.14)',
-      headerShellBg: 'rgba(255,255,255,0.84)',
-      headerShellBorder: 'rgba(0,0,0,0.12)',
-      contentScrim: 'rgba(205, 209, 216, 0.98)',
-      currentCardBg: 'rgba(255,255,255,0.94)',
-      currentCardBorder: 'rgba(0,0,0,0.13)',
-      progressTrack: 'rgba(0,0,0,0.16)',
-      badgeTileBg: 'rgba(255,255,255,0.94)',
-      badgeTileBorder: 'rgba(0,0,0,0.14)',
-      badgeTileLockedBg: 'rgba(246,248,252,0.90)',
-      badgeTileLockedBorder: 'rgba(0,0,0,0.10)',
-      badgeTileCurrentBorder: 'rgba(0,0,0,0.30)',
-      lockBadgeBg: 'rgba(255,255,255,0.92)',
-      lockBadgeBorder: 'rgba(0,0,0,0.16)',
-    }
+        backdrop: 'rgba(8,10,14,0.72)',
+        closeShellBg: 'rgba(255,255,255,0.86)',
+        closeShellBorder: 'rgba(0,0,0,0.14)',
+        headerShellBg: 'rgba(255,255,255,0.84)',
+        headerShellBorder: 'rgba(0,0,0,0.12)',
+        contentScrim: 'rgba(205, 209, 216, 0.98)',
+        currentCardBg: 'rgba(255,255,255,0.94)',
+        currentCardBorder: 'rgba(0,0,0,0.13)',
+        progressTrack: 'rgba(0,0,0,0.16)',
+        badgeTileBg: 'rgba(255,255,255,0.94)',
+        badgeTileBorder: 'rgba(0,0,0,0.14)',
+        badgeTileLockedBg: 'rgba(246,248,252,0.90)',
+        badgeTileLockedBorder: 'rgba(0,0,0,0.10)',
+        badgeTileCurrentBorder: 'rgba(0,0,0,0.30)',
+        lockBadgeBg: 'rgba(255,255,255,0.92)',
+        lockBadgeBorder: 'rgba(0,0,0,0.16)',
+      }
 
   return StyleSheet.create({
     container: {

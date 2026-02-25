@@ -4,16 +4,16 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { useTheme } from '@/contexts/theme-context'
 import {
-  getLevelColor,
-  getLevelIntensity,
-  useStrengthData,
-  type MuscleGroupData
+    getLevelColor,
+    getLevelIntensity,
+    useStrengthData,
+    type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_DATABASE_MUSCLE,
-  type BodyPartSlug
+    BODY_PART_DISPLAY_NAMES,
+    BODY_PART_TO_DATABASE_MUSCLE,
+    type BodyPartSlug
 } from '@/lib/body-mapping'
 import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
 import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progress'
@@ -22,13 +22,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 

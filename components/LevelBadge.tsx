@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Image,
-    StyleProp,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    ViewStyle,
+  Animated,
+  Image,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native'
 import Svg, {
-    Circle,
-    Defs,
-    Stop,
-    LinearGradient as SvgLinearGradient,
+  Circle,
+  Defs,
+  Stop,
+  LinearGradient as SvgLinearGradient,
 } from 'react-native-svg'
 
 // Helper to lighten a hex color
@@ -114,12 +114,12 @@ export function LevelBadge({
       paddingV: 6,
     },
     hero: {
-      container: 160,
-      icon: 100,
-      border: 6,
-      fontSize: 32,
-      paddingH: 32,
-      paddingV: 16,
+      container: 80,
+      icon: 48,
+      border: 3,
+      fontSize: 16,
+      paddingH: 20,
+      paddingV: 8,
     },
     xl: {
       container: 120,

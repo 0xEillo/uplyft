@@ -4048,7 +4048,7 @@ export default function OnboardingScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 25 : 20}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 20}
         >
           <ScrollView
             ref={scrollViewRef}
@@ -4084,7 +4084,7 @@ export default function OnboardingScreen() {
 
           {/* Footer - Fixed at bottom */}
           {!hasAutoSwipe() && (
-            <View style={styles.footer}>
+            <View style={[styles.footer, step === 24 && { paddingBottom: 40 }]}>
               <HapticButton
                 style={[
                   styles.nextButton,
