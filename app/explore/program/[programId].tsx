@@ -360,7 +360,7 @@ export default function ProgramDetailScreen() {
                     <View style={styles.dayNumberOverlay}>
                       <Text style={styles.dayNumber}>{index + 1}</Text>
                     </View>
-                    {/* Bookmark Button - Save individual routine */}
+                    {/* Add Button - Save individual routine */}
                     <TouchableOpacity
                       style={styles.bookmarkButton}
                       activeOpacity={0.9}
@@ -372,12 +372,12 @@ export default function ProgramDetailScreen() {
                         tintColor={savedRoutineIds.has(routine.id) ? colors.brandPrimary : undefined}
                       >
                         {savingRoutineId === routine.id ? (
-                          <ActivityIndicator size="small" color={colors.textPrimary} />
+                          <ActivityIndicator size="small" color="#FFF" />
                         ) : (
                           <Ionicons
-                            name={savedRoutineIds.has(routine.id) ? "bookmark" : "bookmark-outline"}
+                            name="add"
                             size={18}
-                            color={colors.textPrimary}
+                            color="#FFF"
                           />
                         )}
                       </LiquidGlassSurface>
@@ -677,6 +677,8 @@ const createStyles = (
       borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.5)',
     },
     carouselRoutineTitle: {
       fontSize: 18,
