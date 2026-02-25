@@ -404,20 +404,10 @@ export default function ProgramDetailScreen() {
                       >
                         {/* Exercise GIF */}
                         <View style={styles.exerciseGifContainer}>
-                          {exItem.exercise?.gif_url ? (
-                            <ExerciseMediaThumbnail
-                              gifUrl={exItem.exercise.gif_url}
-                              style={styles.exerciseGifThumb}
-                            />
-                          ) : (
-                            <View style={styles.exercisePlaceholder}>
-                              <Ionicons
-                                name="barbell"
-                                size={20}
-                                color={colors.textSecondary}
-                              />
-                            </View>
-                          )}
+                          <ExerciseMediaThumbnail
+                            gifUrl={exItem.exercise?.gif_url ?? null}
+                            style={styles.exerciseGifThumb}
+                          />
                         </View>
                         {/* Exercise name and details */}
                         <View style={styles.exerciseInfo}>
