@@ -33,9 +33,9 @@ const VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'multi-year', label: 'All' },
 ]
 
-const CONTROL_WIDTH = 195
+const CONTROL_WIDTH = 228
 const TAB_WIDTH = CONTROL_WIDTH / 3
-const PILL_PADDING = 3
+const PILL_PADDING = 4
 
 export default function WorkoutCalendarScreen() {
   const { user } = useAuth()
@@ -732,17 +732,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       top: PILL_PADDING,
       bottom: PILL_PADDING,
-      borderRadius: 20,
+      borderRadius: 22,
       overflow: 'hidden',
       backgroundColor: 'transparent',
     },
     activeTabBubble: {
       ...StyleSheet.absoluteFillObject,
-      borderRadius: 20,
+      borderRadius: 22,
     },
     tabButton: {
       flex: 1,
-      height: 38,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1,

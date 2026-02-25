@@ -44,13 +44,10 @@ export function normalizeExerciseName(name: string): string {
       if (word.includes('-')) {
         return word
           .split('-')
-          .map(
-            (part) =>
-              part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
-          )
+          .map((part) => part.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase()))
           .join('-')
       }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      return word.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase())
     })
     .join(' ')
 }

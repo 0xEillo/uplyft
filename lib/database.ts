@@ -1,35 +1,35 @@
 import type {
-    BodyLogEntryWithImages,
-    BodyLogImage,
+  BodyLogEntryWithImages,
+  BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-    DailyLogConfidence,
-    DailyLogEntry,
-    DailyLogMeal,
-    DailyLogMealSource,
-    DailyLogSummary,
-    Exercise,
-    ExploreProgram,
-    ExploreProgramRoutine,
-    ExploreRoutine,
-    ExploreRoutineExercise,
-    Follow,
-    FollowRelationshipStatus,
-    FollowRequest,
-    ParsedWorkout,
-    Profile,
-    WorkoutComment,
-    WorkoutLike,
-    WorkoutRoutine,
-    WorkoutRoutineExercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSession,
-    WorkoutSessionWithDetails,
-    WorkoutSocialStats,
+  DailyLogConfidence,
+  DailyLogEntry,
+  DailyLogMeal,
+  DailyLogMealSource,
+  DailyLogSummary,
+  Exercise,
+  ExploreProgram,
+  ExploreProgramRoutine,
+  ExploreRoutine,
+  ExploreRoutineExercise,
+  Follow,
+  FollowRelationshipStatus,
+  FollowRequest,
+  ParsedWorkout,
+  Profile,
+  WorkoutComment,
+  WorkoutLike,
+  WorkoutRoutine,
+  WorkoutRoutineExercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSession,
+  WorkoutSessionWithDetails,
+  WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -1369,9 +1369,8 @@ export const database = {
 
       // Normalize the name
       const normalizedName = trimmedName
-        .toLowerCase()
-        .split(' ')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .split(/\s+/)
+        .map((word) => word.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase()))
         .join(' ')
 
       // Check if exercise already exists
@@ -1455,9 +1454,8 @@ export const database = {
 
         // Normalize
         finalUpdates.name = trimmed
-          .toLowerCase()
-          .split(' ')
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .split(/\s+/)
+          .map((word) => word.toLowerCase().replace(/[a-z]/, (c) => c.toUpperCase()))
           .join(' ')
       }
 
