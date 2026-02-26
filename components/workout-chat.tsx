@@ -2658,18 +2658,18 @@ export function WorkoutChat({
                               ? formatFoodConfidenceLabel(foodLogPayload.confidence)
                               : 'Medium'
                             const confidenceTone = foodLogPayload?.confidence || 'medium'
-                            const foodConfidenceBadgeBg =
+                            const { bg: foodConfidenceBadgeBg, border: foodConfidenceBadgeBorder } =
                               confidenceTone === 'high'
                                 ? isDark
-                                  ? 'rgba(52, 199, 89, 0.2)'
-                                  : '#E7F8EE'
+                                  ? { bg: 'rgba(52, 199, 89, 0.14)', border: 'rgba(52, 199, 89, 0.28)' }
+                                  : { bg: 'rgba(52, 199, 89, 0.12)', border: 'rgba(52, 199, 89, 0.22)' }
                                 : confidenceTone === 'low'
                                 ? isDark
-                                  ? 'rgba(255, 159, 10, 0.2)'
-                                  : '#FFF4E6'
+                                  ? { bg: 'rgba(255, 159, 10, 0.14)', border: 'rgba(255, 159, 10, 0.28)' }
+                                  : { bg: 'rgba(255, 159, 10, 0.12)', border: 'rgba(255, 159, 10, 0.22)' }
                                 : isDark
-                                ? colors.surfaceSubtle
-                                : '#E5E5E5'
+                                ? { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.16)' }
+                                : { bg: 'rgba(255,255,255,0.52)', border: 'rgba(255,255,255,0.38)' }
                             const foodConfidenceColor =
                               confidenceTone === 'high'
                                 ? '#34C759'
@@ -2858,7 +2858,19 @@ export function WorkoutChat({
                                       ]}
                                     >
                                       <View style={styles.foodLogHeaderRow}>
-                                        <View style={styles.foodLogHeaderText}>
+                                        <View
+                                          style={[
+                                            styles.foodConfidenceBadge,
+                                            {
+                                              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.52)',
+                                              borderWidth: 1,
+                                              borderColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.38)',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              marginRight: 10,
+                                            },
+                                          ]}
+                                        >
                                           <Text style={styles.foodLogEyebrow}>
                                             {foodCardLabel}
                                           </Text>
@@ -2867,7 +2879,14 @@ export function WorkoutChat({
                                           activeOpacity={0.7}
                                           style={[
                                             styles.foodConfidenceBadge,
-                                            { backgroundColor: foodConfidenceBadgeBg, flexDirection: 'row', alignItems: 'center', gap: 4 },
+                                            {
+                                              backgroundColor: foodConfidenceBadgeBg,
+                                              borderWidth: 1,
+                                              borderColor: foodConfidenceBadgeBorder,
+                                              flexDirection: 'row',
+                                              alignItems: 'center',
+                                              gap: 4,
+                                            },
                                           ]}
                                           onPress={() => {
                                             haptic('light')
@@ -3509,11 +3528,12 @@ export function WorkoutChat({
                     {isRecording ? (
                       /* Waveform visualizer — smooth bell-curve, no spike */
                       <View style={styles.visualizerContainer}>
-                        {Array.from({ length: 40 }).map((_, i) => {
-                          // Normalised position 0→1 across the bar array
-                          const t = i / 39
-                          // Bell curve: tall at centre (~0.75), short at edges
-                          const bell = Math.exp(-Math.pow((t - 0.75) * 4, 2))
+                        {Array.from({ length: 40 }).map((_, i, arr) => {
+                          // Normalised position -1→+1, always symmetric around 0
+                          const mid = (arr.length - 1) / 2
+                          const t = (i - mid) / mid
+                          // Bell curve: peak at t=0 (exact centre), tails at ±1
+                          const bell = Math.exp(-Math.pow(t * 2, 2))
                           const h = 4 + bell * 20          // range: 4 – 24 pt
                           const opacity = 0.12 + bell * 0.75 // range: 0.12 – 0.87
                           return (
@@ -3991,7 +4011,7 @@ function createStyles(
     },
     foodLogHeaderRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: 14,
     },
@@ -4011,11 +4031,12 @@ function createStyles(
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 12,
-      backgroundColor: isDark ? colors.surfaceSubtle : '#E5E5E5',
     },
     foodConfidenceText: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
       color: colors.textSecondary,
     },
     foodCaloriesCard: {
