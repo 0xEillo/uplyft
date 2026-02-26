@@ -394,6 +394,7 @@ const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'meals', label: 'Diet' },
   { id: 'photos', label: 'Progress Pics' },
 ]
+const TAB_AUTO_SCROLL_GUTTER = 20
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
@@ -420,6 +421,11 @@ export default function BodyLogScreen() {
   const bodyPageRef = useRef(0)
   const dailyPageRef = useRef(0)
   const hasFocusedOnce = useRef(false)
+  const tabsScrollRef = useRef<ScrollView | null>(null)
+  const tabLayoutsRef = useRef<Partial<Record<ActiveTab, { x: number; width: number }>>>({})
+  const tabsViewportWidthRef = useRef(0)
+  const tabsContentWidthRef = useRef(0)
+  const tabsScrollOffsetRef = useRef(0)
 
   const weightEntries = useMemo(
     () => entries.filter(e => e.weight_kg !== null),
@@ -877,11 +883,83 @@ export default function BodyLogScreen() {
 
   const topPad = insets.top + HEADER_ROW_HEIGHT + 16
 
+  const scrollTabIntoView = useCallback((tabId: ActiveTab) => {
+    const scrollView = tabsScrollRef.current
+    const tabLayout = tabLayoutsRef.current[tabId]
+    const viewportWidth = tabsViewportWidthRef.current
+
+    if (!scrollView || !tabLayout || viewportWidth <= 0) return
+
+    const contentWidth = Math.max(tabsContentWidthRef.current, viewportWidth)
+    const currentOffset = tabsScrollOffsetRef.current
+    const visibleLeft = currentOffset
+    const visibleRight = currentOffset + viewportWidth
+    const targetLeft = Math.max(0, tabLayout.x - TAB_AUTO_SCROLL_GUTTER)
+    const targetRight = Math.min(
+      contentWidth,
+      tabLayout.x + tabLayout.width + TAB_AUTO_SCROLL_GUTTER,
+    )
+
+    if (targetLeft >= visibleLeft && targetRight <= visibleRight) return
+
+    const maxOffset = Math.max(0, contentWidth - viewportWidth)
+    let nextOffset = currentOffset
+
+    if (targetLeft < visibleLeft) {
+      nextOffset = targetLeft
+    } else if (targetRight > visibleRight) {
+      nextOffset = targetRight - viewportWidth
+    }
+
+    nextOffset = Math.max(0, Math.min(nextOffset, maxOffset))
+    if (Math.abs(nextOffset - currentOffset) < 1) return
+
+    tabsScrollOffsetRef.current = nextOffset
+    scrollView.scrollTo({ x: nextOffset, animated: true })
+  }, [])
+
+  const handleTabPress = useCallback(
+    (tabId: ActiveTab) => {
+      haptic('light')
+      if (tabId === activeTab) {
+        scrollTabIntoView(tabId)
+        return
+      }
+
+      setActiveTab(tabId)
+    },
+    [activeTab, scrollTabIntoView],
+  )
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      scrollTabIntoView(activeTab)
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [activeTab, scrollTabIntoView])
+
   // Shared tabs header
   const TabsHeader = useMemo(() => (
     <ScrollView
+      ref={(node) => {
+        tabsScrollRef.current = node
+      }}
       horizontal
       showsHorizontalScrollIndicator={false}
+      contentOffset={{ x: tabsScrollOffsetRef.current, y: 0 }}
+      scrollEventThrottle={16}
+      onScroll={(event) => {
+        tabsScrollOffsetRef.current = event.nativeEvent.contentOffset.x
+      }}
+      onLayout={(event) => {
+        tabsViewportWidthRef.current = event.nativeEvent.layout.width
+        requestAnimationFrame(() => scrollTabIntoView(activeTab))
+      }}
+      onContentSizeChange={(width) => {
+        tabsContentWidthRef.current = width
+        requestAnimationFrame(() => scrollTabIntoView(activeTab))
+      }}
       contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 20 }}
     >
       {TABS.map((tab) => {
@@ -889,11 +967,18 @@ export default function BodyLogScreen() {
         return (
           <TouchableOpacity
             key={tab.id}
+            onLayout={(event) => {
+              const { x, width } = event.nativeEvent.layout
+              tabLayoutsRef.current[tab.id] = { x, width }
+              if (tab.id === activeTab) {
+                requestAnimationFrame(() => scrollTabIntoView(tab.id))
+              }
+            }}
             style={[
               tabStyles.pill,
               isActive ? { backgroundColor: colors.textPrimary } : { backgroundColor: colors.surfaceSubtle },
             ]}
-            onPress={() => { haptic('light'); setActiveTab(tab.id) }}
+            onPress={() => handleTabPress(tab.id)}
             activeOpacity={0.8}
           >
             <Text style={[
@@ -906,7 +991,7 @@ export default function BodyLogScreen() {
         )
       })}
     </ScrollView>
-  ), [activeTab, colors])
+  ), [activeTab, colors, handleTabPress, scrollTabIntoView])
 
   const refreshControl = (
     <RefreshControl
