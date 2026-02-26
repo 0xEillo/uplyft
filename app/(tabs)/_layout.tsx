@@ -313,7 +313,7 @@ function TabLayoutContent() {
         <NativeTabs.Trigger name="create-post" role="search">
           <NativeTabs.Trigger.Label hidden />
           <NativeTabs.Trigger.Icon
-            src={Ionicons.getImageSource('add-circle', 38, '#FFFFFF')}
+            src={Ionicons.getImageSource('add', 30, '#FFFFFF')}
             renderingMode="template"
             selectedColor={createActionColor}
           />
