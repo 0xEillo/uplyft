@@ -209,8 +209,6 @@ function TabLayoutContent() {
   )}`
   const createActionColor =
     isRestTimerActive || hasDraft ? colors.statusError : colors.brandPrimary
-  const createActionSfSymbol = 'plus.circle.fill'
-  const createActionMdSymbol = 'add_circle'
   const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
   const handleDiscardWorkoutProgress = () => {
     Alert.alert(
@@ -315,11 +313,8 @@ function TabLayoutContent() {
         <NativeTabs.Trigger name="create-post" role="search">
           <NativeTabs.Trigger.Label hidden />
           <NativeTabs.Trigger.Icon
-            sf={{
-              default: createActionSfSymbol,
-              selected: createActionSfSymbol,
-            }}
-            md={createActionMdSymbol}
+            src={Ionicons.getImageSource('add-circle', 38, '#FFFFFF')}
+            renderingMode="template"
             selectedColor={createActionColor}
           />
         </NativeTabs.Trigger>
