@@ -4,14 +4,16 @@ import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { haptic } from '@/lib/haptics'
+import { haptic, hapticSuccess } from '@/lib/haptics'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -75,6 +77,38 @@ function formatMealTime(dateString: string): string {
   })
 }
 
+function formatRecentDateBadge(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (target.getTime() === today.getTime()) return 'Today'
+  if (target.getTime() === yesterday.getTime()) return 'Yesterday'
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function buildRecentMealFingerprint(meal: DailyLogMeal): string {
+  const normalizedDescription = meal.description
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return [
+    normalizedDescription,
+    round(meal.calories),
+    round(meal.protein_g),
+    round(meal.carbs_g),
+    round(meal.fat_g),
+  ].join('|')
+}
+
 function parseJson<T>(value: string | undefined, fallback: T): T {
   if (!value) return fallback
   try {
@@ -125,9 +159,17 @@ export default function DailyFoodLogScreen() {
   )
   const [summary, setSummary] = useState<DailyLogSummary | null>(null)
   const [meals, setMeals] = useState<DailyLogMeal[]>([])
+  const [recentMealsRaw, setRecentMealsRaw] = useState<DailyLogMeal[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRecentMealsLoading, setIsRecentMealsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [reloggingMealId, setReloggingMealId] = useState<string | null>(null)
   const [resolveError, setResolveError] = useState<string | null>(null)
+
+  const handleOpenFoodLibrary = useCallback(() => {
+    haptic('light')
+    router.push('/food-library')
+  }, [router])
 
   const prefillTotals = useMemo(
     () => parseJson<DailyTotals>(params.totalsJson, DEFAULT_TOTALS),
@@ -137,6 +179,21 @@ export default function DailyFoodLogScreen() {
     () => parseJson<DailyGoals>(params.goalsJson, DEFAULT_GOALS),
     [params.goalsJson],
   )
+
+  const fetchFoodLogData = useCallback(async (userId: string, logDate: string) => {
+    const recentMealsPromise = database.dailyLog.getRecentMeals(userId, 36).catch((error) => {
+      console.error('Error loading recent meals:', error)
+      return [] as DailyLogMeal[]
+    })
+
+    const [daySummary, dayMeals, recentMeals] = await Promise.all([
+      database.dailyLog.getDaySummary(userId, logDate),
+      database.dailyLog.getMealsForDay(userId, logDate),
+      recentMealsPromise,
+    ])
+
+    return { daySummary, dayMeals, recentMeals }
+  }, [])
 
   useEffect(() => {
     if (resolvedLogDate) return
@@ -189,26 +246,32 @@ export default function DailyFoodLogScreen() {
 
     const load = async () => {
       setIsLoading(true)
+      setIsRecentMealsLoading(true)
       setResolveError(null)
 
       try {
-        const [daySummary, dayMeals] = await Promise.all([
-          database.dailyLog.getDaySummary(user.id, resolvedLogDate),
-          database.dailyLog.getMealsForDay(user.id, resolvedLogDate),
-        ])
+        const { daySummary, dayMeals, recentMeals } = await fetchFoodLogData(
+          user.id,
+          resolvedLogDate,
+        )
 
         if (cancelled) return
         setSummary(daySummary)
         setMeals(dayMeals)
+        setRecentMealsRaw(recentMeals)
       } catch (error) {
         console.error('Error loading daily food log:', error)
         if (!cancelled) {
           setSummary(null)
           setMeals([])
+          setRecentMealsRaw([])
           setResolveError('Failed to load food log for this day.')
         }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+          setIsRecentMealsLoading(false)
+        }
       }
     }
 
@@ -217,19 +280,20 @@ export default function DailyFoodLogScreen() {
     return () => {
       cancelled = true
     }
-  }, [resolvedLogDate, user?.id])
+  }, [fetchFoodLogData, resolvedLogDate, user?.id])
 
   const handleRefresh = async () => {
     if (!user?.id || !resolvedLogDate) return
 
     setIsRefreshing(true)
     try {
-      const [daySummary, dayMeals] = await Promise.all([
-        database.dailyLog.getDaySummary(user.id, resolvedLogDate),
-        database.dailyLog.getMealsForDay(user.id, resolvedLogDate),
-      ])
+      const { daySummary, dayMeals, recentMeals } = await fetchFoodLogData(
+        user.id,
+        resolvedLogDate,
+      )
       setSummary(daySummary)
       setMeals(dayMeals)
+      setRecentMealsRaw(recentMeals)
     } catch (error) {
       console.error('Error refreshing daily food log:', error)
     } finally {
@@ -275,10 +339,56 @@ export default function DailyFoodLogScreen() {
   const macroRingCircumference = macroRingRadius * 2 * Math.PI
 
   const activeDate = resolvedLogDate ?? getLocalDateKey(new Date().toISOString())
+  const recentMeals = useMemo(() => {
+    const seen = new Set<string>()
+
+    return recentMealsRaw
+      .filter((meal) => getLocalDateKey(meal.created_at) !== activeDate)
+      .filter((meal) => {
+        const key = buildRecentMealFingerprint(meal)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .slice(0, 8)
+  }, [activeDate, recentMealsRaw])
   const calorieBase = Math.max(calories, 1)
   const proteinPct = round(((protein * 4) / calorieBase) * 100)
   const carbsPct = round(((carbs * 4) / calorieBase) * 100)
   const fatPct = round(((fat * 9) / calorieBase) * 100)
+
+  const handleRelogRecentMeal = async (meal: DailyLogMeal) => {
+    if (!user?.id || !resolvedLogDate || reloggingMealId) return
+
+    haptic('medium')
+    setReloggingMealId(meal.id)
+
+    try {
+      await database.dailyLog.logMeal(user.id, {
+        description: meal.description,
+        calories: meal.calories,
+        protein_g: meal.protein_g,
+        carbs_g: meal.carbs_g,
+        fat_g: meal.fat_g,
+        source: 'manual',
+        confidence: meal.confidence,
+        metadata: {
+          ...(meal.metadata ?? {}),
+          from: 'recent_meals_relog',
+          reloggedFromMealId: meal.id,
+        },
+        logDate: resolvedLogDate,
+      })
+
+      await hapticSuccess()
+      await handleRefresh()
+    } catch (error) {
+      console.error('Error relogging recent meal:', error)
+      Alert.alert('Could not add meal', 'Please try again.')
+    } finally {
+      setReloggingMealId(null)
+    }
+  }
 
   const contentTopPadding = insets.top + HEADER_ROW_HEIGHT + 16
 
@@ -296,6 +406,8 @@ export default function DailyFoodLogScreen() {
             title="Food Log"
             onLeftPress={handleBack}
             leftIcon="arrow-back"
+            onRightPress={handleOpenFoodLibrary}
+            rightIcon="add"
           />
         </BlurredHeader>
 
@@ -533,6 +645,298 @@ export default function DailyFoodLogScreen() {
               ))}
             </View>
           </View>
+
+          {false && (isRecentMealsLoading || recentMeals.length > 0) && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  Recent Meals
+                </Text>
+                <Text style={[styles.sectionMeta, { color: colors.textSecondary }]}>
+                  Tap to relog fast
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.recentMealsShell,
+                  {
+                    backgroundColor: colors.surfaceCard,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.recentMealsShellHeader}>
+                  <View
+                    style={[
+                      styles.recentMealsHeaderBadge,
+                      {
+                        backgroundColor: isDark
+                          ? 'rgba(255,255,255,0.06)'
+                          : 'rgba(17,17,17,0.04)',
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="flash-outline"
+                      size={13}
+                      color={colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.recentMealsHeaderBadgeText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Reuse your go-to meals
+                    </Text>
+                  </View>
+                </View>
+
+                {isRecentMealsLoading ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.recentMealsRailContent}
+                  >
+                    {[0, 1].map((placeholder) => (
+                      <View
+                        key={`recent-placeholder-${placeholder}`}
+                        style={[
+                          styles.recentMealSkeletonCard,
+                          {
+                            backgroundColor: isDark
+                              ? 'rgba(255,255,255,0.03)'
+                              : '#FBFBFD',
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.recentMealSkeletonAccent,
+                            {
+                              backgroundColor: isDark
+                                ? 'rgba(255,255,255,0.08)'
+                                : 'rgba(17,17,17,0.08)',
+                            },
+                          ]}
+                        />
+                        <View
+                          style={[
+                            styles.recentMealSkeletonLine,
+                            styles.recentMealSkeletonLineWide,
+                            {
+                              backgroundColor: isDark
+                                ? 'rgba(255,255,255,0.06)'
+                                : 'rgba(17,17,17,0.06)',
+                            },
+                          ]}
+                        />
+                        <View
+                          style={[
+                            styles.recentMealSkeletonLine,
+                            {
+                              backgroundColor: isDark
+                                ? 'rgba(255,255,255,0.05)'
+                                : 'rgba(17,17,17,0.05)',
+                            },
+                          ]}
+                        />
+                        <View style={styles.recentMealSkeletonChipRow}>
+                          {[0, 1, 2].map((chip) => (
+                            <View
+                              key={`chip-${chip}`}
+                              style={[
+                                styles.recentMealSkeletonChip,
+                                {
+                                  backgroundColor: isDark
+                                    ? 'rgba(255,255,255,0.05)'
+                                    : 'rgba(17,17,17,0.05)',
+                                },
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.recentMealsRailContent}
+                    decelerationRate="fast"
+                  >
+                    {recentMeals.map((meal, index) => {
+                      const isRelogging = reloggingMealId === meal.id
+                      const accentColor =
+                        index % 4 === 0
+                          ? '#FF8C42'
+                          : index % 4 === 1
+                            ? '#2FBF9F'
+                            : index % 4 === 2
+                              ? '#4F6DFF'
+                              : '#E85D75'
+
+                      return (
+                        <TouchableOpacity
+                          key={meal.id}
+                          style={[
+                            styles.recentMealCard,
+                            Boolean(reloggingMealId) && !isRelogging && styles.recentMealCardMuted,
+                          ]}
+                          activeOpacity={0.9}
+                          disabled={Boolean(reloggingMealId)}
+                          onPress={() => handleRelogRecentMeal(meal)}
+                        >
+                          <LinearGradient
+                            colors={
+                              isDark
+                                ? ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.015)']
+                                : ['#FFFFFF', '#F7F7FA']
+                            }
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[
+                              styles.recentMealCardGradient,
+                              { borderColor: colors.border },
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.recentMealAccentBar,
+                                { backgroundColor: accentColor },
+                              ]}
+                            />
+
+                            <View style={styles.recentMealCardTop}>
+                              <View
+                                style={[
+                                  styles.recentMealSourcePill,
+                                  {
+                                    backgroundColor: isDark
+                                      ? 'rgba(255,255,255,0.06)'
+                                      : 'rgba(17,17,17,0.04)',
+                                    borderColor: colors.border,
+                                  },
+                                ]}
+                              >
+                                <Ionicons
+                                  name={getMealSourceIcon(meal.source)}
+                                  size={12}
+                                  color={colors.textSecondary}
+                                />
+                                <Text
+                                  style={[
+                                    styles.recentMealSourcePillText,
+                                    { color: colors.textSecondary },
+                                  ]}
+                                >
+                                  {formatRecentDateBadge(meal.created_at)}
+                                </Text>
+                              </View>
+
+                              <View
+                                style={[
+                                  styles.recentMealConfidenceDot,
+                                  {
+                                    backgroundColor:
+                                      meal.confidence === 'high'
+                                        ? '#34C759'
+                                        : meal.confidence === 'low'
+                                          ? '#FF9F0A'
+                                          : isDark
+                                            ? 'rgba(255,255,255,0.18)'
+                                            : 'rgba(17,17,17,0.16)',
+                                  },
+                                ]}
+                              />
+                            </View>
+
+                            <Text
+                              numberOfLines={2}
+                              style={[styles.recentMealTitle, { color: colors.textPrimary }]}
+                            >
+                              {meal.description}
+                            </Text>
+
+                            <Text
+                              style={[
+                                styles.recentMealSubtitle,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
+                              {formatMealTime(meal.created_at)} • {round(meal.calories)} kcal
+                            </Text>
+
+                            <View style={styles.recentMealMacroRow}>
+                              {[
+                                { label: 'P', value: round(meal.protein_g), color: '#F87171' },
+                                { label: 'C', value: round(meal.carbs_g), color: '#FBBF24' },
+                                { label: 'F', value: round(meal.fat_g), color: '#60A5FA' },
+                              ].map((macro) => (
+                                <View
+                                  key={`${meal.id}-${macro.label}`}
+                                  style={[
+                                    styles.recentMealMacroChip,
+                                    {
+                                      backgroundColor: `${macro.color}14`,
+                                      borderColor: `${macro.color}2B`,
+                                    },
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.recentMealMacroLabel,
+                                      { color: macro.color },
+                                    ]}
+                                  >
+                                    {macro.label}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.recentMealMacroValue,
+                                      { color: colors.textPrimary },
+                                    ]}
+                                  >
+                                    {macro.value}g
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+
+                            <View style={styles.recentMealFooter}>
+                              <View style={styles.recentMealRelogCta}>
+                                {isRelogging ? (
+                                  <ActivityIndicator size="small" color={colors.textPrimary} />
+                                ) : (
+                                  <Ionicons
+                                    name="add-circle-outline"
+                                    size={18}
+                                    color={colors.textPrimary}
+                                  />
+                                )}
+                                <Text
+                                  style={[
+                                    styles.recentMealRelogText,
+                                    { color: colors.textPrimary },
+                                  ]}
+                                >
+                                  {isRelogging ? 'Adding...' : 'Log Again'}
+                                </Text>
+                              </View>
+                            </View>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+            </>
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Meals</Text>
@@ -846,6 +1250,177 @@ const createStyles = (
     legendValue: {
       fontSize: 12,
       fontWeight: '700',
+    },
+    recentMealsShell: {
+      borderRadius: 22,
+      borderWidth: 1,
+      overflow: 'hidden',
+      paddingTop: 10,
+      paddingBottom: 12,
+    },
+    recentMealsShellHeader: {
+      paddingHorizontal: 12,
+      paddingBottom: 6,
+    },
+    recentMealsHeaderBadge: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    recentMealsHeaderBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      letterSpacing: 0.1,
+    },
+    recentMealsRailContent: {
+      paddingHorizontal: 12,
+      gap: 10,
+    },
+    recentMealCard: {
+      width: 250,
+    },
+    recentMealCardMuted: {
+      opacity: 0.55,
+    },
+    recentMealCardGradient: {
+      borderRadius: 18,
+      borderWidth: 1,
+      overflow: 'hidden',
+      padding: 12,
+      minHeight: 162,
+    },
+    recentMealAccentBar: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+      opacity: 0.95,
+    },
+    recentMealCardTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+      paddingLeft: 4,
+    },
+    recentMealSourcePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      borderRadius: 999,
+      borderWidth: 1,
+      maxWidth: '90%',
+    },
+    recentMealSourcePillText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    recentMealConfidenceDot: {
+      width: 9,
+      height: 9,
+      borderRadius: 4.5,
+      marginRight: 2,
+    },
+    recentMealTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.25,
+      lineHeight: 19,
+      minHeight: 38,
+      paddingLeft: 4,
+    },
+    recentMealSubtitle: {
+      marginTop: 6,
+      fontSize: 12,
+      fontWeight: '500',
+      paddingLeft: 4,
+    },
+    recentMealMacroRow: {
+      flexDirection: 'row',
+      gap: 6,
+      marginTop: 10,
+      paddingLeft: 4,
+      flexWrap: 'wrap',
+    },
+    recentMealMacroChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+    },
+    recentMealMacroLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    recentMealMacroValue: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: -0.1,
+    },
+    recentMealFooter: {
+      marginTop: 12,
+      paddingTop: 12,
+      paddingLeft: 4,
+    },
+    recentMealRelogCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    recentMealRelogText: {
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: -0.1,
+    },
+    recentMealSkeletonCard: {
+      width: 250,
+      borderRadius: 18,
+      borderWidth: 1,
+      padding: 12,
+      minHeight: 162,
+    },
+    recentMealSkeletonAccent: {
+      width: 48,
+      height: 20,
+      borderRadius: 999,
+      marginBottom: 12,
+      marginLeft: 4,
+    },
+    recentMealSkeletonLine: {
+      height: 11,
+      borderRadius: 999,
+      width: '58%',
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    recentMealSkeletonLineWide: {
+      width: '78%',
+      height: 14,
+      marginBottom: 10,
+    },
+    recentMealSkeletonChipRow: {
+      flexDirection: 'row',
+      gap: 6,
+      marginTop: 8,
+      marginLeft: 4,
+    },
+    recentMealSkeletonChip: {
+      width: 50,
+      height: 20,
+      borderRadius: 999,
     },
     mealsCard: {
       backgroundColor: colors.surfaceCard,

@@ -1,3 +1,4 @@
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -132,6 +133,7 @@ export default function DailyMacrosDetailScreen() {
         { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
       ]}
     >
+      <LiquidGlassSurface style={StyleSheet.absoluteFill} />
       <View collapsable={false} style={styles.headerSection}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Today&apos;s Nutrition</Text>
@@ -387,7 +389,6 @@ const createStyles = (
   StyleSheet.create({
     formSheetContainer: {
       flex: 1,
-      backgroundColor: colors.surfaceSheet,
       paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
       paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },

@@ -92,12 +92,13 @@ function RootLayoutNav() {
       ? {
           presentation: 'formSheet' as const,
           headerShown: false,
-          contentStyle: formSheetContentStyle,
+          contentStyle: { backgroundColor: 'transparent', height: '100%' as const },
           sheetAllowedDetents,
           sheetGrabberVisible: true,
           sheetInitialDetentIndex: 0,
           sheetCornerRadius,
           sheetExpandsWhenScrolledToEdge: false,
+          sheetLargestUndimmedDetentIndex: 1,
           scrollEdgeEffects: {
             top: 'hidden' as const,
             bottom: 'hidden' as const,
@@ -313,6 +314,10 @@ function RootLayoutNav() {
             }}
           />
           {/* Native Bottom Sheets - using formSheet for 100% native sheet presentation */}
+          <Stack.Screen
+            name="chat-attachment"
+            options={getNativeFormSheetOptions([0.55, 0.85])}
+          />
           <Stack.Screen
             name="recovery-detail"
             options={getNativeFormSheetOptions([0.72, 0.95])}

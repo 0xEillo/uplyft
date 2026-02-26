@@ -4015,6 +4015,26 @@ export const database = {
     },
 
     /**
+     * Get recent meals across days for quick relog/reuse UI.
+     */
+    async getRecentMeals(
+      userId: string,
+      limit: number = 20,
+    ): Promise<DailyLogMeal[]> {
+      const safeLimit = Math.max(1, Math.min(Math.round(limit), 100))
+
+      const { data, error } = await supabase
+        .from('daily_log_meals')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(safeLimit)
+
+      if (error) throw error
+      return (data || []) as DailyLogMeal[]
+    },
+
+    /**
      * Batch summaries by date to avoid N requests in Daily Log list.
      */
     async getSummariesForDates(

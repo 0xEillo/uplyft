@@ -1,4 +1,5 @@
 
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideUpView } from '@/components/slide-up-view'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -63,6 +64,7 @@ export default function LifterLevelInfoScreen() {
           },
         ]}
       >
+        <LiquidGlassSurface style={StyleSheet.absoluteFill} />
         <View collapsable={false} style={styles.formSheetHeaderSection}>
           <Text style={styles.title}>Lifter Levels</Text>
         </View>
@@ -140,7 +142,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     // Native form sheet container
     formSheetContainer: {
       flex: 1,
-      backgroundColor: colors.surfaceSheet,
       paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
       paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },

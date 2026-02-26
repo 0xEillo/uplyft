@@ -6,6 +6,7 @@
  * but with native iOS sheet presentation (UISheetPresentationController).
  */
 
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideUpView } from '@/components/slide-up-view'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import {
@@ -189,6 +190,7 @@ export default function RecoveryDetailScreen() {
           },
         ]}
       >
+        <LiquidGlassSurface style={StyleSheet.absoluteFill} />
         <View collapsable={false} style={styles.formSheetHeaderSection}>
           <View style={styles.formSheetHeaderRow}>
             <Text style={styles.title}>{muscleGroup}</Text>
@@ -276,7 +278,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     formSheetContainer: {
       flex: 1,
-      backgroundColor: colors.surfaceSheet,
       paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
       paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },

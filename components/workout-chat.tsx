@@ -35,6 +35,8 @@ import {
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { appFetch } from '@/lib/fetch'
+import { consumePendingChatAttachment } from '@/lib/chat-attachment-handoff'
+import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
@@ -51,7 +53,6 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Clipboard,
@@ -855,6 +856,61 @@ export function WorkoutChat({
   useFocusEffect(
     useCallback(() => {
       refreshDailyLogSummary()
+
+      let cancelled = false
+
+      const applyFoodLibraryPrefill = async () => {
+        try {
+          const pendingText = await consumePendingFoodLibraryChatText()
+          if (!pendingText || cancelled) return
+
+          setInput((prev) => (prev.trim() ? `${prev.trim()} ${pendingText}` : pendingText))
+          setTimeout(() => {
+            if (!cancelled) inputRef.current?.focus()
+          }, 120)
+        } catch (error) {
+          console.error('[WorkoutChat] Failed to apply food library prompt:', error)
+        }
+      }
+
+      applyFoodLibraryPrefill()
+
+      const applyAttachmentHandoff = async () => {
+        try {
+          const pending = await consumePendingChatAttachment()
+          if (!pending || cancelled) return
+          if (pending.action === 'launch_camera') {
+            launchCamera()
+          } else if (pending.action === 'launch_library') {
+            launchLibrary()
+          } else if (pending.action === 'photo_selected') {
+            if (selectedImages.length < MAX_IMAGES) {
+              setSelectedImages((prev) => [...prev, pending.uri])
+            } else {
+              Alert.alert(
+                'Maximum Images Reached',
+                `You can only add up to ${MAX_IMAGES} images per message.`,
+              )
+            }
+          } else if (pending.action === 'scan_food') {
+            setIsFoodScannerVisible(true)
+          } else if (pending.action === 'generate_workout') {
+            setPlanningState((prev) => ({
+              ...prev,
+              isActive: true,
+              step: 'wizard',
+            }))
+          }
+        } catch (error) {
+          console.error('[WorkoutChat] Failed to apply attachment handoff:', error)
+        }
+      }
+
+      applyAttachmentHandoff()
+
+      return () => {
+        cancelled = true
+      }
     }, [refreshDailyLogSummary]),
   )
 
@@ -1126,32 +1182,10 @@ export function WorkoutChat({
     }
   }
 
-  // Show native action sheet for image picker
+  // Open native iOS attachment sheet
   const showImagePickerActionSheet = () => {
     haptic('light')
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Scan Food', 'Choose from Library'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex: number) => {
-          if (buttonIndex === 1) {
-            setIsFoodScannerVisible(true)
-          } else if (buttonIndex === 2) {
-            launchLibrary()
-          }
-        },
-      )
-    } else {
-      // Android fallback using Alert
-      Alert.alert('Add Image', 'Choose an option', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Scan Food', onPress: () => setIsFoodScannerVisible(true) },
-        { text: 'Choose from Library', onPress: launchLibrary },
-      ])
-    }
+    router.push('/chat-attachment')
   }
 
   // Launch camera

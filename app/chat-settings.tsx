@@ -1,3 +1,4 @@
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
@@ -170,6 +171,7 @@ export default function ChatSettingsScreen() {
         { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
       ]}
     >
+      <LiquidGlassSurface style={StyleSheet.absoluteFill} />
       <ScrollView
         style={styles.formSheetScroll}
         contentContainerStyle={styles.formSheetScrollContent}
@@ -299,7 +301,6 @@ const createStyles = (
   StyleSheet.create({
     formSheetContainer: {
       flex: 1,
-      backgroundColor: colors.surfaceSheet,
       borderTopLeftRadius: 0,
       borderTopRightRadius: 0,
     },
