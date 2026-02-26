@@ -347,7 +347,7 @@ export default function DailyFoodLogScreen() {
 
             <View style={styles.heroBody}>
               <View style={styles.heroTextCol}>
-                <Text style={[styles.heroValue, calOver && { color: '#FF6B6B' }]}>
+                <Text style={[styles.heroValue, { color: calOver ? '#FF6B6B' : colors.textPrimary }]}>
                   {calDelta}
                 </Text>
                 <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>
