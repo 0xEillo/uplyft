@@ -1008,6 +1008,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 10,
       width: 'auto',
       minWidth: 0,
+      overflow: 'visible',
     },
     iconButton: {
       width: 44,
