@@ -12,30 +12,30 @@ import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metad
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import {
-  getBodyLogImageUrls,
-  getThumbnailUrlsWithPrefetch,
+    getBodyLogImageUrls,
+    getThumbnailUrlsWithPrefetch,
 } from '@/lib/utils/body-log-storage'
 import type { DailyLogEntry, DailyLogSummary } from '@/types/database.types'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
