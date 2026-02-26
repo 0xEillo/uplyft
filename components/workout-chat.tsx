@@ -3523,26 +3523,37 @@ export function WorkoutChat({
                   style={styles.textInputGlass}
                   debugLabel="plan-chat-input"
                 >
-                  <View style={styles.textInputContainer}>
+                  <View
+                    style={[
+                      styles.textInputContainer,
+                      isRecording && styles.textInputContainerRecording,
+                    ]}
+                  >
                     {/* Content area: visualizer OR text input */}
                     {isRecording ? (
-                      /* Waveform visualizer — smooth bell-curve, no spike */
-                      <View style={styles.visualizerContainer}>
-                        {Array.from({ length: 40 }).map((_, i, arr) => {
-                          // Normalised position -1→+1, always symmetric around 0
-                          const mid = (arr.length - 1) / 2
-                          const t = (i - mid) / mid
-                          // Bell curve: peak at t=0 (exact centre), tails at ±1
-                          const bell = Math.exp(-Math.pow(t * 2, 2))
-                          const h = 4 + bell * 20          // range: 4 – 24 pt
-                          const opacity = 0.12 + bell * 0.75 // range: 0.12 – 0.87
-                          return (
-                            <View
-                              key={`bar-${i}`}
-                              style={[styles.visualizerBar, { height: h, opacity }]}
-                            />
-                          )
-                        })}
+                      /* Waveform visualizer — absolute center overlay guarantees pill-centered alignment */
+                      <View style={styles.recordingPillLayout}>
+                        <View style={styles.recordingWaveOverlay} pointerEvents="none">
+                          <View style={styles.recordingWaveSafeArea}>
+                            <View style={styles.visualizerContainer}>
+                              {Array.from({ length: 41 }).map((_, i, arr) => {
+                                // Normalised position -1→+1, always symmetric around 0
+                                const mid = (arr.length - 1) / 2
+                                const t = (i - mid) / mid
+                                // Bell curve: peak at t=0 (exact centre), tails at ±1
+                                const bell = Math.exp(-Math.pow(t * 2, 2))
+                                const h = 4 + bell * 20 // range: 4 – 24 pt
+                                const opacity = 0.12 + bell * 0.75 // range: 0.12 – 0.87
+                                return (
+                                  <View
+                                    key={`bar-${i}`}
+                                    style={[styles.visualizerBar, { height: h, opacity }]}
+                                  />
+                                )
+                              })}
+                            </View>
+                          </View>
+                        </View>
                       </View>
                     ) : (
                       <View style={styles.inputInnerWrapper}>
@@ -3583,7 +3594,17 @@ export function WorkoutChat({
                     )}
 
                     {/* Right action button */}
-                    {isRecording || isTranscribing ? (
+                    {isRecording ? (
+                      <TouchableOpacity
+                        style={[styles.sendButton, styles.recordingSendButton, { backgroundColor: colors.textPrimary }]}
+                        onPress={toggleRecording}
+                        disabled={isTranscribing}
+                      >
+                        {isTranscribing
+                          ? <ActivityIndicator size="small" color={colors.surface} />
+                          : <Ionicons name="arrow-up" size={17} color={colors.surface} />}
+                      </TouchableOpacity>
+                    ) : isTranscribing ? (
                       <TouchableOpacity
                         style={[styles.sendButton, { backgroundColor: colors.textPrimary }]}
                         onPress={toggleRecording}
@@ -4181,6 +4202,10 @@ function createStyles(
       paddingTop: 4,
       minHeight: 40,
     },
+    textInputContainerRecording: {
+      alignItems: 'center',
+      paddingLeft: 4,
+    },
     input: {
       flex: 1,
       fontSize: 16,
@@ -4199,12 +4224,32 @@ function createStyles(
       alignItems: 'flex-end',
     },
     visualizerContainer: {
-      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       paddingVertical: 4,
-      overflow: 'hidden',
       gap: 3,
+    },
+    recordingPillLayout: {
+      flex: 1,
+      minHeight: 32,
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    recordingWaveOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    recordingWaveSafeArea: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 40,
+      overflow: 'hidden',
+    },
+    recordingSendButton: {
+      marginLeft: 4,
     },
     recordingText: {
       fontSize: 15,
