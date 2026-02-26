@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   },
   buttonCompact: {
     paddingHorizontal: 10,
-    gap: 10,
+    gap: 6,
   },
   buttonIconContainer: {
     width: 36,
