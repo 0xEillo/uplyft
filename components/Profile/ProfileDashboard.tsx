@@ -4,12 +4,7 @@ import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { memo } from 'react'
-import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface ProfileDashboardProps {
   activeRoutineName: string | null
@@ -109,11 +104,20 @@ export const ProfileDashboard = memo(
             <View style={styles.buttonIconContainer}>
               <Ionicons name="school" size={24} color={colors.textSecondary} />
             </View>
-            <Text style={[styles.buttonTitle, { color: colors.textPrimary }]}>Tutorial</Text>
+            <Text style={[styles.buttonTitle, { color: colors.textPrimary }]}>
+              Tutorial
+            </Text>
           </View>
-          
-          <View style={[styles.stepsBadge, { backgroundColor: colors.brandPrimary + '15' }]}>
-            <Text style={[styles.stepsText, { color: colors.brandPrimary }]}>{completedCount}/{totalSteps} steps</Text>
+
+          <View
+            style={[
+              styles.stepsBadge,
+              { backgroundColor: colors.brandPrimary + '15' },
+            ]}
+          >
+            <Text style={[styles.stepsText, { color: colors.brandPrimary }]}>
+              {completedCount}/{totalSteps} steps
+            </Text>
           </View>
         </TouchableOpacity>
       )
@@ -137,7 +141,7 @@ export const ProfileDashboard = memo(
               compact
             />
             <DashboardButton
-              title="Log"
+              title="Gym Log"
               icon="body-outline"
               onPress={() => router.push('/body-log/' as any)}
               compact

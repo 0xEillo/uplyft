@@ -3,6 +3,13 @@ import { z } from 'https://esm.sh/zod@3.25.76'
 // @ts-ignore: Remote import for Deno edge runtime
 import { generateObject } from 'npm:ai'
 import { GEMINI_MODEL, openrouter } from './openrouter.ts'
+import {
+  buildExerciseMetadataEnrichmentUpdates,
+  buildExerciseMetadataPlan,
+  DEFAULT_EXERCISE_METADATA,
+  ExerciseMetadataComplete,
+  ExerciseMetadataShape,
+} from './exercise-metadata-utils.ts'
 
 import { createServiceClient } from './supabase.ts'
 
@@ -160,18 +167,6 @@ export const createExerciseTool = {
 // Helper Functions
 // ============================================================================
 
-type ExerciseMetadataShape = {
-  muscle_group: string | null
-  type: string | null
-  equipment: string | null
-}
-
-const DEFAULT_EXERCISE_METADATA: Required<ExerciseMetadataShape> = {
-  muscle_group: 'Full Body',
-  type: 'compound',
-  equipment: 'Other',
-}
-
 function queueExerciseMetadataEnrichment(
   exerciseId: string,
   exerciseName: string,
@@ -180,17 +175,10 @@ function queueExerciseMetadataEnrichment(
 ) {
   const task = (async () => {
     const generated = await generateExerciseMetadata(exerciseName)
-
-    const updates: Record<string, string> = {}
-    if (!providedMetadata.muscle_group) {
-      updates.muscle_group = generated.muscle_group
-    }
-    if (!providedMetadata.type) {
-      updates.type = generated.type
-    }
-    if (!providedMetadata.equipment) {
-      updates.equipment = generated.equipment
-    }
+    const updates = buildExerciseMetadataEnrichmentUpdates(
+      providedMetadata,
+      generated,
+    )
 
     if (Object.keys(updates).length === 0) return
 
@@ -447,18 +435,8 @@ export async function handleCreateExercise(
     equipment: args.equipment || null,
   }
 
-  const needsMetadataEnrichment =
-    !providedMetadata.muscle_group ||
-    !providedMetadata.type ||
-    !providedMetadata.equipment
-
-  const insertMetadata = {
-    muscle_group:
-      providedMetadata.muscle_group ?? DEFAULT_EXERCISE_METADATA.muscle_group,
-    type: providedMetadata.type ?? DEFAULT_EXERCISE_METADATA.type,
-    equipment:
-      providedMetadata.equipment ?? DEFAULT_EXERCISE_METADATA.equipment,
-  }
+  const { needsEnrichment: needsMetadataEnrichment, insertMetadata } =
+    buildExerciseMetadataPlan(providedMetadata)
 
   // Insert new exercise
   const { data, error } = await supabase
@@ -492,11 +470,7 @@ export async function handleCreateExercise(
 
 async function generateExerciseMetadata(
   exerciseName: string,
-): Promise<{
-  muscle_group: string
-  type: string
-  equipment: string
-}> {
+): Promise<ExerciseMetadataComplete> {
   const exerciseMetadataSchema = z.object({
     muscle_group: z.enum([
       'Chest',
@@ -557,10 +531,6 @@ Return the metadata as JSON.`,
       error,
     )
     // Return sensible defaults if AI fails
-    return {
-      muscle_group: 'Full Body',
-      type: 'compound',
-      equipment: 'Other',
-    }
+    return DEFAULT_EXERCISE_METADATA
   }
 }

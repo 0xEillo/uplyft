@@ -6,11 +6,7 @@ import { ReactNode } from 'react'
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-/**
- * How many extra pixels the blur zone extends beyond the header content.
- * A larger value = more gradual fade.
- */
-const FADE_EXTENSION = 40
+const DEFAULT_FADE_EXTENSION = 40
 
 interface BlurredHeaderProps {
   children: ReactNode
@@ -18,6 +14,8 @@ interface BlurredHeaderProps {
   /** Blur intensity (0-100). Default 80. */
   intensity?: number
   disableBlur?: boolean
+  /** Extra pixels the blur extends below the header. Default 40. Use smaller when content sits close below. */
+  fadeExtension?: number
 }
 
 /**
@@ -32,6 +30,7 @@ export function BlurredHeader({
   style,
   intensity = 20,
   disableBlur = false,
+  fadeExtension = DEFAULT_FADE_EXTENSION,
 }: BlurredHeaderProps) {
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
@@ -77,7 +76,7 @@ export function BlurredHeader({
       </View>
 
       {/* Extra transparent spacer for the fade zone — no interaction */}
-      <View style={{ height: FADE_EXTENSION }} pointerEvents="none" />
+      <View style={{ height: fadeExtension }} pointerEvents="none" />
     </View>
   )
 }

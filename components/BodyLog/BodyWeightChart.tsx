@@ -76,14 +76,6 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   // 5% of range or min 0.1kg, whichever is smaller to "zoom in"
   const padding = range === 0 ? 1 : Math.max(0.05, range * 0.05)
 
-  // Find min and max points with dates
-  const minPoint = data.reduce((prev, curr) =>
-    curr.weight_kg < prev.weight_kg ? curr : prev,
-  )
-  const maxPoint = data.reduce((prev, curr) =>
-    curr.weight_kg > prev.weight_kg ? curr : prev,
-  )
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(undefined, {
       month: 'long',
@@ -95,6 +87,14 @@ export function BodyWeightChart({ userId }: BodyWeightChartProps) {
   if (!isLoading && data.length < 2) {
     return null
   }
+
+  // Find min and max points with dates (safe: only runs when data.length >= 2)
+  const minPoint = data.reduce((prev, curr) =>
+    curr.weight_kg < prev.weight_kg ? curr : prev,
+  )
+  const maxPoint = data.reduce((prev, curr) =>
+    curr.weight_kg > prev.weight_kg ? curr : prev,
+  )
 
   return (
     <View style={styles.container}>

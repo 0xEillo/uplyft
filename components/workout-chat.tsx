@@ -2503,7 +2503,7 @@ export function WorkoutChat({
                 ;(messages.length > 0 || isLoading) && scrollToBottom()
               }}
             >
-              {messages.length === 0 && !isLoading ? (
+              {messages.length === 0 && !isLoading && !input.trim() ? (
                 <View style={styles.emptyState}>
                   {mode === 'fullscreen' && (
                     <View style={styles.welcomeSection}>
@@ -2840,11 +2840,16 @@ export function WorkoutChat({
                                       onPress={() => {
                                         if (dailyLogSummary?.logDate) {
                                           router.push({
-                                            pathname: '/body-log/[entryId]',
-                                            params: { entryId: 'new', logDate: dailyLogSummary.logDate }
+                                            pathname: '/body-log/daily-food-log',
+                                            params: {
+                                              entryId: dailyLogSummary.entryId || 'new',
+                                              logDate: dailyLogSummary.logDate,
+                                              totalsJson: JSON.stringify(dailyLogSummary.totals),
+                                              goalsJson: JSON.stringify(dailyLogSummary.goals),
+                                            },
                                           })
                                         } else {
-                                          router.push('/body-log/new')
+                                          router.push('/body-log/daily-food-log')
                                         }
                                       }}
                                       style={[
@@ -3720,11 +3725,16 @@ export function WorkoutChat({
             setIsDailyMacrosSheetVisible(false)
             if (dailyLogSummary.logDate) {
               router.push({
-                pathname: '/body-log/[entryId]',
-                params: { entryId: 'new', logDate: dailyLogSummary.logDate },
+                pathname: '/body-log/daily-food-log',
+                params: {
+                  entryId: dailyLogSummary.entryId || 'new',
+                  logDate: dailyLogSummary.logDate,
+                  totalsJson: JSON.stringify(dailyLogSummary.totals),
+                  goalsJson: JSON.stringify(dailyLogSummary.goals),
+                },
               })
             } else {
-              router.push('/body-log/new')
+              router.push('/body-log/daily-food-log')
             }
           }}
         />

@@ -42,6 +42,11 @@ import { database } from '@/lib/database'
 import { calculateOverallStrengthScore, scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import { getStrengthGender } from '@/lib/strength-progress'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
+import {
+  prependProcessedWorkoutToFeed,
+  replaceWorkoutInFeedById,
+  shouldHydratePostedWorkout,
+} from '@/lib/utils/posted-workout-optimizations'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
@@ -396,19 +401,13 @@ export default function FeedScreen() {
 
         // Optimistically prepend immediately so the feed updates as soon as the
         // server confirms creation. Hydration/profile work continues afterward.
-        setWorkouts((prev) => {
-          const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
-          if (filtered.some((w) => w.id === workout.id)) return filtered
-          return [workout, ...filtered]
-        })
+        setWorkouts((prev) => prependProcessedWorkoutToFeed(prev, workout))
         setOffset((prev) => prev + 1)
 
         // Hydrate full workout details if the server returned a lightweight
         // payload (workout_exercises omitted for faster parse-workout response).
         try {
-          const needsWorkoutHydration =
-            !Array.isArray(workout.workout_exercises) ||
-            workout.workout_exercises.length === 0
+          const needsWorkoutHydration = shouldHydratePostedWorkout(workout)
 
           const [hydratedWorkout, fetchedProfile] = await Promise.all([
             needsWorkoutHydration
@@ -439,9 +438,7 @@ export default function FeedScreen() {
           }
 
           if (hydratedWorkout || fetchedProfile) {
-            setWorkouts((prev) =>
-              prev.map((item) => (item.id === workout.id ? workout : item)),
-            )
+            setWorkouts((prev) => replaceWorkoutInFeedById(prev, workout))
           }
         } catch (error) {
           console.error('Error hydrating newly posted workout:', error)

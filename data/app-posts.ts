@@ -72,8 +72,7 @@ export const APP_POSTS: AppPost[] = [
   {
     id: 'music-preview',
     title: 'Add a Song Preview to Your Workout',
-    body:
-      'Attach a track preview so friends can feel the vibe you trained to.',
+    body: 'Attach a track preview so friends can feel the vibe you trained to.',
     createdAt: '2026-02-02T13:10:00.000Z',
     preview: 'music_preview',
     badge: 'NEW',
@@ -126,8 +125,7 @@ export const APP_POSTS: AppPost[] = [
   {
     id: 'pr-breakdown',
     title: 'Tap Any PR Badge for the Full Breakdown',
-    body:
-      'See the exact set, weight, and reps that created your new record.',
+    body: 'See the exact set, weight, and reps that created your new record.',
     createdAt: '2026-01-28T14:10:00.000Z',
     preview: 'pr_tooltip',
     badge: 'INSIGHT',
@@ -148,12 +146,11 @@ export const APP_POSTS: AppPost[] = [
   {
     id: 'body-log',
     title: 'Body Log Trends Over Time',
-    body:
-      'Track weight, body fat, and progress photos in one place.',
+    body: 'Track weight, body fat, and progress photos in one place.',
     createdAt: '2026-01-26T12:40:00.000Z',
     preview: 'body_log',
     badge: 'TRACK',
-    ctaText: 'Open body log',
+    ctaText: 'Open Gym Log',
     ctaRoute: '/body-log/',
   },
   {

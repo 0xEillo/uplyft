@@ -14,9 +14,13 @@ import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL } from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
-const REQUEST_SCHEMA = z.object({
-  entryId: z.string().min(1),
-})
+const REQUEST_SCHEMA = z.union([
+  z.object({ entryId: z.string().min(1) }),
+  z.object({
+    imagePaths: z.array(z.string().min(1)).min(1).max(3),
+    weightKg: z.number().nullable().optional(),
+  }),
+])
 
 // Timeout for AI analysis
 const ANALYZE_TIMEOUT_MS = 45000
@@ -122,7 +126,6 @@ serve(async (req: Request) => {
     }
 
     const payload = REQUEST_SCHEMA.parse(await req.json())
-    const { entryId } = payload
 
     const supabase = createUserClient(accessToken)
     const serviceClient = createServiceClient()
@@ -135,65 +138,104 @@ serve(async (req: Request) => {
       return errorResponse(401, 'Unauthorized')
     }
 
+    const userId = userData.user.id
+
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('display_name, age, height_cm, weight_kg')
-      .eq('id', userData.user.id)
+      .eq('id', userId)
       .single()
 
     if (profileError || !profile) {
       return errorResponse(404, 'Profile not found')
     }
 
-    // Get the body log entry
-    const { data: entry, error: entryError } = await supabase
-      .from('body_log_entries')
-      .select('*')
-      .eq('id', entryId)
-      .single()
-
-    if (entryError || !entry) {
-      return errorResponse(404, 'Body log entry not found')
-    }
-
-    // Verify ownership
-    if (entry.user_id !== userData.user.id) {
-      return errorResponse(403, 'Forbidden')
-    }
-
-    // Get all images for this entry
-    const { data: images, error: imagesError } = await supabase
-      .from('body_log_images')
-      .select('*')
-      .eq('entry_id', entryId)
-      .order('sequence', { ascending: true })
-
-    if (imagesError || !images || images.length === 0) {
-      return errorResponse(404, 'No images found for this entry')
-    }
-
-    // Create signed URLs instead of base64 to avoid memory spikes
-    const imageUrls: string[] = []
     const signedUrlTTLSeconds = 60 * 30
+    const imageUrls: string[] = []
+    let entryCreatedAt: string = new Date().toISOString()
+    let scanWeightKg: number | null = null
+    let isStandaloneScan = false
 
-    for (const img of images) {
-      const {
-        data: signed,
-        error: signedError,
-      } = await serviceClient.storage
-        .from(BODY_LOG_BUCKET)
-        .createSignedUrl(img.file_path, signedUrlTTLSeconds)
+    if ('entryId' in payload) {
+      // ── Entry-based mode (existing flow) ────────────────────────────────────
+      const { entryId } = payload
 
-      if (signedError || !signed?.signedUrl) {
-        console.error(
-          `[BODY_LOG] Failed to sign ${img.file_path}:`,
-          signedError,
-        )
-        throw new Error(`Failed to sign image: ${img.file_path}`)
+      const { data: entry, error: entryError } = await supabase
+        .from('body_log_entries')
+        .select('*')
+        .eq('id', entryId)
+        .single()
+
+      if (entryError || !entry) {
+        return errorResponse(404, 'Body log entry not found')
       }
 
-      imageUrls.push(signed.signedUrl)
+      if (entry.user_id !== userId) {
+        return errorResponse(403, 'Forbidden')
+      }
+
+      entryCreatedAt = entry.created_at
+      scanWeightKg =
+        typeof entry.weight_kg === 'number'
+          ? entry.weight_kg
+          : typeof profile.weight_kg === 'number'
+          ? profile.weight_kg
+          : null
+
+      const { data: images, error: imagesError } = await supabase
+        .from('body_log_images')
+        .select('*')
+        .eq('entry_id', entryId)
+        .order('sequence', { ascending: true })
+
+      if (imagesError || !images || images.length === 0) {
+        return errorResponse(404, 'No images found for this entry')
+      }
+
+      for (const img of images) {
+        const { data: signed, error: signedError } = await serviceClient.storage
+          .from(BODY_LOG_BUCKET)
+          .createSignedUrl(img.file_path, signedUrlTTLSeconds)
+
+        if (signedError || !signed?.signedUrl) {
+          console.error(`[BODY_LOG] Failed to sign ${img.file_path}:`, signedError)
+          throw new Error(`Failed to sign image: ${img.file_path}`)
+        }
+
+        imageUrls.push(signed.signedUrl)
+      }
+    } else {
+      // ── Standalone scan mode (new flow — ephemeral images, no entry needed) ──
+      isStandaloneScan = true
+      const { imagePaths, weightKg } = payload
+
+      // Security: each path must be owned by the authenticated user
+      for (const p of imagePaths) {
+        if (!p.startsWith(`${userId}/`)) {
+          return errorResponse(403, 'Forbidden: image path does not belong to user')
+        }
+      }
+
+      scanWeightKg =
+        typeof weightKg === 'number'
+          ? weightKg
+          : typeof profile.weight_kg === 'number'
+          ? profile.weight_kg
+          : null
+
+      for (const filePath of imagePaths) {
+        const { data: signed, error: signedError } = await serviceClient.storage
+          .from(BODY_LOG_BUCKET)
+          .createSignedUrl(filePath, signedUrlTTLSeconds)
+
+        if (signedError || !signed?.signedUrl) {
+          console.error(`[BODY_LOG] Failed to sign ${filePath}:`, signedError)
+          throw new Error(`Failed to sign image: ${filePath}`)
+        }
+
+        imageUrls.push(signed.signedUrl)
+      }
     }
 
     // Build the system prompt with user context
@@ -201,17 +243,15 @@ serve(async (req: Request) => {
       display_name: profile.display_name,
       age: profile.age,
       height_cm: profile.height_cm,
-      weight_kg: profile.weight_kg,
-      createdAt: entry.created_at,
+      weight_kg: scanWeightKg ?? profile.weight_kg,
+      createdAt: entryCreatedAt,
     })
 
-    // Add multi-image instruction if applicable
     if (imageUrls.length > 1) {
       systemPrompt +=
         '\n\nIMPORTANT: You are analyzing MULTIPLE photos of the same person from different angles. Combine information from all photos to provide a SINGLE, more accurate assessment. Use triangulation between photos to improve accuracy of body fat %, BMI, and weight estimates.'
     }
 
-    // Build user message with all images (using signed URLs)
     const userContent: any[] = [
       {
         type: 'text',
@@ -222,81 +262,61 @@ serve(async (req: Request) => {
       },
     ]
 
-    // Add all images to the message as signed URLs
     for (const url of imageUrls) {
-      userContent.push({
-        type: 'image_url',
-        image_url: { url },
-      })
+      userContent.push({ type: 'image_url', image_url: { url } })
     }
 
     // Analyze with Gemini via OpenRouter (with fallback)
     let analysisContent: string
 
     try {
-      const analysis = await analyzeWithModel(
-        GEMINI_MODEL,
-        systemPrompt,
-        userContent,
-      )
+      const analysis = await analyzeWithModel(GEMINI_MODEL, systemPrompt, userContent)
       analysisContent = analysis.content
     } catch (primaryError) {
       console.error(`[BODY_LOG] ${GEMINI_MODEL} failed:`, primaryError)
-
-      // Try fallback model
       console.log(`[BODY_LOG] Falling back to ${GEMINI_FALLBACK_MODEL}...`)
 
       try {
-        const analysis = await analyzeWithModel(
-          GEMINI_FALLBACK_MODEL,
-          systemPrompt,
-          userContent,
-        )
+        const analysis = await analyzeWithModel(GEMINI_FALLBACK_MODEL, systemPrompt, userContent)
         analysisContent = analysis.content
       } catch (fallbackError) {
-        console.error(
-          `[BODY_LOG] ${GEMINI_FALLBACK_MODEL} also failed:`,
-          fallbackError,
-        )
+        console.error(`[BODY_LOG] ${GEMINI_FALLBACK_MODEL} also failed:`, fallbackError)
         throw new Error('Failed to analyze body log images')
       }
     }
 
-    // Parse the metrics using the shared parser for consistency
     const metrics = parseBodyLogMetrics(analysisContent)
-
-    // Calculate lean mass and fat mass if possible
-    const weight =
-      typeof profile.weight_kg === 'number'
-        ? profile.weight_kg
-        : typeof entry.weight_kg === 'number'
-        ? entry.weight_kg
-        : null
 
     let leanMass: number | null = null
     let fatMass: number | null = null
 
     if (
-      weight !== null &&
+      scanWeightKg !== null &&
       metrics.body_fat_percentage !== null &&
       metrics.body_fat_percentage !== undefined
     ) {
       const fatPercent = metrics.body_fat_percentage / 100
-      fatMass = Number((weight * fatPercent).toFixed(2))
-      leanMass = Number((weight * (1 - fatPercent)).toFixed(2))
+      fatMass = Number((scanWeightKg * fatPercent).toFixed(2))
+      leanMass = Number((scanWeightKg * (1 - fatPercent)).toFixed(2))
     }
 
-    const updatePayload = {
+    const computedMetrics = {
       ...metrics,
-      weight_kg: weight,
+      weight_kg: scanWeightKg,
       lean_mass_kg: leanMass,
       fat_mass_kg: fatMass,
     }
 
-    // Update entry metrics
+    // Standalone scan: return metrics without touching the DB
+    if (isStandaloneScan) {
+      return jsonResponse({ metrics: computedMetrics })
+    }
+
+    // Entry-based: update the entry with the computed metrics
+    const { entryId } = payload as { entryId: string }
     const { data: updated, error: updateError } = await supabase
       .from('body_log_entries')
-      .update(updatePayload)
+      .update(computedMetrics)
       .eq('id', entryId)
       .select(
         'id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg, lean_mass_kg, fat_mass_kg, score_v_taper, score_chest, score_shoulders, score_abs, score_arms, score_back, score_legs, analysis_summary',

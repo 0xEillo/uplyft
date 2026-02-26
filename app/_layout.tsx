@@ -289,7 +289,23 @@ function RootLayoutNav() {
             }}
           />
           <Stack.Screen
+            name="body-log/daily-food-log"
+            options={{
+              presentation: 'card',
+              animation: 'default',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
             name="body-log/capture"
+            options={{
+              presentation: 'card',
+              animation: 'default',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="body-log/scan"
             options={{
               presentation: 'card',
               animation: 'default',

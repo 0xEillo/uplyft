@@ -1,5 +1,5 @@
 import { haptic, hapticSuccess } from '@/lib/haptics'
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
@@ -10,7 +10,6 @@ import {
     Alert,
     Dimensions,
     FlatList,
-    LayoutAnimation,
     Modal,
     Platform,
     Pressable,
@@ -20,6 +19,7 @@ import {
     View
 } from 'react-native'
 import Animated, {
+    FadeInDown,
     useAnimatedScrollHandler,
     useAnimatedStyle,
     useSharedValue,
@@ -37,6 +37,7 @@ import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
@@ -55,13 +56,13 @@ import {
     type BodyLogEntryWithImages,
     type BodyLogImage,
 } from '@/lib/body-log/metadata'
+import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
     getBodyLogImageUrls,
     prefetchBodyLogImages,
 } from '@/lib/utils/body-log-storage'
-import type { DailyLogMeal, DailyLogSummary } from '@/types/database.types'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.45
@@ -90,12 +91,6 @@ const normalizeLogDateParam = (logDate?: string): string | null => {
   if (Number.isNaN(parsed.getTime())) return null
   return getLocalDateKey(parsed.toISOString())
 }
-
-const formatMealTime = (dateString: string): string =>
-  new Date(dateString).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 
 // Helper for intensity (1-4)
 
@@ -255,7 +250,9 @@ export default function BodyLogDetailScreen() {
   const colors = useThemedColors()
   const { formatWeight, weightUnit } = useUnit()
   const { user } = useAuth()
+  const { coachId } = useProfile()
   const { isProMember } = useSubscription()
+  const coach = getCoach(coachId)
   const { completeStep } = useTutorial()
   const router = useRouter()
   const navigation = useNavigation()
@@ -272,10 +269,6 @@ export default function BodyLogDetailScreen() {
   const [activeLogDate, setActiveLogDate] = useState<string | null>(
     normalizeLogDateParam(logDate),
   )
-  const [dailySummary, setDailySummary] = useState<DailyLogSummary | null>(null)
-  const [dailyMeals, setDailyMeals] = useState<DailyLogMeal[]>([])
-  const [isNutritionLoading, setIsNutritionLoading] = useState(false)
-  const [showMealDetails, setShowMealDetails] = useState(false)
 
   // Modal states
   const [infoModalVisible, setInfoModalVisible] = useState(false)
@@ -546,47 +539,6 @@ export default function BodyLogDetailScreen() {
       cancelled = true
     }
   }, [user])
-
-  // Fetch daily nutrition summary + meals for the selected day
-  useEffect(() => {
-    if (!user?.id || !activeLogDate) {
-      setDailySummary(null)
-      setDailyMeals([])
-      return
-    }
-
-    let cancelled = false
-
-    const fetchDailyNutrition = async () => {
-      try {
-        setIsNutritionLoading(true)
-        const [summary, meals] = await Promise.all([
-          database.dailyLog.getDaySummary(user.id, activeLogDate),
-          database.dailyLog.getMealsForDay(user.id, activeLogDate),
-        ])
-
-        if (cancelled) return
-        setDailySummary(summary)
-        setDailyMeals(meals)
-      } catch (error) {
-        console.error('Error fetching daily nutrition log:', error)
-        if (!cancelled) {
-          setDailySummary(null)
-          setDailyMeals([])
-        }
-      } finally {
-        if (!cancelled) {
-          setIsNutritionLoading(false)
-        }
-      }
-    }
-
-    fetchDailyNutrition()
-
-    return () => {
-      cancelled = true
-    }
-  }, [user?.id, activeLogDate])
 
   // Handle opening info modal
   const handleInfoPress = async (
@@ -1313,13 +1265,11 @@ export default function BodyLogDetailScreen() {
   }
 
   const imageCount = imageUrls.length
-
-  const nutritionTotals = dailySummary?.totals ?? {
-    calories: 0,
-    protein_g: 0,
-    carbs_g: 0,
-    fat_g: 0,
-    meal_count: 0,
+  const getPhysiqueScoreTone = (value: number) => {
+    if (value >= 75) return '#10B981'
+    if (value >= 65) return '#0EA5E9'
+    if (value >= 55) return '#F59E0B'
+    return '#EF4444'
   }
 
   return (
@@ -1353,83 +1303,41 @@ export default function BodyLogDetailScreen() {
           ]}
         >
 
-            {/* Progress Photos - Clean Horizontal Carousel */}
+            {/* Progress Photos — small thumbnail strip */}
             {imageUrls.length > 0 && (
-              <View style={styles.progressSection}>
-                <View style={styles.progressHeader}>
-                  <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>
-                    Progress
-                  </Text>
-                  <View style={styles.progressDots}>
-                    {imageUrls.map((_, i) => (
-                      <View
-                        key={`dot-${i}`}
-                        style={[
-                          styles.progressDot,
-                          { backgroundColor: i === currentImageIndex ? colors.textPrimary : colors.border }
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                {/* Horizontal Carousel - Spacious Cards */}
+              <View style={styles.photoStripSection}>
                 <FlatList
                   horizontal
-                  pagingEnabled
                   showsHorizontalScrollIndicator={false}
-                  data={[...imageUrls, 'add']}
-                  keyExtractor={(item, index) => `photo-${index}`}
-                  contentContainerStyle={{ paddingRight: 20 }}
-                  snapToInterval={SCREEN_WIDTH - 60}
-                  decelerationRate="fast"
-                  onMomentumScrollEnd={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 60))
-                    if (index < imageUrls.length) {
-                      setCurrentImageIndex(index)
-                    }
-                  }}
+                  data={
+                    imageUrls.length < 3 && !(metrics.body_fat_percentage !== null || metrics.bmi !== null)
+                      ? ([...imageUrls, 'add'] as (string | 'add')[])
+                      : imageUrls
+                  }
+                  keyExtractor={(_, i) => `thumb-${i}`}
+                  contentContainerStyle={styles.photoStripContent}
                   renderItem={({ item, index }) => {
-                    if (item === 'add' && imageUrls.length < 3) {
+                    if (item === 'add') {
                       return (
                         <TouchableOpacity
-                          style={[
-                            styles.progressAddCard,
-                            { backgroundColor: colors.surfaceSubtle, borderColor: colors.border }
-                          ]}
+                          style={[styles.photoThumbAdd, { backgroundColor: colors.surfaceSubtle, borderColor: colors.border }]}
                           onPress={handleAddPhotos}
                           activeOpacity={0.7}
                         >
-                          {isUploadingImage ? (
-                            <ActivityIndicator color={colors.brandPrimary} />
-                          ) : (
-                            <>
-                              <Ionicons name="add-circle-outline" size={48} color={colors.brandPrimary} />
-                              <Text style={[styles.progressAddText, { color: colors.textSecondary }]}>
-                                Add Photo
-                              </Text>
-                            </>
-                          )}
+                          {isUploadingImage
+                            ? <ActivityIndicator size="small" color={colors.textSecondary} />
+                            : <Ionicons name="add" size={22} color={colors.textSecondary} />
+                          }
                         </TouchableOpacity>
                       )
                     }
-                    if (item === 'add') return null
-                    
                     return (
                       <TouchableOpacity
-                        style={styles.progressPhotoCard}
-                        onPress={() => {
-                          setCurrentImageIndex(index)
-                          setImageModalVisible(true)
-                        }}
-                        activeOpacity={0.95}
+                        style={styles.photoThumb}
+                        onPress={() => { setCurrentImageIndex(index); setImageModalVisible(true) }}
+                        activeOpacity={0.88}
                       >
-                        <Image
-                          source={{ uri: item as string }}
-                          style={styles.progressPhoto}
-                          contentFit="cover"
-                          transition={200}
-                        />
+                        <Image source={{ uri: item as string }} style={styles.photoThumbImg} contentFit="cover" transition={200} />
                       </TouchableOpacity>
                     )
                   }}
@@ -1437,44 +1345,41 @@ export default function BodyLogDetailScreen() {
               </View>
             )}
 
-            {/* Measurements Row */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  Measurements
-                </Text>
-              </View>
-              <View style={styles.measurementRow}>
-                {/* Weight Card */}
-                <TouchableOpacity 
-                  style={[
-                    styles.measurementCard, 
-                    { backgroundColor: colors.surfaceCard }
-                  ]} 
-                  onPress={handleLogWeight}
-                  activeOpacity={0.7}
-                >
-                  {metrics.weight_kg ? (
-                    <Text style={[styles.measurementValue, { color: colors.textPrimary }]}>
-                      {formatWeight(metrics.weight_kg).split(' ')[0]}
-                      <Text style={[styles.measurementUnit, { color: colors.textSecondary }]}>
-                        {` ${weightUnit}`}
-                      </Text>
+            {/* No photos: subtle add row (hidden after scan) */}
+            {imageUrls.length === 0 && (metrics.body_fat_percentage === null && metrics.bmi === null) && (
+              <TouchableOpacity
+                style={[styles.addPhotosRow, { borderColor: colors.border }]}
+                onPress={handleAddPhotos}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.addPhotosIconWrap, { backgroundColor: colors.surfaceSubtle }]}>
+                  <Ionicons name="camera-outline" size={16} color={colors.textSecondary} />
+                </View>
+                <Text style={[styles.addPhotosRowText, { color: colors.textSecondary }]}>Add progress photos</Text>
+                <Ionicons name="chevron-forward" size={15} color={colors.border} />
+              </TouchableOpacity>
+            )}
+
+            {/* Primary Metrics — Industrial dashboard style */}
+            <Animated.View
+              entering={FadeInDown.duration(400).delay(80)}
+              style={[styles.metricsDashboard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}
+            >
+              <View style={styles.metricsTopRow}>
+                <TouchableOpacity style={styles.metricPill} onPress={handleLogWeight} activeOpacity={0.7}>
+                  <View style={styles.metricPillValueRow}>
+                    <Text style={[styles.metricPillValue, { color: colors.textPrimary }]}>
+                      {metrics.weight_kg ? formatWeight(metrics.weight_kg).split(' ')[0] : '—'}
                     </Text>
-                  ) : (
-                    <View style={[styles.measurementPlaceholder, { backgroundColor: colors.surfaceSubtle }]}>
-                      <Ionicons name="scale-outline" size={20} color={colors.textSecondary} />
-                    </View>
-                  )}
-                  <Text style={[styles.measurementLabel, { color: colors.textSecondary }]}>Weight</Text>
+                    {metrics.weight_kg !== null && (
+                      <Text style={[styles.metricPillUnit, { color: colors.textSecondary }]}>{weightUnit}</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.metricPillLabel, { color: colors.textSecondary }]}>Weight</Text>
                 </TouchableOpacity>
 
-                {/* Body Fat Card */}
-                <TouchableOpacity 
-                  style={[
-                    styles.measurementCard, 
-                    { backgroundColor: colors.surfaceCard }
-                  ]} 
+                <TouchableOpacity
+                  style={styles.metricPill}
                   onPress={() => {
                     if (metrics.body_fat_percentage !== null) {
                       handleInfoPress('bodyFat', metrics.body_fat_percentage.toString(), getBodyFatStatus(metrics.body_fat_percentage, userGender))
@@ -1484,310 +1389,141 @@ export default function BodyLogDetailScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  {metrics.body_fat_percentage !== null ? (
-                    <>
-                      <Text style={[styles.measurementValue, { color: colors.textPrimary }]}>
-                        {metrics.body_fat_percentage}
-                        <Text style={[styles.measurementUnit, { color: colors.textSecondary }]}>%</Text>
-                      </Text>
-                    </>
-                  ) : (
-                    <View style={[styles.measurementPlaceholder, { backgroundColor: colors.surfaceSubtle }]}>
-                      <Ionicons name="body-outline" size={20} color={colors.textSecondary} />
-                    </View>
-                  )}
-                  <Text style={[styles.measurementLabel, { color: colors.textSecondary }]}>Body Fat</Text>
+                  <View style={styles.metricPillValueRow}>
+                    <Text style={[styles.metricPillValue, { color: colors.textPrimary }]}>
+                      {metrics.body_fat_percentage !== null ? `${metrics.body_fat_percentage}` : '—'}
+                    </Text>
+                    {metrics.body_fat_percentage !== null && (
+                      <Text style={[styles.metricPillUnit, { color: colors.textSecondary }]}>%</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.metricPillLabel, { color: colors.textSecondary }]}>Body Fat</Text>
                 </TouchableOpacity>
 
-                {/* BMI Card */}
-                <TouchableOpacity 
-                  style={[
-                    styles.measurementCard, 
-                    { backgroundColor: colors.surfaceCard }
-                  ]} 
+                <TouchableOpacity
+                  style={styles.metricPill}
                   onPress={() => {
                     if (metrics.bmi !== null) {
                       handleInfoPress('bmi', metrics.bmi.toString(), getBMIStatus(metrics.bmi, userGender))
                     } else if (metrics.weight_kg && userHeight) {
-                       handleInfoPress('bmi', '--', null)
+                      handleInfoPress('bmi', '--', null)
                     }
                   }}
                   activeOpacity={0.7}
                 >
-                  {metrics.bmi !== null ? (
-                    <>
-                      <Text style={[styles.measurementValue, { color: colors.textPrimary }]}>
-                        {metrics.bmi.toFixed(1)}
-                      </Text>
-                    </>
-                  ) : (
-                    <View style={[styles.measurementPlaceholder, { backgroundColor: colors.surfaceSubtle }]}>
-                      <Ionicons name="speedometer-outline" size={20} color={colors.textSecondary} />
-                    </View>
-                  )}
-                  <Text style={[styles.measurementLabel, { color: colors.textSecondary }]}>BMI</Text>
+                  <Text style={[styles.metricPillValue, { color: colors.textPrimary }]}>
+                    {metrics.bmi !== null ? metrics.bmi.toFixed(1) : '—'}
+                  </Text>
+                  <Text style={[styles.metricPillLabel, { color: colors.textSecondary }]}>BMI</Text>
                 </TouchableOpacity>
               </View>
-            </View>
 
-
-            {/* Daily Food Log Section */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  Macros
-                </Text>
-                <Text style={[styles.foodMealsCount, { color: colors.textSecondary }]}>
-                  {nutritionTotals.meal_count}{' '}
-                  {nutritionTotals.meal_count === 1 ? 'meal' : 'meals'}
-                </Text>
-              </View>
-
-              <View style={[styles.premiumCard, { backgroundColor: colors.surfaceCard, padding: 16 }]}>
-                {/* Food Dashboard UI */}
-                {(() => {
-                  const { calories, protein_g, carbs_g, fat_g } = nutritionTotals
-                  const goals = (dailySummary?.goals as any) || {}
-                  const safeCalGoal = goals.calorie_goal || 2500
-                  const safeProtGoal = goals.protein_goal_g || 150
-                  
-                  // Progress for rings (clamped 0 to 1)
-                  const calProgress = Math.min(Math.max(calories / safeCalGoal, 0), 1)
-                  const calCircumference = 28 * 2 * Math.PI
-                  const calDashOffset = calCircumference * (1 - calProgress)
-                  
-                  const protProgress = Math.min(Math.max(protein_g / safeProtGoal, 0), 1)
-                  const protCircumference = 16 * 2 * Math.PI
-                  const protDashOffset = protCircumference * (1 - protProgress)
-
-                  return (
-                    <View style={{ gap: 10 }}>
-                      {/* Calories Row */}
-                      <View style={styles.foodCaloriesCard}>
-                        <View>
-                          <Text style={styles.foodCaloriesValue}>
-                            {Math.round(calories)}
-                          </Text>
-                          <Text style={styles.foodCaloriesLabel}>
-                             / {Math.round(safeCalGoal)} kcal
-                          </Text>
-                        </View>
-                        <View style={styles.chartContainer}>
-                          <Svg width={70} height={70}>
-                            <G rotation="-90" origin="35, 35">
-                              <Circle
-                                cx="35"
-                                cy="35"
-                                r="28"
-                                stroke={colors.border}
-                                strokeWidth="6"
-                                fill="transparent"
-                              />
-                              <Circle
-                                cx="35"
-                                cy="35"
-                                r="28"
-                                stroke={colors.textPrimary}
-                                strokeWidth="6"
-                                fill="transparent"
-                                strokeDasharray={`${calCircumference}`}
-                                strokeDashoffset={`${calDashOffset}`}
-                                strokeLinecap="round"
-                              />
-                            </G>
-                          </Svg>
-                          <View style={styles.chartIcon}>
-                            <Ionicons
-                              name="flame"
-                              size={20}
-                              color={colors.textPrimary}
-                            />
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* Macros Grid */}
-                      <View style={styles.foodMacroGrid}>
-                        {/* Protein */}
-                        <View style={styles.foodMacroCard}>
-                          <Text style={styles.foodMacroValueSmall}>
-                            {Math.round(protein_g)}g
-                          </Text>
-                          <Text style={styles.foodMacroLabelSmall}>Protein</Text>
-                          <View style={styles.smallChartContainer}>
-                            <Svg width={40} height={40}>
-                              <G rotation="-90" origin="20, 20">
-                                <Circle
-                                  cx="20"
-                                  cy="20"
-                                  r="16"
-                                  stroke="rgba(248, 113, 113, 0.2)"
-                                  strokeWidth="4"
-                                  fill="transparent"
-                                />
-                                <Circle
-                                  cx="20"
-                                  cy="20"
-                                  r="16"
-                                  stroke="#F87171"
-                                  strokeWidth="4"
-                                  fill="transparent"
-                                  strokeDasharray={`${protCircumference}`}
-                                  strokeDashoffset={`${protDashOffset}`}
-                                  strokeLinecap="round"
-                                />
-                              </G>
-                            </Svg>
-                            <View style={styles.chartIcon}>
-                              <MaterialCommunityIcons name="food-drumstick" size={12} color="#F87171" />
-                            </View>
-                          </View>
-                        </View>
-
-                        {/* Carbs */}
-                        <View style={styles.foodMacroCard}>
-                          <Text style={styles.foodMacroValueSmall}>
-                            {Math.round(carbs_g)}g
-                          </Text>
-                          <Text style={styles.foodMacroLabelSmall}>Carbs</Text>
-                          <View style={styles.smallChartContainer}>
-                            <Svg width={40} height={40}>
-                              <G rotation="-90" origin="20, 20">
-                                <Circle
-                                  cx="20"
-                                  cy="20"
-                                  r="16"
-                                  stroke="rgba(251, 191, 36, 0.2)"
-                                  strokeWidth="4"
-                                  fill="transparent"
-                                />
-                                <Circle
-                                  cx="20"
-                                  cy="20"
-                                  r="16"
-                                  stroke="#FBBF24"
-                                  strokeWidth="4"
-                                  fill="transparent"
-                                  strokeDasharray={`${16 * 2 * Math.PI}`}
-                                  strokeDashoffset={`${16 * 2 * Math.PI * 0.4}`}
-                                  strokeLinecap="round"
-                                />
-                              </G>
-                            </Svg>
-                            <View style={styles.chartIcon}>
-                              <Ionicons name="nutrition" size={12} color="#FBBF24" />
-                            </View>
-                          </View>
-                        </View>
-
-                        {/* Fat */}
-                        <View style={styles.foodMacroCard}>
-                          <Text style={styles.foodMacroValueSmall}>
-                            {Math.round(fat_g)}g
-                          </Text>
-                          <Text style={styles.foodMacroLabelSmall}>Fats</Text>
-                          <View style={styles.smallChartContainer}>
-                            <Svg width={40} height={40}>
-                              <G rotation="-90" origin="20, 20">
-                                <Circle
-                                  cx="20"
-                                  cy="20"
-                                  r="16"
-                                  stroke="rgba(96, 165, 250, 0.2)"
-                                  strokeWidth="4"
-                                  fill="transparent"
-                                />
-                                <Circle
-                                  cx="20"
-                                  cy="20"
-                                  r="16"
-                                  stroke="#60A5FA"
-                                  strokeWidth="4"
-                                  fill="transparent"
-                                  strokeDasharray={`${16 * 2 * Math.PI}`}
-                                  strokeDashoffset={`${16 * 2 * Math.PI * 0.6}`}
-                                  strokeLinecap="round"
-                                />
-                              </G>
-                            </Svg>
-                            <View style={styles.chartIcon}>
-                              <Ionicons name="water" size={12} color="#60A5FA" />
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                  )
-                })()}
-
-                <TouchableOpacity 
-                   style={styles.foodDetailsToggle}
-                   onPress={() => {
-                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-                     setShowMealDetails(!showMealDetails)
-                   }}
+              {/* Composition bar — Lean vs Fat ratio */}
+              {(metrics.lean_mass_kg !== null || metrics.fat_mass_kg !== null) && (
+                <Animated.View
+                  entering={FadeInDown.duration(350).delay(180)}
+                  style={styles.compositionBarWrap}
                 >
-                    <Text style={[styles.foodDetailsToggleText, { color: colors.brandPrimary }]}>
-                      {showMealDetails ? 'Hide Meals' : 'See Meals'}
-                    </Text>
-                    <Ionicons 
-                      name={showMealDetails ? "chevron-up" : "chevron-down"} 
-                      size={16} 
-                      color={colors.brandPrimary} 
-                    />
-                </TouchableOpacity>
-
-                {showMealDetails && (
-                  <View style={{ marginTop: 16 }}>
-                    <View style={[styles.foodMealsDivider, { backgroundColor: colors.border }]} />
-
-                    {isNutritionLoading ? (
-                      <View style={styles.foodLoadingState}>
-                        <ActivityIndicator size="small" color={colors.brandPrimary} />
+                  <View style={[styles.compositionBarTrack, { backgroundColor: colors.surfaceSubtle }]}>
+                    {(() => {
+                      const lean = metrics.lean_mass_kg ?? 0
+                      const fat = metrics.fat_mass_kg ?? 0
+                      const total = lean + fat
+                      const leanPct = total > 0 ? (lean / total) * 100 : 0
+                      const fatPct = total > 0 ? (fat / total) * 100 : 0
+                      return (
+                        <>
+                          {lean > 0 && (
+                            <View
+                              style={[styles.compositionBarSegment, { width: `${leanPct}%`, backgroundColor: colors.statusSuccess }]}
+                            />
+                          )}
+                          {fat > 0 && (
+                            <View
+                              style={[styles.compositionBarSegment, { width: `${fatPct}%`, backgroundColor: colors.brandPrimary }]}
+                            />
+                          )}
+                        </>
+                      )
+                    })()}
+                  </View>
+                  <View style={styles.compositionBarLabels}>
+                    {metrics.lean_mass_kg !== null && (
+                      <View style={styles.compositionBarItem}>
+                        <View style={[styles.compositionBarDot, { backgroundColor: colors.statusSuccess }]} />
+                        <Text style={[styles.compositionBarValue, { color: colors.textPrimary }]}>{formatWeight(metrics.lean_mass_kg)}</Text>
+                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Lean</Text>
                       </View>
-                    ) : dailyMeals.length === 0 ? (
-                      <Text style={[styles.foodEmptyText, { color: colors.textSecondary }]}>
-                        No meals logged for this day yet.
-                      </Text>
-                    ) : (
-                      <View style={styles.foodMealList}>
-                        {dailyMeals.map((meal, index) => (
-                          <View
-                            key={meal.id}
-                            style={[
-                              styles.foodMealRow,
-                              index < dailyMeals.length - 1 && {
-                                borderBottomWidth: 1,
-                                borderBottomColor: colors.border,
-                              },
-                            ]}
-                          >
-                            <View style={styles.foodMealRowTop}>
-                              <Text
-                                style={[styles.foodMealDescription, { color: colors.textPrimary }]}
-                                numberOfLines={2}
-                              >
-                                {meal.description}
-                              </Text>
-                              <Text style={[styles.foodMealTime, { color: colors.textSecondary }]}>
-                                {formatMealTime(meal.created_at)}
-                              </Text>
-                            </View>
-                            <Text style={[styles.foodMealMacros, { color: colors.textSecondary }]}>
-                              Cal {Math.round(meal.calories)}  •  P {Math.round(meal.protein_g)}g  •  C{' '}
-                              {Math.round(meal.carbs_g)}g  •  F {Math.round(meal.fat_g)}g
-                            </Text>
-                          </View>
-                        ))}
+                    )}
+                    {metrics.fat_mass_kg !== null && (
+                      <View style={styles.compositionBarItem}>
+                        <View style={[styles.compositionBarDot, { backgroundColor: colors.brandPrimary }]} />
+                        <Text style={[styles.compositionBarValue, { color: colors.textPrimary }]}>{formatWeight(metrics.fat_mass_kg)}</Text>
+                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Fat</Text>
                       </View>
                     )}
                   </View>
+                </Animated.View>
+              )}
+            </Animated.View>
+
+            {/* Scan Results (Physique scores, Coach notes) */}
+            {(metrics.lean_mass_kg !== null ||
+              metrics.fat_mass_kg !== null ||
+              metrics.score_v_taper !== null ||
+              entry?.analysis_summary) && (
+              <View style={styles.scanSection}>
+
+                {/* Physique Scores */}
+                {(metrics.score_v_taper !== null ||
+                  metrics.score_chest !== null ||
+                  metrics.score_shoulders !== null ||
+                  metrics.score_abs !== null ||
+                  metrics.score_arms !== null ||
+                  metrics.score_back !== null ||
+                  metrics.score_legs !== null) && (
+                  <View style={[styles.scoresCard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
+                    {[
+                      { key: 'score_v_taper', label: 'V-Taper', val: metrics.score_v_taper },
+                      { key: 'score_chest', label: 'Chest', val: metrics.score_chest },
+                      { key: 'score_shoulders', label: 'Shoulders', val: metrics.score_shoulders },
+                      { key: 'score_abs', label: 'Abs', val: metrics.score_abs },
+                      { key: 'score_arms', label: 'Arms', val: metrics.score_arms },
+                      { key: 'score_back', label: 'Back', val: metrics.score_back },
+                      { key: 'score_legs', label: 'Legs', val: metrics.score_legs },
+                    ].filter((item) => item.val !== null).map((item, idx, arr) => {
+                      const tone = getPhysiqueScoreTone(item.val!)
+                      return (
+                        <View
+                          key={item.key}
+                          style={[
+                            styles.scoreRow,
+                            idx < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                          ]}
+                        >
+                          <Text style={[styles.scoreRowLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                          <View style={[styles.scoreBarTrack, { backgroundColor: colors.surfaceSubtle }]}>
+                            <View style={[styles.scoreBarFill, { width: `${item.val}%` as any, backgroundColor: tone }]} />
+                          </View>
+                          <Text style={[styles.scoreRowValue, { color: tone }]}>{item.val}</Text>
+                        </View>
+                      )
+                    })}
+                  </View>
+                )}
+
+                {/* Coach Notes */}
+                {entry?.analysis_summary && (
+                  <View style={[styles.coachNotes, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
+                    <View style={styles.coachNotesHead}>
+                      <Image source={coach.image} style={styles.coachAvatar} contentFit="cover" />
+                      <Text style={[styles.coachNotesTitle, { color: colors.textSecondary }]}>Coach Notes</Text>
+                    </View>
+                    <Text style={[styles.coachNotesText, { color: colors.textPrimary }]}>{entry.analysis_summary}</Text>
+                  </View>
                 )}
               </View>
-            </View>
-
-
-
+            )}
 
             {showTeaserResults && (
               <View style={[styles.sectionContainer, { marginTop: -20, marginBottom: 40 }]}>
@@ -2389,6 +2125,13 @@ const createStyles = (colors: Colors) =>
     letterSpacing: -0.5,
     paddingLeft: 2, // Prevent first character cutoff
   },
+  sectionSubtitle: {
+    marginTop: 3,
+    marginLeft: 2,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
   foodMealsCount: {
     fontSize: 13,
     fontWeight: '600',
@@ -2551,14 +2294,48 @@ const createStyles = (colors: Colors) =>
     flexDirection: 'row',
     gap: 12,
   },
+  measurementPanel: {
+    borderRadius: 24,
+    padding: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 2,
+  },
   measurementCard: {
     flex: 1,
     borderRadius: 22,
-    paddingVertical: 20,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
+    minHeight: 118,
+    borderWidth: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  measurementAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+  },
+  measurementCardTop: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  measurementIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   measurementCardEmpty: {
     opacity: 0.9,
@@ -2572,22 +2349,168 @@ const createStyles = (colors: Colors) =>
     marginBottom: 4,
   },
   measurementValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.7,
   },
   measurementLabel: {
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
-    opacity: 0.6,
-    letterSpacing: 0.5,
-    marginTop: 4,
+    opacity: 0.75,
+    letterSpacing: 0.9,
+    marginTop: 6,
   },
   measurementUnit: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    opacity: 0.5,
+    opacity: 0.55,
+  },
+
+  scanResultsCard: {
+    borderRadius: 24,
+    padding: 16,
+    gap: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 2,
+    position: 'relative',
+  },
+  scanResultsGlow: {
+    position: 'absolute',
+    top: -60,
+    right: -30,
+    width: 180,
+    height: 140,
+    borderRadius: 90,
+    backgroundColor: 'rgba(99,102,241,0.06)',
+  },
+  scanResultsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  scanResultsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  scanResultsBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+  },
+  scanResultsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  scanMetricChip: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    alignItems: 'flex-start',
+    borderWidth: 1,
+  },
+  scanMetricIconPill: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  scanMetricValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.7,
+  },
+  scanMetricLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 5,
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+  },
+  physiqueScoresRow: {
+    gap: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: 14,
+  },
+  physiqueScoresTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.0,
+  },
+  physiqueScoresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  physiqueScoreChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    minWidth: 86,
+    borderWidth: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  physiqueScoreAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+  },
+  physiqueScoreValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  physiqueScoreLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  analysisSummary: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 10,
+  },
+  analysisSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  analysisSummaryCoachAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  analysisSummaryTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+  },
+  analysisSummaryText: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '500',
   },
 
   metricCardStack: {
@@ -2695,6 +2618,220 @@ const createStyles = (colors: Colors) =>
     opacity: 0.5,
     width: 30,
     textAlign: 'center',
+  },
+
+  // Photo Strip (small thumbnails)
+  photoStripSection: {
+    marginBottom: 24,
+  },
+  photoStripContent: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  photoThumb: {
+    width: 88,
+    height: 110,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  photoThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  photoThumbAdd: {
+    width: 88,
+    height: 110,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  addPhotosRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  addPhotosIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotosRowText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Metrics Dashboard — industrial / clinical style
+  metricsDashboard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    padding: 20,
+    gap: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  metricsTopRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  metricPill: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    backgroundColor: 'transparent',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  metricPillValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
+  },
+  metricPillValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -1,
+    lineHeight: 30,
+  },
+  metricPillUnit: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    opacity: 0.85,
+  },
+  metricPillLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginTop: 4,
+    opacity: 0.8,
+  },
+  compositionBarWrap: {
+    gap: 12,
+  },
+  compositionBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  compositionBarSegment: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  compositionBarLabels: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+  },
+  compositionBarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  compositionBarDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  compositionBarValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  compositionBarLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    opacity: 0.75,
+  },
+
+  // Scan Section
+  scanSection: {
+    marginHorizontal: 20,
+    gap: 12,
+    marginBottom: 32,
+  },
+  scoresCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  scoreRowLabel: {
+    width: 74,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scoreBarTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  scoreRowValue: {
+    width: 28,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  coachNotes: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+  },
+  coachNotesHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  coachAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  coachNotesTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  coachNotesText: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '400',
   },
 
   // Fullscreen Image Modal

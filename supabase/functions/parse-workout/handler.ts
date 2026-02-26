@@ -14,6 +14,7 @@ import {
     WorkoutRequest,
     requestSchema,
 } from './schemas.ts'
+import { selectNotesToParse } from './notes-selection.ts'
 import { normalizeWorkout } from './transform.ts'
 
 const DEBUG_STRUCTURED_PARSE_LOGS =
@@ -68,12 +69,11 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const structuredParsed = buildStructuredParsedWorkout(payload)
-    const notesToParse =
-      !structuredParsed && typeof payload.parserNotes === 'string'
-        ? payload.notes
-        : typeof payload.parserNotes === 'string'
-          ? payload.parserNotes
-          : payload.notes
+    const notesToParse = selectNotesToParse({
+      notes: payload.notes,
+      parserNotes: payload.parserNotes,
+      hasStructuredParsed: Boolean(structuredParsed),
+    })
     const hasNotes = Boolean(notesToParse.trim())
 
     let parsedWorkout: ParsedWorkout

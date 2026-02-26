@@ -106,13 +106,25 @@ export default function DailyMacrosDetailScreen() {
       onPress={() => {
         if (params.logDate) {
           router.replace({
-            pathname: '/body-log/[entryId]',
-            params: { entryId: 'new', logDate: params.logDate },
+            pathname: '/body-log/daily-food-log',
+            params: {
+              logDate: params.logDate,
+              entryId: params.entryId,
+              totalsJson: params.totalsJson,
+              goalsJson: params.goalsJson,
+            },
           })
         } else if (params.entryId) {
-          router.replace(`/body-log/${params.entryId}`)
+          router.replace({
+            pathname: '/body-log/daily-food-log',
+            params: {
+              entryId: params.entryId,
+              totalsJson: params.totalsJson,
+              goalsJson: params.goalsJson,
+            },
+          })
         } else {
-          router.replace('/body-log/new')
+          router.replace('/body-log/daily-food-log')
         }
       }}
       style={[

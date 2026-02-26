@@ -4,15 +4,18 @@ import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const WEIGHT_UNITS: WeightUnit[] = ['kg', 'lb']
 
@@ -30,6 +33,7 @@ export function WeightInputModal({
   initialValue,
 }: WeightInputModalProps) {
   const colors = useThemedColors()
+  const insets = useSafeAreaInsets()
   const { weightUnit, setWeightUnit, convertInputToKg } = useUnit()
 
   const [weightInput, setWeightInput] = useState(
@@ -83,11 +87,12 @@ export function WeightInputModal({
 
   const handleClose = async () => {
     haptic('light')
+    Keyboard.dismiss()
     setWeightInput('')
     onClose()
   }
 
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, insets.bottom)
 
   return (
     <Modal
@@ -98,96 +103,111 @@ export function WeightInputModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+        keyboardVerticalOffset={0}
         style={styles.overlay}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Log Weight</Text>
-            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+        <Pressable style={styles.overlayTouch} onPress={Keyboard.dismiss}>
+          <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>Log Weight</Text>
+              <TouchableOpacity
+                onPress={handleClose}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.content}>
-            {/* Unit Toggle */}
-            <View style={styles.unitToggle}>
-              {WEIGHT_UNITS.map((unit) => (
-                <TouchableOpacity
-                  key={unit}
-                  style={[
-                    styles.unitButton,
-                    weightUnit === unit && {
-                      backgroundColor: colors.brandPrimary,
-                      borderColor: colors.brandPrimary,
-                    },
-                  ]}
-                  onPress={() => handleWeightUnitToggle(unit)}
-                  activeOpacity={0.8}
-                >
-                  <Text
+            <View style={styles.content}>
+              <View style={styles.unitToggle}>
+                {WEIGHT_UNITS.map((unit) => (
+                  <TouchableOpacity
+                    key={unit}
                     style={[
-                      styles.unitButtonText,
-                      weightUnit === unit && { color: colors.surface },
+                      styles.unitButton,
+                      {
+                        backgroundColor:
+                          weightUnit === unit ? colors.textPrimary : colors.surfaceSubtle,
+                        borderColor: weightUnit === unit ? colors.textPrimary : colors.border,
+                      },
                     ]}
+                    onPress={() => handleWeightUnitToggle(unit)}
+                    activeOpacity={0.8}
                   >
-                    {unit.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        styles.unitButtonText,
+                        {
+                          color: weightUnit === unit ? colors.bg : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {unit.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            {/* Weight Input */}
-            <View style={styles.inputSection}>
-              <TextInput
+              <View
                 style={[
-                  styles.input,
-                  { borderColor: weightError ? colors.statusError : colors.border },
-                  { backgroundColor: colors.surfaceSubtle }
-                ]}
-                value={weightInput}
-                onChangeText={handleWeightChange}
-                placeholder={weightUnit === 'kg' ? 'e.g. 72.5' : 'e.g. 160.0'}
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="decimal-pad"
-                onSubmitEditing={handleSave}
-                autoFocus
-              />
-            </View>
-
-            {weightError && (
-              <Text style={styles.errorText}>
-                Enter a realistic weight (20-500 kg equivalent)
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                {
-                  backgroundColor: colors.textPrimary,
-                },
-                (!hasValidWeight || isSaving) && { opacity: 0.5 }
-              ]}
-              onPress={handleSave}
-              disabled={!hasValidWeight || isSaving}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.saveButtonText,
+                  styles.inputWrap,
                   {
-                    color: colors.bg,
+                    backgroundColor: colors.surfaceSubtle,
+                    borderColor: weightError ? colors.statusError : colors.border,
                   },
                 ]}
               >
-                {isSaving ? 'Processing...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+                <TextInput
+                  style={[styles.input, { color: colors.textPrimary }]}
+                  value={weightInput}
+                  onChangeText={handleWeightChange}
+                  placeholder={weightUnit === 'kg' ? '72.5' : '160'}
+                  placeholderTextColor={colors.textPlaceholder}
+                  keyboardType="decimal-pad"
+                  onSubmitEditing={handleSave}
+                  returnKeyType="none"
+                  autoFocus
+                />
+                <Text style={[styles.unitLabel, { color: colors.textSecondary }]}>
+                  {weightUnit}
+                </Text>
+              </View>
+
+              {weightError && (
+                <Text style={[styles.errorText, { color: colors.statusError }]}>
+                  Enter a realistic weight (20–500 kg equivalent)
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  {
+                    backgroundColor: hasValidWeight ? colors.textPrimary : colors.surfaceSubtle,
+                  },
+                  { opacity: isSaving ? 0.7 : 1 },
+                ]}
+                onPress={handleSave}
+                disabled={!hasValidWeight || isSaving}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.saveButtonText,
+                    {
+                      color: hasValidWeight ? colors.bg : colors.textTertiary,
+                    },
+                  ]}
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </KeyboardAvoidingView>
     </Modal>
   )
@@ -195,98 +215,102 @@ export function WeightInputModal({
 
 type Colors = ReturnType<typeof useThemedColors>
 
-const createStyles = (colors: Colors) =>
+const createStyles = (colors: Colors, bottomInset: number) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    overlayTouch: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
       justifyContent: 'flex-end',
       alignItems: 'center',
     },
     modalContainer: {
       width: '100%',
       maxWidth: 400,
-      backgroundColor: colors.bg,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 16,
-      elevation: 8,
-      maxHeight: '80%',
+      backgroundColor: colors.surfaceSheet,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: Math.max(bottomInset, 20),
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 20,
-      paddingBottom: 16,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 12,
+    },
+    closeBtn: {
+      padding: 4,
     },
     title: {
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: '700',
-      color: colors.textPrimary,
-      letterSpacing: -0.5,
+      letterSpacing: -0.4,
     },
     content: {
       paddingHorizontal: 20,
-      paddingBottom: 20,
-      gap: 16,
+      paddingBottom: 16,
+      gap: 14,
     },
     unitToggle: {
       flexDirection: 'row',
-      gap: 12,
+      gap: 10,
       justifyContent: 'center',
     },
     unitButton: {
-      paddingHorizontal: 24,
+      paddingHorizontal: 22,
       paddingVertical: 10,
       borderRadius: 12,
-      borderWidth: 2,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceSubtle,
-      minWidth: 80,
+      borderWidth: 1,
+      minWidth: 72,
       alignItems: 'center',
     },
     unitButtonText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.textSecondary,
-      letterSpacing: 0.8,
+      letterSpacing: 0.6,
     },
-    inputSection: {
-      gap: 12,
+    inputWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 14,
+      borderWidth: 1,
+      paddingHorizontal: 20,
+      minHeight: 56,
     },
     input: {
-      fontSize: 32,
+      flex: 1,
+      fontSize: 28,
       fontWeight: '700',
-      color: colors.textPrimary,
-      paddingVertical: 16,
-      paddingHorizontal: 20,
-      borderRadius: 16,
-      borderWidth: 2,
-      letterSpacing: -0.5,
+      paddingVertical: 14,
+      letterSpacing: -0.6,
       textAlign: 'center',
+    },
+    unitLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
     },
     errorText: {
       fontSize: 13,
-      color: colors.statusError,
       textAlign: 'center',
     },
     footer: {
       paddingHorizontal: 20,
-      paddingTop: 4,
-      paddingBottom: 34,
+      paddingBottom: 8,
     },
     saveButton: {
       paddingVertical: 16,
-      borderRadius: 16,
+      borderRadius: 14,
       alignItems: 'center',
     },
     saveButtonText: {
       fontSize: 17,
       fontWeight: '700',
-      letterSpacing: -0.3,
+      letterSpacing: -0.2,
     },
   })
