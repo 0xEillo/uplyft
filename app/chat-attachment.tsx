@@ -1,15 +1,21 @@
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { haptic } from '@/lib/haptics'
-import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Ionicons } from '@expo/vector-icons'
 import { Image as ExpoImage } from 'expo-image'
 import * as MediaLibrary from 'expo-media-library'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface RecentPhoto {
@@ -60,16 +66,6 @@ export default function ChatAttachmentScreen() {
       label: 'Generate Workout',
       subtitle: 'Create a custom workout plan',
       onPress: () => dispatch({ action: 'generate_workout' }),
-    },
-    {
-      id: 'food-library',
-      icon: 'nutrition-outline' as const,
-      label: 'Food Library',
-      subtitle: 'Browse food database',
-      onPress: () => {
-        haptic('light')
-        router.replace('/food-library')
-      },
     },
     {
       id: 'scan-food',
@@ -205,10 +201,17 @@ export default function ChatAttachmentScreen() {
   )
 
   return (
-    <View collapsable={false} style={{ flex: 1, backgroundColor: 'transparent' }}>
+    <View
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: 'transparent' }}
+    >
       <LiquidGlassSurface
         style={StyleSheet.absoluteFill}
-        fallbackStyle={{ backgroundColor: isDark ? 'rgba(28,28,30,0.82)' : 'rgba(242,242,247,0.82)' }}
+        fallbackStyle={{
+          backgroundColor: isDark
+            ? 'rgba(28,28,30,0.82)'
+            : 'rgba(242,242,247,0.82)',
+        }}
       />
       {content}
     </View>

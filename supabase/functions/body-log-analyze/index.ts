@@ -14,6 +14,8 @@ import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL } from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
+const UNSUPPORTED_IMAGE_FORMAT_MESSAGE =
+  'HEIC/HEIF images are not supported yet. Please upload JPG or PNG.'
 const REQUEST_SCHEMA = z.union([
   z.object({ entryId: z.string().min(1) }),
   z.object({
@@ -24,6 +26,10 @@ const REQUEST_SCHEMA = z.union([
 
 // Timeout for AI analysis
 const ANALYZE_TIMEOUT_MS = 45000
+
+function isUnsupportedBodyLogImagePath(path: string): boolean {
+  return /\.(heic|heif)$/i.test(path)
+}
 
 async function analyzeWithModel(
   modelName: string,
@@ -194,6 +200,10 @@ serve(async (req: Request) => {
       }
 
       for (const img of images) {
+        if (isUnsupportedBodyLogImagePath(img.file_path)) {
+          return errorResponse(400, UNSUPPORTED_IMAGE_FORMAT_MESSAGE)
+        }
+
         const { data: signed, error: signedError } = await serviceClient.storage
           .from(BODY_LOG_BUCKET)
           .createSignedUrl(img.file_path, signedUrlTTLSeconds)
@@ -225,6 +235,10 @@ serve(async (req: Request) => {
           : null
 
       for (const filePath of imagePaths) {
+        if (isUnsupportedBodyLogImagePath(filePath)) {
+          return errorResponse(400, UNSUPPORTED_IMAGE_FORMAT_MESSAGE)
+        }
+
         const { data: signed, error: signedError } = await serviceClient.storage
           .from(BODY_LOG_BUCKET)
           .createSignedUrl(filePath, signedUrlTTLSeconds)

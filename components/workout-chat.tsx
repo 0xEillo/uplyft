@@ -80,11 +80,55 @@ import AnimatedReanimated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
+
+function RecordingIndicator({
+  colors,
+}: {
+  colors: ReturnType<typeof useThemedColors>
+}) {
+  const pulse = useSharedValue(0.4)
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 600 }),
+      -1,
+      true,
+    )
+  }, [pulse])
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: pulse.value,
+  }))
+  return (
+    <View style={recordingIndicatorStyles.container} pointerEvents="none">
+      <AnimatedReanimated.View
+        style={[
+          recordingIndicatorStyles.dot,
+          { backgroundColor: colors.textSecondary },
+          animatedStyle,
+        ]}
+      />
+    </View>
+  )
+}
+
+const recordingIndicatorStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    minHeight: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+})
 
 interface Message {
   id: string
@@ -3565,30 +3609,7 @@ export function WorkoutChat({
                   >
                     {/* Content area: visualizer OR text input */}
                     {isRecording ? (
-                      /* Waveform visualizer — absolute center overlay guarantees pill-centered alignment */
-                      <View style={styles.recordingPillLayout}>
-                        <View style={styles.recordingWaveOverlay} pointerEvents="none">
-                          <View style={styles.recordingWaveSafeArea}>
-                            <View style={styles.visualizerContainer}>
-                              {Array.from({ length: 41 }).map((_, i, arr) => {
-                                // Normalised position -1→+1, always symmetric around 0
-                                const mid = (arr.length - 1) / 2
-                                const t = (i - mid) / mid
-                                // Bell curve: peak at t=0 (exact centre), tails at ±1
-                                const bell = Math.exp(-Math.pow(t * 2, 2))
-                                const h = 4 + bell * 20 // range: 4 – 24 pt
-                                const opacity = 0.12 + bell * 0.75 // range: 0.12 – 0.87
-                                return (
-                                  <View
-                                    key={`bar-${i}`}
-                                    style={[styles.visualizerBar, { height: h, opacity }]}
-                                  />
-                                )
-                              })}
-                            </View>
-                          </View>
-                        </View>
-                      </View>
+                      <RecordingIndicator colors={colors} />
                     ) : (
                       <View style={styles.inputInnerWrapper}>
                         <TextInput
@@ -4257,31 +4278,6 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'flex-end',
     },
-    visualizerContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 4,
-      gap: 3,
-    },
-    recordingPillLayout: {
-      flex: 1,
-      minHeight: 32,
-      justifyContent: 'center',
-      position: 'relative',
-    },
-    recordingWaveOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    recordingWaveSafeArea: {
-      width: '100%',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 40,
-      overflow: 'hidden',
-    },
     recordingSendButton: {
       marginLeft: 4,
     },
@@ -4289,12 +4285,6 @@ function createStyles(
       fontSize: 15,
       color: colors.textSecondary,
       marginRight: 6,
-    },
-    visualizerBar: {
-      width: 2.5,
-      borderRadius: 2,
-      backgroundColor: colors.textSecondary,
-      height: 8,
     },
     micButtonInside: {
       padding: 6,

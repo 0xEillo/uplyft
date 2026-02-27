@@ -12,8 +12,8 @@ import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metad
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import {
-    getBodyLogImageUrls,
-    getThumbnailUrlsWithPrefetch,
+  getBodyLogImageUrls,
+  getThumbnailUrlsWithPrefetch,
 } from '@/lib/utils/body-log-storage'
 import type { DailyLogEntry, DailyLogSummary } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -23,19 +23,19 @@ import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -390,8 +390,8 @@ const photoGridStyles = StyleSheet.create({
 
 const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'weight', label: 'Weight' },
-  { id: 'bodyfat', label: 'Body Fat' },
-  { id: 'meals', label: 'Diet' },
+  { id: 'meals', label: 'Nutrition' },
+  { id: 'bodyfat', label: 'Body Scan' },
   { id: 'photos', label: 'Progress Pics' },
 ]
 const TAB_AUTO_SCROLL_GUTTER = 20
@@ -875,7 +875,7 @@ export default function BodyLogScreen() {
       trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
       setBodyFatSheetVisible(true)
     } else if (activeTab === 'meals') {
-      router.push('/(tabs)/chat' as any)
+      router.push('/food-library')
     } else if (activeTab === 'photos') {
       handleAddPhoto()
     }
@@ -1026,8 +1026,8 @@ export default function BodyLogScreen() {
             title="Gym Log"
             onLeftPress={() => setShouldExit(true)}
             leftIcon="arrow-back"
-            rightIcon="add"
-            onRightPress={handleContextAdd}
+            rightIcon={activeTab === 'meals' ? undefined : 'add'}
+            onRightPress={activeTab === 'meals' ? undefined : handleContextAdd}
             rightLoading={activeTab === 'photos' && isUploadingPhotos}
             rightDisabled={activeTab === 'photos' && isUploadingPhotos}
           />
@@ -1138,11 +1138,7 @@ export default function BodyLogScreen() {
             ListHeaderComponent={
               <View>
                 {TabsHeader}
-                {mealsEntries.length > 0 && (
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textTertiary, paddingHorizontal: 20, paddingBottom: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                    Daily Nutrition
-                  </Text>
-                )}
+              
               </View>
             }
             ListEmptyComponent={emptySection('meals')}

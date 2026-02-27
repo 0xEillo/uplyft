@@ -4,39 +4,110 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { useTheme } from '@/contexts/theme-context'
 import {
-    getLevelColor,
-    getLevelIntensity,
-    useStrengthData,
-    type MuscleGroupData
+  getLevelColor,
+  getLevelIntensity,
+  useStrengthData,
+  type ExerciseData,
+  type MuscleGroupData
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-    BODY_PART_DISPLAY_NAMES,
-    BODY_PART_TO_DATABASE_MUSCLE,
-    type BodyPartSlug
+  BODY_PART_DISPLAY_NAMES,
+  BODY_PART_TO_DATABASE_MUSCLE,
+  type BodyPartSlug
 } from '@/lib/body-mapping'
-import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
+import {
+  EXERCISE_MUSCLE_MAPPING,
+  getExerciseNameMap,
+} from '@/lib/exercise-standards-config'
+import {
+  calculateExerciseStrengthPoints,
+  LEVEL_POINT_ANCHORS,
+} from '@/lib/overall-strength-score'
 import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const PROGRESS_DELTA_VISIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000
+const EXERCISE_CONFIG_BY_NAME = getExerciseNameMap()
+
+type FocusGroup = 'Legs' | 'Back' | 'Chest' | 'Shoulders' | 'Arms'
+
+const FOCUS_GROUP_WEIGHTS: Record<FocusGroup, number> = {
+  Legs: 0.25,
+  Back: 0.25,
+  Chest: 0.2,
+  Shoulders: 0.2,
+  Arms: 0.1,
+}
+
+interface TrackedExerciseWithProgress extends ExerciseData {
+  level: StrengthLevel
+  progress: number
+  nextLevel: StrengthLevel | null
+  targetWeight: number | null
+  progressDelta: number
+  showRecentProgressDelta: boolean
+}
+
+interface PriorityExerciseRecommendation extends TrackedExerciseWithProgress {
+  rank: number
+  focusGroup: FocusGroup | null
+  focusLabel: string
+  focusWeakness: number
+  targetDeltaKg: number
+  estimatedScoreGain: number
+  impactScore: number
+}
+
+type SectionInfoKey = 'lifter-level' | 'level-up' | 'your-exercises'
+
+function mapMuscleToFocusGroup(
+  muscleGroup: string | null | undefined,
+): FocusGroup | null {
+  if (!muscleGroup) return null
+
+  switch (muscleGroup) {
+    case 'Quads':
+    case 'Hamstrings':
+    case 'Glutes':
+    case 'Calves':
+    case 'Adductors':
+      return 'Legs'
+    case 'Back':
+    case 'Traps':
+    case 'Lower Back':
+      return 'Back'
+    case 'Chest':
+      return 'Chest'
+    case 'Shoulders':
+      return 'Shoulders'
+    case 'Biceps':
+    case 'Triceps':
+    case 'Forearms':
+      return 'Arms'
+    default:
+      return null
+  }
+}
 
 export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = {}) {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const { width: viewportWidth } = useWindowDimensions()
   const router = useRouter()
   const { isDark } = useTheme()
   const {
@@ -53,90 +124,309 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
   const strengthGender = getStrengthGender(profile?.gender)
+  const recommendationCardWidth = useMemo(
+    () => Math.max(264, Math.min(348, viewportWidth - 68)),
+    [viewportWidth],
+  )
+
   // Compute tracked exercises with their level-up progression info
-  const trackedExercisesWithProgress = useMemo(() => {
+  const trackedExercisesWithProgress = useMemo<TrackedExerciseWithProgress[]>(() => {
     if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
       return []
     }
 
     const now = Date.now()
 
-    return exerciseData.map((exercise) => {
-      const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-      if (!strengthInfo) {
+    const tracked = exerciseData
+      .map<TrackedExerciseWithProgress | null>((exercise) => {
+        const strengthInfo = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
+        if (!strengthInfo) {
+          return null
+        }
+
+        const ladder = getStandardsLadder(
+          exercise.exerciseName,
+          strengthGender,
+        )
+
+        let targetWeight: number | null = null
+        if (ladder && strengthInfo.nextLevel) {
+          const nextLevelName = strengthInfo.nextLevel.level
+          const nextLevelStandard = ladder.find(
+            (s: StrengthStandard) => s.level === nextLevelName,
+          )
+          if (nextLevelStandard && profile.weight_kg) {
+            targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
+          }
+        }
+
+        const snapshot = best1RMSnapshotByExerciseId[exercise.exerciseId]
+        const previousBest1RM = snapshot?.previousBest1RM ?? 0
+        const previousStrengthInfo =
+          previousBest1RM > 0
+            ? getStrengthInfo(exercise.exerciseName, previousBest1RM)
+            : null
+        const progressDelta = getProgressDeltaPoints(
+          previousStrengthInfo
+            ? {
+                level: previousStrengthInfo.level,
+                progress: previousStrengthInfo.progress,
+              }
+            : null,
+          {
+            level: strengthInfo.level,
+            progress: strengthInfo.progress,
+          },
+        )
+        const lastIncreaseAt = snapshot?.lastIncreaseAt
+        const lastIncreaseTime = lastIncreaseAt
+          ? new Date(lastIncreaseAt).getTime()
+          : NaN
+        const showRecentProgressDelta =
+          progressDelta > 0 &&
+          Number.isFinite(lastIncreaseTime) &&
+          now - lastIncreaseTime <= PROGRESS_DELTA_VISIBILITY_WINDOW_MS
+
         return {
           ...exercise,
-          level: null,
-          progress: 0,
-          nextLevel: null,
-          targetWeight: null,
-        }
-      }
-
-      // Get the standards ladder for this exercise
-      const ladder = getStandardsLadder(
-        exercise.exerciseName,
-        strengthGender,
-      )
-      
-      let targetWeight: number | null = null
-      if (ladder && strengthInfo.nextLevel) {
-        const nextLevelName = strengthInfo.nextLevel.level
-        const nextLevelStandard = ladder.find((s: StrengthStandard) => s.level === nextLevelName)
-        if (nextLevelStandard && profile.weight_kg) {
-          targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
-        }
-      }
-
-      const snapshot = best1RMSnapshotByExerciseId[exercise.exerciseId]
-      const previousBest1RM = snapshot?.previousBest1RM ?? 0
-      const previousStrengthInfo =
-        previousBest1RM > 0
-          ? getStrengthInfo(exercise.exerciseName, previousBest1RM)
-          : null
-      const progressDelta = getProgressDeltaPoints(
-        previousStrengthInfo
-          ? {
-              level: previousStrengthInfo.level,
-              progress: previousStrengthInfo.progress,
-            }
-          : null,
-        {
           level: strengthInfo.level,
           progress: strengthInfo.progress,
-        },
-      )
-      const lastIncreaseAt = snapshot?.lastIncreaseAt
-      const lastIncreaseTime = lastIncreaseAt ? new Date(lastIncreaseAt).getTime() : NaN
-      const showRecentProgressDelta =
-        progressDelta > 0 &&
-        Number.isFinite(lastIncreaseTime) &&
-        now - lastIncreaseTime <= PROGRESS_DELTA_VISIBILITY_WINDOW_MS
-
-      return {
-        ...exercise,
-        level: strengthInfo.level,
-        progress: strengthInfo.progress,
-        nextLevel: strengthInfo.nextLevel?.level || null,
-        targetWeight,
-        progressDelta,
-        showRecentProgressDelta,
-      }
-    }).filter(e => e.level !== null)
-      .sort((a, b) => {
-        const intensityA = getLevelIntensity(a.level!)
-        const intensityB = getLevelIntensity(b.level!)
-        if (intensityA !== intensityB) {
-          return intensityB - intensityA
+          nextLevel: strengthInfo.nextLevel?.level || null,
+          targetWeight,
+          progressDelta,
+          showRecentProgressDelta,
         }
-        return b.progress - a.progress
       })
+      .filter(
+        (exercise): exercise is TrackedExerciseWithProgress => exercise !== null,
+      )
+
+    return tracked.sort((a, b) => {
+      const intensityA = getLevelIntensity(a.level)
+      const intensityB = getLevelIntensity(b.level)
+      if (intensityA !== intensityB) {
+        return intensityB - intensityA
+      }
+      return b.progress - a.progress
+    })
   }, [
     best1RMSnapshotByExerciseId,
     exerciseData,
     getStrengthInfo,
     profile?.weight_kg,
     strengthGender,
+  ])
+
+  const priorityRecommendations = useMemo<PriorityExerciseRecommendation[]>(() => {
+    const bodyweightKg = profile?.weight_kg
+    if (
+      !strengthGender ||
+      typeof bodyweightKg !== 'number' ||
+      bodyweightKg <= 0 ||
+      trackedExercisesWithProgress.length === 0
+    ) {
+      return []
+    }
+
+    type GroupStrengthState = {
+      topExerciseId: string | null
+      topScore: number
+      runnerUpScore: number
+    }
+
+    const groupState = new Map<FocusGroup, GroupStrengthState>(
+      (Object.keys(FOCUS_GROUP_WEIGHTS) as FocusGroup[]).map((group) => [
+        group,
+        { topExerciseId: null, topScore: 0, runnerUpScore: 0 },
+      ]),
+    )
+
+    const baseRows = trackedExercisesWithProgress.map((exercise) => {
+      const config = EXERCISE_CONFIG_BY_NAME.get(exercise.exerciseName)
+      const canonicalName = config?.name ?? exercise.exerciseName
+      const tier = config?.tier === 1 ? 1 : 2
+      const tierWeight = tier === 1 ? 1 : 0.35
+
+      const specificMuscle =
+        EXERCISE_MUSCLE_MAPPING[canonicalName] ?? exercise.muscleGroup ?? null
+      const focusGroup = mapMuscleToFocusGroup(specificMuscle)
+
+      const currentPoints =
+        calculateExerciseStrengthPoints({
+          exerciseName: exercise.exerciseName,
+          gender: strengthGender,
+          bodyweightKg,
+          estimated1RMKg: exercise.max1RM,
+        }) ?? 0
+      const weightedCurrentPoints = currentPoints * tierWeight
+
+      if (focusGroup) {
+        const state = groupState.get(focusGroup)
+        if (state) {
+          if (weightedCurrentPoints > state.topScore) {
+            state.runnerUpScore = state.topScore
+            state.topScore = weightedCurrentPoints
+            state.topExerciseId = exercise.exerciseId
+          } else if (weightedCurrentPoints > state.runnerUpScore) {
+            state.runnerUpScore = weightedCurrentPoints
+          }
+        }
+      }
+
+      return {
+        exercise,
+        tier,
+        specificMuscle,
+        focusGroup,
+        weightedCurrentPoints,
+      }
+    })
+
+    const bestGroupScore = Math.max(
+      0,
+      ...Array.from(groupState.values()).map((group) => group.topScore),
+    )
+
+    const weaknessByGroup = new Map<FocusGroup, number>()
+    ;(Object.keys(FOCUS_GROUP_WEIGHTS) as FocusGroup[]).forEach((group) => {
+      const topScore = groupState.get(group)?.topScore ?? 0
+      const weakness =
+        bestGroupScore > 0
+          ? Math.max(0, (bestGroupScore - topScore) / bestGroupScore)
+          : 0
+      weaknessByGroup.set(group, weakness)
+    })
+
+    const groupOrder = (Object.keys(FOCUS_GROUP_WEIGHTS) as FocusGroup[]).sort(
+      (a, b) => {
+        const weaknessGap =
+          (weaknessByGroup.get(b) ?? 0) - (weaknessByGroup.get(a) ?? 0)
+        if (Math.abs(weaknessGap) > 0.025) {
+          return weaknessGap
+        }
+        return FOCUS_GROUP_WEIGHTS[b] - FOCUS_GROUP_WEIGHTS[a]
+      },
+    )
+    const groupRank = new Map<FocusGroup, number>(
+      groupOrder.map((group, index) => [group, index]),
+    )
+
+    const now = Date.now()
+    const prioritized = baseRows
+      .filter((row) => row.exercise.nextLevel && row.exercise.targetWeight !== null)
+      .map((row) => {
+        const targetWeight = row.exercise.targetWeight ?? row.exercise.max1RM
+        const tierWeight = row.tier === 1 ? 1 : 0.35
+        const groupWeight = row.focusGroup ? FOCUS_GROUP_WEIGHTS[row.focusGroup] : 0.08
+
+        const nextPoints =
+          calculateExerciseStrengthPoints({
+            exerciseName: row.exercise.exerciseName,
+            gender: strengthGender,
+            bodyweightKg,
+            estimated1RMKg: targetWeight,
+          }) ?? 0
+        const weightedNextPoints = nextPoints * tierWeight
+
+        const potentialDelta = Math.max(
+          0,
+          (weightedNextPoints - row.weightedCurrentPoints) * groupWeight,
+        )
+
+        let estimatedScoreGain = potentialDelta
+        let focusWeakness = 0
+        let orderingRank = Number.MAX_SAFE_INTEGER
+
+        if (row.focusGroup) {
+          const state = groupState.get(row.focusGroup)
+          const currentTop = state?.topScore ?? 0
+          const alternateTop =
+            state?.topExerciseId === row.exercise.exerciseId
+              ? state.runnerUpScore
+              : state?.topScore ?? 0
+          const predictedTop = Math.max(alternateTop, weightedNextPoints)
+          const groupLift = Math.max(0, predictedTop - currentTop)
+          estimatedScoreGain = Math.max(groupLift * groupWeight, potentialDelta * 0.35)
+          focusWeakness = weaknessByGroup.get(row.focusGroup) ?? 0
+          orderingRank = groupRank.get(row.focusGroup) ?? Number.MAX_SAFE_INTEGER
+        }
+
+        const progressGap = Math.max(0, 100 - row.exercise.progress) / 100
+        const targetDeltaKg = Math.max(
+          1,
+          Math.ceil(targetWeight - row.exercise.max1RM),
+        )
+        const deltaFactor = Math.max(0, 1 - Math.min(targetDeltaKg, 40) / 50)
+        const tierFactor = row.tier === 1 ? 1 : 0.72
+
+        const lastTrainedTime = row.exercise.lastTrainedAt
+          ? new Date(row.exercise.lastTrainedAt).getTime()
+          : NaN
+        const daysSinceTrained = Number.isFinite(lastTrainedTime)
+          ? Math.max(
+              0,
+              (now - lastTrainedTime) / (1000 * 60 * 60 * 24),
+            )
+          : 0
+        const stalenessFactor = Math.min(1, daysSinceTrained / 21)
+
+        const impactScore = Math.round(
+          estimatedScoreGain * 3.2 +
+            groupWeight * 32 * (1 + focusWeakness * 0.5) +
+            progressGap * 22 +
+            deltaFactor * 14 +
+            tierFactor * 11 +
+            stalenessFactor * 8,
+        )
+
+        return {
+          ...row.exercise,
+          focusGroup: row.focusGroup,
+          focusLabel: row.specificMuscle ?? row.focusGroup ?? 'Full Body',
+          focusWeakness,
+          targetDeltaKg,
+          estimatedScoreGain,
+          impactScore,
+          orderingRank,
+        }
+      })
+      .sort((a, b) => {
+        const gainDiff = b.estimatedScoreGain - a.estimatedScoreGain
+        if (Math.abs(gainDiff) > 0.01) {
+          return gainDiff
+        }
+        if (b.impactScore !== a.impactScore) {
+          return b.impactScore - a.impactScore
+        }
+        if (a.orderingRank !== b.orderingRank) {
+          return a.orderingRank - b.orderingRank
+        }
+        if (a.targetDeltaKg !== b.targetDeltaKg) {
+          return a.targetDeltaKg - b.targetDeltaKg
+        }
+        return b.progress - a.progress
+      })
+      .slice(0, 5)
+
+    return prioritized.map((exercise, index) => {
+      const { orderingRank, ...rest } = exercise
+      return {
+        ...rest,
+        rank: index + 1,
+      }
+    })
+  }, [profile?.weight_kg, strengthGender, trackedExercisesWithProgress])
+
+  const shouldShowPrioritySection = useMemo(() => {
+    if (!overallLevel) return false
+    if (exerciseData.length === 0) return false
+    if (trackedExercisesWithProgress.length === 0) return false
+    return priorityRecommendations.some((exercise) => exercise.estimatedScoreGain > 0.5)
+  }, [
+    exerciseData.length,
+    overallLevel,
+    priorityRecommendations,
+    trackedExercisesWithProgress.length,
   ])
 
   const showOverallProgressDelta = useMemo(() => {
@@ -153,12 +443,26 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     )
   }, [overallLevel])
 
+  const priorityPointsColor = getLevelColor(
+    overallLevel?.balancedLevel ?? 'Untrained',
+  )
+
   // Navigate to exercise detail
   const navigateToExercise = useCallback(
     (exerciseId: string) => {
       router.push({
         pathname: '/exercise/[exerciseId]',
         params: { exerciseId },
+      })
+    },
+    [router],
+  )
+
+  const openSectionInfo = useCallback(
+    (section: SectionInfoKey) => {
+      router.push({
+        pathname: '/lifter-level-info',
+        params: { section },
       })
     },
     [router],
@@ -298,7 +602,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={styles.sectionHeaderText}>Lifter Level</Text>
                     <TouchableOpacity 
-                      onPress={() => router.push('/lifter-level-info')}
+                      onPress={() => openSectionInfo('lifter-level')}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
@@ -307,7 +611,12 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                 </View>
 
                 <TouchableOpacity
-                  style={styles.levelCard}
+                  style={[
+                    styles.levelCard,
+                    {
+                      borderColor: `${getLevelColor(overallLevel.balancedLevel)}66`,
+                    },
+                  ]}
                   activeOpacity={0.9}
                   onPress={() => setShowLevelsSheet(true)}
                 >
@@ -358,7 +667,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={styles.sectionHeaderText}>Lifter Level</Text>
                     <TouchableOpacity 
-                      onPress={() => router.push('/lifter-level-info')}
+                      onPress={() => openSectionInfo('lifter-level')}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
@@ -367,7 +676,12 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                 </View>
 
                 <TouchableOpacity
-                  style={styles.levelCard}
+                  style={[
+                    styles.levelCard,
+                    {
+                      borderColor: `${getLevelColor('Untrained')}66`,
+                    },
+                  ]}
                   activeOpacity={0.9}
                   onPress={() => setShowLevelsSheet(true)}
                 >
@@ -388,12 +702,90 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
               </>
             )}
 
+            {shouldShowPrioritySection && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.sectionHeaderText}>Priority</Text>
+                    <TouchableOpacity
+                      onPress={() => openSectionInfo('level-up')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.priorityCarouselContent}
+                  snapToInterval={recommendationCardWidth + 12}
+                  snapToAlignment="start"
+                  decelerationRate="fast"
+                  nestedScrollEnabled
+                >
+                  {priorityRecommendations.map((exercise) => {
+                    const projectedGain = Math.max(1, Math.round(exercise.estimatedScoreGain))
+                    const targetLevel = exercise.nextLevel ?? exercise.level
+
+                    return (
+                      <TouchableOpacity
+                        key={`priority-${exercise.exerciseId}`}
+                        style={[
+                          styles.priorityCard,
+                          {
+                            width: recommendationCardWidth,
+                          },
+                        ]}
+                        onPress={() => navigateToExercise(exercise.exerciseId)}
+                        activeOpacity={0.85}
+                      >
+                        <View style={styles.priorityMainRow}>
+                          <ExerciseMediaThumbnail
+                            gifUrl={exercise.gifUrl}
+                            style={styles.exerciseCardThumbnail}
+                          />
+                          <View style={styles.priorityExerciseTextWrap}>
+                            <Text style={styles.exerciseCardName} numberOfLines={2}>
+                              {exercise.exerciseName}
+                            </Text>
+                            <View style={styles.priorityActionRowInline}>
+                              <Text style={styles.priorityActionText} numberOfLines={1}>
+                                Level up to {targetLevel}
+                              </Text>
+                              <View style={styles.priorityPointsLine}>
+                                <Text style={[styles.priorityPointsValue, { color: priorityPointsColor }]}>
+                                  +{projectedGain}
+                                </Text>
+                                <Text style={[styles.priorityPointsSuffix, { color: priorityPointsColor }]}>
+                                  pts
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </ScrollView>
+              </>
+            )}
+
             {/* Your Exercises Section - Gamified Exercise Progress */}
             {/* Your Exercises Section - Gamified Exercise Progress */}
             {trackedExercisesWithProgress.length > 0 ? (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionHeaderText}>Your Exercises</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.sectionHeaderText}>Your Exercises</Text>
+                    <TouchableOpacity
+                      onPress={() => openSectionInfo('your-exercises')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <View style={styles.exerciseCardsContainer}>
@@ -461,7 +853,15 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
             ) : (
               <>
                  <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionHeaderText}>Your Exercises</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.sectionHeaderText}>Your Exercises</Text>
+                    <TouchableOpacity
+                      onPress={() => openSectionInfo('your-exercises')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <View style={styles.exerciseCardsContainer}>
@@ -594,6 +994,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     levelCard: {
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
+      borderWidth: 1,
       paddingHorizontal: 20,
       paddingVertical: 20,
       shadowColor: '#000',
@@ -717,6 +1118,63 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '700',
       color: colors.textPrimary,
       letterSpacing: -0.4,
+    },
+    priorityCarouselContent: {
+      paddingRight: 2,
+      paddingBottom: 2,
+      gap: 12,
+    },
+    priorityCard: {
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 16,
+      padding: 14,
+      gap: 12,
+      minHeight: 86,
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    priorityMainRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    priorityExerciseTextWrap: {
+      flex: 1,
+      minWidth: 0,
+      gap: 4,
+      justifyContent: 'center',
+    },
+    priorityPointsLine: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 3,
+    },
+    priorityActionText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      flexShrink: 1,
+    },
+    priorityActionRowInline: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: 8,
+    },
+    priorityPointsValue: {
+      fontSize: 16,
+      lineHeight: 18,
+      fontWeight: '800',
+      fontVariant: ['tabular-nums'],
+    },
+    priorityPointsSuffix: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.1,
     },
 
     // Exercise Cards Section

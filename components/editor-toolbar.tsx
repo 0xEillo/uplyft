@@ -184,29 +184,30 @@ export function EditorToolbar({
         <View style={styles.iosToolbarRow}>
           <LiquidGlassSurface style={styles.iosToolbarGlass}>
             <View style={styles.iosToolbar}>
-              {/* Scan Workout */}
-              <View ref={scanButtonRef} collapsable={false}>
-                <TouchableOpacity
-                  style={[
-                    styles.iosButton,
-                    isProcessingImage && styles.activeButton,
-                  ]}
-                  onPress={onScanWorkout}
-                  disabled={isDisabled}
-                >
-                  {isProcessingImage ? (
-                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                      <Ionicons name="sync" size={23} color={colors.surface} />
-                    </Animated.View>
-                  ) : (
-                    <Ionicons
-                      name="camera-outline"
-                      size={23}
-                      color={colors.textPrimary}
-                    />
-                  )}
-                </TouchableOpacity>
-              </View>
+              {false && (
+                <View ref={scanButtonRef} collapsable={false}>
+                  <TouchableOpacity
+                    style={[
+                      styles.iosButton,
+                      isProcessingImage && styles.activeButton,
+                    ]}
+                    onPress={onScanWorkout}
+                    disabled={isDisabled}
+                  >
+                    {isProcessingImage ? (
+                      <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                        <Ionicons name="sync" size={23} color={colors.surface} />
+                      </Animated.View>
+                    ) : (
+                      <Ionicons
+                        name="camera-outline"
+                        size={23}
+                        color={colors.textPrimary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Microphone */}
               <View ref={micButtonRef} collapsable={false}>
@@ -310,22 +311,23 @@ export function EditorToolbar({
         </View>
       ) : (
         <View style={styles.toolbar}>
-          {/* Scan Workout */}
-          <View ref={scanButtonRef} collapsable={false}>
-            <TouchableOpacity
-              style={[styles.button, isProcessingImage && styles.activeButton]}
-              onPress={onScanWorkout}
-              disabled={isDisabled}
-            >
-              {isProcessingImage ? (
-                <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                  <Ionicons name="sync" size={24} color={colors.surface} />
-                </Animated.View>
-              ) : (
-                <Ionicons name="camera-outline" size={24} color={colors.textPrimary} />
-              )}
-            </TouchableOpacity>
-          </View>
+          {false && (
+            <View ref={scanButtonRef} collapsable={false}>
+              <TouchableOpacity
+                style={[styles.button, isProcessingImage && styles.activeButton]}
+                onPress={onScanWorkout}
+                disabled={isDisabled}
+              >
+                {isProcessingImage ? (
+                  <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                    <Ionicons name="sync" size={24} color={colors.surface} />
+                  </Animated.View>
+                ) : (
+                  <Ionicons name="camera-outline" size={24} color={colors.textPrimary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Microphone */}
           <View ref={micButtonRef} collapsable={false}>
