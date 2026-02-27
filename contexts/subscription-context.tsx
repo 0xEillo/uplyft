@@ -309,14 +309,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       )
       setCustomerInfo(info)
 
-      // Log successful purchase/subscription to Facebook for ad attribution
+      // Log successful conversion to Facebook for ad attribution
       const newEntitlement = info.entitlements.active['Pro']
       if (newEntitlement) {
-        if (newEntitlement.periodType === 'trial') {
-          // User started a free trial
-          FacebookEvents.logStartTrial(selectedPackage.packageType, 'USD', 0)
-        } else {
-          // User subscribed (paid)
+        // Treat all successful subscriptions as StartTrial conversions for ad optimization.
+        FacebookEvents.logStartTrial(selectedPackage.packageType, 'USD', 0)
+
+        // Keep a paid purchase signal for non-trial subscriptions.
+        if (newEntitlement.periodType !== 'trial') {
           FacebookEvents.logSubscribe(price, 'USD', selectedPackage.packageType)
         }
       }

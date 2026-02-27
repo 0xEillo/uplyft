@@ -200,13 +200,21 @@ export const FacebookEvents = {
   /**
    * Log when user starts a subscription trial
    */
-  logStartTrial: (trialType?: string, currency = 'USD', value = 0) => {
+  logStartTrial: (trialType?: string, currency = 'USD', value?: number) => {
     if (!AppEventsLogger) return
     try {
-      AppEventsLogger!.logEvent('fb_mobile_start_trial', value, {
+      const eventName = AppEventsLogger!.AppEvents?.StartTrial ?? 'StartTrial'
+      const parameters = {
         fb_currency: currency,
         fb_content_type: trialType ?? 'subscription',
-      })
+      }
+
+      // Send value only when positive; trial start is often a non-monetary event.
+      if (typeof value === 'number' && value > 0) {
+        AppEventsLogger!.logEvent(eventName, value, parameters)
+      } else {
+        AppEventsLogger!.logEvent(eventName, parameters)
+      }
     } catch (error) {
       if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] logStartTrial error:', error)
     }
